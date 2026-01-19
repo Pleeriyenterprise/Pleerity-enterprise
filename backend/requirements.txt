@@ -70,6 +70,7 @@ pathspec==0.12.1
 pillow==12.1.0
 platformdirs==4.5.1
 pluggy==1.6.0
+postmarker==1.0
 propcache==0.4.1
 proto-plus==1.27.0
 protobuf==5.29.5
