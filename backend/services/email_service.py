@@ -230,35 +230,6 @@ Hello {model.get('client_name', 'there')},
 {model.get('company_name', 'Pleerity Enterprise Ltd')}
 {model.get('tagline', 'AI-Driven Solutions & Compliance')}
             """
-                message_log.status = "sent"
-                message_log.sent_at = datetime.now(timezone.utc)
-                logger.info(f"[DEV MODE] Email logged (not sent) to {recipient}")
-        
-        except Exception as e:
-            message_log.status = "failed"
-            message_log.error_message = str(e)
-            logger.error(f"Failed to send email to {recipient}: {e}")
-        
-        # Store message log
-        doc = message_log.model_dump()
-        for key in ["created_at", "sent_at", "delivered_at", "opened_at", "bounced_at"]:
-            if doc.get(key) and isinstance(doc[key], datetime):
-                doc[key] = doc[key].isoformat()
-        
-        await db.message_logs.insert_one(doc)
-        
-        # Audit log
-        await create_audit_log(
-            action=AuditAction.EMAIL_SENT if message_log.status == "sent" else AuditAction.EMAIL_FAILED,
-            client_id=client_id,
-            metadata={
-                "recipient": recipient,
-                "template": template_alias.value,
-                "status": message_log.status
-            }
-        )
-        
-        return message_log
     
     async def send_password_setup_email(
         self,
