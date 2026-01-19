@@ -147,7 +147,10 @@
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
 
 ### Upcoming (P2)
-- [ ] **Audit Log Granularity:** Before/after diffs on profile changes (partially implemented)
+- [x] **Audit Log Granularity:** Before/after diffs on profile and notification changes
+  - [x] Enhanced `create_audit_log` utility with automatic diff calculation
+  - [x] Diff shows added, removed, and changed fields with from/to values
+  - [x] Changes count included in metadata
 
 ### Upcoming (P3)
 - [ ] **Enhanced Requirement Generation:** Dynamic rules based on property type/location
