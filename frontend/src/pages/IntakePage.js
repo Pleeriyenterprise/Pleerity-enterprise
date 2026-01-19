@@ -60,6 +60,9 @@ const IntakePage = () => {
       const response = await intakeAPI.submit(formData);
       const { client_id } = response.data;
       
+      // Store client_id for post-checkout redirect
+      localStorage.setItem('pending_client_id', client_id);
+      
       // Create checkout session
       const checkoutResponse = await intakeAPI.createCheckout(client_id);
       window.location.href = checkoutResponse.data.checkout_url;
