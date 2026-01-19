@@ -57,8 +57,22 @@ class JobScheduler:
             reminder_count = 0
             
             for client in clients:
-                # Get requirements expiring in next 30 days
-                thirty_days_from_now = datetime.now(timezone.utc) + timedelta(days=30)
+                # Check notification preferences
+                prefs = await self.db.notification_preferences.find_one(
+                    {"client_id": client["client_id"]},
+                    {"_id": 0}
+                )
+                
+                # Default to enabled if no preferences set
+                reminders_enabled = prefs.get("expiry_reminders", True) if prefs else True
+                reminder_days = prefs.get("reminder_days_before", 30) if prefs else 30
+                
+                if not reminders_enabled:
+                    logger.info(f"Skipping reminders for {client['email']} - disabled in preferences")
+                    continue
+                
+                # Get requirements expiring in next N days (based on preferences)
+                days_ahead = datetime.now(timezone.utc) + timedelta(days=reminder_days)
                 
                 requirements = await self.db.requirements.find({
                     "client_id": client["client_id"],
