@@ -389,5 +389,48 @@ Hello {model.get('client_name', 'there')},
             client_id=client_id,
             subject="Your Compliance Vault Pro Portal is Ready"
         )
+    
+    async def send_compliance_alert_email(
+        self,
+        recipient: str,
+        client_name: str,
+        affected_properties: list,
+        portal_link: str,
+        client_id: str
+    ):
+        """Send compliance status change alert."""
+        # Determine the most severe status for the subject line
+        has_red = any(p.get('new_status') == 'RED' for p in affected_properties)
+        has_amber = any(p.get('new_status') == 'AMBER' for p in affected_properties)
+        
+        if has_red:
+            subject = "🔴 Urgent: Compliance Status Changed to RED"
+            status_color = "#dc2626"
+        elif has_amber:
+            subject = "🟡 Attention: Compliance Status Changed to AMBER"
+            status_color = "#f59e0b"
+        else:
+            subject = "Compliance Status Update"
+            status_color = "#64748b"
+        
+        # Add color info to properties
+        for prop in affected_properties:
+            prop['prev_color'] = {'GREEN': '#22c55e', 'AMBER': '#f59e0b', 'RED': '#dc2626'}.get(prop.get('previous_status'), '#64748b')
+            prop['new_color'] = {'GREEN': '#22c55e', 'AMBER': '#f59e0b', 'RED': '#dc2626'}.get(prop.get('new_status'), '#64748b')
+        
+        await self.send_email(
+            recipient=recipient,
+            template_alias=EmailTemplateAlias.COMPLIANCE_ALERT,
+            template_model={
+                "client_name": client_name,
+                "affected_properties": affected_properties,
+                "portal_link": portal_link,
+                "status_color": status_color,
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance"
+            },
+            client_id=client_id,
+            subject=subject
+        )
 
 email_service = EmailService()
