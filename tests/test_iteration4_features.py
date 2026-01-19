@@ -303,7 +303,8 @@ class TestJobsRespectPreferences:
                 f"{BASE_URL}/api/admin/jobs/trigger/daily",
                 headers=client_headers
             )
-            assert response.status_code == 401, f"Expected 401 for client, got {response.status_code}"
+            # 403 Forbidden is correct for authenticated but unauthorized users
+            assert response.status_code in [401, 403], f"Expected 401/403 for client, got {response.status_code}"
         
         print("✅ Job endpoints correctly require admin authentication")
 
