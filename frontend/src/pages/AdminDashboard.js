@@ -1992,6 +1992,7 @@ const AdminDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return <DashboardOverview />;
+      case 'statistics': return <StatisticsDashboard />;
       case 'jobs': return <JobsMonitoring />;
       case 'clients': return <ClientsManagement />;
       case 'rules': return <RulesManagement />;
