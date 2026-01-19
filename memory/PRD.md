@@ -201,8 +201,8 @@
   - [x] Changes count included in metadata
 
 ### Upcoming (P3)
-- [ ] **SMS Sending Integration** - Integrate third-party SMS gateway (Twilio) for actual sending
-- [ ] **Phone Verification Flow** - OTP verification for phone numbers
+- [ ] **Production SMS Sending** - Enable `SMS_ENABLED` env var and add Twilio credentials
+- [ ] **Phone Verification via Real OTP** - Add `TWILIO_VERIFY_SERVICE_SID` for production verification
 
 ---
 
