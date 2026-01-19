@@ -172,6 +172,7 @@ app.include_router(profile.router)
 app.include_router(properties.router)
 app.include_router(rules.router)
 app.include_router(templates.router)
+app.include_router(calendar.router)
 
 # Root endpoint
 @app.get("/api")
