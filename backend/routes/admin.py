@@ -680,3 +680,236 @@ async def admin_trigger_provision(request: Request, client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to trigger provisioning"
         )
+
+@router.get("/clients/{client_id}/password-setup-link")
+async def get_password_setup_link(request: Request, client_id: str, generate_new: bool = False):
+    """Get or generate password setup link for a client (admin only, for internal testing).
+    
+    This endpoint allows admins to:
+    1. View the latest valid password setup link for a client
+    2. Generate a new link if none exists or if generate_new=True
+    
+    SECURITY: This is for internal testing only. In production, consider restricting access.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Get client
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        # Get portal user
+        portal_user = await db.portal_users.find_one(
+            {"client_id": client_id},
+            {"_id": 0}
+        )
+        
+        if not portal_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portal user not found - client may not be provisioned"
+            )
+        
+        import os
+        from auth import generate_secure_token, hash_token
+        from models import PasswordToken
+        
+        frontend_url = os.getenv("FRONTEND_URL", "https://compliancevault.preview.emergentagent.com")
+        
+        # Check for existing valid token (not used, not revoked, not expired)
+        existing_token = None
+        if not generate_new:
+            # Find valid token - we need to check expiry
+            tokens = await db.password_tokens.find(
+                {
+                    "portal_user_id": portal_user["portal_user_id"],
+                    "used_at": None,
+                    "revoked_at": None
+                },
+                {"_id": 0}
+            ).sort("created_at", -1).to_list(10)
+            
+            for token in tokens:
+                expires_at = datetime.fromisoformat(token["expires_at"].replace('Z', '+00:00')) if isinstance(token["expires_at"], str) else token["expires_at"]
+                if expires_at > datetime.now(timezone.utc):
+                    existing_token = token
+                    break
+        
+        if existing_token and not generate_new:
+            # NOTE: We cannot retrieve the raw token from hash - must generate new
+            return {
+                "message": "Existing valid token found but raw token not retrievable",
+                "token_exists": True,
+                "expires_at": existing_token["expires_at"],
+                "created_at": existing_token["created_at"],
+                "portal_user_id": portal_user["portal_user_id"],
+                "client_email": client["email"],
+                "note": "Use generate_new=true to create a new link",
+                "client_status": {
+                    "subscription_status": client.get("subscription_status"),
+                    "onboarding_status": client.get("onboarding_status")
+                },
+                "portal_user_status": {
+                    "status": portal_user.get("status"),
+                    "password_status": portal_user.get("password_status")
+                }
+            }
+        
+        # Generate new token
+        # First, revoke any existing tokens
+        await db.password_tokens.update_many(
+            {"portal_user_id": portal_user["portal_user_id"], "used_at": None, "revoked_at": None},
+            {"$set": {"revoked_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        raw_token = generate_secure_token()
+        token_hash = hash_token(raw_token)
+        
+        password_token = PasswordToken(
+            token_hash=token_hash,
+            portal_user_id=portal_user["portal_user_id"],
+            client_id=client_id,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),  # 24 hours for admin-generated
+            created_by="ADMIN",
+            send_count=0  # Not sent via email
+        )
+        
+        doc = password_token.model_dump()
+        for key in ["expires_at", "used_at", "revoked_at", "created_at"]:
+            if doc.get(key) and isinstance(doc[key], datetime):
+                doc[key] = doc[key].isoformat()
+        
+        await db.password_tokens.insert_one(doc)
+        
+        setup_link = f"{frontend_url}/set-password?token={raw_token}"
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=client_id,
+            metadata={
+                "action": "admin_generated_password_link",
+                "admin_email": user["email"],
+                "for_user": portal_user["portal_user_id"]
+            }
+        )
+        
+        return {
+            "message": "Password setup link generated",
+            "setup_link": setup_link,
+            "raw_token": raw_token,
+            "expires_at": password_token.expires_at.isoformat(),
+            "client_email": client["email"],
+            "client_name": client["full_name"],
+            "client_status": {
+                "subscription_status": client.get("subscription_status"),
+                "onboarding_status": client.get("onboarding_status")
+            },
+            "portal_user_status": {
+                "status": portal_user.get("status"),
+                "password_status": portal_user.get("password_status")
+            }
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get password setup link error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get/generate password setup link"
+        )
+
+@router.get("/clients/{client_id}/full-status")
+async def get_client_full_status(request: Request, client_id: str):
+    """Get complete client status including all related records (admin only).
+    
+    Returns a comprehensive view of client state for debugging and verification.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Get client
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        # Get portal user(s)
+        portal_users = await db.portal_users.find(
+            {"client_id": client_id},
+            {"_id": 0, "password_hash": 0}
+        ).to_list(10)
+        
+        # Get properties
+        properties = await db.properties.find(
+            {"client_id": client_id},
+            {"_id": 0}
+        ).to_list(100)
+        
+        # Get requirements count by status
+        requirements = await db.requirements.find(
+            {"client_id": client_id},
+            {"_id": 0, "status": 1}
+        ).to_list(1000)
+        
+        req_summary = {}
+        for r in requirements:
+            status = r.get("status", "UNKNOWN")
+            req_summary[status] = req_summary.get(status, 0) + 1
+        
+        # Get password tokens
+        tokens = await db.password_tokens.find(
+            {"client_id": client_id},
+            {"_id": 0, "token_hash": 0}  # Don't expose hash
+        ).sort("created_at", -1).to_list(5)
+        
+        # Get recent audit logs
+        audit_logs = await db.audit_logs.find(
+            {"client_id": client_id},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(10).to_list(10)
+        
+        # Get message logs
+        message_logs = await db.message_logs.find(
+            {"client_id": client_id},
+            {"_id": 0}
+        ).sort("created_at", -1).limit(10).to_list(10)
+        
+        return {
+            "client": client,
+            "portal_users": portal_users,
+            "properties_count": len(properties),
+            "properties": properties[:5],  # First 5 only
+            "requirements_summary": req_summary,
+            "requirements_total": len(requirements),
+            "recent_password_tokens": tokens,
+            "recent_audit_logs": audit_logs,
+            "recent_message_logs": message_logs,
+            "readiness_check": {
+                "has_properties": len(properties) > 0,
+                "is_provisioned": client.get("onboarding_status") == "PROVISIONED",
+                "subscription_active": client.get("subscription_status") == "ACTIVE",
+                "has_portal_user": len(portal_users) > 0,
+                "portal_user_active": any(u.get("status") == "ACTIVE" for u in portal_users),
+                "password_set": any(u.get("password_status") == "SET" for u in portal_users)
+            }
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get client full status error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get client status"
+        )
