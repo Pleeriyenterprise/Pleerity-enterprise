@@ -96,7 +96,7 @@ class JobScheduler:
                         })
                         
                         # Update requirement status
-                        if days_until_due <= 30:
+                        if days_until_due <= reminder_days:
                             await self.db.requirements.update_one(
                                 {"requirement_id": req["requirement_id"]},
                                 {"$set": {"status": "EXPIRING_SOON"}}
