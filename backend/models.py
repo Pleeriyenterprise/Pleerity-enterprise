@@ -200,6 +200,27 @@ class Requirement(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
+class RequirementRule(BaseModel):
+    """Defines a compliance requirement rule that can be applied to properties."""
+    model_config = ConfigDict(extra="ignore")
+    
+    rule_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    rule_type: str  # e.g., "gas_safety", "eicr", "epc"
+    name: str  # Human-readable name
+    description: str  # Detailed description
+    category: RuleCategory = RuleCategory.OTHER
+    frequency_days: int  # How often this must be renewed
+    warning_days: int = 30  # Days before due date to show warning
+    applicable_to: PropertyTypeApplicability = PropertyTypeApplicability.ALL
+    is_mandatory: bool = True
+    is_active: bool = True
+    risk_weight: int = Field(default=1, ge=1, le=5)  # 1-5, higher = more critical
+    regulatory_reference: Optional[str] = None  # Link to regulation
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    created_by: Optional[str] = None
+
 class Document(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
