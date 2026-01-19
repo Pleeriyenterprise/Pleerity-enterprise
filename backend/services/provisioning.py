@@ -14,8 +14,8 @@ from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
-# Compliance requirement rules
-REQUIREMENT_RULES = [
+# Fallback compliance requirement rules (used if database rules not available)
+FALLBACK_REQUIREMENT_RULES = [
     {"type": "gas_safety", "description": "Gas Safety Certificate", "frequency_days": 365},
     {"type": "eicr", "description": "Electrical Installation Condition Report", "frequency_days": 1825},
     {"type": "epc", "description": "Energy Performance Certificate", "frequency_days": 3650},
