@@ -33,7 +33,9 @@ import {
   BarChart3,
   TrendingUp,
   PieChart,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 // Tab Components
