@@ -76,6 +76,18 @@ async def run_monthly_digests():
     except Exception as e:
         logger.error(f"Monthly digest job failed: {e}")
 
+async def run_compliance_status_check():
+    """Scheduled job: Check for compliance status changes and send alerts."""
+    try:
+        from services.jobs import JobScheduler
+        job_scheduler = JobScheduler()
+        await job_scheduler.connect()
+        count = await job_scheduler.check_compliance_status_changes()
+        await job_scheduler.close()
+        logger.info(f"Compliance status check completed: {count} alerts sent")
+    except Exception as e:
+        logger.error(f"Compliance status check failed: {e}")
+
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
