@@ -102,6 +102,14 @@ function App() {
               } 
             />
             <Route 
+              path="/app/calendar" 
+              element={
+                <ProtectedRoute>
+                  <CalendarPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/app/properties/create" 
               element={
                 <ProtectedRoute>
