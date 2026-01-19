@@ -187,9 +187,8 @@
   - [x] Changes count included in metadata
 
 ### Upcoming (P3)
-- [ ] **Enhanced Requirement Generation:** Dynamic rules based on property type/location
-- [ ] **RuleRequirementDefinition Expansion:** Conditional logic, risk weights
-- [ ] **SMS Reminder Support:** Feature-flagged, third-party gateway
+- [ ] **SMS Sending Integration** - Integrate third-party SMS gateway (Twilio) for actual sending
+- [ ] **Phone Verification Flow** - OTP verification for phone numbers
 
 ---
 
