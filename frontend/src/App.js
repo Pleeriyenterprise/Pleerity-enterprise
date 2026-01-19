@@ -56,6 +56,14 @@ function App() {
               } 
             />
             <Route 
+              path="/app/properties/create" 
+              element={
+                <ProtectedRoute>
+                  <PropertyCreatePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/app/properties" 
               element={
                 <ProtectedRoute>
