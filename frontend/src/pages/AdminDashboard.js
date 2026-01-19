@@ -1217,6 +1217,7 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'jobs', label: 'Jobs', icon: Clock },
     { id: 'clients', label: 'Clients', icon: Users },
+    { id: 'rules', label: 'Rules', icon: BookOpen },
     { id: 'audit', label: 'Audit Logs', icon: FileText },
     { id: 'messages', label: 'Messages', icon: Mail },
   ];
@@ -1226,6 +1227,7 @@ const AdminDashboard = () => {
       case 'overview': return <DashboardOverview />;
       case 'jobs': return <JobsMonitoring />;
       case 'clients': return <ClientsManagement />;
+      case 'rules': return <RulesManagement />;
       case 'audit': return <AuditLogs />;
       case 'messages': return <MessageLogs />;
       default: return <DashboardOverview />;
