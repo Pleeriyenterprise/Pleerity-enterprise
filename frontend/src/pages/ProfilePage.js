@@ -24,12 +24,6 @@ const ProfilePage = () => {
     phone: ''
   });
 
-  const [preferences, setPreferences] = useState({
-    compliance_reminders: true,
-    monthly_digest: true,
-    product_announcements: true
-  });
-
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -46,11 +40,6 @@ const ProfilePage = () => {
       setFormData({
         full_name: response.data.full_name,
         phone: response.data.phone || ''
-      });
-      setPreferences(response.data.preferences || {
-        compliance_reminders: true,
-        monthly_digest: true,
-        product_announcements: true
       });
     } catch (err) {
       setError('Failed to load profile');
@@ -77,28 +66,6 @@ const ProfilePage = () => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSavePreferences = async () => {
-    setError('');
-    setSuccess('');
-    setSaving(true);
-
-    try {
-      const token = localStorage.getItem('auth_token');
-      await axios.patch(
-        `${API_URL}/api/profile/preferences`,
-        preferences,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setSuccess('Preferences updated successfully');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to update preferences');
     } finally {
       setSaving(false);
     }
