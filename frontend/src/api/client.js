@@ -59,7 +59,8 @@ export const clientAPI = {
   getDashboard: () => apiClient.get('/client/dashboard'),
   getProperties: () => apiClient.get('/client/properties'),
   getPropertyRequirements: (propertyId) => apiClient.get(`/client/properties/${propertyId}/requirements`),
-  getDocuments: () => apiClient.get('/client/documents'),
+  getRequirements: () => apiClient.get('/client/requirements'),
+  getDocuments: () => apiClient.get('/documents'),
 };
 
 export const adminAPI = {
