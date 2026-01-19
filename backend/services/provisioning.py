@@ -121,37 +121,90 @@ class ProvisioningService:
             return False, str(e)
     
     async def _generate_requirements(self, client_id: str, property_id: str):
-        """Generate deterministic requirements for a property (idempotent)."""
+        """Generate deterministic requirements for a property (idempotent).
+        
+        Uses rules from the database if available, otherwise falls back to hardcoded rules.
+        """
         db = database.get_db()
         
-        for rule in REQUIREMENT_RULES:
-            # Check if requirement already exists
-            existing = await db.requirements.find_one({
-                "client_id": client_id,
-                "property_id": property_id,
-                "requirement_type": rule["type"]
-            })
-            
-            if existing:
-                continue
-            
-            # Create new requirement
-            requirement = Requirement(
-                client_id=client_id,
-                property_id=property_id,
-                requirement_type=rule["type"],
-                description=rule["description"],
-                frequency_days=rule["frequency_days"],
-                due_date=datetime.now(timezone.utc) + timedelta(days=30),
-                status=RequirementStatus.PENDING
-            )
-            
-            doc = requirement.model_dump()
-            for key in ["due_date", "created_at", "updated_at"]:
-                if doc.get(key):
-                    doc[key] = doc[key].isoformat()
-            
-            await db.requirements.insert_one(doc)
+        # Get property to check its type
+        property_doc = await db.properties.find_one(
+            {"property_id": property_id},
+            {"_id": 0}
+        )
+        property_type = property_doc.get("property_type", "residential").upper() if property_doc else "RESIDENTIAL"
+        
+        # Try to get rules from database
+        rules = await db.requirement_rules.find(
+            {"is_active": True},
+            {"_id": 0}
+        ).to_list(100)
+        
+        if rules:
+            # Use database rules
+            for rule in rules:
+                # Check if rule applies to this property type
+                applicable_to = rule.get("applicable_to", "ALL")
+                if applicable_to != "ALL" and applicable_to != property_type:
+                    continue
+                
+                # Check if requirement already exists
+                existing = await db.requirements.find_one({
+                    "client_id": client_id,
+                    "property_id": property_id,
+                    "requirement_type": rule["rule_type"]
+                })
+                
+                if existing:
+                    continue
+                
+                # Create new requirement
+                requirement = Requirement(
+                    client_id=client_id,
+                    property_id=property_id,
+                    requirement_type=rule["rule_type"],
+                    description=rule["name"],
+                    frequency_days=rule["frequency_days"],
+                    due_date=datetime.now(timezone.utc) + timedelta(days=rule.get("warning_days", 30)),
+                    status=RequirementStatus.PENDING
+                )
+                
+                doc = requirement.model_dump()
+                for key in ["due_date", "created_at", "updated_at"]:
+                    if doc.get(key):
+                        doc[key] = doc[key].isoformat()
+                
+                await db.requirements.insert_one(doc)
+        else:
+            # Fallback to hardcoded rules
+            for rule in FALLBACK_REQUIREMENT_RULES:
+                # Check if requirement already exists
+                existing = await db.requirements.find_one({
+                    "client_id": client_id,
+                    "property_id": property_id,
+                    "requirement_type": rule["type"]
+                })
+                
+                if existing:
+                    continue
+                
+                # Create new requirement
+                requirement = Requirement(
+                    client_id=client_id,
+                    property_id=property_id,
+                    requirement_type=rule["type"],
+                    description=rule["description"],
+                    frequency_days=rule["frequency_days"],
+                    due_date=datetime.now(timezone.utc) + timedelta(days=30),
+                    status=RequirementStatus.PENDING
+                )
+                
+                doc = requirement.model_dump()
+                for key in ["due_date", "created_at", "updated_at"]:
+                    if doc.get(key):
+                        doc[key] = doc[key].isoformat()
+                
+                await db.requirements.insert_one(doc)
         
         await create_audit_log(
             action=AuditAction.REQUIREMENTS_GENERATED,
