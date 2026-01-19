@@ -12,6 +12,21 @@ load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
+# Status severity ranking (lower is better)
+STATUS_SEVERITY = {
+    "GREEN": 0,
+    "AMBER": 1,
+    "RED": 2
+}
+
+def get_status_color(status):
+    """Get CSS color for compliance status."""
+    return {
+        "GREEN": "#22c55e",
+        "AMBER": "#f59e0b",
+        "RED": "#dc2626"
+    }.get(status, "#64748b")
+
 class JobScheduler:
     def __init__(self):
         self.mongo_url = os.environ['MONGO_URL']
