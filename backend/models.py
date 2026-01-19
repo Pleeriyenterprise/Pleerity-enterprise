@@ -136,6 +136,7 @@ class EmailTemplateAlias(str, Enum):
     PAYMENT_RECEIPT = "payment-receipt"
     REMINDER = "reminder"
     WELCOME = "welcome"
+    COMPLIANCE_ALERT = "compliance-alert"  # Status change notifications
 
 class EmailTemplate(BaseModel):
     """Customizable email template stored in the database."""
