@@ -179,7 +179,7 @@ const ClientsManagement = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await api.get('/api/admin/clients?limit=100');
+      const response = await api.get('/admin/clients?limit=100');
       setClients(response.data.clients);
     } catch (error) {
       toast.error('Failed to load clients');
@@ -190,7 +190,7 @@ const ClientsManagement = () => {
 
   const fetchClientDetails = async (clientId) => {
     try {
-      const response = await api.get(`/api/admin/clients/${clientId}/full-status`);
+      const response = await api.get(`/admin/clients/${clientId}/full-status`);
       setClientDetails(response.data);
       setSelectedClient(clientId);
     } catch (error) {
@@ -200,7 +200,7 @@ const ClientsManagement = () => {
 
   const resendPasswordSetup = async (clientId) => {
     try {
-      await api.post(`/api/admin/clients/${clientId}/resend-password-setup`);
+      await api.post(`/admin/clients/${clientId}/resend-password-setup`);
       toast.success('Password setup email sent');
     } catch (error) {
       toast.error('Failed to send email');
