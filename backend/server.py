@@ -141,6 +141,7 @@ app.include_router(assistant.router)
 app.include_router(profile.router)
 app.include_router(properties.router)
 app.include_router(rules.router)
+app.include_router(templates.router)
 
 # Root endpoint
 @app.get("/api")
