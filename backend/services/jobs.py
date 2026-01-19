@@ -44,7 +44,9 @@ class JobScheduler:
             self.client.close()
     
     async def send_daily_reminders(self):
-        """Send daily compliance reminders for expiring requirements."""
+        """Send daily compliance reminders for expiring requirements.
+        Respects user notification preferences.
+        """
         logger.info("Running daily reminder job...")
         
         try:
