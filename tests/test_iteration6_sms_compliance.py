@@ -157,9 +157,12 @@ class TestSMSStatusAPI:
 class TestSendOTPAPI:
     """Test /api/sms/send-otp endpoint"""
     
-    def test_send_otp_requires_auth(self, api_client):
+    def test_send_otp_requires_auth(self):
         """Test that send OTP requires authentication"""
-        response = api_client.post(f"{BASE_URL}/api/sms/send-otp", json={
+        # Use fresh session without auth
+        session = requests.Session()
+        session.headers.update({"Content-Type": "application/json"})
+        response = session.post(f"{BASE_URL}/api/sms/send-otp", json={
             "phone_number": TEST_PHONE
         })
         assert response.status_code in [401, 403], f"Expected 401/403 without auth, got {response.status_code}"
