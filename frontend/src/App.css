@@ -1,34 +1,58 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+.App {
+  min-height: 100vh;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Brand colors */
+.brand-midnight-blue {
+  background-color: rgb(11, 29, 58);
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.brand-electric-teal {
+  background-color: rgb(0, 184, 169);
 }
 
-.App-link {
-    color: #61dafb;
+.text-midnight-blue {
+  color: rgb(11, 29, 58);
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.text-electric-teal {
+  color: rgb(0, 184, 169);
+}
+
+/* Professional enterprise styling */
+.enterprise-card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-smooth;
+}
+
+.enterprise-card:hover {
+  @apply shadow-md;
+}
+
+/* Compliance status colors */
+.status-green {
+  @apply bg-green-50 text-green-700 border-green-200;
+}
+
+.status-amber {
+  @apply bg-yellow-50 text-yellow-700 border-yellow-200;
+}
+
+.status-red {
+  @apply bg-red-50 text-red-700 border-red-200;
+}
+
+/* Loading states */
+.loading-spinner {
+  border: 2px solid rgba(0, 184, 169, 0.1);
+  border-top-color: rgb(0, 184, 169);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
