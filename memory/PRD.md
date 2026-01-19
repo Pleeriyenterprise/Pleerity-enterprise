@@ -185,8 +185,8 @@
 ---
 
 ## Known Limitations / Mocked Services
-1. **Email (Postmark):** MOCKED - emails logged but not sent (requires `POSTMARK_SERVER_TOKEN`)
-2. **Payments (Stripe):** Using test key from environment
+1. **Payments (Stripe):** Using test key from environment
+2. **Email (Postmark):** Live integration working with sender `info@pleerityenterprise.co.uk`
 
 ---
 
