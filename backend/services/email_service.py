@@ -31,7 +31,7 @@ class EmailService:
         client_id: Optional[str] = None,
         subject: str = "Compliance Vault Pro"
     ) -> MessageLog:
-        """Send an email using Postmark template or fallback to plain text."""
+        """Send an email using database template, Postmark template, or fallback to built-in."""
         db = database.get_db()
         
         # Create message log
@@ -45,39 +45,61 @@ class EmailService:
         
         try:
             if self.client:
-                try:
-                    # First try with template
-                    response = self.client.emails.send_with_template(
-                        From=DEFAULT_SENDER,
-                        To=recipient,
-                        TemplateAlias=template_alias.value,
-                        TemplateModel=template_model,
-                        TrackOpens=True,
-                        TrackLinks="HtmlOnly",
-                        Tag=template_alias.value
-                    )
+                # First try to get template from database
+                db_template = await db.email_templates.find_one(
+                    {"alias": template_alias.value, "is_active": True},
+                    {"_id": 0}
+                )
+                
+                if db_template:
+                    # Use database template
+                    html_body = db_template["html_body"]
+                    text_body = db_template["text_body"]
+                    email_subject = db_template["subject"]
                     
-                    message_log.postmark_message_id = response["MessageID"]
-                    message_log.status = "sent"
-                    message_log.sent_at = datetime.now(timezone.utc)
+                    # Replace placeholders
+                    for key, value in template_model.items():
+                        placeholder = "{{" + key + "}}"
+                        html_body = html_body.replace(placeholder, str(value))
+                        text_body = text_body.replace(placeholder, str(value))
+                        email_subject = email_subject.replace(placeholder, str(value))
                     
-                    logger.info(f"Template email sent to {recipient}: {response['MessageID']}")
-                    
-                except Exception as template_error:
-                    # Fallback to plain text email if template fails
-                    logger.warning(f"Template email failed, falling back to plain text: {template_error}")
-                    
-                    # Build plain text body from template model
+                    try:
+                        response = self.client.emails.send(
+                            From=DEFAULT_SENDER,
+                            To=recipient,
+                            Subject=email_subject,
+                            HtmlBody=html_body,
+                            TextBody=text_body,
+                            TrackOpens=True,
+                            TrackLinks="HtmlOnly",
+                            Tag=template_alias.value
+                        )
+                        
+                        message_log.postmark_message_id = response["MessageID"]
+                        message_log.status = "sent"
+                        message_log.sent_at = datetime.now(timezone.utc)
+                        message_log.subject = email_subject
+                        
+                        logger.info(f"Database template email sent to {recipient}: {response['MessageID']}")
+                    except Exception as send_error:
+                        raise send_error
+                else:
+                    # Fallback to built-in HTML templates
                     html_body = self._build_html_body(template_alias, template_model)
                     text_body = self._build_text_body(template_alias, template_model)
                     
-                    response = self.client.emails.send(
-                        From=DEFAULT_SENDER,
-                        To=recipient,
-                        Subject=subject,
-                        HtmlBody=html_body,
-                        TextBody=text_body,
-                        TrackOpens=True,
+                    try:
+                        response = self.client.emails.send(
+                            From=DEFAULT_SENDER,
+                            To=recipient,
+                            Subject=subject,
+                            HtmlBody=html_body,
+                            TextBody=text_body,
+                            TrackOpens=True,
+                            TrackLinks="HtmlOnly",
+                            Tag=template_alias.value
+                        )
                         Tag=template_alias.value
                     )
                     
