@@ -107,25 +107,30 @@ async def get_notification_preferences(request: Request):
     db = database.get_db()
     
     try:
-        preferences = await db.notification_preferences.find_one(
+        stored_preferences = await db.notification_preferences.find_one(
             {"client_id": user["client_id"]},
             {"_id": 0}
         )
         
-        # Default preferences if not set
-        if not preferences:
-            preferences = {
-                "client_id": user["client_id"],
-                "status_change_alerts": True,
-                "expiry_reminders": True,
-                "monthly_digest": True,
-                "document_updates": True,
-                "system_announcements": True,
-                "reminder_days_before": 30,
-                "quiet_hours_enabled": False,
-                "quiet_hours_start": "22:00",
-                "quiet_hours_end": "08:00"
-            }
+        # Default preferences
+        default_preferences = {
+            "client_id": user["client_id"],
+            "status_change_alerts": True,
+            "expiry_reminders": True,
+            "monthly_digest": True,
+            "document_updates": True,
+            "system_announcements": True,
+            "reminder_days_before": 30,
+            "quiet_hours_enabled": False,
+            "quiet_hours_start": "22:00",
+            "quiet_hours_end": "08:00"
+        }
+        
+        # Merge stored preferences with defaults (stored values override defaults)
+        if stored_preferences:
+            preferences = {**default_preferences, **stored_preferences}
+        else:
+            preferences = default_preferences
         
         return preferences
     
