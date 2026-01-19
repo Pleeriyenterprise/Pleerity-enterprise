@@ -114,6 +114,24 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
+    # Compliance status check - runs twice daily at 8:00 AM and 6:00 PM UTC
+    # This detects status changes and sends email alerts when status degrades
+    scheduler.add_job(
+        run_compliance_status_check,
+        CronTrigger(hour=8, minute=0),
+        id="compliance_check_morning",
+        name="Compliance Status Check (Morning)",
+        replace_existing=True
+    )
+    
+    scheduler.add_job(
+        run_compliance_status_check,
+        CronTrigger(hour=18, minute=0),
+        id="compliance_check_evening",
+        name="Compliance Status Check (Evening)",
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("Background job scheduler started")
     
