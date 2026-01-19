@@ -346,3 +346,151 @@ async def regenerate_requirement_due_date(requirement_id: str, client_id: str):
                 "new_due_date": new_due_date.isoformat()
             }
         )
+
+
+@router.post("/analyze/{document_id}")
+async def analyze_document_ai(request: Request, document_id: str):
+    """Analyze a document using AI to extract metadata (admin or client who owns it)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Get document
+        document = await db.documents.find_one(
+            {"document_id": document_id},
+            {"_id": 0}
+        )
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+        
+        # Verify ownership (client can only analyze their own documents)
+        if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to analyze this document"
+            )
+        
+        # Check if already analyzed
+        if document.get("ai_extraction", {}).get("status") == "completed":
+            return {
+                "message": "Document already analyzed",
+                "extraction": document["ai_extraction"]
+            }
+        
+        # Perform AI analysis
+        from services.document_analysis import document_analysis_service
+        
+        result = await document_analysis_service.analyze_document(
+            file_path=document["file_path"],
+            mime_type=document.get("mime_type", "application/pdf"),
+            document_id=document_id,
+            client_id=document["client_id"],
+            actor_id=user["portal_user_id"]
+        )
+        
+        if result["success"]:
+            return {
+                "message": "Document analyzed successfully",
+                "extraction": {
+                    "status": "completed",
+                    "data": result["extracted_data"]
+                }
+            }
+        else:
+            return {
+                "message": "Document analysis failed",
+                "error": result["error"],
+                "extraction": None
+            }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Document AI analysis error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to analyze document"
+        )
+
+
+@router.get("/{document_id}/extraction")
+async def get_document_extraction(request: Request, document_id: str):
+    """Get AI extraction results for a document."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        document = await db.documents.find_one(
+            {"document_id": document_id},
+            {"_id": 0}
+        )
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+        
+        # Verify ownership
+        if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this document"
+            )
+        
+        extraction = document.get("ai_extraction")
+        
+        if not extraction:
+            return {
+                "has_extraction": False,
+                "extraction": None
+            }
+        
+        return {
+            "has_extraction": True,
+            "extraction": extraction
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get extraction error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get extraction"
+        )
+
+
+@router.get("")
+async def list_documents(request: Request, property_id: str = None, requirement_id: str = None):
+    """List documents for the client."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        query = {"client_id": user["client_id"]}
+        if property_id:
+            query["property_id"] = property_id
+        if requirement_id:
+            query["requirement_id"] = requirement_id
+        
+        documents = await db.documents.find(
+            query,
+            {"_id": 0, "file_path": 0}  # Don't expose file path
+        ).sort("uploaded_at", -1).to_list(100)
+        
+        return {
+            "documents": documents,
+            "total": len(documents)
+        }
+    
+    except Exception as e:
+        logger.error(f"List documents error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list documents"
+        )
