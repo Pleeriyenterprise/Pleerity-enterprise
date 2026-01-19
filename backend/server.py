@@ -10,6 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.jobstores.mongodb import MongoDBJobStore
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -22,8 +23,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize scheduler
-scheduler = AsyncIOScheduler()
+# Initialize scheduler with MongoDB job store for persistence
+# Jobs will survive server restarts
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+db_name = os.environ.get('DB_NAME', 'compliance_vault_pro')
+
+jobstores = {
+    'default': MongoDBJobStore(
+        database=db_name,
+        collection='scheduled_jobs',
+        client=None  # Will use mongo_url
+    )
+}
+
+# Configure job store with MongoDB URL
+try:
+    from pymongo import MongoClient
+    mongo_client = MongoClient(mongo_url)
+    jobstores['default'] = MongoDBJobStore(
+        database=db_name,
+        collection='scheduled_jobs',
+        client=mongo_client
+    )
+    logger.info(f"MongoDB job store configured: {db_name}.scheduled_jobs")
+except Exception as e:
+    logger.warning(f"Failed to configure MongoDB job store, using memory store: {e}")
+    jobstores = {}
+
+scheduler = AsyncIOScheduler(jobstores=jobstores)
 
 async def run_daily_reminders():
     """Scheduled job: Send daily compliance reminders."""
