@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar } from 'lucide-react';
+import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, ArrowUp, ArrowDown, Zap } from 'lucide-react';
 import api from '../api/client';
 
 const ClientDashboard = () => {
@@ -15,10 +15,12 @@ const ClientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notificationPrefs, setNotificationPrefs] = useState(null);
+  const [complianceScore, setComplianceScore] = useState(null);
 
   useEffect(() => {
     fetchDashboard();
     fetchNotificationPrefs();
+    fetchComplianceScore();
   }, []);
 
   const fetchDashboard = async () => {
@@ -39,6 +41,15 @@ const ClientDashboard = () => {
     } catch (err) {
       // Silently fail - not critical for dashboard
       console.log('Could not load notification preferences');
+    }
+  };
+
+  const fetchComplianceScore = async () => {
+    try {
+      const response = await api.get('/client/compliance-score');
+      setComplianceScore(response.data);
+    } catch (err) {
+      console.log('Could not load compliance score');
     }
   };
 
