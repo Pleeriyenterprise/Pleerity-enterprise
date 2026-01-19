@@ -203,97 +203,203 @@ class ProvisioningService:
             return False, str(e)
     
     async def _generate_requirements(self, client_id: str, property_id: str):
-        """Generate deterministic requirements for a property (idempotent).
+        """Generate deterministic requirements for a property based on its attributes.
         
-        Uses rules from the database if available, otherwise falls back to hardcoded rules.
+        Uses rules from the database if available, otherwise falls back to enhanced
+        rules that consider property type, HMO status, building age, and location.
         """
         db = database.get_db()
         
-        # Get property to check its type
+        # Get property details for dynamic rule application
         property_doc = await db.properties.find_one(
             {"property_id": property_id},
             {"_id": 0}
         )
-        property_type = property_doc.get("property_type", "residential").upper() if property_doc else "RESIDENTIAL"
         
-        # Try to get rules from database
-        rules = await db.requirement_rules.find(
+        if not property_doc:
+            logger.warning(f"Property {property_id} not found for requirement generation")
+            return
+        
+        property_type = property_doc.get("property_type", "residential").upper()
+        is_hmo = property_doc.get("is_hmo", False)
+        hmo_license_required = property_doc.get("hmo_license_required", False)
+        has_gas_supply = property_doc.get("has_gas_supply", True)
+        building_age_years = property_doc.get("building_age_years")
+        has_communal_areas = property_doc.get("has_communal_areas", False)
+        local_authority = property_doc.get("local_authority", "").upper()
+        
+        # Try to get rules from database first
+        db_rules = await db.requirement_rules.find(
             {"is_active": True},
             {"_id": 0}
         ).to_list(100)
         
-        if rules:
-            # Use database rules
-            for rule in rules:
-                # Check if rule applies to this property type
-                applicable_to = rule.get("applicable_to", "ALL")
-                if applicable_to != "ALL" and applicable_to != property_type:
-                    continue
-                
-                # Check if requirement already exists
-                existing = await db.requirements.find_one({
-                    "client_id": client_id,
-                    "property_id": property_id,
-                    "requirement_type": rule["rule_type"]
-                })
-                
-                if existing:
-                    continue
-                
-                # Create new requirement
-                requirement = Requirement(
-                    client_id=client_id,
-                    property_id=property_id,
-                    requirement_type=rule["rule_type"],
-                    description=rule["name"],
-                    frequency_days=rule["frequency_days"],
-                    due_date=datetime.now(timezone.utc) + timedelta(days=rule.get("warning_days", 30)),
-                    status=RequirementStatus.PENDING
-                )
-                
-                doc = requirement.model_dump()
-                for key in ["due_date", "created_at", "updated_at"]:
-                    if doc.get(key):
-                        doc[key] = doc[key].isoformat()
-                
-                await db.requirements.insert_one(doc)
+        if db_rules:
+            # Use database rules with property type filtering
+            await self._apply_db_rules(db_rules, client_id, property_id, property_type)
         else:
-            # Fallback to hardcoded rules
-            for rule in FALLBACK_REQUIREMENT_RULES:
-                # Check if requirement already exists
-                existing = await db.requirements.find_one({
-                    "client_id": client_id,
-                    "property_id": property_id,
-                    "requirement_type": rule["type"]
-                })
-                
-                if existing:
-                    continue
-                
-                # Create new requirement
-                requirement = Requirement(
-                    client_id=client_id,
-                    property_id=property_id,
-                    requirement_type=rule["type"],
-                    description=rule["description"],
-                    frequency_days=rule["frequency_days"],
-                    due_date=datetime.now(timezone.utc) + timedelta(days=30),
-                    status=RequirementStatus.PENDING
-                )
-                
-                doc = requirement.model_dump()
-                for key in ["due_date", "created_at", "updated_at"]:
-                    if doc.get(key):
-                        doc[key] = doc[key].isoformat()
-                
-                await db.requirements.insert_one(doc)
+            # Use enhanced fallback rules with dynamic conditions
+            await self._apply_dynamic_rules(
+                client_id, 
+                property_id, 
+                property_type,
+                is_hmo,
+                hmo_license_required,
+                has_gas_supply,
+                building_age_years,
+                has_communal_areas,
+                local_authority
+            )
         
         await create_audit_log(
             action=AuditAction.REQUIREMENTS_GENERATED,
             client_id=client_id,
             resource_type="property",
-            resource_id=property_id
+            resource_id=property_id,
+            metadata={
+                "property_type": property_type,
+                "is_hmo": is_hmo,
+                "has_gas_supply": has_gas_supply,
+                "building_age_years": building_age_years,
+                "local_authority": local_authority
+            }
         )
+    
+    async def _apply_db_rules(self, rules: List[Dict], client_id: str, property_id: str, property_type: str):
+        """Apply database rules to generate requirements."""
+        db = database.get_db()
+        
+        for rule in rules:
+            # Check if rule applies to this property type
+            applicable_to = rule.get("applicable_to", "ALL")
+            if applicable_to != "ALL" and applicable_to != property_type:
+                continue
+            
+            await self._create_requirement_if_not_exists(
+                client_id,
+                property_id,
+                rule["rule_type"],
+                rule["name"],
+                rule["frequency_days"],
+                rule.get("warning_days", 30)
+            )
+    
+    async def _apply_dynamic_rules(
+        self,
+        client_id: str,
+        property_id: str,
+        property_type: str,
+        is_hmo: bool,
+        hmo_license_required: bool,
+        has_gas_supply: bool,
+        building_age_years: Optional[int],
+        has_communal_areas: bool,
+        local_authority: str
+    ):
+        """Apply enhanced dynamic rules based on property attributes."""
+        db = database.get_db()
+        
+        # 1. Apply base requirements
+        for rule in FALLBACK_REQUIREMENT_RULES:
+            # Check gas supply condition
+            if rule.get("condition") == "has_gas_supply" and not has_gas_supply:
+                logger.info(f"Skipping {rule['type']} - no gas supply")
+                continue
+            
+            # Calculate frequency based on building age for EICR
+            frequency_days = rule["frequency_days"]
+            if rule["type"] == "eicr" and building_age_years:
+                if building_age_years > 50:
+                    frequency_days = rule.get("frequency_by_age", {}).get("old", 1095)
+                    logger.info(f"Using shorter EICR frequency ({frequency_days} days) for old building")
+            
+            await self._create_requirement_if_not_exists(
+                client_id,
+                property_id,
+                rule["type"],
+                rule["description"],
+                frequency_days
+            )
+        
+        # 2. Apply HMO-specific requirements
+        if is_hmo or property_type == "HMO":
+            logger.info(f"Applying HMO requirements for property {property_id}")
+            for rule in HMO_REQUIREMENTS:
+                # Check HMO license condition
+                if rule.get("condition") == "hmo_license_required" and not hmo_license_required:
+                    continue
+                
+                await self._create_requirement_if_not_exists(
+                    client_id,
+                    property_id,
+                    rule["type"],
+                    rule["description"],
+                    rule["frequency_days"]
+                )
+        
+        # 3. Apply communal area requirements
+        if has_communal_areas:
+            logger.info(f"Applying communal area requirements for property {property_id}")
+            for rule in COMMUNAL_REQUIREMENTS:
+                await self._create_requirement_if_not_exists(
+                    client_id,
+                    property_id,
+                    rule["type"],
+                    rule["description"],
+                    rule["frequency_days"]
+                )
+        
+        # 4. Apply location-specific requirements
+        if local_authority and local_authority in LOCATION_RULES:
+            logger.info(f"Applying {local_authority} location-specific requirements")
+            for rule in LOCATION_RULES[local_authority]:
+                await self._create_requirement_if_not_exists(
+                    client_id,
+                    property_id,
+                    rule["type"],
+                    rule["description"],
+                    rule["frequency_days"]
+                )
+    
+    async def _create_requirement_if_not_exists(
+        self,
+        client_id: str,
+        property_id: str,
+        requirement_type: str,
+        description: str,
+        frequency_days: int,
+        warning_days: int = 30
+    ):
+        """Create a requirement if it doesn't already exist (idempotent)."""
+        db = database.get_db()
+        
+        # Check if requirement already exists
+        existing = await db.requirements.find_one({
+            "client_id": client_id,
+            "property_id": property_id,
+            "requirement_type": requirement_type
+        })
+        
+        if existing:
+            return
+        
+        # Create new requirement
+        requirement = Requirement(
+            client_id=client_id,
+            property_id=property_id,
+            requirement_type=requirement_type,
+            description=description,
+            frequency_days=frequency_days,
+            due_date=datetime.now(timezone.utc) + timedelta(days=warning_days),
+            status=RequirementStatus.PENDING
+        )
+        
+        doc = requirement.model_dump()
+        for key in ["due_date", "created_at", "updated_at"]:
+            if doc.get(key):
+                doc[key] = doc[key].isoformat()
+        
+        await db.requirements.insert_one(doc)
     
     async def _update_property_compliance(self, property_id: str):
         """Compute deterministic compliance status based on requirements."""
