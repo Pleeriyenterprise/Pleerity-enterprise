@@ -178,6 +178,29 @@ class Client(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
+class NotificationPreferences(BaseModel):
+    """Client notification preferences."""
+    model_config = ConfigDict(extra="ignore")
+    
+    client_id: str
+    # Email notification types
+    status_change_alerts: bool = True  # GREEN→AMBER→RED changes
+    expiry_reminders: bool = True  # Daily expiry reminders
+    monthly_digest: bool = True  # Monthly compliance summary
+    document_updates: bool = True  # Document upload/verification notifications
+    system_announcements: bool = True  # Platform updates and news
+    
+    # Timing preferences
+    reminder_days_before: int = 30  # Days before expiry to start reminders
+    digest_day_of_month: int = 1  # Day of month for digest (1-28)
+    
+    # Quiet hours (optional)
+    quiet_hours_enabled: bool = False
+    quiet_hours_start: Optional[str] = "22:00"  # HH:MM format
+    quiet_hours_end: Optional[str] = "08:00"
+    
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+
 class PortalUser(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
