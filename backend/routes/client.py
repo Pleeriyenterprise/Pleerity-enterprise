@@ -1,10 +1,26 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 from database import database
 from middleware import client_route_guard
+from services.compliance_score import calculate_compliance_score
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(client_route_guard)])
+
+@router.get("/compliance-score")
+async def get_compliance_score(request: Request):
+    """Get the client's overall compliance score (0-100)."""
+    user = await client_route_guard(request)
+    
+    try:
+        score_data = await calculate_compliance_score(user["client_id"])
+        return score_data
+    except Exception as e:
+        logger.error(f"Compliance score error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to calculate compliance score"
+        )
 
 @router.get("/dashboard")
 async def get_dashboard(request: Request):
