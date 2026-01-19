@@ -142,6 +142,12 @@
   - [x] Quiet Hours support (optional time window)
   - [x] Floating "unsaved changes" indicator
   - [x] Linked from Profile page
+- [x] **Client Dashboard Notification Widget:**
+  - [x] Quick summary of notification settings on dashboard
+  - [x] Shows Status Alerts, Expiry Reminders, Monthly Digest status
+  - [x] Shows Reminder Timing (days before expiry)
+  - [x] "Manage Preferences" button to full settings page
+  - [x] Profile nav link added to dashboard
 
 ### Upcoming (P2)
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
