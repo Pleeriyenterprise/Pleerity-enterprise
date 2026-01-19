@@ -17,6 +17,9 @@ import AssistantPage from './pages/AssistantPage';
 import ProfilePage from './pages/ProfilePage';
 import PropertyCreatePage from './pages/PropertyCreatePage';
 
+// Admin pages
+import AdminDashboard from './pages/AdminDashboard';
+
 function App() {
   return (
     <AuthProvider>
@@ -85,12 +88,7 @@ function App() {
               path="/admin/dashboard" 
               element={
                 <ProtectedRoute requireAdmin>
-                  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                    <div className="text-center">
-                      <h2 className="text-2xl font-bold text-midnight-blue mb-4">Admin Dashboard</h2>
-                      <p className="text-gray-600">Admin features coming soon</p>
-                    </div>
-                  </div>
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
