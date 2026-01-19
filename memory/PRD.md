@@ -126,6 +126,22 @@
   - [x] Manual trigger available via Admin Jobs tab
   - [x] Tracks `last_notified_status` to prevent duplicate alerts
   - [x] Audit logging for all compliance alerts sent
+- [x] **Onboarding Progress Dashboard:**
+  - [x] Enhanced `/api/intake/onboarding-status/{client_id}` API with step-by-step progress
+  - [x] Frontend OnboardingStatusPage.js with visual timeline
+  - [x] 5-step progress (Intake → Payment → Portal Setup → Account Activation → Ready)
+  - [x] Property and requirements count display
+  - [x] Next action guidance and "Go to Portal" button
+  - [x] Auto-refresh while onboarding is in progress
+  - [x] Checkout success redirect to onboarding status
+- [x] **Notification Preferences Page:**
+  - [x] Backend API endpoints GET/PUT `/api/profile/notifications`
+  - [x] NotificationPreferencesPage.js with comprehensive settings
+  - [x] 5 notification types: Status Alerts, Expiry Reminders, Monthly Digest, Document Updates, System Announcements
+  - [x] Configurable reminder timing (7, 14, 30, 60, 90 days)
+  - [x] Quiet Hours support (optional time window)
+  - [x] Floating "unsaved changes" indicator
+  - [x] Linked from Profile page
 
 ### Upcoming (P2)
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
