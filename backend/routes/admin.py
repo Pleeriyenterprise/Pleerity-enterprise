@@ -325,3 +325,32 @@ async def send_manual_email(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send email"
         )
+
+@router.get("/clients/{client_id}/compliance-pack")
+async def generate_compliance_pack(request: Request, client_id: str):
+    """Generate compliance pack for client (PLAN_6_15 only)."""
+    user = await admin_route_guard(request)
+    
+    try:
+        from services.compliance_pack import compliance_pack_generator
+        
+        pack_data = await compliance_pack_generator.generate_pack(client_id)
+        
+        return pack_data
+    
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Compliance pack generation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate compliance pack"
+        )
