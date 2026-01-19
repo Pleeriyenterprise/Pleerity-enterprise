@@ -12,6 +12,34 @@ import SetPasswordPage from './pages/SetPasswordPage';
 import IntakePage from './pages/IntakePage';
 import OnboardingStatusPage from './pages/OnboardingStatusPage';
 
+// Checkout success redirect component
+const CheckoutSuccessRedirect = () => {
+  const [searchParams] = React.useState(() => new URLSearchParams(window.location.search));
+  const sessionId = searchParams.get('session_id');
+  
+  // Extract client_id from session or redirect to onboarding
+  React.useEffect(() => {
+    // For now, redirect to a generic success page
+    // The webhook will handle the actual provisioning
+    const storedClientId = localStorage.getItem('pending_client_id');
+    if (storedClientId) {
+      localStorage.removeItem('pending_client_id');
+      window.location.href = `/onboarding-status?client_id=${storedClientId}`;
+    } else {
+      window.location.href = '/';
+    }
+  }, []);
+  
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-teal mx-auto mb-4"></div>
+        <p className="text-gray-600">Processing your payment...</p>
+      </div>
+    </div>
+  );
+};
+
 // Client pages
 import ClientDashboard from './pages/ClientDashboard';
 import AssistantPage from './pages/AssistantPage';
