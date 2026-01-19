@@ -381,3 +381,209 @@ async def generate_compliance_pack(request: Request, client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate compliance pack"
         )
+
+@router.get("/jobs/status")
+async def get_jobs_status(request: Request):
+    """Get background jobs status (read-only monitoring)."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Get last reminder job run from audit logs
+        last_reminder = await db.audit_logs.find_one(
+            {"metadata.action": "REMINDER_SENT"},
+            {"_id": 0},
+            sort=[("timestamp", -1)]
+        )
+        
+        # Get last digest job run
+        last_digest = await db.digest_logs.find_one(
+            {},
+            {"_id": 0},
+            sort=[("sent_at", -1)]
+        )
+        
+        # Count pending reminders (requirements expiring in 30 days)
+        from datetime import timedelta
+        thirty_days = datetime.now(timezone.utc) + timedelta(days=30)
+        
+        requirements = await db.requirements.find(
+            {"status": {"$in": ["PENDING", "EXPIRING_SOON"]}},
+            {"_id": 0}
+        ).to_list(10000)
+        
+        pending_reminders = sum(
+            1 for r in requirements
+            if datetime.fromisoformat(r["due_date"]) <= thirty_days
+        )
+        
+        return {
+            "daily_reminders": {
+                "last_run": last_reminder["timestamp"] if last_reminder else None,
+                "pending_count": pending_reminders
+            },
+            "monthly_digest": {
+                "last_run": last_digest["sent_at"] if last_digest else None,
+                "total_sent": await db.digest_logs.count_documents({})
+            },
+            "system_status": "operational"
+        }
+    
+    except Exception as e:
+        logger.error(f"Jobs status error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load jobs status"
+        )
+
+@router.post("/clients/invite")
+async def admin_invite_client(
+    request: Request,
+    full_name: str,
+    email: str,
+    billing_plan: str = "PLAN_1"
+):
+    """Admin-initiated client invitation.
+    
+    Creates client record in INVITED state. Admin must manually trigger
+    provisioning after payment is arranged separately.
+    
+    IMPORTANT: This does NOT bypass the normal flow. It simply pre-creates
+    the client record. Provisioning must still be triggered manually.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        from models import Client, BillingPlan, ClientType, PreferredContact, ServiceCode
+        
+        # Check if email already exists
+        existing = await db.clients.find_one({"email": email}, {"_id": 0})
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A client with this email already exists"
+            )
+        
+        # Create client in INVITED state (not yet provisioned)
+        client = Client(
+            full_name=full_name,
+            email=email,
+            client_type=ClientType.INDIVIDUAL,
+            preferred_contact=PreferredContact.EMAIL,
+            billing_plan=BillingPlan(billing_plan),
+            service_code=ServiceCode.VAULT_PRO,
+            subscription_status="PENDING",  # Admin must activate
+            onboarding_status="INTAKE_PENDING"  # Not provisioned yet
+        )
+        
+        client_doc = client.model_dump()
+        for key in ["created_at", "updated_at"]:
+            if client_doc.get(key):
+                client_doc[key] = client_doc[key].isoformat()
+        
+        await db.clients.insert_one(client_doc)
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=client.client_id,
+            metadata={
+                "action": "admin_client_invited",
+                "email": email,
+                "billing_plan": billing_plan,
+                "admin_email": user["email"]
+            }
+        )
+        
+        logger.info(f"Admin invited client: {email}")
+        
+        return {
+            "message": "Client invited successfully",
+            "client_id": client.client_id,
+            "next_steps": [
+                "Add property details for the client",
+                "Arrange payment separately",
+                "Manually trigger provisioning via /admin/clients/{client_id}/provision"
+            ]
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin invite client error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to invite client"
+        )
+
+@router.post("/clients/{client_id}/provision")
+async def admin_trigger_provision(request: Request, client_id: str):
+    """Manually trigger provisioning for a client (admin only).
+    
+    Uses the existing provisioning engine. This is for admin-invited clients
+    where payment was arranged separately.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Get client
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        # Verify client has at least one property
+        property_count = await db.properties.count_documents({"client_id": client_id})
+        if property_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Client must have at least one property before provisioning"
+            )
+        
+        # Set subscription active (manual approval by admin)
+        await db.clients.update_one(
+            {"client_id": client_id},
+            {"$set": {"subscription_status": "ACTIVE"}}
+        )
+        
+        # Trigger existing provisioning engine
+        from services.provisioning import provisioning_service
+        success, message = await provisioning_service.provision_client_portal(client_id)
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=client_id,
+            metadata={
+                "action": "admin_manual_provision",
+                "success": success,
+                "message": message,
+                "admin_email": user["email"]
+            }
+        )
+        
+        if success:
+            return {
+                "message": "Provisioning triggered successfully",
+                "status": "provisioned"
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Provisioning failed: {message}"
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin provision error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to trigger provisioning"
+        )
