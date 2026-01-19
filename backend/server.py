@@ -8,6 +8,8 @@ import os
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -20,15 +22,68 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Initialize scheduler
+scheduler = AsyncIOScheduler()
+
+async def run_daily_reminders():
+    """Scheduled job: Send daily compliance reminders."""
+    try:
+        from services.jobs import JobScheduler
+        job_scheduler = JobScheduler()
+        await job_scheduler.connect()
+        count = await job_scheduler.send_daily_reminders()
+        await job_scheduler.close()
+        logger.info(f"Daily reminders job completed: {count} reminders sent")
+    except Exception as e:
+        logger.error(f"Daily reminders job failed: {e}")
+
+async def run_monthly_digests():
+    """Scheduled job: Send monthly compliance digests."""
+    try:
+        from services.jobs import JobScheduler
+        job_scheduler = JobScheduler()
+        await job_scheduler.connect()
+        count = await job_scheduler.send_monthly_digests()
+        await job_scheduler.close()
+        logger.info(f"Monthly digest job completed: {count} digests sent")
+    except Exception as e:
+        logger.error(f"Monthly digest job failed: {e}")
+
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Compliance Vault Pro API")
     await database.connect()
+    
+    # Configure scheduled jobs
+    # Daily reminders at 9:00 AM UTC
+    scheduler.add_job(
+        run_daily_reminders,
+        CronTrigger(hour=9, minute=0),
+        id="daily_reminders",
+        name="Daily Compliance Reminders",
+        replace_existing=True
+    )
+    
+    # Monthly digest on the 1st of each month at 10:00 AM UTC
+    scheduler.add_job(
+        run_monthly_digests,
+        CronTrigger(day=1, hour=10, minute=0),
+        id="monthly_digest",
+        name="Monthly Compliance Digest",
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    logger.info("Background job scheduler started")
+    
     yield
+    
     # Shutdown
     logger.info("Shutting down Compliance Vault Pro API")
+    scheduler.shutdown(wait=False)
+    logger.info("Background job scheduler stopped")
     await database.close()
 
 # Create FastAPI app
