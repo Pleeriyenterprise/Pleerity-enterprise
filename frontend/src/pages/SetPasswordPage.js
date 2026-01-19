@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -9,6 +10,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const SetPasswordPage = () => {
   const navigate = useNavigate();
+  const { loginWithToken } = useAuth();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
 
