@@ -136,7 +136,9 @@ class JobScheduler:
             return 0
     
     async def send_monthly_digests(self):
-        """Send monthly compliance digest to all active clients."""
+        """Send monthly compliance digest to all active clients.
+        Respects user notification preferences.
+        """
         logger.info("Running monthly digest job...")
         
         try:
