@@ -10,6 +10,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SetPasswordPage from './pages/SetPasswordPage';
 import IntakePage from './pages/IntakePage';
+import OnboardingStatusPage from './pages/OnboardingStatusPage';
 
 // Client pages
 import ClientDashboard from './pages/ClientDashboard';
@@ -17,6 +18,7 @@ import AssistantPage from './pages/AssistantPage';
 import ProfilePage from './pages/ProfilePage';
 import PropertyCreatePage from './pages/PropertyCreatePage';
 import DocumentsPage from './pages/DocumentsPage';
+import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
@@ -33,6 +35,7 @@ function App() {
             <Route path="/admin/signin" element={<LoginPage />} />
             <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/intake/start" element={<IntakePage />} />
+            <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
 
             {/* Client Routes - Protected */}
             <Route 
@@ -56,6 +59,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/notifications" 
+              element={
+                <ProtectedRoute>
+                  <NotificationPreferencesPage />
                 </ProtectedRoute>
               } 
             />
