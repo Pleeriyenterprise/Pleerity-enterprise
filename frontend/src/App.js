@@ -16,6 +16,7 @@ import ClientDashboard from './pages/ClientDashboard';
 import AssistantPage from './pages/AssistantPage';
 import ProfilePage from './pages/ProfilePage';
 import PropertyCreatePage from './pages/PropertyCreatePage';
+import DocumentsPage from './pages/DocumentsPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
