@@ -75,11 +75,26 @@ async def get_client_detail(request: Request, client_id: str):
         
         properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(100)
         portal_users = await db.portal_users.find({"client_id": client_id}, {"_id": 0}).to_list(10)
+        requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
+        documents = await db.documents.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
+        
+        # Calculate compliance summary
+        compliant = sum(1 for r in requirements if r["status"] == "COMPLIANT")
+        overdue = sum(1 for r in requirements if r["status"] == "OVERDUE")
+        expiring = sum(1 for r in requirements if r["status"] == "EXPIRING_SOON")
         
         return {
             "client": client,
             "properties": properties,
-            "portal_users": portal_users
+            "portal_users": portal_users,
+            "requirements": requirements,
+            "documents": documents,
+            "compliance_summary": {
+                "total": len(requirements),
+                "compliant": compliant,
+                "overdue": overdue,
+                "expiring_soon": expiring
+            }
         }
     
     except HTTPException:
