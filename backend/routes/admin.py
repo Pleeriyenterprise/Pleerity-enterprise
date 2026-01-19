@@ -37,7 +37,6 @@ async def get_admin_dashboard(request: Request):
         }
         
         # Recent activity (last 7 days)
-        from datetime import timedelta
         seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         recent_signups = await db.clients.count_documents({
             "created_at": {"$gte": seven_days_ago}
@@ -215,7 +214,6 @@ async def resend_password_setup(request: Request, client_id: str):
         
         from services.provisioning import provisioning_service
         from auth import generate_secure_token, hash_token
-        from datetime import datetime, timedelta, timezone
         from models import PasswordToken
         import os
         
@@ -434,7 +432,6 @@ async def get_jobs_status(request: Request):
         )
         
         # Count pending reminders (requirements expiring in 30 days)
-        from datetime import timedelta
         thirty_days = datetime.now(timezone.utc) + timedelta(days=30)
         
         requirements = await db.requirements.find(
