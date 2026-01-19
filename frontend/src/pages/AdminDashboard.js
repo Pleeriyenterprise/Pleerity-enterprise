@@ -29,7 +29,11 @@ import {
   Edit,
   Trash2,
   Save,
-  X
+  X,
+  BarChart3,
+  TrendingUp,
+  PieChart,
+  AlertTriangle
 } from 'lucide-react';
 
 // Tab Components
