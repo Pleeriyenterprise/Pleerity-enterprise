@@ -92,6 +92,13 @@
   - [x] Default UK compliance rules (7 rules: Gas Safety, EICR, EPC, Fire, Legionella, HMO, PAT)
   - [x] Provisioning service updated to use database rules
   - [x] Frontend UI with table view, create/edit modal
+- [x] **Email Templates Management:**
+  - [x] Backend API for templates CRUD (`/api/admin/templates/*`)
+  - [x] Database model for EmailTemplate with placeholders
+  - [x] Default templates (Password Setup, Portal Ready, Reminder, Monthly Digest)
+  - [x] Email service updated to use database templates
+  - [x] Frontend UI with grid view, edit modal, live preview
+  - [x] Template preview with sample data rendering
 
 ### Upcoming (P1)
 - [ ] **System-wide compliance statistics** - Aggregate reporting dashboard
