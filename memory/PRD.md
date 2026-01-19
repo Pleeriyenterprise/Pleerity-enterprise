@@ -167,6 +167,12 @@
 - `GET /api/client/properties` - Client properties
 - `GET /api/client/requirements` - Client requirements
 
+### Profile
+- `GET /api/profile/me` - User profile with notification preferences
+- `PATCH /api/profile/me` - Update profile (name, phone)
+- `GET /api/profile/notifications` - Get notification preferences
+- `PUT /api/profile/notifications` - Update notification preferences
+
 ### Admin
 - `GET /api/admin/dashboard` - Admin dashboard statistics
 - `GET /api/admin/statistics` - Comprehensive system-wide compliance statistics
