@@ -11,7 +11,7 @@
 - **Frontend:** React with Tailwind CSS
 - **Database:** MongoDB (via Motor async driver)
 - **Authentication:** JWT tokens
-- **Integrations:** Stripe (payments), Postmark (email - MOCKED), OpenAI (AI assistant)
+- **Integrations:** Stripe (payments), Postmark (email - LIVE), OpenAI/Gemini (AI assistant), Twilio (SMS - dev mode)
 
 ## Core Principles
 1. **Deterministic Compliance:** No AI for compliance decisions - all compliance rules are based on predefined dates/rules
