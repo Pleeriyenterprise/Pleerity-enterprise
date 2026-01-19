@@ -133,6 +133,25 @@ class EmailTemplateAlias(str, Enum):
     MONTHLY_DIGEST = "monthly-digest"
     ADMIN_MANUAL = "admin-manual"
     PAYMENT_RECEIPT = "payment-receipt"
+    REMINDER = "reminder"
+    WELCOME = "welcome"
+
+class EmailTemplate(BaseModel):
+    """Customizable email template stored in the database."""
+    model_config = ConfigDict(extra="ignore")
+    
+    template_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    alias: EmailTemplateAlias  # Which template type this is
+    name: str  # Display name
+    subject: str  # Email subject line
+    html_body: str  # HTML content with placeholders like {{client_name}}
+    text_body: str  # Plain text version
+    is_active: bool = True
+    available_variables: List[str] = Field(default_factory=list)  # e.g., ["client_name", "setup_link"]
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    created_by: Optional[str] = None
 
 # ============================================================================
 # CORE MODELS
