@@ -87,7 +87,6 @@
   - [x] Messages tab (email delivery logs with provider tracking)
 
 ### Upcoming (P1)
-- [ ] **Requirement Rules Management UI** - Admin interface to manage compliance rules
 - [ ] **Email Templates Management UI** - Customize email content
 - [ ] **System-wide compliance statistics** - Aggregate reporting
 
