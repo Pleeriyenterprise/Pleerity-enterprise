@@ -237,81 +237,24 @@ const ProfilePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <label className="flex items-start space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={preferences.compliance_reminders}
-                  onChange={(e) => setPreferences({
-                    ...preferences,
-                    compliance_reminders: e.target.checked
-                  })}
-                  className="mt-1"
-                  data-testid="compliance-reminders-checkbox"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">Compliance Reminders</p>
-                  <p className="text-sm text-gray-600">
-                    Receive reminders about upcoming deadlines and overdue requirements
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex items-start space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={preferences.monthly_digest}
-                  onChange={(e) => setPreferences({
-                    ...preferences,
-                    monthly_digest: e.target.checked
-                  })}
-                  className="mt-1"
-                  data-testid="monthly-digest-checkbox"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">Monthly Digest</p>
-                  <p className="text-sm text-gray-600">
-                    Monthly summary of your compliance status and activities
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex items-start space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={preferences.product_announcements}
-                  onChange={(e) => setPreferences({
-                    ...preferences,
-                    product_announcements: e.target.checked
-                  })}
-                  className="mt-1"
-                  data-testid="product-announcements-checkbox"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">Product Announcements</p>
-                  <p className="text-sm text-gray-600">
-                    Updates about new features and improvements
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            <div className="pt-4 border-t">
-              <p className="text-xs text-gray-500 mb-4">
-                <strong>Note:</strong> You cannot opt out of critical notifications such as
-                password setup, security alerts, and account-related emails.
-              </p>
-
-              <Button
-                onClick={handleSavePreferences}
-                className="btn-primary"
-                disabled={saving}
-                data-testid="save-preferences-btn"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Saving...' : 'Save Preferences'}
-              </Button>
-            </div>
+            <p className="text-gray-600">
+              Manage your email notification settings, reminder timing, and quiet hours.
+            </p>
+            
+            <Button
+              onClick={() => navigate('/app/notifications')}
+              variant="outline"
+              className="w-full border-electric-teal text-electric-teal hover:bg-teal-50"
+              data-testid="manage-notifications-btn"
+            >
+              <Bell className="w-4 h-4 mr-2" />
+              Manage Notification Preferences
+            </Button>
+            
+            <p className="text-xs text-gray-500">
+              <strong>Note:</strong> You cannot opt out of critical notifications such as
+              password setup, security alerts, and account-related emails.
+            </p>
           </CardContent>
         </Card>
       </main>
