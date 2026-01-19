@@ -94,8 +94,7 @@
   - [x] Frontend UI with table view, create/edit modal
 
 ### Upcoming (P1)
-- [ ] **Email Templates Management UI** - Customize email content
-- [ ] **System-wide compliance statistics** - Aggregate reporting
+- [ ] **System-wide compliance statistics** - Aggregate reporting dashboard
 
 ### Upcoming (P2)
 - [ ] **Document AI Verification:** AI-assisted metadata extraction (dates/identifiers)
