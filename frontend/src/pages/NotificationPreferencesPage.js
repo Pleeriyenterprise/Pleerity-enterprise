@@ -350,88 +350,13 @@ const NotificationPreferencesPage = () => {
 
         {/* SMS Notifications Section (Feature Flagged) */}
         {SMS_FEATURE_ENABLED && (
-          <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-            <div className="p-4 border-b border-gray-100 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Smartphone className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-midnight-blue">SMS Notifications</h2>
-                    <p className="text-sm text-gray-500">Receive urgent alerts via text message</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">Beta</span>
-                  <Switch
-                    checked={preferences.sms_enabled}
-                    onCheckedChange={() => handleToggle('sms_enabled')}
-                    data-testid="sms-enabled-toggle"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {preferences.sms_enabled && (
-              <div className="p-4 space-y-4">
-                {/* Phone Number */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        type="tel"
-                        placeholder="+44 7XXX XXXXXX"
-                        value={preferences.sms_phone_number || ''}
-                        onChange={(e) => {
-                          setPreferences(prev => {
-                            const updated = { ...prev, sms_phone_number: e.target.value };
-                            setHasChanges(JSON.stringify(updated) !== JSON.stringify(originalPreferences));
-                            return updated;
-                          });
-                        }}
-                        className="pl-10"
-                        data-testid="sms-phone-input"
-                      />
-                    </div>
-                    {preferences.sms_phone_verified ? (
-                      <span className="flex items-center gap-1 px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm">
-                        <CheckCircle className="w-4 h-4" />
-                        Verified
-                      </span>
-                    ) : (
-                      <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal">
-                        Verify
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    We'll send a verification code to confirm your number
-                  </p>
-                </div>
-
-                {/* Urgent Alerts Only Toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-midnight-blue">Urgent Alerts Only</p>
-                    <p className="text-sm text-gray-500">Only send SMS when status changes to RED</p>
-                  </div>
-                  <Switch
-                    checked={preferences.sms_urgent_alerts_only}
-                    onCheckedChange={() => handleToggle('sms_urgent_alerts_only')}
-                    data-testid="sms-urgent-only-toggle"
-                  />
-                </div>
-
-                <p className="text-xs text-gray-500">
-                  <Info className="w-3 h-3 inline mr-1" />
-                  SMS charges may apply. We recommend keeping "Urgent Alerts Only" enabled to avoid excessive messages.
-                </p>
-              </div>
-            )}
-          </section>
+          <SMSNotificationsSection 
+            preferences={preferences}
+            setPreferences={setPreferences}
+            handleToggle={handleToggle}
+            setHasChanges={setHasChanges}
+            originalPreferences={originalPreferences}
+          />
         )}
 
         {/* Save Confirmation */}
