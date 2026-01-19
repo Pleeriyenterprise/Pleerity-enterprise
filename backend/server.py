@@ -55,6 +55,7 @@ app.include_router(webhooks.router)
 app.include_router(client.router)
 app.include_router(admin.router)
 app.include_router(documents.router)
+app.include_router(assistant.router)
 
 # Root endpoint
 @app.get("/api")
