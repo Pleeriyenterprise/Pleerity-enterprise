@@ -42,6 +42,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Allow external components to set auth state (e.g., after password setup)
+  const loginWithToken = (accessToken, userData) => {
+    localStorage.setItem('auth_token', accessToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+  };
+
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
@@ -53,7 +60,7 @@ export const AuthProvider = ({ children }) => {
   const isClient = () => user?.role === 'ROLE_CLIENT' || user?.role === 'ROLE_CLIENT_ADMIN';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isClient }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout, isAdmin, isClient }}>
       {children}
     </AuthContext.Provider>
   );
