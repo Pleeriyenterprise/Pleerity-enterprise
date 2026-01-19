@@ -700,10 +700,10 @@ const DashboardOverview = () => {
   }
 
   const statCards = [
-    { label: 'Total Clients', value: stats?.total_clients || 0, icon: Users, color: 'text-blue-600 bg-blue-100' },
-    { label: 'Total Properties', value: stats?.total_properties || 0, icon: Building2, color: 'text-purple-600 bg-purple-100' },
-    { label: 'Active Subscriptions', value: stats?.active_subscriptions || 0, icon: CheckCircle, color: 'text-green-600 bg-green-100' },
-    { label: 'Pending Setup', value: stats?.pending_setup || 0, icon: Clock, color: 'text-amber-600 bg-amber-100' },
+    { label: 'Total Clients', value: stats?.stats?.total_clients || 0, icon: Users, color: 'text-blue-600 bg-blue-100' },
+    { label: 'Total Properties', value: stats?.stats?.total_properties || 0, icon: Building2, color: 'text-purple-600 bg-purple-100' },
+    { label: 'Active Clients', value: stats?.stats?.active_clients || 0, icon: CheckCircle, color: 'text-green-600 bg-green-100' },
+    { label: 'Pending Setup', value: stats?.stats?.pending_clients || 0, icon: Clock, color: 'text-amber-600 bg-amber-100' },
   ];
 
   return (
