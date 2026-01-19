@@ -10,22 +10,49 @@ router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(ad
 
 @router.get("/dashboard")
 async def get_admin_dashboard(request: Request):
-    """Get admin dashboard data."""
+    """Get admin dashboard data with enhanced statistics."""
     user = await admin_route_guard(request)
     db = database.get_db()
     
     try:
-        # Get stats
+        # Basic stats
         total_clients = await db.clients.count_documents({})
         active_clients = await db.clients.count_documents({"subscription_status": "ACTIVE"})
         pending_clients = await db.clients.count_documents({"subscription_status": "PENDING"})
+        
+        # Enhanced stats
+        provisioned_clients = await db.clients.count_documents({"onboarding_status": "PROVISIONED"})
+        failed_provisioning = await db.clients.count_documents({"onboarding_status": "FAILED"})
+        
+        # Property stats
+        total_properties = await db.properties.count_documents({})
+        
+        # Compliance overview
+        properties = await db.properties.find({}, {"_id": 0, "compliance_status": 1}).to_list(10000)
+        compliance_breakdown = {
+            "GREEN": sum(1 for p in properties if p.get("compliance_status") == "GREEN"),
+            "AMBER": sum(1 for p in properties if p.get("compliance_status") == "AMBER"),
+            "RED": sum(1 for p in properties if p.get("compliance_status") == "RED")
+        }
+        
+        # Recent activity (last 7 days)
+        from datetime import timedelta
+        seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        recent_signups = await db.clients.count_documents({
+            "created_at": {"$gte": seven_days_ago}
+        })
         
         return {
             "stats": {
                 "total_clients": total_clients,
                 "active_clients": active_clients,
-                "pending_clients": pending_clients
-            }
+                "pending_clients": pending_clients,
+                "provisioned_clients": provisioned_clients,
+                "failed_provisioning": failed_provisioning,
+                "total_properties": total_properties,
+                "recent_signups_7d": recent_signups
+            },
+            "compliance_overview": compliance_breakdown
         }
     
     except Exception as e:
