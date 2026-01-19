@@ -119,6 +119,13 @@
 - [x] **SetPasswordPage Redirect Fix:**
   - [x] Fixed redirect after password setup (now uses AuthContext.loginWithToken)
   - [x] Users now redirected directly to `/app/dashboard` after setting password
+- [x] **Compliance Status Change Notifications:**
+  - [x] Email alerts when property status degrades (GREEN→AMBER, AMBER→RED, GREEN→RED)
+  - [x] New `COMPLIANCE_ALERT` email template with property table
+  - [x] Scheduled compliance checks twice daily (8:00 AM & 6:00 PM UTC)
+  - [x] Manual trigger available via Admin Jobs tab
+  - [x] Tracks `last_notified_status` to prevent duplicate alerts
+  - [x] Audit logging for all compliance alerts sent
 
 ### Upcoming (P2)
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
