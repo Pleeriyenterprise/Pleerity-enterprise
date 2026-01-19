@@ -10,8 +10,8 @@ from typing import Optional, Dict, Any
 logger = logging.getLogger(__name__)
 
 # Email sender configuration
-# In production, this should be a verified domain in Postmark
-DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "noreply@compliancevaultpro.com")
+# Verified sender in Postmark
+DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
 
 class EmailService:
     def __init__(self):
