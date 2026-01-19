@@ -436,6 +436,14 @@ async def run_monthly_job():
     await scheduler.send_monthly_digests()
     await scheduler.close()
 
+async def run_compliance_check():
+    """Run compliance status change check."""
+    scheduler = JobScheduler()
+    await scheduler.connect()
+    count = await scheduler.check_compliance_status_changes()
+    await scheduler.close()
+    return count
+
 if __name__ == "__main__":
     import sys
     
@@ -444,7 +452,9 @@ if __name__ == "__main__":
             asyncio.run(run_daily_job())
         elif sys.argv[1] == "monthly":
             asyncio.run(run_monthly_job())
+        elif sys.argv[1] == "compliance":
+            asyncio.run(run_compliance_check())
         else:
-            print("Usage: python jobs.py [daily|monthly]")
+            print("Usage: python jobs.py [daily|monthly|compliance]")
     else:
-        print("Usage: python jobs.py [daily|monthly]")
+        print("Usage: python jobs.py [daily|monthly|compliance]")
