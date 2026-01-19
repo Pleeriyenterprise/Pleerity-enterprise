@@ -33,6 +33,11 @@ class NotificationPreferencesRequest(BaseModel):
     quiet_hours_enabled: Optional[bool] = None
     quiet_hours_start: Optional[str] = None  # HH:MM format
     quiet_hours_end: Optional[str] = None
+    
+    # SMS preferences (feature flagged)
+    sms_enabled: Optional[bool] = None
+    sms_phone_number: Optional[str] = None
+    sms_urgent_alerts_only: Optional[bool] = None
 
 @router.get("/me")
 async def get_profile(request: Request):
