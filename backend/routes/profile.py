@@ -189,6 +189,15 @@ async def update_notification_preferences(request: Request, data: NotificationPr
         if data.quiet_hours_end is not None:
             update_fields["quiet_hours_end"] = data.quiet_hours_end
         
+        # SMS preferences (feature flagged)
+        if data.sms_enabled is not None:
+            update_fields["sms_enabled"] = data.sms_enabled
+        if data.sms_phone_number is not None:
+            update_fields["sms_phone_number"] = data.sms_phone_number
+            update_fields["sms_phone_verified"] = False  # Reset verification on phone change
+        if data.sms_urgent_alerts_only is not None:
+            update_fields["sms_urgent_alerts_only"] = data.sms_urgent_alerts_only
+        
         update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
         
         # Upsert preferences
