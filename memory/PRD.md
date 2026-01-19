@@ -199,7 +199,9 @@
 - `GET /api/assistant/snapshot` - Get data snapshot for AI
 
 ### Intake
-- `POST /api/intake/start` - Start client intake
+- `POST /api/intake/submit` - Submit intake form
+- `POST /api/intake/checkout` - Create Stripe checkout session
+- `GET /api/intake/onboarding-status/{client_id}` - Detailed onboarding progress with 5 steps
 
 ### Webhooks
 - `POST /api/webhooks/stripe` - Stripe webhook handler
