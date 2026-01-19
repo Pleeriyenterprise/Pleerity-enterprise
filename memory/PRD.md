@@ -87,10 +87,9 @@
   - [x] Messages tab (email delivery logs with provider tracking)
 
 ### Upcoming (P1)
-- [ ] **Admin Dashboard Frontend UI:** Job monitoring, client invites, log filtering
-- [ ] **Requirement Rules Management UI**
-- [ ] **Email Templates Management UI**
-- [ ] **System-wide compliance statistics**
+- [ ] **Requirement Rules Management UI** - Admin interface to manage compliance rules
+- [ ] **Email Templates Management UI** - Customize email content
+- [ ] **System-wide compliance statistics** - Aggregate reporting
 
 ### Upcoming (P2)
 - [ ] **Document AI Verification:** AI-assisted metadata extraction (dates/identifiers)
