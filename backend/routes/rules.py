@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/admin/rules", tags=["Admin - Rules"])
+router = APIRouter(prefix="/api/admin/rules", tags=["Admin - Rules"])
 
 # Default rules to seed the database
 DEFAULT_RULES = [
