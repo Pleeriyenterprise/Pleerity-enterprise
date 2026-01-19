@@ -62,6 +62,167 @@ async def get_admin_dashboard(request: Request):
             detail="Failed to load admin dashboard"
         )
 
+
+@router.get("/statistics")
+async def get_system_statistics(request: Request):
+    """Get comprehensive system-wide compliance statistics."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Time periods
+        now = datetime.now(timezone.utc)
+        seven_days_ago = (now - timedelta(days=7)).isoformat()
+        thirty_days_ago = (now - timedelta(days=30)).isoformat()
+        ninety_days_ago = (now - timedelta(days=90)).isoformat()
+        
+        # === CLIENT STATISTICS ===
+        total_clients = await db.clients.count_documents({})
+        clients_by_status = {}
+        for status in ["ACTIVE", "PENDING", "CANCELLED", "SUSPENDED"]:
+            clients_by_status[status] = await db.clients.count_documents({"subscription_status": status})
+        
+        clients_by_onboarding = {}
+        for status in ["PROVISIONED", "PENDING_PAYMENT", "INTAKE_COMPLETE", "FAILED"]:
+            clients_by_onboarding[status] = await db.clients.count_documents({"onboarding_status": status})
+        
+        # New clients over time
+        new_clients_7d = await db.clients.count_documents({"created_at": {"$gte": seven_days_ago}})
+        new_clients_30d = await db.clients.count_documents({"created_at": {"$gte": thirty_days_ago}})
+        new_clients_90d = await db.clients.count_documents({"created_at": {"$gte": ninety_days_ago}})
+        
+        # === PROPERTY STATISTICS ===
+        total_properties = await db.properties.count_documents({})
+        
+        # Properties by type
+        property_types = await db.properties.aggregate([
+            {"$group": {"_id": "$property_type", "count": {"$sum": 1}}}
+        ]).to_list(20)
+        properties_by_type = {p["_id"]: p["count"] for p in property_types if p["_id"]}
+        
+        # Properties by compliance status
+        compliance_statuses = await db.properties.aggregate([
+            {"$group": {"_id": "$compliance_status", "count": {"$sum": 1}}}
+        ]).to_list(10)
+        properties_by_compliance = {c["_id"]: c["count"] for c in compliance_statuses if c["_id"]}
+        
+        # === REQUIREMENT STATISTICS ===
+        total_requirements = await db.requirements.count_documents({})
+        
+        # Requirements by status
+        req_statuses = await db.requirements.aggregate([
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]).to_list(10)
+        requirements_by_status = {r["_id"]: r["count"] for r in req_statuses if r["_id"]}
+        
+        # Requirements by type
+        req_types = await db.requirements.aggregate([
+            {"$group": {"_id": "$requirement_type", "count": {"$sum": 1}}}
+        ]).to_list(50)
+        requirements_by_type = {r["_id"]: r["count"] for r in req_types if r["_id"]}
+        
+        # Upcoming expirations (next 30, 60, 90 days)
+        thirty_days = (now + timedelta(days=30)).isoformat()
+        sixty_days = (now + timedelta(days=60)).isoformat()
+        ninety_days = (now + timedelta(days=90)).isoformat()
+        
+        expiring_30d = await db.requirements.count_documents({
+            "due_date": {"$lte": thirty_days, "$gte": now.isoformat()},
+            "status": {"$ne": "COMPLIANT"}
+        })
+        expiring_60d = await db.requirements.count_documents({
+            "due_date": {"$lte": sixty_days, "$gte": now.isoformat()},
+            "status": {"$ne": "COMPLIANT"}
+        })
+        expiring_90d = await db.requirements.count_documents({
+            "due_date": {"$lte": ninety_days, "$gte": now.isoformat()},
+            "status": {"$ne": "COMPLIANT"}
+        })
+        
+        # Overdue requirements
+        overdue_count = await db.requirements.count_documents({
+            "due_date": {"$lt": now.isoformat()},
+            "status": {"$in": ["PENDING", "EXPIRING_SOON"]}
+        })
+        
+        # === DOCUMENT STATISTICS ===
+        total_documents = await db.documents.count_documents({})
+        
+        # Documents by status
+        doc_statuses = await db.documents.aggregate([
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]).to_list(10)
+        documents_by_status = {d["_id"]: d["count"] for d in doc_statuses if d["_id"]}
+        
+        # AI analyzed documents
+        ai_analyzed = await db.documents.count_documents({"ai_extraction.status": "completed"})
+        
+        # === EMAIL STATISTICS ===
+        total_emails = await db.message_logs.count_documents({})
+        emails_sent = await db.message_logs.count_documents({"status": "sent"})
+        emails_failed = await db.message_logs.count_documents({"status": "failed"})
+        
+        # === RULE STATISTICS ===
+        total_rules = await db.requirement_rules.count_documents({})
+        active_rules = await db.requirement_rules.count_documents({"is_active": True})
+        
+        # === COMPLIANCE RATE ===
+        if total_requirements > 0:
+            compliant_count = requirements_by_status.get("COMPLIANT", 0)
+            compliance_rate = round((compliant_count / total_requirements) * 100, 1)
+        else:
+            compliance_rate = 0
+        
+        return {
+            "generated_at": now.isoformat(),
+            "clients": {
+                "total": total_clients,
+                "by_subscription_status": clients_by_status,
+                "by_onboarding_status": clients_by_onboarding,
+                "new_last_7_days": new_clients_7d,
+                "new_last_30_days": new_clients_30d,
+                "new_last_90_days": new_clients_90d
+            },
+            "properties": {
+                "total": total_properties,
+                "by_type": properties_by_type,
+                "by_compliance_status": properties_by_compliance
+            },
+            "requirements": {
+                "total": total_requirements,
+                "by_status": requirements_by_status,
+                "by_type": requirements_by_type,
+                "expiring_next_30_days": expiring_30d,
+                "expiring_next_60_days": expiring_60d,
+                "expiring_next_90_days": expiring_90d,
+                "overdue": overdue_count,
+                "compliance_rate_percent": compliance_rate
+            },
+            "documents": {
+                "total": total_documents,
+                "by_status": documents_by_status,
+                "ai_analyzed": ai_analyzed
+            },
+            "emails": {
+                "total": total_emails,
+                "sent": emails_sent,
+                "failed": emails_failed,
+                "delivery_rate": round((emails_sent / total_emails * 100), 1) if total_emails > 0 else 0
+            },
+            "rules": {
+                "total": total_rules,
+                "active": active_rules
+            }
+        }
+    
+    except Exception as e:
+        logger.error(f"Statistics error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate statistics"
+        )
+
+
 @router.get("/clients")
 async def get_clients(request: Request, skip: int = 0, limit: int = 50):
     """Get all clients (admin only)."""
