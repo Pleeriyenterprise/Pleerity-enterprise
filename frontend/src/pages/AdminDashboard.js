@@ -1585,8 +1585,9 @@ const AdminDashboard = () => {
     { id: 'jobs', label: 'Jobs', icon: Clock },
     { id: 'clients', label: 'Clients', icon: Users },
     { id: 'rules', label: 'Rules', icon: BookOpen },
+    { id: 'templates', label: 'Templates', icon: Mail },
     { id: 'audit', label: 'Audit Logs', icon: FileText },
-    { id: 'messages', label: 'Messages', icon: Mail },
+    { id: 'messages', label: 'Messages', icon: Activity },
   ];
 
   const renderContent = () => {
@@ -1595,6 +1596,7 @@ const AdminDashboard = () => {
       case 'jobs': return <JobsMonitoring />;
       case 'clients': return <ClientsManagement />;
       case 'rules': return <RulesManagement />;
+      case 'templates': return <EmailTemplates />;
       case 'audit': return <AuditLogs />;
       case 'messages': return <MessageLogs />;
       default: return <DashboardOverview />;
