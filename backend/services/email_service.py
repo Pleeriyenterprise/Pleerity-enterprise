@@ -100,14 +100,14 @@ class EmailService:
                             TrackLinks="HtmlOnly",
                             Tag=template_alias.value
                         )
-                        Tag=template_alias.value
-                    )
-                    
-                    message_log.postmark_message_id = response["MessageID"]
-                    message_log.status = "sent"
-                    message_log.sent_at = datetime.now(timezone.utc)
-                    
-                    logger.info(f"Plain text email sent to {recipient}: {response['MessageID']}")
+                        
+                        message_log.postmark_message_id = response["MessageID"]
+                        message_log.status = "sent"
+                        message_log.sent_at = datetime.now(timezone.utc)
+                        
+                        logger.info(f"Built-in template email sent to {recipient}: {response['MessageID']}")
+                    except Exception as send_error:
+                        raise send_error
             else:
                 # Dev mode - just log
                 message_log.status = "sent"
