@@ -199,6 +199,12 @@ class NotificationPreferences(BaseModel):
     quiet_hours_start: Optional[str] = "22:00"  # HH:MM format
     quiet_hours_end: Optional[str] = "08:00"
     
+    # SMS preferences (feature flagged)
+    sms_enabled: bool = False  # Master SMS toggle
+    sms_phone_number: Optional[str] = None  # Phone number for SMS
+    sms_phone_verified: bool = False  # Whether phone is verified
+    sms_urgent_alerts_only: bool = True  # Only send SMS for RED status
+    
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
 class PortalUser(BaseModel):
