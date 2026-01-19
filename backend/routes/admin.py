@@ -645,14 +645,14 @@ async def get_jobs_status(request: Request):
 async def trigger_job(request: Request, job_type: str):
     """Manually trigger a background job (admin only).
     
-    job_type: 'daily' or 'monthly'
+    job_type: 'daily', 'monthly', or 'compliance'
     """
     user = await admin_route_guard(request)
     
-    if job_type not in ["daily", "monthly"]:
+    if job_type not in ["daily", "monthly", "compliance"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid job type. Use 'daily' or 'monthly'"
+            detail="Invalid job type. Use 'daily', 'monthly', or 'compliance'"
         )
     
     try:
@@ -663,9 +663,12 @@ async def trigger_job(request: Request, job_type: str):
         if job_type == "daily":
             count = await job_scheduler.send_daily_reminders()
             result_msg = f"Daily reminders sent: {count}"
-        else:
+        elif job_type == "monthly":
             count = await job_scheduler.send_monthly_digests()
             result_msg = f"Monthly digests sent: {count}"
+        else:  # compliance
+            count = await job_scheduler.check_compliance_status_changes()
+            result_msg = f"Compliance alerts sent: {count}"
         
         await job_scheduler.close()
         
