@@ -191,6 +191,75 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.COMPLIANCE_ALERT:
+            # Compliance status change alert
+            status_color = model.get('status_color', '#dc2626')
+            new_status = model.get('new_status', 'RED')
+            properties_html = ""
+            for prop in model.get('affected_properties', []):
+                properties_html += f"""
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{prop.get('address', 'N/A')}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
+                        <span style="color: {prop.get('prev_color', '#22c55e')}; font-weight: bold;">{prop.get('previous_status', 'GREEN')}</span>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
+                        <span style="color: {prop.get('new_color', '#dc2626')}; font-weight: bold;">{prop.get('new_status', 'RED')}</span>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{prop.get('reason', 'Status changed')}</td>
+                </tr>
+                """
+            
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: {status_color}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="margin: 0;">⚠️ Compliance Alert</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">Action may be required for your properties</p>
+                </div>
+                
+                <div style="background-color: #f8fafc; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; border-top: none;">
+                    <p>Hello {model.get('client_name', 'there')},</p>
+                    <p>The compliance status of one or more of your properties has changed and may require your attention.</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: white; border-radius: 8px; overflow: hidden;">
+                        <thead>
+                            <tr style="background-color: #1a2744; color: white;">
+                                <th style="padding: 12px; text-align: left;">Property</th>
+                                <th style="padding: 12px; text-align: center;">Previous</th>
+                                <th style="padding: 12px; text-align: center;">Current</th>
+                                <th style="padding: 12px; text-align: left;">Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {properties_html}
+                        </tbody>
+                    </table>
+                    
+                    <p style="margin: 20px 0;">
+                        <a href="{model.get('portal_link', '#')}" 
+                           style="background-color: #14b8a6; color: white; padding: 12px 24px; 
+                                  text-decoration: none; border-radius: 6px; display: inline-block;">
+                            View Dashboard
+                        </a>
+                    </p>
+                    
+                    <p style="color: #64748b; font-size: 14px;">
+                        <strong>What this means:</strong><br>
+                        • <span style="color: #22c55e;">GREEN</span> = All requirements are compliant<br>
+                        • <span style="color: #f59e0b;">AMBER</span> = Some requirements are expiring soon<br>
+                        • <span style="color: #dc2626;">RED</span> = Immediate action required
+                    </p>
+                </div>
+                
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px;">
+                    {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
+                    {model.get('tagline', 'AI-Driven Solutions & Compliance')}
+                </p>
+            </body>
+            </html>
+            """
         else:
             # Generic template
             return f"""
