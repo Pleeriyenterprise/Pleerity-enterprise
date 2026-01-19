@@ -148,6 +148,11 @@
   - [x] Shows Reminder Timing (days before expiry)
   - [x] "Manage Preferences" button to full settings page
   - [x] Profile nav link added to dashboard
+- [x] **Jobs Respect Notification Preferences:**
+  - [x] Daily reminders check `expiry_reminders` and `reminder_days_before` settings
+  - [x] Monthly digest checks `monthly_digest` setting
+  - [x] Compliance status alerts check `status_change_alerts` setting
+  - [x] Skips sending when disabled, logs when skipping
 
 ### Upcoming (P2)
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
