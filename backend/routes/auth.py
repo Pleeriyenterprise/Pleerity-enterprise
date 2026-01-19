@@ -63,24 +63,30 @@ async def login(request: Request, credentials: LoginRequest):
                 detail="Password not set"
             )
         
-        # Get client info
-        client = await db.clients.find_one(
-            {"client_id": portal_user["client_id"]},
-            {"_id": 0}
-        )
-        
-        if not client:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Client not found"
+        # Admin users don't need client association
+        client = None
+        if portal_user["role"] == UserRole.ROLE_ADMIN.value:
+            # Admin login - no client check needed
+            pass
+        else:
+            # Get client info for non-admin users
+            client = await db.clients.find_one(
+                {"client_id": portal_user["client_id"]},
+                {"_id": 0}
             )
-        
-        # Check provisioning
-        if client["onboarding_status"] != OnboardingStatus.PROVISIONED.value:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account provisioning incomplete"
-            )
+            
+            if not client:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Client not found"
+                )
+            
+            # Check provisioning for client users
+            if client["onboarding_status"] != OnboardingStatus.PROVISIONED.value:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Account provisioning incomplete"
+                )
         
         # Update last login
         await db.portal_users.update_one(
