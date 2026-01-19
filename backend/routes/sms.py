@@ -1,0 +1,213 @@
+"""SMS Routes - Phone verification and SMS settings
+Provides endpoints for OTP verification and SMS notification management.
+"""
+from fastapi import APIRouter, HTTPException, Request, status
+from database import database
+from middleware import client_route_guard
+from services.sms_service import sms_service
+from utils.audit import create_audit_log
+from models import AuditAction, UserRole
+from pydantic import BaseModel
+from datetime import datetime, timezone
+import logging
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/sms", tags=["sms"])
+
+
+class SendOTPRequest(BaseModel):
+    phone_number: str  # E.164 format (+44...)
+
+
+class VerifyOTPRequest(BaseModel):
+    phone_number: str
+    code: str  # 6-digit code
+
+
+@router.get("/status")
+async def get_sms_status():
+    """Get SMS service status and configuration."""
+    return {
+        "enabled": sms_service.is_enabled(),
+        "configured": sms_service.is_configured(),
+        "feature_flag": sms_service.is_enabled()
+    }
+
+
+@router.post("/send-otp")
+async def send_otp(request: Request, data: SendOTPRequest):
+    """Send OTP to a phone number for verification.
+    
+    Phone number must be in E.164 format (e.g., +447123456789).
+    """
+    user = await client_route_guard(request)
+    
+    # Validate phone number format
+    phone = data.phone_number.strip()
+    if not phone.startswith("+"):
+        phone = f"+{phone}"
+    
+    if len(phone) < 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid phone number format. Use E.164 format (e.g., +447123456789)"
+        )
+    
+    # Check if SMS is enabled
+    if not sms_service.is_enabled():
+        # Return mock success for development
+        logger.info(f"SMS not enabled - mock OTP sent to {phone[:7]}***")
+        
+        # Store pending verification
+        db = database.get_db()
+        await db.phone_verifications.update_one(
+            {"client_id": user["client_id"]},
+            {"$set": {
+                "phone_number": phone,
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "mock_mode": True
+            }},
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "status": "pending",
+            "message": "OTP sent (development mode - use code 123456)"
+        }
+    
+    # Send real OTP via Twilio
+    result = await sms_service.send_otp(phone)
+    
+    if result["success"]:
+        # Store pending verification
+        db = database.get_db()
+        await db.phone_verifications.update_one(
+            {"client_id": user["client_id"]},
+            {"$set": {
+                "phone_number": phone,
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "mock_mode": False
+            }},
+            upsert=True
+        )
+        
+        return {"success": True, "status": result["status"]}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("error", "Failed to send OTP")
+        )
+
+
+@router.post("/verify-otp")
+async def verify_otp(request: Request, data: VerifyOTPRequest):
+    """Verify OTP code and mark phone as verified.
+    
+    In development mode, use code '123456' for testing.
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    # Validate phone number format
+    phone = data.phone_number.strip()
+    if not phone.startswith("+"):
+        phone = f"+{phone}"
+    
+    # Check pending verification
+    pending = await db.phone_verifications.find_one(
+        {"client_id": user["client_id"], "phone_number": phone},
+        {"_id": 0}
+    )
+    
+    if not pending:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No pending verification found. Please request a new OTP."
+        )
+    
+    # Check if in mock mode or real mode
+    is_mock = pending.get("mock_mode", True) or not sms_service.is_enabled()
+    
+    if is_mock:
+        # Development mode - accept code 123456
+        is_valid = data.code == "123456"
+    else:
+        # Real verification via Twilio
+        result = await sms_service.verify_otp(phone, data.code)
+        is_valid = result.get("valid", False)
+    
+    if is_valid:
+        # Update notification preferences with verified phone
+        await db.notification_preferences.update_one(
+            {"client_id": user["client_id"]},
+            {"$set": {
+                "sms_phone_number": phone,
+                "sms_phone_verified": True,
+                "sms_verified_at": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+        
+        # Clean up pending verification
+        await db.phone_verifications.delete_one({"client_id": user["client_id"]})
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole(user["role"]),
+            actor_id=user["portal_user_id"],
+            client_id=user["client_id"],
+            resource_type="phone_verification",
+            metadata={
+                "action": "phone_verified",
+                "phone_number_masked": f"{phone[:7]}***"
+            }
+        )
+        
+        return {"success": True, "valid": True, "message": "Phone number verified successfully"}
+    else:
+        return {"success": True, "valid": False, "message": "Invalid code. Please try again."}
+
+
+@router.post("/test-send")
+async def test_send_sms(request: Request):
+    """Send a test SMS to the verified phone number (for testing only)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    # Get notification preferences
+    prefs = await db.notification_preferences.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0}
+    )
+    
+    if not prefs or not prefs.get("sms_phone_verified"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number not verified. Please verify your phone first."
+        )
+    
+    phone = prefs.get("sms_phone_number")
+    
+    if not sms_service.is_enabled():
+        return {
+            "success": True,
+            "message": f"Test SMS would be sent to {phone[:7]}*** (SMS not enabled)"
+        }
+    
+    result = await sms_service.send_sms(
+        phone,
+        "🔔 Compliance Vault Pro: This is a test message. Your SMS notifications are working!",
+        user["client_id"]
+    )
+    
+    if result["success"]:
+        return {"success": True, "message": f"Test SMS sent to {phone[:7]}***"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result.get("error", "Failed to send test SMS")
+        )
