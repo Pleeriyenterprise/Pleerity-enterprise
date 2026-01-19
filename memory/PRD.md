@@ -159,7 +159,7 @@
 - `GET /api/admin/clients/{id}` - Client details
 - `GET /api/admin/audit-logs` - Audit logs with filtering
 - `GET /api/admin/jobs/status` - Background jobs status
-- `POST /api/admin/jobs/trigger/{type}` - Manually trigger job
+- `POST /api/admin/jobs/trigger/{type}` - Manually trigger job (daily, monthly, compliance)
 - `POST /api/admin/clients/invite` - Invite new client
 - `POST /api/admin/clients/{id}/provision` - Manual provisioning
 - `GET/POST /api/admin/rules` - Requirement rules CRUD
