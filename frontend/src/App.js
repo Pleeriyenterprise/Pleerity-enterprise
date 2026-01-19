@@ -79,7 +79,7 @@ function App() {
               path="/app/documents" 
               element={
                 <ProtectedRoute>
-                  <ClientDashboard />
+                  <DocumentsPage />
                 </ProtectedRoute>
               } 
             />
