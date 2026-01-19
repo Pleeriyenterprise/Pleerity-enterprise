@@ -117,7 +117,7 @@ async def get_notification_preferences(request: Request):
             {"_id": 0}
         )
         
-        # Default preferences
+        # Default preferences (including SMS fields)
         default_preferences = {
             "client_id": user["client_id"],
             "status_change_alerts": True,
@@ -128,7 +128,12 @@ async def get_notification_preferences(request: Request):
             "reminder_days_before": 30,
             "quiet_hours_enabled": False,
             "quiet_hours_start": "22:00",
-            "quiet_hours_end": "08:00"
+            "quiet_hours_end": "08:00",
+            # SMS preferences (feature flagged)
+            "sms_enabled": False,
+            "sms_phone_number": "",
+            "sms_phone_verified": False,
+            "sms_urgent_alerts_only": True
         }
         
         # Merge stored preferences with defaults (stored values override defaults)
