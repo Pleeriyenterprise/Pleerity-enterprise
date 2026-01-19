@@ -15,6 +15,7 @@ import IntakePage from './pages/IntakePage';
 import ClientDashboard from './pages/ClientDashboard';
 import AssistantPage from './pages/AssistantPage';
 import ProfilePage from './pages/ProfilePage';
+import PropertyCreatePage from './pages/PropertyCreatePage';
 
 function App() {
   return (
