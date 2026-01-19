@@ -147,6 +147,7 @@
 
 ### Admin
 - `GET /api/admin/dashboard` - Admin dashboard statistics
+- `GET /api/admin/statistics` - Comprehensive system-wide compliance statistics
 - `GET /api/admin/clients` - List all clients
 - `GET /api/admin/clients/{id}` - Client details
 - `GET /api/admin/audit-logs` - Audit logs with filtering
@@ -154,6 +155,8 @@
 - `POST /api/admin/jobs/trigger/{type}` - Manually trigger job
 - `POST /api/admin/clients/invite` - Invite new client
 - `POST /api/admin/clients/{id}/provision` - Manual provisioning
+- `GET/POST /api/admin/rules` - Requirement rules CRUD
+- `GET/POST /api/admin/templates` - Email templates CRUD
 
 ### Documents
 - `POST /api/documents/upload` - Upload document
