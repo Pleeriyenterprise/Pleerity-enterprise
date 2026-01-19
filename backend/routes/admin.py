@@ -611,6 +611,82 @@ async def admin_invite_client(
             detail="Failed to invite client"
         )
 
+@router.post("/clients/{client_id}/properties")
+async def admin_add_property(
+    request: Request,
+    client_id: str,
+    address_line_1: str,
+    city: str,
+    postcode: str,
+    property_type: str = "residential",
+    number_of_units: int = 1
+):
+    """Add a property for a client (admin only).
+    
+    Used when setting up a client before provisioning.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        from models import Property, ComplianceStatus
+        
+        # Verify client exists
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        # Create property
+        property_obj = Property(
+            client_id=client_id,
+            address_line_1=address_line_1,
+            city=city,
+            postcode=postcode,
+            property_type=property_type,
+            number_of_units=number_of_units,
+            compliance_status=ComplianceStatus.RED
+        )
+        
+        prop_doc = property_obj.model_dump()
+        for key in ["created_at", "updated_at"]:
+            if prop_doc.get(key):
+                prop_doc[key] = prop_doc[key].isoformat()
+        
+        await db.properties.insert_one(prop_doc)
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=client_id,
+            metadata={
+                "action": "admin_property_added",
+                "property_id": property_obj.property_id,
+                "address": address_line_1,
+                "admin_email": user["email"]
+            }
+        )
+        
+        logger.info(f"Admin added property for client {client_id}: {address_line_1}")
+        
+        return {
+            "message": "Property added successfully",
+            "property_id": property_obj.property_id,
+            "client_id": client_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin add property error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add property"
+        )
+
 @router.post("/clients/{client_id}/provision")
 async def admin_trigger_provision(request: Request, client_id: str):
     """Manually trigger provisioning for a client (admin only).
