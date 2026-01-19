@@ -1104,6 +1104,373 @@ const RulesManagement = () => {
   );
 };
 
+// Email Templates Management Component
+const EmailTemplates = () => {
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [aliases, setAliases] = useState([]);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState(null);
+  const [formData, setFormData] = useState({
+    alias: '',
+    name: '',
+    subject: '',
+    html_body: '',
+    text_body: '',
+    available_variables: [],
+    notes: ''
+  });
+
+  useEffect(() => {
+    fetchTemplates();
+    fetchAliases();
+  }, []);
+
+  const fetchTemplates = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/admin/templates?active_only=false');
+      setTemplates(response.data.templates);
+    } catch (error) {
+      toast.error('Failed to load templates');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAliases = async () => {
+    try {
+      const response = await api.get('/admin/templates/aliases');
+      setAliases(response.data.aliases);
+    } catch (error) {
+      console.error('Failed to load aliases');
+    }
+  };
+
+  const seedDefaultTemplates = async () => {
+    try {
+      const response = await api.post('/admin/templates/seed');
+      toast.success(`${response.data.created} templates created, ${response.data.skipped} skipped`);
+      fetchTemplates();
+    } catch (error) {
+      toast.error('Failed to seed templates');
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...formData,
+        available_variables: formData.available_variables.filter(v => v.trim())
+      };
+      
+      if (editingTemplate) {
+        await api.put(`/admin/templates/${editingTemplate.template_id}`, payload);
+        toast.success('Template updated successfully');
+      } else {
+        await api.post('/admin/templates', payload);
+        toast.success('Template created successfully');
+      }
+      setShowCreateForm(false);
+      setEditingTemplate(null);
+      resetForm();
+      fetchTemplates();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save template');
+    }
+  };
+
+  const handleEdit = (template) => {
+    setFormData({
+      alias: template.alias,
+      name: template.name,
+      subject: template.subject,
+      html_body: template.html_body,
+      text_body: template.text_body,
+      available_variables: template.available_variables || [],
+      notes: template.notes || ''
+    });
+    setEditingTemplate(template);
+    setShowCreateForm(true);
+  };
+
+  const handlePreview = async (templateId) => {
+    try {
+      const response = await api.post(`/admin/templates/${templateId}/preview`, { sample_data: {} });
+      setPreviewHtml(response.data);
+    } catch (error) {
+      toast.error('Failed to generate preview');
+    }
+  };
+
+  const handleDelete = async (templateId) => {
+    if (!window.confirm('Are you sure you want to deactivate this template?')) return;
+    try {
+      await api.delete(`/admin/templates/${templateId}`);
+      toast.success('Template deactivated');
+      fetchTemplates();
+    } catch (error) {
+      toast.error('Failed to delete template');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      alias: '',
+      name: '',
+      subject: '',
+      html_body: '',
+      text_body: '',
+      available_variables: [],
+      notes: ''
+    });
+  };
+
+  const getAliasLabel = (alias) => {
+    const found = aliases.find(a => a.value === alias);
+    return found ? found.label : alias;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-midnight-blue">Email Templates ({templates.length})</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={seedDefaultTemplates}
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Seed Default Templates
+          </button>
+          <button
+            onClick={() => { resetForm(); setEditingTemplate(null); setShowCreateForm(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Template
+          </button>
+        </div>
+      </div>
+
+      {/* Preview Modal */}
+      {previewHtml && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-midnight-blue">Email Preview</h3>
+              <button onClick={() => setPreviewHtml(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 bg-gray-100">
+              <p className="text-sm text-gray-600 mb-2"><strong>Subject:</strong> {previewHtml.subject}</p>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              <div dangerouslySetInnerHTML={{ __html: previewHtml.html_body }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Form Modal */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-midnight-blue">
+                {editingTemplate ? 'Edit Template' : 'Create New Template'}
+              </h3>
+              <button onClick={() => { setShowCreateForm(false); setEditingTemplate(null); }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Template Type</label>
+                  <select
+                    value={formData.alias}
+                    onChange={(e) => setFormData({...formData, alias: e.target.value})}
+                    disabled={!!editingTemplate}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal disabled:bg-gray-100"
+                    required
+                  >
+                    <option value="">Select type...</option>
+                    {aliases.map(a => (
+                      <option key={a.value} value={a.value}>{a.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    placeholder="e.g., Password Setup Email"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject Line</label>
+                <input
+                  type="text"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                  placeholder="e.g., Set Your Password - Compliance Vault Pro"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">Use {"{{variable_name}}"} for dynamic content</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">HTML Body</label>
+                <textarea
+                  value={formData.html_body}
+                  onChange={(e) => setFormData({...formData, html_body: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal font-mono text-sm"
+                  rows={10}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Plain Text Body</label>
+                <textarea
+                  value={formData.text_body}
+                  onChange={(e) => setFormData({...formData, text_body: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal font-mono text-sm"
+                  rows={6}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Available Variables (comma-separated)</label>
+                <input
+                  type="text"
+                  value={formData.available_variables.join(', ')}
+                  onChange={(e) => setFormData({...formData, available_variables: e.target.value.split(',').map(v => v.trim())})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                  placeholder="e.g., client_name, setup_link, company_name"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => { setShowCreateForm(false); setEditingTemplate(null); }}
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600"
+                >
+                  <Save className="w-4 h-4" />
+                  {editingTemplate ? 'Update Template' : 'Create Template'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Templates Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {templates.map((template) => (
+          <div 
+            key={template.template_id} 
+            className={`bg-white rounded-xl border border-gray-200 p-6 ${!template.is_active ? 'opacity-50' : ''}`}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 mb-2 inline-block">
+                  {getAliasLabel(template.alias)}
+                </span>
+                <h3 className="text-lg font-semibold text-midnight-blue">{template.name}</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePreview(template.template_id)}
+                  className="text-gray-400 hover:text-electric-teal"
+                  title="Preview"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleEdit(template)}
+                  className="text-electric-teal hover:text-teal-700"
+                  title="Edit"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                {template.is_active && (
+                  <button
+                    onClick={() => handleDelete(template.template_id)}
+                    className="text-red-500 hover:text-red-700"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-3">
+              <strong>Subject:</strong> {template.subject}
+            </p>
+            
+            {template.available_variables?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {template.available_variables.map((v, i) => (
+                  <span key={i} className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                    {"{{"}{v}{"}}"}
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            {!template.is_active && (
+              <p className="text-xs text-red-500 mt-3">Inactive</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {templates.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+          <Mail className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">No email templates configured yet</p>
+          <button
+            onClick={seedDefaultTemplates}
+            className="px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600"
+          >
+            Load Default Templates
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Dashboard Overview
 const DashboardOverview = () => {
   const [stats, setStats] = useState(null);
