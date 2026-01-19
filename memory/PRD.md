@@ -99,6 +99,14 @@
   - [x] Email service updated to use database templates
   - [x] Frontend UI with grid view, edit modal, live preview
   - [x] Template preview with sample data rendering
+- [x] **Document AI Verification:**
+  - [x] Backend AI service using Gemini for document analysis
+  - [x] Metadata extraction (dates, certificate numbers, engineer info)
+  - [x] Confidence scores for extracted data
+  - [x] API endpoints (`/api/documents/analyze/{id}`, `/api/documents/{id}/extraction`)
+  - [x] Frontend Documents page with upload form
+  - [x] AI extraction display with extracted fields
+  - [x] General requirements endpoint (`/api/client/requirements`)
 
 ### Upcoming (P2)
 - [ ] **System-wide compliance statistics** - Aggregate reporting dashboard
