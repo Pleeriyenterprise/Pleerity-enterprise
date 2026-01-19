@@ -109,11 +109,9 @@
   - [x] General requirements endpoint (`/api/client/requirements`)
 
 ### Upcoming (P2)
-- [ ] **System-wide compliance statistics** - Aggregate reporting dashboard
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
 
 ### Upcoming (P2)
-- [ ] **Document AI Verification:** AI-assisted metadata extraction (dates/identifiers)
 - [ ] **Onboarding Progress Dashboard:** Visual dashboard at `/onboarding-status`
 - [ ] **Audit Log Granularity:** Email provider errors, before/after diffs
 
