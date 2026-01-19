@@ -309,6 +309,32 @@ Access your portal here: {model.get('portal_link', '#')}
 {model.get('company_name', 'Pleerity Enterprise Ltd')}
 {model.get('tagline', 'AI-Driven Solutions & Compliance')}
             """
+        elif template_alias == EmailTemplateAlias.COMPLIANCE_ALERT:
+            properties_text = ""
+            for prop in model.get('affected_properties', []):
+                properties_text += f"- {prop.get('address', 'N/A')}: {prop.get('previous_status', 'GREEN')} → {prop.get('new_status', 'RED')} ({prop.get('reason', 'Status changed')})\n"
+            
+            return f"""
+⚠️ COMPLIANCE ALERT - Action Required
+
+Hello {model.get('client_name', 'there')},
+
+The compliance status of one or more of your properties has changed and may require your attention.
+
+AFFECTED PROPERTIES:
+{properties_text}
+
+View your dashboard: {model.get('portal_link', '#')}
+
+WHAT THIS MEANS:
+• GREEN = All requirements are compliant
+• AMBER = Some requirements are expiring soon  
+• RED = Immediate action required
+
+--
+{model.get('company_name', 'Pleerity Enterprise Ltd')}
+{model.get('tagline', 'AI-Driven Solutions & Compliance')}
+            """
         else:
             return f"""
 Compliance Vault Pro
