@@ -10,18 +10,100 @@ from auth import generate_secure_token, hash_token
 from datetime import datetime, timedelta, timezone
 import os
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Fallback compliance requirement rules (used if database rules not available)
+# Enhanced fallback compliance requirement rules with property attribute conditions
 FALLBACK_REQUIREMENT_RULES = [
-    {"type": "gas_safety", "description": "Gas Safety Certificate", "frequency_days": 365},
-    {"type": "eicr", "description": "Electrical Installation Condition Report", "frequency_days": 1825},
-    {"type": "epc", "description": "Energy Performance Certificate", "frequency_days": 3650},
-    {"type": "fire_alarm", "description": "Fire Alarm Inspection", "frequency_days": 365},
-    {"type": "legionella", "description": "Legionella Risk Assessment", "frequency_days": 730}
+    {
+        "type": "gas_safety", 
+        "description": "Gas Safety Certificate", 
+        "frequency_days": 365,
+        "condition": "has_gas_supply"  # Only if property has gas
+    },
+    {
+        "type": "eicr", 
+        "description": "Electrical Installation Condition Report", 
+        "frequency_days": 1825,  # 5 years default
+        "frequency_by_age": {  # Dynamic frequency based on building age
+            "old": 1095,  # 3 years for buildings > 50 years
+            "standard": 1825  # 5 years standard
+        }
+    },
+    {
+        "type": "epc", 
+        "description": "Energy Performance Certificate", 
+        "frequency_days": 3650
+    },
+    {
+        "type": "fire_alarm", 
+        "description": "Fire Alarm Inspection", 
+        "frequency_days": 365
+    },
+    {
+        "type": "legionella", 
+        "description": "Legionella Risk Assessment", 
+        "frequency_days": 730
+    }
 ]
+
+# HMO-specific requirements
+HMO_REQUIREMENTS = [
+    {
+        "type": "hmo_license",
+        "description": "HMO License",
+        "frequency_days": 1825,  # 5 years
+        "condition": "hmo_license_required"
+    },
+    {
+        "type": "fire_risk_assessment",
+        "description": "Fire Risk Assessment",
+        "frequency_days": 365
+    },
+    {
+        "type": "emergency_lighting",
+        "description": "Emergency Lighting Test",
+        "frequency_days": 365
+    },
+    {
+        "type": "fire_extinguisher",
+        "description": "Fire Extinguisher Service",
+        "frequency_days": 365
+    }
+]
+
+# Communal area requirements
+COMMUNAL_REQUIREMENTS = [
+    {
+        "type": "communal_cleaning",
+        "description": "Communal Area Cleaning Schedule",
+        "frequency_days": 30
+    },
+    {
+        "type": "communal_fire_doors",
+        "description": "Fire Door Inspection",
+        "frequency_days": 365
+    }
+]
+
+# Location-specific requirements (by local authority)
+LOCATION_RULES = {
+    "LONDON": [
+        {
+            "type": "selective_license",
+            "description": "Selective Licensing (London)",
+            "frequency_days": 1825
+        }
+    ],
+    "MANCHESTER": [
+        {
+            "type": "selective_license",
+            "description": "Selective Licensing (Manchester)",
+            "frequency_days": 1825
+        }
+    ]
+}
 
 class ProvisioningService:
     async def provision_client_portal(self, client_id: str) -> tuple[bool, str]:
