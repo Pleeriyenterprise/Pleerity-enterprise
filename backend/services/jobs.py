@@ -245,6 +245,182 @@ class JobScheduler:
         
         except Exception as e:
             logger.error(f"Failed to send digest email: {e}")
+    
+    async def check_compliance_status_changes(self):
+        """Check for compliance status changes and send alerts.
+        
+        This job:
+        1. Evaluates current compliance status for all properties
+        2. Compares with stored previous status
+        3. Sends email alerts when status degrades (GREEN→AMBER, AMBER→RED, GREEN→RED)
+        4. Updates the stored status
+        """
+        logger.info("Running compliance status change check...")
+        
+        try:
+            from services.email_service import email_service
+            
+            # Get all active clients
+            clients = await self.db.clients.find(
+                {"subscription_status": "ACTIVE"},
+                {"_id": 0}
+            ).to_list(1000)
+            
+            alert_count = 0
+            
+            for client in clients:
+                # Get all properties for this client
+                properties = await self.db.properties.find(
+                    {"client_id": client["client_id"]},
+                    {"_id": 0}
+                ).to_list(100)
+                
+                properties_with_changes = []
+                
+                for prop in properties:
+                    # Get requirements for this property
+                    requirements = await self.db.requirements.find(
+                        {"property_id": prop["property_id"]},
+                        {"_id": 0}
+                    ).to_list(100)
+                    
+                    # Calculate current compliance status based on requirements
+                    new_status = self._calculate_property_compliance(requirements)
+                    old_status = prop.get("compliance_status", "GREEN")
+                    previous_notified_status = prop.get("last_notified_status", old_status)
+                    
+                    # Check if status has degraded since last notification
+                    old_severity = STATUS_SEVERITY.get(previous_notified_status, 0)
+                    new_severity = STATUS_SEVERITY.get(new_status, 0)
+                    
+                    # Only alert on degradation (getting worse)
+                    if new_severity > old_severity:
+                        # Determine reason for change
+                        reason = self._get_status_change_reason(requirements, new_status)
+                        
+                        properties_with_changes.append({
+                            "property_id": prop["property_id"],
+                            "address": f"{prop.get('address_line_1', 'Unknown')}, {prop.get('city', '')}",
+                            "previous_status": previous_notified_status,
+                            "new_status": new_status,
+                            "reason": reason
+                        })
+                        
+                        # Update property with new status and last notified status
+                        await self.db.properties.update_one(
+                            {"property_id": prop["property_id"]},
+                            {"$set": {
+                                "compliance_status": new_status,
+                                "last_notified_status": new_status,
+                                "status_changed_at": datetime.now(timezone.utc).isoformat()
+                            }}
+                        )
+                    elif new_status != old_status:
+                        # Status changed but not degraded - just update the status
+                        await self.db.properties.update_one(
+                            {"property_id": prop["property_id"]},
+                            {"$set": {
+                                "compliance_status": new_status,
+                                "status_changed_at": datetime.now(timezone.utc).isoformat()
+                            }}
+                        )
+                
+                # Send alert if there are properties with degraded status
+                if properties_with_changes:
+                    frontend_url = os.getenv("FRONTEND_URL", "https://property-vault-10.preview.emergentagent.com")
+                    
+                    await email_service.send_compliance_alert_email(
+                        recipient=client["email"],
+                        client_name=client["full_name"],
+                        affected_properties=properties_with_changes,
+                        portal_link=f"{frontend_url}/app/dashboard",
+                        client_id=client["client_id"]
+                    )
+                    
+                    # Audit log
+                    audit_log = {
+                        "audit_id": str(datetime.now(timezone.utc).timestamp()),
+                        "action": "COMPLIANCE_ALERT_SENT",
+                        "client_id": client["client_id"],
+                        "metadata": {
+                            "properties_affected": len(properties_with_changes),
+                            "changes": properties_with_changes
+                        },
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    }
+                    await self.db.audit_logs.insert_one(audit_log)
+                    
+                    alert_count += 1
+                    logger.info(f"Sent compliance alert to {client['email']} for {len(properties_with_changes)} properties")
+            
+            logger.info(f"Compliance status check complete. Sent {alert_count} alerts.")
+            return alert_count
+        
+        except Exception as e:
+            logger.error(f"Compliance status check error: {e}")
+            return 0
+    
+    def _calculate_property_compliance(self, requirements):
+        """Calculate overall compliance status for a property based on its requirements."""
+        if not requirements:
+            return "GREEN"  # No requirements = compliant
+        
+        now = datetime.now(timezone.utc)
+        has_overdue = False
+        has_expiring_soon = False
+        
+        for req in requirements:
+            status = req.get("status", "PENDING")
+            
+            if status in ["OVERDUE", "EXPIRED"]:
+                has_overdue = True
+            elif status == "EXPIRING_SOON":
+                has_expiring_soon = True
+            elif status == "PENDING":
+                # Check due date
+                due_date_str = req.get("due_date")
+                if due_date_str:
+                    try:
+                        due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00')) if isinstance(due_date_str, str) else due_date_str
+                        days_until_due = (due_date - now).days
+                        
+                        if days_until_due < 0:
+                            has_overdue = True
+                        elif days_until_due <= 30:
+                            has_expiring_soon = True
+                    except Exception:
+                        pass
+        
+        if has_overdue:
+            return "RED"
+        elif has_expiring_soon:
+            return "AMBER"
+        else:
+            return "GREEN"
+    
+    def _get_status_change_reason(self, requirements, new_status):
+        """Generate a human-readable reason for the status change."""
+        if new_status == "RED":
+            overdue_types = []
+            for req in requirements:
+                if req.get("status") in ["OVERDUE", "EXPIRED"]:
+                    overdue_types.append(req.get("description", req.get("requirement_type", "Certificate")))
+            
+            if overdue_types:
+                return f"Overdue: {', '.join(overdue_types[:2])}" + ("..." if len(overdue_types) > 2 else "")
+            return "Requirements overdue"
+        
+        elif new_status == "AMBER":
+            expiring_types = []
+            for req in requirements:
+                if req.get("status") == "EXPIRING_SOON":
+                    expiring_types.append(req.get("description", req.get("requirement_type", "Certificate")))
+            
+            if expiring_types:
+                return f"Expiring soon: {', '.join(expiring_types[:2])}" + ("..." if len(expiring_types) > 2 else "")
+            return "Requirements expiring soon"
+        
+        return "Status updated"
 
 async def run_daily_job():
     """Run daily reminder job."""
