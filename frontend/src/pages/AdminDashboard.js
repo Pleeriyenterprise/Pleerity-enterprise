@@ -677,6 +677,433 @@ const MessageLogs = () => {
   );
 };
 
+// Rules Management Component
+const RulesManagement = () => {
+  const [rules, setRules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [propertyTypes, setPropertyTypes] = useState([]);
+  const [editingRule, setEditingRule] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [formData, setFormData] = useState({
+    rule_type: '',
+    name: '',
+    description: '',
+    category: 'OTHER',
+    frequency_days: 365,
+    warning_days: 30,
+    applicable_to: 'ALL',
+    is_mandatory: true,
+    risk_weight: 3,
+    regulatory_reference: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    fetchRules();
+    fetchCategories();
+  }, []);
+
+  const fetchRules = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/admin/rules?active_only=false');
+      setRules(response.data.rules);
+    } catch (error) {
+      toast.error('Failed to load rules');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/admin/rules/categories');
+      setCategories(response.data.categories);
+      setPropertyTypes(response.data.property_types);
+    } catch (error) {
+      console.error('Failed to load categories');
+    }
+  };
+
+  const seedDefaultRules = async () => {
+    try {
+      const response = await api.post('/admin/rules/seed');
+      toast.success(`${response.data.created} rules created, ${response.data.skipped} skipped`);
+      fetchRules();
+    } catch (error) {
+      toast.error('Failed to seed rules');
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingRule) {
+        await api.put(`/admin/rules/${editingRule.rule_id}`, formData);
+        toast.success('Rule updated successfully');
+      } else {
+        await api.post('/admin/rules', formData);
+        toast.success('Rule created successfully');
+      }
+      setShowCreateForm(false);
+      setEditingRule(null);
+      resetForm();
+      fetchRules();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save rule');
+    }
+  };
+
+  const handleEdit = (rule) => {
+    setFormData({
+      rule_type: rule.rule_type,
+      name: rule.name,
+      description: rule.description,
+      category: rule.category,
+      frequency_days: rule.frequency_days,
+      warning_days: rule.warning_days,
+      applicable_to: rule.applicable_to,
+      is_mandatory: rule.is_mandatory,
+      risk_weight: rule.risk_weight,
+      regulatory_reference: rule.regulatory_reference || '',
+      notes: rule.notes || ''
+    });
+    setEditingRule(rule);
+    setShowCreateForm(true);
+  };
+
+  const handleDelete = async (ruleId) => {
+    if (!window.confirm('Are you sure you want to deactivate this rule?')) return;
+    try {
+      await api.delete(`/admin/rules/${ruleId}`);
+      toast.success('Rule deactivated');
+      fetchRules();
+    } catch (error) {
+      toast.error('Failed to delete rule');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      rule_type: '',
+      name: '',
+      description: '',
+      category: 'OTHER',
+      frequency_days: 365,
+      warning_days: 30,
+      applicable_to: 'ALL',
+      is_mandatory: true,
+      risk_weight: 3,
+      regulatory_reference: '',
+      notes: ''
+    });
+  };
+
+  const getCategoryColor = (category) => {
+    const colors = {
+      SAFETY: 'bg-red-100 text-red-800',
+      ELECTRICAL: 'bg-yellow-100 text-yellow-800',
+      ENERGY: 'bg-green-100 text-green-800',
+      FIRE: 'bg-orange-100 text-orange-800',
+      HEALTH: 'bg-blue-100 text-blue-800',
+      REGULATORY: 'bg-purple-100 text-purple-800',
+      OTHER: 'bg-gray-100 text-gray-800'
+    };
+    return colors[category] || colors.OTHER;
+  };
+
+  const getRiskColor = (weight) => {
+    if (weight >= 4) return 'text-red-600';
+    if (weight >= 3) return 'text-amber-600';
+    return 'text-green-600';
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-midnight-blue">Requirement Rules ({rules.length})</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={seedDefaultRules}
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Seed Default Rules
+          </button>
+          <button
+            onClick={() => { resetForm(); setEditingRule(null); setShowCreateForm(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Rule
+          </button>
+        </div>
+      </div>
+
+      {/* Create/Edit Form Modal */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-midnight-blue">
+                {editingRule ? 'Edit Rule' : 'Create New Rule'}
+              </h3>
+              <button onClick={() => { setShowCreateForm(false); setEditingRule(null); }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rule Type (ID)</label>
+                  <input
+                    type="text"
+                    value={formData.rule_type}
+                    onChange={(e) => setFormData({...formData, rule_type: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
+                    disabled={!!editingRule}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal disabled:bg-gray-100"
+                    placeholder="e.g., gas_safety"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    placeholder="e.g., Gas Safety Certificate"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                  rows={2}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                  >
+                    {categories.map(cat => (
+                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Applicable To</label>
+                  <select
+                    value={formData.applicable_to}
+                    onChange={(e) => setFormData({...formData, applicable_to: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                  >
+                    {propertyTypes.map(pt => (
+                      <option key={pt.value} value={pt.value}>{pt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Frequency (days)</label>
+                  <input
+                    type="number"
+                    value={formData.frequency_days}
+                    onChange={(e) => setFormData({...formData, frequency_days: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    min={1}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Warning (days)</label>
+                  <input
+                    type="number"
+                    value={formData.warning_days}
+                    onChange={(e) => setFormData({...formData, warning_days: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    min={1}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Risk Weight (1-5)</label>
+                  <input
+                    type="number"
+                    value={formData.risk_weight}
+                    onChange={(e) => setFormData({...formData, risk_weight: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    min={1}
+                    max={5}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Regulatory Reference</label>
+                <input
+                  type="text"
+                  value={formData.regulatory_reference}
+                  onChange={(e) => setFormData({...formData, regulatory_reference: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                  placeholder="e.g., Gas Safety Regulations 1998"
+                />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_mandatory}
+                    onChange={(e) => setFormData({...formData, is_mandatory: e.target.checked})}
+                    className="w-4 h-4 text-electric-teal rounded"
+                  />
+                  <span className="text-sm text-gray-700">Mandatory</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => { setShowCreateForm(false); setEditingRule(null); }}
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600"
+                >
+                  <Save className="w-4 h-4" />
+                  {editingRule ? 'Update Rule' : 'Create Rule'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Rules Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rule</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applies To</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {rules.map((rule) => (
+                <tr key={rule.rule_id} className={`hover:bg-gray-50 ${!rule.is_active ? 'opacity-50' : ''}`}>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-medium text-midnight-blue">{rule.name}</p>
+                      <p className="text-sm text-gray-500">{rule.rule_type}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(rule.category)}`}>
+                      {rule.category}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {rule.frequency_days >= 365 
+                      ? `${Math.round(rule.frequency_days / 365)} year${rule.frequency_days >= 730 ? 's' : ''}`
+                      : `${rule.frequency_days} days`
+                    }
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {rule.applicable_to}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`font-bold ${getRiskColor(rule.risk_weight)}`}>
+                      {rule.risk_weight}/5
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      {rule.is_active ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-500" />
+                      )}
+                      {rule.is_mandatory && (
+                        <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Required</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(rule)}
+                        className="text-electric-teal hover:text-teal-700"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      {rule.is_active && (
+                        <button
+                          onClick={() => handleDelete(rule.rule_id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {rules.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+          <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">No rules configured yet</p>
+          <button
+            onClick={seedDefaultRules}
+            className="px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600"
+          >
+            Load UK Default Rules
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Dashboard Overview
 const DashboardOverview = () => {
   const [stats, setStats] = useState(null);
