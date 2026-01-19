@@ -13,6 +13,7 @@ import IntakePage from './pages/IntakePage';
 
 // Client pages
 import ClientDashboard from './pages/ClientDashboard';
+import AssistantPage from './pages/AssistantPage';
 
 function App() {
   return (
