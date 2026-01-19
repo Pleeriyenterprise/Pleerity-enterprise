@@ -38,6 +38,14 @@ function App() {
               } 
             />
             <Route 
+              path="/app/assistant" 
+              element={
+                <ProtectedRoute>
+                  <AssistantPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/app/properties" 
               element={
                 <ProtectedRoute>
