@@ -191,9 +191,12 @@ class TestSendOTPAPI:
 class TestVerifyOTPAPI:
     """Test /api/sms/verify-otp endpoint"""
     
-    def test_verify_otp_requires_auth(self, api_client):
+    def test_verify_otp_requires_auth(self):
         """Test that verify OTP requires authentication"""
-        response = api_client.post(f"{BASE_URL}/api/sms/verify-otp", json={
+        # Use fresh session without auth
+        session = requests.Session()
+        session.headers.update({"Content-Type": "application/json"})
+        response = session.post(f"{BASE_URL}/api/sms/verify-otp", json={
             "phone_number": TEST_PHONE,
             "code": DEV_OTP_CODE
         })
