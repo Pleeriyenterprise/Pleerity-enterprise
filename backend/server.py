@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from database import database
-from routes import auth, intake, webhooks, client, admin, documents, assistant, profile, properties
+from routes import auth, intake, webhooks, client, admin, documents, assistant, profile, properties, rules
 import os
 import logging
 from pathlib import Path
