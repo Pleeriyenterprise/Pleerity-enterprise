@@ -60,9 +60,8 @@ const SetPasswordPage = () => {
       const response = await authAPI.setPassword({ token, password });
       const { access_token, user } = response.data;
 
-      // Store auth and redirect
-      localStorage.setItem('auth_token', access_token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Update AuthContext state (this triggers re-render and allows ProtectedRoute to work)
+      loginWithToken(access_token, user);
 
       setSuccess(true);
       setTimeout(() => {
