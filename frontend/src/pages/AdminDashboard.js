@@ -34,7 +34,7 @@ const JobsMonitoring = () => {
 
   const fetchJobsStatus = async () => {
     try {
-      const response = await api.get('/api/admin/jobs/status');
+      const response = await api.get('/admin/jobs/status');
       setJobsStatus(response.data);
     } catch (error) {
       toast.error('Failed to load jobs status');
@@ -52,7 +52,7 @@ const JobsMonitoring = () => {
   const triggerJob = async (jobType) => {
     setTriggering(jobType);
     try {
-      const response = await api.post(`/api/admin/jobs/trigger/${jobType}`);
+      const response = await api.post(`/admin/jobs/trigger/${jobType}`);
       toast.success(response.data.message);
       fetchJobsStatus();
     } catch (error) {
