@@ -1,0 +1,101 @@
+{
+  "summary": "Completed testing of iteration 5 features: Calendar API endpoints, CalendarPage with grid/list views, Dashboard Calendar nav link, NotificationPreferencesPage SMS section with Beta badge, SMS preferences API, and Property enhanced attributes. All features working correctly after minor bug fixes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration5_features.py",
+    "/app/test_reports/pytest/pytest_results_iter5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/tests/test_iteration5_features.py",
+    "/app/backend/routes/profile.py",
+    "/app/backend/routes/properties.py",
+    "/app/backend/services/provisioning.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "100% - All UI components working correctly"
+  },
+  "test_credentials": {
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!",
+    "client_email": "test@pleerity.com",
+    "client_password": "TestClient123!",
+    "test_client_id": "87ff6c33-1f99-40b6-b9ed-a05c17e13950"
+  },
+  "seed_data_creation": "Used existing test client. Created test properties via /api/properties/create endpoint.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All iteration 5 features fully tested and working. Calendar page at /app/calendar with grid and list views. SMS section at bottom of /app/notifications page with Beta badge. Enhanced property attributes in model but not required fields.",
+  "features_tested": {
+    "calendar_api_expiries": {
+      "status": "PASS",
+      "endpoint": "GET /api/calendar/expiries",
+      "details": "Returns events grouped by date with summary stats (total_events, overdue_count, expiring_soon_count, dates_with_events). Supports year and month query parameters."
+    },
+    "calendar_api_upcoming": {
+      "status": "PASS",
+      "endpoint": "GET /api/calendar/upcoming",
+      "details": "Returns upcoming expiries sorted by date with urgency (high/medium/low). Supports days parameter (30, 60, 90, 180). Each item has days_until_due field."
+    },
+    "calendar_page_grid_view": {
+      "status": "PASS",
+      "url": "/app/calendar",
+      "details": "Monthly grid view with navigation (prev/next month, Today button). Shows summary stats cards. Events displayed with color-coded status. Legend shows Overdue, Expiring Soon, Pending, Compliant."
+    },
+    "calendar_page_list_view": {
+      "status": "PASS",
+      "url": "/app/calendar (list view)",
+      "details": "List view shows upcoming expiries with days-ahead filter (30, 60, 90, 180 days). Each item shows requirement type, property address, due date, days left, and urgency badge."
+    },
+    "dashboard_calendar_nav_link": {
+      "status": "PASS",
+      "details": "Calendar nav link present in dashboard navigation bar with Calendar icon. Navigates to /app/calendar correctly."
+    },
+    "notification_preferences_sms_section": {
+      "status": "PASS",
+      "url": "/app/notifications",
+      "details": "SMS Notifications section at bottom of page with Beta badge. Toggle to enable/disable SMS. When enabled shows: Mobile Number input, Verify button, Urgent Alerts Only toggle."
+    },
+    "sms_preferences_api": {
+      "status": "PASS",
+      "endpoints": ["GET /api/profile/notifications", "PUT /api/profile/notifications"],
+      "details": "API returns and accepts sms_enabled, sms_phone_number, sms_phone_verified, sms_urgent_alerts_only fields. Preferences persist correctly."
+    },
+    "property_enhanced_attributes": {
+      "status": "PASS",
+      "endpoint": "POST /api/properties/create",
+      "details": "Property model supports enhanced attributes (is_hmo, has_gas_supply, building_age_years, has_communal_areas, local_authority, hmo_license_required). Properties can be created via API."
+    }
+  },
+  "bugs_fixed_during_testing": [
+    {
+      "file": "/app/backend/routes/profile.py",
+      "issue": "SMS default preferences missing in GET /api/profile/notifications response",
+      "fix": "Added sms_enabled, sms_phone_number, sms_phone_verified, sms_urgent_alerts_only to default_preferences"
+    },
+    {
+      "file": "/app/backend/routes/properties.py",
+      "issue": "MongoDB _id not removed from response causing serialization error",
+      "fix": "Added prop_doc.pop('_id', None) after insert"
+    },
+    {
+      "file": "/app/backend/services/provisioning.py",
+      "issue": "NoneType error when property_type or local_authority is None",
+      "fix": "Changed to use (value or default).upper() pattern to handle None values"
+    }
+  ],
+  "notes": {
+    "sms_sending": "SMS sending is NOT implemented yet - only preferences storage works. This is expected per the requirements.",
+    "phone_verification": "Phone verification button exists but verification flow is not implemented yet."
+  }
+}
