@@ -210,40 +210,128 @@ const ClientDashboard = () => {
         </div>
 
         {/* Properties */}
-        <Card className="enterprise-card">
-          <CardHeader>
-            <CardTitle className="text-midnight-blue">Your Properties</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data?.properties?.length === 0 ? (
-              <p className="text-gray-600">No properties found</p>
-            ) : (
-              <div className="space-y-4">
-                {data?.properties?.map((property) => (
-                  <div 
-                    key={property.property_id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-smooth"
-                    data-testid="property-card"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-semibold text-midnight-blue mb-1">
-                          {property.address_line_1}
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          {property.city}, {property.postcode}
-                        </p>
+        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2">
+            <Card className="enterprise-card h-full">
+              <CardHeader>
+                <CardTitle className="text-midnight-blue">Your Properties</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {data?.properties?.length === 0 ? (
+                  <p className="text-gray-600">No properties found</p>
+                ) : (
+                  <div className="space-y-4">
+                    {data?.properties?.map((property) => (
+                      <div 
+                        key={property.property_id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-smooth"
+                        data-testid="property-card"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-semibold text-midnight-blue mb-1">
+                              {property.address_line_1}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {property.city}, {property.postcode}
+                            </p>
+                          </div>
+                          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getComplianceColor(property.compliance_status)}`}>
+                            {property.compliance_status}
+                          </div>
+                        </div>
                       </div>
-                      <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getComplianceColor(property.compliance_status)}`}>
-                        {property.compliance_status}
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Notification Preferences Widget */}
+          <div className="lg:col-span-1">
+            <Card className="enterprise-card h-full" data-testid="notification-prefs-widget">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-midnight-blue flex items-center gap-2 text-lg">
+                  <Bell className="w-5 h-5 text-electric-teal" />
+                  Notification Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {notificationPrefs ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Status Alerts</span>
+                      {notificationPrefs.status_change_alerts ? (
+                        <span className="flex items-center gap-1 text-green-600 text-sm">
+                          <CheckCircle className="w-4 h-4" /> On
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-gray-400 text-sm">
+                          <BellOff className="w-4 h-4" /> Off
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Expiry Reminders</span>
+                      {notificationPrefs.expiry_reminders ? (
+                        <span className="flex items-center gap-1 text-green-600 text-sm">
+                          <CheckCircle className="w-4 h-4" /> On
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-gray-400 text-sm">
+                          <BellOff className="w-4 h-4" /> Off
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Monthly Digest</span>
+                      {notificationPrefs.monthly_digest ? (
+                        <span className="flex items-center gap-1 text-green-600 text-sm">
+                          <CheckCircle className="w-4 h-4" /> On
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-gray-400 text-sm">
+                          <BellOff className="w-4 h-4" /> Off
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm text-gray-600">Reminder Timing</span>
+                      <span className="text-sm font-medium text-midnight-blue">
+                        {notificationPrefs.reminder_days_before} days
+                      </span>
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-3 border-electric-teal text-electric-teal hover:bg-teal-50"
+                      onClick={() => navigate('/app/notifications')}
+                      data-testid="manage-notifications-btn"
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Manage Preferences
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 mb-3">Configure your notification preferences</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-electric-teal text-electric-teal hover:bg-teal-50"
+                      onClick={() => navigate('/app/notifications')}
+                    >
+                      Set Up Notifications
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </main>
     </div>
   );
