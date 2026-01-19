@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 import logging
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -35,3 +36,27 @@ class Database:
 
 # Global database instance
 database = Database()
+
+@asynccontextmanager
+async def get_db_context():
+    """Context manager for standalone scripts to access the database.
+    
+    Usage in scripts:
+        async with get_db_context() as db:
+            # db is now connected and ready to use
+            await db.clients.find_one(...)
+    """
+    client = None
+    try:
+        mongo_url = os.environ['MONGO_URL']
+        db_name = os.environ['DB_NAME']
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[db_name]
+        # Verify connection
+        await db.command("ping")
+        logger.info(f"Script connected to MongoDB: {db_name}")
+        yield db
+    finally:
+        if client:
+            client.close()
+            logger.info("Script MongoDB connection closed")
