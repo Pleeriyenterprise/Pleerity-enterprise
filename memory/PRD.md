@@ -1,0 +1,154 @@
+# Compliance Vault Pro - Product Requirements Document
+
+## Overview
+**Product:** Compliance Vault Pro  
+**Company:** Pleerity Enterprise Ltd  
+**Target Users:** UK landlords and letting agents  
+**Tagline:** AI-Driven Solutions & Compliance  
+
+## Tech Stack
+- **Backend:** FastAPI (Python)
+- **Frontend:** React with Tailwind CSS
+- **Database:** MongoDB (via Motor async driver)
+- **Authentication:** JWT tokens
+- **Integrations:** Stripe (payments), Postmark (email - MOCKED), OpenAI (AI assistant)
+
+## Core Principles
+1. **Deterministic Compliance:** No AI for compliance decisions - all compliance rules are based on predefined dates/rules
+2. **Single Sources of Truth:** Stripe for billing status
+3. **Strict RBAC:** `ROLE_CLIENT`, `ROLE_CLIENT_ADMIN`, `ROLE_ADMIN` enforced server-side
+4. **Mandatory Audit Logging:** All significant actions logged
+
+---
+
+## Phase 1: Core System (COMPLETE)
+
+### Features Implemented
+- [x] Public marketing landing page
+- [x] Client intake/onboarding flow
+- [x] User authentication (JWT)
+- [x] Password setup via secure token
+- [x] Client and Admin portals (route-guarded)
+- [x] RBAC middleware (client_route_guard, admin_route_guard)
+- [x] Core data models (Client, PortalUser, Property, Requirement, Document, AuditLog)
+- [x] Provisioning service
+- [x] Email service (Postmark - MOCKED)
+- [x] Stripe webhook integration
+- [x] Basic admin console
+
+### Data Models
+- **Client:** client_id, full_name, email, billing_plan, subscription_status, onboarding_status
+- **PortalUser:** portal_user_id, client_id, auth_email, role, status, password_status
+- **Property:** property_id, client_id, address, property_type
+- **Requirement:** requirement_id, property_id, rule_id, status, due_date
+- **Document:** document_id, property_id, file_url, status
+- **AuditLog:** timestamp, actor_id, action, details
+
+---
+
+## Phase 2: AI Assistant (COMPLETE)
+
+### Features Implemented
+- [x] Read-only AI assistant at `/app/assistant`
+- [x] OpenAI integration via Emergent LLM Key
+- [x] Data snapshot endpoint (`/api/assistant/snapshot`)
+- [x] All interactions audited
+- [x] Strict read-only mode (no system state modifications)
+
+---
+
+## Phase 3: Additive Enhancements (IN PROGRESS)
+
+### Completed (January 19, 2026)
+- [x] **User Profile Page:** `/app/profile` with backend APIs
+- [x] **Property Creation Flow:** `/app/properties/create` with guided steps
+- [x] **Admin Features Backend:**
+  - [x] Job monitoring endpoint (`/api/admin/jobs/status`)
+  - [x] Manual job trigger endpoint (`/api/admin/jobs/trigger/{type}`)
+  - [x] Client invitation endpoint (`/api/admin/clients/invite`)
+  - [x] Manual provisioning trigger (`/api/admin/clients/{id}/provision`)
+  - [x] Enhanced audit log filtering
+- [x] **Background Job Scheduler:** APScheduler integrated (replaced crontab)
+  - Daily reminders at 9:00 AM UTC
+  - Monthly digests on 1st at 10:00 AM UTC
+- [x] **Admin Login Fix:** Admins can login without client association
+- [x] **Database Utility:** `get_db_context()` for standalone scripts
+
+### Upcoming (P1)
+- [ ] **Admin Dashboard Frontend UI:** Job monitoring, client invites, log filtering
+- [ ] **Requirement Rules Management UI**
+- [ ] **Email Templates Management UI**
+- [ ] **System-wide compliance statistics**
+
+### Upcoming (P2)
+- [ ] **Document AI Verification:** AI-assisted metadata extraction (dates/identifiers)
+- [ ] **Onboarding Progress Dashboard:** Visual dashboard at `/onboarding-status`
+- [ ] **Audit Log Granularity:** Email provider errors, before/after diffs
+
+### Upcoming (P3)
+- [ ] **Enhanced Requirement Generation:** Dynamic rules based on property type/location
+- [ ] **RuleRequirementDefinition Expansion:** Conditional logic, risk weights
+- [ ] **SMS Reminder Support:** Feature-flagged, third-party gateway
+
+---
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/set-password` - Set password via token
+
+### Client
+- `GET /api/client/dashboard` - Client dashboard data
+- `GET /api/client/properties` - Client properties
+- `GET /api/client/requirements` - Client requirements
+
+### Admin
+- `GET /api/admin/dashboard` - Admin dashboard statistics
+- `GET /api/admin/clients` - List all clients
+- `GET /api/admin/clients/{id}` - Client details
+- `GET /api/admin/audit-logs` - Audit logs with filtering
+- `GET /api/admin/jobs/status` - Background jobs status
+- `POST /api/admin/jobs/trigger/{type}` - Manually trigger job
+- `POST /api/admin/clients/invite` - Invite new client
+- `POST /api/admin/clients/{id}/provision` - Manual provisioning
+
+### Documents
+- `POST /api/documents/upload` - Upload document
+- `GET /api/documents/{id}` - Get document
+
+### Properties
+- `POST /api/properties` - Create property
+- `GET /api/properties/{id}` - Get property details
+
+### AI Assistant
+- `POST /api/assistant/ask` - Ask the AI assistant
+- `GET /api/assistant/snapshot` - Get data snapshot for AI
+
+### Intake
+- `POST /api/intake/start` - Start client intake
+
+### Webhooks
+- `POST /api/webhooks/stripe` - Stripe webhook handler
+
+---
+
+## Test Credentials
+- **Admin Email:** admin@pleerity.com
+- **Admin Password:** Admin123!
+
+---
+
+## Known Limitations / Mocked Services
+1. **Email (Postmark):** MOCKED - emails logged but not sent (requires `POSTMARK_SERVER_TOKEN`)
+2. **Payments (Stripe):** Using test key from environment
+
+---
+
+## Files of Reference
+- `/app/backend/server.py` - Main FastAPI app with APScheduler
+- `/app/backend/routes/` - All API endpoints
+- `/app/backend/services/` - Business logic (provisioning, jobs, email)
+- `/app/backend/models.py` - Pydantic models
+- `/app/frontend/src/App.js` - React routes
+- `/app/frontend/src/pages/` - Page components
