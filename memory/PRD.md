@@ -67,12 +67,24 @@
   - [x] Manual job trigger endpoint (`/api/admin/jobs/trigger/{type}`)
   - [x] Client invitation endpoint (`/api/admin/clients/invite`)
   - [x] Manual provisioning trigger (`/api/admin/clients/{id}/provision`)
+  - [x] Password setup link generation (`/api/admin/clients/{id}/password-setup-link`)
+  - [x] Full client status endpoint (`/api/admin/clients/{id}/full-status`)
+  - [x] Admin property creation (`/api/admin/clients/{id}/properties`)
   - [x] Enhanced audit log filtering
-- [x] **Background Job Scheduler:** APScheduler integrated (replaced crontab)
+- [x] **Background Job Scheduler:** APScheduler with MongoDBJobStore (persistent)
   - Daily reminders at 9:00 AM UTC
   - Monthly digests on 1st at 10:00 AM UTC
 - [x] **Admin Login Fix:** Admins can login without client association
 - [x] **Database Utility:** `get_db_context()` for standalone scripts
+- [x] **Live Email Delivery:** Postmark integration working
+  - Sender: `info@pleerityenterprise.co.uk`
+  - Fallback from template to HTML email
+- [x] **Admin Dashboard Frontend UI:**
+  - [x] Overview tab (stats, compliance overview, recent activity)
+  - [x] Jobs tab (scheduler status, manual triggers, job statistics)
+  - [x] Clients tab (list, search, filter, detail panel with status)
+  - [x] Audit Logs tab (filterable, paginated log viewer)
+  - [x] Messages tab (email delivery logs with provider tracking)
 
 ### Upcoming (P1)
 - [ ] **Admin Dashboard Frontend UI:** Job monitoring, client invites, log filtering
