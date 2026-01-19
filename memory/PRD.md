@@ -83,8 +83,15 @@
   - [x] Overview tab (stats, compliance overview, recent activity)
   - [x] Jobs tab (scheduler status, manual triggers, job statistics)
   - [x] Clients tab (list, search, filter, detail panel with status)
+  - [x] Rules tab (CRUD for compliance rules, default UK rules)
   - [x] Audit Logs tab (filterable, paginated log viewer)
   - [x] Messages tab (email delivery logs with provider tracking)
+- [x] **Requirement Rules Management:**
+  - [x] Backend API for rules CRUD (`/api/admin/rules/*`)
+  - [x] Database model for RequirementRule with categories
+  - [x] Default UK compliance rules (7 rules: Gas Safety, EICR, EPC, Fire, Legionella, HMO, PAT)
+  - [x] Provisioning service updated to use database rules
+  - [x] Frontend UI with table view, create/edit modal
 
 ### Upcoming (P1)
 - [ ] **Email Templates Management UI** - Customize email content
