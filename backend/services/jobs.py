@@ -74,7 +74,6 @@ class JobScheduler:
                     continue
                 
                 # Get requirements expiring in next N days (based on preferences)
-                days_ahead = datetime.now(timezone.utc) + timedelta(days=reminder_days)
                 
                 requirements = await self.db.requirements.find({
                     "client_id": client["client_id"],
