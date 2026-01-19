@@ -14,9 +14,11 @@ const ClientDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notificationPrefs, setNotificationPrefs] = useState(null);
 
   useEffect(() => {
     fetchDashboard();
+    fetchNotificationPrefs();
   }, []);
 
   const fetchDashboard = async () => {
@@ -27,6 +29,16 @@ const ClientDashboard = () => {
       setError(err.response?.data?.detail || 'Failed to load dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchNotificationPrefs = async () => {
+    try {
+      const response = await api.get('/profile/notifications');
+      setNotificationPrefs(response.data);
+    } catch (err) {
+      // Silently fail - not critical for dashboard
+      console.log('Could not load notification preferences');
     }
   };
 
