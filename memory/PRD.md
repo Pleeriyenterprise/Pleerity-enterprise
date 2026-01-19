@@ -107,6 +107,18 @@
   - [x] Frontend Documents page with upload form
   - [x] AI extraction display with extracted fields
   - [x] General requirements endpoint (`/api/client/requirements`)
+- [x] **System-wide Compliance Statistics Dashboard:**
+  - [x] Backend API (`/api/admin/statistics`) with comprehensive metrics
+  - [x] Executive-style stat cards (Total Properties, Compliant, Attention Needed, Action Required, Expiring Soon)
+  - [x] Urgent Actions widget with overdue/expiring items
+  - [x] System Summary widget with portfolio stats
+  - [x] Collapsible Detailed Analytics section
+  - [x] Donut chart for Requirements by Certificate Type
+  - [x] Bar chart for Requirement Status Distribution
+  - [x] Email/Document/Rules tertiary stats
+- [x] **SetPasswordPage Redirect Fix:**
+  - [x] Fixed redirect after password setup (now uses AuthContext.loginWithToken)
+  - [x] Users now redirected directly to `/app/dashboard` after setting password
 
 ### Upcoming (P2)
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
