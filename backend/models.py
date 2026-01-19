@@ -224,9 +224,18 @@ class Property(BaseModel):
     address_line_2: Optional[str] = None
     city: str
     postcode: str
-    property_type: str
+    property_type: str  # residential, hmo, commercial
     number_of_units: int = 1
     compliance_status: ComplianceStatus = ComplianceStatus.RED
+    
+    # Enhanced property attributes for dynamic requirement generation
+    is_hmo: bool = False  # House in Multiple Occupation
+    hmo_license_required: bool = False  # Selective/additional licensing
+    has_gas_supply: bool = True  # If false, skip gas safety requirement
+    building_age_years: Optional[int] = None  # For EICR frequency
+    has_communal_areas: bool = False  # For fire safety requirements
+    local_authority: Optional[str] = None  # For location-specific rules
+    
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
