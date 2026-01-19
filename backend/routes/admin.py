@@ -134,24 +134,53 @@ async def get_client_detail(request: Request, client_id: str):
         )
 
 @router.get("/audit-logs")
-async def get_audit_logs(request: Request, skip: int = 0, limit: int = 100, client_id: str = None):
-    """Get audit logs (admin only)."""
+async def get_audit_logs(
+    request: Request,
+    skip: int = 0,
+    limit: int = 100,
+    client_id: str = None,
+    action: str = None,
+    start_date: str = None,
+    end_date: str = None
+):
+    """Get audit logs with enhanced filtering (admin only)."""
     user = await admin_route_guard(request)
     db = database.get_db()
     
     try:
+        # Build query with filters
         query = {}
         if client_id:
             query["client_id"] = client_id
+        if action:
+            query["action"] = action
         
-        logs = await db.audit_logs.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+        # Date range filter
+        if start_date or end_date:
+            query["timestamp"] = {}
+            if start_date:
+                query["timestamp"]["$gte"] = start_date
+            if end_date:
+                query["timestamp"]["$lte"] = end_date
+        
+        logs = await db.audit_logs.find(
+            query,
+            {"_id": 0}
+        ).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+        
         total = await db.audit_logs.count_documents(query)
+        
+        # Get unique actions for filter dropdown
+        unique_actions = await db.audit_logs.distinct("action")
         
         return {
             "logs": logs,
             "total": total,
             "skip": skip,
-            "limit": limit
+            "limit": limit,
+            "filters": {
+                "available_actions": unique_actions
+            }
         }
     
     except Exception as e:
