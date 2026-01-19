@@ -114,9 +114,19 @@ const ClientDashboard = () => {
         )}
 
         {/* Welcome */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-2">Welcome, {data?.client?.full_name}</h2>
-          <p className="text-gray-600">Here's your compliance overview</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold text-midnight-blue mb-2">Welcome, {data?.client?.full_name}</h2>
+            <p className="text-gray-600">Here's your compliance overview</p>
+          </div>
+          <Button 
+            onClick={() => navigate('/app/assistant')}
+            className="btn-secondary flex items-center gap-2"
+            data-testid="ask-assistant-btn"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Ask Assistant
+          </Button>
         </div>
 
         {/* Compliance Summary */}
