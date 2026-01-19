@@ -441,7 +441,7 @@ const AuditLogs = () => {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      let url = `/api/admin/audit-logs?limit=${limit}&skip=${page * limit}`;
+      let url = `/admin/audit-logs?limit=${limit}&skip=${page * limit}`;
       if (actionFilter) url += `&action=${actionFilter}`;
       const response = await api.get(url);
       setLogs(response.data.logs);
