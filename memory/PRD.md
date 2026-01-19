@@ -153,6 +153,29 @@
   - [x] Monthly digest checks `monthly_digest` setting
   - [x] Compliance status alerts check `status_change_alerts` setting
   - [x] Skips sending when disabled, logs when skipping
+- [x] **Enhanced Requirement Generation:**
+  - [x] Property attributes: is_hmo, hmo_license_required, has_gas_supply, building_age_years, has_communal_areas, local_authority
+  - [x] Dynamic rules based on property type (HMO gets extra requirements)
+  - [x] Gas safety skipped if has_gas_supply=false
+  - [x] EICR frequency adjusted for older buildings (3 years vs 5 years)
+  - [x] Location-specific requirements (London/Manchester selective licensing)
+  - [x] Communal area requirements (cleaning, fire doors)
+- [x] **Compliance Expiry Calendar:**
+  - [x] Calendar page with grid and list views
+  - [x] Monthly navigation with "Today" button
+  - [x] Summary stats (Total Expiries, Overdue, Expiring Soon, Days with Events)
+  - [x] Calendar grid showing events by date with color-coded status
+  - [x] List view with days-ahead filter (30, 60, 90, 180 days)
+  - [x] Urgency indicators (high/medium/low)
+  - [x] Calendar nav link added to dashboard
+  - [x] API endpoints: GET /api/calendar/expiries, GET /api/calendar/upcoming
+- [x] **SMS Reminder Support (Feature Flagged):**
+  - [x] NotificationPreferences model updated with sms_enabled, sms_phone_number, sms_phone_verified, sms_urgent_alerts_only
+  - [x] Backend API updated to handle SMS fields
+  - [x] Frontend SMS section with Beta badge
+  - [x] Phone number input with verification placeholder
+  - [x] "Urgent Alerts Only" toggle
+  - [x] Feature flag SMS_FEATURE_ENABLED in frontend
 
 ### Upcoming (P2)
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
