@@ -64,6 +64,9 @@ async def create_property(request: Request, data: CreatePropertyRequest):
         
         await db.properties.insert_one(prop_doc)
         
+        # Remove MongoDB _id from response
+        prop_doc.pop("_id", None)
+        
         # Generate requirements using existing logic
         from services.provisioning import provisioning_service
         await provisioning_service._generate_requirements(
