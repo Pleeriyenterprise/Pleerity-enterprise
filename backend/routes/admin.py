@@ -419,7 +419,7 @@ async def get_jobs_status(request: Request):
     try:
         # Get last reminder job run from audit logs
         last_reminder = await db.audit_logs.find_one(
-            {"metadata.action": "REMINDER_SENT"},
+            {"action": "REMINDER_SENT"},
             {"_id": 0},
             sort=[("timestamp", -1)]
         )
@@ -439,10 +439,26 @@ async def get_jobs_status(request: Request):
             {"_id": 0}
         ).to_list(10000)
         
-        pending_reminders = sum(
-            1 for r in requirements
-            if datetime.fromisoformat(r["due_date"]) <= thirty_days
-        )
+        pending_reminders = 0
+        for r in requirements:
+            try:
+                due_date_str = r.get("due_date")
+                if due_date_str:
+                    due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00')) if isinstance(due_date_str, str) else due_date_str
+                    if due_date <= thirty_days:
+                        pending_reminders += 1
+            except Exception:
+                pass
+        
+        # Get scheduler status
+        from server import scheduler
+        scheduler_jobs = []
+        for job in scheduler.get_jobs():
+            scheduler_jobs.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run": job.next_run_time.isoformat() if job.next_run_time else None
+            })
         
         return {
             "daily_reminders": {
@@ -453,6 +469,7 @@ async def get_jobs_status(request: Request):
                 "last_run": last_digest["sent_at"] if last_digest else None,
                 "total_sent": await db.digest_logs.count_documents({})
             },
+            "scheduled_jobs": scheduler_jobs,
             "system_status": "operational"
         }
     
@@ -461,6 +478,55 @@ async def get_jobs_status(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load jobs status"
+        )
+
+@router.post("/jobs/trigger/{job_type}")
+async def trigger_job(request: Request, job_type: str):
+    """Manually trigger a background job (admin only).
+    
+    job_type: 'daily' or 'monthly'
+    """
+    user = await admin_route_guard(request)
+    
+    if job_type not in ["daily", "monthly"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid job type. Use 'daily' or 'monthly'"
+        )
+    
+    try:
+        from services.jobs import JobScheduler
+        job_scheduler = JobScheduler()
+        await job_scheduler.connect()
+        
+        if job_type == "daily":
+            count = await job_scheduler.send_daily_reminders()
+            result_msg = f"Daily reminders sent: {count}"
+        else:
+            count = await job_scheduler.send_monthly_digests()
+            result_msg = f"Monthly digests sent: {count}"
+        
+        await job_scheduler.close()
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=None,
+            metadata={
+                "action": f"manual_job_trigger_{job_type}",
+                "result_count": count,
+                "admin_email": user["email"]
+            }
+        )
+        
+        return {"message": result_msg, "count": count}
+    
+    except Exception as e:
+        logger.error(f"Manual job trigger error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to trigger {job_type} job"
         )
 
 @router.post("/clients/invite")
