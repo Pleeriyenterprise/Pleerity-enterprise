@@ -585,9 +585,9 @@ const MessageLogs = () => {
 
   const fetchMessages = async () => {
     try {
-      const response = await api.get('/api/admin/audit-logs?action=EMAIL_SENT&limit=50');
+      const response = await api.get('/admin/audit-logs?action=EMAIL_SENT&limit=50');
       // Also fetch failed emails
-      const failedResponse = await api.get('/api/admin/audit-logs?action=EMAIL_FAILED&limit=50');
+      const failedResponse = await api.get('/admin/audit-logs?action=EMAIL_FAILED&limit=50');
       
       const allMessages = [...response.data.logs, ...failedResponse.data.logs]
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
