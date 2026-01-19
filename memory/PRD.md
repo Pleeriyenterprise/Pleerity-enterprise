@@ -147,8 +147,7 @@
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
 
 ### Upcoming (P2)
-- [ ] **Onboarding Progress Dashboard:** Visual dashboard at `/onboarding-status`
-- [ ] **Audit Log Granularity:** Email provider errors, before/after diffs
+- [ ] **Audit Log Granularity:** Before/after diffs on profile changes (partially implemented)
 
 ### Upcoming (P3)
 - [ ] **Enhanced Requirement Generation:** Dynamic rules based on property type/location
