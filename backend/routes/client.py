@@ -108,6 +108,29 @@ async def get_property_requirements(request: Request, property_id: str):
             detail="Failed to load requirements"
         )
 
+
+@router.get("/requirements")
+async def get_all_requirements(request: Request):
+    """Get all requirements for the client."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        requirements = await db.requirements.find(
+            {"client_id": user["client_id"]},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        return {"requirements": requirements}
+    
+    except Exception as e:
+        logger.error(f"Requirements error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load requirements"
+        )
+
+
 @router.get("/documents")
 async def get_documents(request: Request):
     """Get client documents."""
