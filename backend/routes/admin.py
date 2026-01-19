@@ -222,3 +222,91 @@ async def resend_password_setup(request: Request, client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to resend password setup link"
         )
+
+@router.get("/messages")
+async def get_message_logs(request: Request, skip: int = 0, limit: int = 100, client_id: str = None):
+    """Get email message logs (admin only)."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        query = {}
+        if client_id:
+            query["client_id"] = client_id
+        
+        messages = await db.message_logs.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+        total = await db.message_logs.count_documents(query)
+        
+        return {
+            "messages": messages,
+            "total": total,
+            "skip": skip,
+            "limit": limit
+        }
+    
+    except Exception as e:
+        logger.error(f"Get message logs error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load message logs"
+        )
+
+@router.post("/send-manual-email")
+async def send_manual_email(
+    request: Request,
+    client_id: str,
+    subject: str,
+    message: str
+):
+    """Send manual email to client (admin only)."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Get client
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        # Send email using email service
+        from services.email_service import email_service
+        from models import EmailTemplateAlias
+        
+        await email_service.send_email(
+            recipient=client["email"],
+            template_alias=EmailTemplateAlias.ADMIN_MANUAL,
+            template_model={
+                "client_name": client["full_name"],
+                "message": message,
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance"
+            },
+            client_id=client_id,
+            subject=subject
+        )
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=client_id,
+            metadata={
+                "action": "manual_email_sent",
+                "subject": subject,
+                "admin_email": user["email"]
+            }
+        )
+        
+        return {"message": "Email sent successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send manual email error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send email"
+        )
