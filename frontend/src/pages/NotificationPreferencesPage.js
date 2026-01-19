@@ -13,12 +13,18 @@ import {
   Save,
   Loader2,
   CheckCircle,
-  Info
+  Info,
+  Smartphone,
+  Phone
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/switch';
+import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 import api from '../api/client';
+
+// Feature flag for SMS (can be controlled from environment or API in production)
+const SMS_FEATURE_ENABLED = true;
 
 const NotificationPreferencesPage = () => {
   const navigate = useNavigate();
@@ -33,7 +39,12 @@ const NotificationPreferencesPage = () => {
     reminder_days_before: 30,
     quiet_hours_enabled: false,
     quiet_hours_start: '22:00',
-    quiet_hours_end: '08:00'
+    quiet_hours_end: '08:00',
+    // SMS preferences
+    sms_enabled: false,
+    sms_phone_number: '',
+    sms_phone_verified: false,
+    sms_urgent_alerts_only: true
   });
   const [hasChanges, setHasChanges] = useState(false);
   const [originalPreferences, setOriginalPreferences] = useState(null);
