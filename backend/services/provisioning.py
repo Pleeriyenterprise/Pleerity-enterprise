@@ -220,13 +220,13 @@ class ProvisioningService:
             logger.warning(f"Property {property_id} not found for requirement generation")
             return
         
-        property_type = property_doc.get("property_type", "residential").upper()
+        property_type = (property_doc.get("property_type") or "residential").upper()
         is_hmo = property_doc.get("is_hmo", False)
         hmo_license_required = property_doc.get("hmo_license_required", False)
         has_gas_supply = property_doc.get("has_gas_supply", True)
         building_age_years = property_doc.get("building_age_years")
         has_communal_areas = property_doc.get("has_communal_areas", False)
-        local_authority = property_doc.get("local_authority", "").upper()
+        local_authority = (property_doc.get("local_authority") or "").upper()
         
         # Try to get rules from database first
         db_rules = await db.requirement_rules.find(
