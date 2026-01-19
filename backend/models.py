@@ -69,6 +69,21 @@ class RequirementStatus(str, Enum):
     OVERDUE = "OVERDUE"
     EXPIRING_SOON = "EXPIRING_SOON"
 
+class RuleCategory(str, Enum):
+    SAFETY = "SAFETY"
+    ELECTRICAL = "ELECTRICAL"
+    ENERGY = "ENERGY"
+    FIRE = "FIRE"
+    HEALTH = "HEALTH"
+    REGULATORY = "REGULATORY"
+    OTHER = "OTHER"
+
+class PropertyTypeApplicability(str, Enum):
+    ALL = "ALL"
+    RESIDENTIAL = "RESIDENTIAL"
+    COMMERCIAL = "COMMERCIAL"
+    HMO = "HMO"
+
 class AuditAction(str, Enum):
     # Intake
     INTAKE_SUBMITTED = "INTAKE_SUBMITTED"
