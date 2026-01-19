@@ -1477,6 +1477,398 @@ const EmailTemplates = () => {
   );
 };
 
+// Statistics Dashboard - Executive View
+const StatisticsDashboard = () => {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [chartsExpanded, setChartsExpanded] = useState(false);
+
+  useEffect(() => {
+    fetchStatistics();
+  }, []);
+
+  const fetchStatistics = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/admin/statistics');
+      setStats(response.data);
+    } catch (error) {
+      toast.error('Failed to load statistics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-600">Unable to load statistics</p>
+      </div>
+    );
+  }
+
+  // Calculate primary metrics
+  const totalProperties = stats.properties?.total || 0;
+  const compliantCount = stats.properties?.by_compliance_status?.GREEN || 0;
+  const attentionCount = stats.properties?.by_compliance_status?.AMBER || 0;
+  const actionCount = stats.properties?.by_compliance_status?.RED || 0;
+  const expiring30Days = stats.requirements?.expiring_next_30_days || 0;
+  const overdueCount = stats.requirements?.overdue || 0;
+  const complianceRate = stats.requirements?.compliance_rate_percent || 0;
+
+  // Calculate chart data
+  const requirementsByType = stats.requirements?.by_type || {};
+  const requirementLabels = Object.keys(requirementsByType);
+  const requirementValues = Object.values(requirementsByType);
+  const totalReqs = requirementValues.reduce((a, b) => a + b, 0);
+
+  // Sort requirements by count for donut display
+  const sortedRequirements = Object.entries(requirementsByType)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 6);
+
+  // Colors for donut chart
+  const donutColors = [
+    '#0B1D3A', // midnight-blue
+    '#00B8A9', // electric-teal
+    '#3B82F6', // blue
+    '#8B5CF6', // purple
+    '#F59E0B', // amber
+    '#6B7280', // gray
+  ];
+
+  return (
+    <div className="space-y-6" data-testid="statistics-dashboard">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-midnight-blue">Compliance Statistics</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Last updated: {new Date(stats.generated_at).toLocaleString()}
+          </p>
+        </div>
+        <button
+          onClick={fetchStatistics}
+          className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          data-testid="refresh-statistics-btn"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </button>
+      </div>
+
+      {/* Primary Layer - Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Total Properties */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="stat-card-total-properties">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-3xl font-bold text-midnight-blue">{totalProperties}</p>
+              <p className="text-sm font-medium text-gray-600 mt-1">Total Properties</p>
+              <p className="text-xs text-gray-400 mt-1">Across all clients</p>
+            </div>
+            <Building2 className="w-8 h-8 text-gray-300" />
+          </div>
+        </div>
+
+        {/* Compliant - GREEN */}
+        <div className="bg-white rounded-xl border-2 border-green-200 p-5" data-testid="stat-card-compliant">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-3xl font-bold text-green-600">{compliantCount}</p>
+              <p className="text-sm font-medium text-green-700 mt-1">Compliant</p>
+              <p className="text-xs text-gray-400 mt-1">All requirements met</p>
+            </div>
+            <CheckCircle className="w-8 h-8 text-green-400" />
+          </div>
+        </div>
+
+        {/* Attention Needed - AMBER */}
+        <div className="bg-white rounded-xl border-2 border-amber-200 p-5" data-testid="stat-card-attention">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-3xl font-bold text-amber-600">{attentionCount}</p>
+              <p className="text-sm font-medium text-amber-700 mt-1">Attention Needed</p>
+              <p className="text-xs text-gray-400 mt-1">Expiring soon</p>
+            </div>
+            <AlertCircle className="w-8 h-8 text-amber-400" />
+          </div>
+        </div>
+
+        {/* Action Required - RED */}
+        <div className="bg-white rounded-xl border-2 border-red-200 p-5" data-testid="stat-card-action-required">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-3xl font-bold text-red-600">{actionCount}</p>
+              <p className="text-sm font-medium text-red-700 mt-1">Action Required</p>
+              <p className="text-xs text-gray-400 mt-1">Non-compliant</p>
+            </div>
+            <XCircle className="w-8 h-8 text-red-400" />
+          </div>
+        </div>
+
+        {/* Upcoming Expiries */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="stat-card-expiring">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-3xl font-bold text-midnight-blue">{expiring30Days}</p>
+              <p className="text-sm font-medium text-gray-600 mt-1">Expiring Soon</p>
+              <p className="text-xs text-gray-400 mt-1">Next 30 days</p>
+            </div>
+            <Calendar className="w-8 h-8 text-gray-300" />
+          </div>
+        </div>
+      </div>
+
+      {/* Action-Oriented Widgets - Higher priority than charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Urgent Actions */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="urgent-actions-widget">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-midnight-blue">Urgent Actions</h3>
+              <p className="text-xs text-gray-500">Overdue and due soon</p>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            {overdueCount > 0 && (
+              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-red-800">Overdue Requirements</span>
+                </div>
+                <span className="text-lg font-bold text-red-600">{overdueCount}</span>
+              </div>
+            )}
+            
+            {expiring30Days > 0 && (
+              <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-amber-800">Due in 30 days</span>
+                </div>
+                <span className="text-lg font-bold text-amber-600">{expiring30Days}</span>
+              </div>
+            )}
+
+            {stats.requirements?.expiring_next_60_days > expiring30Days && (
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="text-sm font-medium text-gray-700">Due in 31-60 days</span>
+                </div>
+                <span className="text-lg font-bold text-gray-600">
+                  {(stats.requirements?.expiring_next_60_days || 0) - expiring30Days}
+                </span>
+              </div>
+            )}
+
+            {overdueCount === 0 && expiring30Days === 0 && (
+              <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium text-green-800">No urgent actions required</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* System Summary */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="system-summary-widget">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-teal-100 rounded-lg">
+              <BarChart3 className="w-5 h-5 text-electric-teal" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-midnight-blue">System Summary</h3>
+              <p className="text-xs text-gray-500">Current portfolio status</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Total Clients</span>
+              <span className="font-semibold text-midnight-blue">{stats.clients?.total || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Active Subscriptions</span>
+              <span className="font-semibold text-green-600">{stats.clients?.by_subscription_status?.ACTIVE || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Total Requirements</span>
+              <span className="font-semibold text-midnight-blue">{stats.requirements?.total || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Documents Uploaded</span>
+              <span className="font-semibold text-midnight-blue">{stats.documents?.total || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-teal-50 rounded-lg border border-teal-100">
+              <span className="text-sm font-medium text-teal-700">Overall Compliance Rate</span>
+              <span className="font-bold text-electric-teal">{complianceRate}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Secondary Layer - Collapsible Charts */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => setChartsExpanded(!chartsExpanded)}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          data-testid="toggle-charts-btn"
+        >
+          <div className="flex items-center gap-3">
+            <PieChart className="w-5 h-5 text-gray-400" />
+            <span className="font-medium text-midnight-blue">Detailed Analytics</span>
+          </div>
+          {chartsExpanded ? (
+            <ChevronUp className="w-5 h-5 text-gray-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-400" />
+          )}
+        </button>
+
+        {chartsExpanded && (
+          <div className="p-6 pt-0 border-t border-gray-100">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
+              {/* Requirements Breakdown - Donut Style */}
+              <div data-testid="requirements-breakdown-chart">
+                <h4 className="text-sm font-semibold text-midnight-blue mb-4">Requirements by Certificate Type</h4>
+                {sortedRequirements.length > 0 ? (
+                  <div className="flex items-start gap-6">
+                    {/* Simple visual donut representation */}
+                    <div className="relative w-32 h-32 flex-shrink-0">
+                      <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+                        {(() => {
+                          let cumulativePercent = 0;
+                          return sortedRequirements.map(([type, count], idx) => {
+                            const percent = (count / totalReqs) * 100;
+                            const dashArray = `${percent} ${100 - percent}`;
+                            const dashOffset = -cumulativePercent;
+                            cumulativePercent += percent;
+                            return (
+                              <circle
+                                key={type}
+                                cx="50"
+                                cy="50"
+                                r="40"
+                                fill="transparent"
+                                stroke={donutColors[idx] || '#E5E7EB'}
+                                strokeWidth="20"
+                                strokeDasharray={dashArray}
+                                strokeDashoffset={dashOffset}
+                                style={{ transition: 'stroke-dasharray 0.3s ease' }}
+                              />
+                            );
+                          });
+                        })()}
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-lg font-bold text-midnight-blue">{totalReqs}</span>
+                      </div>
+                    </div>
+                    {/* Legend */}
+                    <div className="flex-1 space-y-2">
+                      {sortedRequirements.map(([type, count], idx) => (
+                        <div key={type} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: donutColors[idx] || '#E5E7EB' }}
+                            />
+                            <span className="text-gray-600 capitalize">
+                              {type.replace(/_/g, ' ').toLowerCase()}
+                            </span>
+                          </div>
+                          <span className="font-medium text-midnight-blue">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No requirements data available</p>
+                )}
+              </div>
+
+              {/* Compliance Trend - Simplified Bar Representation */}
+              <div data-testid="compliance-trend-chart">
+                <h4 className="text-sm font-semibold text-midnight-blue mb-4">Requirement Status Distribution</h4>
+                {stats.requirements?.by_status && Object.keys(stats.requirements.by_status).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(stats.requirements.by_status)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([status, count]) => {
+                        const percent = totalReqs > 0 ? Math.round((count / totalReqs) * 100) : 0;
+                        let barColor = 'bg-gray-400';
+                        if (status === 'COMPLIANT') barColor = 'bg-green-500';
+                        else if (status === 'EXPIRING_SOON') barColor = 'bg-amber-500';
+                        else if (status === 'OVERDUE' || status === 'EXPIRED') barColor = 'bg-red-500';
+                        else if (status === 'PENDING') barColor = 'bg-blue-500';
+                        
+                        return (
+                          <div key={status}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm text-gray-600 capitalize">
+                                {status.replace(/_/g, ' ').toLowerCase()}
+                              </span>
+                              <span className="text-sm font-medium text-midnight-blue">
+                                {count} ({percent}%)
+                              </span>
+                            </div>
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full ${barColor} rounded-full transition-all duration-300`}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No status data available</p>
+                )}
+              </div>
+            </div>
+
+            {/* Email & Document Stats - Tertiary Info */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pt-6 border-t border-gray-100">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-midnight-blue">{stats.emails?.sent || 0}</p>
+                <p className="text-xs text-gray-500">Emails Sent</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-midnight-blue">{stats.emails?.delivery_rate || 0}%</p>
+                <p className="text-xs text-gray-500">Delivery Rate</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-midnight-blue">{stats.documents?.ai_analyzed || 0}</p>
+                <p className="text-xs text-gray-500">AI Analyzed</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-midnight-blue">{stats.rules?.active || 0}</p>
+                <p className="text-xs text-gray-500">Active Rules</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Dashboard Overview
 const DashboardOverview = () => {
   const [stats, setStats] = useState(null);
