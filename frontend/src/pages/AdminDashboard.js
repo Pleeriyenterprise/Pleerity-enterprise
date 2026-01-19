@@ -1980,6 +1980,7 @@ const AdminDashboard = () => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'statistics', label: 'Statistics', icon: BarChart3 },
     { id: 'jobs', label: 'Jobs', icon: Clock },
     { id: 'clients', label: 'Clients', icon: Users },
     { id: 'rules', label: 'Rules', icon: BookOpen },
