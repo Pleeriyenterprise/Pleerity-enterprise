@@ -87,7 +87,7 @@ class JobScheduler:
                     due_date = datetime.fromisoformat(req["due_date"]) if isinstance(req["due_date"], str) else req["due_date"]
                     days_until_due = (due_date - datetime.now(timezone.utc)).days
                     
-                    if 0 <= days_until_due <= 30:
+                    if 0 <= days_until_due <= reminder_days:
                         expiring_requirements.append({
                             "type": req["description"],
                             "due_date": due_date.strftime("%d %B %Y"),
