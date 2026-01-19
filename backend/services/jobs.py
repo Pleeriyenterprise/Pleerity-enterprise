@@ -149,6 +149,19 @@ class JobScheduler:
             digest_count = 0
             
             for client in clients:
+                # Check notification preferences
+                prefs = await self.db.notification_preferences.find_one(
+                    {"client_id": client["client_id"]},
+                    {"_id": 0}
+                )
+                
+                # Default to enabled if no preferences set
+                monthly_digest_enabled = prefs.get("monthly_digest", True) if prefs else True
+                
+                if not monthly_digest_enabled:
+                    logger.info(f"Skipping monthly digest for {client['email']} - disabled in preferences")
+                    continue
+                
                 # Calculate digest period (last 30 days)
                 period_end = datetime.now(timezone.utc)
                 period_start = period_end - timedelta(days=30)
