@@ -113,6 +113,14 @@ const ClientDashboard = () => {
               <FileText className="w-4 h-4 mr-2" />
               Documents
             </button>
+            <button 
+              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
+              onClick={() => navigate('/app/profile')}
+              data-testid="nav-profile"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Profile
+            </button>
           </div>
         </div>
       </nav>
