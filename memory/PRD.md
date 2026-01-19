@@ -100,8 +100,9 @@
   - [x] Frontend UI with grid view, edit modal, live preview
   - [x] Template preview with sample data rendering
 
-### Upcoming (P1)
+### Upcoming (P2)
 - [ ] **System-wide compliance statistics** - Aggregate reporting dashboard
+- [ ] **Onboarding progress dashboard** - Visual flow for new clients
 
 ### Upcoming (P2)
 - [ ] **Document AI Verification:** AI-assisted metadata extraction (dates/identifiers)
