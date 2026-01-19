@@ -145,7 +145,7 @@ async def create_checkout(request: Request, client_id: str):
 
 @router.get("/onboarding-status/{client_id}")
 async def get_onboarding_status(client_id: str):
-    """Get client onboarding status."""
+    """Get detailed client onboarding status with step-by-step progress."""
     db = database.get_db()
     
     try:
@@ -156,11 +156,104 @@ async def get_onboarding_status(client_id: str):
                 detail="Client not found"
             )
         
+        # Get portal user if exists
+        portal_user = await db.portal_users.find_one(
+            {"client_id": client_id},
+            {"_id": 0}
+        )
+        
+        # Get properties count
+        properties_count = await db.properties.count_documents({"client_id": client_id})
+        
+        # Get requirements count
+        requirements_count = await db.requirements.count_documents(
+            {"property_id": {"$in": [p["property_id"] async for p in db.properties.find({"client_id": client_id}, {"property_id": 1})]}}
+        ) if properties_count > 0 else 0
+        
+        # Determine step statuses
+        onboarding_status = client.get("onboarding_status", "INTAKE_PENDING")
+        subscription_status = client.get("subscription_status", "PENDING")
+        
+        # Step 1: Intake - Always complete if we have a client record
+        intake_complete = True
+        
+        # Step 2: Payment
+        payment_complete = subscription_status in ["ACTIVE", "PAID"]
+        payment_pending = subscription_status == "PENDING"
+        
+        # Step 3: Provisioning
+        provisioning_complete = onboarding_status == "PROVISIONED"
+        provisioning_in_progress = onboarding_status == "PROVISIONING"
+        provisioning_failed = onboarding_status == "FAILED"
+        
+        # Step 4: Account Setup (password set)
+        account_setup_complete = portal_user and portal_user.get("password_status") == "SET"
+        account_invited = portal_user and portal_user.get("status") == "INVITED"
+        
+        # Step 5: Ready to use
+        ready_to_use = provisioning_complete and account_setup_complete
+        
+        # Build steps array
+        steps = [
+            {
+                "step": 1,
+                "name": "Intake Form",
+                "description": "Submit your details and property information",
+                "status": "complete" if intake_complete else "pending",
+                "icon": "clipboard-check"
+            },
+            {
+                "step": 2,
+                "name": "Payment",
+                "description": "Complete subscription payment",
+                "status": "complete" if payment_complete else ("pending" if payment_pending else "waiting"),
+                "icon": "credit-card"
+            },
+            {
+                "step": 3,
+                "name": "Portal Setup",
+                "description": "Your compliance portal is being configured",
+                "status": "complete" if provisioning_complete else ("in_progress" if provisioning_in_progress else ("failed" if provisioning_failed else "waiting")),
+                "icon": "settings"
+            },
+            {
+                "step": 4,
+                "name": "Account Activation",
+                "description": "Set your password to access the portal",
+                "status": "complete" if account_setup_complete else ("pending" if account_invited else "waiting"),
+                "icon": "key"
+            },
+            {
+                "step": 5,
+                "name": "Ready to Use",
+                "description": "Your compliance dashboard is ready",
+                "status": "complete" if ready_to_use else "waiting",
+                "icon": "check-circle"
+            }
+        ]
+        
+        # Calculate overall progress percentage
+        complete_steps = sum(1 for s in steps if s["status"] == "complete")
+        progress_percent = int((complete_steps / len(steps)) * 100)
+        
+        # Current step (first non-complete step)
+        current_step = next((s["step"] for s in steps if s["status"] != "complete"), 5)
+        
         return {
             "client_id": client["client_id"],
-            "onboarding_status": client["onboarding_status"],
-            "subscription_status": client["subscription_status"],
-            "email": client["email"]
+            "client_name": client.get("full_name"),
+            "email": client["email"],
+            "onboarding_status": onboarding_status,
+            "subscription_status": subscription_status,
+            "steps": steps,
+            "current_step": current_step,
+            "progress_percent": progress_percent,
+            "is_complete": ready_to_use,
+            "properties_count": properties_count,
+            "requirements_count": requirements_count,
+            "can_login": ready_to_use,
+            "portal_url": "/app/dashboard" if ready_to_use else None,
+            "next_action": _get_next_action(steps, current_step)
         }
     
     except HTTPException:
@@ -171,3 +264,19 @@ async def get_onboarding_status(client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get onboarding status"
         )
+
+def _get_next_action(steps, current_step):
+    """Get the next action the client needs to take."""
+    step = next((s for s in steps if s["step"] == current_step), None)
+    if not step:
+        return None
+    
+    actions = {
+        1: {"action": "complete_intake", "message": "Complete the intake form to get started"},
+        2: {"action": "complete_payment", "message": "Complete payment to activate your subscription"},
+        3: {"action": "wait_provisioning", "message": "Please wait while we set up your portal"},
+        4: {"action": "set_password", "message": "Check your email and set your password"},
+        5: {"action": "login", "message": "Your portal is ready! Log in to get started"}
+    }
+    
+    return actions.get(current_step)
