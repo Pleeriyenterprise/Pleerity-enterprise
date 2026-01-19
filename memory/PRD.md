@@ -176,6 +176,20 @@
   - [x] Phone number input with verification placeholder
   - [x] "Urgent Alerts Only" toggle
   - [x] Feature flag SMS_FEATURE_ENABLED in frontend
+- [x] **SMS Integration with Twilio:**
+  - [x] SMS Service (`sms_service.py`) with Twilio client
+  - [x] Send OTP endpoint `/api/sms/send-otp` (dev mode with code 123456)
+  - [x] Verify OTP endpoint `/api/sms/verify-otp`
+  - [x] Compliance alert SMS sending method
+  - [x] SMS logging to `sms_logs` collection
+  - [x] Phone verification flow in frontend with OTP input
+- [x] **Compliance Score Feature:**
+  - [x] Score calculation service (`compliance_score.py`)
+  - [x] 0-100 score based on: Status (40%), Expiry Timeline (30%), Documents (15%), Overdue Penalty (15%)
+  - [x] Grade system (A-F) with color coding
+  - [x] Actionable recommendations with potential impact
+  - [x] API endpoint `/api/client/compliance-score`
+  - [x] Prominent dashboard widget showing score, grade, breakdown, and quick actions
 
 ### Upcoming (P2)
 - [ ] **Onboarding progress dashboard** - Visual flow for new clients
