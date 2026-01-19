@@ -23,7 +23,13 @@ import {
   Calendar,
   Building2,
   Shield,
-  Activity
+  Activity,
+  BookOpen,
+  Plus,
+  Edit,
+  Trash2,
+  Save,
+  X
 } from 'lucide-react';
 
 // Tab Components
