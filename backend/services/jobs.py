@@ -254,6 +254,7 @@ class JobScheduler:
         2. Compares with stored previous status
         3. Sends email alerts when status degrades (GREEN→AMBER, AMBER→RED, GREEN→RED)
         4. Updates the stored status
+        5. Respects user notification preferences
         """
         logger.info("Running compliance status change check...")
         
@@ -269,6 +270,19 @@ class JobScheduler:
             alert_count = 0
             
             for client in clients:
+                # Check notification preferences
+                prefs = await self.db.notification_preferences.find_one(
+                    {"client_id": client["client_id"]},
+                    {"_id": 0}
+                )
+                
+                # Default to enabled if no preferences set
+                status_alerts_enabled = prefs.get("status_change_alerts", True) if prefs else True
+                
+                if not status_alerts_enabled:
+                    logger.info(f"Skipping compliance alerts for {client['email']} - disabled in preferences")
+                    continue
+                
                 # Get all properties for this client
                 properties = await self.db.properties.find(
                     {"client_id": client["client_id"]},
