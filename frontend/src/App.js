@@ -36,6 +36,8 @@ function App() {
             <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/intake/start" element={<IntakePage />} />
             <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
+            <Route path="/checkout/success" element={<CheckoutSuccessRedirect />} />
+            <Route path="/checkout/cancel" element={<Navigate to="/intake/start" replace />} />
 
             {/* Client Routes - Protected */}
             <Route 
