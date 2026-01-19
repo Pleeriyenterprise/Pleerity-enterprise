@@ -56,6 +56,7 @@ app.include_router(client.router)
 app.include_router(admin.router)
 app.include_router(documents.router)
 app.include_router(assistant.router)
+app.include_router(profile.router)
 
 # Root endpoint
 @app.get("/api")
