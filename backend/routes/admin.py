@@ -141,6 +141,21 @@ async def resend_password_setup(request: Request, client_id: str):
     db = database.get_db()
     
     try:
+        # Rate limiting
+        from utils.rate_limiter import rate_limiter
+        
+        allowed, error_msg = await rate_limiter.check_rate_limit(
+            key=f"password_resend_{client_id}",
+            max_attempts=3,
+            window_minutes=60
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=error_msg
+            )
+        
         from services.provisioning import provisioning_service
         from auth import generate_secure_token, hash_token
         from datetime import datetime, timedelta, timezone
