@@ -86,6 +86,44 @@ PLAN_DETAILS = {
 # Cache for councils data
 _councils_cache = None
 
+# District to Council mapping (common mappings)
+DISTRICT_TO_COUNCIL = {
+    # London Boroughs
+    "Westminster": "Westminster",
+    "Camden": "Camden",
+    "Islington": "Islington",
+    "Hackney": "Hackney",
+    "Tower Hamlets": "Tower Hamlets",
+    "Greenwich": "Greenwich",
+    "Lewisham": "Lewisham",
+    "Southwark": "Southwark",
+    "Lambeth": "Lambeth",
+    "Wandsworth": "Wandsworth",
+    "Hammersmith and Fulham": "Hammersmith and Fulham",
+    "Kensington and Chelsea": "Kensington and Chelsea",
+    "City of London": "City of London",
+    "Barking and Dagenham": "Barking and Dagenham",
+    "Barnet": "Barnet",
+    "Bexley": "Bexley",
+    "Brent": "Brent",
+    "Bromley": "Bromley",
+    "Croydon": "Croydon",
+    "Ealing": "Ealing",
+    "Enfield": "Enfield",
+    "Haringey": "Haringey",
+    "Harrow": "Harrow",
+    "Havering": "Havering",
+    "Hillingdon": "Hillingdon",
+    "Hounslow": "Hounslow",
+    "Kingston upon Thames": "Kingston upon Thames",
+    "Merton": "Merton",
+    "Newham": "Newham",
+    "Redbridge": "Redbridge",
+    "Richmond upon Thames": "Richmond upon Thames",
+    "Sutton": "Sutton",
+    "Waltham Forest": "Waltham Forest",
+}
+
 
 def _load_councils():
     """Load and cache UK councils data."""
