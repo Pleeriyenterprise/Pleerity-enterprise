@@ -57,6 +57,7 @@ import IntegrationsPage from './pages/IntegrationsPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
+import AdminAssistantPage from './pages/AdminAssistantPage';
 
 function App() {
   return (
