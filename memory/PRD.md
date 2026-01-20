@@ -110,6 +110,26 @@
   - Payment breakdown (monthly + setup fee)
   - Stripe Checkout integration
 
+### Phase 8: Admin Management & Standards (January 2026) ✅
+- [x] **Admin Management UI**
+  - Dedicated "Admins" page in Admin Dashboard
+  - Stats cards for Total/Active/Pending admin counts
+  - Admin list with status, last login, actions
+  - Invite Admin modal with email + full name
+  - Deactivate/Reactivate admin actions
+  - Resend invitation for pending admins
+
+- [x] **Council Name Normalization**
+  - All council names stored in full official format (audit-ready)
+  - "Bristol" → "Bristol City Council"
+  - "Camden" → "London Borough of Camden"
+  - Applied to all surfaces: intake, properties, reports
+
+- [x] **Brand Colour Standards**
+  - Electric Teal (#00B8A9) for affirmative/primary actions
+  - Midnight Blue (#0B1D3A) for headings/text
+  - Red reserved for errors/risk indicators only
+
 - [x] **Postcode Address Lookup**
   - Uses postcodes.io free API (no authentication required)
   - Auto-fills city/town from postcode
