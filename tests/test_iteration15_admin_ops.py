@@ -482,12 +482,17 @@ class TestAdminMessaging:
                 "send_copy_to_admin": False
             }
         )
-        # Should succeed or fail gracefully (email service may not be configured)
+        # Should succeed or fail gracefully 
+        # 200 = success, 500 = email service error (e.g., inactive recipient in Postmark)
         assert response.status_code in [200, 500]
         
         if response.status_code == 200:
             data = response.json()
             assert "success" in data or "message_id" in data
+        else:
+            # 500 is acceptable if email service rejects (e.g., inactive recipient)
+            data = response.json()
+            assert "detail" in data
     
     def test_send_message_requires_subject(self, auth_headers, test_client_id):
         """Test that message requires subject field."""
