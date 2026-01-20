@@ -155,6 +155,7 @@
 ### Intake Wizard
 - `GET /api/intake/plans` - Get available billing plans with limits and pricing
 - `GET /api/intake/councils` - Search UK councils (q, nation, page, limit)
+- `GET /api/intake/postcode-lookup/{postcode}` - Lookup postcode for city/council auto-fill
 - `POST /api/intake/submit` - Submit completed intake wizard
 - `POST /api/intake/checkout` - Create Stripe checkout session
 - `POST /api/intake/upload-document` - Upload document during intake
