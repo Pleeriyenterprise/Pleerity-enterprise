@@ -173,8 +173,15 @@
 ### Authentication
 - `POST /api/auth/login` - User login (works for all roles)
 - `POST /api/auth/admin/login` - Admin-specific login (fully independent)
-- `POST /api/auth/set-password` - Set password via token
+- `POST /api/auth/set-password` - Set password via token (handles both client and admin invites)
 - `POST /api/auth/log-route-guard-block` - Log unauthorized admin route access attempts
+
+### Admin User Management
+- `GET /api/admin/admins` - List all admin users
+- `POST /api/admin/admins/invite` - Invite new admin via email
+- `DELETE /api/admin/admins/{id}` - Deactivate an admin
+- `POST /api/admin/admins/{id}/reactivate` - Reactivate disabled admin
+- `POST /api/admin/admins/{id}/resend-invite` - Resend invitation email
 
 ### Webhooks
 - `GET /api/webhooks` - List webhooks
