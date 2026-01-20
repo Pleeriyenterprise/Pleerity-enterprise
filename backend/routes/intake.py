@@ -661,7 +661,8 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 is_hmo=prop_data.is_hmo,
                 hmo_license_required=hmo_license_required,
                 has_gas_supply=True,  # Default, can be updated later
-                local_authority=prop_data.council_name,
+                # Normalize council name to full official format for audit-readiness
+                local_authority=normalize_council_name(prop_data.council_name, prop_data.council_code) if prop_data.council_name else None,
                 local_authority_code=prop_data.council_code,
                 licence_required=prop_data.licence_required,
                 licence_type=prop_data.licence_type,
