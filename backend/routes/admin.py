@@ -7,6 +7,7 @@ from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
 import logging
 import uuid
+import json
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
