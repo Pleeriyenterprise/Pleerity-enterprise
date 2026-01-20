@@ -488,6 +488,143 @@ async def run_compliance_check():
     await scheduler.close()
     return count
 
+
+async def run_scheduled_reports():
+    """Run scheduled report generation and email delivery."""
+    scheduler = JobScheduler()
+    await scheduler.connect()
+    count = await scheduler.send_scheduled_reports()
+    await scheduler.close()
+    return count
+
+
+class ScheduledReportJob:
+    """Handles scheduled report generation and email delivery."""
+    
+    def __init__(self, db):
+        self.db = db
+    
+    async def process_scheduled_reports(self):
+        """Process all due scheduled reports and send them via email."""
+        from services.email_service import email_service
+        from services.reporting_service import reporting_service
+        from models import EmailTemplateAlias
+        
+        logger.info("Processing scheduled reports...")
+        
+        now = datetime.now(timezone.utc)
+        reports_sent = 0
+        
+        try:
+            # Find all active schedules that are due
+            schedules = await self.db.report_schedules.find(
+                {
+                    "is_active": True,
+                    "$or": [
+                        {"next_scheduled": {"$lte": now.isoformat()}},
+                        {"next_scheduled": None}
+                    ]
+                },
+                {"_id": 0}
+            ).to_list(100)
+            
+            for schedule in schedules:
+                try:
+                    # Get client info
+                    client = await self.db.clients.find_one(
+                        {"client_id": schedule["client_id"]},
+                        {"_id": 0}
+                    )
+                    
+                    if not client or client.get("subscription_status") != "ACTIVE":
+                        continue
+                    
+                    # Generate report
+                    report_type = schedule.get("report_type", "compliance_summary")
+                    
+                    if report_type == "compliance_summary":
+                        report_data = await reporting_service.generate_compliance_summary_report(
+                            client_id=schedule["client_id"],
+                            format="csv",
+                            include_details=schedule.get("include_details", True)
+                        )
+                    elif report_type == "requirements":
+                        report_data = await reporting_service.generate_requirements_report(
+                            client_id=schedule["client_id"],
+                            format="csv"
+                        )
+                    else:
+                        logger.warning(f"Unknown report type: {report_type}")
+                        continue
+                    
+                    # Prepare email
+                    recipients = schedule.get("recipients", [client.get("email")])
+                    frequency = schedule.get("frequency", "weekly")
+                    
+                    subject = f"Your {frequency.title()} Compliance Report - {now.strftime('%d %b %Y')}"
+                    
+                    # Send to each recipient
+                    for recipient in recipients:
+                        try:
+                            await email_service.send_email(
+                                recipient=recipient,
+                                template_alias=EmailTemplateAlias.SCHEDULED_REPORT,
+                                template_model={
+                                    "client_name": client.get("full_name", "there"),
+                                    "report_type": report_type.replace("_", " ").title(),
+                                    "frequency": frequency,
+                                    "generated_date": now.strftime("%d %B %Y"),
+                                    "report_content": report_data.get("content", "")[:2000],  # Truncate for email
+                                    "company_name": client.get("company_name", "Your Company")
+                                },
+                                client_id=schedule["client_id"],
+                                subject=subject
+                            )
+                            reports_sent += 1
+                        except Exception as e:
+                            logger.error(f"Failed to send report to {recipient}: {e}")
+                    
+                    # Calculate next scheduled time
+                    next_scheduled = self._calculate_next_schedule(frequency, now)
+                    
+                    # Update schedule record
+                    await self.db.report_schedules.update_one(
+                        {"schedule_id": schedule["schedule_id"]},
+                        {"$set": {
+                            "last_sent": now.isoformat(),
+                            "next_scheduled": next_scheduled.isoformat()
+                        }}
+                    )
+                    
+                    logger.info(f"Sent {report_type} report for client {schedule['client_id']}")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing schedule {schedule.get('schedule_id')}: {e}")
+            
+            logger.info(f"Scheduled reports job complete: {reports_sent} reports sent")
+            return reports_sent
+            
+        except Exception as e:
+            logger.error(f"Scheduled reports job failed: {e}")
+            return 0
+    
+    def _calculate_next_schedule(self, frequency, from_time):
+        """Calculate the next scheduled time based on frequency."""
+        if frequency == "daily":
+            return from_time + timedelta(days=1)
+        elif frequency == "weekly":
+            return from_time + timedelta(weeks=1)
+        elif frequency == "monthly":
+            # Add roughly 30 days
+            return from_time + timedelta(days=30)
+        else:
+            return from_time + timedelta(weeks=1)
+
+
+# Add to JobScheduler class
+JobScheduler.send_scheduled_reports = lambda self: ScheduledReportJob(self.db).process_scheduled_reports()
+
+
 if __name__ == "__main__":
     import sys
     
