@@ -229,11 +229,23 @@ class JobScheduler:
         try:
             # Import here to avoid circular dependency
             from services.email_service import email_service
+            from services.webhook_service import fire_reminder_sent
             from models import EmailTemplateAlias
             
             # In production, this would use a proper reminder template
             # For now, log the reminder
             logger.info(f"Sending reminder to {client['email']}: {len(expiring)} expiring, {len(overdue)} overdue")
+            
+            # Fire webhook
+            try:
+                await fire_reminder_sent(
+                    client_id=client["client_id"],
+                    recipient=client["email"],
+                    expiring_count=len(expiring),
+                    overdue_count=len(overdue)
+                )
+            except Exception as webhook_err:
+                logger.error(f"Webhook error for reminder: {webhook_err}")
             
             # Create audit log
             audit_log = {
