@@ -2524,32 +2524,26 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             ]
         }
         
-        # Step 3: Call LLM with injected snapshot
-        import os
-        from openai import OpenAI
+        # Step 3: Call LLM with injected snapshot using emergentintegrations
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
         
         api_key = os.getenv("EMERGENT_LLM_KEY", "sk-emergent-f9533226f52E25cF35")
-        openai_client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.openai.com/v1"
-        )
         
         # Build prompt with snapshot injection
         system_prompt = ADMIN_ASSISTANT_PROMPT.format(
             snapshot=json.dumps(snapshot_data, indent=2, default=str)
         )
         
-        completion = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question}
-            ],
-            max_tokens=1000,
-            temperature=0.3  # Lower temperature for more factual responses
-        )
+        # Initialize chat with Gemini for text generation
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"admin-assistant-{user['portal_user_id']}-{crn}",
+            system_message=system_prompt
+        ).with_model("gemini", "gemini-2.5-flash")
         
-        answer = completion.choices[0].message.content
+        # Send the question
+        user_message = UserMessage(text=question)
+        answer = await chat.send_message(user_message)
         
         # Step 4: Audit log - query and answer
         await create_audit_log(
