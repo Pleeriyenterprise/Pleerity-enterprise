@@ -16,6 +16,176 @@ router = APIRouter(prefix="/api/documents", tags=["documents"])
 DOCUMENT_STORAGE_PATH = Path("/app/data/documents")
 DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
+@router.post("/bulk-upload")
+async def bulk_upload_documents(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    property_id: str = Form(...),
+):
+    """Bulk upload multiple documents for a property.
+    
+    Documents will be auto-matched to requirements based on AI analysis.
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Verify property belongs to client
+        property_doc = await db.properties.find_one(
+            {"property_id": property_id, "client_id": user["client_id"]},
+            {"_id": 0}
+        )
+        
+        if not property_doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found"
+            )
+        
+        # Get all requirements for this property
+        requirements = await db.requirements.find(
+            {"property_id": property_id, "client_id": user["client_id"]},
+            {"_id": 0}
+        ).to_list(100)
+        
+        results = []
+        
+        for file in files:
+            try:
+                # Create unique filename
+                file_extension = Path(file.filename).suffix
+                unique_filename = f"{uuid.uuid4()}{file_extension}"
+                file_path = DOCUMENT_STORAGE_PATH / user["client_id"] / unique_filename
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Save file
+                contents = await file.read()
+                with open(file_path, "wb") as f:
+                    f.write(contents)
+                
+                # Create document record (without requirement assignment initially)
+                document = Document(
+                    client_id=user["client_id"],
+                    property_id=property_id,
+                    requirement_id=None,  # Will be assigned after AI analysis
+                    file_name=file.filename,
+                    file_path=str(file_path),
+                    file_size=len(contents),
+                    mime_type=file.content_type or "application/octet-stream",
+                    status=DocumentStatus.UPLOADED,
+                    uploaded_by=user["portal_user_id"]
+                )
+                
+                doc = document.model_dump()
+                doc["uploaded_at"] = doc["uploaded_at"].isoformat()
+                
+                await db.documents.insert_one(doc)
+                
+                # Try AI analysis to auto-match requirement
+                matched_requirement = None
+                try:
+                    from services.document_analysis import document_analysis_service
+                    
+                    analysis_result = await document_analysis_service.analyze_document(
+                        file_path=str(file_path),
+                        mime_type=file.content_type or "application/pdf",
+                        document_id=document.document_id,
+                        client_id=user["client_id"],
+                        actor_id=user["portal_user_id"]
+                    )
+                    
+                    if analysis_result["success"]:
+                        doc_type = analysis_result["extracted_data"].get("document_type", "").lower()
+                        
+                        # Match to requirement based on document type
+                        type_mapping = {
+                            "gas safety": "gas_safety",
+                            "gas safe": "gas_safety",
+                            "cp12": "gas_safety",
+                            "eicr": "eicr",
+                            "electrical": "eicr",
+                            "epc": "epc",
+                            "energy performance": "epc",
+                            "fire": "fire_alarm",
+                            "legionella": "legionella",
+                            "hmo": "hmo_license",
+                            "pat": "pat_testing"
+                        }
+                        
+                        for key, req_type in type_mapping.items():
+                            if key in doc_type:
+                                # Find matching requirement
+                                for req in requirements:
+                                    if req["requirement_type"] == req_type:
+                                        matched_requirement = req["requirement_id"]
+                                        
+                                        # Update document with requirement
+                                        await db.documents.update_one(
+                                            {"document_id": document.document_id},
+                                            {"$set": {"requirement_id": matched_requirement}}
+                                        )
+                                        
+                                        # Update requirement due date
+                                        await regenerate_requirement_due_date(
+                                            matched_requirement, 
+                                            user["client_id"]
+                                        )
+                                        break
+                                break
+                except Exception as e:
+                    logger.warning(f"AI analysis failed for {file.filename}: {e}")
+                
+                results.append({
+                    "filename": file.filename,
+                    "document_id": document.document_id,
+                    "status": "uploaded",
+                    "matched_requirement": matched_requirement,
+                    "ai_analyzed": matched_requirement is not None
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to upload {file.filename}: {e}")
+                results.append({
+                    "filename": file.filename,
+                    "status": "failed",
+                    "error": str(e)
+                })
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.DOCUMENT_UPLOADED,
+            actor_id=user["portal_user_id"],
+            client_id=user["client_id"],
+            resource_type="documents_bulk",
+            metadata={
+                "property_id": property_id,
+                "files_count": len(files),
+                "successful": sum(1 for r in results if r["status"] == "uploaded"),
+                "auto_matched": sum(1 for r in results if r.get("matched_requirement"))
+            }
+        )
+        
+        return {
+            "message": f"Processed {len(files)} files",
+            "results": results,
+            "summary": {
+                "total": len(files),
+                "successful": sum(1 for r in results if r["status"] == "uploaded"),
+                "failed": sum(1 for r in results if r["status"] == "failed"),
+                "auto_matched": sum(1 for r in results if r.get("matched_requirement"))
+            }
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk upload error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process bulk upload"
+        )
+
+
 @router.post("/upload")
 async def upload_document(
     request: Request,
