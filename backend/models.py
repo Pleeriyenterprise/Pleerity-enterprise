@@ -41,6 +41,7 @@ class UserRole(str, Enum):
     ROLE_CLIENT = "ROLE_CLIENT"
     ROLE_CLIENT_ADMIN = "ROLE_CLIENT_ADMIN"
     ROLE_ADMIN = "ROLE_ADMIN"
+    ROLE_TENANT = "ROLE_TENANT"  # Read-only access to property compliance status
 
 class UserStatus(str, Enum):
     INVITED = "INVITED"
