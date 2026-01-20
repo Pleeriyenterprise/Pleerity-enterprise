@@ -377,11 +377,31 @@ const ClientDashboard = () => {
           <div className="lg:col-span-2">
             <Card className="enterprise-card h-full">
               <CardHeader>
-                <CardTitle className="text-midnight-blue">Your Properties</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-midnight-blue">Your Properties</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/app/properties/import')}
+                    data-testid="bulk-import-btn"
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Bulk Import
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {data?.properties?.length === 0 ? (
-                  <p className="text-gray-600">No properties found</p>
+                  <div className="text-center py-6">
+                    <p className="text-gray-600 mb-3">No properties found</p>
+                    <Button 
+                      onClick={() => navigate('/app/properties/import')}
+                      variant="outline"
+                      data-testid="import-first-property-btn"
+                    >
+                      Import Properties from CSV
+                    </Button>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {data?.properties?.map((property) => (
