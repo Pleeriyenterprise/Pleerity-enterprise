@@ -142,52 +142,77 @@ class EmailService:
         
         return message_log
     
+    def _build_email_footer(self, model: Dict[str, Any]) -> str:
+        """Build consistent email footer with CRN and company branding."""
+        customer_ref = model.get('customer_reference', '')
+        ref_line = f"<br><strong>Your Reference:</strong> {customer_ref}" if customer_ref else ""
+        
+        return f"""
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                    <p style="color: #64748b; font-size: 13px; margin: 0;">
+                        {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
+                        {model.get('tagline', 'AI-Driven Solutions & Compliance')}{ref_line}
+                    </p>
+                </div>
+        """
+
     def _build_html_body(self, template_alias: EmailTemplateAlias, model: Dict[str, Any]) -> str:
         """Build HTML email body based on template type."""
+        footer = self._build_email_footer(model)
+        
         if template_alias == EmailTemplateAlias.PASSWORD_SETUP:
+            customer_ref = model.get('customer_reference', '')
+            ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
+            
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #1a2744;">Welcome to Compliance Vault Pro</h1>
-                <p>Hello {model.get('client_name', 'there')},</p>
-                <p>Your compliance portal account has been created. Please set your password to get started.</p>
-                <p style="margin: 30px 0;">
-                    <a href="{model.get('setup_link', '#')}" 
-                       style="background-color: #14b8a6; color: white; padding: 12px 24px; 
-                              text-decoration: none; border-radius: 6px; display: inline-block;">
-                        Set Your Password
-                    </a>
-                </p>
-                <p style="color: #666; font-size: 14px;">
-                    This link will expire in 24 hours. If you didn't request this, please ignore this email.
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                <p style="color: #999; font-size: 12px;">
-                    {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
-                    {model.get('tagline', 'AI-Driven Solutions & Compliance')}
-                </p>
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0;">Welcome to Compliance Vault Pro</h1>
+                    {ref_badge}
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('client_name', 'there')},</p>
+                    <p>Your compliance portal account has been created. Please set your password to get started.</p>
+                    <p style="margin: 30px 0;">
+                        <a href="{model.get('setup_link', '#')}" 
+                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
+                                  text-decoration: none; border-radius: 6px; display: inline-block;">
+                            Set Your Password
+                        </a>
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                        This link will expire in 24 hours. If you didn't request this, please ignore this email.
+                    </p>
+                </div>
+                {footer}
             </body>
             </html>
             """
         elif template_alias == EmailTemplateAlias.PORTAL_READY:
+            customer_ref = model.get('customer_reference', '')
+            ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
+            
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #1a2744;">Your Portal is Ready!</h1>
-                <p>Hello {model.get('client_name', 'there')},</p>
-                <p>Great news! Your Compliance Vault Pro portal is now ready to use.</p>
-                <p style="margin: 30px 0;">
-                    <a href="{model.get('portal_link', '#')}" 
-                       style="background-color: #14b8a6; color: white; padding: 12px 24px; 
-                              text-decoration: none; border-radius: 6px; display: inline-block;">
-                        Access Your Portal
-                    </a>
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                <p style="color: #999; font-size: 12px;">
-                    {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
-                    {model.get('tagline', 'AI-Driven Solutions & Compliance')}
-                </p>
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0;">Your Portal is Ready!</h1>
+                    {ref_badge}
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('client_name', 'there')},</p>
+                    <p>Great news! Your Compliance Vault Pro portal is now ready to use.</p>
+                    <p style="margin: 30px 0;">
+                        <a href="{model.get('portal_link', '#')}" 
+                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
+                                  text-decoration: none; border-radius: 6px; display: inline-block;">
+                            Access Your Portal
+                        </a>
+                    </p>
+                </div>
+                {footer}
             </body>
             </html>
             """
