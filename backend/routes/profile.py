@@ -222,6 +222,24 @@ async def update_notification_preferences(request: Request, data: NotificationPr
         if data.sms_urgent_alerts_only is not None:
             update_fields["sms_urgent_alerts_only"] = data.sms_urgent_alerts_only
         
+        # Email Digest Customization
+        if data.digest_compliance_summary is not None:
+            update_fields["digest_compliance_summary"] = data.digest_compliance_summary
+        if data.digest_action_items is not None:
+            update_fields["digest_action_items"] = data.digest_action_items
+        if data.digest_upcoming_expiries is not None:
+            update_fields["digest_upcoming_expiries"] = data.digest_upcoming_expiries
+        if data.digest_property_breakdown is not None:
+            update_fields["digest_property_breakdown"] = data.digest_property_breakdown
+        if data.digest_recent_documents is not None:
+            update_fields["digest_recent_documents"] = data.digest_recent_documents
+        if data.digest_recommendations is not None:
+            update_fields["digest_recommendations"] = data.digest_recommendations
+        if data.digest_audit_summary is not None:
+            update_fields["digest_audit_summary"] = data.digest_audit_summary
+        if data.daily_reminder_enabled is not None:
+            update_fields["daily_reminder_enabled"] = data.daily_reminder_enabled
+        
         update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
         
         # Upsert preferences
