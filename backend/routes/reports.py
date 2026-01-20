@@ -244,3 +244,204 @@ async def get_available_reports(request: Request):
         "reports": reports,
         "user_role": user.get("role")
     }
+
+
+
+# ============================================================================
+# Scheduled Reports API
+# ============================================================================
+
+class CreateScheduleRequest(BaseModel):
+    report_type: str  # compliance_summary, requirements
+    frequency: str  # daily, weekly, monthly
+    recipients: Optional[List[str]] = None
+    include_details: bool = True
+
+
+@router.post("/schedules")
+async def create_report_schedule(request: Request, data: CreateScheduleRequest):
+    """Create a scheduled report for automatic email delivery.
+    
+    Schedules:
+    - daily: Sent every day at 8 AM
+    - weekly: Sent every Monday at 8 AM
+    - monthly: Sent on the 1st of each month
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        from datetime import datetime, timezone, timedelta
+        import uuid
+        
+        # Validate report type
+        if data.report_type not in ["compliance_summary", "requirements"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid report type"
+            )
+        
+        # Validate frequency
+        if data.frequency not in ["daily", "weekly", "monthly"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid frequency. Must be: daily, weekly, or monthly"
+            )
+        
+        # Get client info for default recipient
+        client = await db.clients.find_one(
+            {"client_id": user["client_id"]},
+            {"_id": 0}
+        )
+        
+        # Default recipients to client email if not provided
+        recipients = data.recipients if data.recipients else [client.get("email", user.get("email"))]
+        
+        # Calculate next scheduled time
+        now = datetime.now(timezone.utc)
+        if data.frequency == "daily":
+            next_scheduled = now + timedelta(days=1)
+        elif data.frequency == "weekly":
+            next_scheduled = now + timedelta(weeks=1)
+        else:  # monthly
+            next_scheduled = now + timedelta(days=30)
+        
+        # Create schedule
+        schedule = {
+            "schedule_id": str(uuid.uuid4()),
+            "client_id": user["client_id"],
+            "report_type": data.report_type,
+            "frequency": data.frequency,
+            "recipients": recipients,
+            "include_details": data.include_details,
+            "is_active": True,
+            "last_sent": None,
+            "next_scheduled": next_scheduled.isoformat(),
+            "created_at": now.isoformat(),
+            "created_by": user["portal_user_id"]
+        }
+        
+        await db.report_schedules.insert_one(schedule)
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=user["client_id"],
+            resource_type="report_schedule",
+            resource_id=schedule["schedule_id"],
+            metadata={
+                "action": "schedule_created",
+                "report_type": data.report_type,
+                "frequency": data.frequency
+            }
+        )
+        
+        return {
+            "message": "Report schedule created",
+            "schedule_id": schedule["schedule_id"],
+            "next_scheduled": schedule["next_scheduled"]
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create schedule error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create schedule"
+        )
+
+
+@router.get("/schedules")
+async def list_report_schedules(request: Request):
+    """List all scheduled reports for the client."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        schedules = await db.report_schedules.find(
+            {"client_id": user["client_id"]},
+            {"_id": 0}
+        ).to_list(100)
+        
+        return {"schedules": schedules}
+    
+    except Exception as e:
+        logger.error(f"List schedules error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list schedules"
+        )
+
+
+@router.delete("/schedules/{schedule_id}")
+async def delete_report_schedule(request: Request, schedule_id: str):
+    """Delete a scheduled report."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Verify ownership
+        schedule = await db.report_schedules.find_one(
+            {"schedule_id": schedule_id, "client_id": user["client_id"]}
+        )
+        
+        if not schedule:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Schedule not found"
+            )
+        
+        await db.report_schedules.delete_one({"schedule_id": schedule_id})
+        
+        return {"message": "Schedule deleted"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete schedule error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete schedule"
+        )
+
+
+@router.patch("/schedules/{schedule_id}/toggle")
+async def toggle_report_schedule(request: Request, schedule_id: str):
+    """Toggle a scheduled report on/off."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Verify ownership
+        schedule = await db.report_schedules.find_one(
+            {"schedule_id": schedule_id, "client_id": user["client_id"]}
+        )
+        
+        if not schedule:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Schedule not found"
+            )
+        
+        new_status = not schedule.get("is_active", True)
+        
+        await db.report_schedules.update_one(
+            {"schedule_id": schedule_id},
+            {"$set": {"is_active": new_status}}
+        )
+        
+        return {
+            "message": f"Schedule {'enabled' if new_status else 'disabled'}",
+            "is_active": new_status
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Toggle schedule error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to toggle schedule"
+        )
