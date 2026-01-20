@@ -151,7 +151,7 @@
 
 | Role | Permissions |
 |------|-------------|
-| ROLE_ADMIN | Full system access, all clients, audit logs, reports |
+| ROLE_ADMIN | Full system access, all clients, audit logs, reports. **Authentication fully independent** - no client record required, not blocked by provisioning. |
 | ROLE_CLIENT_ADMIN | Full access to own client data, can invite tenants, manage webhooks |
 | ROLE_CLIENT | Access to own properties, requirements, documents |
 | ROLE_TENANT | Read-only access to assigned property compliance status |
