@@ -236,6 +236,54 @@ async def search_councils(
     }
 
 
+@router.get("/postcode-autocomplete")
+async def autocomplete_postcode(q: str):
+    """Autocomplete UK postcodes as user types.
+    
+    Uses postcodes.io free API - no API key required.
+    Returns up to 10 matching postcodes with their locations.
+    """
+    import httpx
+    
+    if not q or len(q) < 2:
+        return {"postcodes": []}
+    
+    # Clean query
+    clean_query = q.strip().upper()
+    
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                "https://api.postcodes.io/postcodes",
+                params={"q": clean_query, "limit": 10}
+            )
+            
+            if response.status_code != 200:
+                return {"postcodes": []}
+            
+            data = response.json()
+            
+            if data.get("status") != 200 or not data.get("result"):
+                return {"postcodes": []}
+            
+            # Format results
+            postcodes = []
+            for item in data["result"][:10]:
+                postcodes.append({
+                    "postcode": item.get("postcode"),
+                    "admin_district": item.get("admin_district"),
+                    "post_town": item.get("post_town") or item.get("admin_district"),
+                    "region": item.get("region"),
+                    "country": item.get("country")
+                })
+            
+            return {"postcodes": postcodes}
+    
+    except Exception as e:
+        logger.error(f"Postcode autocomplete error: {e}")
+        return {"postcodes": []}
+
+
 @router.get("/postcode-lookup/{postcode}")
 async def lookup_postcode(postcode: str):
     """Lookup UK postcode using postcodes.io API.
