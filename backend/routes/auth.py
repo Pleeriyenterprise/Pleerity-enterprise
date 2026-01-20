@@ -230,18 +230,31 @@ async def set_password(request: Request, data: SetPasswordRequest):
             {"$set": {"used_at": now.isoformat()}}
         )
         
-        # Audit logs
+        # Audit logs - differentiate between admin invite acceptance and regular password setup
+        is_admin_invite = password_token.get("client_id") == "ADMIN_INVITE"
+        
         await create_audit_log(
             action=AuditAction.PASSWORD_TOKEN_VALIDATED,
             actor_id=portal_user["portal_user_id"],
-            client_id=password_token.get("client_id")
+            client_id=None if is_admin_invite else password_token.get("client_id")
         )
         
-        await create_audit_log(
-            action=AuditAction.PASSWORD_SET_SUCCESS,
-            actor_id=portal_user["portal_user_id"],
-            client_id=password_token.get("client_id")
-        )
+        if is_admin_invite:
+            await create_audit_log(
+                action=AuditAction.ADMIN_INVITE_ACCEPTED,
+                actor_role=UserRole.ROLE_ADMIN,
+                actor_id=portal_user["portal_user_id"],
+                metadata={
+                    "email": portal_user["auth_email"],
+                    "accepted_at": now.isoformat()
+                }
+            )
+        else:
+            await create_audit_log(
+                action=AuditAction.PASSWORD_SET_SUCCESS,
+                actor_id=portal_user["portal_user_id"],
+                client_id=password_token.get("client_id")
+            )
         
         # Create access token for auto-login
         token_data = {
