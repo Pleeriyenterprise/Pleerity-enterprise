@@ -175,6 +175,7 @@ app.include_router(templates.router)
 app.include_router(calendar.router)
 app.include_router(sms.router)
 app.include_router(reports.router)
+app.include_router(tenant.router)
 
 # Root endpoint
 @app.get("/api")
