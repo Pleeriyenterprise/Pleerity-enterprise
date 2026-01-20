@@ -554,6 +554,88 @@ const NotificationPreferencesPage = () => {
           />
         )}
 
+        {/* Email Digest Customization Section */}
+        {preferences.monthly_digest && (
+          <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6" data-testid="digest-customization-section">
+            <div className="p-4 border-b border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Mail className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-midnight-blue">Email Digest Content</h2>
+                  <p className="text-sm text-gray-500">Customize what's included in your monthly compliance digest</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="divide-y divide-gray-100">
+              {[
+                { key: 'digest_compliance_summary', title: 'Compliance Summary', description: 'Overall compliance health and statistics' },
+                { key: 'digest_action_items', title: 'Action Items', description: 'Overdue, missing, and due soon requirements' },
+                { key: 'digest_upcoming_expiries', title: 'Upcoming Expiries', description: 'Certificates expiring in the next 30/60/90 days' },
+                { key: 'digest_property_breakdown', title: 'Property-by-Property Breakdown', description: 'Detailed status for each property' },
+                { key: 'digest_recent_documents', title: 'Recently Uploaded Documents', description: 'New documents uploaded and verified this period' },
+                { key: 'digest_recommendations', title: 'Recommendations', description: 'Suggested next actions to improve compliance' },
+                { key: 'digest_audit_summary', title: 'Audit & Activity Summary', description: 'Recent activity and changes (optional)', optional: true }
+              ].map((item) => (
+                <div 
+                  key={item.key}
+                  className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-midnight-blue">{item.title}</h3>
+                      {item.optional && (
+                        <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Optional</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-0.5">{item.description}</p>
+                  </div>
+                  <Switch
+                    checked={preferences[item.key]}
+                    onCheckedChange={() => handleToggle(item.key)}
+                    data-testid={`toggle-${item.key}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Daily Reminder Settings */}
+        <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6" data-testid="daily-reminder-section">
+          <div className="p-4 border-b border-gray-100 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-midnight-blue">Daily Reminders</h2>
+                  <p className="text-sm text-gray-500">Receive daily alerts for expiring and overdue requirements</p>
+                </div>
+              </div>
+              <Switch
+                checked={preferences.daily_reminder_enabled}
+                onCheckedChange={() => handleToggle('daily_reminder_enabled')}
+                data-testid="daily-reminder-toggle"
+              />
+            </div>
+          </div>
+          
+          {!preferences.daily_reminder_enabled && (
+            <div className="p-4 bg-amber-50">
+              <p className="text-sm text-amber-800 flex items-start gap-2">
+                <Info className="w-4 h-4 mt-0.5" />
+                <span>
+                  <strong>Note:</strong> Critical compliance alerts (RED status) will still be sent regardless of this setting to ensure you don't miss urgent compliance issues.
+                </span>
+              </p>
+            </div>
+          )}
+        </section>
+
         {/* Save Confirmation */}
         {hasChanges && (
           <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-midnight-blue text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 animate-in slide-in-from-bottom-4">
