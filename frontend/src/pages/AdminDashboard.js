@@ -2943,7 +2943,7 @@ const StatisticsDashboard = () => {
 };
 
 // Dashboard Overview
-const DashboardOverview = () => {
+const DashboardOverview = ({ onShowDrilldown }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -2971,22 +2971,33 @@ const DashboardOverview = () => {
   }
 
   const statCards = [
-    { label: 'Total Clients', value: stats?.stats?.total_clients || 0, icon: Users, color: 'text-blue-600 bg-blue-100' },
-    { label: 'Total Properties', value: stats?.stats?.total_properties || 0, icon: Building2, color: 'text-purple-600 bg-purple-100' },
-    { label: 'Active Clients', value: stats?.stats?.active_clients || 0, icon: CheckCircle, color: 'text-green-600 bg-green-100' },
-    { label: 'Pending Setup', value: stats?.stats?.pending_clients || 0, icon: Clock, color: 'text-amber-600 bg-amber-100' },
+    { label: 'Total Clients', value: stats?.stats?.total_clients || 0, icon: Users, color: 'text-blue-600 bg-blue-100', drilldown: 'clients' },
+    { label: 'Total Properties', value: stats?.stats?.total_properties || 0, icon: Building2, color: 'text-purple-600 bg-purple-100', drilldown: 'properties' },
+    { label: 'Active Clients', value: stats?.stats?.active_clients || 0, icon: CheckCircle, color: 'text-green-600 bg-green-100', drilldown: 'clients-active' },
+    { label: 'Pending Setup', value: stats?.stats?.pending_clients || 0, icon: Clock, color: 'text-amber-600 bg-amber-100', drilldown: 'clients-pending' },
+  ];
+
+  const complianceCards = [
+    { status: 'GREEN', label: 'Compliant', value: stats?.compliance_overview?.GREEN || 0, bgClass: 'bg-green-50 hover:bg-green-100', textClass: 'text-green-600', labelClass: 'text-green-700' },
+    { status: 'AMBER', label: 'Attention Needed', value: stats?.compliance_overview?.AMBER || 0, bgClass: 'bg-amber-50 hover:bg-amber-100', textClass: 'text-amber-600', labelClass: 'text-amber-700' },
+    { status: 'RED', label: 'Non-Compliant', value: stats?.compliance_overview?.RED || 0, bgClass: 'bg-red-50 hover:bg-red-100', textClass: 'text-red-600', labelClass: 'text-red-700' },
   ];
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-midnight-blue">Dashboard Overview</h2>
       
-      {/* Stats Grid */}
+      {/* Stats Grid - Clickable tiles */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded-xl border border-gray-200 p-6">
+          <button 
+            key={idx} 
+            onClick={() => onShowDrilldown && onShowDrilldown(stat.drilldown)}
+            className="bg-white rounded-xl border border-gray-200 p-6 text-left hover:shadow-lg hover:border-electric-teal transition-all cursor-pointer group"
+            data-testid={`kpi-tile-${stat.drilldown}`}
+          >
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-lg ${stat.color}`}>
+              <div className={`p-3 rounded-lg ${stat.color} group-hover:scale-110 transition-transform`}>
                 <stat.icon className="w-6 h-6" />
               </div>
               <div>
@@ -2994,27 +3005,32 @@ const DashboardOverview = () => {
                 <p className="text-sm text-gray-500">{stat.label}</p>
               </div>
             </div>
-          </div>
+            <div className="mt-3 text-xs text-electric-teal opacity-0 group-hover:opacity-100 transition-opacity">
+              Click to view details →
+            </div>
+          </button>
         ))}
       </div>
 
-      {/* Compliance Overview */}
+      {/* Compliance Overview - Clickable tiles */}
       {stats?.compliance_overview && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-midnight-blue mb-4">Compliance Overview</h3>
           <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <p className="text-3xl font-bold text-green-600">{stats.compliance_overview.GREEN || 0}</p>
-              <p className="text-sm text-green-700">Compliant</p>
-            </div>
-            <div className="text-center p-4 bg-amber-50 rounded-lg">
-              <p className="text-3xl font-bold text-amber-600">{stats.compliance_overview.AMBER || 0}</p>
-              <p className="text-sm text-amber-700">Attention Needed</p>
-            </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <p className="text-3xl font-bold text-red-600">{stats.compliance_overview.RED || 0}</p>
-              <p className="text-sm text-red-700">Non-Compliant</p>
-            </div>
+            {complianceCards.map((card) => (
+              <button
+                key={card.status}
+                onClick={() => onShowDrilldown && onShowDrilldown(`compliance-${card.status}`)}
+                className={`text-center p-4 rounded-lg cursor-pointer transition-all hover:shadow-md group ${card.bgClass}`}
+                data-testid={`kpi-tile-compliance-${card.status}`}
+              >
+                <p className={`text-3xl font-bold ${card.textClass}`}>{card.value}</p>
+                <p className={`text-sm ${card.labelClass}`}>{card.label}</p>
+                <p className="mt-2 text-xs text-electric-teal opacity-0 group-hover:opacity-100 transition-opacity">
+                  View properties →
+                </p>
+              </button>
+            ))}
           </div>
         </div>
       )}
