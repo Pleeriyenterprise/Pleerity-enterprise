@@ -699,7 +699,7 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 metadata={
                     "address": f"{prop_data.address_line_1}, {prop_data.city}",
                     "is_hmo": prop_data.is_hmo,
-                    "council": prop_data.council_name,
+                    "council": normalize_council_name(prop_data.council_name, prop_data.council_code) if prop_data.council_name else None,
                     "certificates": {
                         "gas": prop_data.cert_gas_safety,
                         "eicr": prop_data.cert_eicr,
