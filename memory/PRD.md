@@ -312,6 +312,36 @@
   - Audit logging verified
 - **TEST REPORT:** /app/test_reports/iteration_13.json
 
+### January 20, 2026 (Session 3)
+- **Admin Ops + Reference Handling ✅**
+  - **Global Search** in admin header
+    - Search by CRN, email, name, postcode
+    - Debounced input (300ms delay)
+    - Search results dropdown with client preview
+    - Click result opens Client Detail Modal
+  
+  - **Client Detail Modal** (4 tabs)
+    - **Overview**: Client info, status, compliance summary, properties list
+    - **Setup Controls**: Readiness checklist (6 items), Trigger Provisioning, Resend Password Link
+    - **Messaging**: Send email to client via Postmark with audit logging
+    - **Audit Timeline**: Key events history (intake, payment, provisioning, auth, documents)
+  
+  - **Profile Update** with before/after audit logging
+    - Safe fields only: full_name, phone, company_name, preferred_contact
+    - Creates ADMIN_PROFILE_UPDATED audit entry with diff
+  
+  - **KPI Drill-down Endpoints**
+    - GET /api/admin/kpi/properties?status_filter=GREEN/AMBER/RED
+    - GET /api/admin/kpi/requirements?status_filter=COMPLIANT/OVERDUE/EXPIRING_SOON
+  
+  - **MongoDB Indexes** for efficient search
+    - customer_reference (unique, sparse)
+    - email, client_id, full_name on clients
+    - postcode, compliance_status on properties
+    - Compound index on audit_logs (client_id, created_at)
+
+- **TEST REPORT:** /app/test_reports/iteration_15.json (29/29 tests passed - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
