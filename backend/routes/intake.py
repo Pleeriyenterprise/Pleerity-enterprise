@@ -1,31 +1,223 @@
-from fastapi import APIRouter, HTTPException, Request, status
+"""Universal Intake Wizard Routes - Premium 5-step intake with conditional logic.
+
+Endpoints:
+- POST /api/intake/submit - Submit completed intake wizard
+- POST /api/intake/checkout - Create Stripe checkout session
+- GET /api/intake/onboarding-status/{client_id} - Get onboarding progress
+- GET /api/intake/councils - Search UK councils
+- POST /api/intake/upload-document - Upload document during intake (non-blocking)
+- GET /api/intake/plans - Get available billing plans with limits
+"""
+from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form
 from database import database
-from models import IntakeFormData, Client, Property, ServiceCode, AuditAction
+from models import (
+    IntakeFormData, IntakePropertyData, Client, Property, ServiceCode, 
+    AuditAction, BillingPlan, OnboardingStatus, SubscriptionStatus,
+    Document, DocumentStatus
+)
 from services.stripe_service import stripe_service
 from utils.audit import create_audit_log
 import logging
+import json
+import os
+import uuid
+import random
+import string
+from datetime import datetime, timezone
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intake", tags=["intake"])
 
+# Plan property limits (single source of truth)
+PLAN_PROPERTY_LIMITS = {
+    BillingPlan.PLAN_1: 1,
+    BillingPlan.PLAN_2_5: 5,
+    BillingPlan.PLAN_6_15: 15
+}
+
+# Plan details for UI
+PLAN_DETAILS = {
+    BillingPlan.PLAN_1: {
+        "name": "Starter",
+        "max_properties": 1,
+        "monthly_price": 9.99,
+        "setup_fee": 49.99,
+        "features": [
+            "1 property",
+            "Full compliance tracking",
+            "Document storage",
+            "Email reminders",
+            "AI document scanner"
+        ]
+    },
+    BillingPlan.PLAN_2_5: {
+        "name": "Growth",
+        "max_properties": 5,
+        "monthly_price": 9.99,
+        "setup_fee": 49.99,
+        "features": [
+            "Up to 5 properties",
+            "Full compliance tracking",
+            "Document storage",
+            "Email & SMS reminders",
+            "AI document scanner",
+            "Priority support"
+        ]
+    },
+    BillingPlan.PLAN_6_15: {
+        "name": "Portfolio",
+        "max_properties": 15,
+        "monthly_price": 9.99,
+        "setup_fee": 49.99,
+        "features": [
+            "Up to 15 properties",
+            "Full compliance tracking",
+            "Unlimited document storage",
+            "Email & SMS reminders",
+            "AI document scanner",
+            "Priority support",
+            "Compliance reports",
+            "Webhook integrations"
+        ]
+    }
+}
+
+# Cache for councils data
+_councils_cache = None
+
+
+def _load_councils():
+    """Load and cache UK councils data."""
+    global _councils_cache
+    if _councils_cache is None:
+        try:
+            councils_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), 
+                "data", 
+                "uk_councils.json"
+            )
+            with open(councils_path, "r") as f:
+                data = json.load(f)
+                _councils_cache = data.get("councils", [])
+                logger.info(f"Loaded {len(_councils_cache)} UK councils")
+        except Exception as e:
+            logger.error(f"Failed to load councils data: {e}")
+            _councils_cache = []
+    return _councils_cache
+
+
+def _generate_customer_reference() -> str:
+    """Generate unique customer reference: PLE-CVP-YYYY-XXXXX
+    
+    Rules:
+    - Uppercase only
+    - 5-character alphanumeric suffix
+    - Avoid confusing characters (O/0, I/1, L)
+    """
+    year = datetime.now(timezone.utc).year
+    
+    # Safe characters (excluding O, 0, I, 1, L)
+    safe_chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+    suffix = ''.join(random.choices(safe_chars, k=5))
+    
+    return f"PLE-CVP-{year}-{suffix}"
+
+
+async def _ensure_unique_reference(db) -> str:
+    """Generate a unique customer reference, checking database."""
+    for _ in range(10):  # Max 10 attempts
+        reference = _generate_customer_reference()
+        existing = await db.clients.find_one({"customer_reference": reference})
+        if not existing:
+            return reference
+    
+    # Fallback with timestamp
+    timestamp = int(datetime.now(timezone.utc).timestamp()) % 100000
+    return f"PLE-CVP-{datetime.now(timezone.utc).year}-{timestamp:05d}"
+
+
+@router.get("/plans")
+async def get_plans():
+    """Get available billing plans with property limits and features."""
+    plans = []
+    for plan_enum, details in PLAN_DETAILS.items():
+        plans.append({
+            "plan_id": plan_enum.value,
+            "name": details["name"],
+            "max_properties": details["max_properties"],
+            "monthly_price": details["monthly_price"],
+            "setup_fee": details["setup_fee"],
+            "total_first_payment": details["monthly_price"] + details["setup_fee"],
+            "features": details["features"]
+        })
+    
+    return {"plans": plans}
+
+
+@router.get("/councils")
+async def search_councils(
+    q: Optional[str] = None,
+    nation: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50
+):
+    """Search UK councils with pagination.
+    
+    Query params:
+    - q: Search term (partial match on name)
+    - nation: Filter by nation (England, Wales, Scotland, Northern Ireland)
+    - page: Page number (default 1)
+    - limit: Results per page (default 50, max 100)
+    """
+    councils = _load_councils()
+    
+    # Filter by search term
+    if q:
+        q_lower = q.lower()
+        councils = [c for c in councils if q_lower in c["name"].lower()]
+    
+    # Filter by nation
+    if nation:
+        nation_lower = nation.lower()
+        councils = [c for c in councils if c.get("nation", "").lower() == nation_lower]
+    
+    # Pagination
+    limit = min(limit, 100)
+    total = len(councils)
+    start = (page - 1) * limit
+    end = start + limit
+    paginated = councils[start:end]
+    
+    return {
+        "councils": paginated,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total + limit - 1) // limit
+    }
+
+
 @router.post("/submit")
 async def submit_intake(request: Request, data: IntakeFormData):
-    """Universal intake form submission."""
+    """Universal intake wizard submission.
+    
+    Validates:
+    - Required conditional fields (company_name, phone)
+    - Plan-based property limits
+    - Required consents
+    
+    Creates:
+    - Client record with customer_reference
+    - Property records with full metadata
+    - Audit log entries
+    
+    Returns client_id for checkout.
+    """
     db = database.get_db()
     
     try:
-        # Validation
-        if not data.properties or len(data.properties) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="At least one property is required"
-            )
-        
-        if not data.consent_data_processing or not data.consent_communications:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Required consents must be provided"
-            )
+        # =========== VALIDATION ===========
         
         # Check if client already exists
         existing_client = await db.clients.find_one(
@@ -39,16 +231,85 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 detail="An account with this email already exists"
             )
         
-        # Create client
+        # Validate conditional fields
+        if data.client_type in [ClientType.COMPANY, ClientType.AGENT]:
+            if not data.company_name or not data.company_name.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Company name is required for Property Companies and Letting Agents"
+                )
+        
+        if data.preferred_contact in [PreferredContact.SMS, PreferredContact.BOTH]:
+            if not data.phone or not data.phone.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Phone number is required when SMS notifications are enabled"
+                )
+        
+        # Validate property count against plan limit
+        max_properties = PLAN_PROPERTY_LIMITS.get(data.billing_plan, 1)
+        if len(data.properties) > max_properties:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"You've reached the maximum number of properties for this plan ({max_properties}). Please upgrade to add more."
+            )
+        
+        if not data.properties or len(data.properties) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one property is required"
+            )
+        
+        # Validate required consents
+        if not data.consent_data_processing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="GDPR data processing consent is required"
+            )
+        
+        if not data.consent_service_boundary:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Service boundary acknowledgment is required"
+            )
+        
+        # Validate email upload consent if method is EMAIL
+        if data.document_submission_method == "EMAIL" and not data.email_upload_consent:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Consent to email document upload is required when choosing to email documents"
+            )
+        
+        # Validate property agent details when reminders include agent
+        for i, prop in enumerate(data.properties):
+            if prop.send_reminders_to in ["AGENT", "BOTH"]:
+                if not prop.agent_name or not prop.agent_email:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Property {i + 1}: Agent name and email are required when sending reminders to agent"
+                    )
+        
+        # =========== CREATE CLIENT ===========
+        
+        # Generate unique customer reference
+        customer_reference = await _ensure_unique_reference(db)
+        
+        from models import ClientType, PreferredContact
+        
         client = Client(
+            customer_reference=customer_reference,
             full_name=data.full_name,
             email=data.email,
-            phone=data.phone,
-            company_name=data.company_name,
+            phone=data.phone if data.phone else None,
+            company_name=data.company_name if data.company_name else None,
             client_type=data.client_type,
             preferred_contact=data.preferred_contact,
             billing_plan=data.billing_plan,
-            service_code=ServiceCode.VAULT_PRO
+            service_code=ServiceCode.VAULT_PRO,
+            document_submission_method=data.document_submission_method,
+            email_upload_consent=data.email_upload_consent,
+            consent_data_processing=data.consent_data_processing,
+            consent_service_boundary=data.consent_service_boundary
         )
         
         client_doc = client.model_dump()
@@ -58,16 +319,44 @@ async def submit_intake(request: Request, data: IntakeFormData):
         
         await db.clients.insert_one(client_doc)
         
-        # Create properties
-        for prop_data in data.properties:
+        # =========== CREATE PROPERTIES ===========
+        
+        property_temp_key_map = {}  # Map temp_key to property_id for document reconciliation
+        
+        for i, prop_data in enumerate(data.properties):
+            # Determine HMO license requirement based on is_hmo and licence_required
+            hmo_license_required = (
+                prop_data.is_hmo and 
+                prop_data.licence_required == "YES"
+            )
+            
             prop = Property(
                 client_id=client.client_id,
-                address_line_1=prop_data["address_line_1"],
-                address_line_2=prop_data.get("address_line_2"),
-                city=prop_data["city"],
-                postcode=prop_data["postcode"],
-                property_type=prop_data.get("property_type", "residential"),
-                number_of_units=prop_data.get("number_of_units", 1)
+                nickname=prop_data.nickname or f"Property {i + 1}",
+                address_line_1=prop_data.address_line_1,
+                address_line_2=prop_data.address_line_2,
+                city=prop_data.city,
+                postcode=prop_data.postcode,
+                property_type=prop_data.property_type,
+                bedrooms=prop_data.bedrooms,
+                occupancy=prop_data.occupancy,
+                is_hmo=prop_data.is_hmo,
+                hmo_license_required=hmo_license_required,
+                has_gas_supply=True,  # Default, can be updated later
+                local_authority=prop_data.council_name,
+                local_authority_code=prop_data.council_code,
+                licence_required=prop_data.licence_required,
+                licence_type=prop_data.licence_type,
+                licence_status=prop_data.licence_status,
+                managed_by=prop_data.managed_by,
+                send_reminders_to=prop_data.send_reminders_to,
+                agent_name=prop_data.agent_name,
+                agent_email=prop_data.agent_email,
+                agent_phone=prop_data.agent_phone,
+                cert_gas_safety=prop_data.cert_gas_safety,
+                cert_eicr=prop_data.cert_eicr,
+                cert_epc=prop_data.cert_epc,
+                cert_licence=prop_data.cert_licence
             )
             
             prop_doc = prop.model_dump()
@@ -76,23 +365,62 @@ async def submit_intake(request: Request, data: IntakeFormData):
                     prop_doc[key] = prop_doc[key].isoformat()
             
             await db.properties.insert_one(prop_doc)
+            
+            # Store mapping for document reconciliation
+            if data.intake_session_id:
+                temp_key = f"{data.intake_session_id}_property_{i}"
+                property_temp_key_map[temp_key] = prop.property_id
+            
+            # Audit log for each property
+            await create_audit_log(
+                action=AuditAction.INTAKE_PROPERTY_ADDED,
+                client_id=client.client_id,
+                resource_type="property",
+                resource_id=prop.property_id,
+                metadata={
+                    "address": f"{prop_data.address_line_1}, {prop_data.city}",
+                    "is_hmo": prop_data.is_hmo,
+                    "council": prop_data.council_name,
+                    "certificates": {
+                        "gas": prop_data.cert_gas_safety,
+                        "eicr": prop_data.cert_eicr,
+                        "epc": prop_data.cert_epc,
+                        "licence": prop_data.cert_licence
+                    }
+                }
+            )
         
-        # Audit log
+        # =========== RECONCILE UPLOADED DOCUMENTS ===========
+        
+        if data.intake_session_id:
+            # Link any documents uploaded during intake to the created properties
+            await _reconcile_intake_documents(
+                db, 
+                client.client_id, 
+                data.intake_session_id,
+                property_temp_key_map
+            )
+        
+        # =========== AUDIT LOG ===========
+        
         await create_audit_log(
             action=AuditAction.INTAKE_SUBMITTED,
             client_id=client.client_id,
             metadata={
                 "email": data.email,
+                "customer_reference": customer_reference,
                 "properties_count": len(data.properties),
-                "billing_plan": data.billing_plan.value
+                "billing_plan": data.billing_plan.value,
+                "document_submission_method": data.document_submission_method
             }
         )
         
-        logger.info(f"Intake submitted for {data.email}")
+        logger.info(f"Intake submitted for {data.email}, ref: {customer_reference}")
         
         return {
             "message": "Intake submitted successfully",
             "client_id": client.client_id,
+            "customer_reference": customer_reference,
             "next_step": "checkout"
         }
     
@@ -105,9 +433,134 @@ async def submit_intake(request: Request, data: IntakeFormData):
             detail="Failed to process intake"
         )
 
+
+async def _reconcile_intake_documents(db, client_id: str, session_id: str, property_map: dict):
+    """Link documents uploaded during intake to their actual property IDs."""
+    try:
+        # Find documents with this session ID
+        documents = await db.documents.find({
+            "intake_session_id": session_id,
+            "source": "INTAKE_UPLOAD"
+        }).to_list(100)
+        
+        for doc in documents:
+            property_temp_key = doc.get("property_temp_key")
+            if property_temp_key and property_temp_key in property_map:
+                actual_property_id = property_map[property_temp_key]
+                
+                await db.documents.update_one(
+                    {"document_id": doc["document_id"]},
+                    {
+                        "$set": {
+                            "client_id": client_id,
+                            "property_id": actual_property_id,
+                            "property_temp_key": None  # Clear temp key
+                        }
+                    }
+                )
+                
+                logger.info(f"Reconciled document {doc['document_id']} to property {actual_property_id}")
+    
+    except Exception as e:
+        logger.error(f"Document reconciliation error: {e}")
+
+
+@router.post("/upload-document")
+async def upload_intake_document(
+    file: UploadFile = File(...),
+    intake_session_id: str = Form(...),
+    property_index: int = Form(...),
+    document_type: Optional[str] = Form(None)
+):
+    """Upload a document during intake (non-blocking).
+    
+    Documents are stored with UNVERIFIED status and source=INTAKE_UPLOAD.
+    They will be reconciled to actual property IDs after intake submission.
+    """
+    db = database.get_db()
+    
+    try:
+        # Validate file type
+        allowed_types = ["application/pdf", "image/jpeg", "image/png", "image/jpg"]
+        if file.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only PDF, JPG, and PNG files are allowed"
+            )
+        
+        # Read file content
+        content = await file.read()
+        file_size = len(content)
+        
+        # Check file size (max 10MB)
+        if file_size > 10 * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File size must be under 10MB"
+            )
+        
+        # Generate storage path
+        document_id = str(uuid.uuid4())
+        storage_dir = os.path.join("/app", "uploads", "intake", intake_session_id)
+        os.makedirs(storage_dir, exist_ok=True)
+        
+        file_ext = os.path.splitext(file.filename)[1] if file.filename else ".pdf"
+        file_path = os.path.join(storage_dir, f"{document_id}{file_ext}")
+        
+        # Save file
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        # Create document record (UNVERIFIED, source=INTAKE_UPLOAD)
+        doc_record = {
+            "document_id": document_id,
+            "client_id": None,  # Will be set after intake submission
+            "property_id": None,  # Will be set after intake submission
+            "property_temp_key": f"{intake_session_id}_property_{property_index}",
+            "intake_session_id": intake_session_id,
+            "source": "INTAKE_UPLOAD",
+            "file_name": file.filename,
+            "file_path": file_path,
+            "file_size": file_size,
+            "mime_type": file.content_type,
+            "status": DocumentStatus.PENDING.value,
+            "verification_state": "UNVERIFIED",
+            "document_type_hint": document_type,
+            "uploaded_by": "INTAKE_WIZARD",
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            # AI extraction fields (to be populated after provisioning)
+            "ai_extracted_data": None,
+            "suggested_issue_date": None,
+            "suggested_expiry_date": None,
+            "suggested_certificate_number": None,
+            "extraction_confidence": None,
+            "manual_review_flag": True  # Always require review for intake uploads
+        }
+        
+        await db.documents.insert_one(doc_record)
+        
+        logger.info(f"Intake document uploaded: {document_id} for session {intake_session_id}")
+        
+        return {
+            "message": "Document uploaded successfully",
+            "document_id": document_id,
+            "file_name": file.filename,
+            "file_size": file_size
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Intake document upload error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upload document"
+        )
+
+
 @router.post("/checkout")
 async def create_checkout(request: Request, client_id: str):
-    """Create Stripe checkout session."""
+    """Create Stripe checkout session for intake payment."""
     db = database.get_db()
     
     try:
@@ -125,7 +578,7 @@ async def create_checkout(request: Request, client_id: str):
         # Create checkout session
         session = await stripe_service.create_checkout_session(
             client_id=client_id,
-            billing_plan=client["billing_plan"],
+            billing_plan=BillingPlan(client["billing_plan"]),
             origin_url=origin
         )
         
@@ -142,6 +595,7 @@ async def create_checkout(request: Request, client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create checkout session"
         )
+
 
 @router.get("/onboarding-status/{client_id}")
 async def get_onboarding_status(client_id: str):
@@ -166,9 +620,10 @@ async def get_onboarding_status(client_id: str):
         properties_count = await db.properties.count_documents({"client_id": client_id})
         
         # Get requirements count
+        property_ids = [p["property_id"] async for p in db.properties.find({"client_id": client_id}, {"property_id": 1})]
         requirements_count = await db.requirements.count_documents(
-            {"property_id": {"$in": [p["property_id"] async for p in db.properties.find({"client_id": client_id}, {"property_id": 1})]}}
-        ) if properties_count > 0 else 0
+            {"property_id": {"$in": property_ids}}
+        ) if property_ids else 0
         
         # Determine step statuses
         onboarding_status = client.get("onboarding_status", "INTAKE_PENDING")
@@ -241,6 +696,7 @@ async def get_onboarding_status(client_id: str):
         
         return {
             "client_id": client["client_id"],
+            "customer_reference": client.get("customer_reference"),
             "client_name": client.get("full_name"),
             "email": client["email"],
             "onboarding_status": onboarding_status,
@@ -253,7 +709,10 @@ async def get_onboarding_status(client_id: str):
             "requirements_count": requirements_count,
             "can_login": ready_to_use,
             "portal_url": "/app/dashboard" if ready_to_use else None,
-            "next_action": _get_next_action(steps, current_step)
+            "next_action": _get_next_action(steps, current_step),
+            # Additional info for email method users
+            "document_submission_method": client.get("document_submission_method"),
+            "pleerity_email": "info@pleerityenterprise.co.uk" if client.get("document_submission_method") == "EMAIL" else None
         }
     
     except HTTPException:
@@ -264,6 +723,7 @@ async def get_onboarding_status(client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get onboarding status"
         )
+
 
 def _get_next_action(steps, current_step):
     """Get the next action the client needs to take."""
