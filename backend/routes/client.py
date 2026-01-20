@@ -331,3 +331,267 @@ async def list_tenants(request: Request):
             detail="Failed to list tenants"
         )
 
+
+
+@router.post("/tenants/{tenant_id}/assign-property")
+async def assign_tenant_to_property(request: Request, tenant_id: str):
+    """Assign a tenant to a property."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only client admins can manage tenant assignments"
+        )
+    
+    try:
+        body = await request.json()
+        property_id = body.get("property_id")
+        
+        if not property_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="property_id is required"
+            )
+        
+        # Verify tenant belongs to this client
+        tenant = await db.portal_users.find_one({
+            "portal_user_id": tenant_id,
+            "client_id": user["client_id"],
+            "role": "ROLE_TENANT"
+        })
+        
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tenant not found"
+            )
+        
+        # Verify property belongs to this client
+        prop = await db.properties.find_one({
+            "property_id": property_id,
+            "client_id": user["client_id"]
+        })
+        
+        if not prop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found"
+            )
+        
+        # Check if already assigned
+        existing = await db.tenant_assignments.find_one({
+            "tenant_id": tenant_id,
+            "property_id": property_id
+        })
+        
+        if existing:
+            return {"message": "Tenant already assigned to this property"}
+        
+        # Create assignment
+        from datetime import datetime, timezone
+        await db.tenant_assignments.insert_one({
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "assigned_at": datetime.now(timezone.utc).isoformat(),
+            "assigned_by": user["portal_user_id"]
+        })
+        
+        logger.info(f"Tenant {tenant_id} assigned to property {property_id}")
+        
+        return {
+            "message": "Tenant assigned to property",
+            "tenant_id": tenant_id,
+            "property_id": property_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Assign tenant error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to assign tenant"
+        )
+
+
+@router.delete("/tenants/{tenant_id}/unassign-property/{property_id}")
+async def unassign_tenant_from_property(request: Request, tenant_id: str, property_id: str):
+    """Remove a tenant's assignment to a property."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only client admins can manage tenant assignments"
+        )
+    
+    try:
+        # Verify tenant belongs to this client
+        tenant = await db.portal_users.find_one({
+            "portal_user_id": tenant_id,
+            "client_id": user["client_id"],
+            "role": "ROLE_TENANT"
+        })
+        
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tenant not found"
+            )
+        
+        # Remove assignment
+        result = await db.tenant_assignments.delete_one({
+            "tenant_id": tenant_id,
+            "property_id": property_id
+        })
+        
+        if result.deleted_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assignment not found"
+            )
+        
+        logger.info(f"Tenant {tenant_id} unassigned from property {property_id}")
+        
+        return {"message": "Tenant unassigned from property"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unassign tenant error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unassign tenant"
+        )
+
+
+@router.delete("/tenants/{tenant_id}")
+async def revoke_tenant_access(request: Request, tenant_id: str):
+    """Revoke a tenant's access entirely (disable account)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only client admins can revoke tenant access"
+        )
+    
+    try:
+        # Verify tenant belongs to this client
+        tenant = await db.portal_users.find_one({
+            "portal_user_id": tenant_id,
+            "client_id": user["client_id"],
+            "role": "ROLE_TENANT"
+        })
+        
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tenant not found"
+            )
+        
+        # Disable the tenant account
+        await db.portal_users.update_one(
+            {"portal_user_id": tenant_id},
+            {"$set": {"status": "DISABLED"}}
+        )
+        
+        # Remove all property assignments
+        await db.tenant_assignments.delete_many({"tenant_id": tenant_id})
+        
+        logger.info(f"Tenant {tenant_id} access revoked by {user['email']}")
+        
+        return {"message": "Tenant access revoked"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Revoke tenant error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to revoke tenant access"
+        )
+
+
+@router.post("/tenants/{tenant_id}/resend-invite")
+async def resend_tenant_invite(request: Request, tenant_id: str):
+    """Resend invitation email to a tenant."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only client admins can resend invites"
+        )
+    
+    try:
+        body = await request.json() if request.headers.get("content-type") == "application/json" else {}
+        
+        # Verify tenant belongs to this client
+        tenant = await db.portal_users.find_one({
+            "portal_user_id": tenant_id,
+            "client_id": user["client_id"],
+            "role": "ROLE_TENANT"
+        })
+        
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tenant not found"
+            )
+        
+        if tenant.get("status") == "ACTIVE":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tenant has already set up their account"
+            )
+        
+        # Create new password token
+        import uuid
+        from datetime import datetime, timezone, timedelta
+        
+        token = str(uuid.uuid4())
+        token_doc = {
+            "token": token,
+            "portal_user_id": tenant_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "used": False
+        }
+        await db.password_tokens.insert_one(token_doc)
+        
+        # Send invite email
+        from services.email_service import email_service
+        from models import EmailTemplateAlias
+        
+        invite_url = f"{body.get('base_url', '')}/set-password?token={token}"
+        
+        await email_service.send_email(
+            recipient=tenant["email"],
+            template_alias=EmailTemplateAlias.TENANT_INVITE,
+            template_model={
+                "tenant_name": tenant.get("full_name", "there"),
+                "setup_link": invite_url
+            },
+            client_id=user["client_id"],
+            subject="Reminder: Set up your tenant portal access"
+        )
+        
+        logger.info(f"Tenant invite resent to {tenant['email']}")
+        
+        return {"message": "Invitation resent successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Resend invite error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resend invitation"
+        )
+
