@@ -78,4 +78,10 @@ export const adminAPI = {
   getAuditLogs: (skip = 0, limit = 100, clientId = null) => 
     apiClient.get('/admin/audit-logs', { params: { skip, limit, client_id: clientId } }),
   resendPasswordSetup: (clientId) => apiClient.post(`/admin/clients/${clientId}/resend-password-setup`),
+  // Admin user management
+  listAdmins: () => apiClient.get('/admin/admins'),
+  inviteAdmin: (data) => apiClient.post('/admin/admins/invite', data),
+  deactivateAdmin: (portalUserId) => apiClient.delete(`/admin/admins/${portalUserId}`),
+  reactivateAdmin: (portalUserId) => apiClient.post(`/admin/admins/${portalUserId}/reactivate`),
+  resendAdminInvite: (portalUserId) => apiClient.post(`/admin/admins/${portalUserId}/resend-invite`),
 };
