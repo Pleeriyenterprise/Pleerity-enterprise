@@ -409,11 +409,27 @@ class EmailService:
             </html>
             """
     
+    def _build_text_footer(self, model: Dict[str, Any]) -> str:
+        """Build consistent plain text footer with CRN."""
+        customer_ref = model.get('customer_reference', '')
+        ref_line = f"\nYour Reference: {customer_ref}" if customer_ref else ""
+        
+        return f"""
+--
+{model.get('company_name', 'Pleerity Enterprise Ltd')}
+{model.get('tagline', 'AI-Driven Solutions & Compliance')}{ref_line}
+        """
+
     def _build_text_body(self, template_alias: EmailTemplateAlias, model: Dict[str, Any]) -> str:
         """Build plain text email body based on template type."""
+        footer = self._build_text_footer(model)
+        customer_ref = model.get('customer_reference', '')
+        ref_line = f"\nYour Reference: {customer_ref}" if customer_ref else ""
+        
         if template_alias == EmailTemplateAlias.PASSWORD_SETUP:
             return f"""
 Welcome to Compliance Vault Pro
+{ref_line}
 
 Hello {model.get('client_name', 'there')},
 
@@ -422,24 +438,19 @@ Your compliance portal account has been created. Please set your password to get
 Set your password here: {model.get('setup_link', '#')}
 
 This link will expire in 24 hours. If you didn't request this, please ignore this email.
-
---
-{model.get('company_name', 'Pleerity Enterprise Ltd')}
-{model.get('tagline', 'AI-Driven Solutions & Compliance')}
+{footer}
             """
         elif template_alias == EmailTemplateAlias.PORTAL_READY:
             return f"""
 Your Portal is Ready!
+{ref_line}
 
 Hello {model.get('client_name', 'there')},
 
 Great news! Your Compliance Vault Pro portal is now ready to use.
 
 Access your portal here: {model.get('portal_link', '#')}
-
---
-{model.get('company_name', 'Pleerity Enterprise Ltd')}
-{model.get('tagline', 'AI-Driven Solutions & Compliance')}
+{footer}
             """
         elif template_alias == EmailTemplateAlias.COMPLIANCE_ALERT:
             properties_text = ""
@@ -448,6 +459,7 @@ Access your portal here: {model.get('portal_link', '#')}
             
             return f"""
 ⚠️ COMPLIANCE ALERT - Action Required
+{ref_line}
 
 Hello {model.get('client_name', 'there')},
 
@@ -462,10 +474,7 @@ WHAT THIS MEANS:
 • GREEN = All requirements are compliant
 • AMBER = Some requirements are expiring soon  
 • RED = Immediate action required
-
---
-{model.get('company_name', 'Pleerity Enterprise Ltd')}
-{model.get('tagline', 'AI-Driven Solutions & Compliance')}
+{footer}
             """
         elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
             return f"""
@@ -486,18 +495,17 @@ Set up your admin account here: {model.get('setup_link', '#')}
 ⏰ This invitation expires in 24 hours.
 
 If you did not expect this invitation, please contact the system administrator.
-
---
-{model.get('company_name', 'Pleerity Enterprise Ltd')}
-AI-Driven Solutions & Compliance
+{footer}
             """
         else:
             return f"""
 Compliance Vault Pro
+{ref_line}
 
 Hello {model.get('client_name', 'there')},
 
 {model.get('message', 'You have a new notification from Compliance Vault Pro.')}
+{footer}
 
 --
 {model.get('company_name', 'Pleerity Enterprise Ltd')}
