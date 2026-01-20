@@ -664,3 +664,284 @@ async def list_documents(request: Request, property_id: str = None, requirement_
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to list documents"
         )
+
+
+
+@router.post("/{document_id}/apply-extraction")
+async def apply_ai_extraction(
+    request: Request, 
+    document_id: str,
+    confirmed_data: Dict[str, Any] = None
+):
+    """Apply reviewed AI-extracted data to the associated requirement.
+    
+    This endpoint allows users to:
+    1. Review AI-extracted data
+    2. Modify any incorrect values
+    3. Apply the data to update the requirement's due date
+    
+    IMPORTANT: This does NOT auto-mark the requirement as compliant.
+    The deterministic compliance engine evaluates status based on dates only.
+    
+    Args:
+        document_id: The document whose extraction to apply
+        confirmed_data: Optional modified data (if user corrected AI extraction)
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Get document
+        document = await db.documents.find_one(
+            {"document_id": document_id},
+            {"_id": 0}
+        )
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+        
+        # Verify ownership
+        if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to modify this document"
+            )
+        
+        # Get AI extraction
+        extraction = document.get("ai_extraction", {})
+        if extraction.get("status") != "completed":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document has not been analyzed yet"
+            )
+        
+        # Use confirmed_data if provided, otherwise use AI extraction
+        data = confirmed_data if confirmed_data else extraction.get("data", {})
+        
+        # Validate we have a requirement to update
+        requirement_id = document.get("requirement_id")
+        if not requirement_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document is not linked to a requirement"
+            )
+        
+        # Get requirement
+        requirement = await db.requirements.find_one(
+            {"requirement_id": requirement_id},
+            {"_id": 0}
+        )
+        
+        if not requirement:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Associated requirement not found"
+            )
+        
+        # Prepare update data
+        update_fields = {}
+        changes_made = []
+        
+        # Apply expiry date if provided (this affects due_date)
+        expiry_date = data.get("expiry_date")
+        if expiry_date:
+            try:
+                # Parse the date
+                from datetime import datetime
+                if isinstance(expiry_date, str):
+                    expiry_dt = datetime.fromisoformat(expiry_date.replace('Z', '+00:00'))
+                else:
+                    expiry_dt = expiry_date
+                
+                update_fields["due_date"] = expiry_dt.isoformat()
+                changes_made.append(f"Due date set to {expiry_date}")
+            except Exception as e:
+                logger.warning(f"Failed to parse expiry date: {e}")
+        
+        # Store extracted data in document for reference
+        document_update = {
+            "ai_extraction.review_status": "approved",
+            "ai_extraction.reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "ai_extraction.reviewed_by": user["portal_user_id"],
+            "ai_extraction.applied_data": data,
+            "ai_extracted_data": data,  # Legacy field for compatibility
+        }
+        
+        # Add confidence score if available
+        confidence = data.get("confidence_scores", {}).get("overall")
+        if confidence:
+            document_update["confidence_score"] = confidence
+        
+        # Update document
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {"$set": document_update}
+        )
+        
+        # Update requirement if we have changes
+        if update_fields:
+            await db.requirements.update_one(
+                {"requirement_id": requirement_id},
+                {"$set": update_fields}
+            )
+            
+            # Note: We do NOT change the requirement status here
+            # The compliance engine evaluates status based on dates only
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.DOCUMENT_AI_ANALYZED,
+            actor_id=user["portal_user_id"],
+            client_id=document["client_id"],
+            resource_type="document",
+            resource_id=document_id,
+            metadata={
+                "action": "extraction_applied",
+                "requirement_id": requirement_id,
+                "changes_made": changes_made,
+                "expiry_date_set": expiry_date,
+                "certificate_number": data.get("certificate_number"),
+                "engineer_name": data.get("engineer_details", {}).get("name") if isinstance(data.get("engineer_details"), dict) else data.get("engineer_name"),
+                "user_confirmed": confirmed_data is not None
+            }
+        )
+        
+        logger.info(f"AI extraction applied for document {document_id}")
+        
+        return {
+            "message": "Extraction applied successfully",
+            "document_id": document_id,
+            "requirement_id": requirement_id,
+            "changes_applied": changes_made,
+            "note": "Requirement status is evaluated by the compliance engine based on dates, not AI."
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Apply extraction error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to apply extraction"
+        )
+
+
+@router.post("/{document_id}/reject-extraction")
+async def reject_ai_extraction(request: Request, document_id: str, reason: str = None):
+    """Mark AI extraction as rejected (user will enter data manually)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        document = await db.documents.find_one(
+            {"document_id": document_id},
+            {"_id": 0}
+        )
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+        
+        # Verify ownership
+        if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized"
+            )
+        
+        # Update extraction status
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {"$set": {
+                "ai_extraction.review_status": "rejected",
+                "ai_extraction.reviewed_at": datetime.now(timezone.utc).isoformat(),
+                "ai_extraction.reviewed_by": user["portal_user_id"],
+                "ai_extraction.rejection_reason": reason
+            }}
+        )
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.DOCUMENT_AI_ANALYZED,
+            actor_id=user["portal_user_id"],
+            client_id=document["client_id"],
+            resource_type="document",
+            resource_id=document_id,
+            metadata={
+                "action": "extraction_rejected",
+                "reason": reason
+            }
+        )
+        
+        return {"message": "Extraction marked as rejected"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reject extraction error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reject extraction"
+        )
+
+
+@router.get("/{document_id}/details")
+async def get_document_details(request: Request, document_id: str):
+    """Get full document details including AI extraction and requirement info."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        document = await db.documents.find_one(
+            {"document_id": document_id},
+            {"_id": 0, "file_path": 0}
+        )
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+        
+        # Verify ownership
+        if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized"
+            )
+        
+        # Get associated requirement
+        requirement = None
+        if document.get("requirement_id"):
+            requirement = await db.requirements.find_one(
+                {"requirement_id": document["requirement_id"]},
+                {"_id": 0}
+            )
+        
+        # Get property info
+        property_doc = None
+        if document.get("property_id"):
+            property_doc = await db.properties.find_one(
+                {"property_id": document["property_id"]},
+                {"_id": 0, "address_line_1": 1, "city": 1, "postcode": 1}
+            )
+        
+        return {
+            "document": document,
+            "requirement": requirement,
+            "property": property_doc
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get document details error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get document details"
+        )
