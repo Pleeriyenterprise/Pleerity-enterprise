@@ -3045,10 +3045,15 @@ const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedClientId, setSelectedClientId] = useState(null);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleSelectClient = (client) => {
+    setSelectedClientId(client.client_id);
   };
 
   const tabs = [
@@ -3080,6 +3085,14 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Client Detail Modal */}
+      {selectedClientId && (
+        <ClientDetailModal 
+          clientId={selectedClientId} 
+          onClose={() => setSelectedClientId(null)} 
+        />
+      )}
+
       {/* Header */}
       <header className="bg-midnight-blue text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -3091,6 +3104,10 @@ const AdminDashboard = () => {
                 <p className="text-xs text-gray-400">Admin Console</p>
               </div>
             </div>
+            
+            {/* Global Search */}
+            <GlobalSearch onSelectClient={handleSelectClient} />
+            
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-300">{user?.email}</span>
               <button
