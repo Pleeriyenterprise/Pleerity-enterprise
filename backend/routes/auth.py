@@ -192,17 +192,21 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 detail="User not found"
             )
         
-        # Check client provisioning
-        client = await db.clients.find_one(
-            {"client_id": password_token["client_id"]},
-            {"_id": 0}
-        )
+        # Check if this is an admin user - admin users don't need client provisioning check
+        is_admin = portal_user.get("role") == UserRole.ROLE_ADMIN.value
         
-        if not client or client["onboarding_status"] != OnboardingStatus.PROVISIONED.value:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Account provisioning incomplete"
+        if not is_admin:
+            # Check client provisioning only for non-admin users
+            client = await db.clients.find_one(
+                {"client_id": password_token["client_id"]},
+                {"_id": 0}
             )
+            
+            if not client or client["onboarding_status"] != OnboardingStatus.PROVISIONED.value:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Account provisioning incomplete"
+                )
         
         # Hash password
         password_hash = hash_password(data.password)
@@ -230,19 +234,19 @@ async def set_password(request: Request, data: SetPasswordRequest):
         await create_audit_log(
             action=AuditAction.PASSWORD_TOKEN_VALIDATED,
             actor_id=portal_user["portal_user_id"],
-            client_id=password_token["client_id"]
+            client_id=password_token.get("client_id")
         )
         
         await create_audit_log(
             action=AuditAction.PASSWORD_SET_SUCCESS,
             actor_id=portal_user["portal_user_id"],
-            client_id=password_token["client_id"]
+            client_id=password_token.get("client_id")
         )
         
         # Create access token for auto-login
         token_data = {
             "portal_user_id": portal_user["portal_user_id"],
-            "client_id": portal_user["client_id"],
+            "client_id": portal_user.get("client_id"),
             "email": portal_user["auth_email"],
             "role": portal_user["role"]
         }
@@ -252,7 +256,7 @@ async def set_password(request: Request, data: SetPasswordRequest):
             action=AuditAction.USER_AUTHENTICATED_POST_SETUP,
             actor_role=UserRole(portal_user["role"]),
             actor_id=portal_user["portal_user_id"],
-            client_id=portal_user["client_id"]
+            client_id=portal_user.get("client_id")
         )
         
         return {
@@ -262,7 +266,7 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 "portal_user_id": portal_user["portal_user_id"],
                 "email": portal_user["auth_email"],
                 "role": portal_user["role"],
-                "client_id": portal_user["client_id"]
+                "client_id": portal_user.get("client_id")
             }
         }
     
