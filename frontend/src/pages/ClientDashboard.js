@@ -76,9 +76,20 @@ const ClientDashboard = () => {
       <header className="bg-midnight-blue text-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold">Compliance Vault Pro</h1>
-              <p className="text-sm text-gray-300">AI-Driven Solutions & Compliance</p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-bold">Compliance Vault Pro</h1>
+                <p className="text-sm text-gray-300">AI-Driven Solutions & Compliance</p>
+              </div>
+              {data?.client?.customer_reference && (
+                <span 
+                  className="px-3 py-1 bg-electric-teal/20 text-electric-teal rounded-lg font-mono text-sm"
+                  data-testid="client-crn-badge"
+                  title="Your Customer Reference Number"
+                >
+                  {data.client.customer_reference}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm">{user?.email}</span>
