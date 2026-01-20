@@ -224,6 +224,7 @@ class Client(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     client_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    customer_reference: Optional[str] = None  # PLE-CVP-YYYY-XXXXX format
     full_name: str
     email: EmailStr
     phone: Optional[str] = None
@@ -236,6 +237,12 @@ class Client(BaseModel):
     service_code: ServiceCode = ServiceCode.VAULT_PRO
     stripe_customer_id: Optional[str] = None
     stripe_subscription_id: Optional[str] = None
+    # Document submission preference
+    document_submission_method: Optional[str] = None  # "UPLOAD" or "EMAIL"
+    email_upload_consent: bool = False  # Consent to Pleerity uploading on behalf
+    # Consents
+    consent_data_processing: bool = False
+    consent_service_boundary: bool = False  # "Does not provide legal advice" acknowledgment
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
