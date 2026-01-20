@@ -132,7 +132,7 @@ const ReportsPage = () => {
         doc.text('Properties', 14, yPosition);
         yPosition += 5;
         
-        doc.autoTable({
+        autoTable(doc, {
           startY: yPosition,
           head: [['Address', 'Type', 'Status', 'Requirements', 'Compliant', 'Overdue']],
           body: reportData.properties.map(p => [
@@ -153,7 +153,7 @@ const ReportsPage = () => {
       doc.text(`Requirements Report (${reportData.requirements.length} items)`, 14, yPosition);
       yPosition += 10;
       
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Property', 'Type', 'Description', 'Status', 'Due Date']],
         body: reportData.requirements.map(r => [
