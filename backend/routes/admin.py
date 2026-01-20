@@ -557,6 +557,582 @@ async def resend_password_setup(request: Request, client_id: str):
             detail="Failed to resend password setup link"
         )
 
+
+# ============================================================================
+# CLIENT PROFILE MANAGEMENT (Admin)
+# ============================================================================
+
+class ClientProfileUpdate(BaseModel):
+    """Safe profile fields that admin can update."""
+    full_name: str = None
+    phone: str = None
+    company_name: str = None
+    preferred_contact: str = None  # EMAIL, SMS, BOTH
+
+
+@router.patch("/clients/{client_id}/profile")
+async def update_client_profile(
+    request: Request, 
+    client_id: str, 
+    profile_data: ClientProfileUpdate
+):
+    """
+    Update safe client profile fields (admin only).
+    Logs before/after state for audit compliance.
+    Does NOT allow subscription or billing changes.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Get current client state
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        # Build update dict with only provided fields
+        update_data = {}
+        before_state = {}
+        after_state = {}
+        
+        # Safe fields only - no subscription/billing fields
+        safe_fields = ["full_name", "phone", "company_name", "preferred_contact"]
+        
+        for field in safe_fields:
+            new_value = getattr(profile_data, field, None)
+            if new_value is not None:
+                old_value = client.get(field)
+                if old_value != new_value:
+                    before_state[field] = old_value
+                    after_state[field] = new_value
+                    update_data[field] = new_value
+        
+        if not update_data:
+            return {"message": "No changes detected", "client_id": client_id}
+        
+        # Add timestamp
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Perform update
+        await db.clients.update_one(
+            {"client_id": client_id},
+            {"$set": update_data}
+        )
+        
+        # Audit log with before/after state
+        await create_audit_log(
+            action=AuditAction.ADMIN_PROFILE_UPDATED,
+            client_id=client_id,
+            admin_id=user.get("portal_user_id"),
+            metadata={
+                "before": before_state,
+                "after": after_state,
+                "fields_changed": list(update_data.keys()),
+                "admin_email": user.get("auth_email")
+            }
+        )
+        
+        logger.info(f"Admin {user.get('auth_email')} updated client {client_id} profile")
+        
+        return {
+            "message": "Profile updated successfully",
+            "client_id": client_id,
+            "changes": after_state
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update client profile error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update client profile"
+        )
+
+
+@router.get("/clients/{client_id}/readiness")
+async def get_client_readiness(request: Request, client_id: str):
+    """
+    Get client readiness checklist for provisioning.
+    Returns checklist items, their status, and last failure reason if any.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        portal_user = await db.portal_users.find_one(
+            {"client_id": client_id, "role": "ROLE_CLIENT"},
+            {"_id": 0}
+        )
+        
+        properties_count = await db.properties.count_documents({"client_id": client_id})
+        
+        # Get provisioning audit logs for failure reasons
+        provisioning_logs = await db.audit_logs.find(
+            {
+                "client_id": client_id,
+                "action": {"$in": [
+                    "PROVISIONING_STARTED", 
+                    "PROVISIONING_COMPLETE", 
+                    "PROVISIONING_FAILED"
+                ]}
+            },
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(5).to_list(5)
+        
+        last_failure = None
+        for log in provisioning_logs:
+            if log.get("action") == "PROVISIONING_FAILED":
+                last_failure = {
+                    "timestamp": log.get("timestamp"),
+                    "reason": log.get("metadata", {}).get("error", "Unknown error")
+                }
+                break
+        
+        # Build readiness checklist
+        checklist = [
+            {
+                "item": "intake_completed",
+                "label": "Intake Form Submitted",
+                "status": "complete" if client.get("onboarding_status") != "INTAKE_PENDING" else "pending",
+                "required": True
+            },
+            {
+                "item": "payment_complete",
+                "label": "Stripe Payment Active",
+                "status": "complete" if client.get("stripe_subscription_id") and client.get("subscription_status") == "ACTIVE" else "pending",
+                "required": True,
+                "details": {
+                    "stripe_customer_id": client.get("stripe_customer_id"),
+                    "stripe_subscription_id": client.get("stripe_subscription_id"),
+                    "subscription_status": client.get("subscription_status")
+                }
+            },
+            {
+                "item": "properties_added",
+                "label": "At Least One Property",
+                "status": "complete" if properties_count > 0 else "pending",
+                "required": True,
+                "details": {"count": properties_count}
+            },
+            {
+                "item": "portal_user_created",
+                "label": "Portal User Account Created",
+                "status": "complete" if portal_user else "pending",
+                "required": True
+            },
+            {
+                "item": "password_set",
+                "label": "Password Set by Client",
+                "status": "complete" if portal_user and portal_user.get("password_status") == "SET" else "pending",
+                "required": False,
+                "details": {
+                    "password_status": portal_user.get("password_status") if portal_user else "N/A"
+                }
+            },
+            {
+                "item": "provisioned",
+                "label": "Fully Provisioned",
+                "status": "complete" if client.get("onboarding_status") == "PROVISIONED" else (
+                    "failed" if client.get("onboarding_status") == "FAILED" else "pending"
+                ),
+                "required": True
+            }
+        ]
+        
+        # Calculate overall readiness
+        required_items = [c for c in checklist if c["required"]]
+        complete_required = [c for c in required_items if c["status"] == "complete"]
+        ready_to_provision = len(complete_required) >= len(required_items) - 1  # All except "provisioned" itself
+        
+        return {
+            "client_id": client_id,
+            "customer_reference": client.get("customer_reference"),
+            "onboarding_status": client.get("onboarding_status"),
+            "checklist": checklist,
+            "ready_to_provision": ready_to_provision,
+            "last_failure": last_failure,
+            "recent_provisioning_logs": provisioning_logs
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get client readiness error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get client readiness"
+        )
+
+
+@router.get("/clients/{client_id}/audit-timeline")
+async def get_client_audit_timeline(request: Request, client_id: str, limit: int = 50):
+    """
+    Get client audit timeline - key events for admin visibility.
+    Shows: intake, payment, provisioning, password setup, login, documents, 
+    reminders, assistant usage, webhook events.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "client_id": 1})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        # Key event types for timeline
+        timeline_actions = [
+            "INTAKE_SUBMITTED",
+            "INTAKE_PROPERTY_ADDED",
+            "INTAKE_DOCUMENT_UPLOADED",
+            "PROVISIONING_STARTED",
+            "PROVISIONING_COMPLETE",
+            "PROVISIONING_FAILED",
+            "PASSWORD_TOKEN_GENERATED",
+            "PASSWORD_SET_SUCCESS",
+            "PASSWORD_SETUP_LINK_RESENT",
+            "USER_LOGIN_SUCCESS",
+            "USER_LOGIN_FAILED",
+            "DOCUMENT_UPLOADED",
+            "DOCUMENT_VERIFIED",
+            "DOCUMENT_REJECTED",
+            "DOCUMENT_AI_ANALYZED",
+            "EMAIL_SENT",
+            "REMINDER_SENT",
+            "DIGEST_SENT",
+            "COMPLIANCE_STATUS_UPDATED",
+            "ADMIN_PROFILE_UPDATED",
+            "ADMIN_MESSAGE_SENT",
+            "ADMIN_PROVISIONING_TRIGGERED"
+        ]
+        
+        logs = await db.audit_logs.find(
+            {
+                "client_id": client_id,
+                "action": {"$in": timeline_actions}
+            },
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit).to_list(limit)
+        
+        # Categorize events for UI grouping
+        categorized = {
+            "intake": [],
+            "provisioning": [],
+            "authentication": [],
+            "documents": [],
+            "notifications": [],
+            "compliance": [],
+            "admin_actions": []
+        }
+        
+        for log in logs:
+            action = log.get("action", "")
+            if action.startswith("INTAKE_"):
+                categorized["intake"].append(log)
+            elif action.startswith("PROVISIONING_"):
+                categorized["provisioning"].append(log)
+            elif action in ["PASSWORD_TOKEN_GENERATED", "PASSWORD_SET_SUCCESS", "PASSWORD_SETUP_LINK_RESENT", "USER_LOGIN_SUCCESS", "USER_LOGIN_FAILED"]:
+                categorized["authentication"].append(log)
+            elif action.startswith("DOCUMENT_"):
+                categorized["documents"].append(log)
+            elif action in ["EMAIL_SENT", "REMINDER_SENT", "DIGEST_SENT"]:
+                categorized["notifications"].append(log)
+            elif action.startswith("COMPLIANCE_"):
+                categorized["compliance"].append(log)
+            elif action.startswith("ADMIN_"):
+                categorized["admin_actions"].append(log)
+        
+        return {
+            "client_id": client_id,
+            "timeline": logs,
+            "categorized": categorized,
+            "total_events": len(logs)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get client audit timeline error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get audit timeline"
+        )
+
+
+# ============================================================================
+# KPI DRILL-DOWN ENDPOINTS
+# ============================================================================
+
+@router.get("/kpi/properties")
+async def get_kpi_properties(
+    request: Request,
+    status_filter: str = None,  # GREEN, AMBER, RED
+    expiring_within_days: int = None,
+    skip: int = 0,
+    limit: int = 50
+):
+    """
+    KPI drill-down: Get properties filtered by compliance status.
+    Used when admin clicks on KPI tiles.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        query = {}
+        
+        if status_filter:
+            query["compliance_status"] = status_filter.upper()
+        
+        # For "expiring soon" filter
+        if expiring_within_days:
+            from datetime import timedelta
+            cutoff_date = (datetime.now(timezone.utc) + timedelta(days=expiring_within_days)).isoformat()
+            # This would need to check requirements with expiry dates
+            # For now, we'll filter properties with expiring requirements
+            expiring_reqs = await db.requirements.find(
+                {
+                    "status": "EXPIRING_SOON",
+                    "expiry_date": {"$lte": cutoff_date}
+                },
+                {"_id": 0, "property_id": 1}
+            ).to_list(1000)
+            property_ids = list(set(r["property_id"] for r in expiring_reqs))
+            query["property_id"] = {"$in": property_ids}
+        
+        properties = await db.properties.find(
+            query,
+            {"_id": 0}
+        ).skip(skip).limit(limit).to_list(limit)
+        
+        total = await db.properties.count_documents(query)
+        
+        # Enrich with client info
+        for prop in properties:
+            client = await db.clients.find_one(
+                {"client_id": prop.get("client_id")},
+                {"_id": 0, "full_name": 1, "email": 1, "customer_reference": 1}
+            )
+            prop["client"] = client
+        
+        return {
+            "properties": properties,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+            "filter": {
+                "status": status_filter,
+                "expiring_within_days": expiring_within_days
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"KPI properties drill-down error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load properties"
+        )
+
+
+@router.get("/kpi/requirements")
+async def get_kpi_requirements(
+    request: Request,
+    status_filter: str = None,  # COMPLIANT, OVERDUE, EXPIRING_SOON, PENDING
+    category: str = None,
+    skip: int = 0,
+    limit: int = 50
+):
+    """
+    KPI drill-down: Get requirements filtered by status.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        query = {}
+        
+        if status_filter:
+            query["status"] = status_filter.upper()
+        if category:
+            query["category"] = category.upper()
+        
+        requirements = await db.requirements.find(
+            query,
+            {"_id": 0}
+        ).sort("expiry_date", 1).skip(skip).limit(limit).to_list(limit)
+        
+        total = await db.requirements.count_documents(query)
+        
+        # Enrich with property and client info
+        for req in requirements:
+            prop = await db.properties.find_one(
+                {"property_id": req.get("property_id")},
+                {"_id": 0, "nickname": 1, "address_line_1": 1, "postcode": 1, "client_id": 1}
+            )
+            if prop:
+                req["property"] = prop
+                client = await db.clients.find_one(
+                    {"client_id": prop.get("client_id")},
+                    {"_id": 0, "full_name": 1, "customer_reference": 1}
+                )
+                req["client"] = client
+        
+        return {
+            "requirements": requirements,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+            "filter": {
+                "status": status_filter,
+                "category": category
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"KPI requirements drill-down error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load requirements"
+        )
+
+
+# ============================================================================
+# ADMIN MESSAGING TO CLIENT
+# ============================================================================
+
+class AdminMessageRequest(BaseModel):
+    subject: str
+    message: str  # Plain text or HTML
+    send_copy_to_admin: bool = False
+
+
+@router.post("/clients/{client_id}/message")
+async def send_message_to_client(
+    request: Request,
+    client_id: str,
+    message_data: AdminMessageRequest
+):
+    """
+    Send email message from admin to client.
+    Logs to MessageLog + AuditLog.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
+        # Import email service
+        from services.email_service import send_email
+        
+        # Build HTML email body
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #0B1D3A; padding: 20px; text-align: center;">
+                <h1 style="color: #00B8A9; margin: 0;">Compliance Vault Pro</h1>
+            </div>
+            <div style="padding: 30px; background-color: #ffffff;">
+                <p>Dear {client.get('full_name', 'Client')},</p>
+                <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+                    {message_data.message.replace(chr(10), '<br>')}
+                </div>
+                <p>If you have any questions, please don't hesitate to contact us.</p>
+                <p>Best regards,<br>The Pleerity Team</p>
+            </div>
+            <div style="padding: 15px; background-color: #f1f1f1; text-align: center; font-size: 12px; color: #666;">
+                <p>This message was sent from your Compliance Vault Pro portal.</p>
+                <p>Your reference: {client.get('customer_reference', 'N/A')}</p>
+            </div>
+        </div>
+        """
+        
+        # Send email
+        success = await send_email(
+            to_email=client.get("email"),
+            subject=message_data.subject,
+            html_body=html_body,
+            text_body=message_data.message
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send email"
+            )
+        
+        # Log to message_logs
+        message_log_id = str(uuid.uuid4())
+        await db.message_logs.insert_one({
+            "message_id": message_log_id,
+            "client_id": client_id,
+            "recipient_email": client.get("email"),
+            "subject": message_data.subject,
+            "template_alias": "admin-manual",
+            "status": "sent",
+            "sent_by": user.get("auth_email"),
+            "sent_by_admin_id": user.get("portal_user_id"),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_MESSAGE_SENT,
+            client_id=client_id,
+            admin_id=user.get("portal_user_id"),
+            metadata={
+                "message_id": message_log_id,
+                "subject": message_data.subject,
+                "recipient": client.get("email"),
+                "admin_email": user.get("auth_email")
+            }
+        )
+        
+        # Send copy to admin if requested
+        if message_data.send_copy_to_admin:
+            await send_email(
+                to_email=user.get("auth_email"),
+                subject=f"[Copy] {message_data.subject}",
+                html_body=html_body,
+                text_body=f"[Copy of message sent to {client.get('email')}]\n\n{message_data.message}"
+            )
+        
+        logger.info(f"Admin {user.get('auth_email')} sent message to client {client_id}")
+        
+        return {
+            "success": True,
+            "message_id": message_log_id,
+            "recipient": client.get("email"),
+            "subject": message_data.subject
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send message to client error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send message"
+        )
+
+
 @router.get("/messages")
 async def get_message_logs(request: Request, skip: int = 0, limit: int = 100, client_id: str = None):
     """Get email message logs (admin only)."""
