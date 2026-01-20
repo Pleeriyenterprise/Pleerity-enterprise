@@ -801,7 +801,56 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
   const [lookingUpPostcode, setLookingUpPostcode] = useState(false);
   const [postcodeError, setPostcodeError] = useState('');
   const [postcodeLookupDone, setPostcodeLookupDone] = useState(false);
+  
+  // Postcode autocomplete state
+  const [postcodeInput, setPostcodeInput] = useState(property.postcode || '');
+  const [postcodeSuggestions, setPostcodeSuggestions] = useState([]);
+  const [showPostcodeDropdown, setShowPostcodeDropdown] = useState(false);
+  const [loadingPostcodes, setLoadingPostcodes] = useState(false);
+  
   const councilRef = useRef(null);
+  const postcodeRef = useRef(null);
+
+  // Postcode autocomplete - fetch suggestions as user types
+  const fetchPostcodeSuggestions = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setPostcodeSuggestions([]);
+      return;
+    }
+    
+    setLoadingPostcodes(true);
+    try {
+      const response = await intakeAPI.autocompletePostcode(query);
+      setPostcodeSuggestions(response.data.postcodes || []);
+    } catch (err) {
+      console.error('Postcode autocomplete error:', err);
+      setPostcodeSuggestions([]);
+    } finally {
+      setLoadingPostcodes(false);
+    }
+  }, []);
+
+  // Debounced postcode autocomplete
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (postcodeInput && postcodeInput.length >= 2 && !postcodeLookupDone) {
+        fetchPostcodeSuggestions(postcodeInput);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [postcodeInput, postcodeLookupDone, fetchPostcodeSuggestions]);
+
+  // Select a postcode from dropdown and trigger full lookup
+  const selectPostcode = async (suggestion) => {
+    const postcode = suggestion.postcode;
+    setPostcodeInput(postcode);
+    updateProperty(index, 'postcode', postcode);
+    setShowPostcodeDropdown(false);
+    setPostcodeSuggestions([]);
+    
+    // Trigger full lookup
+    await lookupPostcode(postcode);
+  };
 
   // Lookup postcode and auto-fill fields
   const lookupPostcode = useCallback(async (postcode) => {
@@ -847,15 +896,19 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
     }
   }, [index, property.city, property.council_name, updateProperty]);
 
-  // Trigger postcode lookup when postcode changes (debounced)
+  // Close dropdowns on outside click
   useEffect(() => {
-    if (property.postcode && property.postcode.length >= 5 && !postcodeLookupDone) {
-      const timer = setTimeout(() => {
-        lookupPostcode(property.postcode);
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [property.postcode, postcodeLookupDone, lookupPostcode]);
+    const handleClickOutside = (e) => {
+      if (councilRef.current && !councilRef.current.contains(e.target)) {
+        setShowCouncilDropdown(false);
+      }
+      if (postcodeRef.current && !postcodeRef.current.contains(e.target)) {
+        setShowPostcodeDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Search councils
   const searchCouncils = useCallback(async (query) => {
@@ -884,17 +937,6 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
     return () => clearTimeout(timer);
   }, [councilSearch, searchCouncils]);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (councilRef.current && !councilRef.current.contains(e.target)) {
-        setShowCouncilDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const selectCouncil = (council) => {
     updateProperty(index, 'council_name', council.name);
     updateProperty(index, 'council_code', council.code);
@@ -902,11 +944,25 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
     setShowCouncilDropdown(false);
   };
 
-  // Handle postcode change with reset of lookup state
+  // Handle postcode input change
   const handlePostcodeChange = (value) => {
-    updateProperty(index, 'postcode', value.toUpperCase());
+    const upperValue = value.toUpperCase();
+    setPostcodeInput(upperValue);
+    updateProperty(index, 'postcode', upperValue);
     setPostcodeLookupDone(false);
     setPostcodeError('');
+    setShowPostcodeDropdown(true);
+  };
+
+  // Handle postcode blur - trigger lookup if valid
+  const handlePostcodeBlur = () => {
+    // Small delay to allow dropdown click to register
+    setTimeout(() => {
+      setShowPostcodeDropdown(false);
+      if (postcodeInput && postcodeInput.length >= 5 && !postcodeLookupDone) {
+        lookupPostcode(postcodeInput);
+      }
+    }, 200);
   };
 
   return (
@@ -941,17 +997,19 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
               data-testid={`property-${index}-nickname`}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2" ref={postcodeRef}>
             <label className="text-sm font-medium text-gray-700">Postcode *</label>
             <div className="relative">
               <Input
-                value={property.postcode}
+                value={postcodeInput}
                 onChange={(e) => handlePostcodeChange(e.target.value)}
-                placeholder="SW1A 1AA"
+                onFocus={() => postcodeInput.length >= 2 && setShowPostcodeDropdown(true)}
+                onBlur={handlePostcodeBlur}
+                placeholder="Start typing... e.g., SW1A"
                 className={postcodeError ? 'border-red-300' : ''}
                 data-testid={`property-${index}-postcode`}
               />
-              {lookingUpPostcode && (
+              {(lookingUpPostcode || loadingPostcodes) && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <Loader2 className="w-4 h-4 animate-spin text-electric-teal" />
                 </div>
@@ -961,12 +1019,40 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
                   <CheckCircle className="w-4 h-4 text-green-500" />
                 </div>
               )}
+              
+              {/* Postcode Autocomplete Dropdown */}
+              {showPostcodeDropdown && postcodeSuggestions.length > 0 && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {postcodeSuggestions.map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        selectPostcode(suggestion);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 last:border-0"
+                    >
+                      <div>
+                        <span className="font-medium text-midnight-blue">{suggestion.postcode}</span>
+                        <span className="text-sm text-gray-500 ml-2">
+                          {suggestion.post_town || suggestion.admin_district}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-400">{suggestion.region}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             {postcodeError && (
               <p className="text-xs text-red-500">{postcodeError}</p>
             )}
             {postcodeLookupDone && (
               <p className="text-xs text-green-600">City and council auto-filled ✓</p>
+            )}
+            {!postcodeLookupDone && !postcodeError && postcodeInput.length >= 2 && (
+              <p className="text-xs text-gray-500">Select from suggestions or type full postcode</p>
             )}
           </div>
         </div>
