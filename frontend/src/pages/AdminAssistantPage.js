@@ -292,7 +292,7 @@ const AdminAssistantPage = () => {
                   <div className="text-center py-12">
                     <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500 mb-2">Enter a CRN to load client data</p>
-                    <p className="text-sm text-gray-400">The AI assistant will analyze the client's compliance status</p>
+                    <p className="text-sm text-gray-400">The AI assistant will analyze the client&apos;s compliance status</p>
                   </div>
                 ) : conversation.length === 0 ? (
                   <div className="text-center py-8">
