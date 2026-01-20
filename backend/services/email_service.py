@@ -567,5 +567,26 @@ Hello {model.get('client_name', 'there')},
             client_id=client_id,
             subject=subject
         )
+    
+    async def send_admin_invite_email(
+        self,
+        recipient: str,
+        admin_name: str,
+        inviter_name: str,
+        setup_link: str
+    ):
+        """Send admin invitation email."""
+        await self.send_email(
+            recipient=recipient,
+            template_alias=EmailTemplateAlias.ADMIN_INVITE,
+            template_model={
+                "admin_name": admin_name,
+                "inviter_name": inviter_name,
+                "setup_link": setup_link,
+                "company_name": "Pleerity Enterprise Ltd"
+            },
+            client_id=None,  # Admin invites are not client-specific
+            subject="🛡️ You've Been Invited to Join Compliance Vault Pro as an Admin"
+        )
 
 email_service = EmailService()
