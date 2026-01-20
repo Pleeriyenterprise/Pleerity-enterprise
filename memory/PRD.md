@@ -340,7 +340,28 @@
     - postcode, compliance_status on properties
     - Compound index on audit_logs (client_id, created_at)
 
-- **TEST REPORT:** /app/test_reports/iteration_15.json (29/29 tests passed - 100%)
+- **CRN Display Everywhere ✅**
+  - Customer Reference Number now displayed in:
+    - Client Dashboard header (teal badge with data-testid='client-crn-badge')
+    - All email templates (header badge + footer text)
+    - Admin search results
+    - Client Detail Modal header
+    - KPI drilldown client lists
+  - Format: PLE-CVP-YYYY-XXXXX
+
+- **Clickable KPI Tiles ✅**
+  - 7 KPI tiles are now interactive buttons:
+    - Total Clients, Total Properties, Active Clients, Pending Setup
+    - Compliance: GREEN (Compliant), AMBER (Attention Needed), RED (Non-Compliant)
+  - Hover effect shows "Click to view details →"
+  - Opens KPIDrilldownModal with filtered data
+  - Client list shows: avatar, name, email, CRN badge, status
+  - Property list shows: icon, address, postcode, council, compliance status
+  - Clicking a client opens Client Detail Modal
+
+- **TEST REPORTS:** 
+  - `/app/test_reports/iteration_15.json` (29/29 tests - 100%)
+  - `/app/test_reports/iteration_16.json` (14/14 tests - 100%)
 
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
