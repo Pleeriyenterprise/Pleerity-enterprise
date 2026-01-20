@@ -230,7 +230,16 @@ const NotificationPreferencesPage = () => {
     sms_enabled: false,
     sms_phone_number: '',
     sms_phone_verified: false,
-    sms_urgent_alerts_only: true
+    sms_urgent_alerts_only: true,
+    // Email Digest Customization
+    digest_compliance_summary: true,
+    digest_action_items: true,
+    digest_upcoming_expiries: true,
+    digest_property_breakdown: true,
+    digest_recent_documents: true,
+    digest_recommendations: true,
+    digest_audit_summary: false,
+    daily_reminder_enabled: true
   });
   const [hasChanges, setHasChanges] = useState(false);
   const [originalPreferences, setOriginalPreferences] = useState(null);
