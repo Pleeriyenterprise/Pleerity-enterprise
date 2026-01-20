@@ -85,6 +85,15 @@
   - Property assignment support
   - No document uploads, messaging, audit logs, or admin features for tenants
 
+- [x] **Tenant Management UI** (Enhancement)
+  - Full CRUD for tenant management
+  - Invite tenants with email notification
+  - Assign/unassign properties to tenants
+  - Revoke tenant access
+  - Resend invitation emails
+  - Status badges (Pending, Active, Disabled)
+  - Navigation tab in client dashboard
+
 ---
 
 ## User Roles
