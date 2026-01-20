@@ -751,6 +751,414 @@ const MessageLogs = () => {
   );
 };
 
+// Admin Users Management Component
+const AdminsManagement = () => {
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [formData, setFormData] = useState({
+    email: '',
+    full_name: ''
+  });
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
+
+  const fetchAdmins = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/admin/admins');
+      setAdmins(response.data.admins || []);
+    } catch (error) {
+      toast.error('Failed to load admin users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    if (!formData.email || !formData.full_name) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      await api.post('/admin/admins/invite', formData);
+      toast.success('Admin invitation sent successfully');
+      setShowInviteForm(false);
+      setFormData({ email: '', full_name: '' });
+      fetchAdmins();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send invitation');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleDeactivate = async (portalUserId, email) => {
+    if (!window.confirm(`Are you sure you want to deactivate ${email}?`)) return;
+    
+    setActionLoading(portalUserId);
+    try {
+      await api.delete(`/admin/admins/${portalUserId}`);
+      toast.success('Admin deactivated successfully');
+      fetchAdmins();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to deactivate admin');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReactivate = async (portalUserId) => {
+    setActionLoading(portalUserId);
+    try {
+      await api.post(`/admin/admins/${portalUserId}/reactivate`);
+      toast.success('Admin reactivated successfully');
+      fetchAdmins();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to reactivate admin');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResendInvite = async (portalUserId, email) => {
+    setActionLoading(portalUserId);
+    try {
+      await api.post(`/admin/admins/${portalUserId}/resend-invite`);
+      toast.success(`Invitation resent to ${email}`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to resend invitation');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const getStatusBadge = (status, passwordStatus) => {
+    if (status === 'DISABLED') {
+      return { label: 'Disabled', className: 'bg-gray-100 text-gray-700 border border-gray-300' };
+    }
+    if (status === 'INVITED' || passwordStatus === 'NOT_SET') {
+      return { label: 'Pending Setup', className: 'bg-amber-50 text-amber-700 border border-amber-200' };
+    }
+    if (status === 'ACTIVE') {
+      return { label: 'Active', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' };
+    }
+    return { label: status, className: 'bg-gray-100 text-gray-700' };
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64" data-testid="admins-loading">
+        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="admins-management">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-midnight-blue">Admin Users</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage administrator access to Compliance Vault Pro
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={fetchAdmins}
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            data-testid="refresh-admins-btn"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+          <button
+            onClick={() => setShowInviteForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors"
+            data-testid="invite-admin-btn"
+          >
+            <UserPlus className="w-4 h-4" />
+            Invite Admin
+          </button>
+        </div>
+      </div>
+
+      {/* Invite Form Modal */}
+      {showInviteForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="invite-admin-modal">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-electric-teal/10 rounded-lg flex items-center justify-center">
+                  <UserPlus className="w-5 h-5 text-electric-teal" />
+                </div>
+                <h3 className="text-lg font-semibold text-midnight-blue">Invite New Admin</h3>
+              </div>
+              <button
+                onClick={() => { setShowInviteForm(false); setFormData({ email: '', full_name: '' }); }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                data-testid="close-invite-modal-btn"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleInvite} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-midnight-blue mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  placeholder="Enter admin's full name"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent transition-all"
+                  data-testid="invite-admin-name-input"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-midnight-blue mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="admin@company.com"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent transition-all"
+                  data-testid="invite-admin-email-input"
+                  required
+                />
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
+                <p className="flex items-start gap-2">
+                  <Mail className="w-4 h-4 mt-0.5 text-electric-teal flex-shrink-0" />
+                  An invitation email will be sent with a secure link to set up their account.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowInviteForm(false); setFormData({ email: '', full_name: '' }); }}
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  data-testid="cancel-invite-btn"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={inviteLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50"
+                  data-testid="submit-invite-btn"
+                >
+                  {inviteLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  Send Invitation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Stats Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-electric-teal/10 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-electric-teal" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-midnight-blue">{admins.length}</p>
+              <p className="text-xs text-gray-500">Total Admins</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-midnight-blue">
+                {admins.filter(a => a.status === 'ACTIVE' && a.password_status === 'SET').length}
+              </p>
+              <p className="text-xs text-gray-500">Active</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-midnight-blue">
+                {admins.filter(a => a.status === 'INVITED' || a.password_status === 'NOT_SET').length}
+              </p>
+              <p className="text-xs text-gray-500">Pending Setup</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Admin List */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-midnight-blue uppercase tracking-wider">
+                  Admin
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-midnight-blue uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-midnight-blue uppercase tracking-wider">
+                  Last Login
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-midnight-blue uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-midnight-blue uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {admins.map((admin) => {
+                const statusBadge = getStatusBadge(admin.status, admin.password_status);
+                const isLoading = actionLoading === admin.portal_user_id;
+                const isDisabled = admin.status === 'DISABLED';
+                const isPending = admin.status === 'INVITED' || admin.password_status === 'NOT_SET';
+
+                return (
+                  <tr 
+                    key={admin.portal_user_id} 
+                    className={`hover:bg-gray-50 transition-colors ${isDisabled ? 'opacity-60' : ''}`}
+                    data-testid={`admin-row-${admin.portal_user_id}`}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${
+                          isDisabled ? 'bg-gray-400' : 'bg-midnight-blue'
+                        }`}>
+                          {admin.full_name?.charAt(0)?.toUpperCase() || admin.auth_email?.charAt(0)?.toUpperCase() || 'A'}
+                        </div>
+                        <div>
+                          <p className="font-medium text-midnight-blue">
+                            {admin.full_name || 'Unnamed Admin'}
+                          </p>
+                          <p className="text-sm text-gray-500">{admin.auth_email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusBadge.className}`}>
+                        {statusBadge.label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {admin.last_login 
+                        ? new Date(admin.last_login).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : <span className="text-gray-400">Never</span>
+                      }
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {admin.created_at 
+                        ? new Date(admin.created_at).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })
+                        : '—'
+                      }
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        {isLoading ? (
+                          <RefreshCw className="w-4 h-4 animate-spin text-electric-teal" />
+                        ) : (
+                          <>
+                            {isPending && !isDisabled && (
+                              <button
+                                onClick={() => handleResendInvite(admin.portal_user_id, admin.auth_email)}
+                                className="p-2 text-electric-teal hover:bg-electric-teal/10 rounded-lg transition-colors"
+                                title="Resend Invitation"
+                                data-testid={`resend-invite-${admin.portal_user_id}`}
+                              >
+                                <MailPlus className="w-4 h-4" />
+                              </button>
+                            )}
+                            {isDisabled ? (
+                              <button
+                                onClick={() => handleReactivate(admin.portal_user_id)}
+                                className="p-2 text-electric-teal hover:bg-electric-teal/10 rounded-lg transition-colors"
+                                title="Reactivate Admin"
+                                data-testid={`reactivate-admin-${admin.portal_user_id}`}
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleDeactivate(admin.portal_user_id, admin.auth_email)}
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Deactivate Admin"
+                                data-testid={`deactivate-admin-${admin.portal_user_id}`}
+                              >
+                                <UserMinus className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {admins.length === 0 && (
+          <div className="text-center py-12">
+            <UserCog className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">No admin users found</p>
+            <button
+              onClick={() => setShowInviteForm(true)}
+              className="px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors"
+            >
+              Invite First Admin
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Rules Management Component
 const RulesManagement = () => {
   const [rules, setRules] = useState([]);
