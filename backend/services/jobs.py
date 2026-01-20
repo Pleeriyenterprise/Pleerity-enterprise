@@ -283,13 +283,15 @@ class JobScheduler:
         1. Evaluates current compliance status for all properties
         2. Compares with stored previous status
         3. Sends email alerts when status degrades (GREEN→AMBER, AMBER→RED, GREEN→RED)
-        4. Updates the stored status
-        5. Respects user notification preferences
+        4. Fires webhooks for status changes
+        5. Updates the stored status
+        6. Respects user notification preferences
         """
         logger.info("Running compliance status change check...")
         
         try:
             from services.email_service import email_service
+            from services.webhook_service import fire_compliance_status_changed
             
             # Get all active clients
             clients = await self.db.clients.find(
@@ -308,10 +310,6 @@ class JobScheduler:
                 
                 # Default to enabled if no preferences set
                 status_alerts_enabled = prefs.get("status_change_alerts", True) if prefs else True
-                
-                if not status_alerts_enabled:
-                    logger.info(f"Skipping compliance alerts for {client['email']} - disabled in preferences")
-                    continue
                 
                 # Get all properties for this client
                 properties = await self.db.properties.find(
@@ -333,44 +331,60 @@ class JobScheduler:
                     old_status = prop.get("compliance_status", "GREEN")
                     previous_notified_status = prop.get("last_notified_status", old_status)
                     
-                    # Check if status has degraded since last notification
-                    old_severity = STATUS_SEVERITY.get(previous_notified_status, 0)
-                    new_severity = STATUS_SEVERITY.get(new_status, 0)
-                    
-                    # Only alert on degradation (getting worse)
-                    if new_severity > old_severity:
+                    # Check if status has changed at all
+                    if new_status != old_status:
                         # Determine reason for change
                         reason = self._get_status_change_reason(requirements, new_status)
+                        property_address = f"{prop.get('address_line_1', 'Unknown')}, {prop.get('city', '')}"
                         
-                        properties_with_changes.append({
-                            "property_id": prop["property_id"],
-                            "address": f"{prop.get('address_line_1', 'Unknown')}, {prop.get('city', '')}",
-                            "previous_status": previous_notified_status,
-                            "new_status": new_status,
-                            "reason": reason
-                        })
+                        # Fire webhook for ANY status change (not just degradation)
+                        try:
+                            await fire_compliance_status_changed(
+                                client_id=client["client_id"],
+                                property_id=prop["property_id"],
+                                property_address=property_address,
+                                old_status=old_status,
+                                new_status=new_status,
+                                reason=reason
+                            )
+                        except Exception as webhook_err:
+                            logger.error(f"Webhook error for property {prop['property_id']}: {webhook_err}")
                         
-                        # Update property with new status and last notified status
-                        await self.db.properties.update_one(
-                            {"property_id": prop["property_id"]},
-                            {"$set": {
-                                "compliance_status": new_status,
-                                "last_notified_status": new_status,
-                                "status_changed_at": datetime.now(timezone.utc).isoformat()
-                            }}
-                        )
-                    elif new_status != old_status:
-                        # Status changed but not degraded - just update the status
-                        await self.db.properties.update_one(
-                            {"property_id": prop["property_id"]},
-                            {"$set": {
-                                "compliance_status": new_status,
-                                "status_changed_at": datetime.now(timezone.utc).isoformat()
-                            }}
-                        )
+                        # Check if status has degraded since last notification
+                        old_severity = STATUS_SEVERITY.get(previous_notified_status, 0)
+                        new_severity = STATUS_SEVERITY.get(new_status, 0)
+                        
+                        # Only add to email alert on degradation (getting worse)
+                        if new_severity > old_severity:
+                            properties_with_changes.append({
+                                "property_id": prop["property_id"],
+                                "address": property_address,
+                                "previous_status": previous_notified_status,
+                                "new_status": new_status,
+                                "reason": reason
+                            })
+                            
+                            # Update property with new status and last notified status
+                            await self.db.properties.update_one(
+                                {"property_id": prop["property_id"]},
+                                {"$set": {
+                                    "compliance_status": new_status,
+                                    "last_notified_status": new_status,
+                                    "status_changed_at": datetime.now(timezone.utc).isoformat()
+                                }}
+                            )
+                        else:
+                            # Status changed but not degraded - just update the status
+                            await self.db.properties.update_one(
+                                {"property_id": prop["property_id"]},
+                                {"$set": {
+                                    "compliance_status": new_status,
+                                    "status_changed_at": datetime.now(timezone.utc).isoformat()
+                                }}
+                            )
                 
-                # Send alert if there are properties with degraded status
-                if properties_with_changes:
+                # Send email alert if there are properties with degraded status
+                if properties_with_changes and status_alerts_enabled:
                     frontend_url = os.getenv("FRONTEND_URL", "https://doc-secure.preview.emergentagent.com")
                     
                     await email_service.send_compliance_alert_email(
@@ -396,8 +410,10 @@ class JobScheduler:
                     
                     alert_count += 1
                     logger.info(f"Sent compliance alert to {client['email']} for {len(properties_with_changes)} properties")
+                elif not status_alerts_enabled and properties_with_changes:
+                    logger.info(f"Skipping email alert for {client['email']} - disabled in preferences (webhooks still fired)")
             
-            logger.info(f"Compliance status check complete. Sent {alert_count} alerts.")
+            logger.info(f"Compliance status check complete. Sent {alert_count} email alerts.")
             return alert_count
         
         except Exception as e:
