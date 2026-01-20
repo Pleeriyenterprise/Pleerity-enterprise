@@ -138,6 +138,7 @@ class EmailTemplateAlias(str, Enum):
     REMINDER = "reminder"
     WELCOME = "welcome"
     COMPLIANCE_ALERT = "compliance-alert"  # Status change notifications
+    TENANT_INVITE = "tenant-invite"  # Tenant portal invitation
 
 class EmailTemplate(BaseModel):
     """Customizable email template stored in the database."""
