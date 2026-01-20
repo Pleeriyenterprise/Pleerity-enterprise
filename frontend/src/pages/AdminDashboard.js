@@ -2459,6 +2459,7 @@ const AdminDashboard = () => {
     { id: 'statistics', label: 'Statistics', icon: BarChart3 },
     { id: 'jobs', label: 'Jobs', icon: Clock },
     { id: 'clients', label: 'Clients', icon: Users },
+    { id: 'admins', label: 'Admins', icon: UserCog },
     { id: 'rules', label: 'Rules', icon: BookOpen },
     { id: 'templates', label: 'Templates', icon: Mail },
     { id: 'audit', label: 'Audit Logs', icon: FileText },
@@ -2471,6 +2472,7 @@ const AdminDashboard = () => {
       case 'statistics': return <StatisticsDashboard />;
       case 'jobs': return <JobsMonitoring />;
       case 'clients': return <ClientsManagement />;
+      case 'admins': return <AdminsManagement />;
       case 'rules': return <RulesManagement />;
       case 'templates': return <EmailTemplates />;
       case 'audit': return <AuditLogs />;
