@@ -1098,7 +1098,8 @@ async def send_message_to_client(
         await create_audit_log(
             action=AuditAction.ADMIN_MESSAGE_SENT,
             client_id=client_id,
-            admin_id=user.get("portal_user_id"),
+            actor_id=user.get("portal_user_id"),
+            actor_role=UserRole.ROLE_ADMIN,
             metadata={
                 "message_id": message_log_id,
                 "subject": message_data.subject,
