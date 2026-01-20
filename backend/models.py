@@ -478,17 +478,84 @@ class PaymentTransaction(BaseModel):
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
+# ============================================================================
+# INTAKE WIZARD MODELS
+# ============================================================================
+
+class CertificateAvailability(str, Enum):
+    YES = "YES"
+    NO = "NO"
+    UNSURE = "UNSURE"
+
+
+class LicenceStatus(str, Enum):
+    APPLIED = "APPLIED"
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    EXPIRED = "EXPIRED"
+    UNKNOWN = "UNKNOWN"
+
+
+class IntakePropertyData(BaseModel):
+    """Property data collected during intake wizard."""
+    nickname: Optional[str] = None
+    postcode: str
+    address_line_1: str
+    address_line_2: Optional[str] = None
+    city: str
+    property_type: str  # flat, house, bungalow, commercial
+    is_hmo: bool = False
+    bedrooms: Optional[int] = None
+    occupancy: Optional[str] = None  # single_family, multi_family, student, professional
+    
+    # Council
+    council_name: Optional[str] = None
+    council_code: Optional[str] = None
+    
+    # Licensing
+    licence_required: Optional[str] = None  # YES, NO, UNSURE
+    licence_type: Optional[str] = None  # selective, additional, mandatory_hmo
+    licence_status: Optional[str] = None  # applied, pending, approved, expired, unknown
+    
+    # Management & Reminders
+    managed_by: Optional[str] = None  # LANDLORD, AGENT
+    send_reminders_to: Optional[str] = None  # LANDLORD, AGENT, BOTH
+    agent_name: Optional[str] = None
+    agent_email: Optional[str] = None
+    agent_phone: Optional[str] = None
+    
+    # Certificate availability (for deterministic compliance calculation)
+    cert_gas_safety: Optional[str] = None  # YES, NO, UNSURE
+    cert_eicr: Optional[str] = None
+    cert_epc: Optional[str] = None
+    cert_licence: Optional[str] = None  # Only applicable if licence_required = YES
+
+
 class IntakeFormData(BaseModel):
+    """Universal intake wizard form data - 5-step wizard submission."""
+    # Step 1: Your Details
     full_name: str
     email: EmailStr
-    phone: Optional[str] = None
-    company_name: Optional[str] = None
     client_type: ClientType
+    company_name: Optional[str] = None  # Required if COMPANY or AGENT
     preferred_contact: PreferredContact
-    properties: List[Dict[str, Any]]
+    phone: Optional[str] = None  # Required if SMS or BOTH
+    
+    # Step 2: Plan selection
     billing_plan: BillingPlan
-    consent_data_processing: bool
-    consent_communications: bool
+    
+    # Step 3: Properties (plan-limited)
+    properties: List[IntakePropertyData]
+    
+    # Step 4: Preferences & Consents
+    document_submission_method: str  # "UPLOAD" or "EMAIL"
+    email_upload_consent: bool = False  # Required if method is EMAIL
+    consent_data_processing: bool  # GDPR consent - required
+    consent_service_boundary: bool  # "Does not provide legal advice" - required
+    
+    # Temp key for linking uploaded documents before properties exist
+    intake_session_id: Optional[str] = None
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
