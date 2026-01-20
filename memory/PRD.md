@@ -251,6 +251,19 @@
 
 ## Changelog
 
+### January 20, 2026 (Session 2) - Admin Authentication Fix
+- **FIXED:** Admin authentication fully decoupled from client provisioning
+  - Admin login no longer requires Client record
+  - Admin login not blocked by onboarding_status or provisioning checks
+  - Admin can login even with no clients, properties, or provisioning
+  - Admin session persists across page refresh
+- **ADDED:** Dedicated admin login endpoint `/api/auth/admin/login`
+- **ADDED:** Route guard correctly blocks non-admin users from /admin/* routes
+- **ADDED:** Audit log actions: ADMIN_LOGIN_SUCCESS, ADMIN_LOGIN_FAILED, ADMIN_ROUTE_GUARD_BLOCK
+- **ADDED:** Frontend detects /admin/signin route and uses admin login API
+- **UPDATED:** LoginPage.js shows "Admin Sign In" with Shield icon on admin route
+- **TEST REPORT:** /app/test_reports/admin_auth_verification.json
+
 ### January 20, 2026
 - Implemented Universal Intake Wizard (5-step premium wizard)
 - Added UK councils searchable endpoint with ~300 councils
