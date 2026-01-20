@@ -236,6 +236,128 @@ async def search_councils(
     }
 
 
+@router.get("/postcode-lookup/{postcode}")
+async def lookup_postcode(postcode: str):
+    """Lookup UK postcode using postcodes.io API.
+    
+    Returns address data including:
+    - Formatted addresses (if available)
+    - Admin district (council)
+    - Post town (city)
+    - Region
+    - Country
+    
+    This endpoint proxies to postcodes.io to avoid CORS issues.
+    """
+    import httpx
+    
+    # Clean and validate postcode format
+    clean_postcode = postcode.strip().upper().replace(" ", "")
+    
+    if len(clean_postcode) < 5 or len(clean_postcode) > 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid postcode format"
+        )
+    
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Lookup postcode via postcodes.io
+            response = await client.get(
+                f"https://api.postcodes.io/postcodes/{clean_postcode}"
+            )
+            
+            if response.status_code == 404:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Postcode not found"
+                )
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Postcode lookup service unavailable"
+                )
+            
+            data = response.json()
+            
+            if data.get("status") != 200 or not data.get("result"):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Postcode not found"
+                )
+            
+            result = data["result"]
+            
+            # Extract relevant fields
+            admin_district = result.get("admin_district", "")
+            post_town = result.get("post_town", "") or result.get("admin_district", "")
+            region = result.get("region", "")
+            country = result.get("country", "")
+            parish = result.get("parish", "")
+            
+            # Try to match council from our database
+            councils = _load_councils()
+            matched_council = None
+            matched_council_code = None
+            
+            # First try exact match on admin_district
+            for council in councils:
+                if council["name"].lower() == admin_district.lower():
+                    matched_council = council["name"]
+                    matched_council_code = council["code"]
+                    break
+            
+            # If no exact match, try partial match
+            if not matched_council and admin_district:
+                for council in councils:
+                    if admin_district.lower() in council["name"].lower() or council["name"].lower() in admin_district.lower():
+                        matched_council = council["name"]
+                        matched_council_code = council["code"]
+                        break
+            
+            # Check DISTRICT_TO_COUNCIL mapping
+            if not matched_council and admin_district in DISTRICT_TO_COUNCIL:
+                mapped_name = DISTRICT_TO_COUNCIL[admin_district]
+                for council in councils:
+                    if council["name"] == mapped_name:
+                        matched_council = council["name"]
+                        matched_council_code = council["code"]
+                        break
+            
+            return {
+                "postcode": result.get("postcode", postcode),
+                "admin_district": admin_district,
+                "post_town": post_town,
+                "region": region,
+                "country": country,
+                "parish": parish,
+                "latitude": result.get("latitude"),
+                "longitude": result.get("longitude"),
+                # Matched council from our database
+                "council_name": matched_council,
+                "council_code": matched_council_code,
+                # Suggested address (user can edit)
+                "suggested_city": post_town or admin_district,
+                "suggested_address": None,  # postcodes.io doesn't provide street address
+                "note": "Please enter your street address manually"
+            }
+    
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Postcode lookup timed out"
+        )
+    except Exception as e:
+        logger.error(f"Postcode lookup error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to lookup postcode"
+        )
+
+
 @router.post("/submit")
 async def submit_intake(request: Request, data: IntakeFormData):
     """Universal intake wizard submission.
