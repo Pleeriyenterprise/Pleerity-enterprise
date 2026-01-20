@@ -418,7 +418,7 @@ class TestCalendarAPI:
         response = requests.get(f"{BASE_URL}/api/calendar/expiries", headers=self.headers)
         assert response.status_code == 200
         data = response.json()
-        assert "events" in data or "expiries" in data or "calendar" in data
+        assert "events_by_date" in data
         print("✓ Calendar expiries endpoint working")
 
 
