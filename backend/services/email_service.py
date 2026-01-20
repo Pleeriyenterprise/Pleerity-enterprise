@@ -218,6 +218,10 @@ class EmailService:
             """
         elif template_alias == EmailTemplateAlias.COMPLIANCE_ALERT:
             # Compliance status change alert
+            footer = self._build_email_footer(model)
+            customer_ref = model.get('customer_reference', '')
+            ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
+            
             status_color = model.get('status_color', '#dc2626')
             new_status = model.get('new_status', 'RED')
             properties_html = ""
@@ -239,7 +243,7 @@ class EmailService:
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background-color: {status_color}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="margin: 0;">⚠️ Compliance Alert</h1>
+                    <h1 style="margin: 0; display: inline-block;">⚠️ Compliance Alert</h1>{ref_badge}
                     <p style="margin: 10px 0 0 0; opacity: 0.9;">Action may be required for your properties</p>
                 </div>
                 
@@ -249,7 +253,7 @@ class EmailService:
                     
                     <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: white; border-radius: 8px; overflow: hidden;">
                         <thead>
-                            <tr style="background-color: #1a2744; color: white;">
+                            <tr style="background-color: #0B1D3A; color: white;">
                                 <th style="padding: 12px; text-align: left;">Property</th>
                                 <th style="padding: 12px; text-align: center;">Previous</th>
                                 <th style="padding: 12px; text-align: center;">Current</th>
@@ -263,7 +267,7 @@ class EmailService:
                     
                     <p style="margin: 20px 0;">
                         <a href="{model.get('portal_link', '#')}" 
-                           style="background-color: #14b8a6; color: white; padding: 12px 24px; 
+                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
                                   text-decoration: none; border-radius: 6px; display: inline-block;">
                             View Dashboard
                         </a>
@@ -276,12 +280,7 @@ class EmailService:
                         • <span style="color: #dc2626;">RED</span> = Immediate action required
                     </p>
                 </div>
-                
-                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                <p style="color: #999; font-size: 12px;">
-                    {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
-                    {model.get('tagline', 'AI-Driven Solutions & Compliance')}
-                </p>
+                {footer}
             </body>
             </html>
             """
