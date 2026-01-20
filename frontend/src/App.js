@@ -52,6 +52,7 @@ import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 import CalendarPage from './pages/CalendarPage';
 import TenantDashboard from './pages/TenantDashboard';
 import TenantManagementPage from './pages/TenantManagementPage';
+import BulkPropertyImportPage from './pages/BulkPropertyImportPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
