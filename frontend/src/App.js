@@ -134,6 +134,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/app/documents/bulk-upload" 
+              element={
+                <ProtectedRoute>
+                  <BulkUploadPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Admin Routes - Protected */}
             <Route 
