@@ -139,6 +139,31 @@ class EmailTemplateAlias(str, Enum):
     WELCOME = "welcome"
     COMPLIANCE_ALERT = "compliance-alert"  # Status change notifications
     TENANT_INVITE = "tenant-invite"  # Tenant portal invitation
+    SCHEDULED_REPORT = "scheduled-report"  # Scheduled compliance reports
+
+
+class ReportScheduleFrequency(str, Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+
+
+class ReportSchedule(BaseModel):
+    """Scheduled report configuration for a client."""
+    model_config = ConfigDict(extra="ignore")
+    
+    schedule_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    report_type: str  # compliance_summary, requirements
+    frequency: ReportScheduleFrequency
+    recipients: List[str] = Field(default_factory=list)  # Email addresses
+    include_details: bool = True
+    is_active: bool = True
+    last_sent: Optional[str] = None
+    next_scheduled: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    created_by: Optional[str] = None
+
 
 class EmailTemplate(BaseModel):
     """Customizable email template stored in the database."""
