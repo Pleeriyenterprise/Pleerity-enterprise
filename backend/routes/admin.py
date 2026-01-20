@@ -145,7 +145,8 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
         # Log the search for audit trail
         await create_audit_log(
             action=AuditAction.ADMIN_SEARCH_PERFORMED,
-            admin_id=user.get("portal_user_id"),
+            actor_id=user.get("portal_user_id"),
+            actor_role=UserRole.ROLE_ADMIN,
             metadata={
                 "search_query": search_term,
                 "results_count": len(clients)
