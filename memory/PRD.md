@@ -88,6 +88,7 @@
   
   **Step 3: Properties (Repeatable, Plan-Limited)**
   - Property Nickname, Postcode, Address, City
+  - **Postcode Address Lookup** - Auto-fills city and council from postcodes.io API
   - Property Type dropdown
   - HMO toggle (House in Multiple Occupation)
   - Bedrooms, Occupancy
@@ -108,6 +109,14 @@
   - Editable summary of all sections
   - Payment breakdown (monthly + setup fee)
   - Stripe Checkout integration
+
+- [x] **Postcode Address Lookup**
+  - Uses postcodes.io free API (no authentication required)
+  - Auto-fills city/town from postcode
+  - Auto-matches and fills local council from our database
+  - Shows loading spinner during lookup
+  - Green checkmark on successful lookup
+  - Error handling for invalid/not found postcodes
 
 - [x] **Customer Reference Number**
   - Format: `PLE-CVP-YYYY-XXXXX` (e.g., PLE-CVP-2026-4F82C)
