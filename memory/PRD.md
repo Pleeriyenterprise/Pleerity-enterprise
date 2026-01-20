@@ -3,7 +3,7 @@
 ## Overview
 **Product:** Compliance Vault Pro  
 **Company:** Pleerity Enterprise Ltd  
-**Target Users:** UK landlords and letting agents  
+**Target Users:** UK landlords, letting agents, and tenants  
 **Tagline:** AI-Driven Solutions & Compliance  
 
 ## Tech Stack
@@ -16,14 +16,15 @@
 ## Core Principles
 1. **Deterministic Compliance:** No AI for compliance decisions - all compliance rules are based on predefined dates/rules
 2. **Single Sources of Truth:** Stripe for billing status
-3. **Strict RBAC:** `ROLE_CLIENT`, `ROLE_CLIENT_ADMIN`, `ROLE_ADMIN` enforced server-side
+3. **Strict RBAC:** `ROLE_CLIENT`, `ROLE_CLIENT_ADMIN`, `ROLE_ADMIN`, `ROLE_TENANT` enforced server-side
 4. **Mandatory Audit Logging:** All significant actions logged
+5. **AI is Assistive Only:** AI extracts data for review, cannot mark requirements compliant
 
 ---
 
-## Phase 1: Core System (COMPLETE)
+## Completed Features (As of January 2026)
 
-### Features Implemented
+### Phase 1: Core System ✅
 - [x] Public marketing landing page
 - [x] Client intake/onboarding flow
 - [x] User authentication (JWT)
@@ -32,177 +33,68 @@
 - [x] RBAC middleware (client_route_guard, admin_route_guard)
 - [x] Core data models (Client, PortalUser, Property, Requirement, Document, AuditLog)
 - [x] Provisioning service
-- [x] Email service (Postmark - MOCKED)
+- [x] Email service (Postmark - LIVE)
 - [x] Stripe webhook integration
-- [x] Basic admin console
 
-### Data Models
-- **Client:** client_id, full_name, email, billing_plan, subscription_status, onboarding_status
-- **PortalUser:** portal_user_id, client_id, auth_email, role, status, password_status
-- **Property:** property_id, client_id, address, property_type
-- **Requirement:** requirement_id, property_id, rule_id, status, due_date
-- **Document:** document_id, property_id, file_url, status
-- **AuditLog:** timestamp, actor_id, action, details
+### Phase 2: AI Assistant ✅
+- [x] Gemini-powered read-only AI assistant
+- [x] Dashboard data explainer (compliance context)
+- [x] Property and requirement analysis
+
+### Phase 3: Additive Enhancements ✅
+- [x] Admin-initiated client invitations
+- [x] Expanded Admin Dashboard with statistics
+- [x] AI-assisted document verification
+- [x] System-wide compliance statistics
+- [x] Enhanced requirement generation (country, construction_year)
+- [x] Visual onboarding progress dashboard
+- [x] Granular audit logging with before/after diffs
+- [x] Feature-flagged SMS reminders with OTP verification
+- [x] Client-facing Compliance Score with recommendations
+- [x] Compliance Expiry Calendar view
+
+### Phase 4: New Features (January 2026) ✅
+- [x] **AI Document Scanner Enhancement**
+  - Document-type-specific prompts (Gas Safety, EICR, EPC)
+  - Priority field extraction (expiry date, issue date, certificate number, engineer details)
+  - Extraction quality assessment (high/medium/low)
+  - Review workflow (pending → approved/rejected)
+  - Apply extraction endpoint updates requirement due_date
+  - AI is assistive only - cannot auto-mark compliance
+
+- [x] **Bulk Document Upload**
+  - Multi-file drag & drop interface
+  - Property-level upload (all files associated with one property)
+  - Smart auto-matching via AI
+  - Progress indicators
+  - File validation (PDF, JPG, PNG)
+
+- [x] **Advanced Reporting (PDF/CSV)**
+  - Compliance Status Summary report
+  - Requirements by Property report
+  - Audit Log Extract report (Admin only)
+  - On-demand generation
+  - CSV download working, PDF returns JSON for client-side rendering
+
+- [x] **Landlord/Tenant Portal Distinctions**
+  - ROLE_TENANT with strictly limited permissions
+  - Read-only access to property compliance status
+  - Certificate status and expiry dates visible
+  - Simplified tenant dashboard
+  - Tenant invite via email
+  - Property assignment support
+  - No document uploads, messaging, audit logs, or admin features for tenants
 
 ---
 
-## Phase 2: AI Assistant (COMPLETE)
+## User Roles
 
-### Features Implemented
-- [x] Read-only AI assistant at `/app/assistant`
-- [x] OpenAI integration via Emergent LLM Key
-- [x] Data snapshot endpoint (`/api/assistant/snapshot`)
-- [x] All interactions audited
-- [x] Strict read-only mode (no system state modifications)
-
----
-
-## Phase 3: Additive Enhancements (IN PROGRESS)
-
-### Completed (January 19, 2026)
-- [x] **User Profile Page:** `/app/profile` with backend APIs
-- [x] **Property Creation Flow:** `/app/properties/create` with guided steps
-- [x] **Admin Features Backend:**
-  - [x] Job monitoring endpoint (`/api/admin/jobs/status`)
-  - [x] Manual job trigger endpoint (`/api/admin/jobs/trigger/{type}`)
-  - [x] Client invitation endpoint (`/api/admin/clients/invite`)
-  - [x] Manual provisioning trigger (`/api/admin/clients/{id}/provision`)
-  - [x] Password setup link generation (`/api/admin/clients/{id}/password-setup-link`)
-  - [x] Full client status endpoint (`/api/admin/clients/{id}/full-status`)
-  - [x] Admin property creation (`/api/admin/clients/{id}/properties`)
-  - [x] Enhanced audit log filtering
-- [x] **Background Job Scheduler:** APScheduler with MongoDBJobStore (persistent)
-  - Daily reminders at 9:00 AM UTC
-  - Monthly digests on 1st at 10:00 AM UTC
-- [x] **Admin Login Fix:** Admins can login without client association
-- [x] **Database Utility:** `get_db_context()` for standalone scripts
-- [x] **Live Email Delivery:** Postmark integration working
-  - Sender: `info@pleerityenterprise.co.uk`
-  - Fallback from template to HTML email
-- [x] **Admin Dashboard Frontend UI:**
-  - [x] Overview tab (stats, compliance overview, recent activity)
-  - [x] Jobs tab (scheduler status, manual triggers, job statistics)
-  - [x] Clients tab (list, search, filter, detail panel with status)
-  - [x] Rules tab (CRUD for compliance rules, default UK rules)
-  - [x] Audit Logs tab (filterable, paginated log viewer)
-  - [x] Messages tab (email delivery logs with provider tracking)
-- [x] **Requirement Rules Management:**
-  - [x] Backend API for rules CRUD (`/api/admin/rules/*`)
-  - [x] Database model for RequirementRule with categories
-  - [x] Default UK compliance rules (7 rules: Gas Safety, EICR, EPC, Fire, Legionella, HMO, PAT)
-  - [x] Provisioning service updated to use database rules
-  - [x] Frontend UI with table view, create/edit modal
-- [x] **Email Templates Management:**
-  - [x] Backend API for templates CRUD (`/api/admin/templates/*`)
-  - [x] Database model for EmailTemplate with placeholders
-  - [x] Default templates (Password Setup, Portal Ready, Reminder, Monthly Digest)
-  - [x] Email service updated to use database templates
-  - [x] Frontend UI with grid view, edit modal, live preview
-  - [x] Template preview with sample data rendering
-- [x] **Document AI Verification:**
-  - [x] Backend AI service using Gemini for document analysis
-  - [x] Metadata extraction (dates, certificate numbers, engineer info)
-  - [x] Confidence scores for extracted data
-  - [x] API endpoints (`/api/documents/analyze/{id}`, `/api/documents/{id}/extraction`)
-  - [x] Frontend Documents page with upload form
-  - [x] AI extraction display with extracted fields
-  - [x] General requirements endpoint (`/api/client/requirements`)
-- [x] **System-wide Compliance Statistics Dashboard:**
-  - [x] Backend API (`/api/admin/statistics`) with comprehensive metrics
-  - [x] Executive-style stat cards (Total Properties, Compliant, Attention Needed, Action Required, Expiring Soon)
-  - [x] Urgent Actions widget with overdue/expiring items
-  - [x] System Summary widget with portfolio stats
-  - [x] Collapsible Detailed Analytics section
-  - [x] Donut chart for Requirements by Certificate Type
-  - [x] Bar chart for Requirement Status Distribution
-  - [x] Email/Document/Rules tertiary stats
-- [x] **SetPasswordPage Redirect Fix:**
-  - [x] Fixed redirect after password setup (now uses AuthContext.loginWithToken)
-  - [x] Users now redirected directly to `/app/dashboard` after setting password
-- [x] **Compliance Status Change Notifications:**
-  - [x] Email alerts when property status degrades (GREEN→AMBER, AMBER→RED, GREEN→RED)
-  - [x] New `COMPLIANCE_ALERT` email template with property table
-  - [x] Scheduled compliance checks twice daily (8:00 AM & 6:00 PM UTC)
-  - [x] Manual trigger available via Admin Jobs tab
-  - [x] Tracks `last_notified_status` to prevent duplicate alerts
-  - [x] Audit logging for all compliance alerts sent
-- [x] **Onboarding Progress Dashboard:**
-  - [x] Enhanced `/api/intake/onboarding-status/{client_id}` API with step-by-step progress
-  - [x] Frontend OnboardingStatusPage.js with visual timeline
-  - [x] 5-step progress (Intake → Payment → Portal Setup → Account Activation → Ready)
-  - [x] Property and requirements count display
-  - [x] Next action guidance and "Go to Portal" button
-  - [x] Auto-refresh while onboarding is in progress
-  - [x] Checkout success redirect to onboarding status
-- [x] **Notification Preferences Page:**
-  - [x] Backend API endpoints GET/PUT `/api/profile/notifications`
-  - [x] NotificationPreferencesPage.js with comprehensive settings
-  - [x] 5 notification types: Status Alerts, Expiry Reminders, Monthly Digest, Document Updates, System Announcements
-  - [x] Configurable reminder timing (7, 14, 30, 60, 90 days)
-  - [x] Quiet Hours support (optional time window)
-  - [x] Floating "unsaved changes" indicator
-  - [x] Linked from Profile page
-- [x] **Client Dashboard Notification Widget:**
-  - [x] Quick summary of notification settings on dashboard
-  - [x] Shows Status Alerts, Expiry Reminders, Monthly Digest status
-  - [x] Shows Reminder Timing (days before expiry)
-  - [x] "Manage Preferences" button to full settings page
-  - [x] Profile nav link added to dashboard
-- [x] **Jobs Respect Notification Preferences:**
-  - [x] Daily reminders check `expiry_reminders` and `reminder_days_before` settings
-  - [x] Monthly digest checks `monthly_digest` setting
-  - [x] Compliance status alerts check `status_change_alerts` setting
-  - [x] Skips sending when disabled, logs when skipping
-- [x] **Enhanced Requirement Generation:**
-  - [x] Property attributes: is_hmo, hmo_license_required, has_gas_supply, building_age_years, has_communal_areas, local_authority
-  - [x] Dynamic rules based on property type (HMO gets extra requirements)
-  - [x] Gas safety skipped if has_gas_supply=false
-  - [x] EICR frequency adjusted for older buildings (3 years vs 5 years)
-  - [x] Location-specific requirements (London/Manchester selective licensing)
-  - [x] Communal area requirements (cleaning, fire doors)
-- [x] **Compliance Expiry Calendar:**
-  - [x] Calendar page with grid and list views
-  - [x] Monthly navigation with "Today" button
-  - [x] Summary stats (Total Expiries, Overdue, Expiring Soon, Days with Events)
-  - [x] Calendar grid showing events by date with color-coded status
-  - [x] List view with days-ahead filter (30, 60, 90, 180 days)
-  - [x] Urgency indicators (high/medium/low)
-  - [x] Calendar nav link added to dashboard
-  - [x] API endpoints: GET /api/calendar/expiries, GET /api/calendar/upcoming
-- [x] **SMS Reminder Support (Feature Flagged):**
-  - [x] NotificationPreferences model updated with sms_enabled, sms_phone_number, sms_phone_verified, sms_urgent_alerts_only
-  - [x] Backend API updated to handle SMS fields
-  - [x] Frontend SMS section with Beta badge
-  - [x] Phone number input with verification placeholder
-  - [x] "Urgent Alerts Only" toggle
-  - [x] Feature flag SMS_FEATURE_ENABLED in frontend
-- [x] **SMS Integration with Twilio:**
-  - [x] SMS Service (`sms_service.py`) with Twilio client
-  - [x] Send OTP endpoint `/api/sms/send-otp` (dev mode with code 123456)
-  - [x] Verify OTP endpoint `/api/sms/verify-otp`
-  - [x] Compliance alert SMS sending method
-  - [x] SMS logging to `sms_logs` collection
-  - [x] Phone verification flow in frontend with OTP input
-- [x] **Compliance Score Feature:**
-  - [x] Score calculation service (`compliance_score.py`)
-  - [x] 0-100 score based on: Status (40%), Expiry Timeline (30%), Documents (15%), Overdue Penalty (15%)
-  - [x] Grade system (A-F) with color coding
-  - [x] Actionable recommendations with potential impact
-  - [x] API endpoint `/api/client/compliance-score`
-  - [x] Prominent dashboard widget showing score, grade, breakdown, and quick actions
-
-### Upcoming (P2)
-- [ ] **Onboarding progress dashboard** - Visual flow for new clients
-
-### Upcoming (P2)
-- [x] **Audit Log Granularity:** Before/after diffs on profile and notification changes
-  - [x] Enhanced `create_audit_log` utility with automatic diff calculation
-  - [x] Diff shows added, removed, and changed fields with from/to values
-  - [x] Changes count included in metadata
-
-### Upcoming (P3)
-- [ ] **Production SMS Sending** - Enable `SMS_ENABLED` env var and add Twilio credentials
-- [ ] **Phone Verification via Real OTP** - Add `TWILIO_VERIFY_SERVICE_SID` for production verification
+| Role | Permissions |
+|------|-------------|
+| ROLE_ADMIN | Full system access, all clients, audit logs, reports |
+| ROLE_CLIENT_ADMIN | Full access to own client data, can invite tenants |
+| ROLE_CLIENT | Access to own properties, requirements, documents |
+| ROLE_TENANT | Read-only access to assigned property compliance status |
 
 ---
 
@@ -216,64 +108,96 @@
 - `GET /api/client/dashboard` - Client dashboard data
 - `GET /api/client/properties` - Client properties
 - `GET /api/client/requirements` - Client requirements
+- `GET /api/client/compliance-score` - Compliance score with recommendations
+- `POST /api/client/tenants/invite` - Invite tenant (CLIENT_ADMIN only)
+- `GET /api/client/tenants` - List tenants
+
+### Tenant
+- `GET /api/tenant/dashboard` - Tenant dashboard (read-only)
+- `GET /api/tenant/property/{id}` - Property compliance details
+
+### Documents
+- `POST /api/documents/upload` - Single document upload
+- `POST /api/documents/bulk-upload` - Bulk upload multiple files
+- `POST /api/documents/analyze/{id}` - Trigger AI analysis
+- `POST /api/documents/{id}/apply-extraction` - Apply AI extraction to requirement
+- `POST /api/documents/{id}/reject-extraction` - Reject AI extraction
+- `GET /api/documents/{id}/details` - Full document details
+
+### Reports
+- `GET /api/reports/available` - List available reports
+- `GET /api/reports/compliance-summary` - Compliance summary report (CSV/PDF)
+- `GET /api/reports/requirements` - Requirements report (CSV/PDF)
+- `GET /api/reports/audit-logs` - Audit log extract (Admin only)
 
 ### Profile
-- `GET /api/profile/me` - User profile with notification preferences
-- `PATCH /api/profile/me` - Update profile (name, phone)
-- `GET /api/profile/notifications` - Get notification preferences
-- `PUT /api/profile/notifications` - Update notification preferences
+- `GET /api/profile/me` - User profile
+- `PATCH /api/profile/me` - Update profile
+- `GET /api/profile/notification-preferences` - Notification settings
+- `PUT /api/profile/notification-preferences` - Update notification settings
+
+### Calendar
+- `GET /api/calendar/expiries` - Certificate expiries for calendar view
 
 ### Admin
 - `GET /api/admin/dashboard` - Admin dashboard statistics
-- `GET /api/admin/statistics` - Comprehensive system-wide compliance statistics
+- `GET /api/admin/statistics` - System-wide compliance statistics
 - `GET /api/admin/clients` - List all clients
-- `GET /api/admin/clients/{id}` - Client details
+- `POST /api/admin/clients/invite` - Invite new client
 - `GET /api/admin/audit-logs` - Audit logs with filtering
 - `GET /api/admin/jobs/status` - Background jobs status
-- `POST /api/admin/jobs/trigger/{type}` - Manually trigger job (daily, monthly, compliance)
-- `POST /api/admin/clients/invite` - Invite new client
-- `POST /api/admin/clients/{id}/provision` - Manual provisioning
-- `GET/POST /api/admin/rules` - Requirement rules CRUD
-- `GET/POST /api/admin/templates` - Email templates CRUD
-
-### Documents
-- `POST /api/documents/upload` - Upload document
-- `GET /api/documents/{id}` - Get document
-
-### Properties
-- `POST /api/properties` - Create property
-- `GET /api/properties/{id}` - Get property details
-
-### AI Assistant
-- `POST /api/assistant/ask` - Ask the AI assistant
-- `GET /api/assistant/snapshot` - Get data snapshot for AI
-
-### Intake
-- `POST /api/intake/submit` - Submit intake form
-- `POST /api/intake/checkout` - Create Stripe checkout session
-- `GET /api/intake/onboarding-status/{client_id}` - Detailed onboarding progress with 5 steps
-
-### Webhooks
-- `POST /api/webhooks/stripe` - Stripe webhook handler
 
 ---
 
 ## Test Credentials
-- **Admin Email:** admin@pleerity.com
-- **Admin Password:** Admin123!
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@pleerity.com | Admin123! |
+| Client | test@pleerity.com | TestClient123! |
+| Live Client | drjpane@gmail.com | DrJamesPane123! |
 
 ---
 
 ## Known Limitations / Mocked Services
-1. **Payments (Stripe):** Using test key from environment
-2. **Email (Postmark):** Live integration working with sender `info@pleerityenterprise.co.uk`
+
+1. **Payments (Stripe):** Using test key - functional but not processing real payments
+2. **SMS (Twilio):** Feature-flagged, using dev credentials
+3. **PDF Reports:** Returns JSON data for client-side PDF generation (CSV fully working)
 
 ---
 
 ## Files of Reference
+
+### Backend
 - `/app/backend/server.py` - Main FastAPI app with APScheduler
-- `/app/backend/routes/` - All API endpoints
-- `/app/backend/services/` - Business logic (provisioning, jobs, email)
-- `/app/backend/models.py` - Pydantic models
-- `/app/frontend/src/App.js` - React routes
+- `/app/backend/routes/` - API endpoints (auth, client, admin, documents, reports, tenant)
+- `/app/backend/services/` - Business logic (provisioning, jobs, email, document_analysis, compliance_score, reporting_service)
+- `/app/backend/models.py` - Pydantic models including ROLE_TENANT
+
+### Frontend
+- `/app/frontend/src/App.js` - React routes including tenant route
 - `/app/frontend/src/pages/` - Page components
+- `/app/frontend/src/pages/TenantDashboard.js` - Simplified tenant view
+- `/app/frontend/src/pages/ReportsPage.js` - Report download UI
+- `/app/frontend/src/pages/BulkUploadPage.js` - Bulk document upload
+- `/app/frontend/src/pages/DocumentsPage.js` - Enhanced with AI extraction review
+
+---
+
+## Backlog / Future Enhancements
+
+### P1 (High Priority)
+- [ ] Scheduled reports with email delivery (Phase 2 of reporting)
+- [ ] Client-side PDF generation library integration
+- [ ] Tenant property assignment UI for landlords
+
+### P2 (Medium Priority)
+- [ ] Production SMS sending with real Twilio credentials
+- [ ] Document version history
+- [ ] Multi-language support
+
+### P3 (Low Priority)
+- [ ] Mobile app (React Native)
+- [ ] Integration with property management systems
+- [ ] Advanced analytics dashboard
