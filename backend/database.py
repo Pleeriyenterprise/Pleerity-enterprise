@@ -41,8 +41,17 @@ class Database:
         """Create MongoDB indexes for efficient queries."""
         try:
             # Client indexes - CRN (customer_reference) is critical for search
-            await self.db.clients.create_index("customer_reference", unique=True, sparse=True)
-            await self.db.clients.create_index("email", unique=True)
+            # Use sparse=True to allow multiple null values
+            try:
+                await self.db.clients.create_index("customer_reference", unique=True, sparse=True)
+            except Exception:
+                pass  # Index may already exist with different options
+            
+            try:
+                await self.db.clients.create_index("email", unique=True)
+            except Exception:
+                pass
+            
             await self.db.clients.create_index("client_id", unique=True)
             await self.db.clients.create_index("full_name")  # For name search
             
@@ -53,7 +62,11 @@ class Database:
             await self.db.properties.create_index("compliance_status")
             
             # Portal user indexes
-            await self.db.portal_users.create_index("auth_email", unique=True)
+            try:
+                await self.db.portal_users.create_index("auth_email", unique=True)
+            except Exception:
+                pass
+            
             await self.db.portal_users.create_index("client_id")
             await self.db.portal_users.create_index("portal_user_id", unique=True)
             
@@ -61,14 +74,6 @@ class Database:
             await self.db.audit_logs.create_index([("client_id", 1), ("created_at", -1)])
             await self.db.audit_logs.create_index("created_at")
             await self.db.audit_logs.create_index("action")
-            
-            # Text index for full-text search (email, name, CRN)
-            await self.db.clients.create_index([
-                ("email", "text"),
-                ("full_name", "text"),
-                ("customer_reference", "text"),
-                ("company_name", "text")
-            ], name="client_search_text")
             
             logger.info("MongoDB indexes created/verified")
         except Exception as e:
