@@ -292,6 +292,34 @@
   - Audit logging verified
 - **TEST REPORT:** /app/test_reports/iteration_13.json
 
+### January 20, 2026 (Session 2)
+- **Admin Management UI (Frontend) ✅**
+  - New "Admins" tab in Admin Dashboard sidebar
+  - Stats cards: Total Admins, Active, Pending Setup
+  - Admin list table with Status badges, Last Login, Created date
+  - Invite Admin modal with name/email form
+  - Action buttons: Resend Invite, Deactivate, Reactivate
+  - All actions integrated with existing backend APIs
+  - 20/20 tests passed (100%)
+
+- **Council Name Normalization ✅**
+  - All council names now stored and displayed in full official format
+  - Examples:
+    - "Bristol" → "Bristol City Council"
+    - "Camden" → "London Borough of Camden"
+    - "Manchester" → "Manchester City Council"
+    - "Westminster" → "City of Westminster"
+  - `normalize_council_name()` function in `/app/backend/routes/intake.py`
+  - Applied to: Postcode lookup, Council search, Property storage, Audit logs
+  - Council code-based rules: E06 (Unitary), E07 (District), E08 (Metropolitan), E09 (London), S12 (Scotland), W06 (Wales)
+
+- **Brand Colour Enforcement ✅**
+  - Electric Teal (#00B8A9): Affirmative actions, selected states, CTAs
+  - Midnight Blue (#0B1D3A): Headings, labels, text
+  - Red: Reserved for errors, failures, compliance risk indicators only
+
+- **TEST REPORT:** /app/test_reports/iteration_14.json
+
 ### January 20, 2026
 - Implemented Universal Intake Wizard (5-step premium wizard)
 - Added UK councils searchable endpoint with ~300 councils
