@@ -2230,7 +2230,7 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
 # ADMIN ASSISTANT - CRN Lookup with AI Analysis
 # ============================================================================
 
-@router.get("/clients/lookup")
+@router.get("/client-lookup")
 async def lookup_client_by_crn(request: Request, crn: str = None):
     """
     Look up a client by Customer Reference Number (CRN).
