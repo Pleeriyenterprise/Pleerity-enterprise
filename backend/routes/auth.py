@@ -281,11 +281,18 @@ async def set_password(request: Request, data: SetPasswordRequest):
 
 @router.post("/admin/login", response_model=TokenResponse)
 async def admin_login(request: Request, credentials: LoginRequest):
-    """Admin login endpoint."""
+    """
+    Admin login endpoint - FULLY INDEPENDENT of client provisioning.
+    
+    Admins:
+    - Do NOT require a Client record
+    - Are NOT blocked by onboarding_status, provisioning, or client guards
+    - Can log in as long as they have a valid password and ACTIVE status
+    """
     db = database.get_db()
     
     try:
-        # Find admin user
+        # Find admin user - ONLY check role, no client association needed
         portal_user = await db.portal_users.find_one(
             {
                 "auth_email": credentials.email,
@@ -296,7 +303,7 @@ async def admin_login(request: Request, credentials: LoginRequest):
         
         if not portal_user:
             await create_audit_log(
-                action=AuditAction.USER_LOGIN_FAILED,
+                action=AuditAction.ADMIN_LOGIN_FAILED,
                 metadata={"email": credentials.email, "reason": "admin_not_found"}
             )
             raise HTTPException(
@@ -304,13 +311,13 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 detail="Invalid credentials"
             )
         
-        # Verify password
+        # Verify password exists and is correct
         if not portal_user.get("password_hash") or not verify_password(
             credentials.password,
             portal_user["password_hash"]
         ):
             await create_audit_log(
-                action=AuditAction.USER_LOGIN_FAILED,
+                action=AuditAction.ADMIN_LOGIN_FAILED,
                 actor_id=portal_user["portal_user_id"],
                 metadata={"email": credentials.email, "reason": "invalid_password"}
             )
@@ -319,19 +326,50 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 detail="Invalid credentials"
             )
         
-        # Create access token
+        # Check user status - admin must be ACTIVE
+        if portal_user.get("status") != UserStatus.ACTIVE.value:
+            await create_audit_log(
+                action=AuditAction.ADMIN_LOGIN_FAILED,
+                actor_id=portal_user["portal_user_id"],
+                metadata={"email": credentials.email, "reason": "account_not_active", "status": portal_user.get("status")}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is not active"
+            )
+        
+        # Check password status - must have set password
+        if portal_user.get("password_status") != PasswordStatus.SET.value:
+            await create_audit_log(
+                action=AuditAction.ADMIN_LOGIN_FAILED,
+                actor_id=portal_user["portal_user_id"],
+                metadata={"email": credentials.email, "reason": "password_not_set"}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Password not set"
+            )
+        
+        # Update last login timestamp
+        await db.portal_users.update_one(
+            {"portal_user_id": portal_user["portal_user_id"]},
+            {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        # Create access token - NO client_id required for admins
         token_data = {
             "portal_user_id": portal_user["portal_user_id"],
-            "client_id": portal_user.get("client_id"),
+            "client_id": None,  # Admins don't need client association
             "email": portal_user["auth_email"],
             "role": portal_user["role"]
         }
         access_token = create_access_token(token_data)
         
         await create_audit_log(
-            action=AuditAction.USER_LOGIN_SUCCESS,
+            action=AuditAction.ADMIN_LOGIN_SUCCESS,
             actor_role=UserRole.ROLE_ADMIN,
-            actor_id=portal_user["portal_user_id"]
+            actor_id=portal_user["portal_user_id"],
+            metadata={"email": credentials.email}
         )
         
         return TokenResponse(
