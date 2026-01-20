@@ -240,18 +240,25 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
                 prop_doc = property_obj.model_dump()
                 await db.properties.insert_one(prop_doc)
                 
-                # Generate requirements
-                requirements = await provisioning.generate_requirements_for_property(
-                    client_id=user["client_id"],
-                    property_id=property_obj.property_id,
-                    property_type=prop_data.property_type
-                )
+                # Generate requirements using internal method
+                req_count = 0
+                try:
+                    await provisioning._generate_requirements(
+                        client_id=user["client_id"],
+                        property_id=property_obj.property_id
+                    )
+                    # Count generated requirements
+                    req_count = await db.requirements.count_documents({
+                        "property_id": property_obj.property_id
+                    })
+                except Exception as req_err:
+                    logger.warning(f"Failed to generate requirements for {property_obj.property_id}: {req_err}")
                 
                 results["successful"] += 1
                 results["created_properties"].append({
                     "property_id": property_obj.property_id,
                     "address": f"{prop_data.address_line_1}, {prop_data.city}",
-                    "requirements_created": len(requirements) if requirements else 0
+                    "requirements_created": req_count
                 })
                 
             except Exception as e:
