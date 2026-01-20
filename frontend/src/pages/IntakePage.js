@@ -1,69 +1,343 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { intakeAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { Switch } from '../components/ui/switch';
+import { 
+  AlertCircle, 
+  User, 
+  Building2, 
+  Users, 
+  Check, 
+  ChevronRight,
+  ChevronLeft,
+  Home,
+  Plus,
+  Trash2,
+  Upload,
+  Mail,
+  FileText,
+  Shield,
+  CreditCard,
+  Loader2,
+  Search,
+  X,
+  Info,
+  AlertTriangle,
+  CheckCircle
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
+
+// Plan limits (must match backend)
+const PLAN_LIMITS = {
+  PLAN_1: 1,
+  PLAN_2_5: 5,
+  PLAN_6_15: 15
+};
+
+// Property types
+const PROPERTY_TYPES = [
+  { value: 'flat', label: 'Flat/Apartment' },
+  { value: 'house', label: 'House' },
+  { value: 'bungalow', label: 'Bungalow' },
+  { value: 'terraced', label: 'Terraced House' },
+  { value: 'semi-detached', label: 'Semi-Detached' },
+  { value: 'detached', label: 'Detached' },
+  { value: 'commercial', label: 'Commercial' }
+];
+
+// Occupancy types
+const OCCUPANCY_TYPES = [
+  { value: 'single_family', label: 'Single Family' },
+  { value: 'multi_family', label: 'Multi Family' },
+  { value: 'student', label: 'Student Let' },
+  { value: 'professional', label: 'Professional Let' },
+  { value: 'mixed', label: 'Mixed Use' }
+];
+
+// Licence types
+const LICENCE_TYPES = [
+  { value: 'selective', label: 'Selective Licensing' },
+  { value: 'additional', label: 'Additional Licensing' },
+  { value: 'mandatory_hmo', label: 'Mandatory HMO Licence' }
+];
+
+// Licence statuses
+const LICENCE_STATUSES = [
+  { value: 'applied', label: 'Applied' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'unknown', label: 'Unknown' }
+];
+
+// Certificate availability options
+const CERT_OPTIONS = [
+  { value: 'YES', label: 'Yes, I have it' },
+  { value: 'NO', label: "No, I don't have it" },
+  { value: 'UNSURE', label: 'Unsure' }
+];
 
 const IntakePage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [plans, setPlans] = useState([]);
+  const [intakeSessionId] = useState(() => uuidv4());
 
+  // Form data state
   const [formData, setFormData] = useState({
+    // Step 1: Your Details
     full_name: '',
     email: '',
-    phone: '',
+    client_type: '',
     company_name: '',
-    client_type: 'INDIVIDUAL',
     preferred_contact: 'EMAIL',
+    phone: '',
+    
+    // Step 2: Plan
     billing_plan: 'PLAN_1',
-    properties: [{ address_line_1: '', address_line_2: '', city: '', postcode: '', property_type: 'residential', number_of_units: 1 }],
+    
+    // Step 3: Properties
+    properties: [{
+      nickname: '',
+      postcode: '',
+      address_line_1: '',
+      address_line_2: '',
+      city: '',
+      property_type: 'house',
+      is_hmo: false,
+      bedrooms: '',
+      occupancy: 'single_family',
+      council_name: '',
+      council_code: '',
+      licence_required: '',
+      licence_type: '',
+      licence_status: '',
+      managed_by: 'LANDLORD',
+      send_reminders_to: 'LANDLORD',
+      agent_name: '',
+      agent_email: '',
+      agent_phone: '',
+      cert_gas_safety: '',
+      cert_eicr: '',
+      cert_epc: '',
+      cert_licence: ''
+    }],
+    
+    // Step 4: Preferences & Consents
+    document_submission_method: '',
+    email_upload_consent: false,
     consent_data_processing: false,
-    consent_communications: false
+    consent_service_boundary: false
   });
 
-  const addProperty = () => {
-    setFormData({
-      ...formData,
-      properties: [...formData.properties, { address_line_1: '', address_line_2: '', city: '', postcode: '', property_type: 'residential', number_of_units: 1 }]
-    });
+  // Load plans on mount
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const response = await intakeAPI.getPlans();
+        setPlans(response.data.plans);
+      } catch (err) {
+        console.error('Failed to load plans:', err);
+      }
+    };
+    loadPlans();
+  }, []);
+
+  // Step validation
+  const validateStep = (stepNum) => {
+    setError('');
+    
+    switch (stepNum) {
+      case 1:
+        if (!formData.full_name.trim()) {
+          setError('Full name is required');
+          return false;
+        }
+        if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          setError('Valid email is required');
+          return false;
+        }
+        if (!formData.client_type) {
+          setError('Please select your client type');
+          return false;
+        }
+        if ((formData.client_type === 'COMPANY' || formData.client_type === 'AGENT') && !formData.company_name.trim()) {
+          setError('Company name is required');
+          return false;
+        }
+        if ((formData.preferred_contact === 'SMS' || formData.preferred_contact === 'BOTH') && !formData.phone.trim()) {
+          setError('Phone number is required when SMS is enabled');
+          return false;
+        }
+        return true;
+        
+      case 2:
+        if (!formData.billing_plan) {
+          setError('Please select a plan');
+          return false;
+        }
+        return true;
+        
+      case 3:
+        const maxProps = PLAN_LIMITS[formData.billing_plan] || 1;
+        if (formData.properties.length === 0) {
+          setError('At least one property is required');
+          return false;
+        }
+        if (formData.properties.length > maxProps) {
+          setError(`Maximum ${maxProps} properties allowed for your plan`);
+          return false;
+        }
+        for (let i = 0; i < formData.properties.length; i++) {
+          const prop = formData.properties[i];
+          if (!prop.postcode.trim()) {
+            setError(`Property ${i + 1}: Postcode is required`);
+            return false;
+          }
+          if (!prop.address_line_1.trim()) {
+            setError(`Property ${i + 1}: Address line 1 is required`);
+            return false;
+          }
+          if (!prop.city.trim()) {
+            setError(`Property ${i + 1}: City is required`);
+            return false;
+          }
+          if ((prop.send_reminders_to === 'AGENT' || prop.send_reminders_to === 'BOTH')) {
+            if (!prop.agent_name.trim() || !prop.agent_email.trim()) {
+              setError(`Property ${i + 1}: Agent name and email are required`);
+              return false;
+            }
+          }
+        }
+        return true;
+        
+      case 4:
+        if (!formData.document_submission_method) {
+          setError('Please select a document submission method');
+          return false;
+        }
+        if (formData.document_submission_method === 'EMAIL' && !formData.email_upload_consent) {
+          setError('Please accept the email upload consent');
+          return false;
+        }
+        if (!formData.consent_data_processing) {
+          setError('GDPR consent is required');
+          return false;
+        }
+        if (!formData.consent_service_boundary) {
+          setError('Service boundary acknowledgment is required');
+          return false;
+        }
+        return true;
+        
+      default:
+        return true;
+    }
   };
 
-  const updateProperty = (index, field, value) => {
-    const updatedProperties = [...formData.properties];
-    updatedProperties[index][field] = value;
-    setFormData({ ...formData, properties: updatedProperties });
+  const nextStep = () => {
+    if (validateStep(step)) {
+      setStep(step + 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const prevStep = () => {
+    setStep(step - 1);
+    window.scrollTo(0, 0);
+  };
+
+  const goToStep = (stepNum) => {
+    // Only allow going back or staying on current step
+    if (stepNum <= step) {
+      setStep(stepNum);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  // Property management
+  const addProperty = () => {
+    const maxProps = PLAN_LIMITS[formData.billing_plan] || 1;
+    if (formData.properties.length >= maxProps) {
+      toast.error(`You've reached the maximum number of properties for this plan. Upgrade to add more.`);
+      return;
+    }
+    
+    setFormData({
+      ...formData,
+      properties: [...formData.properties, {
+        nickname: '',
+        postcode: '',
+        address_line_1: '',
+        address_line_2: '',
+        city: '',
+        property_type: 'house',
+        is_hmo: false,
+        bedrooms: '',
+        occupancy: 'single_family',
+        council_name: '',
+        council_code: '',
+        licence_required: '',
+        licence_type: '',
+        licence_status: '',
+        managed_by: 'LANDLORD',
+        send_reminders_to: 'LANDLORD',
+        agent_name: '',
+        agent_email: '',
+        agent_phone: '',
+        cert_gas_safety: '',
+        cert_eicr: '',
+        cert_epc: '',
+        cert_licence: ''
+      }]
+    });
   };
 
   const removeProperty = (index) => {
     if (formData.properties.length > 1) {
-      const updatedProperties = formData.properties.filter((_, i) => i !== index);
-      setFormData({ ...formData, properties: updatedProperties });
+      setFormData({
+        ...formData,
+        properties: formData.properties.filter((_, i) => i !== index)
+      });
     }
   };
 
-  const handleSubmit = async () => {
-    setError('');
-    
-    if (!formData.consent_data_processing || !formData.consent_communications) {
-      setError('Please accept all required consents');
-      return;
-    }
+  const updateProperty = (index, field, value) => {
+    const updated = [...formData.properties];
+    updated[index] = { ...updated[index], [field]: value };
+    setFormData({ ...formData, properties: updated });
+  };
 
+  // Submit intake
+  const handleSubmit = async () => {
+    if (!validateStep(4)) return;
+    
     setLoading(true);
+    setError('');
 
     try {
-      const response = await intakeAPI.submit(formData);
-      const { client_id } = response.data;
+      const submitData = {
+        ...formData,
+        intake_session_id: intakeSessionId
+      };
       
-      // Store client_id for post-checkout redirect
+      const response = await intakeAPI.submit(submitData);
+      const { client_id, customer_reference } = response.data;
+      
+      // Store for post-checkout
       localStorage.setItem('pending_client_id', client_id);
+      localStorage.setItem('customer_reference', customer_reference);
       
-      // Create checkout session
+      toast.success(`Registration successful! Reference: ${customer_reference}`);
+      
+      // Create checkout session and redirect
       const checkoutResponse = await intakeAPI.createCheckout(client_id);
       window.location.href = checkoutResponse.data.checkout_url;
     } catch (err) {
@@ -72,267 +346,1215 @@ const IntakePage = () => {
     }
   };
 
+  // Progress indicator
+  const steps = [
+    { num: 1, name: 'Your Details', icon: User },
+    { num: 2, name: 'Select Plan', icon: CreditCard },
+    { num: 3, name: 'Properties', icon: Home },
+    { num: 4, name: 'Preferences', icon: FileText },
+    { num: 5, name: 'Review', icon: Shield }
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-midnight-blue">Get Started with Compliance Vault Pro</CardTitle>
-            <p className="text-gray-600">Step {step} of 3</p>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100" data-testid="intake-wizard">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-electric-teal to-teal-600 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-midnight-blue">Compliance Vault Pro</h1>
+                <p className="text-xs text-gray-500">Premium UK Landlord Compliance</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => navigate('/')}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </header>
 
-            {step === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-midnight-blue mb-4">Your Details</h3>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Full Name *</label>
-                  <Input
-                    value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    placeholder="John Smith"
-                    required
-                    data-testid="full-name-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Email *</label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="john@example.com"
-                    required
-                    data-testid="email-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Phone</label>
-                  <Input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+44 7700 900000"
-                    data-testid="phone-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">I am a... *</label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    value={formData.client_type}
-                    onChange={(e) => setFormData({ ...formData, client_type: e.target.value })}
-                    data-testid="client-type-select"
-                  >
-                    <option value="INDIVIDUAL">Individual Landlord</option>
-                    <option value="COMPANY">Property Company</option>
-                    <option value="AGENT">Letting Agent</option>
-                  </select>
-                </div>
-
-                {(formData.client_type === 'COMPANY' || formData.client_type === 'AGENT') && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Company Name</label>
-                    <Input
-                      value={formData.company_name}
-                      onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                      placeholder="ABC Properties Ltd"
-                      data-testid="company-name-input"
-                    />
+      {/* Progress Steps */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {steps.map((s, idx) => (
+              <React.Fragment key={s.num}>
+                <button
+                  onClick={() => goToStep(s.num)}
+                  disabled={s.num > step}
+                  className={`flex flex-col items-center gap-1 transition-all ${
+                    s.num <= step ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                  }`}
+                  data-testid={`step-indicator-${s.num}`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    s.num < step 
+                      ? 'bg-green-500 text-white' 
+                      : s.num === step 
+                        ? 'bg-electric-teal text-white ring-4 ring-electric-teal/20' 
+                        : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {s.num < step ? <Check className="w-5 h-5" /> : <s.icon className="w-5 h-5" />}
                   </div>
+                  <span className={`text-xs font-medium ${
+                    s.num === step ? 'text-electric-teal' : s.num < step ? 'text-green-600' : 'text-gray-500'
+                  }`}>
+                    {s.name}
+                  </span>
+                </button>
+                {idx < steps.length - 1 && (
+                  <div className={`flex-1 h-1 mx-2 rounded ${
+                    s.num < step ? 'bg-green-500' : 'bg-gray-200'
+                  }`} />
                 )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
 
-                <Button onClick={() => setStep(2)} className="btn-primary w-full" data-testid="next-btn-step1">
-                  Next: Add Properties
-                </Button>
-              </div>
-            )}
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-            {step === 2 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-midnight-blue mb-4">Your Properties</h3>
-                
-                {formData.properties.map((property, index) => (
-                  <Card key={index} className="border border-gray-200">
-                    <CardContent className="pt-6 space-y-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-medium">Property {index + 1}</h4>
-                        {formData.properties.length > 1 && (
-                          <Button variant="ghost" size="sm" onClick={() => removeProperty(index)}>
-                            Remove
-                          </Button>
-                        )}
-                      </div>
+        {/* Step 1: Your Details */}
+        {step === 1 && (
+          <Step1YourDetails 
+            formData={formData} 
+            setFormData={setFormData}
+            onNext={nextStep}
+          />
+        )}
 
-                      <Input
-                        value={property.address_line_1}
-                        onChange={(e) => updateProperty(index, 'address_line_1', e.target.value)}
-                        placeholder="Address Line 1 *"
-                        required
-                        data-testid={`property-${index}-address1`}
-                      />
+        {/* Step 2: Select Plan */}
+        {step === 2 && (
+          <Step2SelectPlan
+            formData={formData}
+            setFormData={setFormData}
+            plans={plans}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        )}
 
-                      <Input
-                        value={property.address_line_2}
-                        onChange={(e) => updateProperty(index, 'address_line_2', e.target.value)}
-                        placeholder="Address Line 2"
-                        data-testid={`property-${index}-address2`}
-                      />
+        {/* Step 3: Properties */}
+        {step === 3 && (
+          <Step3Properties
+            formData={formData}
+            setFormData={setFormData}
+            updateProperty={updateProperty}
+            addProperty={addProperty}
+            removeProperty={removeProperty}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        )}
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <Input
-                          value={property.city}
-                          onChange={(e) => updateProperty(index, 'city', e.target.value)}
-                          placeholder="City *"
-                          required
-                          data-testid={`property-${index}-city`}
-                        />
+        {/* Step 4: Preferences & Consents */}
+        {step === 4 && (
+          <Step4Preferences
+            formData={formData}
+            setFormData={setFormData}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        )}
 
-                        <Input
-                          value={property.postcode}
-                          onChange={(e) => updateProperty(index, 'postcode', e.target.value)}
-                          placeholder="Postcode *"
-                          required
-                          data-testid={`property-${index}-postcode`}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+        {/* Step 5: Review & Payment */}
+        {step === 5 && (
+          <Step5Review
+            formData={formData}
+            plans={plans}
+            goToStep={goToStep}
+            onSubmit={handleSubmit}
+            onBack={prevStep}
+            loading={loading}
+          />
+        )}
+      </main>
+    </div>
+  );
+};
 
-                <Button variant="outline" onClick={addProperty} className="w-full" data-testid="add-property-btn">
-                  + Add Another Property
-                </Button>
+// ============================================================================
+// STEP 1: YOUR DETAILS
+// ============================================================================
+const Step1YourDetails = ({ formData, setFormData, onNext }) => {
+  const clientTypes = [
+    { value: 'INDIVIDUAL', label: 'Individual Landlord', icon: User, desc: 'Managing your own properties' },
+    { value: 'COMPANY', label: 'Property Company', icon: Building2, desc: 'Corporate property management' },
+    { value: 'AGENT', label: 'Letting Agent', icon: Users, desc: 'Managing properties for others' }
+  ];
 
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                    Back
-                  </Button>
-                  <Button onClick={() => setStep(3)} className="btn-primary flex-1" data-testid="next-btn-step2">
-                    Next: Choose Plan
-                  </Button>
+  const showCompanyName = formData.client_type === 'COMPANY' || formData.client_type === 'AGENT';
+  const showPhone = formData.preferred_contact === 'SMS' || formData.preferred_contact === 'BOTH';
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl text-midnight-blue">Your Details</CardTitle>
+        <CardDescription>Tell us about yourself to personalize your experience</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Full Name */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Full Name *</label>
+          <Input
+            value={formData.full_name}
+            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+            placeholder="John Smith"
+            data-testid="full-name-input"
+          />
+        </div>
+
+        {/* Email */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Email Address *</label>
+          <Input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="john@example.com"
+            data-testid="email-input"
+          />
+        </div>
+
+        {/* Client Type - Card Selection */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">I am a... *</label>
+          <div className="grid grid-cols-3 gap-3">
+            {clientTypes.map((type) => (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => setFormData({ ...formData, client_type: type.value })}
+                className={`p-4 rounded-lg border-2 text-left transition-all ${
+                  formData.client_type === type.value
+                    ? 'border-electric-teal bg-electric-teal/5 ring-2 ring-electric-teal/20'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                data-testid={`client-type-${type.value.toLowerCase()}`}
+              >
+                <type.icon className={`w-6 h-6 mb-2 ${
+                  formData.client_type === type.value ? 'text-electric-teal' : 'text-gray-400'
+                }`} />
+                <p className="font-medium text-sm text-midnight-blue">{type.label}</p>
+                <p className="text-xs text-gray-500 mt-1">{type.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Company Name (Conditional) */}
+        {showCompanyName && (
+          <div className="space-y-2 animate-fadeIn">
+            <label className="text-sm font-medium text-gray-700">Company Name *</label>
+            <Input
+              value={formData.company_name}
+              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+              placeholder="ABC Properties Ltd"
+              data-testid="company-name-input"
+            />
+          </div>
+        )}
+
+        {/* Preferred Contact Method */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Preferred Contact Method *</label>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { value: 'EMAIL', label: 'Email Only' },
+              { value: 'SMS', label: 'SMS Only' },
+              { value: 'BOTH', label: 'Both Email & SMS' }
+            ].map((method) => (
+              <button
+                key={method.value}
+                type="button"
+                onClick={() => setFormData({ ...formData, preferred_contact: method.value })}
+                className={`py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                  formData.preferred_contact === method.value
+                    ? 'border-electric-teal bg-electric-teal/5 text-electric-teal'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+                data-testid={`contact-${method.value.toLowerCase()}`}
+              >
+                {method.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Phone Number (Conditional) */}
+        {showPhone && (
+          <div className="space-y-2 animate-fadeIn">
+            <label className="text-sm font-medium text-gray-700">Phone Number *</label>
+            <Input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="+44 7700 900000"
+              data-testid="phone-input"
+            />
+            <p className="text-xs text-gray-500">Required for SMS notifications</p>
+          </div>
+        )}
+
+        <div className="pt-4">
+          <Button 
+            onClick={onNext} 
+            className="w-full bg-electric-teal hover:bg-teal-600"
+            data-testid="step1-next"
+          >
+            Next: Select Plan
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// ============================================================================
+// STEP 2: SELECT PLAN
+// ============================================================================
+const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl text-midnight-blue">Select Your Plan</CardTitle>
+        <CardDescription>Choose the plan that fits your portfolio size</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4">
+          {plans.map((plan) => (
+            <button
+              key={plan.plan_id}
+              type="button"
+              onClick={() => setFormData({ ...formData, billing_plan: plan.plan_id })}
+              className={`p-6 rounded-xl border-2 text-left transition-all ${
+                formData.billing_plan === plan.plan_id
+                  ? 'border-electric-teal bg-electric-teal/5 ring-2 ring-electric-teal/20'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              data-testid={`plan-${plan.plan_id.toLowerCase()}`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-midnight-blue">{plan.name}</h3>
+                    {plan.plan_id === 'PLAN_2_5' && (
+                      <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
+                        Popular
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">Up to {plan.max_properties} {plan.max_properties === 1 ? 'property' : 'properties'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-electric-teal">£{plan.monthly_price.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">/month</p>
                 </div>
               </div>
+              
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <ul className="grid grid-cols-2 gap-2">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-sm text-gray-500">First payment:</span>
+                <span className="font-semibold text-midnight-blue">
+                  £{(plan.monthly_price + plan.setup_fee).toFixed(2)}
+                  <span className="text-xs text-gray-500 ml-1">(incl. £{plan.setup_fee.toFixed(2)} setup)</span>
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-3 pt-4">
+          <Button variant="outline" onClick={onBack} className="flex-1" data-testid="step2-back">
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <Button 
+            onClick={onNext} 
+            className="flex-1 bg-electric-teal hover:bg-teal-600"
+            data-testid="step2-next"
+          >
+            Next: Add Properties
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// ============================================================================
+// STEP 3: PROPERTIES
+// ============================================================================
+const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, onNext, onBack }) => {
+  const maxProperties = PLAN_LIMITS[formData.billing_plan] || 1;
+  const canAddMore = formData.properties.length < maxProperties;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl text-midnight-blue">Your Properties</CardTitle>
+              <CardDescription>Add up to {maxProperties} {maxProperties === 1 ? 'property' : 'properties'} with your plan</CardDescription>
+            </div>
+            <span className="text-sm font-medium px-3 py-1 bg-gray-100 rounded-full">
+              {formData.properties.length}/{maxProperties}
+            </span>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {formData.properties.map((property, index) => (
+        <PropertyCard
+          key={index}
+          property={property}
+          index={index}
+          total={formData.properties.length}
+          updateProperty={updateProperty}
+          removeProperty={removeProperty}
+          showLicenceFields={property.licence_required === 'YES'}
+          showAgentFields={property.send_reminders_to === 'AGENT' || property.send_reminders_to === 'BOTH'}
+        />
+      ))}
+
+      {/* Add Property Button */}
+      {canAddMore ? (
+        <button
+          type="button"
+          onClick={addProperty}
+          className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-electric-teal hover:text-electric-teal transition-colors flex items-center justify-center gap-2"
+          data-testid="add-property-btn"
+        >
+          <Plus className="w-5 h-5" />
+          Add Another Property
+        </button>
+      ) : (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+          <div>
+            <p className="font-medium text-amber-800">Property limit reached</p>
+            <p className="text-sm text-amber-700">
+              You've reached the maximum number of properties for this plan. 
+              <button 
+                onClick={() => setFormData({ ...formData, billing_plan: formData.billing_plan === 'PLAN_1' ? 'PLAN_2_5' : 'PLAN_6_15' })}
+                className="underline ml-1"
+              >
+                Upgrade to add more.
+              </button>
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={onBack} className="flex-1" data-testid="step3-back">
+          <ChevronLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+        <Button 
+          onClick={onNext} 
+          className="flex-1 bg-electric-teal hover:bg-teal-600"
+          data-testid="step3-next"
+        >
+          Next: Preferences
+          <ChevronRight className="w-4 h-4 ml-2" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Property Card Component
+const PropertyCard = ({ property, index, total, updateProperty, removeProperty, showLicenceFields, showAgentFields }) => {
+  const [councilSearch, setCouncilSearch] = useState('');
+  const [councilResults, setCouncilResults] = useState([]);
+  const [showCouncilDropdown, setShowCouncilDropdown] = useState(false);
+  const [loadingCouncils, setLoadingCouncils] = useState(false);
+  const councilRef = useRef(null);
+
+  // Search councils
+  const searchCouncils = useCallback(async (query) => {
+    if (query.length < 2) {
+      setCouncilResults([]);
+      return;
+    }
+    
+    setLoadingCouncils(true);
+    try {
+      const response = await intakeAPI.searchCouncils(query);
+      setCouncilResults(response.data.councils);
+    } catch (err) {
+      console.error('Council search error:', err);
+    } finally {
+      setLoadingCouncils(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (councilSearch) {
+        searchCouncils(councilSearch);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [councilSearch, searchCouncils]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (councilRef.current && !councilRef.current.contains(e.target)) {
+        setShowCouncilDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectCouncil = (council) => {
+    updateProperty(index, 'council_name', council.name);
+    updateProperty(index, 'council_code', council.code);
+    setCouncilSearch(council.name);
+    setShowCouncilDropdown(false);
+  };
+
+  return (
+    <Card className="overflow-hidden" data-testid={`property-card-${index}`}>
+      <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Home className="w-4 h-4 text-gray-500" />
+          <span className="font-medium text-midnight-blue">Property {index + 1}</span>
+          {property.nickname && <span className="text-gray-500">- {property.nickname}</span>}
+        </div>
+        {total > 1 && (
+          <button
+            type="button"
+            onClick={() => removeProperty(index)}
+            className="text-red-500 hover:text-red-600 p-1"
+            data-testid={`remove-property-${index}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      
+      <CardContent className="pt-6 space-y-6">
+        {/* Basic Info */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Property Nickname</label>
+            <Input
+              value={property.nickname}
+              onChange={(e) => updateProperty(index, 'nickname', e.target.value)}
+              placeholder="e.g., Main Street Flat"
+              data-testid={`property-${index}-nickname`}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Postcode *</label>
+            <Input
+              value={property.postcode}
+              onChange={(e) => updateProperty(index, 'postcode', e.target.value.toUpperCase())}
+              placeholder="SW1A 1AA"
+              data-testid={`property-${index}-postcode`}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Address Line 1 *</label>
+          <Input
+            value={property.address_line_1}
+            onChange={(e) => updateProperty(index, 'address_line_1', e.target.value)}
+            placeholder="123 Example Street"
+            data-testid={`property-${index}-address1`}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Address Line 2</label>
+            <Input
+              value={property.address_line_2}
+              onChange={(e) => updateProperty(index, 'address_line_2', e.target.value)}
+              placeholder="Flat 4, Building Name"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">City *</label>
+            <Input
+              value={property.city}
+              onChange={(e) => updateProperty(index, 'city', e.target.value)}
+              placeholder="London"
+              data-testid={`property-${index}-city`}
+            />
+          </div>
+        </div>
+
+        {/* Property Type & Details */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Property Type</label>
+            <select
+              value={property.property_type}
+              onChange={(e) => updateProperty(index, 'property_type', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              data-testid={`property-${index}-type`}
+            >
+              {PROPERTY_TYPES.map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Bedrooms</label>
+            <Input
+              type="number"
+              min="1"
+              max="20"
+              value={property.bedrooms}
+              onChange={(e) => updateProperty(index, 'bedrooms', e.target.value)}
+              placeholder="3"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Occupancy</label>
+            <select
+              value={property.occupancy}
+              onChange={(e) => updateProperty(index, 'occupancy', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              {OCCUPANCY_TYPES.map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* HMO Toggle */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="font-medium text-sm text-midnight-blue">Is this an HMO?</p>
+            <p className="text-xs text-gray-500">House in Multiple Occupation</p>
+          </div>
+          <Switch
+            checked={property.is_hmo}
+            onCheckedChange={(checked) => updateProperty(index, 'is_hmo', checked)}
+            data-testid={`property-${index}-hmo`}
+          />
+        </div>
+
+        {/* Council Search */}
+        <div className="space-y-2" ref={councilRef}>
+          <label className="text-sm font-medium text-gray-700">Local Council</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              value={councilSearch || property.council_name}
+              onChange={(e) => {
+                setCouncilSearch(e.target.value);
+                setShowCouncilDropdown(true);
+              }}
+              onFocus={() => setShowCouncilDropdown(true)}
+              placeholder="Search councils..."
+              className="pl-10"
+              data-testid={`property-${index}-council`}
+            />
+            {property.council_name && (
+              <button
+                type="button"
+                onClick={() => {
+                  updateProperty(index, 'council_name', '');
+                  updateProperty(index, 'council_code', '');
+                  setCouncilSearch('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+              >
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
             )}
+          </div>
+          
+          {showCouncilDropdown && councilResults.length > 0 && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {councilResults.map((council) => (
+                <button
+                  key={council.code}
+                  type="button"
+                  onClick={() => selectCouncil(council)}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
+                >
+                  <span className="font-medium text-sm">{council.name}</span>
+                  <span className="text-xs text-gray-500">{council.region}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {loadingCouncils && (
+            <p className="text-xs text-gray-500">Searching...</p>
+          )}
+        </div>
 
-            {step === 3 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-midnight-blue mb-4">Choose Your Plan</h3>
+        {/* Licensing */}
+        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Is a licence required?</label>
+            <div className="flex gap-2">
+              {['YES', 'NO', 'UNSURE'].map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => updateProperty(index, 'licence_required', opt)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    property.licence_required === opt
+                      ? 'bg-electric-teal text-white'
+                      : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  {opt === 'YES' ? 'Yes' : opt === 'NO' ? 'No' : 'Unsure'}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                <div className="space-y-3">
-                  <label className="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-electric-teal transition-smooth">
-                    <input
-                      type="radio"
-                      name="billing_plan"
-                      value="PLAN_1"
-                      checked={formData.billing_plan === 'PLAN_1'}
-                      onChange={(e) => setFormData({ ...formData, billing_plan: e.target.value })}
-                      className="mt-1"
-                      data-testid="plan-1-radio"
-                    />
-                    <div className="ml-3 flex-1">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold">1 Property</span>
-                        <span className="text-lg font-bold text-electric-teal">£29.99/month</span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">Perfect for individual landlords</p>
-                    </div>
-                  </label>
+          {showLicenceFields && (
+            <div className="grid grid-cols-2 gap-4 pt-2 animate-fadeIn">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Licence Type</label>
+                <select
+                  value={property.licence_type}
+                  onChange={(e) => updateProperty(index, 'licence_type', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Select type...</option>
+                  {LICENCE_TYPES.map(type => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Licence Status</label>
+                <select
+                  value={property.licence_status}
+                  onChange={(e) => updateProperty(index, 'licence_status', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Select status...</option>
+                  {LICENCE_STATUSES.map(status => (
+                    <option key={status.value} value={status.value}>{status.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
 
-                  <label className="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-electric-teal transition-smooth">
-                    <input
-                      type="radio"
-                      name="billing_plan"
-                      value="PLAN_2_5"
-                      checked={formData.billing_plan === 'PLAN_2_5'}
-                      onChange={(e) => setFormData({ ...formData, billing_plan: e.target.value })}
-                      className="mt-1"
-                      data-testid="plan-2-5-radio"
-                    />
-                    <div className="ml-3 flex-1">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold">2-5 Properties</span>
-                        <span className="text-lg font-bold text-electric-teal">£49.99/month</span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">Most popular - includes SMS reminders</p>
-                    </div>
-                  </label>
+        {/* Management & Reminders */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Who manages this property?</label>
+            <select
+              value={property.managed_by}
+              onChange={(e) => updateProperty(index, 'managed_by', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="LANDLORD">Landlord</option>
+              <option value="AGENT">Agent</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Send reminders to</label>
+            <select
+              value={property.send_reminders_to}
+              onChange={(e) => updateProperty(index, 'send_reminders_to', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="LANDLORD">Landlord</option>
+              <option value="AGENT">Agent</option>
+              <option value="BOTH">Both</option>
+            </select>
+          </div>
+        </div>
 
-                  <label className="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-electric-teal transition-smooth">
-                    <input
-                      type="radio"
-                      name="billing_plan"
-                      value="PLAN_6_15"
-                      checked={formData.billing_plan === 'PLAN_6_15'}
-                      onChange={(e) => setFormData({ ...formData, billing_plan: e.target.value })}
-                      className="mt-1"
-                      data-testid="plan-6-15-radio"
-                    />
-                    <div className="ml-3 flex-1">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold">6-15 Properties</span>
-                        <span className="text-lg font-bold text-electric-teal">£79.99/month</span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">For larger portfolios with compliance packs</p>
-                    </div>
-                  </label>
-                </div>
+        {/* Agent Details (Conditional) */}
+        {showAgentFields && (
+          <div className="p-4 bg-blue-50 rounded-lg space-y-4 animate-fadeIn">
+            <p className="text-sm font-medium text-blue-800">Agent Details</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Agent Name *</label>
+                <Input
+                  value={property.agent_name}
+                  onChange={(e) => updateProperty(index, 'agent_name', e.target.value)}
+                  placeholder="Jane Doe"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Agent Email *</label>
+                <Input
+                  type="email"
+                  value={property.agent_email}
+                  onChange={(e) => updateProperty(index, 'agent_email', e.target.value)}
+                  placeholder="agent@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Agent Phone</label>
+                <Input
+                  type="tel"
+                  value={property.agent_phone}
+                  onChange={(e) => updateProperty(index, 'agent_phone', e.target.value)}
+                  placeholder="+44 7700 900000"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
-                <div className="space-y-3 pt-4 border-t">
-                  <label className="flex items-start">
-                    <input
-                      type="checkbox"
-                      checked={formData.consent_data_processing}
-                      onChange={(e) => setFormData({ ...formData, consent_data_processing: e.target.checked })}
-                      className="mt-1"
-                      data-testid="consent-data-checkbox"
-                    />
-                    <span className="ml-3 text-sm text-gray-700">
-                      I consent to Pleerity Enterprise Ltd processing my data for compliance management purposes *
-                    </span>
-                  </label>
+        {/* Current Compliance Status */}
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-4">
+          <div className="flex items-start gap-2">
+            <Info className="w-5 h-5 text-amber-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-800">Current Compliance Status</p>
+              <p className="text-sm text-amber-700">Do you currently have these certificates?</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { key: 'cert_gas_safety', label: 'Gas Safety Certificate' },
+              { key: 'cert_eicr', label: 'EICR (Electrical)' },
+              { key: 'cert_epc', label: 'EPC' },
+              ...(property.licence_required === 'YES' ? [{ key: 'cert_licence', label: 'Licence' }] : [])
+            ].map(cert => (
+              <div key={cert.key} className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">{cert.label}</label>
+                <select
+                  value={property[cert.key]}
+                  onChange={(e) => updateProperty(index, cert.key, e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                >
+                  <option value="">Select...</option>
+                  {CERT_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
-                  <label className="flex items-start">
-                    <input
-                      type="checkbox"
-                      checked={formData.consent_communications}
-                      onChange={(e) => setFormData({ ...formData, consent_communications: e.target.checked })}
-                      className="mt-1"
-                      data-testid="consent-comms-checkbox"
-                    />
-                    <span className="ml-3 text-sm text-gray-700">
-                      I consent to receiving compliance reminders and notifications *
-                    </span>
-                  </label>
-                </div>
+// ============================================================================
+// STEP 4: PREFERENCES & CONSENTS
+// ============================================================================
+const Step4Preferences = ({ formData, setFormData, onNext, onBack }) => {
+  const PLEERITY_EMAIL = 'info@pleerityenterprise.co.uk';
 
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
-                    Back
-                  </Button>
-                  <Button 
-                    onClick={handleSubmit} 
-                    className="btn-primary flex-1" 
-                    disabled={loading || !formData.consent_data_processing || !formData.consent_communications}
-                    data-testid="submit-btn"
-                  >
-                    {loading ? 'Processing...' : 'Proceed to Payment'}
-                  </Button>
-                </div>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl text-midnight-blue">Preferences & Consents</CardTitle>
+        <CardDescription>Choose how you'd like to submit documents and accept required terms</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Document Submission Method */}
+        <div className="space-y-4">
+          <label className="text-sm font-medium text-gray-700">How would you like to submit documents? *</label>
+          
+          <div className="grid grid-cols-2 gap-4">
+            {/* Option A: Upload */}
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, document_submission_method: 'UPLOAD', email_upload_consent: false })}
+              className={`p-6 rounded-xl border-2 text-left transition-all ${
+                formData.document_submission_method === 'UPLOAD'
+                  ? 'border-electric-teal bg-electric-teal/5 ring-2 ring-electric-teal/20'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              data-testid="doc-method-upload"
+            >
+              <Upload className={`w-8 h-8 mb-3 ${
+                formData.document_submission_method === 'UPLOAD' ? 'text-electric-teal' : 'text-gray-400'
+              }`} />
+              <h3 className="font-semibold text-midnight-blue">Upload Here</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Upload your compliance documents directly through the portal
+              </p>
+            </button>
+            
+            {/* Option B: Email */}
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, document_submission_method: 'EMAIL' })}
+              className={`p-6 rounded-xl border-2 text-left transition-all ${
+                formData.document_submission_method === 'EMAIL'
+                  ? 'border-electric-teal bg-electric-teal/5 ring-2 ring-electric-teal/20'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              data-testid="doc-method-email"
+            >
+              <Mail className={`w-8 h-8 mb-3 ${
+                formData.document_submission_method === 'EMAIL' ? 'text-electric-teal' : 'text-gray-400'
+              }`} />
+              <h3 className="font-semibold text-midnight-blue">Email to Pleerity</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Email your documents and we'll upload them for you
+              </p>
+            </button>
+          </div>
+        </div>
+
+        {/* Email Upload Section */}
+        {formData.document_submission_method === 'EMAIL' && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4 animate-fadeIn">
+            <div>
+              <p className="text-sm font-medium text-blue-800 mb-2">Send your documents to:</p>
+              <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-blue-200">
+                <Mail className="w-5 h-5 text-blue-600" />
+                <span className="font-mono font-medium text-blue-900">{PLEERITY_EMAIL}</span>
+              </div>
+              <p className="text-xs text-blue-700 mt-2">
+                After payment, please email your compliance documents to this address and include your customer reference number.
+              </p>
+            </div>
+            
+            <label className="flex items-start gap-3 p-4 bg-white rounded-lg border border-blue-200 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.email_upload_consent}
+                onChange={(e) => setFormData({ ...formData, email_upload_consent: e.target.checked })}
+                className="mt-1 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
+                data-testid="email-consent-checkbox"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-900">
+                  I consent to Pleerity uploading documents on my behalf *
+                </span>
+                <p className="text-xs text-gray-600 mt-1">
+                  By checking this box, you authorise Pleerity Enterprise Ltd to upload compliance documents you email to {PLEERITY_EMAIL} into your portal.
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* Mandatory Consents */}
+        <div className="space-y-4 pt-4 border-t">
+          <h3 className="font-semibold text-midnight-blue">Required Consents</h3>
+          
+          {/* GDPR Consent */}
+          <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <input
+              type="checkbox"
+              checked={formData.consent_data_processing}
+              onChange={(e) => setFormData({ ...formData, consent_data_processing: e.target.checked })}
+              className="mt-1 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
+              data-testid="gdpr-consent-checkbox"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-900">
+                Data Processing Consent (GDPR) *
+              </span>
+              <p className="text-xs text-gray-600 mt-1">
+                I consent to Pleerity Enterprise Ltd processing my personal data for compliance management purposes in accordance with their Privacy Policy.
+              </p>
+            </div>
+          </label>
+
+          {/* Service Boundary Acknowledgment */}
+          <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <input
+              type="checkbox"
+              checked={formData.consent_service_boundary}
+              onChange={(e) => setFormData({ ...formData, consent_service_boundary: e.target.checked })}
+              className="mt-1 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
+              data-testid="service-consent-checkbox"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-900">
+                Service Acknowledgment *
+              </span>
+              <p className="text-xs text-gray-600 mt-1">
+                I understand that Compliance Vault Pro does not provide legal advice or guarantee regulatory compliance. The service is a compliance tracking tool and the responsibility for ensuring regulatory compliance remains with the property owner/manager.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex gap-3 pt-4">
+          <Button variant="outline" onClick={onBack} className="flex-1" data-testid="step4-back">
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <Button 
+            onClick={onNext} 
+            className="flex-1 bg-electric-teal hover:bg-teal-600"
+            data-testid="step4-next"
+          >
+            Review & Pay
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// ============================================================================
+// STEP 5: REVIEW & PAYMENT
+// ============================================================================
+const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading }) => {
+  const selectedPlan = plans.find(p => p.plan_id === formData.billing_plan);
+
+  const clientTypeLabels = {
+    INDIVIDUAL: 'Individual Landlord',
+    COMPANY: 'Property Company',
+    AGENT: 'Letting Agent'
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl text-midnight-blue">Review Your Details</CardTitle>
+          <CardDescription>Please review your information before proceeding to payment</CardDescription>
+        </CardHeader>
+      </Card>
+
+      {/* Your Details Summary */}
+      <Card>
+        <div className="px-6 py-3 bg-gray-50 border-b flex items-center justify-between">
+          <h3 className="font-semibold text-midnight-blue">Your Details</h3>
+          <button 
+            onClick={() => goToStep(1)} 
+            className="text-sm text-electric-teal hover:underline"
+            data-testid="edit-details"
+          >
+            Edit
+          </button>
+        </div>
+        <CardContent className="pt-4">
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt className="text-gray-500">Full Name</dt>
+              <dd className="font-medium text-midnight-blue">{formData.full_name}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Email</dt>
+              <dd className="font-medium text-midnight-blue">{formData.email}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Account Type</dt>
+              <dd className="font-medium text-midnight-blue">{clientTypeLabels[formData.client_type]}</dd>
+            </div>
+            {formData.company_name && (
+              <div>
+                <dt className="text-gray-500">Company</dt>
+                <dd className="font-medium text-midnight-blue">{formData.company_name}</dd>
               </div>
             )}
+            <div>
+              <dt className="text-gray-500">Contact Preference</dt>
+              <dd className="font-medium text-midnight-blue">{formData.preferred_contact}</dd>
+            </div>
+            {formData.phone && (
+              <div>
+                <dt className="text-gray-500">Phone</dt>
+                <dd className="font-medium text-midnight-blue">{formData.phone}</dd>
+              </div>
+            )}
+          </dl>
+        </CardContent>
+      </Card>
+
+      {/* Plan Summary */}
+      {selectedPlan && (
+        <Card>
+          <div className="px-6 py-3 bg-gray-50 border-b flex items-center justify-between">
+            <h3 className="font-semibold text-midnight-blue">Selected Plan</h3>
+            <button 
+              onClick={() => goToStep(2)} 
+              className="text-sm text-electric-teal hover:underline"
+              data-testid="edit-plan"
+            >
+              Edit
+            </button>
+          </div>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-midnight-blue">{selectedPlan.name}</p>
+                <p className="text-sm text-gray-500">Up to {selectedPlan.max_properties} properties</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-electric-teal">£{selectedPlan.monthly_price.toFixed(2)}/month</p>
+                <p className="text-xs text-gray-500">+ £{selectedPlan.setup_fee.toFixed(2)} setup fee</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Properties Summary */}
+      <Card>
+        <div className="px-6 py-3 bg-gray-50 border-b flex items-center justify-between">
+          <h3 className="font-semibold text-midnight-blue">Properties ({formData.properties.length})</h3>
+          <button 
+            onClick={() => goToStep(3)} 
+            className="text-sm text-electric-teal hover:underline"
+            data-testid="edit-properties"
+          >
+            Edit
+          </button>
+        </div>
+        <CardContent className="pt-4 divide-y">
+          {formData.properties.map((prop, index) => (
+            <div key={index} className={`py-3 ${index > 0 ? 'pt-3' : ''}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium text-midnight-blue">
+                    {prop.nickname || `Property ${index + 1}`}
+                  </p>
+                  <p className="text-sm text-gray-600">{prop.address_line_1}, {prop.city}, {prop.postcode}</p>
+                </div>
+                <div className="flex gap-2">
+                  {prop.is_hmo && (
+                    <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">HMO</span>
+                  )}
+                  {prop.licence_required === 'YES' && (
+                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">Licensed</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Preferences Summary */}
+      <Card>
+        <div className="px-6 py-3 bg-gray-50 border-b flex items-center justify-between">
+          <h3 className="font-semibold text-midnight-blue">Preferences</h3>
+          <button 
+            onClick={() => goToStep(4)} 
+            className="text-sm text-electric-teal hover:underline"
+            data-testid="edit-preferences"
+          >
+            Edit
+          </button>
+        </div>
+        <CardContent className="pt-4">
+          <div className="flex items-center gap-2">
+            {formData.document_submission_method === 'UPLOAD' ? (
+              <>
+                <Upload className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-700">Documents will be uploaded through the portal</span>
+              </>
+            ) : (
+              <>
+                <Mail className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-700">Documents will be emailed to Pleerity</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <CheckCircle className="w-4 h-4 text-green-500" />
+            <span className="text-sm text-gray-700">GDPR and service terms accepted</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment Summary */}
+      {selectedPlan && (
+        <Card className="border-2 border-electric-teal">
+          <CardContent className="pt-6">
+            <h3 className="font-semibold text-midnight-blue mb-4">Payment Summary</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Monthly subscription</span>
+                <span className="font-medium">£{selectedPlan.monthly_price.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">One-time setup fee</span>
+                <span className="font-medium">£{selectedPlan.setup_fee.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t text-base">
+                <span className="font-semibold text-midnight-blue">Total due today</span>
+                <span className="font-bold text-electric-teal">
+                  £{(selectedPlan.monthly_price + selectedPlan.setup_fee).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={onBack} className="flex-1" data-testid="step5-back">
+          <ChevronLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+        <Button 
+          onClick={onSubmit} 
+          disabled={loading}
+          className="flex-1 bg-electric-teal hover:bg-teal-600"
+          data-testid="submit-payment"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <CreditCard className="w-4 h-4 mr-2" />
+              Proceed to Payment
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Cancel Link */}
+      <div className="text-center">
+        <button 
+          onClick={() => window.location.href = '/'}
+          className="text-sm text-gray-500 hover:text-gray-700"
+        >
+          Cancel and return to homepage
+        </button>
       </div>
     </div>
   );
