@@ -324,6 +324,53 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #1a2744 0%, #14b8a6 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="margin: 0; font-size: 24px;">🛡️ Admin Invitation</h1>
+                    <p style="margin: 10px 0 0; opacity: 0.9;">You've been invited to join as an administrator</p>
+                </div>
+                <div style="border: 1px solid #eee; border-top: 0; padding: 20px; background: white; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('admin_name', 'there')},</p>
+                    <p>You have been invited by <strong>{model.get('inviter_name', 'an administrator')}</strong> to join Compliance Vault Pro as an <strong>Administrator</strong>.</p>
+                    
+                    <p>As an admin, you will have access to:</p>
+                    <ul style="color: #64748b;">
+                        <li>Full system management dashboard</li>
+                        <li>All client accounts and properties</li>
+                        <li>Audit logs and compliance reports</li>
+                        <li>System configuration and settings</li>
+                    </ul>
+                    
+                    <p style="margin: 30px 0;">
+                        <a href="{model.get('setup_link', '#')}" 
+                           style="background-color: #14b8a6; color: white; padding: 14px 28px; 
+                                  text-decoration: none; border-radius: 6px; display: inline-block;
+                                  font-weight: bold;">
+                            Set Up Your Admin Account
+                        </a>
+                    </p>
+                    
+                    <p style="color: #dc2626; font-size: 14px; font-weight: bold;">
+                        ⏰ This invitation expires in 24 hours.
+                    </p>
+                    
+                    <p style="color: #666; font-size: 14px;">
+                        If you did not expect this invitation or have questions, please contact the system administrator.
+                    </p>
+                    
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                    
+                    <p style="color: #999; font-size: 12px;">
+                        {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
+                        AI-Driven Solutions & Compliance
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
         else:
             # Generic template
             return f"""
