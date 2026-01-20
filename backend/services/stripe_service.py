@@ -9,10 +9,12 @@ from typing import Optional, Dict
 logger = logging.getLogger(__name__)
 
 # Billing plan pricing (in GBP)
+# Monthly subscription: £9.99 / client (not per property)
+# One-time setup fee: £49.99 / client
 BILLING_PLANS = {
-    BillingPlan.PLAN_1: {"price": 29.99, "name": "1 Property"},
-    BillingPlan.PLAN_2_5: {"price": 49.99, "name": "2-5 Properties"},
-    BillingPlan.PLAN_6_15: {"price": 79.99, "name": "6-15 Properties"}
+    BillingPlan.PLAN_1: {"monthly": 9.99, "setup": 49.99, "name": "Starter (1 Property)"},
+    BillingPlan.PLAN_2_5: {"monthly": 9.99, "setup": 49.99, "name": "Growth (Up to 5 Properties)"},
+    BillingPlan.PLAN_6_15: {"monthly": 9.99, "setup": 49.99, "name": "Portfolio (Up to 15 Properties)"}
 }
 
 class StripeService:
