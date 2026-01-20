@@ -306,12 +306,15 @@ class Property(BaseModel):
     
     property_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_id: str
+    nickname: Optional[str] = None  # User-friendly name for the property
     address_line_1: str
     address_line_2: Optional[str] = None
     city: str
     postcode: str
-    property_type: str  # residential, hmo, commercial
+    property_type: str  # residential, hmo, commercial, flat, house, bungalow
     number_of_units: int = 1
+    bedrooms: Optional[int] = None
+    occupancy: Optional[str] = None  # single_family, multi_family, student, professional
     compliance_status: ComplianceStatus = ComplianceStatus.RED
     
     # Enhanced property attributes for dynamic requirement generation
@@ -320,7 +323,26 @@ class Property(BaseModel):
     has_gas_supply: bool = True  # If false, skip gas safety requirement
     building_age_years: Optional[int] = None  # For EICR frequency
     has_communal_areas: bool = False  # For fire safety requirements
-    local_authority: Optional[str] = None  # For location-specific rules
+    local_authority: Optional[str] = None  # For location-specific rules (council name)
+    local_authority_code: Optional[str] = None  # Council code for lookup
+    
+    # Licensing information
+    licence_required: Optional[str] = None  # "YES", "NO", "UNSURE"
+    licence_type: Optional[str] = None  # selective, additional, mandatory_hmo
+    licence_status: Optional[str] = None  # applied, pending, approved, expired, unknown
+    
+    # Management
+    managed_by: Optional[str] = None  # "LANDLORD" or "AGENT"
+    send_reminders_to: Optional[str] = None  # "LANDLORD", "AGENT", "BOTH"
+    agent_name: Optional[str] = None
+    agent_email: Optional[str] = None
+    agent_phone: Optional[str] = None
+    
+    # Certificate availability flags (collected at intake for deterministic compliance)
+    cert_gas_safety: Optional[str] = None  # "YES", "NO", "UNSURE"
+    cert_eicr: Optional[str] = None
+    cert_epc: Optional[str] = None
+    cert_licence: Optional[str] = None  # Only if licence_required = YES
     
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
