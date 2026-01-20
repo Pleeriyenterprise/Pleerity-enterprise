@@ -50,6 +50,7 @@ import BulkUploadPage from './pages/BulkUploadPage';
 import ReportsPage from './pages/ReportsPage';
 import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 import CalendarPage from './pages/CalendarPage';
+import TenantDashboard from './pages/TenantDashboard';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
