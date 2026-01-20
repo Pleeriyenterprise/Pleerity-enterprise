@@ -166,11 +166,11 @@ class ReportSchedule(BaseModel):
 
 
 class WebhookEventType(str, Enum):
-    COMPLIANCE_STATUS_CHANGED = "compliance_status_changed"
-    REQUIREMENT_EXPIRING = "requirement_expiring"
-    REQUIREMENT_OVERDUE = "requirement_overdue"
-    DOCUMENT_UPLOADED = "document_uploaded"
-    PROPERTY_CREATED = "property_created"
+    COMPLIANCE_STATUS_CHANGED = "compliance.status_changed"
+    REQUIREMENT_STATUS_CHANGED = "requirement.status_changed"
+    DOCUMENT_VERIFICATION_CHANGED = "document.verification_changed"
+    DIGEST_SENT = "digest.sent"
+    REMINDER_SENT = "reminder.sent"
 
 
 class Webhook(BaseModel):
@@ -181,14 +181,20 @@ class Webhook(BaseModel):
     client_id: str
     name: str
     url: str  # Target URL to POST to
-    secret: Optional[str] = None  # Signing secret for HMAC verification
-    event_types: List[WebhookEventType] = Field(default_factory=list)
+    secret: Optional[str] = None  # Signing secret for HMAC-SHA256 verification
+    event_types: List[str] = Field(default_factory=list)
     is_active: bool = True
+    is_deleted: bool = False  # Soft delete flag
     last_triggered: Optional[str] = None
     last_status: Optional[int] = None  # Last HTTP response code
+    last_response_body: Optional[str] = None  # Last response (truncated)
+    last_error: Optional[str] = None  # Last error message if failed
     failure_count: int = 0
+    total_deliveries: int = 0
+    successful_deliveries: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     created_by: Optional[str] = None
+    deleted_at: Optional[str] = None
 
 
 class EmailTemplate(BaseModel):
@@ -257,6 +263,18 @@ class NotificationPreferences(BaseModel):
     sms_phone_number: Optional[str] = None  # Phone number for SMS
     sms_phone_verified: bool = False  # Whether phone is verified
     sms_urgent_alerts_only: bool = True  # Only send SMS for RED status
+    
+    # Email Digest Customization (Monthly Digest sections - all ON by default unless noted)
+    digest_compliance_summary: bool = True
+    digest_action_items: bool = True  # OVERDUE/MISSING/DUE_SOON
+    digest_upcoming_expiries: bool = True  # Next 30/60/90 days
+    digest_property_breakdown: bool = True
+    digest_recent_documents: bool = True  # Recently uploaded/verified
+    digest_recommendations: bool = True  # Next actions inside portal
+    digest_audit_summary: bool = False  # Default OFF - optional activity summary
+    
+    # Daily reminder customization
+    daily_reminder_enabled: bool = True  # Allow opting out if rules permit
     
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
