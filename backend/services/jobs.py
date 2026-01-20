@@ -269,10 +269,28 @@ class JobScheduler:
         try:
             # Import here to avoid circular dependency
             from services.email_service import email_service
+            from services.webhook_service import fire_digest_sent
             from models import EmailTemplateAlias
             
             # In production, this would use the monthly-digest template
             logger.info(f"Sending digest to {client['email']}: {content['total_requirements']} requirements")
+            
+            # Fire webhook
+            try:
+                await fire_digest_sent(
+                    client_id=client["client_id"],
+                    digest_type="monthly",
+                    recipients=[client["email"]],
+                    properties_count=content.get("properties_count", 0),
+                    requirements_summary={
+                        "total": content.get("total_requirements", 0),
+                        "compliant": content.get("compliant", 0),
+                        "overdue": content.get("overdue", 0),
+                        "expiring_soon": content.get("expiring_soon", 0)
+                    }
+                )
+            except Exception as webhook_err:
+                logger.error(f"Webhook error for digest: {webhook_err}")
             
             # Create audit log
             audit_log = {
