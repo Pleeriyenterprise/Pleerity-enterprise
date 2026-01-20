@@ -263,7 +263,7 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
         
         # Audit log
         await create_audit_log(
-            action=AuditAction.PROPERTY_CREATED,
+            action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
             client_id=user["client_id"],
             resource_type="property",
