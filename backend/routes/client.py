@@ -167,3 +167,174 @@ async def get_documents(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load documents"
         )
+
+
+
+@router.post("/tenants/invite")
+async def invite_tenant(request: Request):
+    """
+    Invite a tenant to view property compliance status.
+    
+    Creates a ROLE_TENANT user with read-only access.
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    # Only CLIENT_ADMIN can invite tenants
+    if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only client admins can invite tenants"
+        )
+    
+    try:
+        body = await request.json()
+        email = body.get("email")
+        full_name = body.get("full_name", "")
+        property_ids = body.get("property_ids", [])  # Optional: specific properties
+        
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is required"
+            )
+        
+        # Check if tenant already exists
+        existing = await db.portal_users.find_one({"email": email.lower()})
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this email already exists"
+            )
+        
+        # Create tenant user
+        import uuid
+        from datetime import datetime, timezone, timedelta
+        
+        tenant_id = str(uuid.uuid4())
+        
+        tenant_user = {
+            "portal_user_id": tenant_id,
+            "client_id": user["client_id"],
+            "email": email.lower(),
+            "full_name": full_name,
+            "role": "ROLE_TENANT",
+            "status": "INVITED",
+            "password_status": "NOT_SET",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "invited_by": user["portal_user_id"]
+        }
+        
+        await db.portal_users.insert_one(tenant_user)
+        
+        # Create password token
+        token = str(uuid.uuid4())
+        token_doc = {
+            "token": token,
+            "portal_user_id": tenant_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "used": False
+        }
+        await db.password_tokens.insert_one(token_doc)
+        
+        # Create property assignments if specified
+        if property_ids:
+            for prop_id in property_ids:
+                # Verify property belongs to client
+                prop = await db.properties.find_one({
+                    "property_id": prop_id,
+                    "client_id": user["client_id"]
+                })
+                if prop:
+                    await db.tenant_assignments.insert_one({
+                        "tenant_id": tenant_id,
+                        "property_id": prop_id,
+                        "assigned_at": datetime.now(timezone.utc).isoformat(),
+                        "assigned_by": user["portal_user_id"]
+                    })
+        
+        # Send invite email
+        from services.email_service import email_service
+        invite_url = f"{body.get('base_url', '')}/set-password?token={token}"
+        await email_service.send_email(
+            to_email=email,
+            subject="You've been invited to view property compliance",
+            html_content=f"""
+            <h2>Tenant Portal Invitation</h2>
+            <p>Hello {full_name or 'there'},</p>
+            <p>Your landlord has invited you to view the compliance status of your rental property.</p>
+            <p>Click below to set your password and access the tenant portal:</p>
+            <p><a href="{invite_url}" style="background-color:#14b8a6;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Set Up Access</a></p>
+            <p>This link expires in 7 days.</p>
+            <p>The tenant portal allows you to:</p>
+            <ul>
+                <li>View property compliance status (GREEN/AMBER/RED)</li>
+                <li>See certificate expiry dates</li>
+                <li>Track overall compliance health</li>
+            </ul>
+            <p>If you have questions, please contact your landlord.</p>
+            """
+        )
+        
+        logger.info(f"Tenant invited: {email} by {user['email']}")
+        
+        return {
+            "message": "Tenant invited successfully",
+            "tenant_id": tenant_id,
+            "email": email,
+            "invite_sent": True
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Tenant invite error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to invite tenant"
+        )
+
+
+@router.get("/tenants")
+async def list_tenants(request: Request):
+    """List all tenants invited by this client."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        tenants = await db.portal_users.find(
+            {
+                "client_id": user["client_id"],
+                "role": "ROLE_TENANT"
+            },
+            {"_id": 0, "password_hash": 0}
+        ).to_list(100)
+        
+        # Get property assignments
+        tenant_ids = [t["portal_user_id"] for t in tenants]
+        assignments = await db.tenant_assignments.find(
+            {"tenant_id": {"$in": tenant_ids}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        # Build assignment map
+        assignment_map = {}
+        for a in assignments:
+            if a["tenant_id"] not in assignment_map:
+                assignment_map[a["tenant_id"]] = []
+            assignment_map[a["tenant_id"]].append(a["property_id"])
+        
+        # Add assignments to tenant data
+        for tenant in tenants:
+            tenant["assigned_properties"] = assignment_map.get(tenant["portal_user_id"], [])
+        
+        return {"tenants": tenants}
+    
+    except Exception as e:
+        logger.error(f"List tenants error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list tenants"
+        )
+
