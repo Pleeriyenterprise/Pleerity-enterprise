@@ -140,9 +140,33 @@ Return ONLY the JSON object, no additional text or explanation."""
 
 
 class DocumentAnalysisService:
+    """Enhanced AI document analysis service with document-type-specific extraction.
+    
+    IMPORTANT: This service is ASSISTIVE ONLY. Extracted data must be reviewed
+    before being applied to requirements. AI cannot mark requirements compliant.
+    """
+    
     def __init__(self):
         self.api_key = os.getenv("EMERGENT_LLM_KEY", "sk-emergent-f9533226f52E25cF35")
-        logger.info("Document Analysis Service initialized")
+        logger.info("Document Analysis Service initialized (Enhanced)")
+    
+    def _detect_document_type_hint(self, filename: str) -> str:
+        """Detect document type from filename to use appropriate prompt."""
+        filename_lower = filename.lower()
+        
+        if any(kw in filename_lower for kw in ['gas', 'cp12', 'cp17', 'lgsr']):
+            return "gas_safety"
+        elif any(kw in filename_lower for kw in ['eicr', 'electrical', 'niceic', 'napit']):
+            return "eicr"
+        elif any(kw in filename_lower for kw in ['epc', 'energy', 'performance']):
+            return "epc"
+        
+        return "default"
+    
+    def _get_analysis_prompt(self, doc_type_hint: str) -> str:
+        """Get the appropriate analysis prompt based on document type hint."""
+        type_prompt = DOCUMENT_TYPE_PROMPTS.get(doc_type_hint, DOCUMENT_TYPE_PROMPTS["default"])
+        return f"{type_prompt}\n\n{BASE_EXTRACTION_PROMPT}"
     
     async def analyze_document(
         self,
@@ -150,10 +174,11 @@ class DocumentAnalysisService:
         mime_type: str,
         document_id: str,
         client_id: str,
-        actor_id: Optional[str] = None
+        actor_id: Optional[str] = None,
+        doc_type_hint: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Analyze a document using AI to extract metadata.
+        Analyze a document using AI to extract metadata with enhanced field extraction.
         
         Args:
             file_path: Path to the document file
@@ -161,9 +186,13 @@ class DocumentAnalysisService:
             document_id: ID of the document record
             client_id: ID of the client
             actor_id: ID of the user who triggered the analysis
+            doc_type_hint: Optional hint about document type for better extraction
             
         Returns:
             Dictionary with extracted metadata and confidence scores
+            
+        Note: Extracted data is ASSISTIVE ONLY and must be reviewed by users
+              before being applied. AI cannot auto-mark compliance.
         """
         db = database.get_db()
         
@@ -174,14 +203,22 @@ class DocumentAnalysisService:
                 return {
                     "success": False,
                     "error": "Document file not found",
-                    "extracted_data": None
+                    "extracted_data": None,
+                    "requires_review": True
                 }
+            
+            # Detect document type from filename if not provided
+            if not doc_type_hint:
+                doc_type_hint = self._detect_document_type_hint(os.path.basename(file_path))
+            
+            # Get appropriate prompt for document type
+            analysis_prompt = self._get_analysis_prompt(doc_type_hint)
             
             # Initialize chat with Gemini (required for file attachments)
             chat = LlmChat(
                 api_key=self.api_key,
                 session_id=f"doc-analysis-{document_id}",
-                system_message=DOCUMENT_ANALYSIS_PROMPT
+                system_message=analysis_prompt
             ).with_model("gemini", "gemini-2.5-flash")
             
             # Create file content object
@@ -192,7 +229,7 @@ class DocumentAnalysisService:
             
             # Send message with file attachment
             user_message = UserMessage(
-                text="Please analyze this compliance document and extract all relevant metadata. Return only the JSON object.",
+                text="Analyze this compliance document and extract all relevant metadata. Focus on the priority fields: expiry date, issue date, certificate number, and engineer/assessor details. Return only the JSON object.",
                 file_contents=[file_content]
             )
             
@@ -212,6 +249,12 @@ class DocumentAnalysisService:
                 
                 extracted_data = json.loads(response_text)
                 
+                # Normalize legacy format to enhanced format if needed
+                extracted_data = self._normalize_extraction_data(extracted_data)
+                
+                # Calculate overall confidence based on critical field extraction
+                extraction_quality = self._assess_extraction_quality(extracted_data)
+                
                 # Store extraction result in document record
                 await db.documents.update_one(
                     {"document_id": document_id},
@@ -219,7 +262,11 @@ class DocumentAnalysisService:
                         "ai_extraction": {
                             "extracted_at": datetime.now(timezone.utc).isoformat(),
                             "data": extracted_data,
-                            "status": "completed"
+                            "status": "completed",
+                            "doc_type_hint": doc_type_hint,
+                            "extraction_quality": extraction_quality,
+                            "requires_review": True,  # ALWAYS requires review
+                            "review_status": "pending"
                         }
                     }}
                 )
@@ -233,16 +280,22 @@ class DocumentAnalysisService:
                     resource_id=document_id,
                     metadata={
                         "document_type": extracted_data.get("document_type"),
+                        "doc_type_hint": doc_type_hint,
                         "overall_confidence": extracted_data.get("confidence_scores", {}).get("overall"),
-                        "has_expiry_date": extracted_data.get("expiry_date") is not None
+                        "extraction_quality": extraction_quality,
+                        "has_expiry_date": extracted_data.get("expiry_date") is not None,
+                        "has_engineer_details": extracted_data.get("engineer_details", {}).get("name") is not None,
+                        "requires_review": True
                     }
                 )
                 
-                logger.info(f"Document analyzed successfully: {document_id}")
+                logger.info(f"Document analyzed successfully: {document_id} (quality: {extraction_quality})")
                 
                 return {
                     "success": True,
                     "extracted_data": extracted_data,
+                    "extraction_quality": extraction_quality,
+                    "requires_review": True,
                     "error": None
                 }
                 
@@ -266,7 +319,8 @@ class DocumentAnalysisService:
                 return {
                     "success": False,
                     "error": "Failed to parse AI response",
-                    "extracted_data": None
+                    "extracted_data": None,
+                    "requires_review": True
                 }
         
         except Exception as e:
@@ -287,8 +341,80 @@ class DocumentAnalysisService:
             return {
                 "success": False,
                 "error": str(e),
-                "extracted_data": None
+                "extracted_data": None,
+                "requires_review": True
             }
+    
+    def _normalize_extraction_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize extracted data to ensure consistent structure."""
+        # Handle legacy format fields
+        if "engineer_name" in data and "engineer_details" not in data:
+            data["engineer_details"] = {
+                "name": data.pop("engineer_name", None),
+                "registration_number": data.pop("engineer_registration", None),
+                "registration_scheme": None,
+                "company_name": data.pop("company_name", None)
+            }
+        
+        if "result" in data and "result_summary" not in data:
+            data["result_summary"] = {
+                "overall_result": data.pop("result", None),
+                "rating": data.pop("rating", None),
+                "score": None
+            }
+        
+        if "key_findings" in data and "findings" not in data:
+            data["findings"] = {
+                "defects": [],
+                "warnings": data.pop("key_findings", []),
+                "observations": []
+            }
+        
+        # Ensure all required fields exist
+        defaults = {
+            "document_type": None,
+            "document_subtype": None,
+            "certificate_number": None,
+            "issue_date": None,
+            "expiry_date": None,
+            "property_address": None,
+            "engineer_details": {"name": None, "registration_number": None, "registration_scheme": None, "company_name": None},
+            "result_summary": {"overall_result": None, "rating": None, "score": None},
+            "findings": {"defects": [], "warnings": [], "observations": []},
+            "appliances_or_items": [],
+            "additional_info": {"property_type": None, "floor_area_sqm": None, "number_of_items_tested": None},
+            "confidence_scores": {"document_type": 0, "certificate_number": 0, "issue_date": 0, "expiry_date": 0, "engineer_details": 0, "overall": 0},
+            "extraction_notes": None
+        }
+        
+        for key, default_val in defaults.items():
+            if key not in data:
+                data[key] = default_val
+        
+        return data
+    
+    def _assess_extraction_quality(self, data: Dict[str, Any]) -> str:
+        """Assess the quality of extraction based on critical fields."""
+        confidence = data.get("confidence_scores", {})
+        
+        # Critical fields for compliance
+        has_expiry = data.get("expiry_date") is not None
+        has_issue_date = data.get("issue_date") is not None
+        has_cert_number = data.get("certificate_number") is not None
+        has_engineer = data.get("engineer_details", {}).get("name") is not None
+        has_doc_type = data.get("document_type") is not None
+        
+        overall_conf = confidence.get("overall", 0)
+        
+        # Calculate quality score
+        field_score = sum([has_expiry * 2, has_issue_date, has_cert_number, has_engineer, has_doc_type]) / 6
+        
+        if overall_conf >= 0.8 and field_score >= 0.8:
+            return "high"
+        elif overall_conf >= 0.5 and field_score >= 0.5:
+            return "medium"
+        else:
+            return "low"
     
     async def get_extraction_summary(self, document_id: str) -> Optional[Dict[str, Any]]:
         """Get the AI extraction summary for a document."""
