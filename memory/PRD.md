@@ -171,8 +171,10 @@
 - `GET /api/intake/onboarding-status/{client_id}` - Get detailed onboarding progress
 
 ### Authentication
-- `POST /api/auth/login` - User login
+- `POST /api/auth/login` - User login (works for all roles)
+- `POST /api/auth/admin/login` - Admin-specific login (fully independent)
 - `POST /api/auth/set-password` - Set password via token
+- `POST /api/auth/log-route-guard-block` - Log unauthorized admin route access attempts
 
 ### Webhooks
 - `GET /api/webhooks` - List webhooks
