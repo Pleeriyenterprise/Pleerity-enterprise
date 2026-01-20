@@ -45,7 +45,8 @@ import {
   History,
   Settings,
   ClipboardCheck,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 
 // Global Search Component
