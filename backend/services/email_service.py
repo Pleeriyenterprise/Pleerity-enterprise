@@ -285,42 +285,47 @@ class EmailService:
             </html>
             """
         elif template_alias == EmailTemplateAlias.TENANT_INVITE:
+            footer = self._build_email_footer(model)
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #1a2744;">Tenant Portal Invitation</h1>
-                <p>Hello {model.get('tenant_name', 'there')},</p>
-                <p>Your landlord has invited you to view the compliance status of your rental property.</p>
-                <p>The tenant portal allows you to:</p>
-                <ul style="color: #64748b;">
-                    <li>View property compliance status (GREEN/AMBER/RED)</li>
-                    <li>See certificate expiry dates</li>
-                    <li>Track overall compliance health</li>
-                </ul>
-                <p style="margin: 30px 0;">
-                    <a href="{model.get('setup_link', '#')}" 
-                       style="background-color: #14b8a6; color: white; padding: 12px 24px; 
-                              text-decoration: none; border-radius: 6px; display: inline-block;">
-                        Set Up Your Access
-                    </a>
-                </p>
-                <p style="color: #666; font-size: 14px;">
-                    This link expires in 7 days. If you have questions, please contact your landlord.
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                <p style="color: #999; font-size: 12px;">
-                    {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
-                    {model.get('tagline', 'AI-Driven Solutions & Compliance')}
-                </p>
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0;">Tenant Portal Invitation</h1>
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('tenant_name', 'there')},</p>
+                    <p>Your landlord has invited you to view the compliance status of your rental property.</p>
+                    <p>The tenant portal allows you to:</p>
+                    <ul style="color: #64748b;">
+                        <li>View property compliance status (GREEN/AMBER/RED)</li>
+                        <li>See certificate expiry dates</li>
+                        <li>Track overall compliance health</li>
+                    </ul>
+                    <p style="margin: 30px 0;">
+                        <a href="{model.get('setup_link', '#')}" 
+                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
+                                  text-decoration: none; border-radius: 6px; display: inline-block;">
+                            Set Up Your Access
+                        </a>
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                        This link expires in 7 days. If you have questions, please contact your landlord.
+                    </p>
+                </div>
+                {footer}
             </body>
             </html>
             """
         elif template_alias == EmailTemplateAlias.SCHEDULED_REPORT:
+            footer = self._build_email_footer(model)
+            customer_ref = model.get('customer_reference', '')
+            ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
+            
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #1a2744 0%, #2d3a5c 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="margin: 0; font-size: 24px;">📊 Your {model.get('frequency', 'Weekly').title()} Compliance Report</h1>
+                <div style="background: linear-gradient(135deg, #0B1D3A 0%, #1a3a5c 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="margin: 0; font-size: 24px; display: inline-block;">📊 Your {model.get('frequency', 'Weekly').title()} Compliance Report</h1>{ref_badge}
                     <p style="margin: 10px 0 0; opacity: 0.9;">Generated on {model.get('generated_date', 'today')}</p>
                 </div>
                 <div style="border: 1px solid #eee; border-top: 0; padding: 20px; background: white;">
@@ -335,16 +340,8 @@ class EmailService:
                         For the full report with all details, please log in to your dashboard 
                         and download the complete report from the Reports section.
                     </p>
-                    
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    
-                    <p style="color: #999; font-size: 12px;">
-                        This is an automated {model.get('frequency', 'weekly')} report. 
-                        To change your report preferences, visit your dashboard settings.<br><br>
-                        {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
-                        AI-Driven Solutions & Compliance
-                    </p>
                 </div>
+                {footer}
             </body>
             </html>
             """
