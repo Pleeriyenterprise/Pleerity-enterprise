@@ -3235,6 +3235,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedClientId, setSelectedClientId] = useState(null);
+  const [drilldownType, setDrilldownType] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -3243,6 +3244,10 @@ const AdminDashboard = () => {
 
   const handleSelectClient = (client) => {
     setSelectedClientId(client.client_id);
+  };
+
+  const handleShowDrilldown = (type) => {
+    setDrilldownType(type);
   };
 
   const tabs = [
@@ -3259,7 +3264,7 @@ const AdminDashboard = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'overview': return <DashboardOverview />;
+      case 'overview': return <DashboardOverview onShowDrilldown={handleShowDrilldown} />;
       case 'statistics': return <StatisticsDashboard />;
       case 'jobs': return <JobsMonitoring />;
       case 'clients': return <ClientsManagement />;
@@ -3268,7 +3273,7 @@ const AdminDashboard = () => {
       case 'templates': return <EmailTemplates />;
       case 'audit': return <AuditLogs />;
       case 'messages': return <MessageLogs />;
-      default: return <DashboardOverview />;
+      default: return <DashboardOverview onShowDrilldown={handleShowDrilldown} />;
     }
   };
 
@@ -3279,6 +3284,15 @@ const AdminDashboard = () => {
         <ClientDetailModal 
           clientId={selectedClientId} 
           onClose={() => setSelectedClientId(null)} 
+        />
+      )}
+
+      {/* KPI Drilldown Modal */}
+      {drilldownType && (
+        <KPIDrilldownModal 
+          drilldownType={drilldownType} 
+          onClose={() => setDrilldownType(null)}
+          onSelectClient={handleSelectClient}
         />
       )}
 
