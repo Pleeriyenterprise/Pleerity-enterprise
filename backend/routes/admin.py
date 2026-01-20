@@ -72,6 +72,100 @@ async def get_admin_dashboard(request: Request):
         )
 
 
+@router.get("/search")
+async def global_search(request: Request, q: str = "", limit: int = 20):
+    """
+    Global search across clients by CRN, email, name, or postcode.
+    Returns matching clients with their key details.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    if not q or len(q.strip()) < 2:
+        return {"results": [], "query": q, "total": 0}
+    
+    search_term = q.strip()
+    
+    try:
+        # Build search conditions
+        # 1. Exact CRN match (case-insensitive)
+        # 2. Email contains (case-insensitive)
+        # 3. Name contains (case-insensitive)
+        # 4. Company name contains
+        search_regex = {"$regex": search_term, "$options": "i"}
+        
+        # Search clients
+        client_query = {
+            "$or": [
+                {"customer_reference": search_regex},
+                {"email": search_regex},
+                {"full_name": search_regex},
+                {"company_name": search_regex}
+            ]
+        }
+        
+        clients_cursor = db.clients.find(
+            client_query,
+            {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1, 
+             "email": 1, "company_name": 1, "subscription_status": 1, 
+             "onboarding_status": 1, "billing_plan": 1, "created_at": 1}
+        ).limit(limit)
+        
+        clients = await clients_cursor.to_list(limit)
+        
+        # Also search by postcode in properties and return linked clients
+        postcode_search = search_term.upper().replace(" ", "")
+        properties_with_postcode = await db.properties.find(
+            {"postcode": {"$regex": postcode_search, "$options": "i"}},
+            {"_id": 0, "client_id": 1, "postcode": 1, "address_line_1": 1}
+        ).to_list(50)
+        
+        # Get unique client IDs from postcode search
+        postcode_client_ids = list(set(p["client_id"] for p in properties_with_postcode))
+        existing_client_ids = [c["client_id"] for c in clients]
+        
+        # Fetch additional clients found via postcode
+        new_client_ids = [cid for cid in postcode_client_ids if cid not in existing_client_ids]
+        if new_client_ids:
+            additional_clients = await db.clients.find(
+                {"client_id": {"$in": new_client_ids}},
+                {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1,
+                 "email": 1, "company_name": 1, "subscription_status": 1,
+                 "onboarding_status": 1, "billing_plan": 1, "created_at": 1}
+            ).to_list(limit)
+            
+            # Mark these as found via postcode
+            for c in additional_clients:
+                matched_props = [p for p in properties_with_postcode if p["client_id"] == c["client_id"]]
+                c["matched_via"] = "postcode"
+                c["matched_postcode"] = matched_props[0]["postcode"] if matched_props else None
+            
+            clients.extend(additional_clients)
+        
+        # Log the search for audit trail
+        await create_audit_log(
+            action=AuditAction.ADMIN_SEARCH_PERFORMED,
+            admin_id=user.get("portal_user_id"),
+            metadata={
+                "search_query": search_term,
+                "results_count": len(clients)
+            }
+        )
+        
+        return {
+            "results": clients[:limit],
+            "query": search_term,
+            "total": len(clients)
+        }
+        
+    except Exception as e:
+        logger.error(f"Global search error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Search failed"
+        )
+
+
 @router.get("/statistics")
 async def get_system_statistics(request: Request):
     """Get comprehensive system-wide compliance statistics."""
