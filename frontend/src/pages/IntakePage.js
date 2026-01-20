@@ -798,7 +798,64 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
   const [councilResults, setCouncilResults] = useState([]);
   const [showCouncilDropdown, setShowCouncilDropdown] = useState(false);
   const [loadingCouncils, setLoadingCouncils] = useState(false);
+  const [lookingUpPostcode, setLookingUpPostcode] = useState(false);
+  const [postcodeError, setPostcodeError] = useState('');
+  const [postcodeLookupDone, setPostcodeLookupDone] = useState(false);
   const councilRef = useRef(null);
+
+  // Lookup postcode and auto-fill fields
+  const lookupPostcode = useCallback(async (postcode) => {
+    if (!postcode || postcode.length < 5) return;
+    
+    // Clean postcode
+    const cleanPostcode = postcode.trim().toUpperCase().replace(/\s+/g, '');
+    
+    // Basic UK postcode validation
+    if (!/^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i.test(cleanPostcode)) {
+      return;
+    }
+    
+    setLookingUpPostcode(true);
+    setPostcodeError('');
+    
+    try {
+      const response = await intakeAPI.lookupPostcode(postcode);
+      const data = response.data;
+      
+      // Auto-fill city
+      if (data.suggested_city && !property.city) {
+        updateProperty(index, 'city', data.suggested_city);
+      }
+      
+      // Auto-fill council
+      if (data.council_name && !property.council_name) {
+        updateProperty(index, 'council_name', data.council_name);
+        updateProperty(index, 'council_code', data.council_code);
+        setCouncilSearch(data.council_name);
+      }
+      
+      setPostcodeLookupDone(true);
+      toast.success('Address details found! Please enter your street address.');
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setPostcodeError('Postcode not found');
+      } else {
+        setPostcodeError('Could not lookup postcode');
+      }
+    } finally {
+      setLookingUpPostcode(false);
+    }
+  }, [index, property.city, property.council_name, updateProperty]);
+
+  // Trigger postcode lookup when postcode changes (debounced)
+  useEffect(() => {
+    if (property.postcode && property.postcode.length >= 5 && !postcodeLookupDone) {
+      const timer = setTimeout(() => {
+        lookupPostcode(property.postcode);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [property.postcode, postcodeLookupDone, lookupPostcode]);
 
   // Search councils
   const searchCouncils = useCallback(async (query) => {
@@ -845,6 +902,13 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
     setShowCouncilDropdown(false);
   };
 
+  // Handle postcode change with reset of lookup state
+  const handlePostcodeChange = (value) => {
+    updateProperty(index, 'postcode', value.toUpperCase());
+    setPostcodeLookupDone(false);
+    setPostcodeError('');
+  };
+
   return (
     <Card className="overflow-hidden" data-testid={`property-card-${index}`}>
       <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -879,12 +943,31 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">Postcode *</label>
-            <Input
-              value={property.postcode}
-              onChange={(e) => updateProperty(index, 'postcode', e.target.value.toUpperCase())}
-              placeholder="SW1A 1AA"
-              data-testid={`property-${index}-postcode`}
-            />
+            <div className="relative">
+              <Input
+                value={property.postcode}
+                onChange={(e) => handlePostcodeChange(e.target.value)}
+                placeholder="SW1A 1AA"
+                className={postcodeError ? 'border-red-300' : ''}
+                data-testid={`property-${index}-postcode`}
+              />
+              {lookingUpPostcode && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-4 h-4 animate-spin text-electric-teal" />
+                </div>
+              )}
+              {postcodeLookupDone && !lookingUpPostcode && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                </div>
+              )}
+            </div>
+            {postcodeError && (
+              <p className="text-xs text-red-500">{postcodeError}</p>
+            )}
+            {postcodeLookupDone && (
+              <p className="text-xs text-green-600">City and council auto-filled ✓</p>
+            )}
           </div>
         </div>
 
