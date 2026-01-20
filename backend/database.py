@@ -36,6 +36,44 @@ class Database:
     
     def get_db(self):
         return self.db
+    
+    async def _create_indexes(self):
+        """Create MongoDB indexes for efficient queries."""
+        try:
+            # Client indexes - CRN (customer_reference) is critical for search
+            await self.db.clients.create_index("customer_reference", unique=True, sparse=True)
+            await self.db.clients.create_index("email", unique=True)
+            await self.db.clients.create_index("client_id", unique=True)
+            await self.db.clients.create_index("full_name")  # For name search
+            
+            # Property indexes - for postcode search
+            await self.db.properties.create_index("postcode")
+            await self.db.properties.create_index("client_id")
+            await self.db.properties.create_index("property_id", unique=True)
+            await self.db.properties.create_index("compliance_status")
+            
+            # Portal user indexes
+            await self.db.portal_users.create_index("auth_email", unique=True)
+            await self.db.portal_users.create_index("client_id")
+            await self.db.portal_users.create_index("portal_user_id", unique=True)
+            
+            # Audit log indexes - for timeline queries
+            await self.db.audit_logs.create_index([("client_id", 1), ("created_at", -1)])
+            await self.db.audit_logs.create_index("created_at")
+            await self.db.audit_logs.create_index("action")
+            
+            # Text index for full-text search (email, name, CRN)
+            await self.db.clients.create_index([
+                ("email", "text"),
+                ("full_name", "text"),
+                ("customer_reference", "text"),
+                ("company_name", "text")
+            ], name="client_search_text")
+            
+            logger.info("MongoDB indexes created/verified")
+        except Exception as e:
+            # Indexes may already exist, log but don't fail
+            logger.warning(f"Index creation note: {e}")
 
 # Global database instance
 database = Database()
