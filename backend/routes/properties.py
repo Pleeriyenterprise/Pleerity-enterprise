@@ -147,6 +147,152 @@ async def list_properties(request: Request):
             detail="Failed to load properties"
         )
 
+
+class BulkPropertyItem(BaseModel):
+    address_line_1: str
+    address_line_2: Optional[str] = None
+    city: str
+    postcode: str
+    property_type: str = "residential"
+    number_of_units: int = 1
+
+
+class BulkImportRequest(BaseModel):
+    properties: List[BulkPropertyItem]
+
+
+@router.post("/bulk-import")
+async def bulk_import_properties(request: Request, data: BulkImportRequest):
+    """Import multiple properties from a list (e.g., parsed CSV data).
+    
+    Accepts a list of property objects and creates them with requirements.
+    Useful for letting agents managing multiple properties.
+    
+    Returns summary of successful and failed imports.
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        from services.provisioning import ProvisioningService
+        
+        # Verify client is provisioned
+        client = await db.clients.find_one(
+            {"client_id": user["client_id"]},
+            {"_id": 0}
+        )
+        
+        if not client or client["onboarding_status"] != "PROVISIONED":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account must be fully provisioned to add properties"
+            )
+        
+        results = {
+            "total": len(data.properties),
+            "successful": 0,
+            "failed": 0,
+            "errors": [],
+            "created_properties": []
+        }
+        
+        provisioning = ProvisioningService()
+        
+        for idx, prop_data in enumerate(data.properties):
+            try:
+                # Validate required fields
+                if not prop_data.address_line_1 or not prop_data.city or not prop_data.postcode:
+                    results["failed"] += 1
+                    results["errors"].append({
+                        "row": idx + 1,
+                        "error": "Missing required field (address_line_1, city, or postcode)"
+                    })
+                    continue
+                
+                # Check for duplicate address
+                existing = await db.properties.find_one({
+                    "client_id": user["client_id"],
+                    "address_line_1": prop_data.address_line_1,
+                    "postcode": prop_data.postcode
+                })
+                
+                if existing:
+                    results["failed"] += 1
+                    results["errors"].append({
+                        "row": idx + 1,
+                        "address": f"{prop_data.address_line_1}, {prop_data.postcode}",
+                        "error": "Property already exists"
+                    })
+                    continue
+                
+                # Create property
+                property_obj = Property(
+                    client_id=user["client_id"],
+                    address_line_1=prop_data.address_line_1,
+                    address_line_2=prop_data.address_line_2,
+                    city=prop_data.city,
+                    postcode=prop_data.postcode,
+                    property_type=prop_data.property_type,
+                    number_of_units=prop_data.number_of_units,
+                    compliance_status=ComplianceStatus.RED
+                )
+                
+                prop_doc = property_obj.model_dump()
+                await db.properties.insert_one(prop_doc)
+                
+                # Generate requirements
+                requirements = await provisioning.generate_requirements_for_property(
+                    client_id=user["client_id"],
+                    property_id=property_obj.property_id,
+                    property_type=prop_data.property_type
+                )
+                
+                results["successful"] += 1
+                results["created_properties"].append({
+                    "property_id": property_obj.property_id,
+                    "address": f"{prop_data.address_line_1}, {prop_data.city}",
+                    "requirements_created": len(requirements) if requirements else 0
+                })
+                
+            except Exception as e:
+                results["failed"] += 1
+                results["errors"].append({
+                    "row": idx + 1,
+                    "error": str(e)
+                })
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.PROPERTY_CREATED,
+            actor_id=user["portal_user_id"],
+            client_id=user["client_id"],
+            resource_type="property",
+            metadata={
+                "action": "bulk_import",
+                "total": results["total"],
+                "successful": results["successful"],
+                "failed": results["failed"]
+            }
+        )
+        
+        logger.info(f"Bulk import: {results['successful']}/{results['total']} properties created for {user['email']}")
+        
+        return {
+            "message": f"Imported {results['successful']} of {results['total']} properties",
+            "summary": results
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk import error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to import properties"
+        )
+
+
+
 @router.get("/upcoming-deadlines")
 async def get_upcoming_deadlines(request: Request, days: int = 30):
     """Get upcoming compliance deadlines for dashboard widget."""
