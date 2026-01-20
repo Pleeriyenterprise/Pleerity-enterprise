@@ -328,14 +328,27 @@ async def get_system_statistics(request: Request):
 
 
 @router.get("/clients")
-async def get_clients(request: Request, skip: int = 0, limit: int = 50):
-    """Get all clients (admin only)."""
+async def get_clients(
+    request: Request, 
+    skip: int = 0, 
+    limit: int = 50,
+    subscription_status: str = None,
+    onboarding_status: str = None
+):
+    """Get all clients (admin only). Supports filtering by subscription_status and onboarding_status."""
     user = await admin_route_guard(request)
     db = database.get_db()
     
     try:
-        clients = await db.clients.find({}, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
-        total = await db.clients.count_documents({})
+        # Build query with optional filters
+        query = {}
+        if subscription_status:
+            query["subscription_status"] = subscription_status.upper()
+        if onboarding_status:
+            query["onboarding_status"] = onboarding_status.upper()
+        
+        clients = await db.clients.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+        total = await db.clients.count_documents(query)
         
         return {
             "clients": clients,
