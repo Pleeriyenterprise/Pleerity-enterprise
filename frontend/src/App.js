@@ -47,6 +47,7 @@ import ProfilePage from './pages/ProfilePage';
 import PropertyCreatePage from './pages/PropertyCreatePage';
 import DocumentsPage from './pages/DocumentsPage';
 import BulkUploadPage from './pages/BulkUploadPage';
+import ReportsPage from './pages/ReportsPage';
 import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 import CalendarPage from './pages/CalendarPage';
 
