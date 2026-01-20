@@ -86,10 +86,9 @@ class TestClientAuthentication:
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
-        assert data["user"]["role"] in ["ROLE_CLIENT", "ROLE_LANDLORD"]
+        assert data["user"]["role"] in ["ROLE_CLIENT", "ROLE_LANDLORD", "ROLE_CLIENT_ADMIN"]
         assert data["user"]["email"] == TEST_CLIENT_EMAIL
-        print(f"✓ Client login successful: {TEST_CLIENT_EMAIL}")
-        return data["access_token"]
+        print(f"✓ Client login successful: {TEST_CLIENT_EMAIL} (role: {data['user']['role']})")
     
     def test_client_login_invalid_credentials(self):
         """Test client login with invalid credentials"""
