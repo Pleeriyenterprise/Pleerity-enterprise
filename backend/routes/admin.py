@@ -627,10 +627,11 @@ async def update_client_profile(
         await create_audit_log(
             action=AuditAction.ADMIN_PROFILE_UPDATED,
             client_id=client_id,
-            admin_id=user.get("portal_user_id"),
+            actor_id=user.get("portal_user_id"),
+            actor_role=UserRole.ROLE_ADMIN,
+            before_state=before_state,
+            after_state=after_state,
             metadata={
-                "before": before_state,
-                "after": after_state,
                 "fields_changed": list(update_data.keys()),
                 "admin_email": user.get("auth_email")
             }
