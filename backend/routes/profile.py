@@ -127,7 +127,7 @@ async def get_notification_preferences(request: Request):
             {"_id": 0}
         )
         
-        # Default preferences (including SMS fields)
+        # Default preferences (including SMS fields and digest customization)
         default_preferences = {
             "client_id": user["client_id"],
             "status_change_alerts": True,
@@ -143,7 +143,16 @@ async def get_notification_preferences(request: Request):
             "sms_enabled": False,
             "sms_phone_number": "",
             "sms_phone_verified": False,
-            "sms_urgent_alerts_only": True
+            "sms_urgent_alerts_only": True,
+            # Email Digest Customization
+            "digest_compliance_summary": True,
+            "digest_action_items": True,
+            "digest_upcoming_expiries": True,
+            "digest_property_breakdown": True,
+            "digest_recent_documents": True,
+            "digest_recommendations": True,
+            "digest_audit_summary": False,
+            "daily_reminder_enabled": True
         }
         
         # Merge stored preferences with defaults (stored values override defaults)
