@@ -88,6 +88,16 @@ async def run_compliance_status_check():
     except Exception as e:
         logger.error(f"Compliance status check failed: {e}")
 
+
+async def run_scheduled_reports():
+    """Scheduled job: Process and send scheduled reports."""
+    try:
+        from services.jobs import run_scheduled_reports as process_reports
+        count = await process_reports()
+        logger.info(f"Scheduled reports job completed: {count} reports sent")
+    except Exception as e:
+        logger.error(f"Scheduled reports job failed: {e}")
+
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
