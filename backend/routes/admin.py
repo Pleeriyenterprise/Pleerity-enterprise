@@ -1070,20 +1070,6 @@ async def send_message_to_client(
                 detail="Failed to send email"
             )
         
-        # Log to message_logs
-        message_log_id = str(uuid.uuid4())
-        await db.message_logs.insert_one({
-            "message_id": message_log_id,
-            "client_id": client_id,
-            "recipient_email": client.get("email"),
-            "subject": message_data.subject,
-            "template_alias": "admin-manual",
-            "status": "sent",
-            "sent_by": user.get("auth_email"),
-            "sent_by_admin_id": user.get("portal_user_id"),
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_MESSAGE_SENT,
@@ -1091,7 +1077,7 @@ async def send_message_to_client(
             actor_id=user.get("portal_user_id"),
             actor_role=UserRole.ROLE_ADMIN,
             metadata={
-                "message_id": message_log_id,
+                "message_id": message_log.message_id,
                 "subject": message_data.subject,
                 "recipient": client.get("email"),
                 "admin_email": user.get("auth_email")
@@ -1100,18 +1086,26 @@ async def send_message_to_client(
         
         # Send copy to admin if requested
         if message_data.send_copy_to_admin:
-            await send_email(
-                to_email=user.get("auth_email"),
-                subject=f"[Copy] {message_data.subject}",
-                html_body=html_body,
-                text_body=f"[Copy of message sent to {client.get('email')}]\n\n{message_data.message}"
+            await email_service.send_email(
+                recipient=user.get("auth_email"),
+                template_alias=EmailTemplateAlias.ADMIN_MANUAL,
+                template_model={
+                    "client_name": "Admin",
+                    "message": f"[Copy of message sent to {client.get('email')}]<br><br>{message_data.message.replace(chr(10), '<br>')}",
+                    "subject": f"[Copy] {message_data.subject}",
+                    "customer_reference": client.get("customer_reference", "N/A"),
+                    "company_name": "Pleerity Enterprise Ltd",
+                    "tagline": "AI-Driven Solutions & Compliance"
+                },
+                client_id=client_id,
+                subject=f"[Copy] {message_data.subject}"
             )
         
         logger.info(f"Admin {user.get('auth_email')} sent message to client {client_id}")
         
         return {
             "success": True,
-            "message_id": message_log_id,
+            "message_id": message_log.message_id,
             "recipient": client.get("email"),
             "subject": message_data.subject
         }
