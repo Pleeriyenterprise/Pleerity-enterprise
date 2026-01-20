@@ -149,6 +149,7 @@ class EmailTemplateAlias(str, Enum):
     COMPLIANCE_ALERT = "compliance-alert"  # Status change notifications
     TENANT_INVITE = "tenant-invite"  # Tenant portal invitation
     SCHEDULED_REPORT = "scheduled-report"  # Scheduled compliance reports
+    ADMIN_INVITE = "admin-invite"  # Admin user invitation
 
 
 class ReportScheduleFrequency(str, Enum):
