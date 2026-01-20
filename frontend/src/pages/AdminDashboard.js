@@ -640,6 +640,179 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   );
 };
 
+// KPI Drilldown Modal Component
+const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    if (drilldownType) {
+      fetchDrilldownData();
+    }
+  }, [drilldownType]);
+
+  const fetchDrilldownData = async () => {
+    setLoading(true);
+    try {
+      let endpoint = '';
+      
+      // Map drilldown type to API endpoint
+      if (drilldownType === 'clients' || drilldownType === 'clients-active' || drilldownType === 'clients-pending') {
+        const status = drilldownType === 'clients-active' ? '&subscription_status=ACTIVE' : 
+                       drilldownType === 'clients-pending' ? '&onboarding_status=PENDING' : '';
+        endpoint = `/admin/clients?limit=50${status}`;
+      } else if (drilldownType === 'properties') {
+        endpoint = '/admin/kpi/properties?limit=50';
+      } else if (drilldownType.startsWith('compliance-')) {
+        const status = drilldownType.replace('compliance-', '');
+        endpoint = `/admin/kpi/properties?status_filter=${status}&limit=50`;
+      }
+
+      const response = await api.get(endpoint);
+      
+      if (drilldownType.includes('client')) {
+        setData(response.data.clients || []);
+        setTotalCount(response.data.total || 0);
+      } else {
+        setData(response.data.properties || []);
+        setTotalCount(response.data.total || 0);
+      }
+    } catch (error) {
+      toast.error('Failed to load drill-down data');
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTitle = () => {
+    switch (drilldownType) {
+      case 'clients': return 'All Clients';
+      case 'clients-active': return 'Active Clients';
+      case 'clients-pending': return 'Pending Setup Clients';
+      case 'properties': return 'All Properties';
+      case 'compliance-GREEN': return 'Compliant Properties';
+      case 'compliance-AMBER': return 'Attention Needed Properties';
+      case 'compliance-RED': return 'Non-Compliant Properties';
+      default: return 'Details';
+    }
+  };
+
+  const isClientView = drilldownType?.includes('client');
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="kpi-drilldown-modal">
+      <div className="bg-white rounded-xl w-full max-w-4xl mx-4 shadow-xl max-h-[85vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="bg-midnight-blue text-white p-6 flex items-center justify-between flex-shrink-0">
+          <div>
+            <h2 className="text-xl font-bold">{getTitle()}</h2>
+            <p className="text-sm text-gray-300 mt-1">Total: {totalCount} records</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            data-testid="close-drilldown-modal"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+            </div>
+          ) : data.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              No records found
+            </div>
+          ) : isClientView ? (
+            // Client list view
+            <div className="space-y-3">
+              {data.map((client) => (
+                <button
+                  key={client.client_id}
+                  onClick={() => {
+                    onClose();
+                    onSelectClient(client);
+                  }}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-left"
+                  data-testid={`drilldown-client-${client.client_id}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-midnight-blue text-white rounded-full flex items-center justify-center font-semibold">
+                      {client.full_name?.charAt(0)?.toUpperCase() || 'C'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-midnight-blue">{client.full_name}</p>
+                      <p className="text-sm text-gray-500">{client.email}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {client.customer_reference && (
+                      <span className="inline-block px-2 py-1 bg-electric-teal/10 text-electric-teal text-xs font-mono rounded mb-1">
+                        {client.customer_reference}
+                      </span>
+                    )}
+                    <div className="flex gap-2 mt-1">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        client.subscription_status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {client.subscription_status}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            // Properties list view
+            <div className="space-y-3">
+              {data.map((property) => (
+                <div
+                  key={property.property_id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  data-testid={`drilldown-property-${property.property_id}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      property.compliance_status === 'GREEN' ? 'bg-green-100 text-green-600' :
+                      property.compliance_status === 'AMBER' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'
+                    }`}>
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-midnight-blue">{property.nickname || property.address_line_1 || 'Property'}</p>
+                      <p className="text-sm text-gray-500">{property.postcode} • {property.local_authority || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      property.compliance_status === 'GREEN' ? 'bg-green-100 text-green-700' :
+                      property.compliance_status === 'AMBER' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {property.compliance_status || 'UNKNOWN'}
+                    </span>
+                    {property.client && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {property.client.full_name}
+                        {property.client.customer_reference && ` (${property.client.customer_reference})`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Tab Components
 const JobsMonitoring = () => {
   const [jobsStatus, setJobsStatus] = useState(null);
