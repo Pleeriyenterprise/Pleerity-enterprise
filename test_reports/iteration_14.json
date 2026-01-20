@@ -1,0 +1,114 @@
+{
+  "summary": "Iteration 14 testing completed for Admin Management UI and Council Name Normalization features. All 20 backend API tests passed (100%). Frontend Admin Management UI fully functional with stats cards, admin list, invite modal, and action buttons. Council normalization working correctly via API.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration14_admin_council.py",
+    "/app/test_reports/pytest/pytest_results_iter14.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Admin Management UI properly implements all CRUD operations with proper data-testid attributes",
+    "Stats cards correctly display Total Admins, Active, and Pending Setup counts",
+    "Invite Admin modal has proper form validation and sends invitation emails via Postmark",
+    "Council name normalization correctly applies suffixes based on council codes (E06, E07, E08, E09, S12, W06)",
+    "Bristol postcode returns 'Bristol City Council' - normalized correctly",
+    "London postcodes return 'London Borough of X' format - normalized correctly",
+    "Council search API returns both normalized name and raw_name for reference"
+  ],
+  "updated_files": [
+    "/app/tests/test_iteration14_admin_council.py"
+  ],
+  "success_rate": {
+    "backend": "100% (20/20 tests passed)",
+    "frontend": "100% - Admin Management UI working correctly"
+  },
+  "test_credentials": {
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!"
+  },
+  "seed_data_creation": "Test admin users created during integration tests (lifecycle_admin_*, resend_test_*, test_admin_*)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Admin Management UI is accessible via Admins tab in Admin Dashboard sidebar (data-testid='admin-tab-admins'). Council normalization is handled by normalize_council_name() function in intake.py. Test postcodes: SW1A 1AA (Westminster), NW1 0NE (Camden), BS8 1TH (Bristol), M1 1AE (Manchester).",
+  "features_tested": {
+    "admin_management_api": {
+      "status": "PASS",
+      "tests": [
+        "GET /api/admin/admins - List all admin users (returns 6 admins)",
+        "POST /api/admin/admins/invite - Validates required fields",
+        "POST /api/admin/admins/invite - Rejects duplicate email",
+        "POST /api/admin/admins/invite - Successfully invites new admin",
+        "DELETE /api/admin/admins/{id} - Cannot deactivate self",
+        "DELETE /api/admin/admins/{id} - Returns 404 for non-existent admin",
+        "POST /api/admin/admins/{id}/reactivate - Returns 404 for non-existent admin",
+        "POST /api/admin/admins/{id}/resend-invite - Returns 404 for non-existent admin",
+        "Full admin lifecycle: invite -> deactivate -> reactivate",
+        "Resend invite for pending admin"
+      ]
+    },
+    "admin_management_ui": {
+      "status": "PASS",
+      "tests": [
+        "Admins tab visible in sidebar (data-testid='admin-tab-admins')",
+        "Stats cards: Total Admins (6), Active (3), Pending Setup (3)",
+        "Admin list table with columns: Admin, Status, Last Login, Created, Actions",
+        "Status badges: Active (green), Pending Setup (amber), Disabled (gray)",
+        "Invite Admin button (data-testid='invite-admin-btn')",
+        "Invite Admin modal with form fields (data-testid='invite-admin-modal')",
+        "Modal form: Full Name input, Email input, Cancel/Send Invitation buttons",
+        "Action buttons: Resend invite (mail icon), Deactivate (user minus icon)"
+      ]
+    },
+    "council_name_normalization": {
+      "status": "PASS",
+      "tests": [
+        "Postcode lookup BS8 1TH returns 'Bristol City Council'",
+        "Postcode lookup NW1 0NE returns 'London Borough of Camden'",
+        "Postcode lookup SW1A 1AA returns Westminster council",
+        "Postcode lookup M1 1AE returns Manchester council",
+        "Council search returns normalized names",
+        "Council search returns raw_name for reference",
+        "Council search pagination works",
+        "Council search filter by nation works"
+      ]
+    }
+  },
+  "api_endpoints_verified": [
+    "GET /api/admin/admins - 200 OK",
+    "POST /api/admin/admins/invite - 200 OK (success), 400 (duplicate), 422 (validation)",
+    "DELETE /api/admin/admins/{id} - 200 OK (success), 400 (self), 404 (not found)",
+    "POST /api/admin/admins/{id}/reactivate - 200 OK (success), 404 (not found)",
+    "POST /api/admin/admins/{id}/resend-invite - 200 OK (success), 404 (not found)",
+    "GET /api/intake/postcode-lookup/{postcode} - 200 OK with normalized council_name",
+    "GET /api/intake/councils - 200 OK with normalized names"
+  ],
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Stripe (test mode - sk_test_emergent)",
+      "Postmark emails are LIVE - admin invites will send real emails"
+    ]
+  },
+  "council_normalization_examples": {
+    "bristol": {
+      "postcode": "BS8 1TH",
+      "raw_name": "Bristol",
+      "normalized_name": "Bristol City Council",
+      "council_code": "E06000023"
+    },
+    "camden": {
+      "postcode": "NW1 0NE",
+      "raw_name": "Camden",
+      "normalized_name": "London Borough of Camden",
+      "council_code": "E09000007"
+    }
+  }
+}
