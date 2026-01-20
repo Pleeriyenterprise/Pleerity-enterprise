@@ -281,7 +281,19 @@ const DocumentsPage = () => {
               </button>
               <h1 className="text-xl font-bold">Documents</h1>
             </div>
-            <span className="text-sm text-gray-300">{user?.email}</span>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/app/documents/bulk-upload')}
+                className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                data-testid="bulk-upload-nav-btn"
+              >
+                <Files className="w-4 h-4 mr-2" />
+                Bulk Upload
+              </Button>
+              <span className="text-sm text-gray-300">{user?.email}</span>
+            </div>
           </div>
         </div>
       </header>
