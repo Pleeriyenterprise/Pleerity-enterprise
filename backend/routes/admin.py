@@ -1162,3 +1162,393 @@ async def get_client_full_status(request: Request, client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get client status"
         )
+
+
+
+# ============================================================================
+# ADMIN USER MANAGEMENT
+# ============================================================================
+
+@router.get("/admins")
+async def list_admins(request: Request):
+    """List all admin users (admin only).
+    
+    Returns list of all users with ROLE_ADMIN, excluding password hashes.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        admins = await db.portal_users.find(
+            {"role": UserRole.ROLE_ADMIN.value},
+            {"_id": 0, "password_hash": 0}
+        ).to_list(100)
+        
+        return {
+            "admins": admins,
+            "total": len(admins)
+        }
+    
+    except Exception as e:
+        logger.error(f"List admins error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list admins"
+        )
+
+
+@router.post("/admins/invite")
+async def invite_admin(request: Request, invite_data: AdminInviteRequest):
+    """Invite a new admin user via email.
+    
+    This endpoint:
+    1. Creates a new PortalUser with ROLE_ADMIN in INVITED status
+    2. Generates a secure password setup token
+    3. Sends an invitation email via Postmark
+    4. Logs the action in the audit trail
+    
+    The invited admin must click the link in the email to set their password,
+    which will activate their account.
+    
+    Args:
+        email: Email address for the new admin
+        full_name: Full name of the new admin
+    
+    Returns:
+        Success message with the new admin's portal_user_id
+    """
+    inviter = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Check if email already exists in portal_users
+        existing_user = await db.portal_users.find_one(
+            {"auth_email": invite_data.email},
+            {"_id": 0}
+        )
+        
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A user with this email already exists"
+            )
+        
+        # Create new admin portal user
+        portal_user_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc)
+        
+        new_admin = {
+            "portal_user_id": portal_user_id,
+            "client_id": None,  # Admins don't have client association
+            "auth_email": invite_data.email,
+            "password_hash": None,
+            "role": UserRole.ROLE_ADMIN.value,
+            "status": UserStatus.INVITED.value,
+            "password_status": PasswordStatus.NOT_SET.value,
+            "must_set_password": True,
+            "last_login": None,
+            "created_at": now.isoformat(),
+            "full_name": invite_data.full_name,  # Store the name for display
+            "invited_by": inviter["portal_user_id"]
+        }
+        
+        await db.portal_users.insert_one(new_admin)
+        logger.info(f"Created new admin user: {invite_data.email}")
+        
+        # Generate password setup token
+        from auth import generate_secure_token, hash_token
+        
+        raw_token = generate_secure_token()
+        token_hash = hash_token(raw_token)
+        
+        password_token = PasswordToken(
+            token_hash=token_hash,
+            portal_user_id=portal_user_id,
+            client_id="ADMIN_INVITE",  # Special marker for admin invites
+            expires_at=now + timedelta(hours=24),
+            created_by=inviter["portal_user_id"],
+            send_count=1
+        )
+        
+        token_doc = password_token.model_dump()
+        for key in ["expires_at", "used_at", "revoked_at", "created_at"]:
+            if token_doc.get(key) and isinstance(token_doc[key], datetime):
+                token_doc[key] = token_doc[key].isoformat()
+        
+        await db.password_tokens.insert_one(token_doc)
+        logger.info(f"Generated password token for admin: {invite_data.email}")
+        
+        # Send invitation email
+        import os
+        from services.email_service import email_service
+        
+        frontend_url = os.getenv("FRONTEND_URL", "https://compliance-vault-3.preview.emergentagent.com")
+        setup_link = f"{frontend_url}/set-password?token={raw_token}"
+        
+        await email_service.send_admin_invite_email(
+            recipient=invite_data.email,
+            admin_name=invite_data.full_name,
+            inviter_name=inviter.get("email", "System Administrator"),
+            setup_link=setup_link
+        )
+        logger.info(f"Sent admin invite email to: {invite_data.email}")
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_INVITED,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=inviter["portal_user_id"],
+            resource_type="portal_user",
+            resource_id=portal_user_id,
+            metadata={
+                "invited_email": invite_data.email,
+                "invited_name": invite_data.full_name,
+                "inviter_email": inviter.get("email")
+            }
+        )
+        
+        return {
+            "message": "Admin invitation sent successfully",
+            "portal_user_id": portal_user_id,
+            "email": invite_data.email,
+            "status": "INVITED",
+            "note": "The invited admin will receive an email with instructions to set up their account."
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Invite admin error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to invite admin"
+        )
+
+
+@router.delete("/admins/{portal_user_id}")
+async def deactivate_admin(request: Request, portal_user_id: str):
+    """Deactivate an admin user (admin only).
+    
+    This sets the admin's status to DISABLED. They will no longer be able to log in.
+    Note: An admin cannot deactivate themselves.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Prevent self-deactivation
+        if user["portal_user_id"] == portal_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You cannot deactivate your own account"
+            )
+        
+        # Find the target admin
+        target_admin = await db.portal_users.find_one(
+            {"portal_user_id": portal_user_id, "role": UserRole.ROLE_ADMIN.value},
+            {"_id": 0}
+        )
+        
+        if not target_admin:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Admin not found"
+            )
+        
+        # Deactivate
+        await db.portal_users.update_one(
+            {"portal_user_id": portal_user_id},
+            {"$set": {"status": UserStatus.DISABLED.value}}
+        )
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=user["portal_user_id"],
+            resource_type="portal_user",
+            resource_id=portal_user_id,
+            metadata={
+                "action": "admin_deactivated",
+                "deactivated_email": target_admin.get("auth_email"),
+                "by_admin": user.get("email")
+            }
+        )
+        
+        return {
+            "message": "Admin deactivated successfully",
+            "portal_user_id": portal_user_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Deactivate admin error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to deactivate admin"
+        )
+
+
+@router.post("/admins/{portal_user_id}/reactivate")
+async def reactivate_admin(request: Request, portal_user_id: str):
+    """Reactivate a disabled admin user (admin only)."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Find the target admin
+        target_admin = await db.portal_users.find_one(
+            {"portal_user_id": portal_user_id, "role": UserRole.ROLE_ADMIN.value},
+            {"_id": 0}
+        )
+        
+        if not target_admin:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Admin not found"
+            )
+        
+        if target_admin.get("status") == UserStatus.ACTIVE.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admin is already active"
+            )
+        
+        # Reactivate
+        await db.portal_users.update_one(
+            {"portal_user_id": portal_user_id},
+            {"$set": {"status": UserStatus.ACTIVE.value}}
+        )
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=user["portal_user_id"],
+            resource_type="portal_user",
+            resource_id=portal_user_id,
+            metadata={
+                "action": "admin_reactivated",
+                "reactivated_email": target_admin.get("auth_email"),
+                "by_admin": user.get("email")
+            }
+        )
+        
+        return {
+            "message": "Admin reactivated successfully",
+            "portal_user_id": portal_user_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reactivate admin error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reactivate admin"
+        )
+
+
+@router.post("/admins/{portal_user_id}/resend-invite")
+async def resend_admin_invite(request: Request, portal_user_id: str):
+    """Resend invitation email to an admin who hasn't set their password yet.
+    
+    This revokes all existing tokens and generates a new one with fresh expiration.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Find the target admin
+        target_admin = await db.portal_users.find_one(
+            {"portal_user_id": portal_user_id, "role": UserRole.ROLE_ADMIN.value},
+            {"_id": 0}
+        )
+        
+        if not target_admin:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Admin not found"
+            )
+        
+        # Check if password is already set
+        if target_admin.get("password_status") == PasswordStatus.SET.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This admin has already set their password"
+            )
+        
+        # Revoke existing tokens
+        await db.password_tokens.update_many(
+            {"portal_user_id": portal_user_id, "used_at": None, "revoked_at": None},
+            {"$set": {"revoked_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        # Generate new token
+        from auth import generate_secure_token, hash_token
+        
+        raw_token = generate_secure_token()
+        token_hash = hash_token(raw_token)
+        now = datetime.now(timezone.utc)
+        
+        password_token = PasswordToken(
+            token_hash=token_hash,
+            portal_user_id=portal_user_id,
+            client_id="ADMIN_INVITE",
+            expires_at=now + timedelta(hours=24),
+            created_by=user["portal_user_id"],
+            send_count=1
+        )
+        
+        token_doc = password_token.model_dump()
+        for key in ["expires_at", "used_at", "revoked_at", "created_at"]:
+            if token_doc.get(key) and isinstance(token_doc[key], datetime):
+                token_doc[key] = token_doc[key].isoformat()
+        
+        await db.password_tokens.insert_one(token_doc)
+        
+        # Send invitation email
+        import os
+        from services.email_service import email_service
+        
+        frontend_url = os.getenv("FRONTEND_URL", "https://compliance-vault-3.preview.emergentagent.com")
+        setup_link = f"{frontend_url}/set-password?token={raw_token}"
+        
+        admin_name = target_admin.get("full_name", target_admin.get("auth_email", "Admin"))
+        
+        await email_service.send_admin_invite_email(
+            recipient=target_admin["auth_email"],
+            admin_name=admin_name,
+            inviter_name=user.get("email", "System Administrator"),
+            setup_link=setup_link
+        )
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=user["portal_user_id"],
+            resource_type="portal_user",
+            resource_id=portal_user_id,
+            metadata={
+                "action": "admin_invite_resent",
+                "to_email": target_admin.get("auth_email"),
+                "by_admin": user.get("email")
+            }
+        )
+        
+        return {
+            "message": "Invitation resent successfully",
+            "portal_user_id": portal_user_id,
+            "email": target_admin["auth_email"]
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Resend admin invite error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resend invitation"
+        )
