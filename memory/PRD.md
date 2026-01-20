@@ -15,7 +15,7 @@
 
 ## Core Principles
 1. **Deterministic Compliance:** No AI for compliance decisions - all compliance rules are based on predefined dates/rules
-2. **Single Sources of Truth:** Stripe for billing status
+2. **Single Sources of Truth:** Stripe for billing status, Client.onboarding_status for provisioning
 3. **Strict RBAC:** `ROLE_CLIENT`, `ROLE_CLIENT_ADMIN`, `ROLE_ADMIN`, `ROLE_TENANT` enforced server-side
 4. **Mandatory Audit Logging:** All significant actions logged
 5. **AI is Assistive Only:** AI extracts data for review, cannot mark requirements compliant
@@ -54,119 +54,79 @@
 - [x] Compliance Expiry Calendar view
 
 ### Phase 4: New Features (January 2026) ✅
-- [x] **AI Document Scanner Enhancement**
-  - Document-type-specific prompts (Gas Safety, EICR, EPC)
-  - Priority field extraction (expiry date, issue date, certificate number, engineer details)
-  - Extraction quality assessment (high/medium/low)
-  - Review workflow (pending → approved/rejected)
-  - Apply extraction endpoint updates requirement due_date
-  - AI is assistive only - cannot auto-mark compliance
-
-- [x] **Bulk Document Upload**
-  - Multi-file drag & drop interface
-  - Property-level upload (all files associated with one property)
-  - Smart auto-matching via AI
-  - Progress indicators
-  - File validation (PDF, JPG, PNG)
-
-- [x] **Advanced Reporting (PDF/CSV)**
-  - Compliance Status Summary report
-  - Requirements by Property report
-  - Audit Log Extract report (Admin only)
-  - On-demand generation
-  - CSV download working, PDF returns JSON for client-side rendering
-
-- [x] **Landlord/Tenant Portal Distinctions**
-  - ROLE_TENANT with strictly limited permissions
-  - Read-only access to property compliance status
-  - Certificate status and expiry dates visible
-  - Simplified tenant dashboard
-  - Tenant invite via email
-  - Property assignment support
-  - No document uploads, messaging, audit logs, or admin features for tenants
-
-- [x] **Tenant Management UI**
-  - Full CRUD for tenant management
-  - Invite tenants with email notification
-  - Assign/unassign properties to tenants
-  - Revoke tenant access
-  - Resend invitation emails
-  - Status badges (Pending, Active, Disabled)
-  - Navigation tab in client dashboard
+- [x] AI Document Scanner Enhancement
+- [x] Bulk Document Upload
+- [x] Advanced Reporting (PDF/CSV)
+- [x] Landlord/Tenant Portal Distinctions
+- [x] Tenant Management UI
 
 ### Phase 5: P1 Features (January 2026) ✅
-- [x] **Scheduled Reports with Email Delivery**
-  - Create schedules: daily, weekly, monthly frequencies
-  - Report types: compliance_summary, requirements
-  - Multiple recipients support
-  - Toggle schedules on/off
-  - Email delivery via Postmark (job scheduler ready)
-  - API endpoints: POST/GET/DELETE/PATCH /api/reports/schedules
-
-- [x] **Client-side PDF Generation**
-  - jsPDF with autoTable plugin integration
-  - Branded PDF reports with header, footer, page numbers
-  - Table formatting for property and requirement data
-  - CSV and PDF format selector in UI
-
-- [x] **Bulk Property Import from CSV**
-  - Drag & drop CSV upload interface
-  - Column mapping and validation
-  - Duplicate detection
-  - Automatic requirements generation
-  - Download CSV template
-  - Preview before import with error highlighting
+- [x] Scheduled Reports with Email Delivery
+- [x] Client-side PDF Generation
+- [x] Bulk Property Import from CSV
 
 ### Phase 6: Webhook & Digest Features (January 2026) ✅
-- [x] **Webhook Notifications System**
-  - Full CRUD for webhook endpoints
-  - Event types:
-    - `compliance.status_changed` - Property compliance status changes
-    - `requirement.status_changed` - Requirement status changes  
-    - `document.verification_changed` - Document PENDING → VERIFIED/REJECTED
-    - `digest.sent` - Monthly/scheduled digest sent
-    - `reminder.sent` - Daily reminder sent
-  - HMAC-SHA256 payload signing with configurable secrets
-  - Exponential backoff retries (1s, 2s, 4s - 3 attempts)
-  - Auto-disable after 5 consecutive failures
-  - Test webhook functionality
-  - Enable/disable toggle
-  - Secret regeneration
-  - Delivery statistics tracking
-  - Comprehensive audit logging to MessageLog
+- [x] Webhook Notifications System
+- [x] Webhook UI (Integrations Page)
+- [x] Email Digest Customization
 
-- [x] **Webhook UI (Integrations Page)**
-  - New `/app/integrations` page separate from Notification Preferences
-  - Stats overview (Total Webhooks, Active, Total Deliveries, Success Rate)
-  - Rate limit & retry policy info display
-  - List existing webhooks with:
-    - Name and status badge (Healthy/Degraded/Error/Disabled)
-    - URL and subscribed events
-    - Last status, last triggered, success rate, failure count
-    - Last error display for failed webhooks
-  - Create webhook modal with:
-    - Name and URL inputs
-    - Custom secret option or auto-generate
-    - Event type checkboxes
-    - Success modal showing signing secret with copy button
-  - Per-webhook actions:
-    - Test webhook button
-    - Enable/disable toggle
-    - Regenerate secret
-    - Delete (soft delete)
-  - Available Events reference section
+### Phase 7: Universal Intake Wizard (January 2026) ✅
+- [x] **Premium 5-Step Wizard** at `/intake/start`
+  
+  **Step 1: Your Details (Conditional Fields)**
+  - Full Name, Email Address
+  - Client Type selection (Individual Landlord, Property Company, Letting Agent)
+  - Company Name (conditional - appears for Company/Agent types)
+  - Preferred Contact Method (Email, SMS, Both)
+  - Phone Number (conditional - appears for SMS/Both)
+  
+  **Step 2: Select Plan (Hard Limits)**
+  - Starter (PLAN_1): 1 property max, £9.99/month + £49.99 setup
+  - Growth (PLAN_2_5): 5 properties max, £9.99/month + £49.99 setup
+  - Portfolio (PLAN_6_15): 15 properties max, £9.99/month + £49.99 setup
+  - Plan limits enforced server-side
+  
+  **Step 3: Properties (Repeatable, Plan-Limited)**
+  - Property Nickname, Postcode, Address, City
+  - Property Type dropdown
+  - HMO toggle (House in Multiple Occupation)
+  - Bedrooms, Occupancy
+  - Council searchable dropdown (~300 UK councils with region/nation)
+  - Licensing section (Yes/No/Unsure with type and status)
+  - Management & Reminders (Landlord/Agent/Both)
+  - Agent details (conditional - when reminders to Agent)
+  - Current Compliance Status (Gas Safety, EICR, EPC, Licence - YES/NO/UNSURE)
+  
+  **Step 4: Preferences & Consents**
+  - Document submission method:
+    - A) Upload Here - direct upload through portal
+    - B) Email to Pleerity (info@pleerityenterprise.co.uk) - with mandatory consent
+  - GDPR data processing consent (required)
+  - Service boundary acknowledgment (required)
+  
+  **Step 5: Review & Payment**
+  - Editable summary of all sections
+  - Payment breakdown (monthly + setup fee)
+  - Stripe Checkout integration
 
-- [x] **Email Digest Customization**
-  - Toggleable sections for monthly compliance digest:
-    - Compliance Summary (ON by default)
-    - Action Items - OVERDUE/MISSING/DUE_SOON (ON by default)
-    - Upcoming Expiries - next 30/60/90 days (ON by default)
-    - Property-by-Property Breakdown (ON by default)
-    - Recently Uploaded/Verified Documents (ON by default)
-    - Recommendations/Next Actions (ON by default)
-    - Audit & Activity Summary (OFF by default - optional)
-  - Daily Reminders toggle with critical alerts exception
-  - UI in Notification Preferences page
+- [x] **Customer Reference Number**
+  - Format: `PLE-CVP-YYYY-XXXXX` (e.g., PLE-CVP-2026-4F82C)
+  - Unique DB index enforced
+  - Safe characters (no O/0/I/1/L)
+  - Generated at intake submission
+  - Searchable by Admin and AI Assistant
+
+- [x] **UK Councils Data**
+  - Static JSON seed file with ~300 councils
+  - Searchable API endpoint with pagination
+  - Filter by nation (England, Wales, Scotland, Northern Ireland)
+  - Includes region metadata
+
+- [x] **Non-Blocking Document Upload**
+  - Documents uploaded during intake stored with UNVERIFIED status
+  - Property temp key for reconciliation after intake submission
+  - AI extraction runs in assistive mode after provisioning
+  - Manual review required before authoritative status
 
 ---
 
@@ -183,69 +143,34 @@
 
 ## API Endpoints
 
+### Intake Wizard
+- `GET /api/intake/plans` - Get available billing plans with limits and pricing
+- `GET /api/intake/councils` - Search UK councils (q, nation, page, limit)
+- `POST /api/intake/submit` - Submit completed intake wizard
+- `POST /api/intake/checkout` - Create Stripe checkout session
+- `POST /api/intake/upload-document` - Upload document during intake
+- `GET /api/intake/onboarding-status/{client_id}` - Get detailed onboarding progress
+
 ### Authentication
 - `POST /api/auth/login` - User login
 - `POST /api/auth/set-password` - Set password via token
 
 ### Webhooks
-- `GET /api/webhooks` - List webhooks (secrets masked)
+- `GET /api/webhooks` - List webhooks
 - `POST /api/webhooks` - Create webhook
-- `GET /api/webhooks/{id}` - Get webhook details
-- `PATCH /api/webhooks/{id}` - Update webhook
 - `DELETE /api/webhooks/{id}` - Soft delete webhook
 - `POST /api/webhooks/{id}/test` - Send test payload
-- `POST /api/webhooks/{id}/enable` - Enable webhook
-- `POST /api/webhooks/{id}/disable` - Disable webhook
-- `POST /api/webhooks/{id}/regenerate-secret` - Regenerate signing secret
 - `GET /api/webhooks/events` - Available event types
-- `GET /api/webhooks/stats` - Delivery statistics
 
 ### Client
 - `GET /api/client/dashboard` - Client dashboard data
 - `GET /api/client/properties` - Client properties
 - `GET /api/client/requirements` - Client requirements
-- `GET /api/client/compliance-score` - Compliance score with recommendations
-- `POST /api/client/tenants/invite` - Invite tenant (CLIENT_ADMIN only)
-- `GET /api/client/tenants` - List tenants
-
-### Tenant
-- `GET /api/tenant/dashboard` - Tenant dashboard (read-only)
-- `GET /api/tenant/property/{id}` - Property compliance details
-
-### Documents
-- `POST /api/documents/upload` - Single document upload
-- `POST /api/documents/bulk-upload` - Bulk upload multiple files
-- `POST /api/documents/analyze/{id}` - Trigger AI analysis
-- `POST /api/documents/{id}/apply-extraction` - Apply AI extraction to requirement
-- `POST /api/documents/{id}/reject-extraction` - Reject AI extraction
-- `GET /api/documents/{id}/details` - Full document details
 
 ### Reports
 - `GET /api/reports/available` - List available reports
-- `GET /api/reports/compliance-summary` - Compliance summary report (CSV/PDF)
-- `GET /api/reports/requirements` - Requirements report (CSV/PDF)
-- `GET /api/reports/audit-logs` - Audit log extract (Admin only)
 - `POST /api/reports/schedules` - Create report schedule
 - `GET /api/reports/schedules` - List schedules
-- `DELETE /api/reports/schedules/{id}` - Delete schedule
-- `PATCH /api/reports/schedules/{id}/toggle` - Toggle schedule
-
-### Profile
-- `GET /api/profile/me` - User profile
-- `PATCH /api/profile/me` - Update profile
-- `GET /api/profile/notifications` - Notification settings with digest customization
-- `PUT /api/profile/notifications` - Update notification settings
-
-### Calendar
-- `GET /api/calendar/expiries` - Certificate expiries for calendar view
-
-### Admin
-- `GET /api/admin/dashboard` - Admin dashboard statistics
-- `GET /api/admin/statistics` - System-wide compliance statistics
-- `GET /api/admin/clients` - List all clients
-- `POST /api/admin/clients/invite` - Invite new client
-- `GET /api/admin/audit-logs` - Audit logs with filtering
-- `GET /api/admin/jobs/status` - Background jobs status
 
 ---
 
@@ -255,7 +180,6 @@
 |------|-------|----------|
 | Admin | admin@pleerity.com | Admin123! |
 | Client | test@pleerity.com | TestClient123! |
-| Live Client | drjpane@gmail.com | DrJamesPane123! |
 
 ---
 
@@ -263,8 +187,8 @@
 
 1. **Payments (Stripe):** Using test key - functional but not processing real payments
 2. **SMS (Twilio):** Feature-flagged, using dev credentials
-3. **PDF Reports:** Returns JSON data for client-side PDF generation (CSV fully working)
-4. **Webhook Targets:** Test endpoints only - actual webhook delivery depends on configured target URLs
+3. **PDF Reports:** Returns JSON data for client-side PDF generation
+4. **Webhook Targets:** Test endpoints only - delivery depends on configured URLs
 
 ---
 
@@ -272,19 +196,17 @@
 
 ### Backend
 - `/app/backend/server.py` - Main FastAPI app with APScheduler
-- `/app/backend/routes/` - API endpoints (auth, client, admin, documents, reports, tenant, webhooks_config)
-- `/app/backend/services/` - Business logic (provisioning, jobs, email, document_analysis, compliance_score, reporting_service, webhook_service)
-- `/app/backend/models.py` - Pydantic models including ROLE_TENANT, WebhookEventType
+- `/app/backend/routes/intake.py` - Universal Intake Wizard routes
+- `/app/backend/routes/webhooks_config.py` - Webhook management
+- `/app/backend/services/webhook_service.py` - Webhook delivery with HMAC
+- `/app/backend/data/uk_councils.json` - Static UK councils data
+- `/app/backend/models.py` - All Pydantic models
 
 ### Frontend
-- `/app/frontend/src/App.js` - React routes including tenant and integrations routes
-- `/app/frontend/src/pages/` - Page components
+- `/app/frontend/src/pages/IntakePage.js` - 5-step intake wizard
 - `/app/frontend/src/pages/IntegrationsPage.js` - Webhook management UI
-- `/app/frontend/src/pages/TenantDashboard.js` - Simplified tenant view
-- `/app/frontend/src/pages/ReportsPage.js` - Report download UI
-- `/app/frontend/src/pages/BulkUploadPage.js` - Bulk document upload
-- `/app/frontend/src/pages/NotificationPreferencesPage.js` - Enhanced with digest customization
-- `/app/frontend/src/pages/DocumentsPage.js` - Enhanced with AI extraction review
+- `/app/frontend/src/pages/NotificationPreferencesPage.js` - Digest customization
+- `/app/frontend/src/App.js` - All routes
 
 ---
 
@@ -303,3 +225,23 @@
 - [ ] Mobile app (React Native)
 - [ ] Integration with property management systems
 - [ ] Advanced analytics dashboard
+
+---
+
+## Changelog
+
+### January 20, 2026
+- Implemented Universal Intake Wizard (5-step premium wizard)
+- Added UK councils searchable endpoint with ~300 councils
+- Customer reference number format: PLE-CVP-YYYY-XXXXX
+- Stripe pricing updated to £9.99/month + £49.99 setup (not per-property)
+- All 30 intake wizard API tests passing (100%)
+
+### January 19, 2026
+- Implemented Webhook Notifications System with HMAC signing
+- Created Integrations page at /app/integrations
+- Added Email Digest Customization toggles
+- Webhook events: compliance.status_changed, requirement.status_changed, document.verification_changed, digest.sent, reminder.sent
+
+### Earlier
+- Core system, AI assistant, tenant portal, bulk upload, advanced reporting
