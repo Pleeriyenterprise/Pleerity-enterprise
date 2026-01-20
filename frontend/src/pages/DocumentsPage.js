@@ -26,7 +26,8 @@ import {
   Shield,
   Wrench,
   Award,
-  FileCheck
+  FileCheck,
+  Files
 } from 'lucide-react';
 
 const DocumentsPage = () => {
