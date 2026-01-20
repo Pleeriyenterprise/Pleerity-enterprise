@@ -198,15 +198,16 @@
 
 ### P1 (High Priority)
 - [ ] Scheduled reports with email delivery (Phase 2 of reporting)
-- [ ] Client-side PDF generation library integration
-- [ ] Tenant property assignment UI for landlords
+- [ ] Client-side PDF generation library integration (jsPDF or similar)
 
 ### P2 (Medium Priority)
 - [ ] Production SMS sending with real Twilio credentials
 - [ ] Document version history
 - [ ] Multi-language support
+- [ ] Bulk property import from CSV
 
 ### P3 (Low Priority)
 - [ ] Mobile app (React Native)
 - [ ] Integration with property management systems
 - [ ] Advanced analytics dashboard
+- [ ] Calendar export (iCal format)
