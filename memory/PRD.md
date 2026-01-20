@@ -118,6 +118,14 @@
   - Green checkmark on successful lookup
   - Error handling for invalid/not found postcodes
 
+- [x] **Postcode Autocomplete**
+  - Real-time suggestions as user types (minimum 2 characters)
+  - Shows matching UK postcodes with district and region
+  - Dropdown with clickable suggestions
+  - Select postcode to auto-fill city and council
+  - Debounced API calls for performance
+  - Uses postcodes.io free autocomplete endpoint
+
 - [x] **Customer Reference Number**
   - Format: `PLE-CVP-YYYY-XXXXX` (e.g., PLE-CVP-2026-4F82C)
   - Unique DB index enforced
