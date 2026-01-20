@@ -2222,3 +2222,366 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to resend invitation"
         )
+
+
+# ============================================================================
+# ADMIN ASSISTANT - CRN Lookup with AI Analysis
+# ============================================================================
+
+@router.get("/clients/lookup")
+async def lookup_client_by_crn(request: Request, crn: str = None):
+    """
+    Look up a client by Customer Reference Number (CRN).
+    Returns full client snapshot for admin assistant context.
+    RBAC enforced - admin only.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    if not crn or len(crn.strip()) < 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Valid CRN required (format: PLE-CVP-YYYY-XXXXX)"
+        )
+    
+    crn = crn.strip().upper()
+    
+    try:
+        # Find client by CRN
+        client = await db.clients.find_one(
+            {"customer_reference": crn},
+            {"_id": 0}
+        )
+        
+        if not client:
+            # Log failed lookup attempt
+            await create_audit_log(
+                action=AuditAction.ADMIN_CRN_LOOKUP,
+                actor_id=user.get("portal_user_id"),
+                actor_role=UserRole.ROLE_ADMIN,
+                metadata={
+                    "crn": crn,
+                    "found": False,
+                    "admin_email": user.get("auth_email")
+                }
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No client found with CRN: {crn}"
+            )
+        
+        client_id = client.get("client_id")
+        
+        # Get full snapshot for assistant context
+        properties = await db.properties.find(
+            {"client_id": client_id},
+            {"_id": 0}
+        ).to_list(100)
+        
+        requirements = await db.requirements.find(
+            {"client_id": client_id},
+            {"_id": 0}
+        ).to_list(500)
+        
+        documents = await db.documents.find(
+            {"client_id": client_id},
+            {"_id": 0, "document_id": 1, "property_id": 1, "requirement_id": 1,
+             "file_name": 1, "status": 1, "uploaded_at": 1, "category": 1}
+        ).to_list(500)
+        
+        portal_users = await db.portal_users.find(
+            {"client_id": client_id},
+            {"_id": 0, "password_hash": 0}
+        ).to_list(10)
+        
+        # Calculate compliance summary
+        total_reqs = len(requirements)
+        compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
+        overdue = sum(1 for r in requirements if r.get("status") == "OVERDUE")
+        expiring = sum(1 for r in requirements if r.get("status") == "EXPIRING_SOON")
+        
+        snapshot = {
+            "client": client,
+            "properties": properties,
+            "requirements": requirements,
+            "documents": documents,
+            "portal_users": portal_users,
+            "compliance_summary": {
+                "total_requirements": total_reqs,
+                "compliant": compliant,
+                "overdue": overdue,
+                "expiring_soon": expiring,
+                "compliance_percentage": round((compliant / total_reqs * 100) if total_reqs > 0 else 0, 1)
+            },
+            "property_count": len(properties),
+            "document_count": len(documents)
+        }
+        
+        # Log successful lookup
+        await create_audit_log(
+            action=AuditAction.ADMIN_CRN_LOOKUP,
+            client_id=client_id,
+            actor_id=user.get("portal_user_id"),
+            actor_role=UserRole.ROLE_ADMIN,
+            metadata={
+                "crn": crn,
+                "found": True,
+                "admin_email": user.get("auth_email"),
+                "client_email": client.get("email"),
+                "properties_count": len(properties),
+                "requirements_count": total_reqs
+            }
+        )
+        
+        return snapshot
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"CRN lookup error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to lookup client by CRN"
+        )
+
+
+class AdminAssistantRequest(BaseModel):
+    crn: str
+    question: str
+
+
+# Admin-specific system prompt with elevated access
+ADMIN_ASSISTANT_PROMPT = """You are the Admin Assistant for Compliance Vault Pro (Pleerity Enterprise Ltd).
+You are helping an ADMINISTRATOR review a client's compliance status and data.
+
+**Your role:**
+- You have READ-ONLY access to the client data snapshot provided below.
+- Explain the data clearly and professionally.
+- Help the admin understand compliance gaps, issues, and client status.
+- Provide actionable insights based on the data.
+
+**Rules:**
+1. Use ONLY the provided snapshot data - never invent or assume data.
+2. If data is missing, clearly state what is missing.
+3. Do NOT provide legal advice or predictions about enforcement.
+4. Do NOT suggest modifying data - explain how the admin can do it themselves in the portal.
+5. Be concise but thorough in your analysis.
+
+**Output format:**
+- Start with a direct answer to the question.
+- Include relevant data points and evidence from the snapshot.
+- If appropriate, suggest admin actions (view property, contact client, review document, etc.).
+- Keep responses professional and audit-appropriate.
+
+**Client Data Snapshot:**
+{snapshot}
+"""
+
+
+@router.post("/assistant/ask")
+async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
+    """
+    Admin AI Assistant endpoint with CRN-based client context.
+    
+    Server-side retrieval:
+    1. Validates CRN and fetches client snapshot
+    2. Injects snapshot into LLM prompt
+    3. LLM cannot query DB directly
+    4. Logs query + answer in AuditLog
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    # Validate inputs
+    if not data.crn or len(data.crn.strip()) < 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Valid CRN required"
+        )
+    
+    if not data.question or len(data.question.strip()) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question cannot be empty"
+        )
+    
+    if len(data.question) > 1000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question too long (max 1000 characters)"
+        )
+    
+    crn = data.crn.strip().upper()
+    question = data.question.strip()
+    
+    try:
+        # Rate limiting - 20 questions per 10 minutes per admin
+        from utils.rate_limiter import rate_limiter
+        allowed, error_msg = await rate_limiter.check_rate_limit(
+            key=f"admin_assistant_{user['portal_user_id']}",
+            max_attempts=20,
+            window_minutes=10
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=error_msg
+            )
+        
+        # Step 1: Fetch client by CRN (server-side retrieval)
+        client = await db.clients.find_one(
+            {"customer_reference": crn},
+            {"_id": 0}
+        )
+        
+        if not client:
+            await create_audit_log(
+                action=AuditAction.ADMIN_ASSISTANT_QUERY,
+                actor_id=user.get("portal_user_id"),
+                actor_role=UserRole.ROLE_ADMIN,
+                metadata={
+                    "crn": crn,
+                    "question": question[:200],
+                    "error": "Client not found",
+                    "admin_email": user.get("auth_email")
+                }
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No client found with CRN: {crn}"
+            )
+        
+        client_id = client.get("client_id")
+        
+        # Step 2: Build client snapshot
+        properties = await db.properties.find(
+            {"client_id": client_id},
+            {"_id": 0}
+        ).to_list(100)
+        
+        requirements = await db.requirements.find(
+            {"client_id": client_id},
+            {"_id": 0}
+        ).to_list(500)
+        
+        documents = await db.documents.find(
+            {"client_id": client_id},
+            {"_id": 0, "document_id": 1, "property_id": 1, "requirement_id": 1,
+             "file_name": 1, "status": 1, "uploaded_at": 1, "category": 1}
+        ).to_list(500)
+        
+        # Compliance summary
+        total_reqs = len(requirements)
+        compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
+        overdue = sum(1 for r in requirements if r.get("status") == "OVERDUE")
+        expiring = sum(1 for r in requirements if r.get("status") == "EXPIRING_SOON")
+        
+        snapshot_data = {
+            "client": {
+                "crn": crn,
+                "name": client.get("full_name"),
+                "email": client.get("email"),
+                "company": client.get("company_name"),
+                "type": client.get("client_type"),
+                "plan": client.get("billing_plan"),
+                "subscription_status": client.get("subscription_status"),
+                "onboarding_status": client.get("onboarding_status"),
+                "created_at": client.get("created_at")
+            },
+            "compliance_summary": {
+                "total_requirements": total_reqs,
+                "compliant": compliant,
+                "compliant_percentage": round((compliant / total_reqs * 100) if total_reqs > 0 else 0, 1),
+                "overdue": overdue,
+                "expiring_soon": expiring
+            },
+            "properties": [
+                {
+                    "nickname": p.get("nickname"),
+                    "address": f"{p.get('address_line_1', '')}, {p.get('postcode', '')}",
+                    "council": p.get("local_authority"),
+                    "type": p.get("property_type"),
+                    "compliance_status": p.get("compliance_status"),
+                    "is_hmo": p.get("is_hmo")
+                }
+                for p in properties
+            ],
+            "requirements_by_status": {
+                "COMPLIANT": [r.get("category") for r in requirements if r.get("status") == "COMPLIANT"],
+                "OVERDUE": [{"category": r.get("category"), "property": r.get("property_id")} for r in requirements if r.get("status") == "OVERDUE"],
+                "EXPIRING_SOON": [{"category": r.get("category"), "expiry": r.get("expiry_date")} for r in requirements if r.get("status") == "EXPIRING_SOON"]
+            },
+            "documents": [
+                {
+                    "name": d.get("file_name"),
+                    "status": d.get("status"),
+                    "category": d.get("category"),
+                    "uploaded": d.get("uploaded_at")
+                }
+                for d in documents[:50]  # Limit to recent 50
+            ]
+        }
+        
+        # Step 3: Call LLM with injected snapshot
+        import os
+        from openai import OpenAI
+        
+        api_key = os.getenv("EMERGENT_LLM_KEY", "sk-emergent-f9533226f52E25cF35")
+        openai_client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.openai.com/v1"
+        )
+        
+        # Build prompt with snapshot injection
+        system_prompt = ADMIN_ASSISTANT_PROMPT.format(
+            snapshot=json.dumps(snapshot_data, indent=2, default=str)
+        )
+        
+        completion = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question}
+            ],
+            max_tokens=1000,
+            temperature=0.3  # Lower temperature for more factual responses
+        )
+        
+        answer = completion.choices[0].message.content
+        
+        # Step 4: Audit log - query and answer
+        await create_audit_log(
+            action=AuditAction.ADMIN_ASSISTANT_QUERY,
+            client_id=client_id,
+            actor_id=user.get("portal_user_id"),
+            actor_role=UserRole.ROLE_ADMIN,
+            metadata={
+                "crn": crn,
+                "question": question,
+                "answer_preview": answer[:500] if answer else None,
+                "admin_email": user.get("auth_email"),
+                "client_email": client.get("email"),
+                "properties_in_snapshot": len(properties),
+                "requirements_in_snapshot": total_reqs,
+                "model": "gpt-4o-mini"
+            }
+        )
+        
+        return {
+            "crn": crn,
+            "client_name": client.get("full_name"),
+            "question": question,
+            "answer": answer,
+            "compliance_summary": snapshot_data["compliance_summary"],
+            "properties_count": len(properties)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin assistant error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process assistant query"
+        )
