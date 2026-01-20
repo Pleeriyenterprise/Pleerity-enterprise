@@ -22,7 +22,7 @@
 
 ---
 
-## Completed Features (As of January 2026)
+## Completed Features
 
 ### Phase 1: Core System ✅
 - [x] Public marketing landing page
@@ -85,7 +85,7 @@
   - Property assignment support
   - No document uploads, messaging, audit logs, or admin features for tenants
 
-- [x] **Tenant Management UI** (Enhancement)
+- [x] **Tenant Management UI**
   - Full CRUD for tenant management
   - Invite tenants with email notification
   - Assign/unassign properties to tenants
@@ -94,6 +94,80 @@
   - Status badges (Pending, Active, Disabled)
   - Navigation tab in client dashboard
 
+### Phase 5: P1 Features (January 2026) ✅
+- [x] **Scheduled Reports with Email Delivery**
+  - Create schedules: daily, weekly, monthly frequencies
+  - Report types: compliance_summary, requirements
+  - Multiple recipients support
+  - Toggle schedules on/off
+  - Email delivery via Postmark (job scheduler ready)
+  - API endpoints: POST/GET/DELETE/PATCH /api/reports/schedules
+
+- [x] **Client-side PDF Generation**
+  - jsPDF with autoTable plugin integration
+  - Branded PDF reports with header, footer, page numbers
+  - Table formatting for property and requirement data
+  - CSV and PDF format selector in UI
+
+- [x] **Bulk Property Import from CSV**
+  - Drag & drop CSV upload interface
+  - Column mapping and validation
+  - Duplicate detection
+  - Automatic requirements generation
+  - Download CSV template
+  - Preview before import with error highlighting
+
+### Phase 6: Webhook & Digest Features (January 2026) ✅
+- [x] **Webhook Notifications System**
+  - Full CRUD for webhook endpoints
+  - Event types:
+    - `compliance.status_changed` - Property compliance status changes
+    - `requirement.status_changed` - Requirement status changes  
+    - `document.verification_changed` - Document PENDING → VERIFIED/REJECTED
+    - `digest.sent` - Monthly/scheduled digest sent
+    - `reminder.sent` - Daily reminder sent
+  - HMAC-SHA256 payload signing with configurable secrets
+  - Exponential backoff retries (1s, 2s, 4s - 3 attempts)
+  - Auto-disable after 5 consecutive failures
+  - Test webhook functionality
+  - Enable/disable toggle
+  - Secret regeneration
+  - Delivery statistics tracking
+  - Comprehensive audit logging to MessageLog
+
+- [x] **Webhook UI (Integrations Page)**
+  - New `/app/integrations` page separate from Notification Preferences
+  - Stats overview (Total Webhooks, Active, Total Deliveries, Success Rate)
+  - Rate limit & retry policy info display
+  - List existing webhooks with:
+    - Name and status badge (Healthy/Degraded/Error/Disabled)
+    - URL and subscribed events
+    - Last status, last triggered, success rate, failure count
+    - Last error display for failed webhooks
+  - Create webhook modal with:
+    - Name and URL inputs
+    - Custom secret option or auto-generate
+    - Event type checkboxes
+    - Success modal showing signing secret with copy button
+  - Per-webhook actions:
+    - Test webhook button
+    - Enable/disable toggle
+    - Regenerate secret
+    - Delete (soft delete)
+  - Available Events reference section
+
+- [x] **Email Digest Customization**
+  - Toggleable sections for monthly compliance digest:
+    - Compliance Summary (ON by default)
+    - Action Items - OVERDUE/MISSING/DUE_SOON (ON by default)
+    - Upcoming Expiries - next 30/60/90 days (ON by default)
+    - Property-by-Property Breakdown (ON by default)
+    - Recently Uploaded/Verified Documents (ON by default)
+    - Recommendations/Next Actions (ON by default)
+    - Audit & Activity Summary (OFF by default - optional)
+  - Daily Reminders toggle with critical alerts exception
+  - UI in Notification Preferences page
+
 ---
 
 ## User Roles
@@ -101,7 +175,7 @@
 | Role | Permissions |
 |------|-------------|
 | ROLE_ADMIN | Full system access, all clients, audit logs, reports |
-| ROLE_CLIENT_ADMIN | Full access to own client data, can invite tenants |
+| ROLE_CLIENT_ADMIN | Full access to own client data, can invite tenants, manage webhooks |
 | ROLE_CLIENT | Access to own properties, requirements, documents |
 | ROLE_TENANT | Read-only access to assigned property compliance status |
 
@@ -112,6 +186,19 @@
 ### Authentication
 - `POST /api/auth/login` - User login
 - `POST /api/auth/set-password` - Set password via token
+
+### Webhooks
+- `GET /api/webhooks` - List webhooks (secrets masked)
+- `POST /api/webhooks` - Create webhook
+- `GET /api/webhooks/{id}` - Get webhook details
+- `PATCH /api/webhooks/{id}` - Update webhook
+- `DELETE /api/webhooks/{id}` - Soft delete webhook
+- `POST /api/webhooks/{id}/test` - Send test payload
+- `POST /api/webhooks/{id}/enable` - Enable webhook
+- `POST /api/webhooks/{id}/disable` - Disable webhook
+- `POST /api/webhooks/{id}/regenerate-secret` - Regenerate signing secret
+- `GET /api/webhooks/events` - Available event types
+- `GET /api/webhooks/stats` - Delivery statistics
 
 ### Client
 - `GET /api/client/dashboard` - Client dashboard data
@@ -138,12 +225,16 @@
 - `GET /api/reports/compliance-summary` - Compliance summary report (CSV/PDF)
 - `GET /api/reports/requirements` - Requirements report (CSV/PDF)
 - `GET /api/reports/audit-logs` - Audit log extract (Admin only)
+- `POST /api/reports/schedules` - Create report schedule
+- `GET /api/reports/schedules` - List schedules
+- `DELETE /api/reports/schedules/{id}` - Delete schedule
+- `PATCH /api/reports/schedules/{id}/toggle` - Toggle schedule
 
 ### Profile
 - `GET /api/profile/me` - User profile
 - `PATCH /api/profile/me` - Update profile
-- `GET /api/profile/notification-preferences` - Notification settings
-- `PUT /api/profile/notification-preferences` - Update notification settings
+- `GET /api/profile/notifications` - Notification settings with digest customization
+- `PUT /api/profile/notifications` - Update notification settings
 
 ### Calendar
 - `GET /api/calendar/expiries` - Certificate expiries for calendar view
@@ -173,6 +264,7 @@
 1. **Payments (Stripe):** Using test key - functional but not processing real payments
 2. **SMS (Twilio):** Feature-flagged, using dev credentials
 3. **PDF Reports:** Returns JSON data for client-side PDF generation (CSV fully working)
+4. **Webhook Targets:** Test endpoints only - actual webhook delivery depends on configured target URLs
 
 ---
 
@@ -180,48 +272,26 @@
 
 ### Backend
 - `/app/backend/server.py` - Main FastAPI app with APScheduler
-- `/app/backend/routes/` - API endpoints (auth, client, admin, documents, reports, tenant)
-- `/app/backend/services/` - Business logic (provisioning, jobs, email, document_analysis, compliance_score, reporting_service)
-- `/app/backend/models.py` - Pydantic models including ROLE_TENANT
+- `/app/backend/routes/` - API endpoints (auth, client, admin, documents, reports, tenant, webhooks_config)
+- `/app/backend/services/` - Business logic (provisioning, jobs, email, document_analysis, compliance_score, reporting_service, webhook_service)
+- `/app/backend/models.py` - Pydantic models including ROLE_TENANT, WebhookEventType
 
 ### Frontend
-- `/app/frontend/src/App.js` - React routes including tenant route
+- `/app/frontend/src/App.js` - React routes including tenant and integrations routes
 - `/app/frontend/src/pages/` - Page components
+- `/app/frontend/src/pages/IntegrationsPage.js` - Webhook management UI
 - `/app/frontend/src/pages/TenantDashboard.js` - Simplified tenant view
 - `/app/frontend/src/pages/ReportsPage.js` - Report download UI
 - `/app/frontend/src/pages/BulkUploadPage.js` - Bulk document upload
+- `/app/frontend/src/pages/NotificationPreferencesPage.js` - Enhanced with digest customization
 - `/app/frontend/src/pages/DocumentsPage.js` - Enhanced with AI extraction review
-
-### Phase 5: P1 Features (January 2026) ✅
-- [x] **Scheduled Reports with Email Delivery**
-  - Create schedules: daily, weekly, monthly frequencies
-  - Report types: compliance_summary, requirements
-  - Multiple recipients support
-  - Toggle schedules on/off
-  - Email delivery via Postmark (job scheduler ready)
-  - API endpoints: POST/GET/DELETE/PATCH /api/reports/schedules
-
-- [x] **Client-side PDF Generation**
-  - jsPDF with autoTable plugin integration
-  - Branded PDF reports with header, footer, page numbers
-  - Table formatting for property and requirement data
-  - CSV and PDF format selector in UI
-
-- [x] **Bulk Property Import from CSV**
-  - Drag & drop CSV upload interface
-  - Column mapping and validation
-  - Duplicate detection
-  - Automatic requirements generation
-  - Download CSV template
-  - Preview before import with error highlighting
 
 ---
 
 ## Backlog / Future Enhancements
 
 ### P1 (High Priority)
-- [ ] Schedule reports background job execution (cron-style trigger)
-- [ ] Email notification digest customization
+- [ ] ZIP file bulk upload - Upload single archive containing multiple documents
 
 ### P2 (Medium Priority)
 - [ ] Production SMS sending with real Twilio credentials
@@ -233,4 +303,3 @@
 - [ ] Mobile app (React Native)
 - [ ] Integration with property management systems
 - [ ] Advanced analytics dashboard
-- [ ] Webhook notifications
