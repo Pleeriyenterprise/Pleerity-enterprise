@@ -4,6 +4,7 @@ from middleware import client_route_guard, admin_route_guard
 from models import Document, DocumentStatus, RequirementStatus, AuditAction
 from utils.audit import create_audit_log
 from datetime import datetime, timedelta, timezone
+from typing import Dict, Any, Optional
 import os
 import uuid
 import logging
