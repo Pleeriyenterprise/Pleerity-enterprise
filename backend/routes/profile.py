@@ -38,6 +38,16 @@ class NotificationPreferencesRequest(BaseModel):
     sms_enabled: Optional[bool] = None
     sms_phone_number: Optional[str] = None
     sms_urgent_alerts_only: Optional[bool] = None
+    
+    # Email Digest Customization
+    digest_compliance_summary: Optional[bool] = None
+    digest_action_items: Optional[bool] = None
+    digest_upcoming_expiries: Optional[bool] = None
+    digest_property_breakdown: Optional[bool] = None
+    digest_recent_documents: Optional[bool] = None
+    digest_recommendations: Optional[bool] = None
+    digest_audit_summary: Optional[bool] = None
+    daily_reminder_enabled: Optional[bool] = None
 
 @router.get("/me")
 async def get_profile(request: Request):
