@@ -3312,6 +3312,14 @@ const AdminDashboard = () => {
             <GlobalSearch onSelectClient={handleSelectClient} />
             
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/admin/assistant')}
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-electric-teal/20 hover:bg-electric-teal/30 text-electric-teal rounded-lg transition-colors"
+                data-testid="admin-assistant-link"
+              >
+                <Sparkles className="w-4 h-4" />
+                AI Assistant
+              </button>
               <span className="text-sm text-gray-300">{user?.email}</span>
               <button
                 onClick={handleLogout}
