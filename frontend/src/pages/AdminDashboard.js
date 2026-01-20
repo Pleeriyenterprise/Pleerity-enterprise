@@ -35,7 +35,12 @@ import {
   PieChart,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  UserCog,
+  UserPlus,
+  UserMinus,
+  RotateCcw,
+  MailPlus
 } from 'lucide-react';
 
 // Tab Components
