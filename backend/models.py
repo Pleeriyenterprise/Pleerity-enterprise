@@ -288,7 +288,7 @@ class Document(BaseModel):
     document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_id: str
     property_id: str
-    requirement_id: str
+    requirement_id: Optional[str] = None  # Optional for bulk uploads without auto-matching
     file_name: str
     file_path: str
     file_size: int
