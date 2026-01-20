@@ -165,6 +165,32 @@ class ReportSchedule(BaseModel):
     created_by: Optional[str] = None
 
 
+class WebhookEventType(str, Enum):
+    COMPLIANCE_STATUS_CHANGED = "compliance_status_changed"
+    REQUIREMENT_EXPIRING = "requirement_expiring"
+    REQUIREMENT_OVERDUE = "requirement_overdue"
+    DOCUMENT_UPLOADED = "document_uploaded"
+    PROPERTY_CREATED = "property_created"
+
+
+class Webhook(BaseModel):
+    """Webhook configuration for external integrations."""
+    model_config = ConfigDict(extra="ignore")
+    
+    webhook_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    name: str
+    url: str  # Target URL to POST to
+    secret: Optional[str] = None  # Signing secret for HMAC verification
+    event_types: List[WebhookEventType] = Field(default_factory=list)
+    is_active: bool = True
+    last_triggered: Optional[str] = None
+    last_status: Optional[int] = None  # Last HTTP response code
+    failure_count: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    created_by: Optional[str] = None
+
+
 class EmailTemplate(BaseModel):
     """Customizable email template stored in the database."""
     model_config = ConfigDict(extra="ignore")
