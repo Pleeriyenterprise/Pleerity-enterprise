@@ -1,10 +1,15 @@
-"""AI Document Analysis Service - Extracts metadata from compliance documents."""
+"""AI Document Analysis Service - Extracts metadata from compliance documents.
+
+IMPORTANT: This service is ASSISTIVE ONLY. Extracted data must be reviewed by users
+before being applied. AI CANNOT mark a requirement as compliant - the deterministic
+compliance engine remains the final authority.
+"""
 from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContentWithMimeType
 from database import database
 from models import AuditAction
 from utils.audit import create_audit_log
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import os
 import json
 import logging
@@ -14,50 +19,124 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# System prompt for document analysis
-DOCUMENT_ANALYSIS_PROMPT = """You are an expert document analyzer specializing in UK property compliance certificates.
+# Document type specific extraction prompts for enhanced accuracy
+DOCUMENT_TYPE_PROMPTS = {
+    "gas_safety": """You are analyzing a UK Gas Safety Certificate (CP12/CP17 Landlord Gas Safety Record).
 
-Your task is to extract specific metadata from compliance documents such as:
-- Gas Safety Certificates (CP12)
-- Electrical Installation Condition Reports (EICR)
-- Energy Performance Certificates (EPC)
-- Fire Safety Certificates
-- Legionella Risk Assessments
-- HMO Licenses
-- PAT Testing Reports
+PRIORITY FIELDS TO EXTRACT (in order of importance):
+1. **Expiry Date / Next Check Due**: Usually labeled "Landlord Check Due" or "Next Inspection Date" - CRITICAL
+2. **Issue Date / Date of Check**: When the inspection was performed
+3. **Certificate/Record Number**: Unique identifier for this certificate
+4. **Gas Safe Registered Engineer**:
+   - Name of engineer
+   - Gas Safe registration number (7-digit number)
+5. **Property Address**: Address of the inspected property
+6. **Appliances Checked**: List of gas appliances inspected
+7. **Result**: Overall result (PASS/FAIL or SATISFACTORY)
+8. **Defects Found**: Any issues or warnings noted
+9. **Company/Employer Details**: Company that issued the certificate
 
-For each document, extract and return a JSON object with the following structure:
+Gas Safety certificates are valid for 12 months. The expiry date is typically exactly 1 year from issue.""",
+
+    "eicr": """You are analyzing a UK Electrical Installation Condition Report (EICR).
+
+PRIORITY FIELDS TO EXTRACT (in order of importance):
+1. **Next Inspection Date**: When the next EICR is due - CRITICAL
+2. **Date of Inspection**: When this inspection was completed
+3. **Report Reference Number**: Unique report identifier
+4. **Classification**: Overall condition (C1 - Danger, C2 - Urgent, C3 - Improvement recommended, FI - Further Investigation)
+5. **Electrician/Inspector Details**:
+   - Name of inspector
+   - Registration number (NICEIC, NAPIT, ELECSA, etc.)
+   - Scheme provider
+6. **Property Address**: Address of the inspected installation
+7. **Installation Details**: 
+   - Number of circuits tested
+   - Type of installation
+8. **Observations/Defects**: Any issues found, categorized by code
+9. **Company Details**: Electrical contractor information
+
+EICR validity varies: typically 5 years for rental properties, 3 years for older installations.""",
+
+    "epc": """You are analyzing a UK Energy Performance Certificate (EPC).
+
+PRIORITY FIELDS TO EXTRACT (in order of importance):
+1. **Valid Until / Expiry Date**: EPCs are valid for 10 years - CRITICAL
+2. **Date of Assessment / Issue Date**: When the EPC was created
+3. **Certificate Reference Number / RRN**: The EPC's unique reference (format: XXXX-XXXX-XXXX-XXXX-XXXX)
+4. **Energy Rating**: Current rating (A-G) and score (1-100)
+5. **Potential Rating**: Potential rating if improvements made
+6. **Assessor Details**:
+   - Name of assessor
+   - Assessor ID / Accreditation number
+   - Accreditation scheme
+7. **Property Address**: Full address of the property
+8. **Property Type**: Dwelling type (house, flat, etc.)
+9. **Floor Area**: Total floor area in square meters
+10. **Main Heating**: Primary heating system type
+11. **Recommendations**: Suggested improvements listed
+
+EPCs are valid for 10 years from the assessment date.""",
+
+    "default": """You are an expert document analyzer specializing in UK property compliance certificates.
+
+Analyze this document and extract key compliance information."""
+}
+
+# Base extraction structure for all document types
+BASE_EXTRACTION_PROMPT = """
+Return a JSON object with this EXACT structure:
 {
-    "document_type": "string - type of document (e.g., 'Gas Safety Certificate', 'EICR', 'EPC')",
-    "certificate_number": "string or null - certificate/report number if present",
-    "issue_date": "string or null - date issued in YYYY-MM-DD format",
-    "expiry_date": "string or null - expiry date in YYYY-MM-DD format",
-    "next_inspection_date": "string or null - next inspection due date in YYYY-MM-DD format",
-    "property_address": "string or null - property address mentioned",
-    "engineer_name": "string or null - name of engineer/assessor",
-    "engineer_registration": "string or null - Gas Safe/NICEIC/other registration number",
-    "company_name": "string or null - company that issued the certificate",
-    "rating": "string or null - for EPC, the energy rating (A-G)",
-    "result": "string or null - PASS/FAIL/SATISFACTORY/UNSATISFACTORY if applicable",
-    "key_findings": ["array of strings - any important findings or notes"],
+    "document_type": "string - exact type (e.g., 'Gas Safety Certificate', 'EICR', 'EPC')",
+    "document_subtype": "string or null - specific variant (e.g., 'CP12', 'Landlord Certificate', 'Domestic EPC')",
+    "certificate_number": "string or null - certificate/report/RRN number",
+    "issue_date": "string or null - date in YYYY-MM-DD format",
+    "expiry_date": "string or null - expiry/next inspection date in YYYY-MM-DD format",
+    "property_address": "string or null - full property address",
+    "engineer_details": {
+        "name": "string or null",
+        "registration_number": "string or null - Gas Safe ID, NICEIC number, Assessor ID, etc.",
+        "registration_scheme": "string or null - e.g., 'Gas Safe', 'NICEIC', 'NAPIT', 'Elmhurst'",
+        "company_name": "string or null"
+    },
+    "result_summary": {
+        "overall_result": "string or null - PASS/FAIL/SATISFACTORY/UNSATISFACTORY/Rating grade",
+        "rating": "string or null - for EPC: A-G, for EICR: classification code",
+        "score": "number or null - numeric score if applicable"
+    },
+    "findings": {
+        "defects": ["array of strings - any defects or issues noted"],
+        "warnings": ["array of strings - warnings or recommendations"],
+        "observations": ["array of strings - general observations"]
+    },
+    "appliances_or_items": ["array of strings - appliances checked (gas) or circuits tested (electrical)"],
+    "additional_info": {
+        "property_type": "string or null",
+        "floor_area_sqm": "number or null",
+        "number_of_items_tested": "number or null"
+    },
     "confidence_scores": {
         "document_type": 0.0 to 1.0,
         "certificate_number": 0.0 to 1.0,
         "issue_date": 0.0 to 1.0,
         "expiry_date": 0.0 to 1.0,
+        "engineer_details": 0.0 to 1.0,
         "overall": 0.0 to 1.0
-    }
+    },
+    "extraction_notes": "string or null - any notes about extraction difficulties or uncertainties"
 }
 
-Rules:
-1. Only extract information that is clearly visible in the document
-2. If a field cannot be determined, set it to null
-3. Confidence scores should reflect how certain you are about each extraction
-4. Dates must be converted to YYYY-MM-DD format
-5. Be conservative - if unsure, indicate lower confidence
-6. Do not make up information - only extract what's visible
+CRITICAL RULES:
+1. ONLY extract information that is CLEARLY VISIBLE in the document
+2. If a field cannot be determined with reasonable confidence, set it to null
+3. Dates MUST be in YYYY-MM-DD format (convert from any format you see)
+4. Be CONSERVATIVE - if unsure, use lower confidence scores
+5. DO NOT make up or infer information that isn't explicitly stated
+6. For Gas Safety: expiry is typically issue_date + 12 months
+7. For EICR: check for "Next Inspection" field, NOT issue date
+8. For EPC: Valid for 10 years from assessment date
 
-Return ONLY the JSON object, no additional text."""
+Return ONLY the JSON object, no additional text or explanation."""
 
 
 class DocumentAnalysisService:
