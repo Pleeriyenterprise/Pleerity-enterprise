@@ -291,6 +291,39 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.SCHEDULED_REPORT:
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #1a2744 0%, #2d3a5c 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="margin: 0; font-size: 24px;">📊 Your {model.get('frequency', 'Weekly').title()} Compliance Report</h1>
+                    <p style="margin: 10px 0 0; opacity: 0.9;">Generated on {model.get('generated_date', 'today')}</p>
+                </div>
+                <div style="border: 1px solid #eee; border-top: 0; padding: 20px; background: white;">
+                    <p>Hello {model.get('client_name', 'there')},</p>
+                    <p>Please find your scheduled <strong>{model.get('report_type', 'compliance')}</strong> report below.</p>
+                    
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; overflow-x: auto;">
+{model.get('report_content', 'Report data will appear here.')[:1500]}
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px;">
+                        For the full report with all details, please log in to your dashboard 
+                        and download the complete report from the Reports section.
+                    </p>
+                    
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                    
+                    <p style="color: #999; font-size: 12px;">
+                        This is an automated {model.get('frequency', 'weekly')} report. 
+                        To change your report preferences, visit your dashboard settings.<br><br>
+                        {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
+                        AI-Driven Solutions & Compliance
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
         else:
             # Generic template
             return f"""
