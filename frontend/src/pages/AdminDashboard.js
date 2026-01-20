@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
@@ -40,8 +40,605 @@ import {
   UserPlus,
   UserMinus,
   RotateCcw,
-  MailPlus
+  MailPlus,
+  MessageSquare,
+  History,
+  Settings,
+  ClipboardCheck,
+  ExternalLink
 } from 'lucide-react';
+
+// Global Search Component
+const GlobalSearch = ({ onSelectClient }) => {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const searchRef = useRef(null);
+  const debounceTimer = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearch = useCallback(async (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setResults([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await api.get(`/admin/search?q=${encodeURIComponent(searchTerm)}&limit=10`);
+      setResults(response.data.results || []);
+      setIsOpen(true);
+    } catch (error) {
+      console.error('Search error:', error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setQuery(value);
+    
+    // Debounce search
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      handleSearch(value);
+    }, 300);
+  };
+
+  const handleSelectResult = (client) => {
+    setQuery('');
+    setResults([]);
+    setIsOpen(false);
+    onSelectClient(client);
+  };
+
+  return (
+    <div ref={searchRef} className="relative" data-testid="global-search">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          placeholder="Search by CRN, email, name, postcode..."
+          className="w-64 pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+          data-testid="global-search-input"
+        />
+        {loading && (
+          <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+        )}
+      </div>
+
+      {isOpen && results.length > 0 && (
+        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden" data-testid="search-results">
+          <div className="p-2 text-xs text-gray-500 border-b border-gray-100">
+            {results.length} result{results.length !== 1 ? 's' : ''} found
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {results.map((client) => (
+              <button
+                key={client.client_id}
+                onClick={() => handleSelectResult(client)}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                data-testid={`search-result-${client.client_id}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-midnight-blue">{client.full_name}</p>
+                    <p className="text-sm text-gray-500">{client.email}</p>
+                  </div>
+                  <div className="text-right">
+                    {client.customer_reference && (
+                      <span className="inline-block px-2 py-1 bg-electric-teal/10 text-electric-teal text-xs font-mono rounded">
+                        {client.customer_reference}
+                      </span>
+                    )}
+                    {client.matched_via === 'postcode' && (
+                      <p className="text-xs text-gray-400 mt-1">via {client.matched_postcode}</p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isOpen && query.length >= 2 && results.length === 0 && !loading && (
+        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 p-4 text-center text-gray-500">
+          No results found
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Client Detail Modal Component
+const ClientDetailModal = ({ clientId, onClose }) => {
+  const [client, setClient] = useState(null);
+  const [readiness, setReadiness] = useState(null);
+  const [timeline, setTimeline] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState('overview');
+  const [messageForm, setMessageForm] = useState({ subject: '', message: '', send_copy_to_admin: false });
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [profileForm, setProfileForm] = useState({});
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [triggeringProvision, setTriggeringProvision] = useState(false);
+  const [resendingPassword, setResendingPassword] = useState(false);
+
+  useEffect(() => {
+    if (clientId) {
+      fetchClientData();
+    }
+  }, [clientId]);
+
+  const fetchClientData = async () => {
+    setLoading(true);
+    try {
+      const [detailRes, readinessRes, timelineRes] = await Promise.all([
+        api.get(`/admin/clients/${clientId}`),
+        api.get(`/admin/clients/${clientId}/readiness`),
+        api.get(`/admin/clients/${clientId}/audit-timeline?limit=30`)
+      ]);
+      
+      setClient(detailRes.data);
+      setReadiness(readinessRes.data);
+      setTimeline(timelineRes.data.timeline || []);
+      
+      // Initialize profile form
+      const c = detailRes.data.client;
+      setProfileForm({
+        full_name: c.full_name || '',
+        phone: c.phone || '',
+        company_name: c.company_name || '',
+        preferred_contact: c.preferred_contact || 'EMAIL'
+      });
+    } catch (error) {
+      toast.error('Failed to load client data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!messageForm.subject || !messageForm.message) {
+      toast.error('Please fill in subject and message');
+      return;
+    }
+
+    setSendingMessage(true);
+    try {
+      await api.post(`/admin/clients/${clientId}/message`, messageForm);
+      toast.success('Message sent successfully');
+      setMessageForm({ subject: '', message: '', send_copy_to_admin: false });
+      fetchClientData(); // Refresh timeline
+    } catch (error) {
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await api.patch(`/admin/clients/${clientId}/profile`, profileForm);
+      toast.success('Profile updated successfully');
+      fetchClientData();
+    } catch (error) {
+      toast.error('Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleTriggerProvision = async () => {
+    if (!window.confirm('Trigger provisioning for this client? This will set up their portal access.')) return;
+    
+    setTriggeringProvision(true);
+    try {
+      await api.post(`/admin/clients/${clientId}/provision`);
+      toast.success('Provisioning triggered successfully');
+      fetchClientData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to trigger provisioning');
+    } finally {
+      setTriggeringProvision(false);
+    }
+  };
+
+  const handleResendPassword = async () => {
+    if (!window.confirm('Resend password setup link? This will revoke any existing tokens.')) return;
+    
+    setResendingPassword(true);
+    try {
+      await api.post(`/admin/clients/${clientId}/resend-password-setup`);
+      toast.success('Password setup link resent');
+      fetchClientData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to resend password link');
+    } finally {
+      setResendingPassword(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl p-8">
+          <RefreshCw className="w-8 h-8 animate-spin text-electric-teal mx-auto" />
+          <p className="text-gray-500 mt-4">Loading client details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!client) return null;
+
+  const c = client.client;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-8" data-testid="client-detail-modal">
+      <div className="bg-white rounded-xl w-full max-w-5xl mx-4 shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="bg-midnight-blue text-white p-6 flex items-center justify-between flex-shrink-0">
+          <div>
+            <h2 className="text-xl font-bold">{c.full_name}</h2>
+            <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
+              <span>{c.email}</span>
+              {c.customer_reference && (
+                <span className="px-2 py-0.5 bg-electric-teal/20 text-electric-teal rounded font-mono">
+                  {c.customer_reference}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            data-testid="close-client-detail"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="border-b border-gray-200 px-6 flex-shrink-0">
+          <div className="flex gap-6">
+            {[
+              { id: 'overview', label: 'Overview', icon: Eye },
+              { id: 'setup', label: 'Setup Controls', icon: Settings },
+              { id: 'messaging', label: 'Messaging', icon: MessageSquare },
+              { id: 'timeline', label: 'Audit Timeline', icon: History }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveSection(tab.id)}
+                className={`flex items-center gap-2 py-4 border-b-2 transition-colors ${
+                  activeSection === tab.id
+                    ? 'border-electric-teal text-electric-teal'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                data-testid={`client-tab-${tab.id}`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {activeSection === 'overview' && (
+            <div className="space-y-6">
+              {/* Client Info */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-midnight-blue">Client Information</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div><span className="text-gray-500 text-sm">Type:</span> <span className="font-medium">{c.client_type}</span></div>
+                    <div><span className="text-gray-500 text-sm">Company:</span> <span className="font-medium">{c.company_name || '—'}</span></div>
+                    <div><span className="text-gray-500 text-sm">Phone:</span> <span className="font-medium">{c.phone || '—'}</span></div>
+                    <div><span className="text-gray-500 text-sm">Plan:</span> <span className="font-medium">{c.billing_plan}</span></div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-midnight-blue">Status</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 text-sm">Subscription:</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        c.subscription_status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                      }`}>{c.subscription_status}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 text-sm">Onboarding:</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        c.onboarding_status === 'PROVISIONED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                      }`}>{c.onboarding_status}</span>
+                    </div>
+                    <div><span className="text-gray-500 text-sm">Created:</span> <span className="font-medium">{new Date(c.created_at).toLocaleDateString()}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Compliance Summary */}
+              <div>
+                <h3 className="font-semibold text-midnight-blue mb-4">Compliance Summary</h3>
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-midnight-blue">{client.compliance_summary?.total || 0}</p>
+                    <p className="text-sm text-gray-500">Total Requirements</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-green-600">{client.compliance_summary?.compliant || 0}</p>
+                    <p className="text-sm text-green-700">Compliant</p>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-amber-600">{client.compliance_summary?.expiring_soon || 0}</p>
+                    <p className="text-sm text-amber-700">Expiring Soon</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-red-600">{client.compliance_summary?.overdue || 0}</p>
+                    <p className="text-sm text-red-700">Overdue</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Properties */}
+              <div>
+                <h3 className="font-semibold text-midnight-blue mb-4">Properties ({client.properties?.length || 0})</h3>
+                <div className="space-y-2">
+                  {client.properties?.slice(0, 5).map((prop) => (
+                    <div key={prop.property_id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                      <div>
+                        <p className="font-medium">{prop.nickname || prop.address_line_1}</p>
+                        <p className="text-sm text-gray-500">{prop.postcode}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        prop.compliance_status === 'GREEN' ? 'bg-green-100 text-green-700' :
+                        prop.compliance_status === 'AMBER' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                      }`}>{prop.compliance_status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'setup' && (
+            <div className="space-y-6">
+              {/* Readiness Checklist */}
+              <div>
+                <h3 className="font-semibold text-midnight-blue mb-4 flex items-center gap-2">
+                  <ClipboardCheck className="w-5 h-5" />
+                  Readiness Checklist
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                  {readiness?.checklist?.map((item) => (
+                    <div key={item.item} className="flex items-center gap-3">
+                      {item.status === 'complete' ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : item.status === 'failed' ? (
+                        <XCircle className="w-5 h-5 text-red-500" />
+                      ) : (
+                        <Clock className="w-5 h-5 text-amber-500" />
+                      )}
+                      <span className={item.status === 'complete' ? 'text-gray-700' : 'text-gray-500'}>{item.label}</span>
+                      {item.required && <span className="text-xs text-red-500">*required</span>}
+                    </div>
+                  ))}
+                </div>
+                {readiness?.last_failure && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm font-medium text-red-700">Last Failure</p>
+                    <p className="text-sm text-red-600">{readiness.last_failure.reason}</p>
+                    <p className="text-xs text-red-500 mt-1">{new Date(readiness.last_failure.timestamp).toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Setup Actions */}
+              <div>
+                <h3 className="font-semibold text-midnight-blue mb-4">Setup Actions</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={handleTriggerProvision}
+                    disabled={triggeringProvision || c.onboarding_status === 'PROVISIONED'}
+                    className="flex items-center justify-center gap-2 p-4 bg-electric-teal text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    data-testid="trigger-provision-btn"
+                  >
+                    {triggeringProvision ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
+                    Trigger Provisioning
+                  </button>
+                  <button
+                    onClick={handleResendPassword}
+                    disabled={resendingPassword}
+                    className="flex items-center justify-center gap-2 p-4 bg-midnight-blue text-white rounded-lg hover:bg-blue-900 disabled:opacity-50 transition-colors"
+                    data-testid="resend-password-btn"
+                  >
+                    {resendingPassword ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
+                    Resend Password Link
+                  </button>
+                </div>
+              </div>
+
+              {/* Profile Update */}
+              <div>
+                <h3 className="font-semibold text-midnight-blue mb-4">Update Profile</h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        value={profileForm.full_name}
+                        onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                        data-testid="profile-name-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <input
+                        type="text"
+                        value={profileForm.phone}
+                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                        data-testid="profile-phone-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                      <input
+                        type="text"
+                        value={profileForm.company_name}
+                        onChange={(e) => setProfileForm({ ...profileForm, company_name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                        data-testid="profile-company-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Contact</label>
+                      <select
+                        value={profileForm.preferred_contact}
+                        onChange={(e) => setProfileForm({ ...profileForm, preferred_contact: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                        data-testid="profile-contact-select"
+                      >
+                        <option value="EMAIL">Email</option>
+                        <option value="SMS">SMS</option>
+                        <option value="BOTH">Both</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={savingProfile}
+                    className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-colors"
+                    data-testid="save-profile-btn"
+                  >
+                    {savingProfile ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'messaging' && (
+            <div className="space-y-6">
+              <h3 className="font-semibold text-midnight-blue flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Send Message to Client
+              </h3>
+              <form onSubmit={handleSendMessage} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={messageForm.subject}
+                    onChange={(e) => setMessageForm({ ...messageForm, subject: e.target.value })}
+                    placeholder="Enter email subject..."
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                    data-testid="message-subject-input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                  <textarea
+                    value={messageForm.message}
+                    onChange={(e) => setMessageForm({ ...messageForm, message: e.target.value })}
+                    placeholder="Enter your message..."
+                    rows={6}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent resize-none"
+                    data-testid="message-body-input"
+                    required
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sendCopy"
+                    checked={messageForm.send_copy_to_admin}
+                    onChange={(e) => setMessageForm({ ...messageForm, send_copy_to_admin: e.target.checked })}
+                    className="w-4 h-4 text-electric-teal rounded focus:ring-electric-teal"
+                    data-testid="message-copy-checkbox"
+                  />
+                  <label htmlFor="sendCopy" className="text-sm text-gray-600">Send copy to my email</label>
+                </div>
+                <button
+                  type="submit"
+                  disabled={sendingMessage}
+                  className="flex items-center gap-2 px-6 py-3 bg-electric-teal text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-colors"
+                  data-testid="send-message-btn"
+                >
+                  {sendingMessage ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                  Send Email
+                </button>
+              </form>
+            </div>
+          )}
+
+          {activeSection === 'timeline' && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-midnight-blue flex items-center gap-2">
+                <History className="w-5 h-5" />
+                Audit Timeline
+              </h3>
+              <div className="space-y-3">
+                {timeline.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No audit events found</p>
+                ) : (
+                  timeline.map((event, idx) => (
+                    <div key={idx} className="flex gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        event.action?.includes('SUCCESS') || event.action?.includes('COMPLETE') ? 'bg-green-100 text-green-600' :
+                        event.action?.includes('FAILED') ? 'bg-red-100 text-red-600' : 'bg-electric-teal/10 text-electric-teal'
+                      }`}>
+                        {event.action?.includes('DOCUMENT') ? <FileText className="w-5 h-5" /> :
+                         event.action?.includes('EMAIL') || event.action?.includes('MESSAGE') ? <Mail className="w-5 h-5" /> :
+                         event.action?.includes('LOGIN') || event.action?.includes('PASSWORD') ? <Shield className="w-5 h-5" /> :
+                         <Activity className="w-5 h-5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-midnight-blue">{event.action?.replace(/_/g, ' ')}</p>
+                        <p className="text-sm text-gray-500">{new Date(event.timestamp).toLocaleString()}</p>
+                        {event.metadata && Object.keys(event.metadata).length > 0 && (
+                          <div className="mt-2 text-xs text-gray-400 bg-white p-2 rounded">
+                            {JSON.stringify(event.metadata, null, 2).slice(0, 200)}...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Tab Components
 const JobsMonitoring = () => {
