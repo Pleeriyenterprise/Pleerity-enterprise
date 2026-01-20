@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Shield } from 'lucide-react';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Detect if this is admin login based on route
+  const isAdminLogin = location.pathname === '/admin/signin';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,9 +25,10 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const result = await login(email, password, false);
+      const result = await login(email, password, isAdminLogin);
       if (result.success) {
-        navigate('/app/dashboard');
+        // Redirect based on login type
+        navigate(isAdminLogin ? '/admin/dashboard' : '/app/dashboard');
       } else {
         setError(result.error);
       }
@@ -38,11 +43,20 @@ const LoginPage = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-midnight-blue">Sign In</CardTitle>
-          <CardDescription>Enter your credentials to access your compliance portal</CardDescription>
+          <div className="flex items-center gap-2">
+            {isAdminLogin && <Shield className="h-6 w-6 text-electric-teal" />}
+            <CardTitle className="text-2xl font-bold text-midnight-blue">
+              {isAdminLogin ? 'Admin Sign In' : 'Sign In'}
+            </CardTitle>
+          </div>
+          <CardDescription>
+            {isAdminLogin 
+              ? 'Access the administration panel' 
+              : 'Enter your credentials to access your compliance portal'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" data-testid="login-form">
             {error && (
               <Alert variant="destructive" data-testid="login-error">
                 <AlertCircle className="h-4 w-4" />
@@ -86,30 +100,44 @@ const LoginPage = () => {
               disabled={loading}
               data-testid="login-submit-btn"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in...' : (isAdminLogin ? 'Sign In as Admin' : 'Sign In')}
             </Button>
 
-            <div className="text-center text-sm text-gray-600 space-y-2">
-              <p>
-                Need an account?{' '}
+            {!isAdminLogin && (
+              <div className="text-center text-sm text-gray-600 space-y-2">
+                <p>
+                  Need an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/intake/start')}
+                    className="text-electric-teal hover:underline font-medium"
+                  >
+                    Get Started
+                  </button>
+                </p>
+                <p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ← Back to Home
+                  </button>
+                </p>
+              </div>
+            )}
+
+            {isAdminLogin && (
+              <div className="text-center text-sm text-gray-600">
                 <button
                   type="button"
-                  onClick={() => navigate('/intake/start')}
-                  className="text-electric-teal hover:underline font-medium"
-                >
-                  Get Started
-                </button>
-              </p>
-              <p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/login')}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  ← Back to Home
+                  ← Client Login
                 </button>
-              </p>
-            </div>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
