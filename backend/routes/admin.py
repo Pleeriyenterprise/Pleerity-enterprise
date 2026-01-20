@@ -1,13 +1,22 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status
+from pydantic import BaseModel, EmailStr
 from database import database
 from middleware import admin_route_guard
-from models import AuditAction, PasswordToken
+from models import AuditAction, PasswordToken, UserRole, UserStatus, PasswordStatus
 from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
+
+
+# Request models for admin invite
+class AdminInviteRequest(BaseModel):
+    email: EmailStr
+    full_name: str
+
 
 @router.get("/dashboard")
 async def get_admin_dashboard(request: Request):
