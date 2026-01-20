@@ -152,6 +152,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/app/tenant" 
+              element={
+                <ProtectedRoute>
+                  <TenantDashboard />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Admin Routes - Protected */}
             <Route 
