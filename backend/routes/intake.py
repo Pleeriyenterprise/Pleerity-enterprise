@@ -329,8 +329,18 @@ async def search_councils(
     end = start + limit
     paginated = councils[start:end]
     
+    # Normalize council names in the response
+    normalized_councils = [
+        {
+            **c,
+            "name": normalize_council_name(c["name"], c.get("code")),
+            "raw_name": c["name"]  # Keep original for reference
+        }
+        for c in paginated
+    ]
+    
     return {
-        "councils": paginated,
+        "councils": normalized_councils,
         "total": total,
         "page": page,
         "limit": limit,
