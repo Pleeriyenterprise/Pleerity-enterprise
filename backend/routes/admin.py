@@ -2560,7 +2560,7 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
                 "client_email": client.get("email"),
                 "properties_in_snapshot": len(properties),
                 "requirements_in_snapshot": total_reqs,
-                "model": "gpt-4o-mini"
+                "model": "gemini-2.5-flash"
             }
         )
         
