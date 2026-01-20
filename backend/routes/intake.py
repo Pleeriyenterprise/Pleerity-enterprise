@@ -484,8 +484,8 @@ async def lookup_postcode(postcode: str):
                 "parish": parish,
                 "latitude": result.get("latitude"),
                 "longitude": result.get("longitude"),
-                # Matched council from our database
-                "council_name": matched_council,
+                # Matched council from our database - normalized to full official name
+                "council_name": normalize_council_name(matched_council, matched_council_code) if matched_council else None,
                 "council_code": matched_council_code,
                 # Suggested address (user can edit)
                 "suggested_city": post_town or admin_district,
