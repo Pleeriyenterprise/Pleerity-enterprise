@@ -170,6 +170,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/app/properties/import" 
+              element={
+                <ProtectedRoute>
+                  <BulkPropertyImportPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Admin Routes - Protected */}
             <Route 
