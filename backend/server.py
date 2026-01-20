@@ -142,6 +142,16 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
+    # Scheduled reports - runs every hour to check for due reports
+    # Reports are sent based on their individual schedule (daily/weekly/monthly)
+    scheduler.add_job(
+        run_scheduled_reports,
+        CronTrigger(minute=0),  # Every hour on the hour
+        id="scheduled_reports",
+        name="Process Scheduled Reports",
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("Background job scheduler started")
     
