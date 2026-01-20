@@ -231,6 +231,7 @@ async def get_tenant_property_details(request: Request, property_id: str):
     
     return {
         "property": {
+            "property_id": property_id,
             "address": f"{property_doc.get('address_line_1', '')}, {property_doc.get('city', '')} {property_doc.get('postcode', '')}",
             "type": property_doc.get("property_type", "N/A"),
             "compliance_status": property_doc.get("compliance_status", "UNKNOWN")
