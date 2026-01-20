@@ -959,7 +959,7 @@ async def get_password_setup_link(request: Request, client_id: str, generate_new
         from auth import generate_secure_token, hash_token
         from models import PasswordToken
         
-        frontend_url = os.getenv("FRONTEND_URL", "https://compliance-vault-2.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://doc-secure.preview.emergentagent.com")
         
         # Check for existing valid token (not used, not revoked, not expired)
         existing_token = None

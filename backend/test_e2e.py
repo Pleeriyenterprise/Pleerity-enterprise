@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 import sys
 
-API_URL = "https://compliance-vault-2.preview.emergentagent.com/api"
+API_URL = "https://doc-secure.preview.emergentagent.com/api"
 
 class E2ETestSuite:
     def __init__(self):
