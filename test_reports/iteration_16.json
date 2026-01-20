@@ -1,0 +1,120 @@
+{
+  "summary": "Iteration 16 testing completed for CRN Display Everywhere + Clickable KPI Tiles features. All 14 backend API tests passed (100%). Frontend UI fully functional with clickable KPI tiles, drilldown modals, and CRN badge display in Client Dashboard header.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration16_crn_kpi.py",
+    "/app/test_reports/pytest/pytest_results_iter16.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed bug in admin.py: GET /api/admin/clients endpoint was missing subscription_status and onboarding_status filter parameters - added support for filtering clients by these fields",
+    "CRN (customer_reference) is correctly displayed in Client Dashboard header with data-testid='client-crn-badge'",
+    "All 7 KPI tiles are clickable: Total Clients, Total Properties, Active Clients, Pending Setup, GREEN, AMBER, RED compliance",
+    "KPI Drilldown Modal (data-testid='kpi-drilldown-modal') correctly shows filtered data with title and total count",
+    "Client list in drilldown shows CRN, name, email, and subscription status",
+    "Property list in drilldown shows address, postcode, compliance status, and client info with CRN",
+    "Clicking a client in drilldown correctly opens Client Detail Modal with CRN in header",
+    "Email templates (_build_email_footer, _build_html_body) correctly include CRN badge in header and footer"
+  ],
+  "updated_files": [
+    "/app/backend/routes/admin.py",
+    "/app/tests/test_iteration16_crn_kpi.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% - All UI components working correctly"
+  },
+  "test_credentials": {
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!",
+    "client_email": "test@pleerity.com",
+    "client_password": "TestClient123!"
+  },
+  "seed_data_creation": "Added customer_reference (PLE-CVP-2026-07354) to test client test@pleerity.com for testing CRN display",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "KPI tiles have data-testid attributes: kpi-tile-clients, kpi-tile-properties, kpi-tile-clients-active, kpi-tile-clients-pending, kpi-tile-compliance-GREEN, kpi-tile-compliance-AMBER, kpi-tile-compliance-RED. The drilldown modal has data-testid='kpi-drilldown-modal'. Client dashboard CRN badge has data-testid='client-crn-badge'. Admin clients endpoint now supports subscription_status and onboarding_status query parameters for filtering.",
+  "features_tested": {
+    "crn_display_client_dashboard": {
+      "status": "PASS",
+      "tests": [
+        "GET /api/client/dashboard returns customer_reference field",
+        "CRN badge displayed in Client Dashboard header (data-testid='client-crn-badge')",
+        "CRN format verified: PLE-CVP-YYYY-XXXXX"
+      ]
+    },
+    "crn_display_admin": {
+      "status": "PASS",
+      "tests": [
+        "GET /api/admin/clients/{id} returns customer_reference",
+        "GET /api/admin/search returns customer_reference in results",
+        "CRN displayed in Client Detail Modal header",
+        "CRN displayed in KPI drilldown client list"
+      ]
+    },
+    "crn_in_email_templates": {
+      "status": "PASS",
+      "tests": [
+        "_build_email_footer includes CRN when provided",
+        "PASSWORD_SETUP template includes CRN badge in header",
+        "PORTAL_READY template includes CRN badge in header",
+        "COMPLIANCE_ALERT template includes CRN badge in header"
+      ]
+    },
+    "clickable_kpi_tiles": {
+      "status": "PASS",
+      "tests": [
+        "Total Clients tile (kpi-tile-clients) opens drilldown modal",
+        "Total Properties tile (kpi-tile-properties) opens drilldown modal",
+        "Active Clients tile (kpi-tile-clients-active) opens filtered drilldown",
+        "Pending Setup tile (kpi-tile-clients-pending) opens filtered drilldown",
+        "GREEN compliance tile (kpi-tile-compliance-GREEN) opens filtered drilldown",
+        "AMBER compliance tile (kpi-tile-compliance-AMBER) opens filtered drilldown",
+        "RED compliance tile (kpi-tile-compliance-RED) opens filtered drilldown"
+      ]
+    },
+    "kpi_drilldown_modal": {
+      "status": "PASS",
+      "tests": [
+        "Modal displays correct title based on drilldown type",
+        "Modal shows total count of records",
+        "Client list shows CRN, name, email, subscription status",
+        "Property list shows address, postcode, compliance status, client info",
+        "Clicking client in list opens Client Detail Modal",
+        "Close button (close-drilldown-modal) works correctly"
+      ]
+    }
+  },
+  "api_endpoints_verified": [
+    "GET /api/client/dashboard - 200 OK (includes customer_reference)",
+    "GET /api/admin/dashboard - 200 OK (KPI stats and compliance overview)",
+    "GET /api/admin/clients?subscription_status=ACTIVE - 200 OK (filtered)",
+    "GET /api/admin/clients?onboarding_status=PENDING - 200 OK (filtered)",
+    "GET /api/admin/clients/{id} - 200 OK (includes customer_reference)",
+    "GET /api/admin/search?q={query} - 200 OK (includes customer_reference)",
+    "GET /api/admin/kpi/properties - 200 OK",
+    "GET /api/admin/kpi/properties?status_filter=GREEN - 200 OK",
+    "GET /api/admin/kpi/properties?status_filter=AMBER - 200 OK",
+    "GET /api/admin/kpi/properties?status_filter=RED - 200 OK"
+  ],
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Stripe (test mode - sk_test_emergent)",
+      "Postmark emails are LIVE - messages will send real emails to valid recipients"
+    ]
+  },
+  "bug_fixed": {
+    "file": "/app/backend/routes/admin.py",
+    "issue": "GET /api/admin/clients endpoint did not support subscription_status and onboarding_status query parameters",
+    "fix": "Added subscription_status and onboarding_status optional parameters to get_clients function with query filtering"
+  }
+}
