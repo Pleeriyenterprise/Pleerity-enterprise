@@ -1,0 +1,211 @@
+{
+  "summary": "Completed comprehensive testing of Universal Intake Wizard (5-step intake form). All 30 backend API tests passed (100%). Frontend wizard fully functional with all conditional logic, plan-aware property limits, and audit-ready data collection working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_intake_wizard.py",
+    "/app/test_reports/pytest/pytest_results_iter12.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Customer reference format PLE-CVP-YYYY-XXXXX correctly implemented with safe characters (no O/0/I/1/L)",
+    "Plan property limits properly enforced server-side (PLAN_1=1, PLAN_2_5=5, PLAN_6_15=15)",
+    "Conditional validation for company_name (COMPANY/AGENT types) and phone (SMS/BOTH contact) working",
+    "Required consents (GDPR, service boundary) properly validated",
+    "Email upload consent validated when document_submission_method=EMAIL",
+    "Agent details validation when send_reminders_to includes AGENT",
+    "Council search with autocomplete working correctly",
+    "Stripe checkout integration working (test mode)",
+    "Onboarding status endpoint returns detailed 5-step progress",
+    "Good use of data-testid attributes throughout the wizard"
+  ],
+  "updated_files": [
+    "/app/tests/test_intake_wizard.py"
+  ],
+  "success_rate": {
+    "backend": "100% (30/30 tests passed)",
+    "frontend": "100% - All wizard steps and conditional logic working correctly"
+  },
+  "test_credentials": {
+    "client_email": "test@pleerity.com",
+    "client_password": "TestClient123!",
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!"
+  },
+  "seed_data_creation": "Created test clients during backend testing (TEST_* prefixed emails) - used unique UUIDs to avoid conflicts",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Universal Intake Wizard fully implemented and tested. 5-step wizard at /intake/start collects: (1) User details with conditional company_name/phone fields, (2) Plan selection with correct pricing £9.99/month + £49.99 setup, (3) Properties with plan-aware limits and council search, (4) Document submission preference (Upload/Email) with consents, (5) Review with edit buttons. Customer reference format is PLE-CVP-YYYY-XXXXX. Stripe checkout uses test mode.",
+  "features_tested": {
+    "intake_plans_api": {
+      "status": "PASS",
+      "endpoint": "GET /api/intake/plans",
+      "tests": [
+        "Returns all 3 plans (Starter, Growth, Portfolio)",
+        "Correct property limits (1, 5, 15)",
+        "Correct pricing (£9.99/month + £49.99 setup)",
+        "Features list included for each plan"
+      ]
+    },
+    "councils_search_api": {
+      "status": "PASS",
+      "endpoint": "GET /api/intake/councils",
+      "tests": [
+        "Search by query (q=manchester returns Manchester)",
+        "Filter by nation (nation=Wales returns 22 Welsh councils)",
+        "Filter by nation (nation=Scotland returns Scottish councils)",
+        "Pagination works correctly",
+        "Council objects have code, name, region, nation fields"
+      ]
+    },
+    "intake_submit_api": {
+      "status": "PASS",
+      "endpoint": "POST /api/intake/submit",
+      "tests": [
+        "Creates client with PLE-CVP-YYYY-XXXXX customer reference",
+        "Validates company_name for COMPANY type",
+        "Validates company_name for AGENT type",
+        "Validates phone for SMS contact preference",
+        "Validates phone for BOTH contact preference",
+        "Enforces PLAN_1 property limit (1)",
+        "Allows 5 properties for PLAN_2_5",
+        "Rejects 6 properties for PLAN_2_5",
+        "Validates consent_data_processing required",
+        "Validates consent_service_boundary required",
+        "Validates email_upload_consent for EMAIL method",
+        "Stores all property fields (is_hmo, council, licensing, certificates)",
+        "Validates agent details when send_reminders_to includes AGENT",
+        "Accepts valid agent details",
+        "Rejects empty properties array",
+        "Rejects duplicate email"
+      ]
+    },
+    "intake_checkout_api": {
+      "status": "PASS",
+      "endpoint": "POST /api/intake/checkout",
+      "tests": [
+        "Creates Stripe checkout session with correct URL",
+        "Returns 404 for invalid client"
+      ]
+    },
+    "onboarding_status_api": {
+      "status": "PASS",
+      "endpoint": "GET /api/intake/onboarding-status/{client_id}",
+      "tests": [
+        "Returns detailed 5-step progress",
+        "Includes steps: Intake Form, Payment, Portal Setup, Account Activation, Ready to Use",
+        "Returns 404 for invalid client"
+      ]
+    },
+    "customer_reference_format": {
+      "status": "PASS",
+      "tests": [
+        "Format: PLE-CVP-YYYY-XXXXX",
+        "Year is current year",
+        "5-character suffix uses safe characters (no O/0/I/1/L)"
+      ]
+    },
+    "frontend_step1_user_details": {
+      "status": "PASS",
+      "tests": [
+        "Full name input works",
+        "Email input works",
+        "Client type selection (Individual, Company, Agent)",
+        "Conditional company_name field appears for Company/Agent",
+        "Contact preference selection (Email, SMS, Both)",
+        "Conditional phone field appears for SMS/Both",
+        "Next button navigates to Step 2"
+      ]
+    },
+    "frontend_step2_select_plan": {
+      "status": "PASS",
+      "tests": [
+        "All 3 plan cards displayed",
+        "Correct pricing shown (£9.99/month)",
+        "Setup fee shown (£49.99)",
+        "First payment total shown (£59.98)",
+        "Plan selection works",
+        "Back/Next navigation works"
+      ]
+    },
+    "frontend_step3_properties": {
+      "status": "PASS",
+      "tests": [
+        "Property counter shows X/max based on plan",
+        "Property form fields work (nickname, address, postcode, city)",
+        "Property type dropdown works",
+        "HMO toggle works",
+        "Council search with autocomplete works",
+        "Licence required options (Yes/No/Unsure)",
+        "Management and reminders dropdowns work",
+        "Agent details appear when reminders to Agent/Both",
+        "Certificate status dropdowns work",
+        "Add Property button visible when under limit",
+        "Property limit message shown when at limit"
+      ]
+    },
+    "frontend_step4_preferences": {
+      "status": "PASS",
+      "tests": [
+        "Upload document method option visible",
+        "Email document method option visible",
+        "Pleerity email address shown for Email method",
+        "Email consent checkbox shown for Email method",
+        "GDPR consent checkbox works",
+        "Service acknowledgment checkbox works",
+        "Back/Next navigation works"
+      ]
+    },
+    "frontend_step5_review": {
+      "status": "PASS",
+      "tests": [
+        "Your Details section with Edit button",
+        "Selected Plan section with Edit button",
+        "Properties section with Edit button",
+        "Preferences section with Edit button",
+        "Payment Summary section",
+        "Total first payment displayed",
+        "Submit/Payment button visible"
+      ]
+    }
+  },
+  "api_endpoints_verified": [
+    "GET /api/health - 200 OK",
+    "GET /api/intake/plans - 200 OK",
+    "GET /api/intake/councils?q=manchester - 200 OK",
+    "GET /api/intake/councils?nation=Wales - 200 OK",
+    "POST /api/intake/submit - 200 OK (valid data)",
+    "POST /api/intake/submit - 400 (validation errors)",
+    "POST /api/intake/checkout - 200 OK",
+    "GET /api/intake/onboarding-status/{id} - 200 OK"
+  ],
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["Stripe (test mode - sk_test_emergent)"],
+    "note": "Stripe checkout uses test API key. Checkout URLs are valid Stripe test URLs but won't process real payments."
+  },
+  "plan_limits_verified": {
+    "PLAN_1_Starter": "1 property",
+    "PLAN_2_5_Growth": "5 properties",
+    "PLAN_6_15_Portfolio": "15 properties"
+  },
+  "pricing_verified": {
+    "monthly_price": "£9.99",
+    "setup_fee": "£49.99",
+    "total_first_payment": "£59.98"
+  },
+  "conditional_fields_verified": [
+    "company_name appears for COMPANY/AGENT client types",
+    "phone appears for SMS/BOTH contact preferences",
+    "agent_details appears when send_reminders_to includes AGENT",
+    "email_consent appears when document_submission_method is EMAIL",
+    "licence_type/status appear when licence_required is YES"
+  ]
+}
