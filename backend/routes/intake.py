@@ -86,6 +86,108 @@ PLAN_DETAILS = {
 # Cache for councils data
 _councils_cache = None
 
+# Council type suffixes based on council code prefix
+# E06 = Unitary Authorities (usually "City Council" or "Borough Council")
+# E07 = District Councils
+# E08 = Metropolitan Districts
+# E09 = London Boroughs
+# S12 = Scottish Councils
+# W06 = Welsh Councils
+# N09 = Northern Ireland
+
+# Councils that should use specific suffixes (exceptions to the standard rules)
+COUNCIL_NAME_OVERRIDES = {
+    "City of London": "City of London Corporation",
+    "Westminster": "City of Westminster",
+    "Bristol": "Bristol City Council",
+    "Plymouth": "Plymouth City Council",
+    "Southampton": "Southampton City Council",
+    "Portsmouth": "Portsmouth City Council",
+    "Kingston upon Hull": "Kingston upon Hull City Council",
+    "Leicester": "Leicester City Council",
+    "Nottingham": "Nottingham City Council",
+    "Derby": "Derby City Council",
+    "York": "City of York Council",
+    "Stoke-on-Trent": "Stoke-on-Trent City Council",
+    "Peterborough": "Peterborough City Council",
+    "Brighton and Hove": "Brighton and Hove City Council",
+    "Milton Keynes": "Milton Keynes City Council",
+    "Sunderland": "Sunderland City Council",
+    "Newcastle upon Tyne": "Newcastle City Council",
+    "Manchester": "Manchester City Council",
+    "Liverpool": "Liverpool City Council",
+    "Leeds": "Leeds City Council",
+    "Sheffield": "Sheffield City Council",
+    "Birmingham": "Birmingham City Council",
+    "Coventry": "Coventry City Council",
+    "Wolverhampton": "City of Wolverhampton Council",
+    "Bradford": "City of Bradford Metropolitan District Council",
+    "Salford": "Salford City Council",
+    "Wakefield": "City of Wakefield Metropolitan District Council",
+}
+
+def normalize_council_name(name: str, code: str = None) -> str:
+    """
+    Normalize a council name to its full official format.
+    
+    This ensures audit-readiness and professional display across all surfaces.
+    
+    Rules:
+    1. Check for explicit overrides first
+    2. If already has "Council" suffix, return as-is
+    3. Apply suffix based on council code prefix:
+       - E09 (London): "London Borough of X" or "X Council"
+       - E08 (Metropolitan): "X Metropolitan Borough Council"
+       - E07 (District): "X District Council"
+       - E06 (Unitary): "X Council" or "X City Council" for cities
+       - S12 (Scotland): "X Council"
+       - W06 (Wales): "X Council" or "X County Borough Council"
+    4. Default: append "Council" if no suffix present
+    
+    Args:
+        name: The raw council name (e.g., "Bristol")
+        code: Optional council code for more precise formatting
+        
+    Returns:
+        Full normalized council name (e.g., "Bristol City Council")
+    """
+    if not name:
+        return name
+    
+    # Check explicit overrides first
+    if name in COUNCIL_NAME_OVERRIDES:
+        return COUNCIL_NAME_OVERRIDES[name]
+    
+    # If already has a proper suffix, return as-is
+    proper_suffixes = [
+        "Council", "Corporation", "Authority", 
+        "County Council", "City Council", "Borough Council",
+        "District Council", "Metropolitan Borough Council"
+    ]
+    for suffix in proper_suffixes:
+        if name.endswith(suffix):
+            return name
+    
+    # Apply rules based on code prefix if available
+    if code:
+        if code.startswith("E09"):  # London Boroughs
+            # Most London boroughs use "London Borough of X" or "X Council"
+            if name not in ["City of London", "Westminster"]:
+                return f"London Borough of {name}"
+        elif code.startswith("E08"):  # Metropolitan Districts
+            return f"{name} Metropolitan Borough Council"
+        elif code.startswith("E07"):  # District Councils
+            return f"{name} District Council"
+        elif code.startswith("S12"):  # Scottish Councils
+            return f"{name} Council"
+        elif code.startswith("W06"):  # Welsh Councils
+            # Some Welsh councils are "County Borough Council", others are just "Council"
+            return f"{name} Council"
+    
+    # Default: append "Council" 
+    return f"{name} Council"
+
+
 # District to Council mapping (common mappings)
 DISTRICT_TO_COUNCIL = {
     # London Boroughs
