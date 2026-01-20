@@ -27,7 +27,10 @@ class StripeService:
         billing_plan: BillingPlan,
         origin_url: str
     ) -> CheckoutSessionResponse:
-        """Create Stripe checkout session."""
+        """Create Stripe checkout session.
+        
+        Pricing: £9.99/month subscription + £49.99 one-time setup fee
+        """
         db = database.get_db()
         
         # Get amount from server-defined plans
@@ -35,7 +38,10 @@ class StripeService:
         if not plan_info:
             raise ValueError(f"Invalid billing plan: {billing_plan}")
         
-        amount = plan_info["price"]
+        # Total first payment = monthly + setup fee
+        monthly = plan_info["monthly"]
+        setup = plan_info["setup"]
+        total_amount = monthly + setup
         
         # Initialize Stripe checkout
         webhook_url = f"{origin_url}/api/webhook/stripe"
@@ -49,14 +55,16 @@ class StripeService:
         cancel_url = f"{origin_url}/checkout/cancel"
         
         checkout_request = CheckoutSessionRequest(
-            amount=amount,
+            amount=total_amount,
             currency="gbp",
             success_url=success_url,
             cancel_url=cancel_url,
             metadata={
                 "client_id": client_id,
                 "billing_plan": billing_plan.value,
-                "service": "VAULT_PRO"
+                "service": "VAULT_PRO",
+                "monthly_price": str(monthly),
+                "setup_fee": str(setup)
             }
         )
         
@@ -66,11 +74,18 @@ class StripeService:
         transaction = PaymentTransaction(
             client_id=client_id,
             stripe_session_id=session.session_id,
-            amount=amount,
+            amount=total_amount,
             currency="gbp",
             billing_plan=billing_plan,
             payment_status="pending",
-            metadata=checkout_request.metadata
+            metadata={
+                **checkout_request.metadata,
+                "breakdown": {
+                    "monthly": monthly,
+                    "setup_fee": setup,
+                    "total": total_amount
+                }
+            }
         )
         
         doc = transaction.model_dump()
@@ -80,7 +95,7 @@ class StripeService:
         
         await db.payment_transactions.insert_one(doc)
         
-        logger.info(f"Checkout session created for client {client_id}: {session.session_id}")
+        logger.info(f"Checkout session created for client {client_id}: {session.session_id} (£{total_amount})")
         
         return session
     
