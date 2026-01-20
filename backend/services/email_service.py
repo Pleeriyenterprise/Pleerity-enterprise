@@ -260,6 +260,37 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.TENANT_INVITE:
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #1a2744;">Tenant Portal Invitation</h1>
+                <p>Hello {model.get('tenant_name', 'there')},</p>
+                <p>Your landlord has invited you to view the compliance status of your rental property.</p>
+                <p>The tenant portal allows you to:</p>
+                <ul style="color: #64748b;">
+                    <li>View property compliance status (GREEN/AMBER/RED)</li>
+                    <li>See certificate expiry dates</li>
+                    <li>Track overall compliance health</li>
+                </ul>
+                <p style="margin: 30px 0;">
+                    <a href="{model.get('setup_link', '#')}" 
+                       style="background-color: #14b8a6; color: white; padding: 12px 24px; 
+                              text-decoration: none; border-radius: 6px; display: inline-block;">
+                        Set Up Your Access
+                    </a>
+                </p>
+                <p style="color: #666; font-size: 14px;">
+                    This link expires in 7 days. If you have questions, please contact your landlord.
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px;">
+                    {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
+                    {model.get('tagline', 'AI-Driven Solutions & Compliance')}
+                </p>
+            </body>
+            </html>
+            """
         else:
             # Generic template
             return f"""
