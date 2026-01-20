@@ -363,8 +363,8 @@ class TestReportsAPI:
         print(f"✓ Available reports: {len(data['reports'])} report types")
     
     def test_get_scheduled_reports(self):
-        """Test GET /api/reports/scheduled returns scheduled reports"""
-        response = requests.get(f"{BASE_URL}/api/reports/scheduled", headers=self.headers)
+        """Test GET /api/reports/schedules returns scheduled reports"""
+        response = requests.get(f"{BASE_URL}/api/reports/schedules", headers=self.headers)
         assert response.status_code == 200
         data = response.json()
         assert "schedules" in data
