@@ -48,7 +48,7 @@ const AdminAssistantPage = () => {
     setConversation([]);
 
     try {
-      const response = await api.get(`/admin/clients/lookup?crn=${encodeURIComponent(crn.trim())}`);
+      const response = await api.get(`/admin/client-lookup?crn=${encodeURIComponent(crn.trim())}`);
       setClientSnapshot(response.data);
       toast.success(`Client loaded: ${response.data.client?.full_name || 'Unknown'}`);
     } catch (error) {
