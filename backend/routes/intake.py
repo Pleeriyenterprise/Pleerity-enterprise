@@ -294,8 +294,6 @@ async def submit_intake(request: Request, data: IntakeFormData):
         # Generate unique customer reference
         customer_reference = await _ensure_unique_reference(db)
         
-        from models import ClientType, PreferredContact
-        
         client = Client(
             customer_reference=customer_reference,
             full_name=data.full_name,
