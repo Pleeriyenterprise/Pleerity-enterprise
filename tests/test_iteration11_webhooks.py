@@ -91,7 +91,7 @@ class TestWebhookEndpoints:
         """Test creating a webhook with valid data"""
         webhook_data = {
             "name": f"TEST_Webhook_{uuid.uuid4().hex[:8]}",
-            "url": "https://webhook.site/test-endpoint",
+            "url": f"https://webhook.site/test-endpoint-{uuid.uuid4().hex[:8]}",
             "event_types": ["compliance.status_changed", "requirement.status_changed"]
         }
         
