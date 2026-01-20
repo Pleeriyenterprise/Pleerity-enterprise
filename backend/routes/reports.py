@@ -219,14 +219,14 @@ async def get_available_reports(request: Request):
             "name": "Compliance Status Summary",
             "description": "Overview of property compliance including statistics and breakdown",
             "formats": ["csv", "pdf"],
-            "endpoint": "/api/reports/compliance-summary"
+            "endpoint": "/reports/compliance-summary"
         },
         {
             "id": "requirements",
             "name": "Requirements Report",
             "description": "Detailed list of all requirements with status and due dates",
             "formats": ["csv", "pdf"],
-            "endpoint": "/api/reports/requirements"
+            "endpoint": "/reports/requirements"
         }
     ]
     
@@ -237,7 +237,7 @@ async def get_available_reports(request: Request):
             "name": "Audit Log Extract",
             "description": "System audit trail with filters (Admin only)",
             "formats": ["csv", "pdf"],
-            "endpoint": "/api/reports/audit-logs"
+            "endpoint": "/reports/audit-logs"
         })
     
     return {
