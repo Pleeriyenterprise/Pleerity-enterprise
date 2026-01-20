@@ -22,6 +22,9 @@ class Database:
             # Verify connection
             await self.db.command("ping")
             logger.info(f"Connected to MongoDB: {os.environ['DB_NAME']}")
+            
+            # Create indexes for efficient search and lookups
+            await self._create_indexes()
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
             raise
