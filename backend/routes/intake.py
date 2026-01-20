@@ -13,7 +13,7 @@ from database import database
 from models import (
     IntakeFormData, IntakePropertyData, Client, Property, ServiceCode, 
     AuditAction, BillingPlan, OnboardingStatus, SubscriptionStatus,
-    Document, DocumentStatus
+    Document, DocumentStatus, ClientType, PreferredContact
 )
 from services.stripe_service import stripe_service
 from utils.audit import create_audit_log
