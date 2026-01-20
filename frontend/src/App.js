@@ -179,6 +179,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/app/integrations" 
+              element={
+                <ProtectedRoute>
+                  <IntegrationsPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Admin Routes - Protected */}
             <Route 
