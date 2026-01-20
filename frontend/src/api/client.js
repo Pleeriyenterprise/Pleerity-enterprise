@@ -56,6 +56,7 @@ export const intakeAPI = {
   getPlans: () => apiClient.get('/intake/plans'),
   searchCouncils: (q, nation = null, page = 1, limit = 20) => 
     apiClient.get('/intake/councils', { params: { q, nation, page, limit } }),
+  lookupPostcode: (postcode) => apiClient.get(`/intake/postcode-lookup/${encodeURIComponent(postcode)}`),
   uploadDocument: (formData) => apiClient.post('/intake/upload-document', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
