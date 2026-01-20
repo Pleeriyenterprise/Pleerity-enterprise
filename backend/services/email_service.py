@@ -446,6 +446,30 @@ WHAT THIS MEANS:
 {model.get('company_name', 'Pleerity Enterprise Ltd')}
 {model.get('tagline', 'AI-Driven Solutions & Compliance')}
             """
+        elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
+            return f"""
+🛡️ ADMIN INVITATION - Compliance Vault Pro
+
+Hello {model.get('admin_name', 'there')},
+
+You have been invited by {model.get('inviter_name', 'an administrator')} to join Compliance Vault Pro as an Administrator.
+
+As an admin, you will have access to:
+• Full system management dashboard
+• All client accounts and properties
+• Audit logs and compliance reports
+• System configuration and settings
+
+Set up your admin account here: {model.get('setup_link', '#')}
+
+⏰ This invitation expires in 24 hours.
+
+If you did not expect this invitation, please contact the system administrator.
+
+--
+{model.get('company_name', 'Pleerity Enterprise Ltd')}
+AI-Driven Solutions & Compliance
+            """
         else:
             return f"""
 Compliance Vault Pro
