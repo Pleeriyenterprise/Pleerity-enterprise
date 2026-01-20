@@ -389,3 +389,47 @@ async def admin_login(request: Request, credentials: LoginRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
+
+
+
+@router.post("/log-route-guard-block")
+async def log_route_guard_block(request: Request):
+    """Log when a non-admin user attempts to access admin routes.
+    
+    This endpoint is called by the frontend when the route guard blocks access.
+    """
+    try:
+        # Get token from Authorization header
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.replace("Bearer ", "") if auth_header else None
+        
+        user_info = {}
+        if token:
+            from auth import decode_access_token
+            payload = decode_access_token(token)
+            if payload:
+                user_info = {
+                    "portal_user_id": payload.get("portal_user_id"),
+                    "email": payload.get("email"),
+                    "role": payload.get("role")
+                }
+        
+        # Get attempted path from request body
+        body = await request.json() if request.headers.get("content-type") == "application/json" else {}
+        attempted_path = body.get("attempted_path", "unknown")
+        
+        await create_audit_log(
+            action=AuditAction.ADMIN_ROUTE_GUARD_BLOCK,
+            actor_id=user_info.get("portal_user_id"),
+            metadata={
+                "attempted_path": attempted_path,
+                "user_role": user_info.get("role"),
+                "email": user_info.get("email"),
+                "reason": "non_admin_accessing_admin_route"
+            }
+        )
+        
+        return {"status": "logged"}
+    except Exception as e:
+        logger.error(f"Failed to log route guard block: {e}")
+        return {"status": "error"}
