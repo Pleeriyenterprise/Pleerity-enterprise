@@ -223,7 +223,6 @@ class EmailService:
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
             
             status_color = model.get('status_color', '#dc2626')
-            new_status = model.get('new_status', 'RED')
             properties_html = ""
             for prop in model.get('affected_properties', []):
                 properties_html += f"""
