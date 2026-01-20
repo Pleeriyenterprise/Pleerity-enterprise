@@ -254,27 +254,20 @@ async def invite_tenant(request: Request):
                         "assigned_by": user["portal_user_id"]
                     })
         
-        # Send invite email
+        # Send invite email using proper template
         from services.email_service import email_service
+        from models import EmailTemplateAlias
         invite_url = f"{body.get('base_url', '')}/set-password?token={token}"
+        
         await email_service.send_email(
-            to_email=email,
-            subject="You've been invited to view property compliance",
-            html_content=f"""
-            <h2>Tenant Portal Invitation</h2>
-            <p>Hello {full_name or 'there'},</p>
-            <p>Your landlord has invited you to view the compliance status of your rental property.</p>
-            <p>Click below to set your password and access the tenant portal:</p>
-            <p><a href="{invite_url}" style="background-color:#14b8a6;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Set Up Access</a></p>
-            <p>This link expires in 7 days.</p>
-            <p>The tenant portal allows you to:</p>
-            <ul>
-                <li>View property compliance status (GREEN/AMBER/RED)</li>
-                <li>See certificate expiry dates</li>
-                <li>Track overall compliance health</li>
-            </ul>
-            <p>If you have questions, please contact your landlord.</p>
-            """
+            recipient=email,
+            template_alias=EmailTemplateAlias.TENANT_INVITE,
+            template_model={
+                "tenant_name": full_name or "there",
+                "setup_link": invite_url
+            },
+            client_id=user["client_id"],
+            subject="You've been invited to view property compliance"
         )
         
         logger.info(f"Tenant invited: {email} by {user['email']}")
