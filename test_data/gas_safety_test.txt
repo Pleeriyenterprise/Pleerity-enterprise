@@ -1,0 +1,23 @@
+Gas Safety Certificate (CP12)
+Landlord Gas Safety Record
+
+Certificate Number: GS-2024-12345
+Date of Check: 2024-12-15
+Next Check Due: 2025-12-15
+
+Property Address:
+123 Test Street
+London
+SW1A 1AA
+
+Gas Safe Registered Engineer:
+Name: John Smith
+Gas Safe ID: 1234567
+Company: Safe Gas Services Ltd
+
+Appliances Checked:
+1. Boiler - Worcester Bosch 30i
+2. Gas Hob - Hotpoint 4 Burner
+
+Result: SATISFACTORY
+No defects found.
