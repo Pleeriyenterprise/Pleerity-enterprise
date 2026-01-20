@@ -251,7 +251,7 @@
 
 ## Changelog
 
-### January 20, 2026 (Session 2) - Admin Authentication Fix
+### January 20, 2026 (Session 2) - Admin Authentication & Invite Flow
 - **FIXED:** Admin authentication fully decoupled from client provisioning
   - Admin login no longer requires Client record
   - Admin login not blocked by onboarding_status or provisioning checks
@@ -262,6 +262,14 @@
 - **ADDED:** Audit log actions: ADMIN_LOGIN_SUCCESS, ADMIN_LOGIN_FAILED, ADMIN_ROUTE_GUARD_BLOCK
 - **ADDED:** Frontend detects /admin/signin route and uses admin login API
 - **UPDATED:** LoginPage.js shows "Admin Sign In" with Shield icon on admin route
+- **NEW:** Admin Invite Flow (P0 Complete)
+  - `POST /api/admin/admins/invite` - Invite new admin via email
+  - `GET /api/admin/admins` - List all admin users
+  - `DELETE /api/admin/admins/{id}` - Deactivate an admin
+  - `POST /api/admin/admins/{id}/reactivate` - Reactivate a disabled admin
+  - `POST /api/admin/admins/{id}/resend-invite` - Resend invitation email
+  - Audit actions: ADMIN_INVITED, ADMIN_INVITE_ACCEPTED
+  - Email template: admin-invite with branded HTML
 - **TEST REPORT:** /app/test_reports/admin_auth_verification.json
 
 ### January 20, 2026
