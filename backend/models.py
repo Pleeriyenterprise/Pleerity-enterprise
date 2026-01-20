@@ -88,6 +88,8 @@ class PropertyTypeApplicability(str, Enum):
 class AuditAction(str, Enum):
     # Intake
     INTAKE_SUBMITTED = "INTAKE_SUBMITTED"
+    INTAKE_PROPERTY_ADDED = "INTAKE_PROPERTY_ADDED"
+    INTAKE_DOCUMENT_UPLOADED = "INTAKE_DOCUMENT_UPLOADED"
     
     # Provisioning
     PROVISIONING_STARTED = "PROVISIONING_STARTED"
