@@ -192,6 +192,29 @@
 - `/app/frontend/src/pages/BulkUploadPage.js` - Bulk document upload
 - `/app/frontend/src/pages/DocumentsPage.js` - Enhanced with AI extraction review
 
+### Phase 5: P1 Features (January 2026) ✅
+- [x] **Scheduled Reports with Email Delivery**
+  - Create schedules: daily, weekly, monthly frequencies
+  - Report types: compliance_summary, requirements
+  - Multiple recipients support
+  - Toggle schedules on/off
+  - Email delivery via Postmark (job scheduler ready)
+  - API endpoints: POST/GET/DELETE/PATCH /api/reports/schedules
+
+- [x] **Client-side PDF Generation**
+  - jsPDF with autoTable plugin integration
+  - Branded PDF reports with header, footer, page numbers
+  - Table formatting for property and requirement data
+  - CSV and PDF format selector in UI
+
+- [x] **Bulk Property Import from CSV**
+  - Drag & drop CSV upload interface
+  - Column mapping and validation
+  - Duplicate detection
+  - Automatic requirements generation
+  - Download CSV template
+  - Preview before import with error highlighting
+
 ---
 
 ## Backlog / Future Enhancements
