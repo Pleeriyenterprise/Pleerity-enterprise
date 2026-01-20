@@ -1043,36 +1043,26 @@ async def send_message_to_client(
             )
         
         # Import email service
-        from services.email_service import send_email
+        from services.email_service import email_service
+        from models import EmailTemplateAlias
         
-        # Build HTML email body
-        html_body = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background-color: #0B1D3A; padding: 20px; text-align: center;">
-                <h1 style="color: #00B8A9; margin: 0;">Compliance Vault Pro</h1>
-            </div>
-            <div style="padding: 30px; background-color: #ffffff;">
-                <p>Dear {client.get('full_name', 'Client')},</p>
-                <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
-                    {message_data.message.replace(chr(10), '<br>')}
-                </div>
-                <p>If you have any questions, please don't hesitate to contact us.</p>
-                <p>Best regards,<br>The Pleerity Team</p>
-            </div>
-            <div style="padding: 15px; background-color: #f1f1f1; text-align: center; font-size: 12px; color: #666;">
-                <p>This message was sent from your Compliance Vault Pro portal.</p>
-                <p>Your reference: {client.get('customer_reference', 'N/A')}</p>
-            </div>
-        </div>
-        """
-        
-        # Send email
-        success = await send_email(
-            to_email=client.get("email"),
-            subject=message_data.subject,
-            html_body=html_body,
-            text_body=message_data.message
+        # Send email using email service
+        message_log = await email_service.send_email(
+            recipient=client.get("email"),
+            template_alias=EmailTemplateAlias.ADMIN_MANUAL,
+            template_model={
+                "client_name": client.get("full_name", "Client"),
+                "message": message_data.message.replace(chr(10), '<br>'),
+                "subject": message_data.subject,
+                "customer_reference": client.get("customer_reference", "N/A"),
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance"
+            },
+            client_id=client_id,
+            subject=message_data.subject
         )
+        
+        success = message_log.status == "sent"
         
         if not success:
             raise HTTPException(
