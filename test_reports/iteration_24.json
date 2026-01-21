@@ -1,0 +1,101 @@
+{
+  "summary": "Iteration 24 - Frontend Integration Testing Complete. All 16 backend API tests passed (100%). Frontend UI verified via Playwright: Intake wizard shows new plans (Solo £19, Portfolio £39, Pro £79), property counter shows X/Y format, property limit enforcement works correctly. Client dashboard loads successfully with compliance score trending.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration24_frontend_integration.py",
+    "/app/test_reports/pytest/pytest_results_iter24.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "IntakePage.js correctly implements PLAN_LIMITS and PLAN_NAMES for new plan structure",
+    "PropertyLimitPrompt component from UpgradePrompt.js is properly integrated into Step 3",
+    "Property counter shows X/Y format (e.g., 1/2 for Solo plan) - working correctly",
+    "Backend validate-property-count endpoint returns upgrade suggestions when limit exceeded",
+    "Client entitlements correctly maps legacy PLAN_1 to PLAN_1_SOLO with 2 property limit",
+    "AI extraction mode logic in documents.py correctly returns 'basic' for PLAN_1_SOLO",
+    "Tenant portal view-only behavior working - request-certificate and contact-landlord return FEATURE_DISABLED"
+  ],
+  "updated_files": [
+    "/app/tests/test_iteration24_frontend_integration.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!",
+    "client_email": "test@pleerity.com",
+    "client_password": "TestClient123!"
+  },
+  "seed_data_creation": "None - used existing test client",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All new plan structure features verified working. Test client (test@pleerity.com) has billing_plan='PLAN_1' which maps to PLAN_1_SOLO via legacy mapping. Intake wizard at /intake/start shows 3 plans with correct pricing. Property limit enforcement works - Solo plan shows 1/2 counter and blocks 3rd property with upgrade prompt. Client dashboard loads at /app/dashboard with compliance score trending. Tenant portal is view-only.",
+  "verified_features": {
+    "intake_plans_page": {
+      "status": "PASS",
+      "details": "Shows 3 plans: Solo Landlord £19/mo (2 props), Portfolio £39/mo (10 props), Professional £79/mo (25 props)"
+    },
+    "intake_property_limit": {
+      "status": "PASS",
+      "details": "Solo plan shows 1/2 counter, can add 2nd property, shows limit warning at 2/2"
+    },
+    "intake_property_limit_exceeded": {
+      "status": "PASS",
+      "details": "Cannot add 3rd property on Solo plan, PropertyLimitPrompt component displays upgrade option"
+    },
+    "backend_property_validation": {
+      "status": "PASS",
+      "details": "POST /api/intake/validate-property-count enforces limits and returns upgrade_to suggestion"
+    },
+    "ai_extraction_mode": {
+      "status": "PASS",
+      "details": "Code correctly returns extraction_mode: 'basic' for PLAN_1_SOLO when analysis succeeds"
+    },
+    "client_entitlements": {
+      "status": "PASS",
+      "details": "GET /api/client/entitlements returns plan=PLAN_1_SOLO, max_properties=2, ai_extraction_basic=enabled"
+    },
+    "tenant_portal_view_only": {
+      "status": "PASS",
+      "details": "POST /api/tenant/request-certificate and contact-landlord return FEATURE_DISABLED"
+    },
+    "admin_feature_matrix": {
+      "status": "PASS",
+      "details": "GET /api/admin/system/feature-matrix returns all 3 plans with correct limits"
+    },
+    "dashboard_works": {
+      "status": "PASS",
+      "details": "Client dashboard loads at /app/dashboard with compliance score, properties, quick actions"
+    },
+    "score_trending": {
+      "status": "PASS",
+      "details": "GET /api/client/compliance-score/trend returns trend data with sparkline"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Postmark emails (live key but test emails)",
+      "Stripe (test key)",
+      "Twilio (test credentials)"
+    ]
+  },
+  "screenshots": [
+    ".screenshots/intake_step1.png - Step 1 Your Details form",
+    ".screenshots/intake_step2_plans.png - Step 2 Plan selection with 3 plans",
+    ".screenshots/intake_step3_properties.png - Step 3 Properties with 1/2 counter",
+    ".screenshots/intake_step3_2props.png - Step 3 with 2 properties added",
+    ".screenshots/intake_step3_limit.png - Property limit warning displayed",
+    ".screenshots/client_dashboard.png - Client dashboard with compliance score"
+  ]
+}
