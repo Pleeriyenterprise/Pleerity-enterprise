@@ -1295,7 +1295,7 @@ async def apply_ai_extraction(
                     try:
                         expiry_dt = datetime.fromisoformat(update_fields["due_date"].replace('Z', '+00:00'))
                         expiry_display = expiry_dt.strftime("%d %B %Y")
-                    except:
+                    except (ValueError, AttributeError):
                         expiry_display = update_fields.get("due_date", "N/A")
                 
                 await email_service.send_ai_extraction_email(
