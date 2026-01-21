@@ -57,6 +57,15 @@ const ClientDashboard = () => {
     }
   };
 
+  const fetchScoreTrend = async () => {
+    try {
+      const response = await api.get('/client/compliance-score/trend?days=30');
+      setScoreTrend(response.data);
+    } catch (err) {
+      console.log('Could not load score trend');
+    }
+  };
+
   const getComplianceColor = (status) => {
     switch (status) {
       case 'GREEN': return 'bg-green-50 text-green-700 border-green-200';
