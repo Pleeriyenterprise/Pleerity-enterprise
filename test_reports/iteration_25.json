@@ -1,0 +1,93 @@
+{
+  "summary": "Iteration 25 - Feature Gating Testing Complete. All 21 backend API tests passed (100%). Frontend UI verified via Playwright: Reports page shows upgrade prompt for PLAN_1_SOLO users (requires PLAN_2_PORTFOLIO), Integrations page shows upgrade prompt (requires PLAN_3_PRO), Branding Settings page shows upgrade prompt with disabled form fields (requires PLAN_3_PRO). Full user journey navigation tested successfully.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration25_feature_gating.py",
+    "/app/test_reports/pytest/pytest_results_iter25.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ReportsPage.js correctly fetches /api/client/entitlements and checks hasReportsAccess (reports_pdf or reports_csv enabled)",
+    "IntegrationsPage.js correctly fetches entitlements and checks hasWebhooksAccess - shows full upgrade prompt with feature preview",
+    "BrandingSettingsPage.js correctly uses UpgradePrompt component when isLocked (!feature_enabled)",
+    "UpgradePrompt component is reusable and displays correct plan requirements (Portfolio vs Professional)",
+    "Backend /api/client/entitlements returns correct feature flags based on plan_registry.py",
+    "PUT /api/client/branding correctly returns 403 for PLAN_1_SOLO users (feature gating enforced at API level)"
+  ],
+  "updated_files": [
+    "/app/tests/test_iteration25_feature_gating.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "client_email": "test@pleerity.com",
+    "client_password": "TestClient123!",
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!"
+  },
+  "seed_data_creation": "None - used existing test client on PLAN_1_SOLO",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Feature gating verified working correctly. Test client (test@pleerity.com) is on PLAN_1_SOLO with billing_plan='PLAN_1' which maps via legacy mapping. Reports page shows upgrade prompt for Portfolio plan (PLAN_2_PORTFOLIO). Integrations and Branding pages show upgrade prompts for Professional plan (PLAN_3_PRO). All form fields on Branding page are disabled when feature is locked. Navigation between dashboard and feature pages works correctly.",
+  "verified_features": {
+    "reports_page_upgrade_prompt": {
+      "status": "PASS",
+      "details": "Shows 'Advanced Reports' locked with 'Portfolio plan required' and 'Upgrade to Unlock' button"
+    },
+    "reports_schedule_button_locked": {
+      "status": "PASS",
+      "details": "Schedule Report button in header shows lock icon and redirects to billing upgrade"
+    },
+    "integrations_page_upgrade_prompt": {
+      "status": "PASS",
+      "details": "Shows 'Webhooks & Integrations' locked with 'Professional plan required' and feature preview"
+    },
+    "branding_page_upgrade_prompt": {
+      "status": "PASS",
+      "details": "Shows 'White-Label Branding' locked with 'Professional plan required'"
+    },
+    "branding_form_fields_disabled": {
+      "status": "PASS",
+      "details": "All form fields (company name, colors, logo, etc.) are disabled when feature is locked"
+    },
+    "branding_api_403": {
+      "status": "PASS",
+      "details": "PUT /api/client/branding returns 403 Forbidden for PLAN_1_SOLO users"
+    },
+    "entitlements_api": {
+      "status": "PASS",
+      "details": "GET /api/client/entitlements returns correct feature flags: reports_pdf=false, webhooks=false, white_label_reports=false for PLAN_1_SOLO"
+    },
+    "dashboard_navigation": {
+      "status": "PASS",
+      "details": "Navigation between dashboard, Reports, Integrations, and Branding pages works correctly"
+    },
+    "login_and_dashboard": {
+      "status": "PASS",
+      "details": "Login with test@pleerity.com works, dashboard loads with compliance score and properties"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Stripe payments - test keys only (awaiting new price IDs from user)"
+    ]
+  },
+  "screenshots": [
+    ".screenshots/iter25_dashboard.png - Client dashboard after login",
+    ".screenshots/iter25_reports_page.png - Reports page with upgrade prompt",
+    ".screenshots/iter25_integrations_page.png - Integrations page with upgrade prompt",
+    ".screenshots/iter25_branding_page.png - Branding Settings page with upgrade prompt",
+    ".screenshots/iter25_full_journey.png - Final dashboard after full navigation test"
+  ]
+}
