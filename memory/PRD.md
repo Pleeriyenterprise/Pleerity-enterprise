@@ -664,6 +664,61 @@
 
 - **TEST REPORT:** `/app/test_reports/iteration_22.json` (22/22 tests - 100%)
 
+### January 21, 2026 (Session 8) - Production-Ready Capability Build
+- **NEW PLAN STRUCTURE ✅**
+  - **PLAN_1_SOLO**: Solo Landlord (2 properties, £19/mo, £49 onboarding)
+  - **PLAN_2_PORTFOLIO**: Portfolio Landlord (10 properties, £39/mo, £79 onboarding)
+  - **PLAN_3_PRO**: Professional (25 properties, £79/mo, £149 onboarding)
+  - Legacy plan codes (PLAN_1, PLAN_2_5, PLAN_6_15) mapped to new codes
+  - NEW `plan_registry.py` - Single source of truth for all plan definitions
+
+- **INTAKE-LEVEL PROPERTY GATING ✅** (NON-NEGOTIABLE)
+  - Property limits enforced at intake form, not just post-payment
+  - `POST /api/intake/validate-property-count` - Validates before adding properties
+  - Frontend must prevent adding beyond limit
+  - Server-side blocks submission if limits exceeded
+  - Error code: `PROPERTY_LIMIT_EXCEEDED` with upgrade suggestion
+
+- **FEATURE ENTITLEMENT MATRIX ✅**
+  | Feature | PLAN_1_SOLO | PLAN_2_PORTFOLIO | PLAN_3_PRO |
+  |---------|-------------|------------------|------------|
+  | Compliance Dashboard | ✅ | ✅ | ✅ |
+  | Compliance Score | ✅ | ✅ | ✅ |
+  | Email Notifications | ✅ | ✅ | ✅ |
+  | AI Extraction (Basic) | ✅ | ✅ | ✅ |
+  | AI Extraction (Advanced) | ❌ | ✅ | ✅ |
+  | ZIP Upload | ❌ | ✅ | ✅ |
+  | PDF/CSV Reports | ❌ | ✅ | ✅ |
+  | SMS Reminders | ❌ | ✅ | ✅ |
+  | Tenant Portal (View-only) | ❌ | ✅ | ✅ |
+  | Webhooks | ❌ | ❌ | ✅ |
+  | API Access | ❌ | ❌ | ✅ |
+  | White-Label Reports | ❌ | ❌ | ✅ |
+  | Audit Log Export | ❌ | ❌ | ✅ |
+
+- **TENANT PORTAL - VIEW ONLY ✅**
+  - Certificate requests: DISABLED (returns FEATURE_DISABLED)
+  - Contact landlord: DISABLED (returns FEATURE_DISABLED)
+  - My requests: Returns empty list with note
+  - View dashboard: Still works (read-only)
+  - Download compliance pack: Still works
+
+- **UPGRADE PROMPT COMPONENT ✅**
+  - NEW `UpgradePrompt.js` - Inline, modal, and card variants
+  - Shows: Feature name, description, required plan, upgrade link
+  - `PropertyLimitPrompt.js` - Specific component for property limits
+  - `FeatureGate.js` - Wrapper component for conditional rendering
+
+- **Endpoints Updated**:
+  - `GET /api/intake/plans` - Returns new plan structure
+  - `POST /api/intake/validate-property-count` - NEW property validation
+  - `GET /api/client/entitlements` - Uses plan_registry
+  - `GET /api/admin/system/feature-matrix` - Uses plan_registry
+  - `POST /api/tenant/request-certificate` - Returns FEATURE_DISABLED
+  - `POST /api/tenant/contact-landlord` - Returns FEATURE_DISABLED
+
+- **TEST REPORT:** `/app/test_reports/iteration_23.json` (21/21 tests - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
