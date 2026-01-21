@@ -26,7 +26,7 @@ from fastapi import APIRouter, HTTPException, Request, status, Depends
 from pydantic import BaseModel
 from database import database
 from middleware import admin_route_guard
-from models import AuditAction
+from models import AuditAction, UserRole
 from utils.audit import create_audit_log
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus, SUBSCRIPTION_PRICE_TO_PLAN
 from services.provisioning import provisioning_service
