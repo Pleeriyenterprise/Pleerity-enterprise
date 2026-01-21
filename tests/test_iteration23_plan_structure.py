@@ -352,84 +352,68 @@ class TestAdminFeatureMatrix:
 
 
 class TestTenantPortalViewOnly:
-    """Test tenant portal is view-only (certificate requests and messaging disabled)"""
+    """Test tenant portal is view-only (certificate requests and messaging disabled)
     
-    @pytest.fixture
-    def tenant_token(self):
-        """Get tenant auth token - may need to create tenant first"""
-        # Try to login as tenant
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
-            json={"email": "tenant@test.com", "password": "TenantTest123!"}
-        )
-        if response.status_code == 200:
-            return response.json().get("access_token")
-        
-        # If no tenant exists, skip these tests
-        pytest.skip("No tenant user available for testing")
+    Note: These endpoints return FEATURE_DISABLED regardless of auth status,
+    so we test without auth to verify the view-only behavior.
+    """
     
-    def test_tenant_request_certificate_disabled(self, tenant_token):
+    def test_tenant_request_certificate_disabled(self):
         """POST /api/tenant/request-certificate should return FEATURE_DISABLED"""
-        headers = {"Authorization": f"Bearer {tenant_token}"}
         response = requests.post(
             f"{BASE_URL}/api/tenant/request-certificate",
-            headers=headers,
             json={"property_id": "test", "certificate_type": "GAS_SAFETY"}
         )
         
-        # Should return 403 or similar with FEATURE_DISABLED
-        assert response.status_code in [403, 400], f"Expected 403/400, got {response.status_code}: {response.text}"
+        # Should return 403 with FEATURE_DISABLED
+        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.text}"
         
         data = response.json()
-        # Check for disabled message
-        assert "disabled" in str(data).lower() or "view-only" in str(data).lower() or "FEATURE_DISABLED" in str(data), \
-            f"Expected FEATURE_DISABLED message, got: {data}"
+        detail = data.get("detail", {})
+        assert detail.get("error_code") == "FEATURE_DISABLED", f"Expected FEATURE_DISABLED, got: {detail}"
+        assert "view-only" in detail.get("message", "").lower(), f"Expected view-only message, got: {detail}"
         
-        print(f"✓ Tenant request-certificate: DISABLED ({response.status_code})")
+        print(f"✓ Tenant request-certificate: FEATURE_DISABLED (view-only)")
     
-    def test_tenant_contact_landlord_disabled(self, tenant_token):
+    def test_tenant_contact_landlord_disabled(self):
         """POST /api/tenant/contact-landlord should return FEATURE_DISABLED"""
-        headers = {"Authorization": f"Bearer {tenant_token}"}
         response = requests.post(
             f"{BASE_URL}/api/tenant/contact-landlord",
-            headers=headers,
             json={"message": "Test message"}
         )
         
-        # Should return 403 or similar with FEATURE_DISABLED
-        assert response.status_code in [403, 400], f"Expected 403/400, got {response.status_code}: {response.text}"
+        # Should return 403 with FEATURE_DISABLED
+        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.text}"
         
         data = response.json()
-        assert "disabled" in str(data).lower() or "view-only" in str(data).lower() or "FEATURE_DISABLED" in str(data), \
-            f"Expected FEATURE_DISABLED message, got: {data}"
+        detail = data.get("detail", {})
+        assert detail.get("error_code") == "FEATURE_DISABLED", f"Expected FEATURE_DISABLED, got: {detail}"
+        assert "view-only" in detail.get("message", "").lower(), f"Expected view-only message, got: {detail}"
         
-        print(f"✓ Tenant contact-landlord: DISABLED ({response.status_code})")
+        print(f"✓ Tenant contact-landlord: FEATURE_DISABLED (view-only)")
     
-    def test_tenant_requests_returns_empty_with_note(self, tenant_token):
+    def test_tenant_requests_returns_empty_with_note(self):
         """GET /api/tenant/requests should return empty list with note"""
-        headers = {"Authorization": f"Bearer {tenant_token}"}
-        response = requests.get(f"{BASE_URL}/api/tenant/requests", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/tenant/requests")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
         data = response.json()
-        # Should have empty requests and a note about view-only
-        assert "requests" in data or "note" in data or "message" in data, f"Expected requests or note in response: {data}"
+        assert "requests" in data, f"Expected 'requests' in response: {data}"
+        assert data["requests"] == [], f"Expected empty requests list, got: {data['requests']}"
+        assert "note" in data, f"Expected 'note' in response: {data}"
+        assert "view-only" in data["note"].lower(), f"Expected view-only note, got: {data['note']}"
         
-        print(f"✓ Tenant requests: Returns with view-only note")
+        print(f"✓ Tenant requests: Empty list with view-only note")
     
-    def test_tenant_dashboard_still_works(self, tenant_token):
-        """GET /api/tenant/dashboard should return data (view-only is OK)"""
-        headers = {"Authorization": f"Bearer {tenant_token}"}
-        response = requests.get(f"{BASE_URL}/api/tenant/dashboard", headers=headers)
+    def test_tenant_dashboard_requires_auth(self):
+        """GET /api/tenant/dashboard requires authentication"""
+        response = requests.get(f"{BASE_URL}/api/tenant/dashboard")
         
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        # Dashboard requires auth
+        assert response.status_code == 401, f"Expected 401, got {response.status_code}: {response.text}"
         
-        data = response.json()
-        # Dashboard should return some data
-        assert data is not None, "Dashboard should return data"
-        
-        print(f"✓ Tenant dashboard: Works (view-only access)")
+        print(f"✓ Tenant dashboard: Requires authentication (401)")
 
 
 class TestTenantEndpointsWithoutAuth:
