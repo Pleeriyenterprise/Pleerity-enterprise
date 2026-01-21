@@ -268,13 +268,14 @@ async def get_client_entitlements(request: Request):
     
     Returns detailed feature availability with metadata for UI rendering.
     This is the primary endpoint for feature gating in the frontend.
+    Uses plan_registry as single source of truth.
     """
     user = await client_route_guard(request)
     
     try:
-        from services.feature_entitlement import feature_entitlement_service
+        from services.plan_registry import plan_registry
         
-        entitlements = await feature_entitlement_service.get_client_entitlements(user["client_id"])
+        entitlements = await plan_registry.get_client_entitlements(user["client_id"])
         return entitlements
     
     except Exception as e:
