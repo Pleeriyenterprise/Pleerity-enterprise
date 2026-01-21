@@ -208,6 +208,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/app/settings/branding" 
+              element={
+                <ProtectedRoute>
+                  <BrandingSettingsPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Admin Routes - Protected */}
             <Route 
