@@ -333,7 +333,7 @@ async def sync_client_billing(request: Request, client_id: str):
             # No Stripe customer - nothing to sync
             await create_audit_log(
                 action=AuditAction.ADMIN_ACTION,
-                actor_role="ADMIN",
+                actor_role=UserRole.ROLE_ADMIN,
                 actor_id=admin.get("portal_user_id"),
                 client_id=client_id,
                 metadata={
@@ -478,7 +478,7 @@ async def sync_client_billing(request: Request, client_id: str):
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="ADMIN",
+            actor_role=UserRole.ROLE_ADMIN,
             actor_id=admin.get("portal_user_id"),
             client_id=client_id,
             metadata={
@@ -571,7 +571,7 @@ async def create_billing_portal_link(request: Request, client_id: str):
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="ADMIN",
+            actor_role=UserRole.ROLE_ADMIN,
             actor_id=admin.get("portal_user_id"),
             client_id=client_id,
             metadata={
@@ -671,7 +671,7 @@ async def resend_password_setup(request: Request, client_id: str):
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="ADMIN",
+            actor_role=UserRole.ROLE_ADMIN,
             actor_id=admin.get("portal_user_id"),
             client_id=client_id,
             metadata={
@@ -742,7 +742,7 @@ async def force_provision_client(request: Request, client_id: str):
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="ADMIN",
+            actor_role=UserRole.ROLE_ADMIN,
             actor_id=admin.get("portal_user_id"),
             client_id=client_id,
             metadata={
@@ -894,7 +894,7 @@ async def send_client_message(request: Request, client_id: str, data: MessageReq
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="ADMIN",
+            actor_role=UserRole.ROLE_ADMIN,
             actor_id=admin.get("portal_user_id"),
             client_id=client_id,
             metadata={
