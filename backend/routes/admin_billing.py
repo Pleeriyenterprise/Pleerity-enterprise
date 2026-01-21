@@ -656,9 +656,10 @@ async def resend_password_setup(request: Request, client_id: str):
         user_email = portal_user.get("auth_email") or portal_user.get("email")
         
         email_sent = await email_service.send_password_setup_email(
-            to_email=user_email,
-            setup_url=setup_url,
-            client_name=portal_user.get("name", "")
+            recipient=user_email,
+            setup_link=setup_url,
+            client_name=portal_user.get("name", ""),
+            client_id=client_id
         )
         
         # Audit log
