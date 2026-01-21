@@ -18,10 +18,14 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  AlertTriangle,
+  XCircle,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from 'sonner';
 import api from '../api/client';
 
