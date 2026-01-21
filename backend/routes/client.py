@@ -922,7 +922,7 @@ async def update_branding_settings(request: Request):
     """
     from services.feature_entitlement import feature_entitlement_service
     from models import AuditAction
-    from services.audit_service import audit_service
+    from utils.audit import create_audit_log
     from datetime import datetime, timezone
     
     user = await client_route_guard(request)
@@ -984,11 +984,11 @@ async def update_branding_settings(request: Request):
         )
         
         # Audit log
-        await audit_service.log(
+        await create_audit_log(
             action=AuditAction.SETTINGS_UPDATED,
             client_id=client_id,
             actor_id=user.get("portal_user_id"),
-            details={"updated_fields": [k for k in update_doc.keys() if k not in ["client_id", "updated_at"]]}
+            metadata={"updated_fields": [k for k in update_doc.keys() if k not in ["client_id", "updated_at"]]}
         )
         
         logger.info(f"Branding settings updated for client {client_id}")
