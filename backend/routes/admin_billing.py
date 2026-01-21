@@ -655,12 +655,18 @@ async def resend_password_setup(request: Request, client_id: str):
         # Use auth_email field (portal_users use auth_email, not email)
         user_email = portal_user.get("auth_email") or portal_user.get("email")
         
-        email_sent = await email_service.send_password_setup_email(
-            recipient=user_email,
-            setup_link=setup_url,
-            client_name=portal_user.get("name", ""),
-            client_id=client_id
-        )
+        # Send email (doesn't return value, will raise on error)
+        try:
+            await email_service.send_password_setup_email(
+                recipient=user_email,
+                setup_link=setup_url,
+                client_name=portal_user.get("name", ""),
+                client_id=client_id
+            )
+            email_sent = True
+        except Exception as email_error:
+            logger.error(f"Email send error: {email_error}")
+            email_sent = False
         
         # Audit log
         await create_audit_log(
@@ -678,7 +684,7 @@ async def resend_password_setup(request: Request, client_id: str):
         
         return {
             "success": True,
-            "message": "Password setup email sent",
+            "message": "Password setup email sent" if email_sent else "Setup token generated but email may have failed",
             "email": user_email,
             "email_sent": email_sent,
         }
