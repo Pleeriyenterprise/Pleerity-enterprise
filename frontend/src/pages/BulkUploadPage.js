@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,7 +17,9 @@ import {
   AlertTriangle,
   CloudUpload,
   Files,
-  Building2
+  Building2,
+  Archive,
+  Lock
 } from 'lucide-react';
 
 const BulkUploadPage = () => {
@@ -31,9 +33,13 @@ const BulkUploadPage = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResults, setUploadResults] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [uploadMode, setUploadMode] = useState('files'); // 'files' or 'zip'
+  const [zipFile, setZipFile] = useState(null);
+  const [planFeatures, setPlanFeatures] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchProperties();
+    fetchPlanFeatures();
   }, []);
 
   const fetchProperties = async () => {
@@ -46,6 +52,17 @@ const BulkUploadPage = () => {
       setLoading(false);
     }
   };
+
+  const fetchPlanFeatures = async () => {
+    try {
+      const response = await api.get('/client/plan-features');
+      setPlanFeatures(response.data);
+    } catch (error) {
+      console.error('Failed to load plan features:', error);
+    }
+  };
+
+  const canUseZipUpload = planFeatures?.features?.zip_upload === true;
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -63,14 +80,40 @@ const BulkUploadPage = () => {
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(Array.from(e.dataTransfer.files));
+      if (uploadMode === 'zip') {
+        handleZipFile(e.dataTransfer.files[0]);
+      } else {
+        handleFiles(Array.from(e.dataTransfer.files));
+      }
     }
-  }, []);
+  }, [uploadMode]);
 
   const handleFileSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      handleFiles(Array.from(e.target.files));
+      if (uploadMode === 'zip') {
+        handleZipFile(e.target.files[0]);
+      } else {
+        handleFiles(Array.from(e.target.files));
+      }
     }
+  };
+
+  const handleZipFile = (file) => {
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      toast.error('Please select a ZIP file (.zip)');
+      return;
+    }
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('ZIP file too large. Maximum size is 100MB.');
+      return;
+    }
+    setZipFile({
+      file,
+      name: file.name,
+      size: file.size,
+      status: 'pending'
+    });
+    setUploadResults(null);
   };
 
   const handleFiles = (newFiles) => {
