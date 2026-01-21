@@ -679,7 +679,11 @@ class ScheduledReportJob:
         self.db = db
     
     async def process_scheduled_reports(self):
-        """Process all due scheduled reports and send them via email."""
+        """Process all due scheduled reports and send them via email.
+        
+        IMPORTANT: Only runs for clients with ENABLED entitlement.
+        Per spec: no background jobs when entitlement is DISABLED.
+        """
         from services.email_service import email_service
         from services.reporting_service import reporting_service
         from models import EmailTemplateAlias
@@ -710,7 +714,13 @@ class ScheduledReportJob:
                         {"_id": 0}
                     )
                     
-                    if not client or client.get("subscription_status") != "ACTIVE":
+                    # Skip if client not active or entitlement not ENABLED
+                    if not client:
+                        continue
+                    if client.get("subscription_status") != "ACTIVE":
+                        continue
+                    if client.get("entitlement_status") not in ["ENABLED", None]:
+                        logger.info(f"Skipping scheduled report for {schedule['client_id']} - entitlement is {client.get('entitlement_status')}")
                         continue
                     
                     # Generate report
