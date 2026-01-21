@@ -835,3 +835,237 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
             detail="Failed to resend invitation"
         )
 
+
+# ============================================================================
+# BRANDING SETTINGS (White-Label)
+# ============================================================================
+
+@router.get("/branding")
+async def get_branding_settings(request: Request):
+    """Get the client's branding settings.
+    
+    Returns current branding configuration for white-label customization.
+    Plan gating: Requires Portfolio plan (PLAN_6_15) for full customization.
+    """
+    from services.feature_entitlement import feature_entitlement_service
+    from datetime import datetime, timezone
+    
+    user = await client_route_guard(request)
+    
+    try:
+        db = database.get_db()
+        client_id = user["client_id"]
+        
+        # Check feature access
+        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+            client_id,
+            "white_label"
+        )
+        
+        # Get existing branding settings
+        branding = await db.branding_settings.find_one(
+            {"client_id": client_id},
+            {"_id": 0}
+        )
+        
+        # Get client info for defaults
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "company_name": 1, "email": 1, "phone": 1}
+        )
+        
+        # Return defaults if no branding set
+        if not branding:
+            branding = {
+                "client_id": client_id,
+                "company_name": client.get("company_name"),
+                "logo_url": None,
+                "favicon_url": None,
+                "primary_color": "#0B1D3A",
+                "secondary_color": "#00B8A9",
+                "accent_color": "#FFB800",
+                "text_color": "#1F2937",
+                "report_header_text": None,
+                "report_footer_text": None,
+                "include_pleerity_branding": True,
+                "email_from_name": None,
+                "email_reply_to": client.get("email"),
+                "contact_email": client.get("email"),
+                "contact_phone": client.get("phone"),
+                "website_url": None,
+                "is_default": True
+            }
+        
+        # Add feature availability info
+        branding["feature_enabled"] = allowed
+        if not allowed:
+            branding["upgrade_message"] = error_msg
+            branding["upgrade_required"] = True
+        
+        return branding
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get branding settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load branding settings"
+        )
+
+
+@router.put("/branding")
+async def update_branding_settings(request: Request):
+    """Update the client's branding settings.
+    
+    Plan gating: Requires Portfolio plan (PLAN_6_15).
+    """
+    from services.feature_entitlement import feature_entitlement_service
+    from models import AuditAction
+    from services.audit_service import audit_service
+    from datetime import datetime, timezone
+    
+    user = await client_route_guard(request)
+    body = await request.json()
+    
+    try:
+        db = database.get_db()
+        client_id = user["client_id"]
+        
+        # Enforce feature access
+        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+            client_id,
+            "white_label"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "message": error_msg,
+                    "feature": "white_label",
+                    "upgrade_required": True
+                }
+            )
+        
+        # Allowed fields to update
+        allowed_fields = [
+            "company_name", "logo_url", "favicon_url",
+            "primary_color", "secondary_color", "accent_color", "text_color",
+            "report_header_text", "report_footer_text", "include_pleerity_branding",
+            "email_from_name", "email_reply_to",
+            "contact_email", "contact_phone", "website_url"
+        ]
+        
+        # Build update document
+        update_doc = {
+            "client_id": client_id,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        for field in allowed_fields:
+            if field in body:
+                # Validate colors
+                if field.endswith("_color") and body[field]:
+                    color = body[field]
+                    if not (color.startswith("#") and len(color) in [4, 7]):
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Invalid color format for {field}. Use hex format (e.g., #0B1D3A)"
+                        )
+                update_doc[field] = body[field]
+        
+        # Upsert branding settings
+        await db.branding_settings.update_one(
+            {"client_id": client_id},
+            {"$set": update_doc, "$setOnInsert": {"created_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True
+        )
+        
+        # Audit log
+        await audit_service.log(
+            action=AuditAction.SETTINGS_UPDATED,
+            client_id=client_id,
+            actor_id=user.get("portal_user_id"),
+            details={"updated_fields": [k for k in update_doc.keys() if k not in ["client_id", "updated_at"]]}
+        )
+        
+        logger.info(f"Branding settings updated for client {client_id}")
+        
+        # Return updated settings
+        updated = await db.branding_settings.find_one(
+            {"client_id": client_id},
+            {"_id": 0}
+        )
+        updated["feature_enabled"] = True
+        
+        return updated
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update branding settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update branding settings"
+        )
+
+
+@router.post("/branding/reset")
+async def reset_branding_settings(request: Request):
+    """Reset branding settings to defaults.
+    
+    Plan gating: Requires Portfolio plan (PLAN_6_15).
+    """
+    from services.feature_entitlement import feature_entitlement_service
+    from models import AuditAction
+    from services.audit_service import audit_service
+    
+    user = await client_route_guard(request)
+    
+    try:
+        db = database.get_db()
+        client_id = user["client_id"]
+        
+        # Enforce feature access
+        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+            client_id,
+            "white_label"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "message": error_msg,
+                    "feature": "white_label",
+                    "upgrade_required": True
+                }
+            )
+        
+        # Delete branding settings
+        result = await db.branding_settings.delete_one({"client_id": client_id})
+        
+        # Audit log
+        await audit_service.log(
+            action=AuditAction.SETTINGS_UPDATED,
+            client_id=client_id,
+            actor_id=user.get("portal_user_id"),
+            details={"action": "branding_reset"}
+        )
+        
+        logger.info(f"Branding settings reset for client {client_id}")
+        
+        return {"message": "Branding settings reset to defaults", "deleted": result.deleted_count > 0}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reset branding settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset branding settings"
+        )
+
