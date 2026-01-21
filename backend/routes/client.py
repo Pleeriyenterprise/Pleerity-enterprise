@@ -147,6 +147,28 @@ async def get_all_requirements(request: Request):
         )
 
 
+@router.get("/plan-features")
+async def get_plan_features(request: Request):
+    """Get the current client's plan features and limits.
+    
+    Returns feature availability for UI gating.
+    """
+    user = await client_route_guard(request)
+    
+    try:
+        from services.plan_gating import plan_gating_service
+        
+        plan_info = await plan_gating_service.get_client_plan_info(user["client_id"])
+        return plan_info
+    
+    except Exception as e:
+        logger.error(f"Plan features error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load plan features"
+        )
+
+
 @router.get("/documents")
 async def get_documents(request: Request):
     """Get client documents."""
