@@ -786,6 +786,34 @@
   - Feature gating verified for all three pages
   - PUT /api/client/branding returns 403 for non-PRO plans
 
+### January 21, 2026 (Session 9 - Continued) - Plan Comparison Page
+- **NEW Plan Comparison Page ✅** (`/app/billing`)
+  - **Current Plan Banner**: Shows user's plan, property count, feature count, and monthly price
+  - **Plan Cards**: Side-by-side comparison of Solo (£19), Portfolio (£39), and Professional (£79)
+    - "Most Popular" badge on Portfolio plan
+    - "Full Features" badge on Professional plan
+    - "Current Plan" indicator on active plan
+    - Key features summary (property count, feature count, AI extraction, webhooks)
+    - Upgrade CTA buttons (disabled for current plan and downgrades)
+  - **Feature Comparison Matrix**: Collapsible categories showing all 19 features
+    - Core Features (6): Dashboard, Score, Calendar, Email, Upload, Trending
+    - AI Features (3): Basic extraction, Advanced extraction, Review UI
+    - Documents (1): ZIP upload
+    - Reporting (3): PDF, CSV, Scheduled reports
+    - Communication (1): SMS reminders
+    - Tenant Portal (1): View-only tenant access
+    - Integrations (2): Webhooks, API access
+    - Advanced (2): White-label, Audit exports
+    - Green checkmarks for enabled, gray X for disabled
+    - Feature counts per plan per category
+  - **FAQ Section**: 4 common questions about upgrades, downgrades, trials, cancellation
+  - **Navigation**: "Plans" link added to ClientDashboard navbar
+
+- **Files Created/Modified**:
+  - NEW `/app/frontend/src/pages/BillingPage.js` - Full plan comparison page
+  - MODIFIED `/app/frontend/src/App.js` - Added `/app/billing` route
+  - MODIFIED `/app/frontend/src/pages/ClientDashboard.js` - Added "Plans" nav link
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
