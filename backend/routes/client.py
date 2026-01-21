@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status
+from fastapi.responses import StreamingResponse
 from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
 import logging
+import io
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(client_route_guard)])
