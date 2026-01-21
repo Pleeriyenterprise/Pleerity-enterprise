@@ -394,6 +394,59 @@ const BulkUploadPage = () => {
           </CardContent>
         </Card>
 
+        {/* Upload Mode Toggle */}
+        <Card className="mb-6" data-testid="upload-mode-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-gray-700">Upload Mode:</span>
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => { setUploadMode('files'); setZipFile(null); }}
+                  className={`px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors ${
+                    uploadMode === 'files' 
+                      ? 'bg-electric-teal text-white' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                  disabled={uploading}
+                  data-testid="mode-files-btn"
+                >
+                  <Files className="w-4 h-4" />
+                  Individual Files
+                </button>
+                <button
+                  onClick={() => { 
+                    if (canUseZipUpload) {
+                      setUploadMode('zip'); 
+                      setFiles([]);
+                    } else {
+                      toast.error('ZIP upload requires Portfolio plan');
+                    }
+                  }}
+                  className={`px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors ${
+                    uploadMode === 'zip' 
+                      ? 'bg-electric-teal text-white' 
+                      : canUseZipUpload
+                        ? 'bg-white text-gray-600 hover:bg-gray-50'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                  disabled={uploading || !canUseZipUpload}
+                  data-testid="mode-zip-btn"
+                >
+                  <Archive className="w-4 h-4" />
+                  ZIP Archive
+                  {!canUseZipUpload && <Lock className="w-3 h-3 ml-1" />}
+                </button>
+              </div>
+              {!canUseZipUpload && (
+                <span className="text-xs text-amber-600 flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Upgrade to Portfolio plan for ZIP uploads
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Drop Zone */}
         <Card className="mb-6" data-testid="dropzone-card">
           <CardContent className="p-0">
