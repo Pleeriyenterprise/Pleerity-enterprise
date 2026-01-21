@@ -250,9 +250,12 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             "last_synced_at": billing.get("updated_at") if billing else None,
             "billing_record_exists": billing is not None,
             
-            # Portal user
-            "portal_user": portal_user,
-            "password_setup_complete": portal_user.get("password_set", False) if portal_user else False,
+            # Portal user - include email from auth_email field
+            "portal_user": {
+                **portal_user,
+                "email": portal_user.get("auth_email") or portal_user.get("email")
+            } if portal_user else None,
+            "password_setup_complete": (portal_user.get("password_set", False) or portal_user.get("password_status") == "SET") if portal_user else False,
             
             # Recent events
             "recent_stripe_events": last_events,
