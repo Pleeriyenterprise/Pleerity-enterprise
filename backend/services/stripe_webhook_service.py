@@ -708,6 +708,36 @@ class StripeWebhookService:
             }
         )
         
+        # Send payment failed email
+        try:
+            from services.email_service import email_service
+            
+            client = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "contact_email": 1, "contact_name": 1}
+            )
+            
+            if client and client.get("contact_email"):
+                frontend_url = os.getenv("FRONTEND_URL", "https://secure-compliance-5.preview.emergentagent.com")
+                
+                # Get next retry date if available
+                retry_date = None
+                if invoice.get("next_payment_attempt"):
+                    retry_date = datetime.fromtimestamp(
+                        invoice.get("next_payment_attempt"), tz=timezone.utc
+                    ).strftime("%B %d, %Y")
+                
+                await email_service.send_payment_failed_email(
+                    recipient=client.get("contact_email"),
+                    client_name=client.get("contact_name", "Valued Customer"),
+                    client_id=client_id,
+                    billing_portal_link=f"{frontend_url}/app/billing",
+                    retry_date=retry_date
+                )
+                logger.info(f"Payment failed email sent to {client.get('contact_email')}")
+        except Exception as e:
+            logger.error(f"Failed to send payment failed email: {e}")
+        
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
