@@ -327,6 +327,62 @@ const AdminAssistantPage = () => {
                 </div>
               </div>
             )}
+
+            {/* Query History Panel */}
+            {clientSnapshot && (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" data-testid="query-history">
+                <button
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <History className="w-5 h-5 text-electric-teal" />
+                    <span className="font-semibold text-midnight-blue">Query History</span>
+                    {queryHistory.length > 0 && (
+                      <span className="px-2 py-0.5 bg-electric-teal/10 text-electric-teal text-xs rounded-full">
+                        {queryHistory.length}
+                      </span>
+                    )}
+                  </div>
+                  {showHistory ? (
+                    <ChevronUp className="w-5 h-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                  )}
+                </button>
+                
+                {showHistory && (
+                  <div className="border-t border-gray-100 max-h-60 overflow-y-auto">
+                    {loadingHistory ? (
+                      <div className="p-4 text-center">
+                        <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mx-auto" />
+                      </div>
+                    ) : queryHistory.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No previous queries for this client
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {queryHistory.map((query) => (
+                          <button
+                            key={query.query_id}
+                            onClick={() => loadPreviousQuery(query)}
+                            className="w-full p-3 text-left hover:bg-gray-50 transition-colors"
+                          >
+                            <p className="text-sm font-medium text-midnight-blue line-clamp-1">
+                              {query.question}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {formatDate(query.created_at)}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Panel - Chat Interface */}
