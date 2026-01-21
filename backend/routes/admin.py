@@ -1330,28 +1330,17 @@ async def get_feature_matrix(request: Request):
     
     Returns all features with their availability across all plans.
     Useful for documentation, auditing, and admin review.
+    Uses plan_registry as single source of truth.
     """
     user = await admin_route_guard(request)
     
     try:
-        from services.feature_entitlement import feature_entitlement_service, PLAN_METADATA
-        from models import BillingPlan
+        from services.plan_registry import plan_registry
         
-        matrix = feature_entitlement_service.get_entitlement_matrix()
-        
-        # Add plan metadata
-        plans = {
-            plan.value: {
-                **feature_entitlement_service.get_plan_metadata(plan),
-                "features": feature_entitlement_service.get_plan_features(plan)
-            }
-            for plan in BillingPlan
-        }
+        matrix = plan_registry.get_entitlement_matrix()
         
         return {
-            "feature_matrix": matrix,
-            "plans": plans,
-            "total_features": len(matrix),
+            **matrix,
             "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
