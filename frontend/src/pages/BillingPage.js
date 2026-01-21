@@ -262,26 +262,27 @@ const BillingPage = () => {
     setUpgrading(planCode);
     
     try {
-      // For now, show a toast - actual Stripe integration pending
+      // Call the billing API to create checkout session
+      const response = await api.post('/billing/checkout', { plan_code: planCode });
+      
       toast.success('Redirecting to payment...', {
         description: 'You will be redirected to complete your upgrade.',
       });
       
-      // TODO: Implement actual Stripe checkout session creation
-      // const response = await api.post('/billing/upgrade', { plan: planCode });
-      // window.location.href = response.data.checkout_url;
-      
-      // Temporary: Show info about pending Stripe integration
-      setTimeout(() => {
-        toast.info('Stripe integration pending', {
-          description: 'New price IDs are being configured. Please contact support to upgrade.',
-          duration: 5000,
-        });
+      // Redirect to checkout or billing portal
+      if (response.data.checkout_url) {
+        window.location.href = response.data.checkout_url;
+      } else if (response.data.portal_url) {
+        window.location.href = response.data.portal_url;
+      } else {
+        toast.error('No checkout URL received');
         setUpgrading(null);
-      }, 1500);
+      }
       
     } catch (error) {
-      toast.error('Failed to initiate upgrade');
+      console.error('Upgrade error:', error);
+      const errorMessage = error.response?.data?.detail || 'Failed to initiate upgrade';
+      toast.error(errorMessage);
       setUpgrading(null);
     }
   };
