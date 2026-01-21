@@ -193,6 +193,108 @@ async def get_documents(request: Request):
         )
 
 
+@router.get("/compliance-pack/{property_id}/preview")
+async def get_compliance_pack_preview(request: Request, property_id: str):
+    """Get a preview of what the compliance pack will contain."""
+    user = await client_route_guard(request)
+    
+    try:
+        from services.compliance_pack import compliance_pack_service
+        
+        preview = await compliance_pack_service.get_pack_preview(
+            property_id=property_id,
+            client_id=user["client_id"]
+        )
+        return preview
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Compliance pack preview error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate preview"
+        )
+
+
+@router.get("/compliance-pack/{property_id}/download")
+async def download_compliance_pack(
+    request: Request, 
+    property_id: str,
+    include_expired: bool = False
+):
+    """Download a compliance pack PDF for a property.
+    
+    Requires Portfolio plan (PLAN_6_15) or higher.
+    """
+    user = await client_route_guard(request)
+    
+    try:
+        # Plan gating check
+        from services.plan_gating import plan_gating_service
+        
+        allowed, error_msg = await plan_gating_service.enforce_feature(
+            user["client_id"], 
+            "compliance_packs"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "message": error_msg,
+                    "feature": "compliance_packs",
+                    "upgrade_required": True
+                }
+            )
+        
+        from services.compliance_pack import compliance_pack_service
+        
+        pdf_bytes = await compliance_pack_service.generate_compliance_pack(
+            property_id=property_id,
+            client_id=user["client_id"],
+            include_expired=include_expired,
+            requested_by=user["portal_user_id"],
+            requested_by_role=user.get("role")
+        )
+        
+        # Get property for filename
+        db = database.get_db()
+        property_doc = await db.properties.find_one(
+            {"property_id": property_id},
+            {"_id": 0, "nickname": 1, "postcode": 1}
+        )
+        
+        filename = f"compliance_pack_{property_doc.get('postcode', property_id)}.pdf"
+        if property_doc and property_doc.get('nickname'):
+            filename = f"compliance_pack_{property_doc['nickname'].replace(' ', '_')}.pdf"
+        
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Compliance pack download error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate compliance pack"
+        )
+
 
 @router.post("/tenants/invite")
 async def invite_tenant(request: Request):
