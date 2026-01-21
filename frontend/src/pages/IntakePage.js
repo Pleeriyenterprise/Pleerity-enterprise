@@ -119,8 +119,8 @@ const IntakePage = () => {
     preferred_contact: 'EMAIL',
     phone: '',
     
-    // Step 2: Plan
-    billing_plan: 'PLAN_1',
+    // Step 2: Plan - NEW DEFAULT
+    billing_plan: 'PLAN_1_SOLO',
     
     // Step 3: Properties
     properties: [{
@@ -155,6 +155,9 @@ const IntakePage = () => {
     consent_data_processing: false,
     consent_service_boundary: false
   });
+
+  // Property limit state for upgrade prompts
+  const [propertyLimitError, setPropertyLimitError] = useState(null);
 
   // Load plans on mount
   useEffect(() => {
