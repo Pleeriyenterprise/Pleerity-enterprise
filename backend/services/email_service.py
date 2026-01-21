@@ -386,6 +386,75 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.AI_EXTRACTION_APPLIED:
+            # AI extraction applied notification
+            footer = self._build_email_footer(model)
+            customer_ref = model.get('customer_reference', '')
+            ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
+            
+            status_color = model.get('status_color', '#22c55e')
+            status_icon = "✅" if model.get('requirement_status') == 'COMPLIANT' else "⚠️" if model.get('requirement_status') == 'EXPIRING_SOON' else "❌"
+            
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0; display: inline-block;">🤖 AI Document Analysis Complete</h1>
+                    {ref_badge}
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('client_name', 'there')},</p>
+                    <p>Good news! Our AI has successfully extracted and saved certificate details from your uploaded document.</p>
+                    
+                    <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #166534;">📋 Certificate Details Saved</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b; width: 140px;">Property:</td>
+                                <td style="padding: 8px 0; font-weight: bold;">{model.get('property_address', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Document Type:</td>
+                                <td style="padding: 8px 0; font-weight: bold;">{model.get('document_type', 'Certificate')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Certificate No:</td>
+                                <td style="padding: 8px 0; font-weight: bold; font-family: monospace;">{model.get('certificate_number', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Expiry Date:</td>
+                                <td style="padding: 8px 0; font-weight: bold;">{model.get('expiry_date', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Compliance Status:</td>
+                                <td style="padding: 8px 0;">
+                                    <span style="background-color: {status_color}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;">
+                                        {status_icon} {model.get('requirement_status', 'UPDATED')}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p style="color: #64748b; font-size: 14px;">
+                        <strong>What happens next?</strong><br>
+                        • Your compliance dashboard has been updated automatically<br>
+                        • You'll receive reminders before this certificate expires<br>
+                        • You can review or edit these details in your portal
+                    </p>
+                    
+                    <p style="margin: 25px 0;">
+                        <a href="{model.get('portal_link', '#')}" 
+                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
+                                  text-decoration: none; border-radius: 6px; display: inline-block;">
+                            View in Dashboard
+                        </a>
+                    </p>
+                </div>
+                {footer}
+            </body>
+            </html>
+            """
         else:
             # Generic template
             footer = self._build_email_footer(model)
