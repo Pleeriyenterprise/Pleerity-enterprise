@@ -280,7 +280,12 @@
 
 ### P1 (High Priority)
 - [x] ~~ZIP file bulk upload~~ ✅ COMPLETED
-- [ ] Full Address Autocomplete with `getaddress.io` (PAUSED)
+- [x] ~~Compliance Score Trending~~ ✅ COMPLETED (Session 7)
+- [x] ~~Feature Entitlement System~~ ✅ COMPLETED (Session 7)
+- [x] ~~iCal Calendar Export~~ ✅ COMPLETED (Session 7)
+- [x] ~~White-Label Branding~~ ✅ COMPLETED (Session 7)
+- [x] ~~Professional PDF Reports~~ ✅ COMPLETED (Session 7)
+- [ ] Full Address Autocomplete with `getaddress.io` (PAUSED by user)
 
 ### P2 (Medium Priority)
 - [ ] Property Price Context - Show average property price in area after postcode selection
@@ -288,7 +293,7 @@
 - [ ] Production SMS sending with real Twilio credentials
 - [ ] Document version history
 - [ ] Multi-language support
-- [ ] Calendar export (iCal format)
+- [ ] Full calendar export (subscribe via external URL)
 
 ### P3 (Low Priority)
 - [ ] Mobile app (React Native)
