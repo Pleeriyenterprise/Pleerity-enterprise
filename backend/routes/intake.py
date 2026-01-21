@@ -321,20 +321,103 @@ async def _ensure_unique_reference(db) -> str:
 
 @router.get("/plans")
 async def get_plans():
-    """Get available billing plans with property limits and features."""
+    """Get available billing plans with property limits and features.
+    
+    Returns the new plan structure:
+    - PLAN_1_SOLO: 2 properties, £19/mo, £49 setup
+    - PLAN_2_PORTFOLIO: 10 properties, £39/mo, £79 setup
+    - PLAN_3_PRO: 25 properties, £79/mo, £149 setup
+    """
+    # Use plan_registry as single source of truth
+    all_plans = plan_registry.get_all_plans()
+    
     plans = []
-    for plan_enum, details in PLAN_DETAILS.items():
+    for plan in all_plans:
         plans.append({
-            "plan_id": plan_enum.value,
-            "name": details["name"],
-            "max_properties": details["max_properties"],
-            "monthly_price": details["monthly_price"],
-            "setup_fee": details["setup_fee"],
-            "total_first_payment": details["monthly_price"] + details["setup_fee"],
-            "features": details["features"]
+            "plan_id": plan["code"],
+            "name": plan["name"],
+            "display_name": plan.get("display_name", plan["name"]),
+            "max_properties": plan["max_properties"],
+            "monthly_price": plan["monthly_price"],
+            "setup_fee": plan["onboarding_fee"],
+            "total_first_payment": plan["monthly_price"] + plan["onboarding_fee"],
+            "features": PLAN_DETAILS.get(
+                BillingPlan(plan["code"]) if plan["code"] in [e.value for e in BillingPlan] else BillingPlan.PLAN_1_SOLO,
+                {}
+            ).get("features", []),
+            "color": plan.get("color"),
+            "badge": plan.get("badge"),
+            "is_popular": plan.get("is_popular", False),
         })
     
     return {"plans": plans}
+
+
+@router.post("/validate-property-count")
+async def validate_property_count(request: Request):
+    """Validate property count against plan limit.
+    
+    INTAKE-LEVEL GATING: This endpoint MUST be called before adding properties
+    in the frontend to enforce plan limits immediately.
+    
+    Request body:
+    - plan_id: The selected plan code
+    - property_count: Number of properties being added
+    
+    Returns:
+    - allowed: true if within limit
+    - error: message if limit exceeded
+    - upgrade_info: details about required upgrade
+    """
+    body = await request.json()
+    plan_id = body.get("plan_id", "PLAN_1_SOLO")
+    property_count = body.get("property_count", 1)
+    
+    try:
+        # Resolve plan code
+        try:
+            plan_code = PlanCode(plan_id)
+        except ValueError:
+            # Handle legacy codes
+            legacy_mapping = {
+                "PLAN_1": PlanCode.PLAN_1_SOLO,
+                "PLAN_2_5": PlanCode.PLAN_2_PORTFOLIO,
+                "PLAN_6_15": PlanCode.PLAN_3_PRO,
+            }
+            plan_code = legacy_mapping.get(plan_id, PlanCode.PLAN_1_SOLO)
+        
+        # Check property limit using plan_registry
+        is_allowed, error_msg, error_details = plan_registry.check_property_limit(
+            plan_code,
+            property_count
+        )
+        
+        if not is_allowed:
+            return {
+                "allowed": False,
+                "error": error_msg,
+                "error_code": error_details.get("error_code"),
+                "current_limit": error_details.get("current_limit"),
+                "requested_count": property_count,
+                "upgrade_required": True,
+                "upgrade_to": error_details.get("upgrade_to"),
+                "upgrade_to_name": error_details.get("upgrade_to_name"),
+                "upgrade_to_limit": error_details.get("upgrade_to_limit"),
+            }
+        
+        return {
+            "allowed": True,
+            "plan": plan_code.value,
+            "max_properties": plan_registry.get_property_limit(plan_code),
+            "current_count": property_count,
+        }
+    
+    except Exception as e:
+        logger.error(f"Property count validation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to validate property count"
+        )
 
 
 @router.get("/councils")
