@@ -381,6 +381,20 @@ const BillingPage = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Cancellation Pending Notice */}
+        {billingStatus?.cancel_at_period_end && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="cancellation-notice">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              <strong>Cancellation Scheduled</strong>
+              <p className="mt-1">
+                Your subscription will end on {billingStatus.current_period_end ? new Date(billingStatus.current_period_end).toLocaleDateString() : 'the end of your billing period'}. 
+                You'll continue to have full access until then.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Current Plan Banner */}
         {currentPlan && (
           <div className="bg-gradient-to-r from-midnight-blue to-midnight-blue/90 text-white rounded-2xl p-6 mb-8" data-testid="current-plan-banner">
@@ -399,6 +413,15 @@ const BillingPage = () => {
                   £{PLANS.find(p => p.code === currentPlan)?.monthlyPrice || 0}
                   <span className="text-lg font-normal text-gray-300">/mo</span>
                 </p>
+                {billingStatus?.has_subscription && !billingStatus?.cancel_at_period_end && (
+                  <button
+                    onClick={() => setShowCancelModal(true)}
+                    className="text-xs text-gray-400 hover:text-white mt-2 underline"
+                    data-testid="cancel-subscription-link"
+                  >
+                    Cancel subscription
+                  </button>
+                )}
               </div>
             </div>
           </div>
