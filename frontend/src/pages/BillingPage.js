@@ -692,6 +692,74 @@ const BillingPage = () => {
           </Button>
         </div>
       </main>
+
+      {/* Cancel Subscription Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="cancel-modal">
+          <div className="bg-white rounded-2xl p-6 max-w-md mx-4 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <XCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Cancel Subscription</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to cancel your subscription? You have two options:
+            </p>
+            
+            <div className="space-y-3 mb-6">
+              <div className="p-4 border border-gray-200 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-1">Cancel at Period End</h4>
+                <p className="text-sm text-gray-500">
+                  Keep full access until {billingStatus?.current_period_end ? new Date(billingStatus.current_period_end).toLocaleDateString() : 'the end of your billing period'}, then your subscription ends.
+                </p>
+              </div>
+              <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+                <h4 className="font-medium text-red-800 mb-1">Cancel Immediately</h4>
+                <p className="text-sm text-red-600">
+                  Lose access immediately. Your data will be preserved but features will be locked.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => handleCancelSubscription(false)}
+                variant="outline"
+                className="w-full"
+                disabled={cancelling}
+                data-testid="cancel-at-period-end-btn"
+              >
+                {cancelling ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                Cancel at Period End
+              </Button>
+              <Button
+                onClick={() => handleCancelSubscription(true)}
+                variant="destructive"
+                className="w-full bg-red-600 hover:bg-red-700"
+                disabled={cancelling}
+                data-testid="cancel-immediately-btn"
+              >
+                {cancelling ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                Cancel Immediately
+              </Button>
+              <Button
+                onClick={() => setShowCancelModal(false)}
+                variant="ghost"
+                className="w-full"
+                disabled={cancelling}
+              >
+                Keep My Subscription
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
