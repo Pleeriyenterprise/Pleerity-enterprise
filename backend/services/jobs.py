@@ -337,9 +337,13 @@ class JobScheduler:
             from services.email_service import email_service
             from services.webhook_service import fire_compliance_status_changed
             
-            # Get all active clients
+            # Get all active clients with ENABLED entitlement
+            # Per spec: no background jobs when entitlement is DISABLED
             clients = await self.db.clients.find(
-                {"subscription_status": "ACTIVE"},
+                {
+                    "subscription_status": "ACTIVE",
+                    "entitlement_status": {"$in": ["ENABLED", None]}  # None for legacy compatibility
+                },
                 {"_id": 0}
             ).to_list(1000)
             
