@@ -209,6 +209,18 @@
 - `POST /api/admin/admins/{id}/reactivate` - Reactivate disabled admin
 - `POST /api/admin/admins/{id}/resend-invite` - Resend invitation email
 
+### Tenant Portal
+- `GET /api/tenant/dashboard` - Tenant dashboard with properties and compliance summary
+- `GET /api/tenant/property/{property_id}` - Property details with certificates
+- `GET /api/tenant/compliance-pack/{property_id}` - Download PDF compliance pack (FREE)
+- `POST /api/tenant/request-certificate` - Request certificate from landlord
+- `POST /api/tenant/contact-landlord` - Send message to landlord
+- `GET /api/tenant/requests` - List tenant's certificate requests
+
+### Compliance Pack
+- `GET /api/client/compliance-pack/{property_id}/preview` - Preview certificate list (JSON)
+- `GET /api/client/compliance-pack/{property_id}/download` - Download PDF (Plan gated)
+
 ### Webhooks
 - `GET /api/webhooks` - List webhooks
 - `POST /api/webhooks` - Create webhook
