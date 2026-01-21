@@ -12,11 +12,11 @@ from typing import Optional
 from database import database
 from services.stripe_service import stripe_service
 from services.plan_registry import plan_registry, PlanCode
-from utils.auth import get_current_user, client_route_guard
+from middleware import client_route_guard
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/billing", tags=["billing"], dependencies=[Depends(client_route_guard)])
+router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
 class CheckoutRequest(BaseModel):
