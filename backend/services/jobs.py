@@ -654,6 +654,15 @@ async def run_compliance_check():
     return count
 
 
+async def run_renewal_reminders():
+    """Run subscription renewal reminder job."""
+    scheduler = JobScheduler()
+    await scheduler.connect()
+    count = await scheduler.send_renewal_reminders()
+    await scheduler.close()
+    return count
+
+
 async def run_scheduled_reports():
     """Run scheduled report generation and email delivery."""
     scheduler = JobScheduler()
