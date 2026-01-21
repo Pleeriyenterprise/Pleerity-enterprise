@@ -4,9 +4,11 @@ ROLE_TENANT has STRICTLY LIMITED permissions:
 ✅ View property compliance status (GREEN/AMBER/RED)
 ✅ View certificate status and expiry dates
 ✅ View basic summaries
+✅ Download compliance pack for assigned properties
+✅ Request certificate updates from landlord
+✅ Contact landlord via messaging
 
 ❌ No document uploads
-❌ No messaging or chat
 ❌ No audit logs access
 ❌ No reports access
 ❌ No billing/settings visibility
@@ -17,6 +19,7 @@ from database import database
 from middleware import client_route_guard
 from datetime import datetime, timezone
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/tenant", tags=["tenant"])
