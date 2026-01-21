@@ -565,6 +565,32 @@ Set up your admin account here: {model.get('setup_link', '#')}
 If you did not expect this invitation, please contact the system administrator.
 {footer}
             """
+        elif template_alias == EmailTemplateAlias.AI_EXTRACTION_APPLIED:
+            status_icon = "✅" if model.get('requirement_status') == 'COMPLIANT' else "⚠️" if model.get('requirement_status') == 'EXPIRING_SOON' else "❌"
+            return f"""
+🤖 AI DOCUMENT ANALYSIS COMPLETE
+{ref_line}
+
+Hello {model.get('client_name', 'there')},
+
+Good news! Our AI has successfully extracted and saved certificate details from your uploaded document.
+
+📋 CERTIFICATE DETAILS SAVED
+----------------------------
+Property:         {model.get('property_address', 'N/A')}
+Document Type:    {model.get('document_type', 'Certificate')}
+Certificate No:   {model.get('certificate_number', 'N/A')}
+Expiry Date:      {model.get('expiry_date', 'N/A')}
+Status:           {status_icon} {model.get('requirement_status', 'UPDATED')}
+
+WHAT HAPPENS NEXT:
+• Your compliance dashboard has been updated automatically
+• You'll receive reminders before this certificate expires
+• You can review or edit these details in your portal
+
+View in Dashboard: {model.get('portal_link', '#')}
+{footer}
+            """
         else:
             return f"""
 Compliance Vault Pro
