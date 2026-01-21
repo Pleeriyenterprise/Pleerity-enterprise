@@ -27,7 +27,7 @@ class TestSubscriptionLifecycleEmails:
     def admin_token(self):
         """Get admin authentication token."""
         response = requests.post(
-            f"{BASE_URL}/api/admin/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:
