@@ -43,6 +43,8 @@ const CheckoutSuccessRedirect = () => {
 // Client pages
 import ClientDashboard from './pages/ClientDashboard';
 import PropertiesPage from './pages/PropertiesPage';
+import RequirementsPage from './pages/RequirementsPage';
+import ComplianceScorePage from './pages/ComplianceScorePage';
 import AssistantPage from './pages/AssistantPage';
 import ProfilePage from './pages/ProfilePage';
 import PropertyCreatePage from './pages/PropertyCreatePage';
@@ -130,6 +132,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <PropertiesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/requirements" 
+              element={
+                <ProtectedRoute>
+                  <RequirementsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/compliance-score" 
+              element={
+                <ProtectedRoute>
+                  <ComplianceScorePage />
                 </ProtectedRoute>
               } 
             />
