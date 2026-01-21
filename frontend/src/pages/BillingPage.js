@@ -208,14 +208,18 @@ const BillingPage = () => {
   const [searchParams] = useSearchParams();
   const [currentPlan, setCurrentPlan] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
+  const [billingStatus, setBillingStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [upgrading, setUpgrading] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   
   const highlightPlan = searchParams.get('upgrade_to');
 
   useEffect(() => {
     fetchEntitlements();
+    fetchBillingStatus();
     // Expand all categories by default
     const expanded = {};
     FEATURE_CATEGORIES.forEach(cat => {
@@ -234,6 +238,44 @@ const BillingPage = () => {
       toast.error('Failed to load plan information');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBillingStatus = async () => {
+    try {
+      const response = await api.get('/billing/status');
+      setBillingStatus(response.data);
+    } catch (error) {
+      console.error('Failed to fetch billing status:', error);
+    }
+  };
+
+  const handleCancelSubscription = async (cancelImmediately = false) => {
+    setCancelling(true);
+    try {
+      await api.post('/billing/cancel', { cancel_immediately: cancelImmediately });
+      
+      if (cancelImmediately) {
+        toast.success('Subscription cancelled', {
+          description: 'Your subscription has been cancelled immediately.',
+        });
+      } else {
+        toast.success('Cancellation scheduled', {
+          description: 'Your subscription will end at the current billing period.',
+        });
+      }
+      
+      setShowCancelModal(false);
+      // Refresh billing status
+      await fetchBillingStatus();
+      await fetchEntitlements();
+      
+    } catch (error) {
+      console.error('Cancel error:', error);
+      const errorMessage = error.response?.data?.detail || 'Failed to cancel subscription';
+      toast.error(errorMessage);
+    } finally {
+      setCancelling(false);
     }
   };
 
