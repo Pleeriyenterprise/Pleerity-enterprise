@@ -122,7 +122,7 @@ async def get_billing_status(request: Request):
 @router.post("/portal")
 async def create_billing_portal(request: Request):
     """Create Stripe billing portal session for subscription management."""
-    user = request.state.user
+    user = await client_route_guard(request)
     client_id = user.get("client_id")
     
     if not client_id:
