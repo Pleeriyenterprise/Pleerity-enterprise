@@ -204,12 +204,18 @@ class TestPlanGating:
         assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.text}"
         
         data = response.json()
-        # Check for plan gating error
-        detail = data.get("detail", "")
-        assert "PLAN_NOT_ELIGIBLE" in detail or "plan" in detail.lower() or "upgrade" in detail.lower(), \
-            f"Expected plan gating error, got: {detail}"
-        
-        print(f"✓ Webhook creation correctly blocked for PLAN_1: {detail}")
+        # Check for plan gating error - detail can be dict or string
+        detail = data.get("detail", {})
+        if isinstance(detail, dict):
+            error_code = detail.get("error_code", "")
+            message = detail.get("message", "")
+            assert error_code == "PLAN_NOT_ELIGIBLE" or "plan" in message.lower(), \
+                f"Expected plan gating error, got: {detail}"
+            print(f"✓ Webhook creation correctly blocked for PLAN_1: {message}")
+        else:
+            assert "PLAN_NOT_ELIGIBLE" in str(detail) or "plan" in str(detail).lower(), \
+                f"Expected plan gating error, got: {detail}"
+            print(f"✓ Webhook creation correctly blocked for PLAN_1: {detail}")
 
 
 class TestAIAssistant:
@@ -301,9 +307,9 @@ class TestPropertiesEndpoint:
         return response.json()["access_token"]
     
     def test_properties_list_endpoint(self, client_token):
-        """Test GET /api/properties returns properties list"""
+        """Test GET /api/client/properties returns properties list"""
         headers = {"Authorization": f"Bearer {client_token}"}
-        response = requests.get(f"{BASE_URL}/api/properties", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/client/properties", headers=headers)
         
         assert response.status_code == 200, f"Properties failed: {response.text}"
         data = response.json()
