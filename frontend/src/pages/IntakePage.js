@@ -724,15 +724,15 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
                   ? 'border-electric-teal bg-electric-teal/5 ring-2 ring-electric-teal/20'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
-              data-testid={`plan-${plan.plan_id.toLowerCase()}`}
+              data-testid={`plan-${plan.plan_id.toLowerCase().replace(/_/g, '-')}`}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-midnight-blue">{plan.name}</h3>
-                    {plan.plan_id === 'PLAN_2_5' && (
+                    <h3 className="text-lg font-semibold text-midnight-blue">{plan.display_name || plan.name}</h3>
+                    {plan.is_popular && (
                       <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
-                        Popular
+                        {plan.badge || 'Popular'}
                       </span>
                     )}
                   </div>
@@ -746,13 +746,16 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
               
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <ul className="grid grid-cols-2 gap-2">
-                  {plan.features.map((feature, idx) => (
+                  {plan.features?.slice(0, 6).map((feature, idx) => (
                     <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
                       <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
                       {feature}
                     </li>
                   ))}
                 </ul>
+                {plan.features?.length > 6 && (
+                  <p className="text-xs text-gray-400 mt-2">+{plan.features.length - 6} more features</p>
+                )}
               </div>
               
               <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
