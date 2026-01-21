@@ -1,46 +1,64 @@
+"""Webhook Routes - Stripe and other external webhooks.
+
+Stripe webhook endpoint with:
+- Signature verification
+- Idempotency (via StripeEvent collection)
+- Full audit logging
+
+POST /api/webhook/stripe - Main Stripe webhook endpoint
+"""
 from fastapi import APIRouter, HTTPException, Request, Header, status
 from database import database
-from services.stripe_service import stripe_service
-from services.provisioning import provisioning_service
+from services.stripe_webhook_service import stripe_webhook_service
 import logging
 import json
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/webhook", tags=["webhooks"])
 
+
 @router.post("/stripe")
-async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
-    """Handle Stripe webhooks."""
+async def stripe_webhook(
+    request: Request, 
+    stripe_signature: str = Header(None, alias="Stripe-Signature")
+):
+    """
+    Handle Stripe webhooks.
+    
+    Security:
+    - Verifies Stripe signature when STRIPE_WEBHOOK_SECRET is set
+    - Implements idempotency via StripeEvent collection
+    - All events are audit logged
+    
+    Handled Events:
+    - checkout.session.completed (primary provisioning trigger)
+    - customer.subscription.created
+    - customer.subscription.updated  
+    - customer.subscription.deleted
+    - invoice.paid
+    - invoice.payment_failed
+    """
     try:
-        body = await request.body()
-        webhook_data = json.loads(body)
+        payload = await request.body()
         
-        # Process webhook
-        await stripe_service.handle_webhook(webhook_data, stripe_signature)
+        success, message, details = await stripe_webhook_service.process_webhook(
+            payload=payload,
+            signature=stripe_signature or ""
+        )
         
-        # If payment completed, trigger provisioning
-        event_type = webhook_data.get("type")
-        if event_type == "checkout.session.completed":
-            data = webhook_data.get("data", {}).get("object", {})
-            metadata = data.get("metadata", {})
-            client_id = metadata.get("client_id")
-            
-            if client_id:
-                # Trigger provisioning in background
-                success, message = await provisioning_service.provision_client_portal(client_id)
-                if success:
-                    logger.info(f"Provisioning triggered for client {client_id}")
-                else:
-                    logger.error(f"Provisioning failed for client {client_id}: {message}")
-        
-        return {"status": "received"}
+        if success:
+            return {"status": "received", "message": message, "details": details}
+        else:
+            # Still return 200 to prevent Stripe retries
+            # Errors are logged internally
+            logger.error(f"Webhook processing failed: {message}")
+            return {"status": "error", "message": message}
     
     except Exception as e:
         logger.error(f"Stripe webhook error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Webhook processing failed"
-        )
+        # Return 200 to prevent Stripe retries - we've logged the error
+        return {"status": "error", "message": str(e)}
+
 
 @router.post("/postmark/delivery")
 async def postmark_delivery_webhook(request: Request):
@@ -71,6 +89,7 @@ async def postmark_delivery_webhook(request: Request):
     except Exception as e:
         logger.error(f"Postmark delivery webhook error: {e}")
         return {"status": "error"}
+
 
 @router.post("/postmark/bounce")
 async def postmark_bounce_webhook(request: Request):
