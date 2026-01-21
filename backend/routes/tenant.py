@@ -239,3 +239,294 @@ async def get_tenant_property_details(request: Request, property_id: str):
         "certificates": certificates,
         "note": "This view shows the compliance status of certificates for your rental property. Contact your landlord for more details."
     }
+
+
+@router.get("/compliance-pack/{property_id}")
+async def get_tenant_compliance_pack(request: Request, property_id: str):
+    """Download compliance pack for a property the tenant is assigned to.
+    
+    Tenants get free access to compliance packs for their assigned properties.
+    """
+    from fastapi.responses import StreamingResponse
+    import io
+    
+    user = await tenant_route_guard(request)
+    db = database.get_db()
+    
+    client_id = user.get("client_id")
+    tenant_id = user.get("portal_user_id")
+    
+    # Verify property access
+    property_doc = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0}
+    )
+    
+    if not property_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Property not found"
+        )
+    
+    # Check tenant assignment
+    if user.get("role") == "ROLE_TENANT":
+        assignment = await db.tenant_assignments.find_one({
+            "tenant_id": tenant_id,
+            "property_id": property_id
+        })
+        all_assignments = await db.tenant_assignments.count_documents({"tenant_id": tenant_id})
+        if all_assignments > 0 and not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not assigned to this property"
+            )
+    
+    try:
+        from services.compliance_pack import compliance_pack_service
+        
+        pdf_bytes = await compliance_pack_service.generate_compliance_pack(
+            property_id=property_id,
+            client_id=client_id,
+            include_expired=False,  # Tenants only see valid certificates
+            requested_by=tenant_id,
+            requested_by_role="ROLE_TENANT"
+        )
+        
+        filename = f"compliance_pack_{property_doc.get('postcode', property_id)}.pdf"
+        
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    
+    except Exception as e:
+        logger.error(f"Tenant compliance pack error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate compliance pack"
+        )
+
+
+@router.post("/request-certificate")
+async def request_certificate_update(request: Request):
+    """Request landlord to provide an updated certificate.
+    
+    Creates a request that the landlord will see in their dashboard.
+    """
+    user = await tenant_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        body = await request.json()
+        property_id = body.get("property_id")
+        certificate_type = body.get("certificate_type")
+        message = body.get("message", "")
+        
+        if not property_id or not certificate_type:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="property_id and certificate_type are required"
+            )
+        
+        # Verify property access
+        client_id = user.get("client_id")
+        tenant_id = user.get("portal_user_id")
+        
+        property_doc = await db.properties.find_one(
+            {"property_id": property_id, "client_id": client_id},
+            {"_id": 0}
+        )
+        
+        if not property_doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found"
+            )
+        
+        # Check tenant assignment
+        if user.get("role") == "ROLE_TENANT":
+            assignment = await db.tenant_assignments.find_one({
+                "tenant_id": tenant_id,
+                "property_id": property_id
+            })
+            all_assignments = await db.tenant_assignments.count_documents({"tenant_id": tenant_id})
+            if all_assignments > 0 and not assignment:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not assigned to this property"
+                )
+        
+        # Create certificate request
+        import uuid
+        request_id = f"req-{uuid.uuid4().hex[:12]}"
+        
+        certificate_request = {
+            "request_id": request_id,
+            "client_id": client_id,
+            "property_id": property_id,
+            "tenant_id": tenant_id,
+            "tenant_name": user.get("full_name", user.get("email")),
+            "tenant_email": user.get("email") or user.get("auth_email"),
+            "certificate_type": certificate_type,
+            "message": message[:500] if message else "",
+            "status": "PENDING",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.certificate_requests.insert_one(certificate_request)
+        
+        # Notify landlord (try to send email)
+        try:
+            from services.email_service import email_service
+            
+            client = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "email": 1, "full_name": 1}
+            )
+            
+            if client and client.get("email"):
+                await email_service.send_email(
+                    recipient=client["email"],
+                    template_alias="reminder",
+                    template_model={
+                        "subject": "Certificate Request from Tenant",
+                        "message": f"Your tenant {user.get('full_name', 'A tenant')} has requested an updated {certificate_type.replace('_', ' ')} certificate for property {property_doc.get('address_line_1', '')}.\n\nMessage: {message or 'No message provided.'}\n\nPlease log into Compliance Vault Pro to respond.",
+                        "company_name": "Pleerity Enterprise Ltd"
+                    },
+                    client_id=client_id,
+                    subject=f"Certificate Request from Tenant: {certificate_type.replace('_', ' ')}"
+                )
+        except Exception as email_err:
+            logger.warning(f"Failed to send certificate request email: {email_err}")
+        
+        logger.info(f"Certificate request created: {request_id} by tenant {tenant_id}")
+        
+        return {
+            "message": "Certificate request submitted successfully",
+            "request_id": request_id,
+            "note": "Your landlord has been notified and will respond soon."
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Certificate request error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to submit request"
+        )
+
+
+@router.get("/requests")
+async def get_tenant_requests(request: Request):
+    """Get list of certificate requests submitted by this tenant."""
+    user = await tenant_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        tenant_id = user.get("portal_user_id")
+        
+        requests = await db.certificate_requests.find(
+            {"tenant_id": tenant_id},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(50)
+        
+        return {"requests": requests}
+    
+    except Exception as e:
+        logger.error(f"Get tenant requests error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load requests"
+        )
+
+
+@router.post("/contact-landlord")
+async def contact_landlord(request: Request):
+    """Send a message to the landlord.
+    
+    Simple messaging for tenants to communicate with their landlord.
+    """
+    user = await tenant_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        body = await request.json()
+        property_id = body.get("property_id")
+        subject = body.get("subject", "Message from Tenant")
+        message = body.get("message", "")
+        
+        if not property_id or not message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="property_id and message are required"
+            )
+        
+        if len(message) > 1000:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Message too long (max 1000 characters)"
+            )
+        
+        # Verify property access
+        client_id = user.get("client_id")
+        tenant_id = user.get("portal_user_id")
+        
+        property_doc = await db.properties.find_one(
+            {"property_id": property_id, "client_id": client_id},
+            {"_id": 0, "address_line_1": 1, "postcode": 1}
+        )
+        
+        if not property_doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found"
+            )
+        
+        # Get landlord info
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "email": 1, "full_name": 1}
+        )
+        
+        if not client or not client.get("email"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unable to contact landlord"
+            )
+        
+        # Send email to landlord
+        from services.email_service import email_service
+        
+        property_address = f"{property_doc.get('address_line_1', '')}, {property_doc.get('postcode', '')}"
+        
+        await email_service.send_email(
+            recipient=client["email"],
+            template_alias="reminder",
+            template_model={
+                "subject": subject,
+                "message": f"Message from: {user.get('full_name', 'Your tenant')}\nProperty: {property_address}\n\n{message}\n\n---\nReply to this email or log into Compliance Vault Pro to respond.",
+                "company_name": "Pleerity Enterprise Ltd"
+            },
+            client_id=client_id,
+            subject=f"[Tenant Message] {subject}"
+        )
+        
+        logger.info(f"Tenant message sent from {tenant_id} to landlord {client_id}")
+        
+        return {
+            "message": "Message sent successfully",
+            "note": "Your landlord will receive your message via email."
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Contact landlord error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send message"
+        )
