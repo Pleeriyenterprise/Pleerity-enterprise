@@ -153,6 +153,7 @@ const BulkUploadPage = () => {
 
   const clearAllFiles = () => {
     setFiles([]);
+    setZipFile(null);
     setUploadResults(null);
   };
 
@@ -162,6 +163,76 @@ const BulkUploadPage = () => {
       return;
     }
 
+    if (uploadMode === 'zip') {
+      await handleZipUpload();
+    } else {
+      await handleBulkUpload();
+    }
+  };
+
+  const handleZipUpload = async () => {
+    if (!zipFile) {
+      toast.error('Please select a ZIP file');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+    setZipFile(prev => ({ ...prev, status: 'uploading' }));
+
+    try {
+      const formData = new FormData();
+      formData.append('property_id', selectedProperty);
+      formData.append('file', zipFile.file);
+
+      const response = await api.post('/documents/zip-upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
+      });
+
+      setZipFile(prev => ({ ...prev, status: 'success' }));
+      setUploadResults(response.data.summary);
+
+      // Convert results to files format for display
+      const extractedFiles = (response.data.results || []).map((r, idx) => ({
+        id: `extracted-${idx}`,
+        name: r.filename,
+        status: r.status === 'uploaded' ? 'success' : r.status === 'skipped' ? 'skipped' : 'error',
+        documentId: r.document_id,
+        matchedRequirement: r.matched_requirement,
+        aiAnalyzed: r.ai_analyzed,
+        error: r.error || r.reason
+      }));
+      setFiles(extractedFiles);
+
+      const { successful, failed, skipped, auto_matched } = response.data.summary;
+      if (failed === 0) {
+        toast.success(`ZIP processed! ${successful} documents uploaded successfully.`);
+      } else {
+        toast.warning(`${successful} uploaded, ${failed} failed, ${skipped} skipped`);
+      }
+
+      if (auto_matched > 0) {
+        toast.info(`${auto_matched} document(s) automatically matched to requirements via AI`);
+      }
+
+    } catch (error) {
+      const errorDetail = error.response?.data?.detail;
+      if (errorDetail?.error_code === 'PLAN_NOT_ELIGIBLE') {
+        toast.error(`Upgrade required: ${errorDetail.message}`);
+      } else {
+        toast.error(typeof errorDetail === 'string' ? errorDetail : 'ZIP upload failed');
+      }
+      setZipFile(prev => ({ ...prev, status: 'error' }));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleBulkUpload = async () => {
     if (files.length === 0) {
       toast.error('Please add files to upload');
       return;
@@ -198,6 +269,31 @@ const BulkUploadPage = () => {
           status: result?.status === 'uploaded' ? 'success' : 'error',
           documentId: result?.document_id,
           matchedRequirement: result?.matched_requirement,
+          aiAnalyzed: result?.ai_analyzed,
+          error: result?.error
+        };
+      }));
+
+      setUploadResults(response.data.summary);
+
+      const { successful, failed, auto_matched } = response.data.summary;
+      if (failed === 0) {
+        toast.success(`All ${successful} documents uploaded successfully!`);
+      } else {
+        toast.warning(`${successful} uploaded, ${failed} failed`);
+      }
+
+      if (auto_matched > 0) {
+        toast.info(`${auto_matched} document(s) automatically matched to requirements via AI`);
+      }
+
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Bulk upload failed');
+      setFiles(prev => prev.map(f => ({ ...f, status: 'error' })));
+    } finally {
+      setUploading(false);
+    }
+  };
           aiAnalyzed: result?.ai_analyzed,
           error: result?.error
         };
