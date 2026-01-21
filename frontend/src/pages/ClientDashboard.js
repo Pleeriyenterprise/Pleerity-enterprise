@@ -17,12 +17,14 @@ const ClientDashboard = () => {
   const [error, setError] = useState('');
   const [notificationPrefs, setNotificationPrefs] = useState(null);
   const [complianceScore, setComplianceScore] = useState(null);
+  const [scoreTrend, setScoreTrend] = useState(null);
   const [showScoreExplanation, setShowScoreExplanation] = useState(false);
 
   useEffect(() => {
     fetchDashboard();
     fetchNotificationPrefs();
     fetchComplianceScore();
+    fetchScoreTrend();
   }, []);
 
   const fetchDashboard = async () => {
