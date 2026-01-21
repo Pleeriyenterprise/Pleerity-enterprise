@@ -15,6 +15,111 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
+def _normalize_and_parse_date(date_value) -> datetime:
+    """Enterprise-safe date normalization and parsing.
+    
+    Handles:
+    - ISO format: YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS, YYYY-MM-DDTHH:MM:SSZ
+    - UK format: DD/MM/YYYY
+    - Unicode dash variants (en-dash, em-dash, figure dash, etc.)
+    - Hidden whitespace characters
+    - Already parsed datetime objects
+    
+    Returns:
+        datetime object with UTC timezone
+        
+    Raises:
+        ValueError if date cannot be parsed
+    """
+    import re
+    import unicodedata
+    
+    # Handle datetime objects directly
+    if isinstance(date_value, datetime):
+        if date_value.tzinfo is None:
+            return date_value.replace(tzinfo=timezone.utc)
+        return date_value
+    
+    # Convert to string if needed
+    date_str = str(date_value) if date_value else ""
+    
+    # Debug logging for troubleshooting
+    logger.debug(f"Date normalization input: repr={repr(date_str)}, len={len(date_str)}")
+    logger.debug(f"Date codepoints: {[f'U+{ord(c):04X}' for c in date_str]}")
+    
+    # Step 1: Strip whitespace and normalize unicode
+    date_str = date_str.strip()
+    date_str = unicodedata.normalize('NFKC', date_str)
+    
+    # Step 2: Replace unicode dash variants with ASCII hyphen
+    # Common unicode dashes: en-dash (–), em-dash (—), minus (−), figure dash (‒)
+    unicode_dashes = [
+        '\u2010',  # Hyphen
+        '\u2011',  # Non-breaking hyphen
+        '\u2012',  # Figure dash
+        '\u2013',  # En dash
+        '\u2014',  # Em dash
+        '\u2015',  # Horizontal bar
+        '\u2212',  # Minus sign
+        '\uFE58',  # Small em dash
+        '\uFE63',  # Small hyphen-minus
+        '\uFF0D',  # Fullwidth hyphen-minus
+    ]
+    for dash in unicode_dashes:
+        date_str = date_str.replace(dash, '-')
+    
+    # Step 3: Remove any invisible/control characters
+    date_str = re.sub(r'[\x00-\x1f\x7f-\x9f\u200b-\u200f\u2028-\u202f\u205f-\u206f]', '', date_str)
+    
+    # Step 4: Handle ISO format with time component
+    if 'T' in date_str:
+        date_str = date_str.split('T')[0]
+    
+    # Step 5: Remove timezone suffixes
+    date_str = date_str.replace('Z', '')
+    date_str = re.sub(r'[+-]\d{2}:?\d{2}$', '', date_str)
+    
+    # Step 6: Try parsing different formats
+    date_str = date_str.strip()
+    
+    # Try ISO format: YYYY-MM-DD
+    iso_match = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})$', date_str)
+    if iso_match:
+        year, month, day = map(int, iso_match.groups())
+        return datetime(year, month, day, tzinfo=timezone.utc)
+    
+    # Try UK format: DD/MM/YYYY
+    uk_match = re.match(r'^(\d{1,2})/(\d{1,2})/(\d{4})$', date_str)
+    if uk_match:
+        day, month, year = map(int, uk_match.groups())
+        return datetime(year, month, day, tzinfo=timezone.utc)
+    
+    # Try UK format with dashes: DD-MM-YYYY
+    uk_dash_match = re.match(r'^(\d{1,2})-(\d{1,2})-(\d{4})$', date_str)
+    if uk_dash_match:
+        day, month, year = map(int, uk_dash_match.groups())
+        return datetime(year, month, day, tzinfo=timezone.utc)
+    
+    # Try ISO format with slashes: YYYY/MM/DD
+    iso_slash_match = re.match(r'^(\d{4})/(\d{1,2})/(\d{1,2})$', date_str)
+    if iso_slash_match:
+        year, month, day = map(int, iso_slash_match.groups())
+        return datetime(year, month, day, tzinfo=timezone.utc)
+    
+    # Last resort: try standard datetime parsing
+    for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%Y/%m/%d', '%d %b %Y', '%d %B %Y']:
+        try:
+            return datetime.strptime(date_str, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    
+    # If all else fails, raise with details
+    raise ValueError(
+        f"Cannot parse date: '{date_str}' (repr={repr(date_str)}, "
+        f"codepoints={[f'U+{ord(c):04X}' for c in date_str]})"
+    )
+
+
 # Request models for apply extraction
 class EngineerDetails(BaseModel):
     name: Optional[str] = None
