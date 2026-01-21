@@ -530,6 +530,107 @@ class JobScheduler:
         
         return "Status updated"
 
+    async def send_renewal_reminders(self):
+        """Send renewal reminders 7 days before subscription renewal.
+        
+        IMPORTANT: Only runs for clients with ENABLED entitlement.
+        Per spec: no background jobs when entitlement is DISABLED.
+        """
+        logger.info("Running renewal reminder job...")
+        
+        try:
+            from services.email_service import email_service
+            from services.plan_registry import plan_registry
+            
+            now = datetime.now(timezone.utc)
+            reminder_window = now + timedelta(days=7)
+            
+            # Get billing records with renewals in the next 7 days
+            billings = await self.db.client_billing.find(
+                {
+                    "subscription_status": {"$in": ["ACTIVE", "TRIALING"]},
+                    "entitlement_status": "ENABLED",
+                    "current_period_end": {
+                        "$gte": now,
+                        "$lte": reminder_window
+                    },
+                    "cancel_at_period_end": {"$ne": True},  # Don't remind if already canceling
+                    "renewal_reminder_sent": {"$ne": True}  # Don't send duplicate reminders
+                },
+                {"_id": 0}
+            ).to_list(500)
+            
+            reminder_count = 0
+            
+            for billing in billings:
+                try:
+                    client_id = billing.get("client_id")
+                    
+                    # Get client info
+                    client = await self.db.clients.find_one(
+                        {"client_id": client_id},
+                        {"_id": 0, "contact_email": 1, "contact_name": 1}
+                    )
+                    
+                    if not client or not client.get("contact_email"):
+                        continue
+                    
+                    # Check notification preferences
+                    prefs = await self.db.notification_preferences.find_one(
+                        {"client_id": client_id},
+                        {"_id": 0}
+                    )
+                    
+                    # Default to enabled if no preferences set
+                    renewal_reminders_enabled = prefs.get("renewal_reminders", True) if prefs else True
+                    
+                    if not renewal_reminders_enabled:
+                        logger.info(f"Skipping renewal reminder for {client_id} - disabled in preferences")
+                        continue
+                    
+                    # Get plan info
+                    plan_code = billing.get("current_plan_code", "PLAN_1_SOLO")
+                    plan_def = plan_registry.get_plan_by_code_string(plan_code)
+                    
+                    renewal_date = billing.get("current_period_end")
+                    if isinstance(renewal_date, datetime):
+                        renewal_date_str = renewal_date.strftime("%B %d, %Y")
+                    else:
+                        renewal_date_str = str(renewal_date)[:10] if renewal_date else "soon"
+                    
+                    amount = f"£{plan_def.get('monthly_price', 0):.2f}"
+                    frontend_url = os.environ.get("FRONTEND_URL", "https://secure-compliance-5.preview.emergentagent.com")
+                    
+                    # Send renewal reminder email
+                    await email_service.send_renewal_reminder_email(
+                        recipient=client.get("contact_email"),
+                        client_name=client.get("contact_name", "Valued Customer"),
+                        client_id=client_id,
+                        plan_name=plan_def.get("name", plan_code) if plan_def else plan_code,
+                        renewal_date=renewal_date_str,
+                        amount=amount,
+                        billing_portal_link=f"{frontend_url}/app/billing"
+                    )
+                    
+                    # Mark reminder as sent to prevent duplicates
+                    await self.db.client_billing.update_one(
+                        {"client_id": client_id},
+                        {"$set": {"renewal_reminder_sent": True}}
+                    )
+                    
+                    reminder_count += 1
+                    logger.info(f"Renewal reminder sent to {client.get('contact_email')}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to send renewal reminder for client {billing.get('client_id')}: {e}")
+            
+            logger.info(f"Renewal reminder job complete. Sent {reminder_count} reminders.")
+            return reminder_count
+            
+        except Exception as e:
+            logger.error(f"Renewal reminder job error: {e}")
+            return 0
+
 async def run_daily_job():
     """Run daily reminder job."""
     scheduler = JobScheduler()
