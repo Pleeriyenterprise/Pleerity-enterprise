@@ -24,6 +24,97 @@ async def get_compliance_score(request: Request):
             detail="Failed to calculate compliance score"
         )
 
+
+@router.get("/compliance-score/trend")
+async def get_compliance_score_trend(
+    request: Request,
+    days: int = 30,
+    include_breakdown: bool = False
+):
+    """Get compliance score trend data for trend visualization.
+    
+    Returns sparkline data and change analysis for the dashboard.
+    
+    Args:
+        days: Number of days of history (default 30, max 90)
+        include_breakdown: Include detailed breakdown per day
+    """
+    user = await client_route_guard(request)
+    
+    try:
+        from services.compliance_trending import get_score_trend
+        
+        # Cap at 90 days
+        days = min(days, 90)
+        
+        trend_data = await get_score_trend(
+            client_id=user["client_id"],
+            days=days,
+            include_breakdown=include_breakdown
+        )
+        return trend_data
+    except Exception as e:
+        logger.error(f"Compliance score trend error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get compliance score trend"
+        )
+
+
+@router.get("/compliance-score/explanation")
+async def get_compliance_score_explanation(
+    request: Request,
+    compare_days: int = 7
+):
+    """Get a plain-English explanation of what changed in the compliance score.
+    
+    Compares current state to N days ago and explains the difference.
+    
+    Args:
+        compare_days: Days back to compare (default 7, max 30)
+    """
+    user = await client_route_guard(request)
+    
+    try:
+        from services.compliance_trending import get_score_change_explanation
+        
+        # Cap at 30 days
+        compare_days = min(compare_days, 30)
+        
+        explanation = await get_score_change_explanation(
+            client_id=user["client_id"],
+            compare_days=compare_days
+        )
+        return explanation
+    except Exception as e:
+        logger.error(f"Compliance score explanation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get compliance score explanation"
+        )
+
+
+@router.post("/compliance-score/snapshot")
+async def trigger_compliance_snapshot(request: Request):
+    """Manually trigger a compliance score snapshot (for testing/admin).
+    
+    Creates an immediate snapshot of the current compliance score.
+    Useful for manual updates or debugging.
+    """
+    user = await client_route_guard(request)
+    
+    try:
+        from services.compliance_trending import capture_daily_snapshot
+        
+        result = await capture_daily_snapshot(user["client_id"])
+        return result
+    except Exception as e:
+        logger.error(f"Compliance snapshot trigger error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to capture compliance snapshot"
+        )
+
 @router.get("/dashboard")
 async def get_dashboard(request: Request):
     """Get client dashboard data."""
