@@ -129,7 +129,7 @@ function App() {
               path="/app/properties" 
               element={
                 <ProtectedRoute>
-                  <ClientDashboard />
+                  <PropertiesPage />
                 </ProtectedRoute>
               } 
             />
