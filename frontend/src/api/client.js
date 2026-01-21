@@ -60,7 +60,9 @@ export const intakeAPI = {
   lookupPostcode: (postcode) => apiClient.get(`/intake/postcode-lookup/${encodeURIComponent(postcode)}`),
   uploadDocument: (formData) => apiClient.post('/intake/upload-document', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  }),
+  validatePropertyCount: (planId, propertyCount) => 
+    apiClient.post('/intake/validate-property-count', { plan_id: planId, property_count: propertyCount })
 };
 
 export const clientAPI = {
