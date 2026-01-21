@@ -135,6 +135,33 @@ const AdminAssistantPage = () => {
     setCrn('');
     setClientSnapshot(null);
     setConversation([]);
+    setQueryHistory([]);
+    setShowHistory(false);
+  };
+
+  const loadPreviousQuery = (query) => {
+    // Load a previous query into the current conversation
+    setConversation([
+      { role: 'user', content: query.question },
+      { 
+        role: 'assistant', 
+        content: query.answer, 
+        query_id: query.query_id,
+        isHistorical: true
+      }
+    ]);
+    setShowHistory(false);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const suggestedQuestions = [
