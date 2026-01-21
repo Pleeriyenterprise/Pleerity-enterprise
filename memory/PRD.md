@@ -865,6 +865,47 @@
   - Webhook accepts all event types and returns 200
   - Stripe price IDs correctly mapped in plan registry
 
+### January 21, 2026 (Session 11) - Admin Billing & Subscription Management ✅
+- **Admin Billing UI** (`/admin/billing`)
+  - **Search Panel**: Search clients by email, CRN, client_id, property address/postcode
+  - **Statistics Panel**: Shows entitlement counts (Enabled/Limited/Disabled), plan distribution
+  - **Needs Attention Section**: Lists clients with incomplete setup or LIMITED status
+  - **Client Billing Snapshot**: Full details panel showing:
+    - Client identifiers (name, email, company, CRN, client_id)
+    - Plan & subscription info (plan code, name, property limit, over limit warning)
+    - Entitlement status badge (ENABLED/LIMITED/DISABLED)
+    - Stripe details (customer_id, subscription_id, onboarding fee paid)
+    - Portal user & password setup status
+    - Recent Stripe webhook events
+
+- **Admin Actions (all audit-logged)**:
+  - **Sync Billing Now**: Force fetch from Stripe, update entitlements, trigger provisioning if ENABLED
+  - **Create Manage Billing Link**: Generate Stripe billing portal URL for customer
+  - **Resend Password Setup Link**: Generate new token and send email
+  - **Re-run Provisioning**: Force provision (only if entitlement ENABLED)
+  - **Send Message**: Multi-channel (in_app, email, sms) with templates or custom text
+
+- **Backend API Routes** (`routes/admin_billing.py`)
+  - `GET /api/admin/billing/statistics` - Subscription stats dashboard
+  - `GET /api/admin/billing/clients/search?q=...` - Search clients
+  - `GET /api/admin/billing/clients/{client_id}` - Full billing snapshot
+  - `POST /api/admin/billing/clients/{client_id}/sync` - Force Stripe sync
+  - `POST /api/admin/billing/clients/{client_id}/portal-link` - Create billing portal link
+  - `POST /api/admin/billing/clients/{client_id}/resend-setup` - Resend password setup
+  - `POST /api/admin/billing/clients/{client_id}/force-provision` - Re-run provisioning
+  - `POST /api/admin/billing/clients/{client_id}/message` - Send message to client
+
+- **Safety Rules Enforced**:
+  - Force provision only allowed if `entitlement_status == ENABLED`
+  - Portal link only available if `stripe_customer_id` exists
+  - SMS messaging gated by plan (requires Portfolio+)
+  - All actions create audit logs with `UserRole.ROLE_ADMIN` actor
+
+- **TEST REPORT:** `/app/test_reports/iteration_27.json` (29/29 tests - 100%)
+  - All admin billing API endpoints verified
+  - UI tested via Playwright with all action buttons
+  - Fixed 3 bugs: auth_email field, actor_role enum, email service params
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
