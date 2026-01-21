@@ -929,7 +929,18 @@ async def regenerate_requirement_due_date(requirement_id: str, client_id: str):
 
 @router.post("/analyze/{document_id}")
 async def analyze_document_ai(request: Request, document_id: str):
-    """Analyze a document using AI to extract metadata (admin or client who owns it)."""
+    """Analyze a document using AI to extract metadata.
+    
+    AI Extraction Behavior by Plan:
+    - PLAN_1_SOLO (Basic): Extracts document_type, issue_date, expiry_date only
+      - No confidence scoring
+      - Auto-applies if confidence would have been high (for basic extraction)
+    
+    - PLAN_2_PORTFOLIO / PLAN_3_PRO (Advanced): Full extraction
+      - Includes confidence scoring
+      - Returns data for Review & Apply UI
+      - Field-level validation
+    """
     user = await client_route_guard(request)
     db = database.get_db()
     
@@ -960,6 +971,17 @@ async def analyze_document_ai(request: Request, document_id: str):
                 "extraction": document["ai_extraction"]
             }
         
+        # Check client's plan for extraction mode
+        from services.plan_registry import plan_registry
+        
+        client = await db.clients.find_one(
+            {"client_id": document["client_id"]},
+            {"_id": 0, "billing_plan": 1}
+        )
+        
+        plan_str = client.get("billing_plan", "PLAN_1_SOLO") if client else "PLAN_1_SOLO"
+        has_advanced_extraction = plan_registry.get_features_by_string(plan_str).get("ai_extraction_advanced", False)
+        
         # Perform AI analysis
         from services.document_analysis import document_analysis_service
         
@@ -972,13 +994,42 @@ async def analyze_document_ai(request: Request, document_id: str):
         )
         
         if result["success"]:
-            return {
-                "message": "Document analyzed successfully",
-                "extraction": {
-                    "status": "completed",
-                    "data": result["extracted_data"]
+            extracted_data = result["extracted_data"]
+            
+            # For Basic plan (PLAN_1_SOLO): Filter to basic fields only, no confidence
+            if not has_advanced_extraction:
+                basic_data = {
+                    "document_type": extracted_data.get("document_type"),
+                    "issue_date": extracted_data.get("issue_date"),
+                    "expiry_date": extracted_data.get("expiry_date"),
+                    # Don't include confidence scores for basic plan
                 }
-            }
+                # Remove None values
+                basic_data = {k: v for k, v in basic_data.items() if v is not None}
+                
+                return {
+                    "message": "Document analyzed (Basic extraction)",
+                    "extraction_mode": "basic",
+                    "extraction": {
+                        "status": "completed",
+                        "data": basic_data
+                    },
+                    "auto_apply_enabled": True,  # Basic plan auto-applies
+                    "review_ui_available": False
+                }
+            else:
+                # Advanced extraction: Include all fields and confidence
+                return {
+                    "message": "Document analyzed successfully",
+                    "extraction_mode": "advanced",
+                    "extraction": {
+                        "status": "completed",
+                        "data": extracted_data,
+                        "confidence": extracted_data.get("confidence", {}),
+                    },
+                    "auto_apply_enabled": False,  # Advanced requires review
+                    "review_ui_available": True
+                }
         else:
             return {
                 "message": "Document analysis failed",
