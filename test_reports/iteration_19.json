@@ -1,0 +1,120 @@
+{
+  "summary": "Iteration 19 testing completed for Apply & Save date parsing fix, AI Query History persistence, and Calendar integration. All 14 backend API tests passed (100%).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration19_apply_save_history.py",
+    "/app/test_reports/pytest/pytest_results_iter19.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Apply & Save endpoint correctly parses ISO date format (2026-02-14) and updates requirement due_date",
+    "Apply & Save endpoint correctly parses UK date format (14/02/2026) and converts to ISO format",
+    "AI_EXTRACTION_APPLIED audit log is created with before_state, after_state, and detailed metadata",
+    "Requirement status is automatically updated based on expiry date (COMPLIANT, EXPIRING_SOON, OVERDUE)",
+    "Admin Assistant POST /api/admin/assistant/ask saves query to history with query_id",
+    "GET /api/admin/assistant/history returns saved queries with pagination",
+    "GET /api/admin/assistant/history supports CRN filtering",
+    "GET /api/calendar/expiries returns requirements grouped by date with summary statistics",
+    "GET /api/calendar/upcoming returns upcoming expiries with urgency levels",
+    "GET /api/client/plan-features returns feature availability per plan"
+  ],
+  "updated_files": [
+    "/app/tests/test_iteration19_apply_save_history.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "N/A - Backend only testing requested"
+  },
+  "test_credentials": {
+    "client_email": "test@pleerity.com",
+    "client_password": "TestClient123!",
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!",
+    "test_crn": "PLE-CVP-2026-07354",
+    "test_document_id": "69200948-fd0a-4add-8012-45887b46867b"
+  },
+  "seed_data_creation": "Used existing test document with AI extraction data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All features verified: 1) Apply & Save date parsing works with ISO (YYYY-MM-DD) and UK (DD/MM/YYYY) formats, 2) AI_EXTRACTION_APPLIED audit log created with before/after states, 3) Requirement due_date and status updated correctly, 4) AI Query History persistence working with query_id, 5) Calendar expiries endpoint working, 6) Plan features endpoint working. Test document ID: 69200948-fd0a-4add-8012-45887b46867b, Requirement ID: a4eb93fe-528a-4644-8dc8-8d134cef8792.",
+  "features_tested": {
+    "apply_and_save_date_parsing": {
+      "status": "PASS",
+      "tests": [
+        "POST /api/documents/{id}/apply-extraction with ISO date (2026-02-14) - PASS",
+        "POST /api/documents/{id}/apply-extraction with UK date (14/02/2026) - PASS",
+        "UK date correctly converted to ISO format in due_date",
+        "Requirement status updated to EXPIRING_SOON based on date"
+      ]
+    },
+    "audit_log_creation": {
+      "status": "PASS",
+      "tests": [
+        "AI_EXTRACTION_APPLIED audit log created",
+        "before_state contains original due_date and status",
+        "after_state contains updated due_date and status",
+        "metadata contains changes_made, expiry_date_set, certificate_number"
+      ]
+    },
+    "ai_query_history": {
+      "status": "PASS",
+      "tests": [
+        "POST /api/admin/assistant/ask returns query_id",
+        "Query saved to admin_assistant_queries collection",
+        "GET /api/admin/assistant/history returns saved queries",
+        "GET /api/admin/assistant/history?crn=X filters by CRN"
+      ]
+    },
+    "calendar_integration": {
+      "status": "PASS",
+      "tests": [
+        "GET /api/calendar/expiries returns events_by_date",
+        "GET /api/calendar/expiries?year=X&month=Y filters correctly",
+        "GET /api/calendar/upcoming returns upcoming expiries with urgency"
+      ]
+    },
+    "plan_features": {
+      "status": "PASS",
+      "tests": [
+        "GET /api/client/plan-features returns plan, plan_name, features"
+      ]
+    }
+  },
+  "api_endpoints_verified": [
+    "POST /api/auth/login - 200 OK (client and admin)",
+    "POST /api/documents/{id}/apply-extraction - 200 OK with ISO date",
+    "POST /api/documents/{id}/apply-extraction - 200 OK with UK date",
+    "GET /api/documents/{id}/extraction - 200 OK",
+    "GET /api/documents/{id}/details - 200 OK",
+    "GET /api/admin/audit-logs?action=AI_EXTRACTION_APPLIED - 200 OK",
+    "POST /api/admin/assistant/ask - 200 OK with query_id",
+    "GET /api/admin/assistant/history - 200 OK",
+    "GET /api/admin/assistant/history?crn=X - 200 OK with filtered results",
+    "GET /api/calendar/expiries - 200 OK",
+    "GET /api/calendar/expiries?year=X&month=Y - 200 OK",
+    "GET /api/calendar/upcoming - 200 OK",
+    "GET /api/client/plan-features - 200 OK"
+  ],
+  "verified_data": {
+    "document_status_after_apply": "VERIFIED",
+    "requirement_status_after_apply": "EXPIRING_SOON",
+    "requirement_due_date_after_apply": "2026-02-14T00:00:00+00:00",
+    "audit_log_action": "AI_EXTRACTION_APPLIED",
+    "ai_query_history_total": 3,
+    "calendar_events_total": 106,
+    "calendar_dates_with_events": 7
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": [],
+    "note": "All APIs are live including Gemini AI via emergentintegrations"
+  }
+}
