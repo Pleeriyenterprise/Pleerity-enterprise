@@ -958,7 +958,7 @@ async def apply_ai_extraction(
         
         # Create specific audit action for extraction applied
         await create_audit_log(
-            action=AuditAction.DOCUMENT_AI_ANALYZED,
+            action=AuditAction.AI_EXTRACTION_APPLIED,
             actor_id=user["portal_user_id"],
             client_id=document["client_id"],
             resource_type="document",
@@ -970,10 +970,13 @@ async def apply_ai_extraction(
                 "requirement_id": requirement_id,
                 "changes_made": changes_made,
                 "expiry_date_set": expiry_date,
+                "expiry_date_parsed": update_fields.get("due_date"),
                 "certificate_number": cert_number,
                 "engineer_name": data.get("engineer_details", {}).get("name") if isinstance(data.get("engineer_details"), dict) else data.get("engineer_name"),
                 "user_confirmed": confirmed_data is not None,
-                "document_status": "VERIFIED"
+                "document_status": "VERIFIED",
+                "requirement_status_before": before_state.get("status"),
+                "requirement_status_after": after_state.get("status")
             }
         )
         
