@@ -38,58 +38,91 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intake", tags=["intake"])
 
-# Plan property limits (single source of truth)
+# Plan property limits - now uses plan_registry as single source of truth
+# These are kept for backward compatibility but plan_registry is authoritative
 PLAN_PROPERTY_LIMITS = {
-    BillingPlan.PLAN_1: 1,
-    BillingPlan.PLAN_2_5: 5,
-    BillingPlan.PLAN_6_15: 15
+    BillingPlan.PLAN_1_SOLO: 2,
+    BillingPlan.PLAN_2_PORTFOLIO: 10,
+    BillingPlan.PLAN_3_PRO: 25,
+    # Legacy mappings
+    BillingPlan.PLAN_1: 2,
+    BillingPlan.PLAN_2_5: 10,
+    BillingPlan.PLAN_6_15: 25,
 }
 
-# Plan details for UI
+# Plan details for UI - now uses plan_registry as single source of truth
 PLAN_DETAILS = {
-    BillingPlan.PLAN_1: {
-        "name": "Starter",
-        "max_properties": 1,
-        "monthly_price": 9.99,
-        "setup_fee": 49.99,
+    BillingPlan.PLAN_1_SOLO: {
+        "name": "Solo Landlord",
+        "max_properties": 2,
+        "monthly_price": 19.00,
+        "setup_fee": 49.00,
         "features": [
-            "1 property",
+            "Up to 2 properties",
             "Full compliance tracking",
             "Document storage",
             "Email reminders",
-            "AI document scanner"
+            "AI document scanner (basic)"
         ]
     },
-    BillingPlan.PLAN_2_5: {
-        "name": "Growth",
-        "max_properties": 5,
-        "monthly_price": 9.99,
-        "setup_fee": 49.99,
+    BillingPlan.PLAN_2_PORTFOLIO: {
+        "name": "Portfolio Landlord",
+        "max_properties": 10,
+        "monthly_price": 39.00,
+        "setup_fee": 79.00,
         "features": [
-            "Up to 5 properties",
+            "Up to 10 properties",
             "Full compliance tracking",
             "Document storage",
             "Email & SMS reminders",
-            "AI document scanner",
+            "AI document scanner (advanced)",
+            "PDF/CSV reports",
+            "Tenant portal (view-only)",
             "Priority support"
         ]
     },
-    BillingPlan.PLAN_6_15: {
-        "name": "Portfolio",
-        "max_properties": 15,
-        "monthly_price": 9.99,
-        "setup_fee": 49.99,
+    BillingPlan.PLAN_3_PRO: {
+        "name": "Professional",
+        "max_properties": 25,
+        "monthly_price": 79.00,
+        "setup_fee": 149.00,
         "features": [
-            "Up to 15 properties",
+            "Up to 25 properties",
             "Full compliance tracking",
             "Unlimited document storage",
             "Email & SMS reminders",
-            "AI document scanner",
-            "Priority support",
-            "Compliance reports",
-            "Webhook integrations"
+            "AI document scanner (advanced)",
+            "PDF/CSV reports",
+            "Tenant portal (view-only)",
+            "Webhook integrations",
+            "API access",
+            "White-label reports",
+            "Audit log export",
+            "Priority support"
         ]
-    }
+    },
+    # Legacy plan details (for backward compatibility)
+    BillingPlan.PLAN_1: {
+        "name": "Solo Landlord",
+        "max_properties": 2,
+        "monthly_price": 19.00,
+        "setup_fee": 49.00,
+        "features": ["Up to 2 properties", "Full compliance tracking"]
+    },
+    BillingPlan.PLAN_2_5: {
+        "name": "Portfolio Landlord",
+        "max_properties": 10,
+        "monthly_price": 39.00,
+        "setup_fee": 79.00,
+        "features": ["Up to 10 properties", "Advanced features"]
+    },
+    BillingPlan.PLAN_6_15: {
+        "name": "Professional",
+        "max_properties": 25,
+        "monthly_price": 79.00,
+        "setup_fee": 149.00,
+        "features": ["Up to 25 properties", "All features"]
+    },
 }
 
 # Cache for councils data
