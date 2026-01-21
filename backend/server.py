@@ -218,6 +218,7 @@ app.include_router(reports.router)
 app.include_router(tenant.router)
 app.include_router(webhooks_config.router)
 app.include_router(billing.router)
+app.include_router(admin_billing.router)
 
 # Root endpoint
 @app.get("/api")
