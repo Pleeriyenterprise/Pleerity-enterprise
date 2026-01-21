@@ -647,9 +647,14 @@ async def lookup_postcode(postcode: str):
 async def submit_intake(request: Request, data: IntakeFormData):
     """Universal intake wizard submission.
     
+    INTAKE-LEVEL GATING ENFORCED:
+    - Property count MUST NOT exceed plan limit
+    - This is the PRIMARY line of defense
+    - No soft gates or bypasses
+    
     Validates:
     - Required conditional fields (company_name, phone)
-    - Plan-based property limits
+    - Plan-based property limits (NON-NEGOTIABLE)
     - Required consents
     
     Creates:
@@ -691,12 +696,45 @@ async def submit_intake(request: Request, data: IntakeFormData):
                     detail="Phone number is required when SMS notifications are enabled"
                 )
         
-        # Validate property count against plan limit
-        max_properties = PLAN_PROPERTY_LIMITS.get(data.billing_plan, 1)
-        if len(data.properties) > max_properties:
+        # =========== PROPERTY LIMIT ENFORCEMENT (NON-NEGOTIABLE) ===========
+        # Resolve plan code
+        plan_str = data.billing_plan.value
+        try:
+            plan_code = PlanCode(plan_str)
+        except ValueError:
+            # Handle legacy codes
+            legacy_mapping = {
+                "PLAN_1": PlanCode.PLAN_1_SOLO,
+                "PLAN_2_5": PlanCode.PLAN_2_PORTFOLIO,
+                "PLAN_6_15": PlanCode.PLAN_3_PRO,
+            }
+            plan_code = legacy_mapping.get(plan_str, PlanCode.PLAN_1_SOLO)
+        
+        # Check property limit using plan_registry
+        is_allowed, error_msg, error_details = plan_registry.check_property_limit(
+            plan_code,
+            len(data.properties)
+        )
+        
+        if not is_allowed:
+            # Log the blocked attempt
+            logger.warning(
+                f"Intake property limit exceeded: email={data.email}, "
+                f"plan={plan_str}, requested={len(data.properties)}, "
+                f"limit={error_details.get('current_limit')}"
+            )
+            
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"You've reached the maximum number of properties for this plan ({max_properties}). Please upgrade to add more."
+                detail={
+                    "error_code": "PROPERTY_LIMIT_EXCEEDED",
+                    "message": error_msg,
+                    "current_limit": error_details.get("current_limit"),
+                    "requested_count": len(data.properties),
+                    "upgrade_required": True,
+                    "upgrade_to": error_details.get("upgrade_to"),
+                    "upgrade_to_name": error_details.get("upgrade_to_name"),
+                }
             )
         
         if not data.properties or len(data.properties) == 0:
