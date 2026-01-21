@@ -464,30 +464,75 @@ const BulkUploadPage = () => {
             >
               <input
                 type="file"
-                multiple
-                accept=".pdf,.jpg,.jpeg,.png"
+                multiple={uploadMode === 'files'}
+                accept={uploadMode === 'zip' ? '.zip' : '.pdf,.jpg,.jpeg,.png'}
                 onChange={handleFileSelect}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 disabled={uploading}
                 data-testid="file-input"
               />
               
-              <CloudUpload className={`w-16 h-16 mx-auto mb-4 ${dragActive ? 'text-electric-teal' : 'text-gray-400'}`} />
-              
-              <h3 className="text-lg font-medium text-midnight-blue mb-2">
-                {dragActive ? 'Drop files here' : 'Drag & drop files here'}
-              </h3>
-              <p className="text-gray-500 mb-4">or click to browse</p>
-              
-              <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-400">
-                <span className="px-2 py-1 bg-gray-100 rounded">PDF</span>
-                <span className="px-2 py-1 bg-gray-100 rounded">JPG</span>
-                <span className="px-2 py-1 bg-gray-100 rounded">PNG</span>
-              </div>
+              {uploadMode === 'zip' ? (
+                <>
+                  <Archive className={`w-16 h-16 mx-auto mb-4 ${dragActive ? 'text-electric-teal' : 'text-gray-400'}`} />
+                  <h3 className="text-lg font-medium text-midnight-blue mb-2">
+                    {dragActive ? 'Drop ZIP file here' : 'Drag & drop a ZIP archive'}
+                  </h3>
+                  <p className="text-gray-500 mb-4">or click to browse</p>
+                  
+                  <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-400">
+                    <span className="px-2 py-1 bg-gray-100 rounded">.ZIP</span>
+                  </div>
+                  
+                  <p className="text-xs text-gray-400 mt-4">
+                    Max 100MB • Contains PDF, JPG, PNG files • Up to 1000 files
+                  </p>
+                  
+                  {zipFile && (
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg inline-flex items-center gap-3">
+                      {zipFile.status === 'success' ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : zipFile.status === 'error' ? (
+                        <XCircle className="w-5 h-5 text-red-500" />
+                      ) : zipFile.status === 'uploading' ? (
+                        <RefreshCw className="w-5 h-5 text-electric-teal animate-spin" />
+                      ) : (
+                        <Archive className="w-5 h-5 text-electric-teal" />
+                      )}
+                      <div className="text-left">
+                        <p className="font-medium text-midnight-blue">{zipFile.name}</p>
+                        <p className="text-xs text-gray-500">{formatFileSize(zipFile.size)}</p>
+                      </div>
+                      {!uploading && zipFile.status === 'pending' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setZipFile(null); }}
+                          className="p-1 hover:bg-gray-200 rounded"
+                        >
+                          <XCircle className="w-4 h-4 text-gray-400" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <CloudUpload className={`w-16 h-16 mx-auto mb-4 ${dragActive ? 'text-electric-teal' : 'text-gray-400'}`} />
+                  <h3 className="text-lg font-medium text-midnight-blue mb-2">
+                    {dragActive ? 'Drop files here' : 'Drag & drop files here'}
+                  </h3>
+                  <p className="text-gray-500 mb-4">or click to browse</p>
+                  
+                  <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-400">
+                    <span className="px-2 py-1 bg-gray-100 rounded">PDF</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">JPG</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">PNG</span>
+                  </div>
 
-              <p className="text-xs text-gray-400 mt-4">
-                Max 10MB per file • Supports Gas Safety, EICR, EPC certificates
-              </p>
+                  <p className="text-xs text-gray-400 mt-4">
+                    Max 10MB per file • Supports Gas Safety, EICR, EPC certificates
+                  </p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -513,9 +558,9 @@ const BulkUploadPage = () => {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Files className="w-5 h-5" />
-                  Files to Upload ({files.length})
+                  {uploadMode === 'zip' && uploadResults ? 'Extracted Files' : 'Files to Upload'} ({files.length})
                 </CardTitle>
-                {!uploading && (
+                {!uploading && uploadMode === 'files' && (
                   <Button 
                     variant="ghost" 
                     size="sm" 
