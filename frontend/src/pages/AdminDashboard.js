@@ -46,7 +46,8 @@ import {
   Settings,
   ClipboardCheck,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  CreditCard
 } from 'lucide-react';
 
 // Global Search Component
