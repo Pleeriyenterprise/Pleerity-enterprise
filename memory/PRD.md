@@ -504,6 +504,46 @@
     - "View in Dashboard" CTA button
   - Handles email failures gracefully without breaking main flow
 
+### January 21, 2026 (Session 6) - Tenant Portal Enhancements + Compliance Pack
+- **Tenant Portal Enhancements ✅**
+  - **Tenant Dashboard Upgraded**: Full compliance overview for assigned properties
+    - Summary stats: Total Properties, Fully Compliant, Needs Attention, Action Required
+    - Properties list with compliance status indicators (GREEN/AMBER/RED)
+    - Expandable property cards show certificate details
+  - **Request Certificate Feature**: `POST /api/tenant/request-certificate`
+    - Tenant can request specific certificates (Gas Safety, EICR, EPC, etc.)
+    - Creates request record in database
+    - Notifies landlord via email with request details
+  - **Contact Landlord Feature**: `POST /api/tenant/contact-landlord`
+    - Free-form messaging (max 1000 chars)
+    - Email sent to landlord with tenant message
+    - Modal UI with validation
+  - **My Requests Page**: `GET /api/tenant/requests`
+    - Lists all tenant requests with status
+    - Shows request type, property, date, status
+
+- **Compliance Pack PDF Generation ✅**
+  - NEW `compliance_pack.py` service using `reportlab` library
+  - **Client Endpoint**: `GET /api/client/compliance-pack/{property_id}/download`
+    - Plan gated: Requires Portfolio plan (PLAN_6_15)
+    - Returns 403 `PLAN_NOT_ELIGIBLE` for lower plans
+  - **Client Preview Endpoint**: `GET /api/client/compliance-pack/{property_id}/preview`
+    - Returns JSON with certificate list, counts, and status breakdown
+  - **Tenant Endpoint**: `GET /api/tenant/compliance-pack/{property_id}`
+    - FREE for tenants (no plan gating)
+    - Tenants can download compliance pack for their assigned properties
+  - **PDF Contents**:
+    - Cover page with property address and generation date
+    - Compliance summary table (status, expiry dates)
+    - Individual certificate pages with details
+    - Compliant items have green status badge
+    - Expiring/Overdue items flagged in red/amber
+
+- **Bug Fixed**: EmailTemplateAlias enum passed as string instead of enum in tenant routes
+  - Fixed `template_alias='reminder'` → `template_alias=EmailTemplateAlias.REMINDER`
+
+- **TEST REPORT:** `/app/test_reports/iteration_21.json` (29/29 tests - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
