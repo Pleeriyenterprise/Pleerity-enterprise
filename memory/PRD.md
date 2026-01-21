@@ -814,6 +814,57 @@
   - MODIFIED `/app/frontend/src/App.js` - Added `/app/billing` route
   - MODIFIED `/app/frontend/src/pages/ClientDashboard.js` - Added "Plans" nav link
 
+### January 21, 2026 (Session 10) - Production Stripe Webhook Infrastructure ✅
+- **Stripe Price ID Configuration ✅**
+  - `plan_registry.py` updated with production Stripe price IDs:
+    - `PLAN_1_SOLO`: subscription=`price_1Ss7qNCF0O5oqdUzHUdjy27g`, onboarding=`price_1Ss7xICF0O5oqdUzGikCKHjQ`
+    - `PLAN_2_PORTFOLIO`: subscription=`price_1Ss6JPCF0O5oqdUzaBhJv239`, onboarding=`price_1Ss80uCF0O5oqdUzbluYNTD9`
+    - `PLAN_3_PRO`: subscription=`price_1Ss6uoCF0O5oqdUzGwmumLiD`, onboarding=`price_1Ss844CF0O5oqdUzM0AWrBG5`
+  - Added reverse lookup: `SUBSCRIPTION_PRICE_TO_PLAN` maps price_id → plan_code
+  - Added `EntitlementStatus` enum: `ENABLED`, `LIMITED`, `DISABLED`
+
+- **Production Webhook Handler ✅** (`stripe_webhook_service.py`)
+  - **Signature Verification**: Uses `STRIPE_WEBHOOK_SECRET` (skips in dev mode)
+  - **Idempotency**: Records all events in `stripe_events` collection
+    - Fields: `event_id`, `type`, `status`, `processed_at`, `related_client_id`, `raw_minimal`
+    - If `event_id` already `PROCESSED`, returns 200 immediately
+  - **Events Handled**:
+    - `checkout.session.completed`: Primary provisioning trigger
+    - `customer.subscription.created/updated`: Plan changes + entitlement updates
+    - `customer.subscription.deleted`: Cancellation handling
+    - `invoice.paid`: Payment recovery from past_due
+    - `invoice.payment_failed`: Restricts side-effect actions
+  - **Audit Logging**: Every transition logged with before/after state
+  - **Always Returns 200**: Prevents Stripe retries, errors logged internally
+
+- **Billing State Model ✅** (`client_billing` collection)
+  - Fields: `client_id`, `stripe_customer_id`, `stripe_subscription_id`, `current_plan_code`, `subscription_status`, `entitlement_status`, `current_period_end`, `cancel_at_period_end`, `onboarding_fee_paid`, `latest_invoice_id`, `updated_at`
+  - Entitlement Mapping:
+    - `ACTIVE/TRIALING` → `ENABLED` (full access)
+    - `PAST_DUE` → `LIMITED` (read-only, no side effects)
+    - `UNPAID/CANCELED/INCOMPLETE_EXPIRED` → `DISABLED` (locked)
+
+- **Billing API Routes ✅** (`routes/billing.py`)
+  - `POST /api/billing/checkout`: Creates Stripe checkout session
+  - `GET /api/billing/status`: Returns subscription status for user
+  - `GET /api/billing/plans`: Returns all plans with Stripe price IDs (public)
+  - `POST /api/billing/portal`: Creates Stripe billing portal session
+  - `POST /api/billing/cancel`: Cancels subscription (at period end or immediate)
+
+- **Upgrade/Downgrade Safety Rules ✅**
+  - **Upgrade**: Features unlock immediately after `checkout.session.completed`
+  - **Downgrade**: Non-destructive - if over property limit, sets `over_property_limit` flag
+  - **Cancel**: At period end keeps `ENABLED` until `current_period_end`
+
+- **Frontend Integration ✅**
+  - `BillingPage.js` now calls real `/api/billing/checkout` endpoint
+  - Redirects to Stripe checkout or billing portal on upgrade click
+
+- **TEST REPORT:** `/app/test_reports/iteration_26.json` (20/20 tests - 100%)
+  - All billing API endpoints verified
+  - Webhook accepts all event types and returns 200
+  - Stripe price IDs correctly mapped in plan registry
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
