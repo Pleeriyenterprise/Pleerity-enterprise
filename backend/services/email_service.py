@@ -757,4 +757,134 @@ Hello {model.get('client_name', 'there')},
             subject="🤖 AI Document Analysis Complete - Certificate Details Saved"
         )
 
+    # =========================================================================
+    # Subscription Lifecycle Emails
+    # =========================================================================
+    
+    async def send_payment_received_email(
+        self,
+        recipient: str,
+        client_name: str,
+        client_id: str,
+        plan_name: str,
+        amount: str,
+        portal_link: str
+    ):
+        """
+        Send payment received / provisioning started email.
+        
+        Sent after checkout.session.completed webhook.
+        Confirms payment and informs about provisioning.
+        """
+        await self.send_email(
+            recipient=recipient,
+            template_alias=EmailTemplateAlias.PAYMENT_RECEIVED,
+            template_model={
+                "client_name": client_name,
+                "plan_name": plan_name,
+                "amount": amount,
+                "portal_link": portal_link,
+                "company_name": "Pleerity Enterprise Ltd",
+                "support_email": "info@pleerityenterprise.co.uk"
+            },
+            client_id=client_id,
+            subject="✅ Payment Received - Compliance Vault Pro"
+        )
+        
+        logger.info(f"Payment received email sent to {recipient} for client {client_id}")
+    
+    async def send_payment_failed_email(
+        self,
+        recipient: str,
+        client_name: str,
+        client_id: str,
+        billing_portal_link: str,
+        retry_date: Optional[str] = None
+    ):
+        """
+        Send payment failed notification.
+        
+        Sent after invoice.payment_failed webhook.
+        Includes link to update payment method.
+        No scare language per specification.
+        """
+        await self.send_email(
+            recipient=recipient,
+            template_alias=EmailTemplateAlias.PAYMENT_FAILED,
+            template_model={
+                "client_name": client_name,
+                "billing_portal_link": billing_portal_link,
+                "retry_date": retry_date or "soon",
+                "company_name": "Pleerity Enterprise Ltd",
+                "support_email": "info@pleerityenterprise.co.uk"
+            },
+            client_id=client_id,
+            subject="⚠️ Payment Update Required - Compliance Vault Pro"
+        )
+        
+        logger.info(f"Payment failed email sent to {recipient} for client {client_id}")
+    
+    async def send_renewal_reminder_email(
+        self,
+        recipient: str,
+        client_name: str,
+        client_id: str,
+        plan_name: str,
+        renewal_date: str,
+        amount: str,
+        billing_portal_link: str
+    ):
+        """
+        Send upcoming renewal reminder (7 days before renewal).
+        
+        Sent by scheduled job when current_period_end is within 7 days.
+        """
+        await self.send_email(
+            recipient=recipient,
+            template_alias=EmailTemplateAlias.RENEWAL_REMINDER,
+            template_model={
+                "client_name": client_name,
+                "plan_name": plan_name,
+                "renewal_date": renewal_date,
+                "amount": amount,
+                "billing_portal_link": billing_portal_link,
+                "company_name": "Pleerity Enterprise Ltd",
+                "support_email": "info@pleerityenterprise.co.uk"
+            },
+            client_id=client_id,
+            subject="📅 Subscription Renewal Reminder - Compliance Vault Pro"
+        )
+        
+        logger.info(f"Renewal reminder email sent to {recipient} for client {client_id}")
+    
+    async def send_subscription_canceled_email(
+        self,
+        recipient: str,
+        client_name: str,
+        client_id: str,
+        access_end_date: str,
+        billing_portal_link: str
+    ):
+        """
+        Send subscription cancellation confirmation.
+        
+        Sent after customer.subscription.deleted webhook
+        or when cancel_at_period_end is set.
+        """
+        await self.send_email(
+            recipient=recipient,
+            template_alias=EmailTemplateAlias.SUBSCRIPTION_CANCELED,
+            template_model={
+                "client_name": client_name,
+                "access_end_date": access_end_date,
+                "billing_portal_link": billing_portal_link,
+                "company_name": "Pleerity Enterprise Ltd",
+                "support_email": "info@pleerityenterprise.co.uk"
+            },
+            client_id=client_id,
+            subject="Subscription Update - Compliance Vault Pro"
+        )
+        
+        logger.info(f"Subscription canceled email sent to {recipient} for client {client_id}")
+
 email_service = EmailService()
