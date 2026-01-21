@@ -314,7 +314,7 @@ class TestAdminFeatureMatrix:
         )
         if response.status_code != 200:
             pytest.skip(f"Admin login failed: {response.status_code} - {response.text}")
-        return response.json().get("token")
+        return response.json().get("access_token")
     
     def test_admin_feature_matrix_endpoint(self, admin_token):
         """Verify /api/admin/system/feature-matrix returns complete matrix"""
