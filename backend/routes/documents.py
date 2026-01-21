@@ -793,7 +793,7 @@ async def apply_ai_extraction(
                     clean_date = expiry_date.replace('Z', '+00:00').split('T')[0] if 'T' in expiry_date else expiry_date
                     try:
                         expiry_dt = datetime.fromisoformat(expiry_date.replace('Z', '+00:00'))
-                    except:
+                    except ValueError:
                         # Try parsing just the date part
                         expiry_dt = datetime.strptime(clean_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
                 else:
