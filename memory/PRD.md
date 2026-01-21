@@ -267,9 +267,12 @@
 ## Backlog / Future Enhancements
 
 ### P1 (High Priority)
-- [ ] ZIP file bulk upload - Upload single archive containing multiple documents
+- [x] ~~ZIP file bulk upload~~ ✅ COMPLETED
+- [ ] Full Address Autocomplete with `getaddress.io` (PAUSED)
 
 ### P2 (Medium Priority)
+- [ ] Property Price Context - Show average property price in area after postcode selection
+- [ ] Admin Test Monitoring UI - View test runs, webhook delivery logs, job statuses
 - [ ] Production SMS sending with real Twilio credentials
 - [ ] Document version history
 - [ ] Multi-language support
