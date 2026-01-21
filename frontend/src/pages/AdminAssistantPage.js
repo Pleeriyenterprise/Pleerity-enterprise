@@ -44,10 +44,21 @@ const AdminAssistantPage = () => {
 
   // Load query history when client is loaded or when history panel is opened
   useEffect(() => {
-    if (clientSnapshot && showHistory) {
-      loadQueryHistory();
+    if (clientSnapshot && showHistory && crn.trim()) {
+      const fetchHistory = async () => {
+        setLoadingHistory(true);
+        try {
+          const response = await api.get(`/admin/assistant/history?crn=${encodeURIComponent(crn.trim())}&limit=20`);
+          setQueryHistory(response.data.queries || []);
+        } catch (error) {
+          console.error('Failed to load query history:', error);
+        } finally {
+          setLoadingHistory(false);
+        }
+      };
+      fetchHistory();
     }
-  }, [clientSnapshot, showHistory]);
+  }, [clientSnapshot, showHistory, crn]);
 
   const loadQueryHistory = async () => {
     if (!crn.trim()) return;
