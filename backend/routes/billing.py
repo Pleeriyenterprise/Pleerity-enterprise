@@ -182,7 +182,7 @@ async def cancel_subscription(request: Request, body: CancelRequest):
     By default, cancels at end of billing period.
     Set cancel_immediately=true for immediate cancellation.
     """
-    user = request.state.user
+    user = await client_route_guard(request)
     client_id = user.get("client_id")
     
     if not client_id:
