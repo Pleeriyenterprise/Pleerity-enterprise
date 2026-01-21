@@ -979,3 +979,89 @@ async def get_billing_statistics(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get statistics"
         )
+
+
+# =============================================================================
+# Background Job Triggers (Admin Only)
+# =============================================================================
+
+@router.post("/jobs/renewal-reminders")
+async def trigger_renewal_reminders(request: Request):
+    """
+    Manually trigger the renewal reminder job.
+    
+    Sends renewal reminders to all eligible clients
+    (ENABLED entitlement, renewal within 7 days, not already reminded).
+    """
+    admin = await admin_route_guard(request)
+    
+    try:
+        from services.jobs import run_renewal_reminders
+        
+        count = await run_renewal_reminders()
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=admin.get("portal_user_id"),
+            metadata={
+                "action_type": "JOB_TRIGGERED",
+                "job_name": "renewal_reminders",
+                "reminders_sent": count,
+            }
+        )
+        
+        return {
+            "success": True,
+            "job": "renewal_reminders",
+            "reminders_sent": count,
+        }
+        
+    except Exception as e:
+        logger.error(f"Renewal reminder job error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to run renewal reminder job"
+        )
+
+
+@router.get("/jobs/status")
+async def get_job_status(request: Request):
+    """
+    Get status of background jobs and entitlement-based blocking info.
+    
+    Returns:
+    - Job scheduler status
+    - Clients blocked from background jobs (LIMITED/DISABLED)
+    """
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Count clients by entitlement for job blocking status
+        blocked_limited = await db.clients.count_documents({"entitlement_status": "LIMITED"})
+        blocked_disabled = await db.clients.count_documents({"entitlement_status": "DISABLED"})
+        
+        # Get recent job runs from scheduled_jobs collection
+        recent_jobs = await db.scheduled_jobs.find(
+            {},
+            {"_id": 0}
+        ).sort("next_run_time", -1).limit(10).to_list(10)
+        
+        return {
+            "job_blocking": {
+                "limited_clients": blocked_limited,
+                "disabled_clients": blocked_disabled,
+                "message": f"{blocked_limited + blocked_disabled} clients blocked from background jobs (reminders, digests, scheduled reports)"
+            },
+            "scheduled_jobs": recent_jobs,
+        }
+        
+    except Exception as e:
+        logger.error(f"Get job status error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get job status"
+        )
+
