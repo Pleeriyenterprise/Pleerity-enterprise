@@ -98,6 +98,16 @@ async def run_scheduled_reports():
     except Exception as e:
         logger.error(f"Scheduled reports job failed: {e}")
 
+
+async def run_compliance_score_snapshots():
+    """Scheduled job: Capture daily compliance score snapshots for all clients."""
+    try:
+        from services.compliance_trending import capture_all_client_snapshots
+        result = await capture_all_client_snapshots()
+        logger.info(f"Compliance score snapshots completed: {result['success_count']}/{result['total_clients']} clients")
+    except Exception as e:
+        logger.error(f"Compliance score snapshots job failed: {e}")
+
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
