@@ -60,7 +60,7 @@ def client_token():
         "password": CLIENT_PASSWORD
     })
     if response.status_code == 200:
-        return response.json().get("token")
+        return response.json().get("access_token")
     pytest.skip("Client authentication failed")
 
 
@@ -72,7 +72,7 @@ def admin_token():
         "password": ADMIN_PASSWORD
     })
     if response.status_code == 200:
-        return response.json().get("token")
+        return response.json().get("access_token")
     pytest.skip("Admin authentication failed")
 
 
