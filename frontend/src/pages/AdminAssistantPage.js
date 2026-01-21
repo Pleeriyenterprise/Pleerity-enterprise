@@ -111,8 +111,14 @@ const AdminAssistantPage = () => {
       setConversation(prev => [...prev, { 
         role: 'assistant', 
         content: response.data.answer,
-        compliance_summary: response.data.compliance_summary
+        compliance_summary: response.data.compliance_summary,
+        query_id: response.data.query_id
       }]);
+      
+      // Refresh history if panel is open
+      if (showHistory) {
+        loadQueryHistory();
+      }
     } catch (error) {
       const errorMsg = error.response?.data?.detail || 'Failed to get response';
       toast.error(errorMsg);
