@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, Depends, status
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, Depends, status, Body
+from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard, admin_route_guard
 from models import Document, DocumentStatus, RequirementStatus, AuditAction
@@ -12,6 +13,22 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+
+# Request models for apply extraction
+class EngineerDetails(BaseModel):
+    name: Optional[str] = None
+    registration_number: Optional[str] = None
+    company_name: Optional[str] = None
+
+
+class ResultSummary(BaseModel):
+    overall_result: Optional[str] = None
+
+
+class ExtractionApplyRequest(BaseModel):
+    confirmed_data: Optional[Dict[str, Any]] = None
+
 
 # Document storage directory
 DOCUMENT_STORAGE_PATH = Path("/app/data/documents")
