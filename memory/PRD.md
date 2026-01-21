@@ -559,6 +559,76 @@
 
 - **TEST REPORT:** `/app/test_reports/iteration_21.json` (29/29 tests - 100%)
 
+### January 21, 2026 (Session 7) - Capability Completion & Gating Build
+- **Compliance Score Trending ✅**
+  - NEW `compliance_trending.py` service for daily score snapshots
+  - **Endpoints**:
+    - `GET /api/client/compliance-score/trend` - Returns sparkline data for chart
+    - `POST /api/client/compliance-score/snapshot` - Manual snapshot trigger
+    - `GET /api/client/compliance-score/explanation` - Plain-English change explanation
+  - **Scheduled Job**: Daily snapshot at 2:00 AM UTC for all active clients
+  - **Database**: `compliance_score_history` collection with date_key index
+  - **Frontend**: Sparkline chart component in ClientDashboard
+    - Shows 30-day trend with trend direction indicator (up/down/stable)
+    - Color-coded by trend: green (up), red (down), gray (neutral)
+    - Placeholder when < 2 data points: "Trend tracking starts tomorrow"
+
+- **Central Feature Entitlement System ✅**
+  - NEW `feature_entitlement.py` - Comprehensive feature registry
+  - **17 features defined** across 7 categories:
+    - AI: ai_basic, ai_advanced
+    - Documents: bulk_upload, zip_upload
+    - Communication: sms, email_digest
+    - Reporting: reports_pdf, reports_csv, scheduled_reports
+    - Integration: webhooks, api_access
+    - Portal: tenant_portal, calendar_sync
+    - Advanced: compliance_packs, audit_exports, white_label, score_trending
+  - **Plan Feature Matrix**:
+    - PLAN_1 (Starter): 5 features enabled (ai_basic, bulk_upload, email_digest, tenant_portal, score_trending)
+    - PLAN_2_5 (Growth): 11 features enabled (+ai_advanced, sms, reports_pdf/csv, scheduled_reports, calendar_sync)
+    - PLAN_6_15 (Portfolio): All 17 features enabled (+zip_upload, webhooks, api_access, compliance_packs, audit_exports, white_label)
+  - **Endpoints**:
+    - `GET /api/client/entitlements` - Full feature availability for client
+    - `GET /api/admin/system/feature-matrix` - Admin-only complete plan comparison
+  - **Consistent error response**: `error_code: "PLAN_NOT_ELIGIBLE"`, `upgrade_required: true`
+
+- **iCal Calendar Export ✅** (Module H)
+  - NEW `GET /api/calendar/export.ics` - Download iCal calendar file
+  - Plan gated: Requires Growth plan (PLAN_2_5+)
+  - Generates VCALENDAR with VEVENT entries for each expiry
+  - Includes VALARM reminders (7 days for expiring, 30 days for pending)
+  - Standard iCal format compatible with Google Calendar, Outlook, Apple Calendar
+  - `GET /api/calendar/subscription-url` - Returns subscription URL with instructions
+
+- **White-Label Branding Settings ✅**
+  - NEW `BrandingSettings` model in models.py
+  - **Endpoints**:
+    - `GET /api/client/branding` - Returns settings with upgrade_message for locked features
+    - `PUT /api/client/branding` - Update settings (Plan gated: PLAN_6_15)
+    - `POST /api/client/branding/reset` - Reset to defaults (Plan gated: PLAN_6_15)
+  - **Settings**: company_name, logo_url, colors (primary, secondary, accent, text), report_header/footer, email_from_name, contact info
+  - **Frontend**: `BrandingSettingsPage.js` at `/app/settings/branding`
+    - Full settings form with color pickers
+    - Upgrade notice for non-Portfolio plans
+    - Preview panel showing color scheme
+
+- **Professional PDF Reports ✅** (Module E Enhancement)
+  - NEW `professional_reports.py` using reportlab
+  - **Report Types**:
+    - Compliance Summary PDF - Executive summary with property breakdown
+    - Expiry Schedule PDF - Upcoming expirations with color-coded urgency
+    - Audit Log PDF - Activity timeline export
+  - **Branding Integration**: Uses client branding settings for colors, logo, header/footer
+  - **Endpoints**:
+    - `GET /api/reports/professional/compliance-summary` (Plan gated: PLAN_2_5+)
+    - `GET /api/reports/professional/expiry-schedule` (Plan gated: PLAN_2_5+)
+    - `GET /api/reports/professional/audit-log` (Plan gated: PLAN_6_15)
+  - **Professional formatting**: Branded headers, status color-coding, company logo support
+
+- **Bug Fixed**: client.py import error for audit_service → changed to utils.audit
+
+- **TEST REPORT:** `/app/test_reports/iteration_22.json` (22/22 tests - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
