@@ -363,7 +363,7 @@ class TestTenantPortalViewOnly:
             json={"email": "tenant@test.com", "password": "TenantTest123!"}
         )
         if response.status_code == 200:
-            return response.json().get("token")
+            return response.json().get("access_token")
         
         # If no tenant exists, skip these tests
         pytest.skip("No tenant user available for testing")
