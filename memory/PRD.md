@@ -906,6 +906,50 @@
   - UI tested via Playwright with all action buttons
   - Fixed 3 bugs: auth_email field, actor_role enum, email service params
 
+### January 21, 2026 (Session 12) - Subscription Lifecycle Emails & Job Safety Controls ✅
+- **Subscription Lifecycle Emails** (4 new methods in `email_service.py`):
+  - `send_payment_received_email()` - Sent after `checkout.session.completed`
+    - Confirms payment, states provisioning started, links to portal
+  - `send_payment_failed_email()` - Sent after `invoice.payment_failed`
+    - No scare language, includes billing portal link, retry date if available
+  - `send_renewal_reminder_email()` - Sent 7 days before renewal
+    - Plan name, renewal date, amount, billing portal link
+  - `send_subscription_canceled_email()` - Sent after `customer.subscription.deleted`
+    - Access end date, billing portal link
+
+- **EmailTemplateAlias Enum Updated** (`models.py`):
+  - `PAYMENT_RECEIVED`, `PAYMENT_FAILED`, `RENEWAL_REMINDER`, `SUBSCRIPTION_CANCELED`
+
+- **Stripe Webhook Email Integration** (`stripe_webhook_service.py`):
+  - `checkout.session.completed` → Sends payment received email
+  - `invoice.payment_failed` → Sends payment failed email
+  - `customer.subscription.deleted` → Sends subscription canceled email
+
+- **Background Job Safety Controls** (`jobs.py`):
+  - **ALL jobs now check `entitlement_status: ENABLED`** before processing
+  - Jobs affected: `daily_reminders`, `monthly_digests`, `compliance_check`, `renewal_reminders`, `scheduled_reports`
+  - Clients with `LIMITED` or `DISABLED` entitlement are skipped (no emails, no side effects)
+  - Comment added: "Per spec: no background jobs when entitlement is DISABLED"
+
+- **Renewal Reminder Job** (NEW in `jobs.py`):
+  - Runs daily, finds billing records with renewal within 7 days
+  - Filters: `entitlement_status=ENABLED`, `cancel_at_period_end=False`, `renewal_reminder_sent!=True`
+  - Sends email and marks `renewal_reminder_sent: True` to prevent duplicates
+
+- **Admin Job Management Endpoints** (`routes/admin_billing.py`):
+  - `GET /api/admin/billing/jobs/status` - Returns job blocking info:
+    - `limited_clients` and `disabled_clients` counts
+    - List of job types with schedules and descriptions
+  - `POST /api/admin/billing/jobs/renewal-reminders` - Manually trigger renewal reminders
+    - Returns count of reminders sent
+    - Creates audit log
+
+- **TEST REPORT:** `/app/test_reports/iteration_28.json` (21/21 tests - 100%)
+  - All email methods verified to exist and be callable
+  - Webhook handlers verified to send correct emails
+  - Background jobs verified to filter by entitlement_status
+  - Job endpoints verified for admin auth requirement
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
