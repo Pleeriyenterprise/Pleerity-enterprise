@@ -16,7 +16,10 @@ import {
   Clock,
   User,
   X,
-  Sparkles
+  Sparkles,
+  History,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const AdminAssistantPage = () => {
@@ -28,6 +31,9 @@ const AdminAssistantPage = () => {
   const [question, setQuestion] = useState('');
   const [conversation, setConversation] = useState([]);
   const [askingQuestion, setAskingQuestion] = useState(false);
+  const [queryHistory, setQueryHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -35,6 +41,27 @@ const AdminAssistantPage = () => {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [conversation]);
+
+  // Load query history when client is loaded or when history panel is opened
+  useEffect(() => {
+    if (clientSnapshot && showHistory) {
+      loadQueryHistory();
+    }
+  }, [clientSnapshot, showHistory]);
+
+  const loadQueryHistory = async () => {
+    if (!crn.trim()) return;
+    
+    setLoadingHistory(true);
+    try {
+      const response = await api.get(`/admin/assistant/history?crn=${encodeURIComponent(crn.trim())}&limit=20`);
+      setQueryHistory(response.data.queries || []);
+    } catch (error) {
+      console.error('Failed to load query history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const handleLoadClient = async (e) => {
     e.preventDefault();
@@ -46,6 +73,7 @@ const AdminAssistantPage = () => {
     setLoadingClient(true);
     setClientSnapshot(null);
     setConversation([]);
+    setQueryHistory([]);
 
     try {
       const response = await api.get(`/admin/client-lookup?crn=${encodeURIComponent(crn.trim())}`);
