@@ -284,12 +284,62 @@ const IntakePage = () => {
     }
   };
 
-  // Property management
-  const addProperty = () => {
-    const maxProps = PLAN_LIMITS[formData.billing_plan] || 1;
-    if (formData.properties.length >= maxProps) {
-      toast.error(`You've reached the maximum number of properties for this plan. Upgrade to add more.`);
+  // Property management with server-side validation
+  const addProperty = async () => {
+    const maxProps = PLAN_LIMITS[formData.billing_plan] || 2;
+    const newCount = formData.properties.length + 1;
+    
+    // Clear previous error
+    setPropertyLimitError(null);
+    
+    // First check local limit
+    if (newCount > maxProps) {
+      // Find upgrade plan
+      let upgradePlan = null;
+      let upgradePlanName = null;
+      let upgradeLimit = null;
+      
+      if (formData.billing_plan === 'PLAN_1_SOLO' || formData.billing_plan === 'PLAN_1') {
+        upgradePlan = 'PLAN_2_PORTFOLIO';
+        upgradePlanName = 'Portfolio';
+        upgradeLimit = 10;
+      } else if (formData.billing_plan === 'PLAN_2_PORTFOLIO' || formData.billing_plan === 'PLAN_2_5') {
+        upgradePlan = 'PLAN_3_PRO';
+        upgradePlanName = 'Professional';
+        upgradeLimit = 25;
+      }
+      
+      setPropertyLimitError({
+        currentLimit: maxProps,
+        requestedCount: newCount,
+        currentPlan: PLAN_NAMES[formData.billing_plan] || formData.billing_plan,
+        upgradePlan,
+        upgradePlanName,
+        upgradeLimit
+      });
+      
+      toast.error(`You've reached the maximum of ${maxProps} properties for the ${PLAN_NAMES[formData.billing_plan] || 'current'} plan.`);
       return;
+    }
+    
+    // Optionally validate with backend (belt and suspenders)
+    try {
+      const response = await intakeAPI.validatePropertyCount(formData.billing_plan, newCount);
+      if (!response.data.allowed) {
+        setPropertyLimitError({
+          currentLimit: response.data.current_limit,
+          requestedCount: newCount,
+          currentPlan: PLAN_NAMES[formData.billing_plan] || formData.billing_plan,
+          upgradePlan: response.data.upgrade_to,
+          upgradePlanName: response.data.upgrade_to_name,
+          upgradeLimit: response.data.upgrade_to_limit
+        });
+        toast.error(response.data.error || 'Property limit exceeded');
+        return;
+      }
+    } catch (err) {
+      // If validation fails, still allow (UI already checked)
+      console.warn('Backend validation failed, using frontend check:', err);
     }
     
     setFormData({
@@ -328,6 +378,8 @@ const IntakePage = () => {
         ...formData,
         properties: formData.properties.filter((_, i) => i !== index)
       });
+      // Clear property limit error when removing
+      setPropertyLimitError(null);
     }
   };
 
