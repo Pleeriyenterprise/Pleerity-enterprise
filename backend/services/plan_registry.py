@@ -752,6 +752,72 @@ class PlanRegistryService:
             return PlanCode(code_str)
         except ValueError:
             return legacy_mapping.get(code_str, PlanCode.PLAN_1_SOLO)
+    
+    # -------------------------------------------------------------------------
+    # Stripe Price ID Mappings
+    # -------------------------------------------------------------------------
+    
+    def get_plan_from_subscription_price_id(self, price_id: str) -> Optional[PlanCode]:
+        """
+        Derive plan code from Stripe subscription price_id.
+        This is the ONLY valid way to determine plan from Stripe.
+        """
+        plan_str = SUBSCRIPTION_PRICE_TO_PLAN.get(price_id)
+        if plan_str:
+            return self._resolve_plan_code(plan_str)
+        return None
+    
+    def get_plan_from_onboarding_price_id(self, price_id: str) -> Optional[PlanCode]:
+        """Check if a price_id is a valid onboarding fee."""
+        plan_str = ONBOARDING_PRICE_TO_PLAN.get(price_id)
+        if plan_str:
+            return self._resolve_plan_code(plan_str)
+        return None
+    
+    def is_valid_subscription_price(self, price_id: str) -> bool:
+        """Check if a price_id is a recognized subscription price."""
+        return price_id in SUBSCRIPTION_PRICE_TO_PLAN
+    
+    def is_valid_onboarding_price(self, price_id: str) -> bool:
+        """Check if a price_id is a recognized onboarding price."""
+        return price_id in ONBOARDING_PRICE_TO_PLAN
+    
+    def get_stripe_price_ids(self, plan_code: PlanCode) -> Dict[str, str]:
+        """Get Stripe price IDs for a plan."""
+        plan_def = self.get_plan(plan_code)
+        return {
+            "subscription_price_id": plan_def.get("stripe_subscription_price_id"),
+            "onboarding_price_id": plan_def.get("stripe_onboarding_price_id"),
+        }
+    
+    # -------------------------------------------------------------------------
+    # Entitlement Status Mapping
+    # -------------------------------------------------------------------------
+    
+    def get_entitlement_status_from_subscription(self, subscription_status: str) -> EntitlementStatus:
+        """
+        Map Stripe subscription status to entitlement status.
+        
+        ACTIVE, TRIALING -> ENABLED (full access)
+        PAST_DUE -> LIMITED (read-only, no side effects)
+        UNPAID, CANCELED, INCOMPLETE, INCOMPLETE_EXPIRED -> DISABLED (locked)
+        """
+        status_upper = subscription_status.upper() if subscription_status else "UNKNOWN"
+        
+        if status_upper in ("ACTIVE", "TRIALING"):
+            return EntitlementStatus.ENABLED
+        elif status_upper == "PAST_DUE":
+            return EntitlementStatus.LIMITED
+        else:
+            # UNPAID, CANCELED, INCOMPLETE, INCOMPLETE_EXPIRED, UNKNOWN, etc.
+            return EntitlementStatus.DISABLED
+    
+    def is_side_effect_allowed(self, entitlement_status: EntitlementStatus) -> bool:
+        """
+        Check if side-effect actions are allowed.
+        Side effects: emails, SMS, webhooks, scheduled reports, AI extraction apply
+        """
+        return entitlement_status == EntitlementStatus.ENABLED
 
 
 # Singleton instance
