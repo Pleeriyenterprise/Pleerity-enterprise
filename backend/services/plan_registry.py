@@ -12,6 +12,7 @@ NON-NEGOTIABLE RULES:
 2. Stripe is a billing system, not a permission system
 3. No feature leakage - blocked features must fail clearly
 4. Admin access is never plan-gated
+5. Plan code is derived from subscription line item price_id ONLY
 
 Plan Structure (January 2026):
 - PLAN_1_SOLO: Solo Landlord (2 properties, £19/mo, £49 onboarding)
@@ -37,6 +38,44 @@ class PlanCode(str, Enum):
 
 
 # ============================================================================
+# ENTITLEMENT STATUS - Subscription-based access level
+# ============================================================================
+class EntitlementStatus(str, Enum):
+    """Entitlement status derived from subscription status."""
+    ENABLED = "ENABLED"       # Full access (ACTIVE, TRIALING)
+    LIMITED = "LIMITED"       # Read-only mode (PAST_DUE)
+    DISABLED = "DISABLED"     # Locked (UNPAID, CANCELED, INCOMPLETE_EXPIRED)
+
+
+# ============================================================================
+# STRIPE PRICE ID MAPPINGS - Production Price IDs (from owner)
+# ============================================================================
+STRIPE_PRICE_MAPPINGS = {
+    "PLAN_1_SOLO": {
+        "subscription_price_id": "price_1Ss7qNCF0O5oqdUzHUdjy27g",
+        "onboarding_price_id": "price_1Ss7xICF0O5oqdUzGikCKHjQ",
+    },
+    "PLAN_2_PORTFOLIO": {
+        "subscription_price_id": "price_1Ss6JPCF0O5oqdUzaBhJv239",
+        "onboarding_price_id": "price_1Ss80uCF0O5oqdUzbluYNTD9",
+    },
+    "PLAN_3_PRO": {
+        "subscription_price_id": "price_1Ss6uoCF0O5oqdUzGwmumLiD",
+        "onboarding_price_id": "price_1Ss844CF0O5oqdUzM0AWrBG5",
+    },
+}
+
+# Reverse lookup: price_id -> plan_code
+SUBSCRIPTION_PRICE_TO_PLAN = {
+    v["subscription_price_id"]: k for k, v in STRIPE_PRICE_MAPPINGS.items()
+}
+
+ONBOARDING_PRICE_TO_PLAN = {
+    v["onboarding_price_id"]: k for k, v in STRIPE_PRICE_MAPPINGS.items()
+}
+
+
+# ============================================================================
 # PLAN DEFINITIONS - Complete plan configuration
 # ============================================================================
 PLAN_DEFINITIONS = {
@@ -55,9 +94,9 @@ PLAN_DEFINITIONS = {
         # Limits
         "max_properties": 2,
         
-        # Stripe IDs (to be updated with actual Stripe price IDs)
-        "stripe_monthly_price_id": "price_solo_monthly",  # Placeholder
-        "stripe_onboarding_price_id": "price_solo_onboarding",  # Placeholder
+        # Stripe IDs - Production
+        "stripe_subscription_price_id": "price_1Ss7qNCF0O5oqdUzHUdjy27g",
+        "stripe_onboarding_price_id": "price_1Ss7xICF0O5oqdUzGikCKHjQ",
         
         # UI
         "color": "#6B7280",  # Gray
@@ -79,9 +118,9 @@ PLAN_DEFINITIONS = {
         # Limits
         "max_properties": 10,
         
-        # Stripe IDs (to be updated with actual Stripe price IDs)
-        "stripe_monthly_price_id": "price_portfolio_monthly",  # Placeholder
-        "stripe_onboarding_price_id": "price_portfolio_onboarding",  # Placeholder
+        # Stripe IDs - Production
+        "stripe_subscription_price_id": "price_1Ss6JPCF0O5oqdUzaBhJv239",
+        "stripe_onboarding_price_id": "price_1Ss80uCF0O5oqdUzbluYNTD9",
         
         # UI
         "color": "#00B8A9",  # Electric Teal
@@ -104,9 +143,9 @@ PLAN_DEFINITIONS = {
         # Limits
         "max_properties": 25,
         
-        # Stripe IDs (to be updated with actual Stripe price IDs)
-        "stripe_monthly_price_id": "price_pro_monthly",  # Placeholder
-        "stripe_onboarding_price_id": "price_pro_onboarding",  # Placeholder
+        # Stripe IDs - Production
+        "stripe_subscription_price_id": "price_1Ss6uoCF0O5oqdUzGwmumLiD",
+        "stripe_onboarding_price_id": "price_1Ss844CF0O5oqdUzM0AWrBG5",
         
         # UI
         "color": "#0B1D3A",  # Midnight Blue
