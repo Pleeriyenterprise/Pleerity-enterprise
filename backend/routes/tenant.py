@@ -384,6 +384,7 @@ async def request_certificate_update(request: Request):
         # Notify landlord (try to send email)
         try:
             from services.email_service import email_service
+            from models import EmailTemplateAlias
             
             client = await db.clients.find_one(
                 {"client_id": client_id},
@@ -393,7 +394,7 @@ async def request_certificate_update(request: Request):
             if client and client.get("email"):
                 await email_service.send_email(
                     recipient=client["email"],
-                    template_alias="reminder",
+                    template_alias=EmailTemplateAlias.REMINDER,
                     template_model={
                         "subject": "Certificate Request from Tenant",
                         "message": f"Your tenant {user.get('full_name', 'A tenant')} has requested an updated {certificate_type.replace('_', ' ')} certificate for property {property_doc.get('address_line_1', '')}.\n\nMessage: {message or 'No message provided.'}\n\nPlease log into Compliance Vault Pro to respond.",
