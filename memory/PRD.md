@@ -5,6 +5,7 @@
 **Company:** Pleerity Enterprise Ltd  
 **Target Users:** UK landlords, letting agents, and tenants  
 **Tagline:** AI-Driven Solutions & Compliance  
+**Version:** Production v2.0 (January 2026)
 
 ## Tech Stack
 - **Backend:** FastAPI (Python)
@@ -13,12 +14,41 @@
 - **Authentication:** JWT tokens
 - **Integrations:** Stripe (payments), Postmark (email - LIVE), OpenAI/Gemini (AI assistant), Twilio (SMS - dev mode)
 
+## NON-NEGOTIABLE PRINCIPLES
+1. **Backend is Authoritative:** All entitlement checks happen server-side
+2. **Stripe is Billing, Not Permission:** plan_registry is single source of truth
+3. **No Feature Leakage:** Blocked features must fail clearly
+4. **Admin ≠ Plan User:** Admin access is never plan-gated
+5. **Auditability Everywhere:** All actions are logged
+
 ## Core Principles
 1. **Deterministic Compliance:** No AI for compliance decisions - all compliance rules are based on predefined dates/rules
-2. **Single Sources of Truth:** Stripe for billing status, Client.onboarding_status for provisioning
+2. **Single Sources of Truth:** plan_registry for features, Stripe for billing status
 3. **Strict RBAC:** `ROLE_CLIENT`, `ROLE_CLIENT_ADMIN`, `ROLE_ADMIN`, `ROLE_TENANT` enforced server-side
 4. **Mandatory Audit Logging:** All significant actions logged
 5. **AI is Assistive Only:** AI extracts data for review, cannot mark requirements compliant
+
+---
+
+## Plan Structure (January 2026)
+
+### PLAN_1_SOLO - Solo Landlord
+- **Price:** £19/month + £49 onboarding
+- **Property Limit:** 2
+- **Target:** DIY landlords
+- **Features:** Basic AI extraction, email notifications, compliance dashboard
+
+### PLAN_2_PORTFOLIO - Portfolio Landlord / Small Agent  
+- **Price:** £39/month + £79 onboarding
+- **Property Limit:** 10
+- **Target:** Portfolio landlords, small agents
+- **Features:** Advanced AI extraction, PDF/CSV reports, SMS reminders, tenant portal, scheduled reports
+
+### PLAN_3_PRO - Professional / Agent / HMO
+- **Price:** £79/month (£69 annual) + £149 onboarding
+- **Property Limit:** 25
+- **Target:** Letting agents, HMOs, serious operators
+- **Features:** Everything + webhooks, API access, white-label reports, audit exports
 
 ---
 
