@@ -7,6 +7,14 @@ Endpoints:
 - GET /api/intake/councils - Search UK councils
 - POST /api/intake/upload-document - Upload document during intake (non-blocking)
 - GET /api/intake/plans - Get available billing plans with limits
+- POST /api/intake/validate-property-count - Validate property count against plan limit
+
+INTAKE-LEVEL GATING (NON-NEGOTIABLE):
+- Plan gating MUST be enforced inside the intake form
+- Property limits are enforced at:
+  1. Frontend UI (prevent adding beyond limit)
+  2. Intake API validation (block submission)
+  3. Provisioning safeguards (defense in depth)
 """
 from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form
 from database import database
@@ -16,6 +24,7 @@ from models import (
     Document, DocumentStatus, ClientType, PreferredContact
 )
 from services.stripe_service import stripe_service
+from services.plan_registry import plan_registry, PlanCode
 from utils.audit import create_audit_log
 import logging
 import json
