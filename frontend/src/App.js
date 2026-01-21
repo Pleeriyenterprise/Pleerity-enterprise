@@ -244,6 +244,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/admin/billing" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminBillingPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
