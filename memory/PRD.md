@@ -719,6 +719,37 @@
 
 - **TEST REPORT:** `/app/test_reports/iteration_23.json` (21/21 tests - 100%)
 
+### January 21, 2026 (Session 8 - Continued) - Frontend Integration Complete
+- **Intake Wizard Frontend Updated ✅**
+  - `IntakePage.js` updated with new PLAN_LIMITS and PLAN_NAMES
+  - Plans displayed: Solo £19/mo (2 props), Portfolio £39/mo (10 props), Professional £79/mo (25 props)
+  - "Most Popular" badge on Portfolio plan
+  - Property counter shows X/Y format (e.g., "1/2")
+  - Property limit enforcement with visual feedback
+
+- **UpgradePrompt Components Integrated ✅**
+  - `PropertyLimitPrompt` component in Step 3 (Properties)
+  - Shows upgrade suggestion when limit reached
+  - "Upgrade to Portfolio (up to 10 properties)" link
+  - Toast notifications for limit exceeded
+
+- **API Integration ✅**
+  - `intakeAPI.validatePropertyCount()` added to client.js
+  - Backend validation on property add
+  - Error handling with upgrade suggestions
+
+- **AI Extraction Basic vs Advanced ✅**
+  - PLAN_1_SOLO (Basic): Returns `extraction_mode: "basic"`
+    - Only document_type, issue_date, expiry_date
+    - No confidence scoring
+    - `auto_apply_enabled: true`
+  - PLAN_2+_PORTFOLIO/PRO (Advanced): Returns `extraction_mode: "advanced"`
+    - Full extraction with confidence scoring
+    - `review_ui_available: true`
+    - Field-level validation
+
+- **TEST REPORT:** `/app/test_reports/iteration_24.json` (16/16 tests - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
