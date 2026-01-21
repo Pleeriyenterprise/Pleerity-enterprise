@@ -787,17 +787,7 @@ async def apply_ai_extraction(
         expiry_date = data.get("expiry_date")
         if expiry_date:
             try:
-                # Parse the date - handle various formats
-                if isinstance(expiry_date, str):
-                    # Remove timezone info for simpler parsing
-                    clean_date = expiry_date.replace('Z', '+00:00').split('T')[0] if 'T' in expiry_date else expiry_date
-                    try:
-                        expiry_dt = datetime.fromisoformat(expiry_date.replace('Z', '+00:00'))
-                    except ValueError:
-                        # Try parsing just the date part
-                        expiry_dt = datetime.strptime(clean_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-                else:
-                    expiry_dt = expiry_date
+                expiry_dt = _normalize_and_parse_date(expiry_date)
                 
                 update_fields["due_date"] = expiry_dt.isoformat()
                 changes_made.append(f"Due date set to {expiry_dt.strftime('%Y-%m-%d')}")
@@ -814,11 +804,11 @@ async def apply_ai_extraction(
                     update_fields["status"] = "COMPLIANT"
                     changes_made.append("Status set to COMPLIANT (valid certificate)")
                     
-            except Exception as date_err:
+            except ValueError as date_err:
                 logger.warning(f"Failed to parse expiry date '{expiry_date}': {date_err}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid expiry date format: {expiry_date}. Expected ISO format (YYYY-MM-DD)."
+                    detail=f"Invalid expiry date format: {expiry_date}. Expected formats: YYYY-MM-DD or DD/MM/YYYY."
                 )
         else:
             logger.info(f"No expiry_date in extraction data for document {document_id}")
