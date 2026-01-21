@@ -208,16 +208,23 @@ const ClientDashboard = () => {
         {/* Compliance Score Widget */}
         {complianceScore && (
           <div className="mb-8 grid lg:grid-cols-3 gap-6" data-testid="compliance-score-widget">
-            {/* Main Score Card */}
-            <div className={`lg:col-span-1 rounded-2xl p-6 border-2 ${
-              complianceScore.color === 'green' ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200' :
-              complianceScore.color === 'amber' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200' :
-              complianceScore.color === 'red' ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200' :
-              'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'
-            }`}>
+            {/* Main Score Card - CLICKABLE */}
+            <div 
+              className={`lg:col-span-1 rounded-2xl p-6 border-2 cursor-pointer hover:shadow-lg transition-all group ${
+                complianceScore.color === 'green' ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:border-green-400' :
+                complianceScore.color === 'amber' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 hover:border-amber-400' :
+                complianceScore.color === 'red' ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:border-red-400' :
+                'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 hover:border-gray-400'
+              }`}
+              onClick={() => navigate('/app/compliance-score')}
+              data-testid="compliance-score-card-clickable"
+            >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">Compliance Score</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">Compliance Score</h3>
+                    <ExternalLink className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className={`text-5xl font-bold ${
                       complianceScore.color === 'green' ? 'text-green-700' :
@@ -258,18 +265,46 @@ const ClientDashboard = () => {
               {/* Score Breakdown */}
               <div className="mt-4 pt-4 border-t border-white/50 space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Status</span>
+                  <span className="text-gray-600">Status (40%)</span>
                   <span className="font-medium">{complianceScore.breakdown?.status_score?.toFixed(0)}%</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Expiry Timeline</span>
+                  <span className="text-gray-600">Timeline (30%)</span>
                   <span className="font-medium">{complianceScore.breakdown?.expiry_score?.toFixed(0)}%</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Documents</span>
+                  <span className="text-gray-600">Documents (15%)</span>
                   <span className="font-medium">{complianceScore.breakdown?.document_score?.toFixed(0)}%</span>
                 </div>
               </div>
+              
+              {/* Expandable Explanation Toggle */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowScoreExplanation(!showScoreExplanation);
+                }}
+                className="mt-3 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 w-full justify-center"
+                data-testid="toggle-score-explanation"
+              >
+                <Info className="w-3 h-3" />
+                How is this calculated?
+                {showScoreExplanation ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              
+              {/* Inline Explanation */}
+              {showScoreExplanation && (
+                <div className="mt-3 pt-3 border-t border-white/50 text-xs space-y-2" onClick={(e) => e.stopPropagation()}>
+                  <p className="font-medium text-gray-700">Score Components:</p>
+                  <ul className="space-y-1 text-gray-600">
+                    <li>• <strong>Status (40%):</strong> {complianceScore.stats?.compliant || 0}/{complianceScore.stats?.total_requirements || 0} requirements valid</li>
+                    <li>• <strong>Timeline (30%):</strong> {complianceScore.stats?.expiring_soon || 0} items due within 30 days</li>
+                    <li>• <strong>Documents (15%):</strong> {complianceScore.stats?.document_coverage_percent?.toFixed(0) || 0}% requirement coverage</li>
+                    <li>• <strong>Overdue Penalty (15%):</strong> {complianceScore.stats?.overdue || 0} overdue items</li>
+                  </ul>
+                  <p className="text-electric-teal pt-1">Click card for full breakdown →</p>
+                </div>
+              )}
             </div>
 
             {/* Recommendations Card */}
@@ -312,17 +347,29 @@ const ClientDashboard = () => {
                 </div>
               )}
 
-              {/* Stats Row */}
+              {/* Stats Row - Clickable */}
               <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-4">
-                <div className="text-center">
+                <div 
+                  className="text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
+                  onClick={() => navigate('/app/requirements')}
+                  data-testid="stat-requirements"
+                >
                   <p className="text-2xl font-bold text-midnight-blue">{complianceScore.stats?.total_requirements || 0}</p>
                   <p className="text-xs text-gray-500">Requirements</p>
                 </div>
-                <div className="text-center">
+                <div 
+                  className="text-center cursor-pointer hover:bg-green-50 rounded-lg p-2 transition-colors"
+                  onClick={() => navigate('/app/requirements?status=COMPLIANT')}
+                  data-testid="stat-compliant"
+                >
                   <p className="text-2xl font-bold text-green-600">{complianceScore.stats?.compliant || 0}</p>
                   <p className="text-xs text-gray-500">Compliant</p>
                 </div>
-                <div className="text-center">
+                <div 
+                  className="text-center cursor-pointer hover:bg-amber-50 rounded-lg p-2 transition-colors"
+                  onClick={() => navigate('/app/requirements?window=30&status=DUE_SOON')}
+                  data-testid="stat-expiry"
+                >
                   <p className="text-2xl font-bold text-amber-600">
                     {complianceScore.stats?.days_until_next_expiry !== null ? complianceScore.stats?.days_until_next_expiry : '—'}
                   </p>
