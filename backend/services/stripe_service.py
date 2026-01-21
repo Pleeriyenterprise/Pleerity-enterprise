@@ -1,143 +1,275 @@
-from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest, CheckoutSessionResponse
-from database import database
-from models import PaymentTransaction, BillingPlan, SubscriptionStatus, AuditAction
-from utils.audit import create_audit_log
+"""Stripe Service - Checkout session creation and billing management.
+
+This service handles:
+- Creating checkout sessions for new subscriptions
+- Managing subscription upgrades/downgrades
+- Billing portal access
+
+Key Principles:
+- Uses plan_registry as single source of truth for pricing
+- All price_ids come from plan_registry
+- Metadata includes client_id for webhook tracing
+"""
+import stripe
 import os
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+
+from database import database
+from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
+from utils.audit import create_audit_log
+from models import AuditAction
 
 logger = logging.getLogger(__name__)
 
-# Billing plan pricing (in GBP)
-# Monthly subscription: £9.99 / client (not per property)
-# One-time setup fee: £49.99 / client
-BILLING_PLANS = {
-    BillingPlan.PLAN_1: {"monthly": 9.99, "setup": 49.99, "name": "Starter (1 Property)"},
-    BillingPlan.PLAN_2_5: {"monthly": 9.99, "setup": 49.99, "name": "Growth (Up to 5 Properties)"},
-    BillingPlan.PLAN_6_15: {"monthly": 9.99, "setup": 49.99, "name": "Portfolio (Up to 15 Properties)"}
-}
+# Initialize Stripe
+stripe.api_key = os.getenv("STRIPE_API_KEY", "sk_test_emergent")
+
 
 class StripeService:
-    def __init__(self):
-        self.api_key = os.getenv("STRIPE_API_KEY", "sk_test_emergent")
+    """Stripe billing operations service."""
     
     async def create_checkout_session(
         self,
         client_id: str,
-        billing_plan: BillingPlan,
-        origin_url: str
-    ) -> CheckoutSessionResponse:
-        """Create Stripe checkout session.
+        plan_code: str,
+        origin_url: str,
+        customer_email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create Stripe checkout session for new subscription.
         
-        Pricing: £9.99/month subscription + £49.99 one-time setup fee
+        Includes:
+        - Subscription line item (recurring)
+        - Onboarding fee line item (one-time)
+        
+        Args:
+            client_id: Internal client ID (MANDATORY for webhook)
+            plan_code: Plan code (PLAN_1_SOLO, PLAN_2_PORTFOLIO, PLAN_3_PRO)
+            origin_url: Base URL for success/cancel redirects
+            customer_email: Optional customer email for prefill
+        
+        Returns:
+            Dict with checkout_url and session_id
         """
         db = database.get_db()
         
-        # Get amount from server-defined plans
-        plan_info = BILLING_PLANS.get(billing_plan)
-        if not plan_info:
-            raise ValueError(f"Invalid billing plan: {billing_plan}")
+        # Resolve plan code
+        try:
+            plan = PlanCode(plan_code)
+        except ValueError:
+            plan = plan_registry._resolve_plan_code(plan_code)
         
-        # Total first payment = monthly + setup fee
-        monthly = plan_info["monthly"]
-        setup = plan_info["setup"]
-        total_amount = monthly + setup
+        # Get plan definition with Stripe prices
+        plan_def = plan_registry.get_plan(plan)
+        stripe_prices = plan_registry.get_stripe_price_ids(plan)
         
-        # Initialize Stripe checkout
-        webhook_url = f"{origin_url}/api/webhook/stripe"
-        stripe_checkout = StripeCheckout(
-            api_key=self.api_key,
-            webhook_url=webhook_url
-        )
+        subscription_price_id = stripe_prices.get("subscription_price_id")
+        onboarding_price_id = stripe_prices.get("onboarding_price_id")
         
-        # Create checkout session
-        success_url = f"{origin_url}/checkout/success?session_id={{{{CHECKOUT_SESSION_ID}}}}"
+        if not subscription_price_id:
+            raise ValueError(f"No subscription price configured for plan {plan_code}")
+        
+        # Build line items
+        line_items = [
+            {
+                "price": subscription_price_id,
+                "quantity": 1,
+            },
+        ]
+        
+        # Add onboarding fee if configured
+        if onboarding_price_id:
+            line_items.append({
+                "price": onboarding_price_id,
+                "quantity": 1,
+            })
+        
+        # Success and cancel URLs
+        success_url = f"{origin_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{origin_url}/checkout/cancel"
         
-        checkout_request = CheckoutSessionRequest(
-            amount=total_amount,
-            currency="gbp",
-            success_url=success_url,
-            cancel_url=cancel_url,
-            metadata={
+        # Create checkout session
+        try:
+            session_params = {
+                "mode": "subscription",
+                "line_items": line_items,
+                "success_url": success_url,
+                "cancel_url": cancel_url,
+                "metadata": {
+                    "client_id": client_id,  # MANDATORY for webhook
+                    "plan_code": plan.value,
+                    "service": "COMPLIANCE_VAULT_PRO",
+                },
+                "subscription_data": {
+                    "metadata": {
+                        "client_id": client_id,
+                        "plan_code": plan.value,
+                    },
+                },
+                "expand": ["line_items"],  # Expand for webhook processing
+            }
+            
+            if customer_email:
+                session_params["customer_email"] = customer_email
+            
+            session = stripe.checkout.Session.create(**session_params)
+            
+            # Record checkout attempt
+            checkout_record = {
                 "client_id": client_id,
-                "billing_plan": billing_plan.value,
-                "service": "VAULT_PRO",
-                "monthly_price": str(monthly),
-                "setup_fee": str(setup)
+                "session_id": session.id,
+                "plan_code": plan.value,
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc),
+                "checkout_url": session.url,
+                "amount_total": session.amount_total,
+                "currency": session.currency,
             }
-        )
-        
-        session = await stripe_checkout.create_checkout_session(checkout_request)
-        
-        # Create payment transaction record
-        transaction = PaymentTransaction(
-            client_id=client_id,
-            stripe_session_id=session.session_id,
-            amount=total_amount,
-            currency="gbp",
-            billing_plan=billing_plan,
-            payment_status="pending",
-            metadata={
-                **checkout_request.metadata,
-                "breakdown": {
-                    "monthly": monthly,
-                    "setup_fee": setup,
-                    "total": total_amount
-                }
+            
+            await db.checkout_sessions.insert_one(checkout_record)
+            
+            logger.info(f"Checkout session created for client {client_id}: {session.id}")
+            
+            return {
+                "checkout_url": session.url,
+                "session_id": session.id,
+                "plan_code": plan.value,
+                "plan_name": plan_def["name"],
             }
-        )
-        
-        doc = transaction.model_dump()
-        for key in ["created_at", "updated_at"]:
-            if doc.get(key):
-                doc[key] = doc[key].isoformat()
-        
-        await db.payment_transactions.insert_one(doc)
-        
-        logger.info(f"Checkout session created for client {client_id}: {session.session_id} (£{total_amount})")
-        
-        return session
+            
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe checkout error for client {client_id}: {e}")
+            raise ValueError(f"Failed to create checkout session: {str(e)}")
     
-    async def handle_webhook(self, webhook_data: Dict, signature: str):
-        """Handle Stripe webhook events."""
+    async def create_upgrade_session(
+        self,
+        client_id: str,
+        new_plan_code: str,
+        origin_url: str
+    ) -> Dict[str, Any]:
+        """
+        Create checkout session for plan upgrade.
+        
+        For existing customers, uses Stripe Billing Portal or creates
+        a new checkout session that will update the subscription.
+        """
         db = database.get_db()
         
-        event_type = webhook_data.get("type")
-        data = webhook_data.get("data", {}).get("object", {})
+        # Get current billing info
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0}
+        )
         
-        logger.info(f"Received Stripe webhook: {event_type}")
+        if not billing or not billing.get("stripe_customer_id"):
+            # No existing subscription - treat as new checkout
+            client = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "contact_email": 1}
+            )
+            return await self.create_checkout_session(
+                client_id=client_id,
+                plan_code=new_plan_code,
+                origin_url=origin_url,
+                customer_email=client.get("contact_email") if client else None
+            )
         
-        if event_type == "checkout.session.completed":
-            session_id = data.get("id")
-            metadata = data.get("metadata", {})
-            client_id = metadata.get("client_id")
-            
-            if not client_id:
-                logger.error(f"No client_id in webhook metadata: {session_id}")
-                return
-            
-            # Update payment transaction
-            await db.payment_transactions.update_one(
-                {"stripe_session_id": session_id},
-                {
-                    "$set": {
-                        "payment_status": "completed",
-                        "stripe_payment_intent_id": data.get("payment_intent")
-                    }
-                }
+        # Existing customer - create portal session for upgrade
+        stripe_customer_id = billing.get("stripe_customer_id")
+        
+        try:
+            # Create billing portal session
+            portal_session = stripe.billing_portal.Session.create(
+                customer=stripe_customer_id,
+                return_url=f"{origin_url}/app/billing",
             )
             
-            # Update client subscription status
-            billing_plan = metadata.get("billing_plan")
-            await db.clients.update_one(
+            logger.info(f"Billing portal session created for client {client_id}")
+            
+            return {
+                "portal_url": portal_session.url,
+                "type": "billing_portal",
+                "current_plan": billing.get("current_plan_code"),
+                "target_plan": new_plan_code,
+            }
+            
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe portal error for client {client_id}: {e}")
+            raise ValueError(f"Failed to create billing portal session: {str(e)}")
+    
+    async def get_subscription_status(self, client_id: str) -> Dict[str, Any]:
+        """Get current subscription status for a client."""
+        db = database.get_db()
+        
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0}
+        )
+        
+        if not billing:
+            return {
+                "has_subscription": False,
+                "status": "NONE",
+                "entitlement_status": EntitlementStatus.DISABLED.value,
+            }
+        
+        return {
+            "has_subscription": True,
+            "stripe_subscription_id": billing.get("stripe_subscription_id"),
+            "current_plan_code": billing.get("current_plan_code"),
+            "subscription_status": billing.get("subscription_status"),
+            "entitlement_status": billing.get("entitlement_status"),
+            "current_period_end": billing.get("current_period_end"),
+            "cancel_at_period_end": billing.get("cancel_at_period_end", False),
+            "onboarding_fee_paid": billing.get("onboarding_fee_paid", False),
+        }
+    
+    async def cancel_subscription(
+        self, 
+        client_id: str, 
+        cancel_immediately: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Cancel a subscription.
+        
+        Args:
+            client_id: Client ID
+            cancel_immediately: If True, cancel now. If False, cancel at period end.
+        """
+        db = database.get_db()
+        
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0}
+        )
+        
+        if not billing or not billing.get("stripe_subscription_id"):
+            raise ValueError("No active subscription found")
+        
+        subscription_id = billing.get("stripe_subscription_id")
+        
+        try:
+            if cancel_immediately:
+                # Cancel immediately
+                subscription = stripe.Subscription.delete(subscription_id)
+            else:
+                # Cancel at period end
+                subscription = stripe.Subscription.modify(
+                    subscription_id,
+                    cancel_at_period_end=True
+                )
+            
+            # Update local record
+            await db.client_billing.update_one(
                 {"client_id": client_id},
                 {
                     "$set": {
-                        "subscription_status": SubscriptionStatus.ACTIVE.value,
-                        "billing_plan": billing_plan,
-                        "stripe_customer_id": data.get("customer"),
-                        "stripe_subscription_id": data.get("subscription")
+                        "cancel_at_period_end": not cancel_immediately,
+                        "subscription_status": "CANCELED" if cancel_immediately else billing.get("subscription_status"),
+                        "entitlement_status": EntitlementStatus.DISABLED.value if cancel_immediately else billing.get("entitlement_status"),
+                        "updated_at": datetime.now(timezone.utc),
                     }
                 }
             )
@@ -145,49 +277,27 @@ class StripeService:
             # Audit log
             await create_audit_log(
                 action=AuditAction.ADMIN_ACTION,
+                actor_role="CLIENT",
                 client_id=client_id,
                 metadata={
-                    "event": "payment_completed",
-                    "session_id": session_id,
-                    "billing_plan": billing_plan
+                    "action": "subscription_cancellation_requested",
+                    "immediate": cancel_immediately,
+                    "subscription_id": subscription_id,
                 }
             )
             
-            logger.info(f"Payment completed for client {client_id}")
-        
-        elif event_type in ["customer.subscription.updated", "customer.subscription.deleted"]:
-            subscription = data
-            customer_id = subscription.get("customer")
+            logger.info(f"Subscription cancellation requested for client {client_id}, immediate={cancel_immediately}")
             
-            # Find client by customer_id
-            client = await db.clients.find_one(
-                {"stripe_customer_id": customer_id},
-                {"_id": 0}
-            )
+            return {
+                "success": True,
+                "cancel_at_period_end": not cancel_immediately,
+                "current_period_end": billing.get("current_period_end"),
+            }
             
-            if not client:
-                logger.warning(f"Client not found for customer {customer_id}")
-                return
-            
-            # Update subscription status
-            status = subscription.get("status")
-            new_status = SubscriptionStatus.ACTIVE if status == "active" else SubscriptionStatus.CANCELLED
-            
-            await db.clients.update_one(
-                {"client_id": client["client_id"]},
-                {"$set": {"subscription_status": new_status.value}}
-            )
-            
-            # Audit log
-            await create_audit_log(
-                action=AuditAction.ADMIN_ACTION,
-                client_id=client["client_id"],
-                metadata={
-                    "event": event_type,
-                    "subscription_status": new_status.value
-                }
-            )
-            
-            logger.info(f"Subscription updated for client {client['client_id']}: {new_status.value}")
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe cancel error for client {client_id}: {e}")
+            raise ValueError(f"Failed to cancel subscription: {str(e)}")
 
+
+# Singleton instance
 stripe_service = StripeService()
