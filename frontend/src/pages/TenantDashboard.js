@@ -203,10 +203,6 @@ const TenantDashboard = () => {
     setSelectedProperty(property);
     setShowRequestModal(true);
   };
-      default:
-        return { color: 'text-gray-600', bg: 'bg-gray-100', icon: <Info className="w-4 h-4" /> };
-    }
-  };
 
   if (loading) {
     return (
