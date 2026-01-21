@@ -1043,19 +1043,19 @@ async def get_job_status(request: Request):
         blocked_limited = await db.clients.count_documents({"entitlement_status": "LIMITED"})
         blocked_disabled = await db.clients.count_documents({"entitlement_status": "DISABLED"})
         
-        # Get recent job runs from scheduled_jobs collection
-        recent_jobs = await db.scheduled_jobs.find(
-            {},
-            {"_id": 0}
-        ).sort("next_run_time", -1).limit(10).to_list(10)
-        
         return {
             "job_blocking": {
                 "limited_clients": blocked_limited,
                 "disabled_clients": blocked_disabled,
                 "message": f"{blocked_limited + blocked_disabled} clients blocked from background jobs (reminders, digests, scheduled reports)"
             },
-            "scheduled_jobs": recent_jobs,
+            "job_types": [
+                {"name": "daily_reminders", "schedule": "Daily at 8 AM", "description": "Compliance expiry reminders"},
+                {"name": "monthly_digest", "schedule": "1st of month", "description": "Monthly compliance digest"},
+                {"name": "compliance_check", "schedule": "Hourly", "description": "Status change detection"},
+                {"name": "renewal_reminders", "schedule": "Daily", "description": "7-day subscription renewal reminders"},
+                {"name": "scheduled_reports", "schedule": "Per schedule", "description": "Automated report delivery"},
+            ],
         }
         
     except Exception as e:
