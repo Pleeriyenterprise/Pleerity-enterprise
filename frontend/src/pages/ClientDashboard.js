@@ -274,6 +274,57 @@ const ClientDashboard = () => {
                 {complianceScore.message}
               </p>
               
+              {/* Score Trending Sparkline */}
+              {scoreTrend?.has_history && scoreTrend.sparkline?.length > 1 && (
+                <div className="mt-4 pt-3 border-t border-white/50" data-testid="score-trend-section">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-500">30-Day Trend</span>
+                    <div className="flex items-center gap-1">
+                      {scoreTrend.trend_direction === 'up' && (
+                        <span className="flex items-center text-xs text-green-600">
+                          <TrendingUp className="w-3 h-3 mr-0.5" />
+                          +{scoreTrend.change_7d || scoreTrend.change_30d || 0}
+                        </span>
+                      )}
+                      {scoreTrend.trend_direction === 'down' && (
+                        <span className="flex items-center text-xs text-red-600">
+                          <TrendingDown className="w-3 h-3 mr-0.5" />
+                          {scoreTrend.change_7d || scoreTrend.change_30d || 0}
+                        </span>
+                      )}
+                      {scoreTrend.trend_direction === 'stable' && (
+                        <span className="flex items-center text-xs text-gray-500">
+                          <Minus className="w-3 h-3 mr-0.5" />
+                          Stable
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Sparkline 
+                    data={scoreTrend.sparkline}
+                    width={180}
+                    height={40}
+                    trendDirection={scoreTrend.trend_direction}
+                    showArea={true}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {scoreTrend.days_of_data} days of data • Avg: {scoreTrend.avg_score}
+                  </p>
+                </div>
+              )}
+              
+              {/* Show placeholder if no trend data yet */}
+              {(!scoreTrend?.has_history || !scoreTrend?.sparkline?.length) && (
+                <div className="mt-4 pt-3 border-t border-white/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-500">30-Day Trend</span>
+                  </div>
+                  <div className="h-10 flex items-center justify-center bg-white/30 rounded-lg">
+                    <span className="text-xs text-gray-400">Trend tracking starts tomorrow</span>
+                  </div>
+                </div>
+              )}
+              
               {/* Score Breakdown */}
               <div className="mt-4 pt-4 border-t border-white/50 space-y-2">
                 <div className="flex justify-between text-xs">
