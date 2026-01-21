@@ -5,8 +5,9 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Send, ArrowLeft, AlertCircle, MessageSquare, Shield } from 'lucide-react';
+import { Send, ArrowLeft, AlertCircle, MessageSquare, Shield, ChevronDown, ChevronUp, FileText, Sparkles, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -16,12 +17,19 @@ const AssistantPage = () => {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `Hello! I'm your Compliance Vault Pro assistant. I can explain your compliance data and help you understand your dashboard.\n\n**What I can do:**\n- Explain compliance statuses and deadlines\n- Help you understand requirements\n- Answer questions about your properties\n\n**What I cannot do:**\n- Provide legal advice\n- Create or modify data\n- Predict enforcement outcomes\n\nHow can I help you today?`
+      content: `Hello! I'm your Compliance Vault Pro assistant. I can explain your compliance data and help you understand your dashboard.`,
+      what_this_is_based_on: [],
+      next_actions: [
+        "Ask about your overall compliance status",
+        "Ask which properties need attention",
+        "Ask about upcoming deadlines"
+      ]
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expandedMessages, setExpandedMessages] = useState({});
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -31,6 +39,13 @@ const AssistantPage = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const toggleMessageDetails = (index) => {
+    setExpandedMessages(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,7 +67,14 @@ const AssistantPage = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { answer, refused, refusal_reason } = response.data;
+      const { 
+        answer, 
+        what_this_is_based_on, 
+        next_actions, 
+        refused, 
+        refusal_reason,
+        correlation_id 
+      } = response.data;
 
       // Add assistant response
       setMessages(prev => [
@@ -60,24 +82,35 @@ const AssistantPage = () => {
         {
           role: 'assistant',
           content: answer,
+          what_this_is_based_on: what_this_is_based_on || [],
+          next_actions: next_actions || [],
           refused: refused,
-          refusal_reason: refusal_reason
+          refusal_reason: refusal_reason,
+          correlation_id: correlation_id
         }
       ]);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to get response');
+      const errorDetail = err.response?.data?.detail || 'Assistant unavailable. Please try again or refresh.';
+      setError(errorDetail);
+      toast.error(errorDetail);
+      
       // Add error message to chat
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          content: 'I encountered an error processing your question. Please try again.',
-          error: true
+          content: 'Assistant unavailable. Please try again or refresh.',
+          error: true,
+          next_actions: ['Refresh the page', 'Contact support if the issue persists']
         }
       ]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleQuickQuestion = (question) => {
+    setInput(question);
   };
 
   return (
@@ -99,7 +132,7 @@ const AssistantPage = () => {
               </Button>
               <div className="border-l border-gray-600 pl-4">
                 <h1 className="text-xl font-bold flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
+                  <Sparkles className="w-5 h-5 text-electric-teal" />
                   Compliance Assistant
                 </h1>
               </div>
@@ -133,7 +166,18 @@ const AssistantPage = () => {
         {/* Chat Container */}
         <Card className="shadow-lg">
           <CardHeader className="border-b">
-            <CardTitle className="text-midnight-blue">Ask About Your Compliance</CardTitle>
+            <CardTitle className="text-midnight-blue flex items-center justify-between">
+              <span>Ask About Your Compliance</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.reload()}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Reset
+              </Button>
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {/* Messages */}
@@ -149,32 +193,102 @@ const AssistantPage = () => {
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                    className={`max-w-[85%] rounded-lg ${
                       message.role === 'user'
-                        ? 'bg-midnight-blue text-white'
+                        ? 'bg-midnight-blue text-white px-4 py-3'
                         : message.error
-                        ? 'bg-red-50 text-red-900 border border-red-200'
+                        ? 'bg-red-50 text-red-900 border border-red-200 px-4 py-3'
                         : message.refused
-                        ? 'bg-yellow-50 text-yellow-900 border border-yellow-200'
-                        : 'bg-gray-100 text-gray-900'
+                        ? 'bg-yellow-50 text-yellow-900 border border-yellow-200 px-4 py-3'
+                        : 'bg-white border border-gray-200 shadow-sm'
                     }`}
                     data-testid={`message-${message.role}`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    {message.refused && message.refusal_reason && (
-                      <p className="text-xs mt-2 opacity-75">
-                        Reason: {message.refusal_reason}
-                      </p>
+                    {message.role === 'assistant' && !message.error ? (
+                      <div className="space-y-3">
+                        {/* Main Answer */}
+                        <div className="px-4 pt-4 pb-2">
+                          <p className="text-sm whitespace-pre-wrap text-gray-800">{message.content}</p>
+                        </div>
+                        
+                        {/* What this is based on - Expandable */}
+                        {(message.what_this_is_based_on?.length > 0 || message.next_actions?.length > 0) && (
+                          <div className="border-t border-gray-100">
+                            <button
+                              onClick={() => toggleMessageDetails(index)}
+                              className="w-full px-4 py-2 flex items-center justify-between text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                            >
+                              <span className="flex items-center gap-1">
+                                <FileText className="w-3 h-3" />
+                                {expandedMessages[index] ? 'Hide details' : 'Show details'}
+                              </span>
+                              {expandedMessages[index] ? (
+                                <ChevronUp className="w-3 h-3" />
+                              ) : (
+                                <ChevronDown className="w-3 h-3" />
+                              )}
+                            </button>
+                            
+                            {expandedMessages[index] && (
+                              <div className="px-4 pb-4 space-y-3 text-xs">
+                                {message.what_this_is_based_on?.length > 0 && (
+                                  <div>
+                                    <p className="font-medium text-gray-600 mb-1">What this is based on:</p>
+                                    <ul className="list-disc list-inside text-gray-500 space-y-0.5">
+                                      {message.what_this_is_based_on.map((item, i) => (
+                                        <li key={i}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                
+                                {message.next_actions?.length > 0 && (
+                                  <div>
+                                    <p className="font-medium text-gray-600 mb-1">Next actions in portal:</p>
+                                    <ul className="space-y-1">
+                                      {message.next_actions.map((action, i) => (
+                                        <li 
+                                          key={i}
+                                          className="flex items-center gap-1 text-electric-teal"
+                                        >
+                                          <span className="w-1 h-1 bg-electric-teal rounded-full" />
+                                          {action}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                
+                                {message.correlation_id && (
+                                  <p className="text-gray-400 text-[10px] pt-2 border-t border-gray-100">
+                                    Ref: {message.correlation_id}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {message.refused && message.refusal_reason && (
+                          <p className="text-xs px-4 pb-3 text-yellow-600">
+                            Note: {message.refusal_reason}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     )}
                   </div>
                 </div>
               ))}
               {loading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 rounded-lg px-4 py-3">
+                  <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm">
                     <div className="flex items-center gap-2 text-gray-600">
-                      <div className="loading-spinner w-4 h-4" />
-                      <span className="text-sm">Thinking...</span>
+                      <div className="w-2 h-2 bg-electric-teal rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-electric-teal rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-electric-teal rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <span className="text-sm ml-1">Thinking...</span>
                     </div>
                   </div>
                 </div>
@@ -203,7 +317,7 @@ const AssistantPage = () => {
                 <Button
                   type="submit"
                   disabled={loading || !input.trim()}
-                  className="btn-primary"
+                  className="bg-electric-teal hover:bg-teal-600"
                   data-testid="send-question-btn"
                 >
                   <Send className="w-4 h-4" />
@@ -219,22 +333,23 @@ const AssistantPage = () => {
         {/* Example Questions */}
         <Card className="mt-6">
           <CardContent className="pt-6">
-            <h3 className="text-sm font-semibold text-midnight-blue mb-3">Example Questions:</h3>
-            <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-midnight-blue mb-3">Quick Questions:</h3>
+            <div className="flex flex-wrap gap-2">
               {[
                 "What is my overall compliance status?",
-                "Which properties have overdue requirements?",
-                "What does the AMBER status mean?",
+                "Which properties need attention?",
+                "What are my upcoming deadlines?",
                 "How many documents have I uploaded?",
-                "When is my next deadline?"
+                "What does my compliance score mean?"
               ].map((example, i) => (
                 <button
                   key={i}
-                  onClick={() => setInput(example)}
-                  className="text-sm text-electric-teal hover:underline block"
+                  onClick={() => handleQuickQuestion(example)}
+                  className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-electric-teal/10 text-gray-700 hover:text-electric-teal rounded-full transition-colors"
                   disabled={loading}
+                  data-testid={`quick-question-${i}`}
                 >
-                  • {example}
+                  {example}
                 </button>
               ))}
             </div>
