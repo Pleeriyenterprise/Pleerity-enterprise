@@ -27,16 +27,35 @@ import {
   X,
   Info,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Lock,
+  ArrowUpRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import { PropertyLimitPrompt } from '../components/UpgradePrompt';
 
-// Plan limits (must match backend)
+// Plan limits - NEW PLAN STRUCTURE (must match backend plan_registry.py)
 const PLAN_LIMITS = {
-  PLAN_1: 1,
-  PLAN_2_5: 5,
-  PLAN_6_15: 15
+  // New plan codes
+  PLAN_1_SOLO: 2,
+  PLAN_2_PORTFOLIO: 10,
+  PLAN_3_PRO: 25,
+  // Legacy codes (for backward compatibility)
+  PLAN_1: 2,
+  PLAN_2_5: 10,
+  PLAN_6_15: 25
+};
+
+// Plan names for display
+const PLAN_NAMES = {
+  PLAN_1_SOLO: 'Solo Landlord',
+  PLAN_2_PORTFOLIO: 'Portfolio',
+  PLAN_3_PRO: 'Professional',
+  // Legacy
+  PLAN_1: 'Solo Landlord',
+  PLAN_2_5: 'Portfolio',
+  PLAN_6_15: 'Professional'
 };
 
 // Property types
