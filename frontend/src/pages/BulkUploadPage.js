@@ -652,13 +652,13 @@ const BulkUploadPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-700">
                 <CheckCircle className="w-5 h-5" />
-                Upload Complete
+                {uploadMode === 'zip' ? 'ZIP Processing Complete' : 'Upload Complete'}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-4 text-center">
+              <div className="grid grid-cols-5 gap-4 text-center">
                 <div>
-                  <div className="text-2xl font-bold text-midnight-blue">{uploadResults.total}</div>
+                  <div className="text-2xl font-bold text-midnight-blue">{uploadResults.total_extracted || uploadResults.total}</div>
                   <div className="text-sm text-gray-500">Total Files</div>
                 </div>
                 <div>
@@ -669,6 +669,12 @@ const BulkUploadPage = () => {
                   <div className="text-2xl font-bold text-red-600">{uploadResults.failed}</div>
                   <div className="text-sm text-gray-500">Failed</div>
                 </div>
+                {uploadResults.skipped !== undefined && (
+                  <div>
+                    <div className="text-2xl font-bold text-gray-400">{uploadResults.skipped}</div>
+                    <div className="text-sm text-gray-500">Skipped</div>
+                  </div>
+                )}
                 <div>
                   <div className="text-2xl font-bold text-electric-teal">{uploadResults.auto_matched}</div>
                   <div className="text-sm text-gray-500">AI Matched</div>
@@ -688,7 +694,7 @@ const BulkUploadPage = () => {
         )}
 
         {/* Upload Button */}
-        {files.length > 0 && !uploadResults && (
+        {((uploadMode === 'files' && files.length > 0) || (uploadMode === 'zip' && zipFile)) && !uploadResults && (
           <div className="flex gap-4">
             <Button
               onClick={handleUpload}
@@ -699,7 +705,12 @@ const BulkUploadPage = () => {
               {uploading ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin mr-2" />
-                  Uploading...
+                  {uploadMode === 'zip' ? 'Processing ZIP...' : 'Uploading...'}
+                </>
+              ) : uploadMode === 'zip' ? (
+                <>
+                  <Archive className="w-5 h-5 mr-2" />
+                  Process ZIP Archive
                 </>
               ) : (
                 <>
@@ -712,11 +723,13 @@ const BulkUploadPage = () => {
         )}
 
         {/* Help Text */}
-        {files.length === 0 && (
+        {files.length === 0 && !zipFile && (
           <div className="text-center text-gray-500 py-8">
-            <p>Select a property and drag files to get started</p>
+            <p>Select a property and {uploadMode === 'zip' ? 'drop a ZIP file' : 'drag files'} to get started</p>
             <p className="text-sm mt-2">
-              Tip: Name your files descriptively (e.g., "gas_safety_cert_2024.pdf") for better AI matching
+              {uploadMode === 'zip' 
+                ? 'ZIP archive will be extracted and each document processed individually' 
+                : 'Tip: Name your files descriptively (e.g., "gas_safety_cert_2024.pdf") for better AI matching'}
             </p>
           </div>
         )}
