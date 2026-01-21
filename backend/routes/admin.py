@@ -1323,6 +1323,45 @@ async def get_jobs_status(request: Request):
             detail="Failed to load jobs status"
         )
 
+
+@router.get("/system/feature-matrix")
+async def get_feature_matrix(request: Request):
+    """Get the complete feature entitlement matrix.
+    
+    Returns all features with their availability across all plans.
+    Useful for documentation, auditing, and admin review.
+    """
+    user = await admin_route_guard(request)
+    
+    try:
+        from services.feature_entitlement import feature_entitlement_service, PLAN_METADATA
+        from models import BillingPlan
+        
+        matrix = feature_entitlement_service.get_entitlement_matrix()
+        
+        # Add plan metadata
+        plans = {
+            plan.value: {
+                **feature_entitlement_service.get_plan_metadata(plan),
+                "features": feature_entitlement_service.get_plan_features(plan)
+            }
+            for plan in BillingPlan
+        }
+        
+        return {
+            "feature_matrix": matrix,
+            "plans": plans,
+            "total_features": len(matrix),
+            "generated_at": datetime.now(timezone.utc).isoformat()
+        }
+    
+    except Exception as e:
+        logger.error(f"Feature matrix error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load feature matrix"
+        )
+
 @router.post("/jobs/trigger/{job_type}")
 async def trigger_job(request: Request, job_type: str):
     """Manually trigger a background job (admin only).
