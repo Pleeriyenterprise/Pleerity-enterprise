@@ -58,6 +58,7 @@ import TenantManagementPage from './pages/TenantManagementPage';
 import BulkPropertyImportPage from './pages/BulkPropertyImportPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import BrandingSettingsPage from './pages/BrandingSettingsPage';
+import BillingPage from './pages/BillingPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
