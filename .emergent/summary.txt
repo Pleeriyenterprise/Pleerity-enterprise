@@ -1,0 +1,162 @@
+<analysis>**original_problem_statement:**
+The user's primary goal is to finalize the Compliance Vault Pro application, making it production-ready. This involves implementing a new, strict, three-tier subscription plan structure (, , ), enforcing feature gating at all levels (especially during the initial client intake), and refining existing features to align with these new plans.
+
+Key requirements for this production-ready build include:
+1.  **New Plan Registry:** A central, server-side source of truth for plan definitions, property limits, and feature entitlements.
+2.  **Intake-Level Gating:** The client intake form must prevent users from adding more properties than their selected plan allows, enforced on both the frontend and backend.
+3.  **Upgrade Prompts:** A reusable UI component must be shown whenever a user attempts to access a feature not included in their plan.
+4.  **Tiered Features:** Certain features, like AI Document Extraction, must have different behaviors (Basic vs. Advanced) depending on the user's plan.
+5.  **Tenant Portal Scope Reduction:** The tenant portal must be made strictly view-only, with all interactive features (like requesting certificates or contacting the landlord) removed or disabled.
+
+PRODUCT REQUIREMENTS are detailed in .
+
+**User's preferred language**: English
+
+**what currently exists?**
+The application is a compliance management SaaS platform with a newly refactored production-ready architecture.
+-   **Backend**: A new authoritative  service defines the three new subscription plans and their corresponding feature entitlements. The intake API () now validates and enforces property limits server-side. The document analysis endpoint () implements tiered Basic vs. Advanced AI extraction. The tenant portal API () has been updated to be strictly read-only.
+-   **Frontend**: The client intake wizard () has been significantly updated to use the new plan structure, dynamically enforce property limits, and display a new, reusable  component when limits are exceeded.
+-   **Testing**: The recent changes to the backend plan registry and frontend intake wizard have been successfully validated by the testing agent ().
+
+**Last working item**:
+    - Last item agent was working: The agent was implementing the user's request to Proceed with E2E Full Journey Test... and Feature-Gated Pages. It had started exploring the relevant frontend pages (, , ) to begin wiring up the reusable  component.
+    - Status: IN PROGRESS
+    - Agent Testing Done: Y (for the previously completed sub-task of Intake Wizard integration)
+    - Which testing method agent to use? After wiring up the  to all gated pages, the agent must use the  to conduct the full end-to-end journey test as requested by the user.
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  - No pending issues.
+
+**In progress Task List**:
+  - Task 1:  Wire Up UpgradePrompt Component to Feature-Gated Pages (P0)
+
+ Task Detail:
+  - Task 1: 
+     - Where to resume: The agent has viewed , , and . The next step is to modify  and  to fetch feature entitlements and conditionally render the  component if the feature is unavailable to the user's plan.
+     - What will be achieved with this? This will ensure a consistent user experience across the application, clearly communicating the value of higher-tier plans when users encounter gated features.
+     - Status:  IN PROGRESS
+     - Should Test frontend/backend/both after fix? Both. A visual check of the frontend is needed, and the testing agent should be used to confirm the gating logic end-to-end.
+     - Blocked on something: No.
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - **P0: E2E Full Journey Test**: Once the  integration is complete, execute a comprehensive end-to-end test covering the full user journey (Intake → Payment → Provisioning → Dashboard) for all three new plans (, , ). This must include testing upgrade prompts and failure paths.
+    - **P1: Stripe Price ID Integration**: The user will provide new Stripe price IDs for the three plans. These need to be integrated into the backend, likely within  and payment-related routes.
+    
+    Future Tasks:
+    - **P1: Implement Full Address Autocomplete (PAUSED)**: Integrate  in the intake wizard.
+    - **P2: Property Price Context**: Display average property prices based on postcode.
+    - **P2: Admin Test Monitoring UI**: Build a dedicated page in the admin dashboard for viewing test runs and job statuses.
+
+**Completed work in this session**
+- List of all completed tasks with file and method name:
+  - **Production Plan & Gating Refactor**: Implemented a new authoritative , enforced intake-level property limits in , made the tenant portal view-only in , and aligned all feature gating to the new plans.
+  - **Tiered AI Document Extraction**: Implemented logic in  to provide 'Basic' or 'Advanced' extraction based on the client's subscription plan.
+  - **Reusable Upgrade Prompt Component**: Created .
+  - **Intake Wizard Frontend Overhaul**: Refactored  to use the new plan structure and integrate the  for property limit enforcement.
+  - **Compliance Score Trending**: Implemented backend service () and frontend component () to display score history.
+  - **White-Label Branding & iCal Sync**: Added backend endpoints and frontend pages for branding settings and a plan-gated iCal export feature.
+  - **Reporting Engine Enhancements**: Created services and plan-gated endpoints for professional PDF report generation.
+
+- Recently completed:
+  - Frontend Intake Wizard Integration (DONE)
+  - Backend Production-Ready Refactor (DONE)
+  - Compliance Score Trending (DONE)
+  - White-Label Branding & Settings (DONE)
+  - iCal Calendar Export (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+   - None.
+
+**Known issue recurrence from previous fork**
+  - None.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Centralized Plan Registry:** A single, authoritative backend service () defines all subscription plans, property limits, and feature entitlements.
+- **Intake-Level Gating:** Enforcing subscription limits *during* the user onboarding process, both on the frontend (disabling UI) and backend (API validation).
+- **Reusable Upgrade Component:** A React component () used across the application to provide a consistent call-to-action for gated features.
+- **Tiered Feature Logic:** Implementing different behaviors for the same feature based on the user's plan (e.g., Basic vs. Advanced AI extraction).
+
+**key DB schema**
+  - **compliance_score_history**: (NEW) Stores daily compliance score snapshots. Fields: , , Wed Jan 21 17:30:14 UTC 2026.
+  - **clients**: Updated to store  and a  referencing the new  enum.
+
+**changes in tech stack**
+  - None.
+
+**All files of reference**
+- : The new single source of truth for all subscription plan details.
+- : The modified intake wizard that enforces plan limits.
+- : The new reusable component for feature gating prompts.
+- : Contains the server-side validation for intake property limits.
+- : Contains the logic for tiered Basic vs Advanced AI extraction.
+- : The canonical source for product requirements.
+- : The latest successful test report.
+
+**Areas that need refactoring**:
+- The old  service is now largely redundant and could be refactored or removed, with its functionality fully absorbed by  and .
+
+**key api endpoints**
+- : (NEW) Returns the new list of production-ready plans.
+- : (NEW) Checks if a property count is allowed for a selected plan.
+- : (MODIFIED) Now includes a  ('basic' or 'advanced') based on the client's plan.
+- : (MODIFIED) Now returns a feature disabled error.
+- : (MODIFIED) Now returns a feature disabled error.
+
+**Critical Info for New Agent**
+- You are executing a production-ready build. The new plan structure in  is the absolute source of truth.
+- **Your immediate P0 task is to continue the work already started: wire up the  component to all remaining feature-gated pages (, , etc.).**
+- After completing that, your next **critical P0 task** is to perform the E2E Full Journey Test requested by the user, using the  to validate the entire user flow for all three new plans.
+- The Tenant Portal must remain strictly view-only. Do not re-introduce any interactive features.
+
+**documents and test reports created in this job**
+-  (Updated)
+- 
+- 
+-  (Latest)
+
+**Last 10 User Messages and any pending HUMAN messages** 
+-  **User**: Proceed with E2E Full Journey Test: Planned from Intake → Payment → Provisioning → Dashboard and Feature-Gated Pages: Plan to wire UpgradePrompt to Reports, Webhooks, Branding pages
+-  **Agent**: Summarized the completion of the Intake Wizard frontend integration and laid out the next steps.
+-  **User**: Proceed with this order?
+-  **Agent**: Proposed the order of frontend integration tasks.
+-  **User**: go ahead with next steps
+-  **Agent**: Summarized the completion of the backend production-ready build and proposed frontend integration next steps.
+-  **User**: go ahead with next steps
+-  **Agent**: Acknowledged the user's request to proceed.
+-  **User**: Confirmed the new production plan, approved the execution order, and mandated the crucial requirement for intake-level gating.
+-  **Agent**: Asked for clarification on the new plan structure, AI extraction tiers, and tenant portal scope.
+
+**Project Health Check:**
+- **Broken**: None.
+- **Mocked**:
+    - **Stripe**: Awaiting new price IDs from the user for the , , and  plans.
+    - **Postmark**: Uses a test key.
+    - **Twilio**: Uses test credentials.
+
+**3rd Party Integrations**
+- **Stripe (Payments)** — requires User API Key (test key configured, awaiting new price IDs).
+- **Postmark (Transactional Emails)** — requires User API Key (live key configured).
+- **Gemini (Document AI & Admin Assistant)** — uses Emergent LLM Key via .
+- **Twilio (SMS Notifications)** — requires User API Key.
+- **Postcodes.io (Address Lookup)** - Free, no key required.
+- **getaddress.io (Address Autocomplete)** - Planned, but paused.
+- **reportlab (PDF Generation)** - Dependency installed, no key required.
+
+**Testing status**
+  - Testing agent used after significant changes: YES (Last run  verified the new intake wizard and backend gating).
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None.
+  - Known regressions: None.
+
+**Credentials to test flow:**
+- **Admin (Test)**:  / 
+- **Client (Landlord)**:  / 
+- **Tenant**: Created dynamically during testing.
+
+**What agent forgot to execute**
+- Nothing appears to have been missed. The agent is systematically working through the user's explicit production-ready build plan.</analysis>
