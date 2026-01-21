@@ -1,18 +1,22 @@
-"""Tenant Routes - Read-only access to property compliance status.
+"""Tenant Routes - STRICTLY VIEW-ONLY access to property compliance status.
 
 ROLE_TENANT has STRICTLY LIMITED permissions:
 ✅ View property compliance status (GREEN/AMBER/RED)
 ✅ View certificate status and expiry dates
 ✅ View basic summaries
 ✅ Download compliance pack for assigned properties
-✅ Request certificate updates from landlord
-✅ Contact landlord via messaging
 
+❌ NO certificate requests (REMOVED - view-only)
+❌ NO landlord messaging (REMOVED - view-only)
 ❌ No document uploads
 ❌ No audit logs access
 ❌ No reports access
 ❌ No billing/settings visibility
 ❌ No admin actions
+
+TENANT PORTAL IS VIEW-ONLY:
+- No action may create tasks, notifications, or audit side effects
+- Tenants can only read compliance data, not affect it
 """
 from fastapi import APIRouter, HTTPException, Request, status
 from database import database
