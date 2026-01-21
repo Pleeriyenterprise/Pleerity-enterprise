@@ -1,0 +1,95 @@
+{
+  "summary": "Iteration 23 - New Plan Structure Testing Complete. All 21 backend API tests passed (100%). Verified new plan codes (PLAN_1_SOLO, PLAN_2_PORTFOLIO, PLAN_3_PRO), property limit enforcement, legacy plan mapping, client entitlements, admin feature matrix, and tenant portal view-only behavior.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration23_plan_structure.py",
+    "/app/test_reports/pytest/pytest_results_iter23.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "plan_registry.py is well-structured as single source of truth for all plan definitions",
+    "Legacy plan mapping (PLAN_1 → PLAN_1_SOLO, PLAN_2_5 → PLAN_2_PORTFOLIO, PLAN_6_15 → PLAN_3_PRO) works correctly",
+    "Property limit enforcement at intake level is properly implemented",
+    "Tenant portal view-only behavior correctly returns FEATURE_DISABLED for request-certificate and contact-landlord",
+    "UpgradePrompt.js component is created but not yet integrated into the app - ready for future use"
+  ],
+  "updated_files": [
+    "/app/tests/test_iteration23_plan_structure.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "N/A (backend-only testing)"
+  },
+  "test_credentials": {
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!",
+    "client_email": "test@pleerity.com",
+    "client_password": "TestClient123!"
+  },
+  "seed_data_creation": "None - used existing test client with billing_plan='PLAN_1' (legacy code)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Test client (test@pleerity.com) has billing_plan='PLAN_1' which maps to PLAN_1_SOLO via legacy mapping. Client entitlements correctly show plan='PLAN_1_SOLO' with max_properties=2. Tenant portal is view-only - request-certificate and contact-landlord return FEATURE_DISABLED. UpgradePrompt component exists but is not yet integrated into the UI.",
+  "verified_endpoints": {
+    "plans_endpoint": {
+      "endpoint": "GET /api/intake/plans",
+      "status": "PASS",
+      "details": "Returns 3 plans: PLAN_1_SOLO (2 props, £19/mo), PLAN_2_PORTFOLIO (10 props, £39/mo), PLAN_3_PRO (25 props, £79/mo)"
+    },
+    "property_count_validation": {
+      "endpoint": "POST /api/intake/validate-property-count",
+      "status": "PASS",
+      "details": "Correctly enforces limits: PLAN_1_SOLO=2, PLAN_2_PORTFOLIO=10, PLAN_3_PRO=25. Returns PROPERTY_LIMIT_EXCEEDED with upgrade_to suggestion"
+    },
+    "client_entitlements": {
+      "endpoint": "GET /api/client/entitlements",
+      "status": "PASS",
+      "details": "Returns full feature matrix with enabled/disabled status. Test client shows plan=PLAN_1_SOLO with 7 enabled features"
+    },
+    "admin_feature_matrix": {
+      "endpoint": "GET /api/admin/system/feature-matrix",
+      "status": "PASS",
+      "details": "Returns complete plan comparison with all 19 features across 3 plans"
+    },
+    "tenant_request_certificate": {
+      "endpoint": "POST /api/tenant/request-certificate",
+      "status": "PASS",
+      "details": "Returns 403 FEATURE_DISABLED - view-only portal"
+    },
+    "tenant_contact_landlord": {
+      "endpoint": "POST /api/tenant/contact-landlord",
+      "status": "PASS",
+      "details": "Returns 403 FEATURE_DISABLED - view-only portal"
+    },
+    "tenant_requests": {
+      "endpoint": "GET /api/tenant/requests",
+      "status": "PASS",
+      "details": "Returns empty list with view-only note"
+    },
+    "tenant_dashboard": {
+      "endpoint": "GET /api/tenant/dashboard",
+      "status": "PASS",
+      "details": "Requires authentication (401 without auth)"
+    },
+    "legacy_plan_mapping": {
+      "status": "PASS",
+      "details": "PLAN_1→PLAN_1_SOLO, PLAN_2_5→PLAN_2_PORTFOLIO, PLAN_6_15→PLAN_3_PRO all work correctly"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Postmark emails (live key but test emails)",
+      "Stripe (test key)",
+      "Twilio (test credentials)"
+    ]
+  }
+}
