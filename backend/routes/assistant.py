@@ -9,8 +9,20 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 
+
 class AskQuestionRequest(BaseModel):
     question: str
+
+
+class AssistantResponse(BaseModel):
+    """Structured response from the AI assistant."""
+    answer: str
+    what_this_is_based_on: list = []
+    next_actions: list = []
+    refused: bool = False
+    refusal_reason: str = None
+    correlation_id: str = None
+
 
 @router.get("/snapshot")
 async def get_snapshot(request: Request):
@@ -32,12 +44,19 @@ async def get_snapshot(request: Request):
             detail="Failed to retrieve snapshot"
         )
 
-@router.post("/ask")
+
+@router.post("/ask", response_model=AssistantResponse)
 async def ask_question(request: Request, data: AskQuestionRequest):
     """Ask assistant a question about compliance data (read-only).
     
     The assistant can only explain existing data. It cannot create, modify,
     or trigger any actions.
+    
+    Returns structured response with:
+    - answer: Main response text
+    - what_this_is_based_on: List of data points used
+    - next_actions: Recommended portal actions
+    - correlation_id: For support/debugging
     """
     user = await client_route_guard(request)
     
@@ -75,13 +94,13 @@ async def ask_question(request: Request, data: AskQuestionRequest):
             question=data.question
         )
         
-        return result
+        return AssistantResponse(**result)
     
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Assistant ask error: {e}")
+        logger.error(f"Assistant ask error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process question"
+            detail="Assistant unavailable. Please try again or refresh."
         )
