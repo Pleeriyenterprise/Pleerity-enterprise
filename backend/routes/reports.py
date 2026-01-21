@@ -267,11 +267,33 @@ async def create_report_schedule(request: Request, data: CreateScheduleRequest):
     - daily: Sent every day at 8 AM
     - weekly: Sent every Monday at 8 AM
     - monthly: Sent on the 1st of each month
+    
+    Note: Scheduled reports require Portfolio plan (PLAN_2_PORTFOLIO) or higher.
     """
     user = await client_route_guard(request)
     db = database.get_db()
     
     try:
+        # Feature gating - scheduled_reports requires PLAN_2_PORTFOLIO
+        from services.feature_entitlement import feature_entitlement_service
+        
+        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+            user["client_id"],
+            "scheduled_reports"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "message": error_msg,
+                    "feature": "scheduled_reports",
+                    "upgrade_required": True,
+                    **(error_details or {})
+                }
+            )
+        
         from datetime import datetime, timezone, timedelta
         import uuid
         
