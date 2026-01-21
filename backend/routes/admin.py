@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, status
+from fastapi import APIRouter, HTTPException, Request, Depends, status, Query
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 from database import database
 from middleware import admin_route_guard
 from models import AuditAction, PasswordToken, UserRole, UserStatus, PasswordStatus
