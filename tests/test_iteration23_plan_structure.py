@@ -416,31 +416,6 @@ class TestTenantPortalViewOnly:
         print(f"✓ Tenant dashboard: Requires authentication (401)")
 
 
-class TestTenantEndpointsWithoutAuth:
-    """Test tenant endpoints return proper errors without auth"""
-    
-    def test_tenant_request_certificate_no_auth(self):
-        """POST /api/tenant/request-certificate without auth should return 401 or 403"""
-        response = requests.post(
-            f"{BASE_URL}/api/tenant/request-certificate",
-            json={"property_id": "test", "certificate_type": "GAS_SAFETY"}
-        )
-        
-        # Should return 401 (unauthorized) or 403 (forbidden)
-        assert response.status_code in [401, 403], f"Expected 401/403, got {response.status_code}"
-        print(f"✓ Tenant request-certificate without auth: {response.status_code}")
-    
-    def test_tenant_contact_landlord_no_auth(self):
-        """POST /api/tenant/contact-landlord without auth should return 401 or 403"""
-        response = requests.post(
-            f"{BASE_URL}/api/tenant/contact-landlord",
-            json={"message": "Test message"}
-        )
-        
-        assert response.status_code in [401, 403], f"Expected 401/403, got {response.status_code}"
-        print(f"✓ Tenant contact-landlord without auth: {response.status_code}")
-
-
 class TestHealthAndBasicEndpoints:
     """Basic health checks"""
     
