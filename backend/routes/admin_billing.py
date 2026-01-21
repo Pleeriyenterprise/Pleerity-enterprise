@@ -649,8 +649,11 @@ async def resend_password_setup(request: Request, client_id: str):
         
         from services.email_service import email_service
         
+        # Use auth_email field (portal_users use auth_email, not email)
+        user_email = portal_user.get("auth_email") or portal_user.get("email")
+        
         email_sent = await email_service.send_password_setup_email(
-            to_email=portal_user["email"],
+            to_email=user_email,
             setup_url=setup_url,
             client_name=portal_user.get("name", "")
         )
@@ -663,7 +666,7 @@ async def resend_password_setup(request: Request, client_id: str):
             client_id=client_id,
             metadata={
                 "action_type": "PASSWORD_SETUP_RESENT",
-                "target_email": portal_user["email"],
+                "target_email": user_email,
                 "email_sent": email_sent,
                 "reason": "Admin requested resend",
             }
@@ -672,7 +675,7 @@ async def resend_password_setup(request: Request, client_id: str):
         return {
             "success": True,
             "message": "Password setup email sent",
-            "email": portal_user["email"],
+            "email": user_email,
             "email_sent": email_sent,
         }
         
