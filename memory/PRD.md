@@ -441,11 +441,31 @@
     - PLAN_6_15 (Portfolio): + Webhooks, ZIP upload, compliance packs, integrations, API access
   - Error response includes: error_code, message, feature, upgrade_required
 
-- **P0 Bug Fixes Verified ✅**
-  - Properties tab navigation now works correctly
-  - AI Extraction "Apply & Save" ready for testing (backend refactored)
+- **Apply & Save Date Parsing Fix ✅**
+  - NEW `_normalize_and_parse_date()` function handles multiple date formats
+  - Accepts: ISO (YYYY-MM-DD), UK (DD/MM/YYYY), datetime objects, ISO with time
+  - Handles unicode dash variants (en-dash, em-dash, figure dash)
+  - Strips whitespace and invisible characters
+  - Server-side normalization - not reliant on UI
+  - Creates `AI_EXTRACTION_APPLIED` audit log with before/after states
 
-- **TEST REPORT:** `/app/test_reports/iteration_18.json` (11/11 tests - 100%)
+- **AI Query History Persistence ✅**
+  - Queries saved to `admin_assistant_queries` collection
+  - Each query has unique `query_id` (format: aq-XXXXXXXXXXXX)
+  - `GET /api/admin/assistant/history` endpoint returns saved queries
+  - Filter by CRN with `?crn=PLE-CVP-XXXX-XXXXX`
+  - Pagination with `skip` and `limit` parameters
+  - Admin Assistant UI shows query history panel with expandable list
+
+- **Calendar Integration ✅**
+  - Calendar already integrated via `/api/calendar/expiries` endpoint
+  - Shows requirements grouped by due date
+  - `GET /api/calendar/upcoming` returns upcoming expiries with urgency levels
+  - Expiring/overdue items automatically appear in calendar view
+
+- **TEST REPORTS:** 
+  - `/app/test_reports/iteration_18.json` (11/11 tests - 100%)
+  - `/app/test_reports/iteration_19.json` (14/14 tests - 100%)
 
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
