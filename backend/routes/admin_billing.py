@@ -193,10 +193,10 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             {"_id": 0}
         )
         
-        # Get portal user
+        # Get portal user (use auth_email field)
         portal_user = await db.portal_users.find_one(
             {"client_id": client_id, "role": "ROLE_CLIENT_ADMIN"},
-            {"_id": 0, "portal_user_id": 1, "email": 1, "password_set": 1, "created_at": 1}
+            {"_id": 0, "portal_user_id": 1, "auth_email": 1, "email": 1, "password_set": 1, "password_status": 1, "created_at": 1}
         )
         
         # Get last Stripe events
