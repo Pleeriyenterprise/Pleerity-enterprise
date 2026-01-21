@@ -503,12 +503,13 @@ async def contact_landlord(request: Request):
         
         # Send email to landlord
         from services.email_service import email_service
+        from models import EmailTemplateAlias
         
         property_address = f"{property_doc.get('address_line_1', '')}, {property_doc.get('postcode', '')}"
         
         await email_service.send_email(
             recipient=client["email"],
-            template_alias="reminder",
+            template_alias=EmailTemplateAlias.REMINDER,
             template_model={
                 "subject": subject,
                 "message": f"Message from: {user.get('full_name', 'Your tenant')}\nProperty: {property_address}\n\n{message}\n\n---\nReply to this email or log into Compliance Vault Pro to respond.",
