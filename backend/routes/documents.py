@@ -309,6 +309,292 @@ async def bulk_upload_documents(
         )
 
 
+@router.post("/zip-upload")
+async def upload_zip_archive(
+    request: Request,
+    file: UploadFile = File(...),
+    property_id: str = Form(...),
+):
+    """Upload a ZIP archive containing multiple documents.
+    
+    The ZIP file will be extracted and each document will be processed individually.
+    Requires Portfolio plan (PLAN_6_15) or higher.
+    
+    Supported file types inside ZIP:
+    - PDF (.pdf)
+    - Images (.jpg, .jpeg, .png)
+    - Word documents (.doc, .docx)
+    """
+    import zipfile
+    import tempfile
+    import shutil
+    
+    user = await client_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Plan gating check - ZIP upload requires PLAN_6_15
+        from services.plan_gating import plan_gating_service
+        
+        allowed, error_msg = await plan_gating_service.enforce_feature(
+            user["client_id"], 
+            "zip_upload"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "message": error_msg,
+                    "feature": "zip_upload",
+                    "upgrade_required": True
+                }
+            )
+        
+        # Verify file is a ZIP
+        if not file.filename.lower().endswith('.zip'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File must be a ZIP archive (.zip)"
+            )
+        
+        # Verify property belongs to client
+        property_doc = await db.properties.find_one(
+            {"property_id": property_id, "client_id": user["client_id"]},
+            {"_id": 0}
+        )
+        
+        if not property_doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found"
+            )
+        
+        # Get all requirements for this property
+        requirements = await db.requirements.find(
+            {"property_id": property_id, "client_id": user["client_id"]},
+            {"_id": 0}
+        ).to_list(100)
+        
+        # Save ZIP to temp location
+        temp_dir = tempfile.mkdtemp()
+        zip_path = os.path.join(temp_dir, file.filename)
+        
+        try:
+            contents = await file.read()
+            
+            # Check file size (max 100MB)
+            if len(contents) > 100 * 1024 * 1024:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="ZIP file too large. Maximum size is 100MB."
+                )
+            
+            with open(zip_path, "wb") as f:
+                f.write(contents)
+            
+            # Extract ZIP
+            extract_dir = os.path.join(temp_dir, "extracted")
+            os.makedirs(extract_dir, exist_ok=True)
+            
+            # Validate ZIP file
+            if not zipfile.is_zipfile(zip_path):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid ZIP file"
+                )
+            
+            results = []
+            supported_extensions = {'.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'}
+            
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                # Check for zip bomb (max 1000 files, max 500MB uncompressed)
+                total_size = sum(info.file_size for info in zip_ref.infolist())
+                if total_size > 500 * 1024 * 1024:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="ZIP contents too large. Maximum uncompressed size is 500MB."
+                    )
+                
+                if len(zip_ref.namelist()) > 1000:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="ZIP contains too many files. Maximum is 1000 files."
+                    )
+                
+                # Extract all files
+                zip_ref.extractall(extract_dir)
+            
+            # Process each extracted file
+            for root, dirs, files_list in os.walk(extract_dir):
+                for filename in files_list:
+                    # Skip hidden files and macOS metadata
+                    if filename.startswith('.') or filename.startswith('__MACOSX'):
+                        continue
+                    
+                    file_path = os.path.join(root, filename)
+                    file_ext = os.path.splitext(filename)[1].lower()
+                    
+                    # Skip unsupported file types
+                    if file_ext not in supported_extensions:
+                        results.append({
+                            "filename": filename,
+                            "status": "skipped",
+                            "reason": f"Unsupported file type: {file_ext}"
+                        })
+                        continue
+                    
+                    try:
+                        # Create unique filename
+                        unique_filename = f"{uuid.uuid4()}{file_ext}"
+                        dest_path = DOCUMENT_STORAGE_PATH / user["client_id"] / unique_filename
+                        dest_path.parent.mkdir(parents=True, exist_ok=True)
+                        
+                        # Copy file to document storage
+                        shutil.copy2(file_path, dest_path)
+                        
+                        # Get file size
+                        file_size = os.path.getsize(file_path)
+                        
+                        # Determine MIME type
+                        mime_types = {
+                            '.pdf': 'application/pdf',
+                            '.jpg': 'image/jpeg',
+                            '.jpeg': 'image/jpeg',
+                            '.png': 'image/png',
+                            '.doc': 'application/msword',
+                            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                        }
+                        mime_type = mime_types.get(file_ext, 'application/octet-stream')
+                        
+                        # Create document record
+                        document = Document(
+                            client_id=user["client_id"],
+                            property_id=property_id,
+                            requirement_id=None,
+                            file_name=filename,
+                            file_path=str(dest_path),
+                            file_size=file_size,
+                            mime_type=mime_type,
+                            status=DocumentStatus.UPLOADED,
+                            uploaded_by=user["portal_user_id"]
+                        )
+                        
+                        doc = document.model_dump()
+                        doc["uploaded_at"] = doc["uploaded_at"].isoformat()
+                        
+                        await db.documents.insert_one(doc)
+                        
+                        # Try AI analysis for auto-matching
+                        matched_requirement = None
+                        try:
+                            from services.document_analysis import document_analysis_service
+                            
+                            analysis_result = await document_analysis_service.analyze_document(
+                                file_path=str(dest_path),
+                                mime_type=mime_type,
+                                document_id=document.document_id,
+                                client_id=user["client_id"],
+                                actor_id=user["portal_user_id"]
+                            )
+                            
+                            if analysis_result["success"]:
+                                doc_type = analysis_result["extracted_data"].get("document_type", "").lower()
+                                
+                                # Match to requirement based on document type
+                                type_mapping = {
+                                    "gas safety": "gas_safety",
+                                    "gas safe": "gas_safety",
+                                    "cp12": "gas_safety",
+                                    "eicr": "eicr",
+                                    "electrical": "eicr",
+                                    "epc": "epc",
+                                    "energy performance": "epc",
+                                    "fire": "fire_alarm",
+                                    "legionella": "legionella",
+                                    "hmo": "hmo_license",
+                                    "pat": "pat_testing"
+                                }
+                                
+                                for key, req_type in type_mapping.items():
+                                    if key in doc_type:
+                                        for req in requirements:
+                                            if req["requirement_type"] == req_type:
+                                                matched_requirement = req["requirement_id"]
+                                                
+                                                await db.documents.update_one(
+                                                    {"document_id": document.document_id},
+                                                    {"$set": {"requirement_id": matched_requirement}}
+                                                )
+                                                
+                                                await regenerate_requirement_due_date(
+                                                    matched_requirement, 
+                                                    user["client_id"]
+                                                )
+                                                break
+                                        break
+                        except Exception as e:
+                            logger.warning(f"AI analysis failed for {filename}: {e}")
+                        
+                        results.append({
+                            "filename": filename,
+                            "document_id": document.document_id,
+                            "status": "uploaded",
+                            "matched_requirement": matched_requirement,
+                            "ai_analyzed": matched_requirement is not None
+                        })
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to process {filename}: {e}")
+                        results.append({
+                            "filename": filename,
+                            "status": "failed",
+                            "error": str(e)
+                        })
+            
+            # Audit log
+            await create_audit_log(
+                action=AuditAction.DOCUMENT_UPLOADED,
+                actor_id=user["portal_user_id"],
+                client_id=user["client_id"],
+                resource_type="zip_upload",
+                metadata={
+                    "property_id": property_id,
+                    "zip_filename": file.filename,
+                    "files_extracted": len(results),
+                    "successful": sum(1 for r in results if r.get("status") == "uploaded"),
+                    "auto_matched": sum(1 for r in results if r.get("matched_requirement")),
+                    "skipped": sum(1 for r in results if r.get("status") == "skipped")
+                }
+            )
+            
+            return {
+                "message": f"Processed ZIP archive: {file.filename}",
+                "results": results,
+                "summary": {
+                    "total_extracted": len(results),
+                    "successful": sum(1 for r in results if r.get("status") == "uploaded"),
+                    "failed": sum(1 for r in results if r.get("status") == "failed"),
+                    "skipped": sum(1 for r in results if r.get("status") == "skipped"),
+                    "auto_matched": sum(1 for r in results if r.get("matched_requirement"))
+                }
+            }
+            
+        finally:
+            # Clean up temp directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ZIP upload error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process ZIP upload: {str(e)}"
+        )
+
+
 @router.post("/upload")
 async def upload_document(
     request: Request,
