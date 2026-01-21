@@ -262,6 +262,29 @@ async def get_plan_features(request: Request):
         )
 
 
+@router.get("/entitlements")
+async def get_client_entitlements(request: Request):
+    """Get comprehensive feature entitlements for the client.
+    
+    Returns detailed feature availability with metadata for UI rendering.
+    This is the primary endpoint for feature gating in the frontend.
+    """
+    user = await client_route_guard(request)
+    
+    try:
+        from services.feature_entitlement import feature_entitlement_service
+        
+        entitlements = await feature_entitlement_service.get_client_entitlements(user["client_id"])
+        return entitlements
+    
+    except Exception as e:
+        logger.error(f"Entitlements error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load entitlements"
+        )
+
+
 @router.get("/documents")
 async def get_documents(request: Request):
     """Get client documents."""
