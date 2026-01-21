@@ -75,6 +75,16 @@ class Database:
             await self.db.audit_logs.create_index("created_at")
             await self.db.audit_logs.create_index("action")
             
+            # Compliance score history indexes - for trend queries
+            await self.db.compliance_score_history.create_index([("client_id", 1), ("date_key", -1)])
+            try:
+                await self.db.compliance_score_history.create_index(
+                    [("client_id", 1), ("date_key", 1)], 
+                    unique=True
+                )
+            except Exception:
+                pass  # Index may already exist
+            
             logger.info("MongoDB indexes created/verified")
         except Exception as e:
             # Indexes may already exist, log but don't fail
