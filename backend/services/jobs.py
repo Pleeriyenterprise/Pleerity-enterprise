@@ -415,7 +415,7 @@ class JobScheduler:
                 
                 # Send email alert if there are properties with degraded status
                 if properties_with_changes and status_alerts_enabled:
-                    frontend_url = os.getenv("FRONTEND_URL", "https://compliance-vault-4.preview.emergentagent.com")
+                    frontend_url = os.getenv("FRONTEND_URL", "https://tenant-hub-77.preview.emergentagent.com")
                     
                     await email_service.send_compliance_alert_email(
                         recipient=client["email"],
