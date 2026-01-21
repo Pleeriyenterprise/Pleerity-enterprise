@@ -42,6 +42,7 @@ const CheckoutSuccessRedirect = () => {
 
 // Client pages
 import ClientDashboard from './pages/ClientDashboard';
+import PropertiesPage from './pages/PropertiesPage';
 import AssistantPage from './pages/AssistantPage';
 import ProfilePage from './pages/ProfilePage';
 import PropertyCreatePage from './pages/PropertyCreatePage';
