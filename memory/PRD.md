@@ -750,6 +750,42 @@
 
 - **TEST REPORT:** `/app/test_reports/iteration_24.json` (16/16 tests - 100%)
 
+### January 21, 2026 (Session 9) - Feature Gating UI Complete & E2E Testing
+- **UpgradePrompt Integration on Feature-Gated Pages ✅**
+  - **ReportsPage.js**: 
+    - Added `fetchEntitlements()` to check `reports_pdf`/`reports_csv` availability
+    - Shows `UpgradePrompt` card when reports feature is unavailable (requires PLAN_2_PORTFOLIO)
+    - "Schedule Report" button shows lock icon for non-eligible users
+    - Toast notification redirects to billing page
+  - **IntegrationsPage.js**:
+    - Added `fetchEntitlements()` to check `webhooks` availability
+    - Shows full-page `UpgradePrompt` when webhooks unavailable (requires PLAN_3_PRO)
+    - Feature preview section: "What you'll unlock with Professional"
+    - Preview cards: Custom Webhooks, Real-time Events, Signed Payloads, Automatic Retries
+    - Only shows webhook list and Create button when entitled
+  - **BrandingSettingsPage.js**:
+    - Replaced custom upgrade notice with reusable `UpgradePrompt` component
+    - Shows "White-Label Branding" prompt (requires PLAN_3_PRO)
+    - Form fields remain visible but disabled when locked
+
+- **Consistent UX Across Gated Features ✅**
+  - All upgrade prompts use same component with variants (`inline`, `modal`, `card`)
+  - Shows feature name, description, required plan, and upgrade button
+  - Plan names mapped correctly: "Solo Landlord", "Portfolio", "Professional"
+  - Upgrade button navigates to `/app/billing?upgrade_to={PLAN_CODE}`
+
+- **API Entitlements Verification ✅**
+  - `GET /api/client/entitlements` returns correct feature flags per plan
+  - PLAN_1_SOLO: `reports_pdf=false`, `reports_csv=false`, `webhooks=false`, `white_label_reports=false`
+  - PLAN_2_PORTFOLIO: `reports_pdf=true`, `reports_csv=true`, `webhooks=false`, `white_label_reports=false`
+  - PLAN_3_PRO: All features enabled
+
+- **TEST REPORT:** `/app/test_reports/iteration_25.json` (21/21 tests - 100%)
+  - All backend API tests passed
+  - All frontend UI tests passed via Playwright
+  - Feature gating verified for all three pages
+  - PUT /api/client/branding returns 403 for non-PRO plans
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
