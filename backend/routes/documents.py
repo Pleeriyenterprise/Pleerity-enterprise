@@ -689,7 +689,7 @@ async def list_documents(request: Request, property_id: str = None, requirement_
 async def apply_ai_extraction(
     request: Request, 
     document_id: str,
-    confirmed_data: Dict[str, Any] = None
+    body: ExtractionApplyRequest = Body(default=None)
 ):
     """Apply reviewed AI-extracted data to the associated requirement.
     
@@ -703,10 +703,16 @@ async def apply_ai_extraction(
     
     Args:
         document_id: The document whose extraction to apply
-        confirmed_data: Optional modified data (if user corrected AI extraction)
+        body: Request body containing optional confirmed_data (if user corrected AI extraction)
+    
+    Returns:
+        Success message with changes applied, or descriptive error.
     """
     user = await client_route_guard(request)
     db = database.get_db()
+    
+    # Extract confirmed_data from body
+    confirmed_data = body.confirmed_data if body else None
     
     try:
         # Get document
@@ -718,33 +724,41 @@ async def apply_ai_extraction(
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Document not found"
+                detail=f"Document not found: {document_id}"
             )
         
         # Verify ownership
         if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to modify this document"
+                detail="Not authorized to modify this document. You can only apply extraction to your own documents."
             )
         
         # Get AI extraction
         extraction = document.get("ai_extraction", {})
-        if extraction.get("status") != "completed":
+        extraction_status = extraction.get("status")
+        
+        if extraction_status != "completed":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Document has not been analyzed yet"
+                detail=f"Document has not been analyzed yet. Current extraction status: {extraction_status or 'none'}"
             )
         
         # Use confirmed_data if provided, otherwise use AI extraction
         data = confirmed_data if confirmed_data else extraction.get("data", {})
+        
+        if not data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No extraction data available to apply. Please analyze the document first."
+            )
         
         # Validate we have a requirement to update
         requirement_id = document.get("requirement_id")
         if not requirement_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Document is not linked to a requirement"
+                detail="Document is not linked to a requirement. Please link the document to a requirement before applying extraction."
             )
         
         # Get requirement
@@ -756,8 +770,14 @@ async def apply_ai_extraction(
         if not requirement:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Associated requirement not found"
+                detail=f"Associated requirement not found: {requirement_id}"
             )
+        
+        # Capture before state for audit
+        before_state = {
+            "due_date": requirement.get("due_date"),
+            "status": requirement.get("status")
+        }
         
         # Prepare update data
         update_fields = {}
@@ -767,17 +787,41 @@ async def apply_ai_extraction(
         expiry_date = data.get("expiry_date")
         if expiry_date:
             try:
-                # Parse the date
-                from datetime import datetime
+                # Parse the date - handle various formats
                 if isinstance(expiry_date, str):
-                    expiry_dt = datetime.fromisoformat(expiry_date.replace('Z', '+00:00'))
+                    # Remove timezone info for simpler parsing
+                    clean_date = expiry_date.replace('Z', '+00:00').split('T')[0] if 'T' in expiry_date else expiry_date
+                    try:
+                        expiry_dt = datetime.fromisoformat(expiry_date.replace('Z', '+00:00'))
+                    except:
+                        # Try parsing just the date part
+                        expiry_dt = datetime.strptime(clean_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
                 else:
                     expiry_dt = expiry_date
                 
                 update_fields["due_date"] = expiry_dt.isoformat()
-                changes_made.append(f"Due date set to {expiry_date}")
-            except Exception as e:
-                logger.warning(f"Failed to parse expiry date: {e}")
+                changes_made.append(f"Due date set to {expiry_dt.strftime('%Y-%m-%d')}")
+                
+                # Also update status based on date if needed
+                now = datetime.now(timezone.utc)
+                if expiry_dt < now:
+                    update_fields["status"] = "OVERDUE"
+                    changes_made.append("Status set to OVERDUE (past due date)")
+                elif expiry_dt < now + timedelta(days=30):
+                    update_fields["status"] = "EXPIRING_SOON"
+                    changes_made.append("Status set to EXPIRING_SOON (expires within 30 days)")
+                else:
+                    update_fields["status"] = "COMPLIANT"
+                    changes_made.append("Status set to COMPLIANT (valid certificate)")
+                    
+            except Exception as date_err:
+                logger.warning(f"Failed to parse expiry date '{expiry_date}': {date_err}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid expiry date format: {expiry_date}. Expected ISO format (YYYY-MM-DD)."
+                )
+        else:
+            logger.info(f"No expiry_date in extraction data for document {document_id}")
         
         # Store extracted data in document for reference
         document_update = {
@@ -786,10 +830,17 @@ async def apply_ai_extraction(
             "ai_extraction.reviewed_by": user["portal_user_id"],
             "ai_extraction.applied_data": data,
             "ai_extracted_data": data,  # Legacy field for compatibility
+            "status": DocumentStatus.VERIFIED.value  # Mark document as verified after applying
         }
         
+        # Add certificate number if available
+        cert_number = data.get("certificate_number")
+        if cert_number:
+            document_update["certificate_number"] = cert_number
+            changes_made.append(f"Certificate number: {cert_number}")
+        
         # Add confidence score if available
-        confidence = data.get("confidence_scores", {}).get("overall")
+        confidence = data.get("confidence_scores", {}).get("overall") if isinstance(data.get("confidence_scores"), dict) else data.get("confidence")
         if confidence:
             document_update["confidence_score"] = confidence
         
@@ -800,41 +851,47 @@ async def apply_ai_extraction(
         )
         
         # Update requirement if we have changes
+        after_state = before_state.copy()
         if update_fields:
+            update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
             await db.requirements.update_one(
                 {"requirement_id": requirement_id},
                 {"$set": update_fields}
             )
-            
-            # Note: We do NOT change the requirement status here
-            # The compliance engine evaluates status based on dates only
+            after_state["due_date"] = update_fields.get("due_date", after_state["due_date"])
+            after_state["status"] = update_fields.get("status", after_state["status"])
         
-        # Audit log
+        # Create specific audit action for extraction applied
         await create_audit_log(
             action=AuditAction.DOCUMENT_AI_ANALYZED,
             actor_id=user["portal_user_id"],
             client_id=document["client_id"],
             resource_type="document",
             resource_id=document_id,
+            before_state=before_state,
+            after_state=after_state,
             metadata={
                 "action": "extraction_applied",
                 "requirement_id": requirement_id,
                 "changes_made": changes_made,
                 "expiry_date_set": expiry_date,
-                "certificate_number": data.get("certificate_number"),
+                "certificate_number": cert_number,
                 "engineer_name": data.get("engineer_details", {}).get("name") if isinstance(data.get("engineer_details"), dict) else data.get("engineer_name"),
-                "user_confirmed": confirmed_data is not None
+                "user_confirmed": confirmed_data is not None,
+                "document_status": "VERIFIED"
             }
         )
         
-        logger.info(f"AI extraction applied for document {document_id}")
+        logger.info(f"AI extraction applied for document {document_id}: {changes_made}")
         
         return {
             "message": "Extraction applied successfully",
             "document_id": document_id,
             "requirement_id": requirement_id,
             "changes_applied": changes_made,
-            "note": "Requirement status is evaluated by the compliance engine based on dates, not AI."
+            "requirement_status": after_state.get("status"),
+            "due_date": after_state.get("due_date"),
+            "note": "Requirement status has been updated based on the certificate expiry date."
         }
     
     except HTTPException:
