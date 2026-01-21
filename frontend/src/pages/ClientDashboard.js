@@ -332,9 +332,13 @@ const ClientDashboard = () => {
           </div>
         )}
 
-        {/* Compliance Summary */}
+        {/* Compliance Summary - Clickable Tiles */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card className="enterprise-card">
+          <Card 
+            className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-electric-teal group"
+            onClick={() => navigate('/app/requirements')}
+            data-testid="tile-total-requirements"
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -342,13 +346,20 @@ const ClientDashboard = () => {
                   <p className="text-3xl font-bold text-midnight-blue">
                     {data?.compliance_summary?.total_requirements || 0}
                   </p>
+                  <p className="text-xs text-electric-teal opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                    Click to view all →
+                  </p>
                 </div>
                 <Shield className="w-12 h-12 text-gray-400" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="enterprise-card">
+          <Card 
+            className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-green-300 group"
+            onClick={() => navigate('/app/properties?status=COMPLIANT')}
+            data-testid="tile-compliant"
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -356,19 +367,29 @@ const ClientDashboard = () => {
                   <p className="text-3xl font-bold text-green-600">
                     {data?.compliance_summary?.compliant || 0}
                   </p>
+                  <p className="text-xs text-green-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                    Click to view →
+                  </p>
                 </div>
                 <CheckCircle className="w-12 h-12 text-green-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="enterprise-card">
+          <Card 
+            className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-amber-300 group"
+            onClick={() => navigate('/app/requirements?status=DUE_SOON')}
+            data-testid="tile-expiring-soon"
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Expiring Soon</p>
+                  <p className="text-sm text-gray-600 mb-1">Attention Needed</p>
                   <p className="text-3xl font-bold text-yellow-600">
                     {data?.compliance_summary?.expiring_soon || 0}
+                  </p>
+                  <p className="text-xs text-yellow-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                    Click to view →
                   </p>
                 </div>
                 <Clock className="w-12 h-12 text-yellow-600" />
@@ -376,13 +397,20 @@ const ClientDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="enterprise-card">
+          <Card 
+            className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-red-300 group"
+            onClick={() => navigate('/app/requirements?status=OVERDUE_OR_MISSING')}
+            data-testid="tile-overdue"
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Overdue</p>
+                  <p className="text-sm text-gray-600 mb-1">Action Required</p>
                   <p className="text-3xl font-bold text-red-600">
                     {data?.compliance_summary?.overdue || 0}
+                  </p>
+                  <p className="text-xs text-red-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                    Click to view →
                   </p>
                 </div>
                 <XCircle className="w-12 h-12 text-red-600" />
