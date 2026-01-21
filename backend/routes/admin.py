@@ -2604,3 +2604,82 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process assistant query"
         )
+
+
+
+@router.get("/assistant/history")
+async def get_assistant_query_history(
+    request: Request,
+    crn: Optional[str] = Query(default=None, description="Filter by client CRN"),
+    limit: int = Query(default=50, ge=1, le=100),
+    skip: int = Query(default=0, ge=0)
+):
+    """Get admin assistant query history.
+    
+    Returns a list of past queries with their answers, optionally filtered by client CRN.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        # Build query filter
+        query_filter = {}
+        if crn:
+            query_filter["crn"] = crn.upper()
+        
+        # Get queries (newest first)
+        queries = await db.admin_assistant_queries.find(
+            query_filter,
+            {"_id": 0}
+        ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+        
+        # Get total count for pagination
+        total = await db.admin_assistant_queries.count_documents(query_filter)
+        
+        return {
+            "queries": queries,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+            "has_more": total > skip + limit
+        }
+    
+    except Exception as e:
+        logger.error(f"Query history error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load query history"
+        )
+
+
+@router.get("/assistant/history/{query_id}")
+async def get_assistant_query_detail(
+    request: Request,
+    query_id: str
+):
+    """Get a specific query by ID."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    
+    try:
+        query = await db.admin_assistant_queries.find_one(
+            {"query_id": query_id},
+            {"_id": 0}
+        )
+        
+        if not query:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Query not found"
+            )
+        
+        return query
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Query detail error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load query detail"
+        )
