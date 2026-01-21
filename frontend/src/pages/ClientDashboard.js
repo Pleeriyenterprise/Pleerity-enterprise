@@ -16,6 +16,7 @@ const ClientDashboard = () => {
   const [error, setError] = useState('');
   const [notificationPrefs, setNotificationPrefs] = useState(null);
   const [complianceScore, setComplianceScore] = useState(null);
+  const [showScoreExplanation, setShowScoreExplanation] = useState(false);
 
   useEffect(() => {
     fetchDashboard();
