@@ -392,6 +392,61 @@
 
 - **TEST REPORT:** `/app/test_reports/iteration_17.json` (15/15 tests - 100%)
 
+### January 21, 2026 (Session 5) - Dashboard Drilldowns + Compliance Score + AI Assistant + Plan Gating
+- **Dashboard Clickable Tiles ✅**
+  - All dashboard KPI tiles now interactive with drilldown navigation
+  - **Total Requirements** → `/app/requirements` (all requirements)
+  - **Compliant** → `/app/properties?status=COMPLIANT` (GREEN properties)
+  - **Attention Needed** → `/app/requirements?status=DUE_SOON` (AMBER requirements)
+  - **Action Required** → `/app/requirements?status=OVERDUE_OR_MISSING` (RED requirements)
+  - Stats row tiles also clickable (Requirements, Compliant, Days to Next Expiry)
+  - Hover effects show "Click to view →"
+
+- **Requirements Page ✅** (`/app/requirements`)
+  - NEW dedicated page for requirements drilldown
+  - Filter by URL params: status, window (30 days)
+  - Filter cards: Total, Compliant, Expiring Soon, Action Required, 30 Day Window
+  - Search bar for requirement type, property, description
+  - List shows: status icon, requirement type, status badge, property name, due date, days left
+  - "View Documents" link for each requirement
+  - Sorted by urgency (OVERDUE > EXPIRING_SOON > PENDING)
+
+- **Compliance Score Explanation ✅**
+  - Score card now clickable → navigates to `/app/compliance-score`
+  - **"How is this calculated?"** expandable section on dashboard card
+  - Shows weighting model:
+    - Status (40%): Based on requirement statuses
+    - Timeline (30%): Days until next expiry
+    - Documents (15%): Requirement coverage percentage
+    - Overdue Penalty (15%): Heavy penalty for overdue items
+  - Concrete breakdown shows actual counts from data
+  - Compliance Score Page shows full breakdown + per-property contribution
+
+- **AI Assistant Fix ✅**
+  - Refactored to use `emergentintegrations` library with Gemini 3 Flash
+  - Returns structured response: `{answer, what_this_is_based_on, next_actions}`
+  - Full observability: correlation_id, audit logging, error tracking
+  - Rate limited: 10 questions per 10 minutes
+  - Refuses action requests (create, modify, delete) with `refused: true`
+  - Snapshot size protection (50KB limit)
+  - User-friendly error: "Assistant unavailable. Please try again or refresh."
+
+- **Plan Gating ✅**
+  - NEW `plan_gating.py` service for feature enforcement
+  - Server-side enforcement returns 403 with `PLAN_NOT_ELIGIBLE` error code
+  - `GET /api/client/plan-features` endpoint returns feature availability
+  - Features gated by plan:
+    - PLAN_1 (Starter): Basic features, AI assistant, no SMS/webhooks
+    - PLAN_2_5 (Growth): + SMS reminders, advanced reports, scheduled reports
+    - PLAN_6_15 (Portfolio): + Webhooks, ZIP upload, compliance packs, integrations, API access
+  - Error response includes: error_code, message, feature, upgrade_required
+
+- **P0 Bug Fixes Verified ✅**
+  - Properties tab navigation now works correctly
+  - AI Extraction "Apply & Save" ready for testing (backend refactored)
+
+- **TEST REPORT:** `/app/test_reports/iteration_18.json` (11/11 tests - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
