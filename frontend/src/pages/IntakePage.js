@@ -531,6 +531,8 @@ const IntakePage = () => {
             updateProperty={updateProperty}
             addProperty={addProperty}
             removeProperty={removeProperty}
+            propertyLimitError={propertyLimitError}
+            setPropertyLimitError={setPropertyLimitError}
             onNext={nextStep}
             onBack={prevStep}
           />
