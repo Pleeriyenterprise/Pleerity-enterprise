@@ -305,6 +305,45 @@ class NotificationPreferences(BaseModel):
     
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
+
+class BrandingSettings(BaseModel):
+    """Client branding settings for white-label functionality.
+    
+    Available only on Portfolio plan (PLAN_6_15) and above.
+    Controls appearance of reports, emails, and compliance packs.
+    """
+    model_config = ConfigDict(extra="ignore")
+    
+    client_id: str
+    
+    # Company branding
+    company_name: Optional[str] = None  # Override for reports
+    logo_url: Optional[str] = None  # URL to logo image
+    favicon_url: Optional[str] = None  # URL to favicon
+    
+    # Color scheme
+    primary_color: str = "#0B1D3A"  # Default Midnight Blue
+    secondary_color: str = "#00B8A9"  # Default Electric Teal
+    accent_color: str = "#FFB800"  # Default warning/accent
+    text_color: str = "#1F2937"  # Default text
+    
+    # Report customization
+    report_header_text: Optional[str] = None  # Custom text in report headers
+    report_footer_text: Optional[str] = None  # Custom footer (e.g., disclaimer)
+    include_pleerity_branding: bool = True  # Show "Powered by Pleerity" (free to disable on Portfolio)
+    
+    # Email customization
+    email_from_name: Optional[str] = None  # Custom "From" name (still uses Pleerity domain)
+    email_reply_to: Optional[str] = None  # Custom reply-to address
+    
+    # Contact information for reports
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    website_url: Optional[str] = None
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+
 class PortalUser(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
