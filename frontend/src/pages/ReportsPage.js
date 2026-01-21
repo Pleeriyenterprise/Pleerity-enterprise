@@ -25,8 +25,11 @@ import {
   ToggleLeft,
   ToggleRight,
   Bell,
-  X
+  X,
+  Lock,
+  ArrowUpRight
 } from 'lucide-react';
+import UpgradePrompt from '../components/UpgradePrompt';
 
 const ReportsPage = () => {
   const navigate = useNavigate();
