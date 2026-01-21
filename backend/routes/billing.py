@@ -37,7 +37,7 @@ async def create_checkout(request: Request, body: CheckoutRequest):
     For new customers: Creates full checkout with subscription + onboarding fee.
     For existing customers: Creates billing portal session for upgrade.
     """
-    user = request.state.user
+    user = await client_route_guard(request)
     client_id = user.get("client_id")
     
     if not client_id:
