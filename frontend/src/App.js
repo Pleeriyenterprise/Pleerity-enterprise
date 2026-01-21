@@ -63,6 +63,7 @@ import BillingPage from './pages/BillingPage';
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
 import AdminAssistantPage from './pages/AdminAssistantPage';
+import AdminBillingPage from './pages/AdminBillingPage';
 
 function App() {
   return (
