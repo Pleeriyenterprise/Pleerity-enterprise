@@ -88,7 +88,7 @@ async def create_checkout(request: Request, body: CheckoutRequest):
 @router.get("/status")
 async def get_billing_status(request: Request):
     """Get current subscription and billing status."""
-    user = request.state.user
+    user = await client_route_guard(request)
     client_id = user.get("client_id")
     
     if not client_id:
