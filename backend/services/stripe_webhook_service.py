@@ -291,7 +291,7 @@ class StripeWebhookService:
         if entitlement_status == EntitlementStatus.ENABLED:
             client = await db.clients.find_one(
                 {"client_id": client_id},
-                {"_id": 0, "onboarding_status": 1}
+                {"_id": 0, "onboarding_status": 1, "contact_email": 1, "contact_name": 1}
             )
             
             if client and client.get("onboarding_status") != "PROVISIONED":
@@ -302,6 +302,26 @@ class StripeWebhookService:
                     logger.info(f"Provisioning triggered for client {client_id}")
                 else:
                     logger.error(f"Provisioning failed for client {client_id}: {message}")
+            
+            # Send payment received email
+            try:
+                from services.email_service import email_service
+                
+                plan_def = plan_registry.get_plan(plan_code)
+                amount = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
+                frontend_url = os.getenv("FRONTEND_URL", "https://secure-compliance-5.preview.emergentagent.com")
+                
+                await email_service.send_payment_received_email(
+                    recipient=client.get("contact_email") if client else metadata.get("email", ""),
+                    client_name=client.get("contact_name", "Valued Customer") if client else "Valued Customer",
+                    client_id=client_id,
+                    plan_name=plan_def.get("name", plan_code.value),
+                    amount=amount,
+                    portal_link=f"{frontend_url}/app/dashboard"
+                )
+                logger.info(f"Payment received email sent to {client.get('contact_email')}")
+            except Exception as e:
+                logger.error(f"Failed to send payment received email: {e}")
         
         # Audit log
         await create_audit_log(
