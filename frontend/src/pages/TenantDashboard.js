@@ -439,7 +439,7 @@ const TenantDashboard = () => {
             <div>
               <h4 className="font-medium text-blue-800">About This Portal</h4>
               <p className="text-sm text-blue-700 mt-1">
-                This tenant portal provides access to your rental property's compliance status. 
+                This tenant portal provides access to your rental property&apos;s compliance status. 
                 You can download compliance packs, request certificate updates, and contact your landlord.
               </p>
             </div>
