@@ -294,31 +294,6 @@ const BulkUploadPage = () => {
       setUploading(false);
     }
   };
-          aiAnalyzed: result?.ai_analyzed,
-          error: result?.error
-        };
-      }));
-
-      setUploadResults(response.data.summary);
-
-      const { successful, failed, auto_matched } = response.data.summary;
-      if (failed === 0) {
-        toast.success(`All ${successful} documents uploaded successfully!`);
-      } else {
-        toast.warning(`${successful} uploaded, ${failed} failed`);
-      }
-
-      if (auto_matched > 0) {
-        toast.info(`${auto_matched} document(s) automatically matched to requirements via AI`);
-      }
-
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Bulk upload failed');
-      setFiles(prev => prev.map(f => ({ ...f, status: 'error' })));
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
