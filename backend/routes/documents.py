@@ -897,10 +897,10 @@ async def apply_ai_extraction(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Apply extraction error: {e}")
+        logger.error(f"Apply extraction error for document {document_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to apply extraction"
+            detail=f"Failed to apply extraction: {str(e)}"
         )
 
 
