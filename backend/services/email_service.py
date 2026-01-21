@@ -711,5 +711,50 @@ Hello {model.get('client_name', 'there')},
             client_id=None,  # Admin invites are not client-specific
             subject="🛡️ You've Been Invited to Join Compliance Vault Pro as an Admin"
         )
+    
+    async def send_ai_extraction_email(
+        self,
+        recipient: str,
+        client_name: str,
+        client_id: str,
+        customer_reference: str,
+        property_address: str,
+        document_type: str,
+        certificate_number: str,
+        expiry_date: str,
+        requirement_status: str,
+        portal_link: str
+    ):
+        """Send AI extraction applied notification email.
+        
+        Called after a user reviews and applies AI-extracted certificate data.
+        """
+        # Determine status color for email styling
+        status_colors = {
+            'COMPLIANT': '#22c55e',
+            'EXPIRING_SOON': '#f59e0b',
+            'OVERDUE': '#dc2626'
+        }
+        status_color = status_colors.get(requirement_status, '#64748b')
+        
+        await self.send_email(
+            recipient=recipient,
+            template_alias=EmailTemplateAlias.AI_EXTRACTION_APPLIED,
+            template_model={
+                "client_name": client_name,
+                "customer_reference": customer_reference,
+                "property_address": property_address,
+                "document_type": document_type,
+                "certificate_number": certificate_number,
+                "expiry_date": expiry_date,
+                "requirement_status": requirement_status,
+                "status_color": status_color,
+                "portal_link": portal_link,
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance"
+            },
+            client_id=client_id,
+            subject="🤖 AI Document Analysis Complete - Certificate Details Saved"
+        )
 
 email_service = EmailService()
