@@ -198,7 +198,9 @@ class TestApplyExtractionEmail:
         if response.status_code != 200:
             pytest.skip(f"Document extraction not available: {response.text}")
         
-        extraction_data = response.json()
+        extraction_response = response.json()
+        # Handle nested extraction structure
+        extraction_data = extraction_response.get("extraction", extraction_response)
         if extraction_data.get("status") != "completed":
             pytest.skip(f"Document extraction not completed: {extraction_data.get('status')}")
         
