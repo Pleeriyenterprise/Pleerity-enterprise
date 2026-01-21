@@ -123,6 +123,91 @@ const TenantDashboard = () => {
     }
   };
 
+  const handleDownloadPack = async (propertyId) => {
+    try {
+      const response = await api.get(`/tenant/compliance-pack/${propertyId}`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `compliance_pack_${propertyId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Compliance pack downloaded!');
+    } catch (err) {
+      toast.error('Failed to download compliance pack');
+    }
+  };
+
+  const handleContactLandlord = async (e) => {
+    e.preventDefault();
+    if (!contactForm.message.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      await api.post('/tenant/contact-landlord', {
+        property_id: selectedProperty.property_id,
+        subject: contactForm.subject || 'Message from Tenant',
+        message: contactForm.message
+      });
+      
+      toast.success('Message sent to your landlord!');
+      setShowContactModal(false);
+      setContactForm({ subject: '', message: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to send message');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRequestCertificate = async (e) => {
+    e.preventDefault();
+    if (!requestForm.certificate_type) {
+      toast.error('Please select a certificate type');
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      await api.post('/tenant/request-certificate', {
+        property_id: selectedProperty.property_id,
+        certificate_type: requestForm.certificate_type,
+        message: requestForm.message
+      });
+      
+      toast.success('Certificate request submitted!');
+      setShowRequestModal(false);
+      setRequestForm({ certificate_type: '', message: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to submit request');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openContactModal = (property) => {
+    setSelectedProperty(property);
+    setShowContactModal(true);
+  };
+
+  const openRequestModal = (property) => {
+    setSelectedProperty(property);
+    setShowRequestModal(true);
+  };
+      default:
+        return { color: 'text-gray-600', bg: 'bg-gray-100', icon: <Info className="w-4 h-4" /> };
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center" data-testid="tenant-loading">
