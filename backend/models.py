@@ -19,6 +19,12 @@ class PreferredContact(str, Enum):
     BOTH = "BOTH"
 
 class BillingPlan(str, Enum):
+    # New plan codes (January 2026)
+    PLAN_1_SOLO = "PLAN_1_SOLO"
+    PLAN_2_PORTFOLIO = "PLAN_2_PORTFOLIO"
+    PLAN_3_PRO = "PLAN_3_PRO"
+    
+    # Legacy codes (for backward compatibility during migration)
     PLAN_1 = "PLAN_1"
     PLAN_2_5 = "PLAN_2_5"
     PLAN_6_15 = "PLAN_6_15"
