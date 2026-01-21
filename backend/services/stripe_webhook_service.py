@@ -548,6 +548,32 @@ class StripeWebhookService:
             }
         )
         
+        # Send subscription canceled email
+        try:
+            from services.email_service import email_service
+            
+            client = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "contact_email": 1, "contact_name": 1}
+            )
+            
+            if client and client.get("contact_email"):
+                frontend_url = os.getenv("FRONTEND_URL", "https://secure-compliance-5.preview.emergentagent.com")
+                
+                # Access ends immediately for deleted subscription
+                access_end_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
+                
+                await email_service.send_subscription_canceled_email(
+                    recipient=client.get("contact_email"),
+                    client_name=client.get("contact_name", "Valued Customer"),
+                    client_id=client_id,
+                    access_end_date=access_end_date,
+                    billing_portal_link=f"{frontend_url}/app/billing"
+                )
+                logger.info(f"Subscription canceled email sent to {client.get('contact_email')}")
+        except Exception as e:
+            logger.error(f"Failed to send subscription canceled email: {e}")
+        
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
