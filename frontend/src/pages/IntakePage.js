@@ -788,9 +788,29 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
 // ============================================================================
 // STEP 3: PROPERTIES
 // ============================================================================
-const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, onNext, onBack }) => {
-  const maxProperties = PLAN_LIMITS[formData.billing_plan] || 1;
+const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, propertyLimitError, setPropertyLimitError, onNext, onBack }) => {
+  const maxProperties = PLAN_LIMITS[formData.billing_plan] || 2;
   const canAddMore = formData.properties.length < maxProperties;
+
+  // Get upgrade plan info
+  const getUpgradePlan = () => {
+    const plan = formData.billing_plan;
+    if (plan === 'PLAN_1_SOLO' || plan === 'PLAN_1') {
+      return { code: 'PLAN_2_PORTFOLIO', name: 'Portfolio', limit: 10 };
+    } else if (plan === 'PLAN_2_PORTFOLIO' || plan === 'PLAN_2_5') {
+      return { code: 'PLAN_3_PRO', name: 'Professional', limit: 25 };
+    }
+    return null;
+  };
+
+  const upgradePlan = getUpgradePlan();
+
+  const handleUpgrade = () => {
+    if (upgradePlan) {
+      setFormData({ ...formData, billing_plan: upgradePlan.code });
+      setPropertyLimitError(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -799,14 +819,33 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl text-midnight-blue">Your Properties</CardTitle>
-              <CardDescription>Add up to {maxProperties} {maxProperties === 1 ? 'property' : 'properties'} with your plan</CardDescription>
+              <CardDescription>
+                Add up to {maxProperties} {maxProperties === 1 ? 'property' : 'properties'} with the {PLAN_NAMES[formData.billing_plan] || 'current'} plan
+              </CardDescription>
             </div>
-            <span className="text-sm font-medium px-3 py-1 bg-gray-100 rounded-full">
+            <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+              formData.properties.length >= maxProperties 
+                ? 'bg-amber-100 text-amber-800' 
+                : 'bg-gray-100 text-gray-700'
+            }`}>
               {formData.properties.length}/{maxProperties}
             </span>
           </div>
         </CardHeader>
       </Card>
+
+      {/* Property Limit Error with Upgrade Prompt */}
+      {propertyLimitError && (
+        <PropertyLimitPrompt
+          currentLimit={propertyLimitError.currentLimit}
+          requestedCount={propertyLimitError.requestedCount}
+          currentPlan={propertyLimitError.currentPlan}
+          upgradePlan={propertyLimitError.upgradePlan}
+          upgradePlanName={propertyLimitError.upgradePlanName}
+          upgradeLimit={propertyLimitError.upgradeLimit}
+          onUpgrade={handleUpgrade}
+        />
+      )}
 
       {formData.properties.map((property, index) => (
         <PropertyCard
@@ -830,21 +869,27 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
           data-testid="add-property-btn"
         >
           <Plus className="w-5 h-5" />
-          Add Another Property
+          Add Another Property ({formData.properties.length + 1}/{maxProperties})
         </button>
       ) : (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3" data-testid="property-limit-warning">
+          <Lock className="w-5 h-5 text-amber-600 mt-0.5" />
           <div>
             <p className="font-medium text-amber-800">Property limit reached</p>
             <p className="text-sm text-amber-700">
-              You've reached the maximum number of properties for this plan. 
-              <button 
-                onClick={() => setFormData({ ...formData, billing_plan: formData.billing_plan === 'PLAN_1' ? 'PLAN_2_5' : 'PLAN_6_15' })}
-                className="underline ml-1"
-              >
-                Upgrade to add more.
-              </button>
+              You've added the maximum {maxProperties} {maxProperties === 1 ? 'property' : 'properties'} for the {PLAN_NAMES[formData.billing_plan] || 'current'} plan.
+              {upgradePlan && (
+                <>
+                  {' '}
+                  <button 
+                    onClick={handleUpgrade}
+                    className="underline font-medium hover:text-amber-900"
+                    data-testid="upgrade-plan-link"
+                  >
+                    Upgrade to {upgradePlan.name} (up to {upgradePlan.limit} properties)
+                  </button>
+                </>
+              )}
             </p>
           </div>
         </div>
