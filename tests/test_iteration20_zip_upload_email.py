@@ -210,6 +210,9 @@ class TestApplyExtractionEmail:
             # Set a future expiry date for testing
             confirmed_data["expiry_date"] = "2026-12-31"
         
+        # Use a unique certificate number to track this test
+        confirmed_data["certificate_number"] = f"EMAIL-TEST-{datetime.now().strftime('%H%M%S')}"
+        
         response = requests.post(
             f"{BASE_URL}/api/documents/{TEST_DOCUMENT_ID}/apply-extraction",
             headers={
