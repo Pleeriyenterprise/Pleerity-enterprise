@@ -144,13 +144,20 @@ class JobScheduler:
     async def send_monthly_digests(self):
         """Send monthly compliance digest to all active clients.
         Respects user notification preferences.
+        
+        IMPORTANT: Only runs for clients with ENABLED entitlement.
+        Clients with LIMITED or DISABLED entitlement do not receive digests.
         """
         logger.info("Running monthly digest job...")
         
         try:
-            # Get all active clients
+            # Get all active clients with ENABLED entitlement
+            # Per spec: no background jobs when entitlement is DISABLED
             clients = await self.db.clients.find(
-                {"subscription_status": "ACTIVE"},
+                {
+                    "subscription_status": "ACTIVE",
+                    "entitlement_status": {"$in": ["ENABLED", None]}  # None for legacy compatibility
+                },
                 {"_id": 0}
             ).to_list(1000)
             
