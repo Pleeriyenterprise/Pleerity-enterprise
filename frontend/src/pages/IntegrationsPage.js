@@ -21,7 +21,8 @@ import {
   Info,
   Clock,
   Activity,
-  Shield
+  Shield,
+  Lock
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -29,6 +30,7 @@ import { Switch } from '../components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { toast } from 'sonner';
 import api from '../api/client';
+import UpgradePrompt from '../components/UpgradePrompt';
 
 const IntegrationsPage = () => {
   const navigate = useNavigate();
@@ -42,10 +44,24 @@ const IntegrationsPage = () => {
   const [deletingWebhookId, setDeletingWebhookId] = useState(null);
   const [showSecretId, setShowSecretId] = useState(null);
   const [newSecret, setNewSecret] = useState(null);
+  const [entitlements, setEntitlements] = useState(null);
+
+  // Check if webhooks feature is available
+  const hasWebhooksAccess = entitlements?.features?.webhooks?.enabled;
 
   useEffect(() => {
     fetchData();
+    fetchEntitlements();
   }, []);
+
+  const fetchEntitlements = async () => {
+    try {
+      const response = await api.get('/client/entitlements');
+      setEntitlements(response.data);
+    } catch (error) {
+      console.error('Failed to fetch entitlements:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -178,6 +194,84 @@ const IntegrationsPage = () => {
           <Loader2 className="w-10 h-10 animate-spin text-electric-teal mx-auto mb-3" />
           <p className="text-gray-600">Loading integrations...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Show upgrade prompt if webhooks not available
+  if (entitlements && !hasWebhooksAccess) {
+    return (
+      <div className="min-h-screen bg-gray-50" data-testid="integrations-page">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-6xl mx-auto px-4 py-4">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => navigate('/app/dashboard')}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                data-testid="back-btn"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+              <div>
+                <h1 className="text-xl font-semibold text-midnight-blue flex items-center gap-2">
+                  <Webhook className="w-6 h-6 text-electric-teal" />
+                  Integrations
+                </h1>
+                <p className="text-sm text-gray-500">Manage webhooks and external integrations</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-2xl mx-auto px-4 py-12">
+          <UpgradePrompt
+            featureName="Webhooks & Integrations"
+            featureDescription="Connect Compliance Vault Pro to your existing systems. Receive real-time notifications when compliance events occur, automate workflows, and integrate with property management software."
+            requiredPlan="PLAN_3_PRO"
+            requiredPlanName="Professional"
+            currentPlan={entitlements?.plan_name}
+            variant="card"
+          />
+          
+          {/* Feature Preview */}
+          <div className="mt-8 bg-white rounded-xl border border-gray-200 p-6" data-testid="webhooks-preview">
+            <h3 className="font-semibold text-midnight-blue mb-4 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-gray-400" />
+              What you'll unlock with Professional
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <Webhook className="w-5 h-5 text-electric-teal mt-0.5" />
+                <div>
+                  <p className="font-medium text-gray-900">Custom Webhooks</p>
+                  <p className="text-sm text-gray-500">Send events to your own endpoints</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <Activity className="w-5 h-5 text-electric-teal mt-0.5" />
+                <div>
+                  <p className="font-medium text-gray-900">Real-time Events</p>
+                  <p className="text-sm text-gray-500">Instant notifications for compliance changes</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <Shield className="w-5 h-5 text-electric-teal mt-0.5" />
+                <div>
+                  <p className="font-medium text-gray-900">Signed Payloads</p>
+                  <p className="text-sm text-gray-500">HMAC-SHA256 signature verification</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <RefreshCw className="w-5 h-5 text-electric-teal mt-0.5" />
+                <div>
+                  <p className="font-medium text-gray-900">Automatic Retries</p>
+                  <p className="text-sm text-gray-500">Reliable delivery with exponential backoff</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }

@@ -12,6 +12,7 @@ import {
   ArrowLeft, Eye
 } from 'lucide-react';
 import api from '../api/client';
+import UpgradePrompt from '../components/UpgradePrompt';
 
 const BrandingSettingsPage = () => {
   const navigate = useNavigate();
@@ -154,24 +155,15 @@ const BrandingSettingsPage = () => {
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         {/* Upgrade Notice for Locked Feature */}
         {isLocked && (
-          <Alert className="border-amber-200 bg-amber-50" data-testid="upgrade-notice">
-            <Lock className="w-4 h-4 text-amber-600" />
-            <AlertDescription className="text-amber-800">
-              <strong>Portfolio Plan Required</strong>
-              <p className="mt-1">
-                White-label branding is available on the Portfolio plan. 
-                Upgrade to customize your reports and emails with your own branding.
-              </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-2 border-amber-400 text-amber-700 hover:bg-amber-100"
-                onClick={() => navigate('/app/billing')}
-              >
-                View Upgrade Options
-              </Button>
-            </AlertDescription>
-          </Alert>
+          <UpgradePrompt
+            featureName="White-Label Branding"
+            featureDescription="Customize your compliance reports and emails with your company logo, colors, and contact information. Create a professional, branded experience for your clients."
+            requiredPlan="PLAN_3_PRO"
+            requiredPlanName="Professional"
+            currentPlan={branding?.current_plan_name}
+            variant="card"
+            data-testid="upgrade-notice"
+          />
         )}
 
         {error && (

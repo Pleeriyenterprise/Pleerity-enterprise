@@ -41,6 +41,7 @@ const ReportsPage = () => {
   const [properties, setProperties] = useState([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [creatingSchedule, setCreatingSchedule] = useState(false);
+  const [entitlements, setEntitlements] = useState(null);
   const [selectedFilters, setSelectedFilters] = useState({
     property_id: '',
     start_date: '',
@@ -53,9 +54,24 @@ const ReportsPage = () => {
     recipients: ''
   });
 
+  // Check if reports feature is available
+  const hasReportsAccess = entitlements?.features?.reports_pdf?.enabled || 
+                           entitlements?.features?.reports_csv?.enabled;
+  const hasScheduledReportsAccess = entitlements?.features?.scheduled_reports?.enabled;
+
   useEffect(() => {
     fetchData();
+    fetchEntitlements();
   }, []);
+
+  const fetchEntitlements = async () => {
+    try {
+      const response = await api.get('/client/entitlements');
+      setEntitlements(response.data);
+    } catch (error) {
+      console.error('Failed to fetch entitlements:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -365,19 +381,44 @@ const ReportsPage = () => {
                 <p className="text-sm text-gray-300">Generate and download compliance reports</p>
               </div>
             </div>
-            <Button
-              onClick={() => setShowScheduleModal(true)}
-              className="bg-electric-teal hover:bg-teal-600"
-              data-testid="schedule-report-btn"
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              Schedule Report
-            </Button>
+            {hasScheduledReportsAccess ? (
+              <Button
+                onClick={() => setShowScheduleModal(true)}
+                className="bg-electric-teal hover:bg-teal-600"
+                data-testid="schedule-report-btn"
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                Schedule Report
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10"
+                onClick={() => navigate('/app/billing?upgrade_to=PLAN_2_PORTFOLIO')}
+                data-testid="schedule-report-upgrade-btn"
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Schedule Report
+              </Button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Upgrade Prompt for Reports Access */}
+        {entitlements && !hasReportsAccess && (
+          <div className="mb-6" data-testid="reports-upgrade-prompt">
+            <UpgradePrompt
+              featureName="Advanced Reports"
+              featureDescription="Download compliance reports as PDF and CSV documents. Schedule automated reports to be sent to your email."
+              requiredPlan="PLAN_2_PORTFOLIO"
+              requiredPlanName="Portfolio"
+              currentPlan={entitlements?.plan_name}
+              variant="card"
+            />
+          </div>
+        )}
         {/* Scheduled Reports Section */}
         {schedules.length > 0 && (
           <Card className="mb-6" data-testid="scheduled-reports-card">
