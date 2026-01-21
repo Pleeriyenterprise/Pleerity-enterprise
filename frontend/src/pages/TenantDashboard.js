@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import { toast } from 'sonner';
 import { 
   Home, 
   LogOut, 
@@ -17,24 +18,24 @@ import {
   Calendar,
   RefreshCw,
   ChevronRight,
-  Info
+  Info,
+  Download,
+  MessageSquare,
+  Send,
+  FileText,
+  X
 } from 'lucide-react';
 
 /**
- * Tenant Dashboard - Simplified read-only view for tenants
+ * Tenant Dashboard - Enhanced view for tenants
  * 
- * Shows ONLY:
+ * Shows:
  * ✅ Property compliance status (GREEN/AMBER/RED)
  * ✅ Certificate status and expiry dates
  * ✅ Basic summaries
- * 
- * Does NOT show:
- * ❌ Document uploads
- * ❌ Messaging or chat
- * ❌ Audit logs
- * ❌ Reports
- * ❌ Billing/settings
- * ❌ Admin actions
+ * ✅ Download compliance pack
+ * ✅ Request certificate updates
+ * ✅ Contact landlord
  */
 const TenantDashboard = () => {
   const navigate = useNavigate();
@@ -43,6 +44,12 @@ const TenantDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedProperty, setExpandedProperty] = useState(null);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [contactForm, setContactForm] = useState({ subject: '', message: '' });
+  const [requestForm, setRequestForm] = useState({ certificate_type: '', message: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchDashboard();
