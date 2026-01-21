@@ -166,6 +166,11 @@ class EmailTemplateAlias(str, Enum):
     SCHEDULED_REPORT = "scheduled-report"  # Scheduled compliance reports
     ADMIN_INVITE = "admin-invite"  # Admin user invitation
     AI_EXTRACTION_APPLIED = "ai-extraction-applied"  # AI extraction notification
+    # Subscription lifecycle emails
+    PAYMENT_RECEIVED = "payment-received"  # Post-checkout confirmation
+    PAYMENT_FAILED = "payment-failed"  # Payment failure notification
+    RENEWAL_REMINDER = "renewal-reminder"  # 7 days before renewal
+    SUBSCRIPTION_CANCELED = "subscription-canceled"  # Cancellation confirmation
 
 
 class ReportScheduleFrequency(str, Enum):
