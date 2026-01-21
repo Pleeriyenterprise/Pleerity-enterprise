@@ -466,6 +466,43 @@
 - **TEST REPORTS:** 
   - `/app/test_reports/iteration_18.json` (11/11 tests - 100%)
   - `/app/test_reports/iteration_19.json` (14/14 tests - 100%)
+  - `/app/test_reports/iteration_20.json` (9/9 tests - 100%)
+
+### January 21, 2026 (Session 5 - Continued) - ZIP Upload + Email Notifications
+- **ZIP File Bulk Upload ✅**
+  - NEW `POST /api/documents/zip-upload` endpoint
+  - Plan gating: Requires Portfolio plan (PLAN_6_15) or higher
+  - Returns 403 with `PLAN_NOT_ELIGIBLE` error code for lower plans
+  - Validates ZIP file extension before processing
+  - Extracts ZIP to temp directory with security checks:
+    - Max 100MB ZIP file size
+    - Max 500MB uncompressed size
+    - Max 1000 files per archive
+  - Processes PDF, JPG, PNG, DOC, DOCX files
+  - Auto-skips hidden files and macOS metadata
+  - AI auto-matching for extracted documents
+  - Audit log for ZIP upload with extraction summary
+
+- **Bulk Upload UI Updated ✅**
+  - NEW upload mode toggle: "Individual Files" / "ZIP Archive"
+  - ZIP mode disabled for non-Portfolio plans
+  - Lock icon and "Upgrade to Portfolio plan for ZIP uploads" message
+  - ZIP drop zone accepts single .zip file
+  - Progress indicator during ZIP processing
+  - Results summary shows: Total, Successful, Failed, Skipped, AI Matched
+
+- **AI Extraction Email Notifications ✅**
+  - NEW `EmailTemplateAlias.AI_EXTRACTION_APPLIED`
+  - Sends email when Apply & Save completes successfully
+  - Email includes:
+    - Property address
+    - Document type
+    - Certificate number
+    - Expiry date
+    - Compliance status badge (COMPLIANT/EXPIRING_SOON/OVERDUE)
+    - CRN badge in header
+    - "View in Dashboard" CTA button
+  - Handles email failures gracefully without breaking main flow
 
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
