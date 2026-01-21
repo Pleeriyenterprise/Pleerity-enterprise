@@ -2546,7 +2546,28 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
         user_message = UserMessage(text=question)
         answer = await chat.send_message(user_message)
         
-        # Step 4: Audit log - query and answer
+        # Step 4: Save query to history collection
+        query_history_entry = {
+            "query_id": f"aq-{uuid.uuid4().hex[:12]}",
+            "admin_id": user.get("portal_user_id"),
+            "admin_email": user.get("auth_email"),
+            "client_id": client_id,
+            "crn": crn,
+            "client_name": client.get("full_name"),
+            "question": question,
+            "answer": answer,
+            "model": "gemini-2.5-flash",
+            "snapshot_summary": {
+                "properties_count": len(properties),
+                "requirements_count": total_reqs,
+                "compliance_percentage": round((compliant / total_reqs * 100) if total_reqs > 0 else 0, 1)
+            },
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.admin_assistant_queries.insert_one(query_history_entry)
+        
+        # Step 5: Audit log - query and answer
         await create_audit_log(
             action=AuditAction.ADMIN_ASSISTANT_QUERY,
             client_id=client_id,
@@ -2560,7 +2581,8 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
                 "client_email": client.get("email"),
                 "properties_in_snapshot": len(properties),
                 "requirements_in_snapshot": total_reqs,
-                "model": "gemini-2.5-flash"
+                "model": "gemini-2.5-flash",
+                "query_id": query_history_entry["query_id"]
             }
         )
         
@@ -2570,7 +2592,8 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             "question": question,
             "answer": answer,
             "compliance_summary": snapshot_data["compliance_summary"],
-            "properties_count": len(properties)
+            "properties_count": len(properties),
+            "query_id": query_history_entry["query_id"]
         }
         
     except HTTPException:
