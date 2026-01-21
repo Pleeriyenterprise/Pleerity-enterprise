@@ -120,11 +120,33 @@ async def get_webhook_stats(request: Request):
 
 @router.post("")
 async def create_webhook(request: Request, data: CreateWebhookRequest):
-    """Create a new webhook configuration."""
+    """Create a new webhook configuration.
+    
+    Note: Webhooks require Portfolio plan (PLAN_6_15) or higher.
+    """
     user = await client_route_guard(request)
     db = database.get_db()
     
     try:
+        # Plan gating check - webhooks require PLAN_6_15
+        from services.plan_gating import plan_gating_service
+        
+        allowed, error_msg = await plan_gating_service.enforce_feature(
+            user["client_id"], 
+            "webhooks"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "message": error_msg,
+                    "feature": "webhooks",
+                    "upgrade_required": True
+                }
+            )
+        
         # Validate event types
         valid_events = [e.value for e in WebhookEventType]
         for event in data.event_types:
