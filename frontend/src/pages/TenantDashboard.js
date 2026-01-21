@@ -388,6 +388,40 @@ const TenantDashboard = () => {
                               );
                             })
                           )}
+                          
+                          {/* Action Buttons */}
+                          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadPack(property.property_id)}
+                              className="text-electric-teal border-electric-teal hover:bg-teal-50"
+                              data-testid={`download-pack-${property.property_id}`}
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              Download Compliance Pack
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openRequestModal(property)}
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                              data-testid={`request-cert-${property.property_id}`}
+                            >
+                              <FileText className="w-4 h-4 mr-2" />
+                              Request Certificate
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openContactModal(property)}
+                              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                              data-testid={`contact-landlord-${property.property_id}`}
+                            >
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Contact Landlord
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -405,14 +439,178 @@ const TenantDashboard = () => {
             <div>
               <h4 className="font-medium text-blue-800">About This Portal</h4>
               <p className="text-sm text-blue-700 mt-1">
-                This tenant portal provides read-only access to your rental property's compliance status. 
-                It helps you stay informed about important safety certificates. For any questions or concerns 
-                about compliance items, please contact your landlord directly.
+                This tenant portal provides access to your rental property's compliance status. 
+                You can download compliance packs, request certificate updates, and contact your landlord.
               </p>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Contact Landlord Modal */}
+      {showContactModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" data-testid="contact-modal">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-midnight-blue flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-electric-teal" />
+                Contact Landlord
+              </h3>
+              <button 
+                onClick={() => setShowContactModal(false)}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleContactLandlord} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                  {selectedProperty?.address}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={contactForm.subject}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, subject: e.target.value }))}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                  placeholder="What's this about?"
+                  data-testid="contact-subject"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message *</label>
+                <textarea
+                  value={contactForm.message}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent h-32 resize-none"
+                  placeholder="Type your message here..."
+                  maxLength={1000}
+                  required
+                  data-testid="contact-message"
+                />
+                <p className="text-xs text-gray-500 mt-1">{contactForm.message.length}/1000</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowContactModal(false)}
+                  className="flex-1"
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-electric-teal hover:bg-teal-600"
+                  disabled={submitting}
+                  data-testid="send-contact-btn"
+                >
+                  {submitting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Send Message
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Request Certificate Modal */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" data-testid="request-modal">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-midnight-blue flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                Request Certificate Update
+              </h3>
+              <button 
+                onClick={() => setShowRequestModal(false)}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleRequestCertificate} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                  {selectedProperty?.address}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Type *</label>
+                <select
+                  value={requestForm.certificate_type}
+                  onChange={(e) => setRequestForm(prev => ({ ...prev, certificate_type: e.target.value }))}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  data-testid="request-cert-type"
+                >
+                  <option value="">Select certificate type...</option>
+                  <option value="gas_safety">Gas Safety Certificate (CP12)</option>
+                  <option value="eicr">EICR (Electrical)</option>
+                  <option value="epc">Energy Performance Certificate</option>
+                  <option value="fire_alarm">Fire Alarm Certificate</option>
+                  <option value="smoke_co_alarm">Smoke & CO Alarm Certificate</option>
+                  <option value="legionella">Legionella Risk Assessment</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                <textarea
+                  value={requestForm.message}
+                  onChange={(e) => setRequestForm(prev => ({ ...prev, message: e.target.value }))}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-24 resize-none"
+                  placeholder="Why do you need this certificate? (optional)"
+                  maxLength={500}
+                  data-testid="request-message"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowRequestModal(false)}
+                  className="flex-1"
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={submitting}
+                  data-testid="submit-request-btn"
+                >
+                  {submitting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Submit Request
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 text-center">
+                Your landlord will be notified of this request via email.
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
