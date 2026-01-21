@@ -445,3 +445,227 @@ async def toggle_report_schedule(request: Request, schedule_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to toggle schedule"
         )
+
+
+# ============================================================================
+# Professional PDF Reports (Plan Gated)
+# ============================================================================
+
+@router.get("/professional/compliance-summary")
+async def download_compliance_summary_pdf(request: Request):
+    """Download professionally formatted compliance summary PDF.
+    
+    Plan gating: Requires Growth plan (PLAN_2_5) or higher.
+    Uses client branding settings for white-label customization.
+    """
+    from services.feature_entitlement import feature_entitlement_service
+    from services.professional_reports import professional_report_generator
+    
+    user = await client_route_guard(request)
+    
+    try:
+        # Enforce feature access
+        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+            user["client_id"],
+            "reports_pdf"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "message": error_msg,
+                    "feature": "reports_pdf",
+                    "upgrade_required": True
+                }
+            )
+        
+        # Generate PDF
+        pdf_buffer = await professional_report_generator.generate_compliance_summary_pdf(
+            client_id=user["client_id"],
+            include_details=True
+        )
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=user["client_id"],
+            resource_type="report",
+            metadata={
+                "report_type": "professional_compliance_summary",
+                "format": "pdf"
+            }
+        )
+        
+        filename = f"compliance_summary_{datetime.now().strftime('%Y%m%d')}.pdf"
+        
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Professional compliance summary PDF error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate report"
+        )
+
+
+@router.get("/professional/expiry-schedule")
+async def download_expiry_schedule_pdf(
+    request: Request,
+    days: int = 90
+):
+    """Download professionally formatted expiry schedule PDF.
+    
+    Plan gating: Requires Growth plan (PLAN_2_5) or higher.
+    """
+    from services.feature_entitlement import feature_entitlement_service
+    from services.professional_reports import professional_report_generator
+    
+    user = await client_route_guard(request)
+    
+    try:
+        # Enforce feature access
+        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+            user["client_id"],
+            "reports_pdf"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "message": error_msg,
+                    "feature": "reports_pdf",
+                    "upgrade_required": True
+                }
+            )
+        
+        # Limit days
+        days = min(days, 365)
+        
+        # Generate PDF
+        pdf_buffer = await professional_report_generator.generate_expiry_schedule_pdf(
+            client_id=user["client_id"],
+            days=days
+        )
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=user["client_id"],
+            resource_type="report",
+            metadata={
+                "report_type": "professional_expiry_schedule",
+                "format": "pdf",
+                "days": days
+            }
+        )
+        
+        filename = f"expiry_schedule_{days}days_{datetime.now().strftime('%Y%m%d')}.pdf"
+        
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Professional expiry schedule PDF error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate report"
+        )
+
+
+@router.get("/professional/audit-log")
+async def download_audit_log_pdf(
+    request: Request,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    actions: Optional[str] = None
+):
+    """Download professionally formatted audit log PDF.
+    
+    Plan gating: Requires Portfolio plan (PLAN_6_15) or higher.
+    """
+    from services.feature_entitlement import feature_entitlement_service
+    from services.professional_reports import professional_report_generator
+    
+    user = await client_route_guard(request)
+    
+    try:
+        # Enforce feature access
+        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+            user["client_id"],
+            "audit_exports"
+        )
+        
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "message": error_msg,
+                    "feature": "audit_exports",
+                    "upgrade_required": True
+                }
+            )
+        
+        # Parse actions filter
+        action_list = actions.split(",") if actions else None
+        
+        # Generate PDF
+        pdf_buffer = await professional_report_generator.generate_audit_log_pdf(
+            client_id=user["client_id"],
+            start_date=start_date,
+            end_date=end_date,
+            actions=action_list
+        )
+        
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=user["client_id"],
+            resource_type="report",
+            metadata={
+                "report_type": "professional_audit_log",
+                "format": "pdf",
+                "filters": {"start_date": start_date, "end_date": end_date}
+            }
+        )
+        
+        filename = f"audit_log_{datetime.now().strftime('%Y%m%d')}.pdf"
+        
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Professional audit log PDF error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate report"
+        )
