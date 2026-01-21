@@ -48,7 +48,7 @@ class TestAuthentication:
         })
         assert response.status_code == 200, f"Admin login failed: {response.text}"
         data = response.json()
-        assert "token" in data, "No token in response"
+        assert "access_token" in data, "No access_token in response"
         print("✓ Admin login successful")
 
 
