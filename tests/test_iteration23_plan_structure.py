@@ -271,7 +271,7 @@ class TestClientEntitlements:
         )
         if response.status_code != 200:
             pytest.skip(f"Client login failed: {response.status_code} - {response.text}")
-        return response.json().get("token")
+        return response.json().get("access_token")
     
     def test_client_entitlements_endpoint(self, client_token):
         """Verify /api/client/entitlements returns feature matrix"""
