@@ -162,6 +162,16 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
+    # Daily compliance score snapshots at 2:00 AM UTC
+    # Captures score history for trend analysis
+    scheduler.add_job(
+        run_compliance_score_snapshots,
+        CronTrigger(hour=2, minute=0),
+        id="compliance_score_snapshots",
+        name="Daily Compliance Score Snapshots",
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("Background job scheduler started")
     
