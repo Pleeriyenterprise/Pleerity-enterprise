@@ -316,7 +316,7 @@ class WorkflowAutomationService:
         Trigger: Worker picks up from queue
         Action: QUEUED → IN_PROGRESS → DRAFT_READY
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         order = await get_order(order_id)
         
         if not order:
@@ -401,7 +401,7 @@ class WorkflowAutomationService:
         Trigger: Draft generation complete
         Action: DRAFT_READY → INTERNAL_REVIEW
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         order = await get_order(order_id)
         
         if not order:
@@ -449,7 +449,7 @@ class WorkflowAutomationService:
         Trigger: Admin requests regeneration from INTERNAL_REVIEW
         Action: REGEN_REQUESTED → REGENERATING → INTERNAL_REVIEW
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         order = await get_order(order_id)
         
         if not order:
@@ -545,7 +545,7 @@ class WorkflowAutomationService:
         - Log SLA_RESUMED event
         - Notify admins
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         order = await get_order(order_id)
         
         if not order:
@@ -627,7 +627,7 @@ class WorkflowAutomationService:
         Trigger: Admin approves document
         Action: INTERNAL_REVIEW → FINALISING (version locked)
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         order = await get_order(order_id)
         
         if not order:
@@ -703,7 +703,7 @@ class WorkflowAutomationService:
         Trigger: Order in DELIVERY_FAILED
         Action: Retry up to MAX_DELIVERY_RETRIES, then escalate
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         order = await get_order(order_id)
         
         if not order:
@@ -773,7 +773,7 @@ class WorkflowAutomationService:
         Trigger: Scheduled job (every 15 minutes)
         Action: Send warnings at 75% SLA, breach notifications at 100%
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         
         # Get all non-terminal orders
         active_orders = await db.orders.find({
@@ -896,7 +896,7 @@ class WorkflowAutomationService:
         Trigger: Scheduled job or manual trigger
         Action: Process priority QUEUED orders first
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         
         # Get all priority orders in QUEUED status
         priority_orders = await db.orders.find({
@@ -947,7 +947,7 @@ class WorkflowAutomationService:
         Process queued orders in priority order.
         Called by background job.
         """
-        db = database.get_db()
+        # db = database.get_db()  # available if needed
         
         # Get QUEUED orders, priority first, then by created_at
         queued_orders = await db.orders.find({
