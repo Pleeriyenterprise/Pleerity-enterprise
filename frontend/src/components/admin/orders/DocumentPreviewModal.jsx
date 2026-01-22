@@ -241,6 +241,8 @@ const DocumentPreviewModal = ({
     
     if (!selectedVersion || !orderId) return;
     
+    let mounted = true;
+    
     const fetchPreviewToken = async () => {
       setIsLoadingPreview(true);
       try {
@@ -254,24 +256,30 @@ const DocumentPreviewModal = ({
           }
         );
         
-        if (response.ok) {
+        if (response.ok && mounted) {
           const data = await response.json();
           setPreviewUrl(data.preview_url);
-        } else {
+        } else if (mounted) {
           console.error('Failed to get preview token');
           // Fallback to direct URL (won't work in iframe but downloads will work)
           setPreviewUrl(`${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`);
         }
       } catch (error) {
         console.error('Error fetching preview token:', error);
-        setPreviewUrl(`${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`);
+        if (mounted) {
+          setPreviewUrl(`${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`);
+        }
       } finally {
-        setIsLoadingPreview(false);
+        if (mounted) {
+          setIsLoadingPreview(false);
+        }
       }
     };
     
     fetchPreviewToken();
-  }, [selectedVersion?.version, orderId]);
+    
+    return () => { mounted = false; };
+  }, [selectedVersion, orderId]);
 
   const handleApprove = () => {
     if (!hasReviewed) {
