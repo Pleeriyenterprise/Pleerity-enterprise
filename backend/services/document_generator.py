@@ -139,24 +139,34 @@ class DocumentVersion:
             "content_hash": self.content_hash,
             "input_data_hash": self.input_data_hash,
         }
-            "content_hash": self.content_hash,
-        }
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DocumentVersion":
+        # Handle status conversion
+        status_value = data.get("status", "DRAFT")
+        try:
+            status = DocumentStatus(status_value) if isinstance(status_value, str) else status_value
+        except ValueError:
+            status = DocumentStatus.DRAFT
+        
         return cls(
             version=data.get("version", 1),
             document_type=DocumentType(data.get("document_type", "GENERAL_DOCUMENT")),
+            status=status,
             file_id_docx=data.get("file_id_docx"),
             file_id_pdf=data.get("file_id_pdf"),
+            filename_docx=data.get("filename_docx"),
+            filename_pdf=data.get("filename_pdf"),
             generated_at=datetime.fromisoformat(data["generated_at"]) if data.get("generated_at") else None,
             generated_by=data.get("generated_by", "system"),
             is_regeneration=data.get("is_regeneration", False),
             regeneration_notes=data.get("regeneration_notes"),
+            regenerated_from_version=data.get("regenerated_from_version"),
             is_approved=data.get("is_approved", False),
             approved_at=datetime.fromisoformat(data["approved_at"]) if data.get("approved_at") else None,
             approved_by=data.get("approved_by"),
             content_hash=data.get("content_hash"),
+            input_data_hash=data.get("input_data_hash"),
         )
 
 
