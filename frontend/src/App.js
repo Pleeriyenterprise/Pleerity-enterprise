@@ -31,6 +31,7 @@ import LoginPage from './pages/LoginPage';
 import SetPasswordPage from './pages/SetPasswordPage';
 import IntakePage from './pages/IntakePage';
 import OnboardingStatusPage from './pages/OnboardingStatusPage';
+import AdminBlogPage from './pages/AdminBlogPage';
 
 // Checkout success redirect component
 const CheckoutSuccessRedirect = () => {
