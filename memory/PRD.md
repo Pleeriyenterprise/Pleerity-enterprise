@@ -1051,6 +1051,46 @@
   - Workflow audit trail verified
   - CVP isolation verified
 
+### January 22, 2026 (Session - Frontend Order Intake Complete)
+- **Frontend Order Intake - Public Service Ordering ✅**
+  
+  **New Pages Created:**
+  - `/services/catalogue` - ServicesCataloguePage.js
+    - Displays all 23 services from database
+    - Search functionality
+    - Category filter (Reports, Documents, Add-ons, CVP)
+    - Sort by Name, Price (Low to High), Price (High to Low)
+    - Service cards with price, document count, delivery time
+    - "Order Now" buttons linking to order flow
+  
+  - `/order/:serviceCode` - ServiceOrderPage.js
+    - 3-step order flow: Your Details → Service Details → Review & Pay
+    - Service summary card with price + VAT
+    - Customer details form with validation
+    - Dynamic intake form based on service intake_fields
+    - Review step with full summary
+    - Terms acceptance checkbox
+    - Stripe checkout redirect
+  
+  - `/order-success` - OrderSuccessPage.js
+    - Order confirmation display
+    - Order reference number
+    - "What happens next" steps
+    - Links to browse more services
+  
+  **Backend Updates:**
+  - Updated `/app/backend/routes/public.py` to use database-driven services
+  - Created `/app/backend/routes/public_services.py` (alternative route)
+  - GET /api/public/services returns all active services
+  - GET /api/public/services/{code} returns service detail with intake_fields
+  
+  **Routes Added:**
+  - GET /services/catalogue (frontend)
+  - GET /order/:serviceCode (frontend)
+  - GET /order-success (frontend)
+  
+  **TEST REPORT:** /app/test_reports/iteration_37.json (16/16 backend + 100% frontend)
+
 ### January 22, 2026 (Session - Phase D Service Expansion Complete)
 - **Phase D: Service Expansion - 9 New Services Added ✅**
   
