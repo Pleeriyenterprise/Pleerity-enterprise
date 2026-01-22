@@ -1581,6 +1581,44 @@
   
 - **TEST REPORT:** `/app/test_reports/iteration_39.json` (25/25 tests - 100%)
 
+### January 23, 2026 - Orders Pipeline Refactoring (Frontend)
+- **AdminOrdersPage.js Refactored ✅**
+  - Original 1900+ line file broken into modular components
+  - Enterprise-grade order management with workflow controls
+  
+- **New Components Created:**
+  - `OrderPipelineView.jsx` - Clickable pipeline stages with live counts (badge), auto-refresh toggle
+  - `OrderList.jsx` - Sortable/searchable order cards with priority indicators
+  - `OrderDetailsPane.jsx` - Order details dialog with 4 tabs (Details, Documents, Timeline, Actions)
+  - `DocumentPreviewModal.jsx` - Document viewer with metadata, version history, review checkbox gate
+  - `ActionModals.jsx` - RegenerationModal, RequestInfoModal, ManualOverrideModal
+  - `AuditTimeline.jsx` - Chronological event timeline with clickable document links
+  - `ordersApi.js` - Centralized API client for all order operations
+  
+- **Pipeline View Features:**
+  - 10 pipeline stages: Paid → Queued → In Progress → Draft Ready → Review → Awaiting Client → Finalising → Delivering → Completed → Failed
+  - Active indicators (pulsing dots) on stages with orders
+  - Click stage to view filtered order list
+  - 15-second auto-refresh with toggle control
+  - Manual refresh button
+  
+- **Document Review Features:**
+  - Full PDF preview in modal with iframe
+  - Document metadata: order_ref, service_code, version, status, generated_at, generated_by, SHA256 hash
+  - Version history (v1/v2/v3 clickable)
+  - **Review checkbox gate**: "I have reviewed this document" must be checked before Approve button is enabled
+  - Download buttons for DOCX (editable) and PDF (delivery)
+  
+- **Structured Action Modals:**
+  - **Regeneration**: Reason dropdown (required) + mandatory notes (min 10 chars) + guardrails checkboxes
+  - **Request Info**: Notes (required) + quick select fields + deadline dropdown + email notification
+  - **Manual Override**: Retry automation or advance stage (whitelisted only) with mandatory reason
+  
+- **Bug Fixed:**
+  - AuditTimeline.jsx - `triggered_by` object rendered directly fixed to extract `user_email`
+  
+- **TEST REPORT:** `/app/test_reports/iteration_43.json` (10/10 features - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
