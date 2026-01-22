@@ -1,0 +1,109 @@
+{
+  "summary": "Iteration 32 - Document-Centric Internal Review System Testing Complete. All 24 backend tests passed (100%). Frontend UI verified with critical bug fix applied. All document review features working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminOrdersPage - Order Detail Modal",
+        "issue": "Order details (customer, service, dates) were not displaying - accessing wrong data path",
+        "selector": "orderDetail?.status vs orderDetail?.order?.status",
+        "priority": "HIGH",
+        "status": "FIXED"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration32_document_review.py",
+    "/app/test_reports/pytest/pytest_results_iter32.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed critical bug: Order detail modal was accessing orderDetail?.status instead of orderDetail?.order?.status",
+    "All document review action buttons now visible: Approve & Finalize, Request Regeneration, Request More Info",
+    "Regeneration modal shows reason dropdown, mandatory notes, and guardrails checkboxes",
+    "Document versions display correctly with Preview and Download PDF options",
+    "Timeline tab shows full audit trail with state transitions",
+    "MOCKED: Document generator produces text/XML files with DRAFT watermark instead of real DOCX/PDF"
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/AdminOrdersPage.js",
+    "/app/tests/test_iteration32_document_review.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!"
+  },
+  "seed_data_creation": "Test orders created via /api/orders/create-test-order endpoint during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Document-centric Internal Review system fully tested. Key features verified: 1) Test order creation in INTERNAL_REVIEW state, 2) Document generation with versioning, 3) Structured regeneration with mandatory reason/notes, 4) Request More Info flow with CLIENT_INPUT_REQUIRED transition, 5) Approval flow with version locking, 6) Admin notification preferences CRUD, 7) Order detail modal with tabs (Details, Documents, Timeline). Document generator is MOCKED - produces text/XML files.",
+  "verified_features": {
+    "test_order_creation": {
+      "status": "PASS",
+      "endpoint": "POST /api/orders/create-test-order",
+      "details": "Creates order directly in INTERNAL_REVIEW state for testing"
+    },
+    "document_generation": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{id}/generate-documents",
+      "details": "Generates MOCK documents with versioning (v1, v2, etc.)"
+    },
+    "structured_regeneration": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{id}/request-regen",
+      "details": "Requires reason dropdown + mandatory correction notes. Transitions to REGEN_REQUESTED"
+    },
+    "request_more_info": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{id}/request-info",
+      "details": "Transitions to CLIENT_INPUT_REQUIRED, pauses SLA, sends client email"
+    },
+    "approval_with_version_lock": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{id}/approve",
+      "details": "Locks document version, transitions to FINALISING, prevents further regeneration"
+    },
+    "version_lock_enforcement": {
+      "status": "PASS",
+      "details": "Regeneration blocked on locked orders, double approval prevented"
+    },
+    "notification_preferences": {
+      "status": "PASS",
+      "endpoints": ["GET/PUT /api/admin/notifications/preferences", "GET /api/admin/notifications/"],
+      "details": "CRUD for email/SMS/in-app notification settings"
+    },
+    "order_detail_modal": {
+      "status": "PASS",
+      "details": "Shows Details, Documents, Timeline tabs with correct data"
+    },
+    "pipeline_view": {
+      "status": "PASS",
+      "details": "Visual emphasis on stages with orders, clickable stages, sort controls"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Document generation (MOCK - produces text/XML files with DRAFT watermark)",
+      "Email sending (test mode)",
+      "SMS sending (test mode)"
+    ]
+  },
+  "fixes_applied": [
+    {
+      "file": "/app/frontend/src/pages/AdminOrdersPage.js",
+      "issue": "Order detail modal not showing customer/service/dates data",
+      "fix": "Changed data access from orderDetail?.status to orderDetail?.order?.status (and similar for other fields)",
+      "lines_changed": "Multiple locations - renderReviewActions, renderClientInputSection, TabsContent details"
+    }
+  ]
+}
