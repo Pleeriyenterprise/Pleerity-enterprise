@@ -1333,8 +1333,8 @@ def validate_intake_data(service_code: str, intake_data: Dict[str, Any]) -> tupl
         return False, [f"No prompt found for service: {service_code}"]
     
     missing = []
-    for field in prompt.required_fields:
-        if field not in intake_data or not intake_data[field]:
-            missing.append(field)
+    for field_name in prompt.required_fields:
+        if field_name not in intake_data or not intake_data[field_name]:
+            missing.append(field_name)
     
     return len(missing) == 0, missing
