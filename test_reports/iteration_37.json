@@ -1,0 +1,106 @@
+{
+  "summary": "Frontend Order Intake Testing Complete - All features verified. Service Catalogue page loads with 23 services, search/filter/sort working. Order flow (3-step: Your Details → Service Details → Review & Pay) working correctly. Order creation persists to database.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_frontend_order_intake.py",
+    "/app/test_reports/pytest/pytest_results_iter37.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ServicesCataloguePage.js correctly fetches services from /api/public/services",
+    "ServiceOrderPage.js implements 3-step order flow with proper validation",
+    "OrderSuccessPage.js displays order confirmation with order_id from URL params",
+    "Backend public.py and public_services.py correctly return database-driven services",
+    "Order creation endpoint POST /api/orders/create working correctly",
+    "All data-testid attributes properly implemented for testing"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_frontend_order_intake.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "note": "No auth required for public pages"
+  },
+  "seed_data_creation": "Test orders created during testing with prefix TEST_",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Frontend Order Intake complete. ServicesCataloguePage at /services/catalogue shows 23 services. ServiceOrderPage at /order/:serviceCode implements 3-step order flow. OrderSuccessPage at /order-success shows confirmation. Test service codes: TENANT_REF (£35), RENT_REVIEW (£79), EPC_CONSULT (£99).",
+  "verified_features": {
+    "service_catalogue_page_loads": {
+      "status": "PASS",
+      "details": "Page loads at /services/catalogue with all 23 services"
+    },
+    "search_functionality": {
+      "status": "PASS",
+      "details": "Search filters services correctly (e.g., 'Tenant' shows 1 result)"
+    },
+    "category_filter": {
+      "status": "PASS",
+      "details": "Category filter works (Document Packs, Standalone Reports, etc.)"
+    },
+    "sort_functionality": {
+      "status": "PASS",
+      "details": "Sort by Name (A-Z), Price (Low to High), Price (High to Low) working"
+    },
+    "service_cards_display": {
+      "status": "PASS",
+      "details": "Cards show price, documents count, delivery time, Order Now button"
+    },
+    "order_now_navigation": {
+      "status": "PASS",
+      "details": "Clicking 'Order Now' navigates to /order/{serviceCode}"
+    },
+    "order_page_3_step_progress": {
+      "status": "PASS",
+      "details": "Progress indicator shows Your Details → Service Details → Review & Pay"
+    },
+    "service_summary_card": {
+      "status": "PASS",
+      "details": "Order page displays service name, description, price with VAT"
+    },
+    "customer_details_form_validation": {
+      "status": "PASS",
+      "details": "Required fields (name, email) validated before proceeding"
+    },
+    "intake_form_displays_service_fields": {
+      "status": "PASS",
+      "details": "Service-specific intake fields displayed (e.g., TENANT_REF has 6 fields)"
+    },
+    "review_step_summary": {
+      "status": "PASS",
+      "details": "Review step shows customer details, intake data, documents, pricing"
+    },
+    "order_submission_creates_order": {
+      "status": "PASS",
+      "details": "POST /api/orders/create returns order_id, status CREATED"
+    },
+    "order_persisted_in_database": {
+      "status": "PASS",
+      "details": "GET /api/orders/{order_id}/status returns order data"
+    },
+    "public_services_api": {
+      "status": "PASS",
+      "details": "GET /api/public/services returns all 23 active services"
+    },
+    "order_success_page": {
+      "status": "PASS",
+      "details": "OrderSuccessPage displays order confirmation with order_id"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": [],
+    "note": "Stripe checkout is integrated but uses test mode (sk_test_emergent)"
+  }
+}
