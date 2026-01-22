@@ -10,18 +10,36 @@ Key Features:
 - Follows consistent schema per service type
 - Produces versioned documents (v1, v2, v3...)
 - All documents marked with DRAFT/MOCK watermark
+- Proper file naming: {order_ref}_{service_code}_v{version}_{status}_{YYYYMMDD-HHMM}.{ext}
 """
 import io
+import hashlib
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, BinaryIO
+from typing import Optional, Dict, Any, List
 from enum import Enum
 
-from services.storage_adapter import storage_adapter, FileMetadata, upload_order_document
+from services.storage_adapter import storage_adapter, upload_order_document
 from database import database
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# DOCUMENT STATUS - Explicit status labels for audit trail
+# ============================================================================
+
+class DocumentStatus(str, Enum):
+    """
+    Document status - must be explicit for audit and compliance.
+    Each version has a status that reflects its state in the workflow.
+    """
+    DRAFT = "DRAFT"             # Initial generation, not reviewed
+    REGENERATED = "REGENERATED"  # Created from regeneration request
+    FINAL = "FINAL"             # Approved and locked
+    SUPERSEDED = "SUPERSEDED"   # Replaced by newer version
+    VOID = "VOID"               # Invalidated (manual action)
 
 
 class DocumentType(str, Enum):
@@ -35,49 +53,92 @@ class DocumentType(str, Enum):
     GENERAL_DOCUMENT = "GENERAL_DOCUMENT"
 
 
+# ============================================================================
+# FILE NAMING - Deterministic naming convention
+# ============================================================================
+
+def generate_document_filename(
+    order_id: str,
+    service_code: str,
+    version: int,
+    status: DocumentStatus,
+    extension: str,
+) -> str:
+    """
+    Generate deterministic filename following the required convention:
+    {order_ref}_{service_code}_v{version}_{status}_{YYYYMMDD-HHMM}.{ext}
+    
+    Example: ORD-20260122-0042_DOC_PACK_TENANCY_v1_DRAFT_20260122-1029.pdf
+    """
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
+    
+    # Sanitize order_id and service_code for filename safety
+    safe_order_id = order_id.replace("/", "-").replace("\\", "-")
+    safe_service_code = service_code.replace("/", "-").replace("\\", "-")
+    
+    return f"{safe_order_id}_{safe_service_code}_v{version}_{status.value}_{timestamp}.{extension}"
+
+
 class DocumentVersion:
     """Represents a single version of a generated document."""
     def __init__(
         self,
         version: int,
         document_type: DocumentType,
+        status: DocumentStatus = DocumentStatus.DRAFT,
         file_id_docx: Optional[str] = None,
         file_id_pdf: Optional[str] = None,
+        filename_docx: Optional[str] = None,
+        filename_pdf: Optional[str] = None,
         generated_at: Optional[datetime] = None,
         generated_by: str = "system",
         is_regeneration: bool = False,
         regeneration_notes: Optional[str] = None,
+        regenerated_from_version: Optional[int] = None,
         is_approved: bool = False,
         approved_at: Optional[datetime] = None,
         approved_by: Optional[str] = None,
         content_hash: Optional[str] = None,
+        input_data_hash: Optional[str] = None,  # Hash of input data for traceability
     ):
         self.version = version
         self.document_type = document_type
+        self.status = status
         self.file_id_docx = file_id_docx
         self.file_id_pdf = file_id_pdf
+        self.filename_docx = filename_docx
+        self.filename_pdf = filename_pdf
         self.generated_at = generated_at or datetime.now(timezone.utc)
         self.generated_by = generated_by
         self.is_regeneration = is_regeneration
         self.regeneration_notes = regeneration_notes
+        self.regenerated_from_version = regenerated_from_version
         self.is_approved = is_approved
         self.approved_at = approved_at
         self.approved_by = approved_by
         self.content_hash = content_hash
+        self.input_data_hash = input_data_hash
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             "version": self.version,
             "document_type": self.document_type.value if isinstance(self.document_type, DocumentType) else self.document_type,
+            "status": self.status.value if isinstance(self.status, DocumentStatus) else self.status,
             "file_id_docx": self.file_id_docx,
             "file_id_pdf": self.file_id_pdf,
+            "filename_docx": self.filename_docx,
+            "filename_pdf": self.filename_pdf,
             "generated_at": self.generated_at.isoformat() if self.generated_at else None,
             "generated_by": self.generated_by,
             "is_regeneration": self.is_regeneration,
             "regeneration_notes": self.regeneration_notes,
+            "regenerated_from_version": self.regenerated_from_version,
             "is_approved": self.is_approved,
             "approved_at": self.approved_at.isoformat() if self.approved_at else None,
             "approved_by": self.approved_by,
+            "content_hash": self.content_hash,
+            "input_data_hash": self.input_data_hash,
+        }
             "content_hash": self.content_hash,
         }
     
