@@ -142,13 +142,15 @@ async def regenerate_documents(
         "success": True,
         "order_id": result.order_id,
         "service_code": result.service_code,
+        "version": result.version,
         "status": result.status.value,
         "is_regeneration": True,
         "structured_output": result.structured_output,
+        "rendered_documents": result.rendered_documents,
         "validation_issues": result.validation_issues,
         "data_gaps": result.data_gaps,
         "execution_time_ms": result.execution_time_ms,
-        "message": "Document regenerated successfully. Ready for review.",
+        "message": f"Document v{result.version} regenerated. Ready for review.",
     }
 
 
@@ -161,9 +163,16 @@ async def review_generated_content(
     Approve or reject generated content.
     
     This is the human review gate:
-    - Approved: Order moves to final_ready for delivery
-    - Rejected: Order marked for regeneration
+    - Approved: Document marked FINAL, triggers auto-delivery
+    - Rejected: MANDATORY review_notes required for regeneration
     """
+    # Rejection requires notes
+    if not request.approved and (not request.review_notes or len(request.review_notes.strip()) < 10):
+        raise HTTPException(
+            status_code=400,
+            detail="Rejection requires detailed notes for regeneration (minimum 10 characters)"
+        )
+    
     logger.info(f"Review submitted for order {request.order_id}: approved={request.approved} by {current_user.get('email')}")
     
     success = await document_orchestrator.mark_reviewed(
