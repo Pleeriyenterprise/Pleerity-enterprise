@@ -53,14 +53,17 @@ const formatTimeAgo = (dateString) => {
 };
 
 /**
- * Get icon based on notification priority/type
+ * Get icon component based on notification priority/type
  */
-const getNotificationIcon = (notification) => {
+const NotificationIcon = ({ notification }) => {
   const priority = notification.priority;
-  if (priority === 'urgent') return AlertTriangle;
-  if (priority === 'high') return AlertTriangle;
-  if (notification.order_id) return Package;
-  return Bell;
+  if (priority === 'urgent' || priority === 'high') {
+    return <AlertTriangle className="h-4 w-4" />;
+  }
+  if (notification.order_id) {
+    return <Package className="h-4 w-4" />;
+  }
+  return <Bell className="h-4 w-4" />;
 };
 
 /**
@@ -83,7 +86,6 @@ const getPriorityClass = (priority) => {
  * Single notification item
  */
 const NotificationItem = ({ notification, onRead, onClick }) => {
-  const Icon = getNotificationIcon(notification);
   const priorityClass = getPriorityClass(notification.priority);
 
   return (
@@ -104,7 +106,7 @@ const NotificationItem = ({ notification, onRead, onClick }) => {
             priorityClass
           )}
         >
-          <Icon className="h-4 w-4" />
+          <NotificationIcon notification={notification} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
