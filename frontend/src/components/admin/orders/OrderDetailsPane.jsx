@@ -556,12 +556,13 @@ const OrderDetailsPane = ({
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  // Reset selected version when versions change
-  useEffect(() => {
-    if (documentVersions.length > 0 && !selectedDocVersion) {
-      setSelectedDocVersion(documentVersions[documentVersions.length - 1]);
-    }
-  }, [documentVersions, selectedDocVersion]);
+  // Auto-select latest version when versions change
+  const latestVersion = documentVersions.length > 0 
+    ? documentVersions[documentVersions.length - 1] 
+    : null;
+  
+  // Use derived state instead of useEffect with setState
+  const currentDocVersion = selectedDocVersion || latestVersion;
 
   if (!order) return null;
 
