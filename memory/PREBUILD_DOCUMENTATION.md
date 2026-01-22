@@ -946,7 +946,29 @@ Before building, please confirm:
 - [ ] Risk register addresses main concerns
 - [ ] "Do not modify CVP" rule is clearly understood
 
-**Approval Status:** PENDING
+**Approval Status:** ✅ APPROVED (January 2026)
+
+---
+
+## Amendments (Post-Approval)
+
+### CVP Isolation — AMENDED
+- **Hard rule**: No route, function, background job, or worker may write to any CVP collection under any circumstance.
+- **Read-only linkage allowed**: Orders may store `cvp_user_ref` as a string identifier only (for display). This reference must never be required for order completion and must not trigger CVP writes.
+
+### Workflow States — AMENDED
+- **New state added**: `DELIVERY_FAILED` (System) — used only when delivery fails (email rejected/bounced/API error). Must preserve error payload + retry/manual fallback.
+- **Admin notification**: When order reaches `INTERNAL_REVIEW`, system sends immediate email + SMS notification to admin.
+
+### Admin Visibility — AMENDED
+- **No implicit state changes** except: the three Internal Review buttons (Approve/Regen/Request Info) + Admin Manual Fallback actions. All other UI actions must not mutate workflow state.
+
+### Stripe Idempotency — AMENDED
+- **Signature verification required**: Stripe webhooks must include signature verification. Unverified events are rejected and logged.
+
+### SEO — AMENDED
+- **Phase 1**: Best-effort SPA SEO (react-helmet-async, schema.org, sitemap, fast load).
+- **Phase 2** (if ranking priority): Migrate public pages to SSR (Next.js) or pre-rendering.
 
 ---
 
