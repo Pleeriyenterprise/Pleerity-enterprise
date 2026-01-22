@@ -123,54 +123,6 @@ const ServicesHubPage = () => {
         </div>
       </section>
 
-      {/* Cleaning Services - Separate Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-midnight-blue mb-4">
-              Property Cleaning Services
-            </h2>
-            <p className="text-lg text-gray-600">
-              Professional cleaning to maintain your properties to the highest standard
-            </p>
-          </div>
-
-          {services.filter(s => s.separate).map((service) => (
-            <Link
-              key={service.href}
-              to={service.href}
-              className="block group"
-            >
-              <Card className="border-0 shadow-lg hover:shadow-xl transition-all overflow-hidden">
-                <div className="grid md:grid-cols-2">
-                  <div className="bg-gradient-to-br from-teal-500 to-teal-600 p-12 text-white">
-                    <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center mb-6">
-                      <Brush className="w-8 h-8 text-white" />
-                    </div>
-                    <h3 className="text-3xl font-bold mb-4">{service.title}</h3>
-                    <p className="text-white/90 text-lg">{service.description}</p>
-                  </div>
-                  <CardContent className="p-12 flex flex-col justify-center">
-                    <div className="space-y-4 mb-8">
-                      {service.features.map((feature) => (
-                        <div key={feature} className="flex items-center">
-                          <CheckCircle2 className="w-5 h-5 text-electric-teal mr-3" />
-                          <span className="text-gray-700">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <Button className="w-fit bg-electric-teal hover:bg-electric-teal/90">
-                      View Cleaning Services
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </CardContent>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-20 bg-midnight-blue">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
