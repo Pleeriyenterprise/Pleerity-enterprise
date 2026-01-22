@@ -213,10 +213,11 @@ class OrderNotificationService:
         config = EVENT_CONFIG.get(event_type, {})
         icon = config.get("icon", "📌")
         
+        # Use in_app_notifications collection to match existing schema
         notification = {
             "notification_id": f"NOTIF-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{admin_id[:8]}",
-            "admin_id": admin_id,
-            "event_type": event_type,
+            "recipient_id": admin_id,  # Match existing schema
+            "type": event_type,
             "title": f"{icon} {title}",
             "message": message,
             "order_id": order_id,
@@ -226,7 +227,7 @@ class OrderNotificationService:
             "metadata": metadata or {},
         }
         
-        await db.admin_notifications.insert_one(notification)
+        await db.in_app_notifications.insert_one(notification)
         
         logger.debug(f"Created in-app notification for admin {admin_id}: {title}")
         
