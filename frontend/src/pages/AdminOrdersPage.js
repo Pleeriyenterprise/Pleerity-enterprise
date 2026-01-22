@@ -552,7 +552,78 @@ const AdminOrdersPage = () => {
   };
 
   // ==========================================
-  // DELETE ACTION
+  // CANCEL/ARCHIVE ACTIONS
+  // ==========================================
+  const handleCancelOrder = async () => {
+    if (!deleteReason.trim()) {
+      toast.error('Reason is required to cancel order');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/admin/orders/${selectedOrder.order_id}/cancel`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: deleteReason }),
+      });
+      
+      if (response.ok) {
+        toast.success('Order cancelled');
+        setShowDeleteDialog(false);
+        setShowDetailDialog(false);
+        fetchOrders();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to cancel order');
+      }
+    } catch (error) {
+      toast.error('Failed to cancel order');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleArchiveOrder = async () => {
+    if (!deleteReason.trim()) {
+      toast.error('Reason is required to archive order');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/admin/orders/${selectedOrder.order_id}/archive`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: deleteReason }),
+      });
+      
+      if (response.ok) {
+        toast.success('Order archived');
+        setShowDeleteDialog(false);
+        setShowDetailDialog(false);
+        fetchOrders();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to archive order');
+      }
+    } catch (error) {
+      toast.error('Failed to archive order');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ==========================================
+  // DELETE ACTION (Legacy - kept for compatibility)
   // ==========================================
   const handleDeleteOrder = async () => {
     if (!deleteReason.trim()) {
