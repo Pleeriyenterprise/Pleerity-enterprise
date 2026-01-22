@@ -366,3 +366,254 @@ async def list_client_orders(
         "total": len(orders),
         "action_required": action_required,
     }
+
+
+# ============================================
+# CLIENT DOCUMENT DOWNLOADS
+# ============================================
+
+@router.get("/{order_id}/documents")
+async def get_client_documents(
+    order_id: str,
+    current_user: dict = Depends(client_route_guard),
+):
+    """
+    Get list of downloadable documents for a completed order.
+    Only returns documents for COMPLETED orders.
+    """
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Verify ownership
+    if order.get("customer", {}).get("email") != current_user.get("email"):
+        raise HTTPException(status_code=403, detail="Not authorized to view this order")
+    
+    # Only allow document access for completed orders
+    if order["status"] != OrderStatus.COMPLETED.value:
+        return {
+            "order_id": order_id,
+            "status": order["status"],
+            "documents_available": False,
+            "message": "Documents will be available once your order is completed",
+            "documents": [],
+        }
+    
+    # Get approved/final document version
+    approved_version = order.get("approved_document_version")
+    document_versions = order.get("document_versions", [])
+    
+    # Filter to only show FINAL documents
+    available_docs = []
+    for doc in document_versions:
+        if doc.get("status") == "FINAL" or doc.get("version") == approved_version:
+            available_docs.append({
+                "version": doc.get("version"),
+                "status": doc.get("status", "FINAL"),
+                "generated_at": doc.get("generated_at"),
+                "has_pdf": doc.get("pdf_file_id") is not None,
+                "has_docx": doc.get("docx_file_id") is not None,
+            })
+    
+    return {
+        "order_id": order_id,
+        "status": order["status"],
+        "service_name": order.get("service_name"),
+        "completed_at": order.get("completed_at"),
+        "documents_available": len(available_docs) > 0,
+        "documents": available_docs,
+    }
+
+
+@router.get("/{order_id}/documents/{version}/download")
+async def download_client_document(
+    order_id: str,
+    version: int,
+    format: str = "pdf",  # pdf or docx
+    current_user: dict = Depends(client_route_guard),
+):
+    """
+    Download a specific document from a completed order.
+    
+    Parameters:
+    - version: Document version number
+    - format: 'pdf' or 'docx'
+    """
+    from fastapi.responses import StreamingResponse
+    from services.storage_adapter import get_file_content
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Verify ownership
+    if order.get("customer", {}).get("email") != current_user.get("email"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Only allow document access for completed orders
+    if order["status"] != OrderStatus.COMPLETED.value:
+        raise HTTPException(
+            status_code=403, 
+            detail="Documents are only available for completed orders"
+        )
+    
+    # Find the document version
+    document_versions = order.get("document_versions", [])
+    doc_version = None
+    for doc in document_versions:
+        if doc.get("version") == version:
+            # Verify this is a FINAL document or the approved version
+            if doc.get("status") == "FINAL" or doc.get("version") == order.get("approved_document_version"):
+                doc_version = doc
+                break
+    
+    if not doc_version:
+        raise HTTPException(status_code=404, detail="Document version not found or not available")
+    
+    # Get file ID based on format
+    if format.lower() == "pdf":
+        file_id = doc_version.get("pdf_file_id")
+        content_type = "application/pdf"
+        extension = ".pdf"
+    elif format.lower() == "docx":
+        file_id = doc_version.get("docx_file_id")
+        content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        extension = ".docx"
+    else:
+        raise HTTPException(status_code=400, detail="Invalid format. Use 'pdf' or 'docx'")
+    
+    if not file_id:
+        raise HTTPException(status_code=404, detail=f"No {format.upper()} available for this document")
+    
+    try:
+        # Get file content from storage
+        file_content = await get_file_content(file_id)
+        
+        # Generate filename
+        service_code = order.get("service_code", "document")
+        filename = f"{order_id}_{service_code}_v{version}{extension}"
+        
+        return StreamingResponse(
+            file_content,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to download document: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve document")
+
+
+@router.get("/{order_id}/documents/{version}/access-token")
+async def get_client_document_access_token(
+    order_id: str,
+    version: int,
+    format: str = "pdf",
+    current_user: dict = Depends(client_route_guard),
+):
+    """
+    Get a temporary access token for viewing/downloading a document.
+    Returns a short-lived token that can be used to access the document.
+    """
+    from services.document_access_token import document_access_token_service
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Verify ownership
+    if order.get("customer", {}).get("email") != current_user.get("email"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Only allow for completed orders
+    if order["status"] != OrderStatus.COMPLETED.value:
+        raise HTTPException(
+            status_code=403, 
+            detail="Documents are only available for completed orders"
+        )
+    
+    # Find the document version
+    document_versions = order.get("document_versions", [])
+    doc_version = None
+    for doc in document_versions:
+        if doc.get("version") == version:
+            if doc.get("status") == "FINAL" or doc.get("version") == order.get("approved_document_version"):
+                doc_version = doc
+                break
+    
+    if not doc_version:
+        raise HTTPException(status_code=404, detail="Document version not available")
+    
+    # Get file ID based on format
+    file_id = doc_version.get("pdf_file_id" if format == "pdf" else "docx_file_id")
+    if not file_id:
+        raise HTTPException(status_code=404, detail=f"No {format.upper()} available")
+    
+    # Generate access token (expires in 10 minutes)
+    token = await document_access_token_service.create_token(
+        order_id=order_id,
+        version=version,
+        file_id=file_id,
+        format=format,
+        requester_email=current_user.get("email"),
+        expires_minutes=10,
+    )
+    
+    return {
+        "token": token,
+        "expires_in_seconds": 600,
+        "format": format,
+        "version": version,
+    }
+
+
+@router.get("/download-summary")
+async def get_client_download_summary(
+    current_user: dict = Depends(client_route_guard),
+):
+    """
+    Get a summary of all downloadable documents across all orders.
+    Useful for a client document library view.
+    """
+    db = database.get_db()
+    
+    # Find all completed orders with documents
+    completed_orders = await db.orders.find(
+        {
+            "customer.email": current_user.get("email"),
+            "status": OrderStatus.COMPLETED.value,
+        },
+        {
+            "_id": 0,
+            "order_id": 1,
+            "service_name": 1,
+            "service_code": 1,
+            "completed_at": 1,
+            "document_versions": 1,
+            "approved_document_version": 1,
+        }
+    ).sort("completed_at", -1).to_list(length=100)
+    
+    documents = []
+    for order in completed_orders:
+        approved_version = order.get("approved_document_version")
+        for doc in order.get("document_versions", []):
+            if doc.get("status") == "FINAL" or doc.get("version") == approved_version:
+                documents.append({
+                    "order_id": order["order_id"],
+                    "service_name": order.get("service_name"),
+                    "service_code": order.get("service_code"),
+                    "completed_at": order.get("completed_at"),
+                    "version": doc.get("version"),
+                    "generated_at": doc.get("generated_at"),
+                    "has_pdf": doc.get("pdf_file_id") is not None,
+                    "has_docx": doc.get("docx_file_id") is not None,
+                })
+    
+    return {
+        "total_orders": len(completed_orders),
+        "total_documents": len(documents),
+        "documents": documents,
+    }
