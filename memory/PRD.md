@@ -1704,6 +1704,69 @@
   - `/app/backend/services/order_notification_service.py`
   - `/app/frontend/src/components/admin/NotificationBell.jsx`
 
+### January 23, 2026 - SLA Monitoring & Client Portal (CURRENT SESSION) ✅
+- **Service-Specific SLA Configuration:**
+  - SLA_CONFIG_BY_CATEGORY with category-based SLA hours:
+    - Document Packs: 48h standard / 24h fast-track
+    - Compliance Services: 72h standard / 24h fast-track
+    - AI Automation: 120h (5 business days) / 72h fast-track
+    - Market Research: 72h basic / 120h advanced
+    - Subscriptions: 24h / 12h fast-track
+  - SLA_SERVICE_OVERRIDES for service-specific SLA (COMP_HMO, AI_WF_BLUEPRINT, MR_BASIC, etc.)
+  - SLA clock: Starts at PAID, Pauses at CLIENT_INPUT_REQUIRED, Ends at COMPLETED
+  - FAST_TRACK_GUARDRAILS: Prevents fast-track from bypassing human_review, audit_logs, versioning
+
+- **SLA Tracking Fields:**
+  - `sla_started_at`: When SLA clock began (at payment)
+  - `sla_target_at`: Deadline timestamp
+  - `sla_warning_at`: Warning threshold timestamp (75-80% of SLA)
+  - `sla_paused_at`: When SLA paused for client input
+  - `sla_total_paused_duration`: Total hours paused
+  - `sla_warning_sent`, `sla_breach_sent`: Notification flags
+
+- **SLA Timeline Events Logged:**
+  - SLA_STARTED: When payment verified
+  - SLA_PAUSED: When waiting for client input
+  - SLA_RESUMED: When client provides input
+  - SLA_WARNING_ISSUED: When warning notification sent
+  - SLA_BREACHED: When deadline exceeded
+
+- **Workflow Functions Updated:**
+  - `initialize_order_sla()`: Sets up SLA fields on order payment (WF1)
+  - `log_sla_event()`: Records SLA timeline events to workflow_executions
+  - `get_sla_hours_for_order()`: Returns SLA config based on service code/category
+  - WF1: Now initializes SLA tracking
+  - WF5: Now logs SLA resume and tracks pause duration
+  - WF9: Now uses service-specific SLA hours for monitoring
+
+- **Client Portal Document Downloads:**
+  - NEW page: `/app/orders` - Client orders with search, filter, stats
+  - NEW endpoint: `GET /api/client/orders/{id}/documents` - List downloadable docs
+  - NEW endpoint: `GET /api/client/orders/{id}/documents/{version}/download` - Stream document
+  - NEW endpoint: `GET /api/client/orders/{id}/documents/{version}/access-token` - Get temp token
+  - NEW endpoint: `GET /api/client/orders/download-summary` - Document library summary
+  - Documents only available for COMPLETED orders with FINAL status
+
+- **Admin Notification Preferences Page:**
+  - NEW page: `/admin/notifications/preferences` 
+  - Toggle channels: Email, SMS, In-app notifications
+  - Configure notification email/phone
+  - Event types displayed: New Orders, Document Ready, Client Response, SLA Warning/Breach, Delivery Status
+  - Uses existing backend APIs at `/api/admin/notifications/preferences`
+
+- **Files Created/Modified:**
+  - `/app/backend/services/workflow_automation_service.py` - SLA config + helper functions
+  - `/app/backend/routes/client_orders.py` - Document download endpoints
+  - `/app/backend/services/storage_adapter.py` - get_file_content() function
+  - `/app/frontend/src/pages/ClientOrdersPage.js` - Client orders portal
+  - `/app/frontend/src/pages/AdminNotificationPreferencesPage.js` - Notification settings
+
+- **TEST REPORT:** `/app/test_reports/iteration_44.json` (27/27 backend tests - 100%)
+  - SLA configuration verified for all categories
+  - Client orders API tested with auth requirements
+  - Admin notification preferences API tested
+  - Both frontend pages render correctly with all UI elements
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
