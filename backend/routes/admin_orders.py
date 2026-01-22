@@ -222,104 +222,404 @@ async def transition_order(
 # REVIEW ACTIONS (Specific to INTERNAL_REVIEW)
 # ============================================
 
+class ApproveRequest(BaseModel):
+    version: int  # Document version being approved
+    notes: Optional[str] = None
+
+
 @router.post("/{order_id}/approve")
 async def approve_order(
     order_id: str,
+    request: ApproveRequest,
     current_user: dict = Depends(admin_route_guard),
 ):
     """
     Approve order from INTERNAL_REVIEW → FINALISING.
+    Locks the reviewed document version as final.
     System will automatically proceed to delivery.
     """
+    from services.order_service import lock_approved_version, is_version_locked
+    from services.document_generator import get_document_versions
+    
+    # Check if already locked
+    if await is_version_locked(order_id):
+        raise HTTPException(status_code=400, detail="Order already has an approved locked version")
+    
+    # Verify the version exists
+    versions = await get_document_versions(order_id)
+    version_exists = any(v.version == request.version for v in versions)
+    if not version_exists:
+        raise HTTPException(status_code=400, detail=f"Document version {request.version} not found")
     
     try:
+        # Lock the approved version
+        await lock_approved_version(
+            order_id=order_id,
+            version=request.version,
+            admin_email=current_user.get("email"),
+        )
+        
+        # Transition to FINALISING
         updated_order = await transition_order_state(
             order_id=order_id,
             new_status=OrderStatus.FINALISING,
             triggered_by_type="admin",
             triggered_by_user_id=current_user.get("user_id"),
             triggered_by_email=current_user.get("email"),
-            reason="Approved by admin",
+            reason=f"Approved by admin - Document v{request.version} locked as final",
+            notes=request.notes,
+            metadata={
+                "approved_version": request.version,
+                "action": "approve_and_finalize",
+            },
         )
         
-        # TODO: Trigger automated finalisation and delivery
+        # TODO: Trigger automated finalisation and delivery job
         
         return {
             "success": True,
             "order": updated_order,
-            "message": "Order approved. System will finalize and deliver automatically.",
+            "message": f"Order approved. Document v{request.version} locked. System will finalize and deliver automatically.",
+            "approved_version": request.version,
         }
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class RegenerationRequest(BaseModel):
+    reason: str  # Dropdown selection
+    correction_notes: str  # Required detailed notes
+    affected_sections: Optional[List[str]] = None
+    guardrails: Optional[Dict[str, bool]] = None  # e.g., {"preserve_names_dates": True}
+
+
 @router.post("/{order_id}/request-regen")
 async def request_regeneration(
     order_id: str,
-    request: NoteRequest,
+    request: RegenerationRequest,
     current_user: dict = Depends(admin_route_guard),
 ):
     """
-    Request regeneration from INTERNAL_REVIEW → REGEN_REQUESTED.
-    System will automatically regenerate and return to INTERNAL_REVIEW.
+    Request structured regeneration from INTERNAL_REVIEW → REGEN_REQUESTED.
+    Requires mandatory correction notes - no blind regeneration allowed.
+    System will automatically regenerate with instructions and return to INTERNAL_REVIEW.
     """
+    from services.order_service import create_regeneration_request, is_version_locked
+    
+    if not request.correction_notes.strip():
+        raise HTTPException(status_code=400, detail="Correction notes are required for regeneration")
+    
+    # Check if version is locked (shouldn't allow regen of locked version)
+    if await is_version_locked(order_id):
+        raise HTTPException(
+            status_code=400, 
+            detail="Cannot regenerate - order has a locked approved version. Reopen order first."
+        )
     
     try:
+        # Store the structured regeneration request
+        await create_regeneration_request(
+            order_id=order_id,
+            admin_id=current_user.get("user_id"),
+            admin_email=current_user.get("email"),
+            reason=request.reason,
+            correction_notes=request.correction_notes,
+            affected_sections=request.affected_sections,
+            guardrails=request.guardrails,
+        )
+        
+        # Transition to REGEN_REQUESTED
         updated_order = await transition_order_state(
             order_id=order_id,
             new_status=OrderStatus.REGEN_REQUESTED,
             triggered_by_type="admin",
             triggered_by_user_id=current_user.get("user_id"),
             triggered_by_email=current_user.get("email"),
-            reason=f"Regeneration requested: {request.note}",
-            metadata={"regen_instructions": request.note},
+            reason=f"Regeneration requested: {request.reason}",
+            notes=request.correction_notes,
+            metadata={
+                "regen_reason": request.reason,
+                "regen_notes": request.correction_notes,
+                "regen_sections": request.affected_sections,
+                "regen_guardrails": request.guardrails,
+            },
         )
         
-        # TODO: Trigger automated regeneration
+        # TODO: Trigger automated regeneration job
         
         return {
             "success": True,
             "order": updated_order,
-            "message": "Regeneration requested. System will regenerate automatically.",
+            "message": "Regeneration requested. System will regenerate with your instructions automatically.",
         }
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class ClientInfoRequest(BaseModel):
+    request_notes: str  # Required - what admin needs
+    requested_fields: Optional[List[str]] = None  # Optional checklist
+    deadline_days: Optional[int] = None  # Optional deadline
+    request_attachments: bool = False
+
+
 @router.post("/{order_id}/request-info")
 async def request_client_info(
     order_id: str,
-    request: NoteRequest,
+    request: ClientInfoRequest,
     current_user: dict = Depends(admin_route_guard),
 ):
     """
     Request more info from INTERNAL_REVIEW → CLIENT_INPUT_REQUIRED.
-    SLA timer pauses. System will send request to client.
+    SLA timer pauses. System will send branded email to client with portal link.
     """
+    from services.order_service import create_client_input_request
+    from services.order_email_templates import build_client_input_required_email
+    from services.email_service import email_service
+    import os
+    
+    if not request.request_notes.strip():
+        raise HTTPException(status_code=400, detail="Request notes are required")
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
     
     try:
+        # Store the client input request
+        await create_client_input_request(
+            order_id=order_id,
+            admin_id=current_user.get("user_id"),
+            admin_email=current_user.get("email"),
+            request_notes=request.request_notes,
+            requested_fields=request.requested_fields,
+            deadline_days=request.deadline_days,
+            request_attachments=request.request_attachments,
+        )
+        
+        # Transition to CLIENT_INPUT_REQUIRED
         updated_order = await transition_order_state(
             order_id=order_id,
             new_status=OrderStatus.CLIENT_INPUT_REQUIRED,
             triggered_by_type="admin",
             triggered_by_user_id=current_user.get("user_id"),
             triggered_by_email=current_user.get("email"),
-            reason=f"Client input required: {request.note}",
-            metadata={"info_request": request.note},
+            reason=f"Client input required: {request.request_notes[:100]}...",
+            metadata={
+                "info_request": request.request_notes,
+                "requested_fields": request.requested_fields,
+                "deadline_days": request.deadline_days,
+            },
         )
         
-        # TODO: Send email to client requesting info
+        # Build and send client email
+        frontend_url = os.getenv("FRONTEND_URL", "https://pleerity.com")
+        provide_info_link = f"{frontend_url}/app/orders/{order_id}/provide-info"
+        
+        deadline_str = None
+        if request.deadline_days:
+            from datetime import timedelta
+            deadline_date = datetime.now(timezone.utc) + timedelta(days=request.deadline_days)
+            deadline_str = deadline_date.strftime("%d %B %Y")
+        
+        email_data = build_client_input_required_email(
+            client_name=order.get("customer", {}).get("full_name", "Customer"),
+            order_reference=order_id,
+            service_name=order.get("service_name", "Service"),
+            admin_notes=request.request_notes,
+            requested_fields=request.requested_fields or [],
+            deadline=deadline_str,
+            provide_info_link=provide_info_link,
+        )
+        
+        # Send the email
+        client_email = order.get("customer", {}).get("email")
+        if client_email:
+            try:
+                from models import EmailTemplateAlias
+                await email_service.send_email(
+                    recipient=client_email,
+                    template_alias=EmailTemplateAlias.GENERIC,
+                    template_model={"message": email_data["text"]},
+                    subject=email_data["subject"],
+                )
+                logger.info(f"Client input required email sent for order {order_id}")
+            except Exception as email_error:
+                logger.error(f"Failed to send client email: {email_error}")
         
         return {
             "success": True,
             "order": updated_order,
-            "message": "Info request sent. SLA paused until client responds.",
+            "message": "Info request sent to client. SLA paused until client responds.",
+            "client_notified": bool(client_email),
         }
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================
+# DOCUMENT VIEWING & VERSIONING
+# ============================================
+
+@router.get("/{order_id}/documents")
+async def get_order_documents(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Get all document versions for an order.
+    Used for the document viewer in Internal Review.
+    """
+    from services.document_generator import get_document_versions, get_current_document_version
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    versions = await get_document_versions(order_id)
+    current = await get_current_document_version(order_id)
+    
+    return {
+        "order_id": order_id,
+        "versions": [v.to_dict() for v in versions],
+        "current_version": current.to_dict() if current else None,
+        "total_versions": len(versions),
+        "approved_version": order.get("approved_document_version"),
+        "is_locked": order.get("version_locked", False),
+    }
+
+
+@router.get("/{order_id}/documents/{version}/preview")
+async def get_document_preview(
+    order_id: str,
+    version: int,
+    format: str = "pdf",  # "pdf" or "docx"
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Get document content for preview/download.
+    Returns the actual document file.
+    """
+    from services.document_generator import get_document_versions
+    from services.storage_adapter import storage_adapter
+    from fastapi.responses import Response
+    
+    versions = await get_document_versions(order_id)
+    target_version = None
+    for v in versions:
+        if v.version == version:
+            target_version = v
+            break
+    
+    if not target_version:
+        raise HTTPException(status_code=404, detail=f"Document version {version} not found")
+    
+    # Get the file ID based on format
+    file_id = target_version.file_id_pdf if format == "pdf" else target_version.file_id_docx
+    if not file_id:
+        raise HTTPException(status_code=404, detail=f"No {format} file for version {version}")
+    
+    try:
+        content, metadata = await storage_adapter.download_file(file_id)
+        
+        content_type = "application/pdf" if format == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        filename = f"{order_id}_v{version}.{format}"
+        
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        )
+    except Exception as e:
+        logger.error(f"Failed to retrieve document: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve document")
+
+
+# ============================================
+# REOPEN LOCKED ORDER
+# ============================================
+
+class ReopenRequest(BaseModel):
+    reason: str
+
+
+@router.post("/{order_id}/reopen")
+async def reopen_order_for_edit(
+    order_id: str,
+    request: ReopenRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Reopen a locked approved order for editing.
+    Requires explicit reason - this is an exceptional action.
+    """
+    from services.order_service import reopen_for_edit, is_version_locked
+    
+    if not request.reason.strip():
+        raise HTTPException(status_code=400, detail="Reason is required to reopen order")
+    
+    if not await is_version_locked(order_id):
+        raise HTTPException(status_code=400, detail="Order is not locked")
+    
+    try:
+        updated_order = await reopen_for_edit(
+            order_id=order_id,
+            admin_email=current_user.get("email"),
+            reason=request.reason,
+        )
+        
+        return {
+            "success": True,
+            "order": updated_order,
+            "message": "Order reopened for editing. Previous approval has been unlocked.",
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================
+# TRIGGER DOCUMENT GENERATION
+# ============================================
+
+@router.post("/{order_id}/generate-documents")
+async def trigger_document_generation(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Manually trigger document generation for an order.
+    Creates a new version of documents (MOCK for Phase 1).
+    """
+    from services.document_generator import generate_documents
+    from services.order_service import get_current_regeneration_notes
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Get any pending regeneration notes
+    regen_notes = await get_current_regeneration_notes(order_id)
+    regen_text = regen_notes.get("correction_notes") if regen_notes else None
+    
+    try:
+        doc_version = await generate_documents(
+            order_id=order_id,
+            regeneration_notes=regen_text,
+        )
+        
+        return {
+            "success": True,
+            "message": f"Document version {doc_version.version} generated",
+            "version": doc_version.to_dict(),
+        }
+        
+    except Exception as e:
+        logger.error(f"Document generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Document generation failed: {str(e)}")
 
 
 # ============================================
