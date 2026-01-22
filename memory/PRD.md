@@ -1333,6 +1333,72 @@
   
   **TEST REPORT:** /app/test_reports/iteration_32.json (24/24 tests - 100%)
 
+### January 22, 2026 - Template Renderer Phase 3 Complete ✅
+- **Template Renderer V2 ✅** (`/app/backend/services/template_renderer.py`)
+  
+  **Deterministic Filename Convention:**
+  `{order_ref}_{service_code}_v{version}_{status}_{YYYYMMDD-HHMM}.{ext}`
+  Example: `ORD-2026-001234_AI_WF_BLUEPRINT_v1_DRAFT_20260122-1845.docx`
+  
+  **SHA256 Hash for Tamper Detection:**
+  - Each DOCX and PDF has SHA256 hash stored
+  - `compute_sha256()` function for integrity verification
+  - Hashes stored in `document_versions_v2` collection
+  
+  **Immutable Versioning:**
+  - Each generation creates NEW version (never overwrites)
+  - Previous versions marked `SUPERSEDED` via `_mark_previous_superseded()`
+  - `RenderStatus` enum: DRAFT, REGENERATED, SUPERSEDED, FINAL
+  - All versions retained for audit trail
+  
+  **Document Generation:**
+  - DOCX via `python-docx` with branded styling
+  - PDF via `reportlab` with professional formatting
+  - Watermarks for non-FINAL documents
+  - Service-specific content rendering (AI, MR, Compliance, DocPacks)
+  
+  **Collection:** `document_versions_v2` with fields:
+  - `order_id`, `order_ref`, `service_code`, `version`, `status`
+  - `docx.filename`, `docx.sha256_hash`, `docx.size_bytes`
+  - `pdf.filename`, `pdf.sha256_hash`, `pdf.size_bytes`
+  - `intake_snapshot`, `intake_snapshot_hash`
+  - `structured_output`, `json_output_hash`
+  - `created_at`, `approved_at`, `approved_by`
+
+- **Document Orchestrator Updates ✅** (`/app/backend/services/document_orchestrator.py`)
+  
+  **Correct Production Flow:**
+  ```
+  Payment Verified → Service Identified → Prompt Selected → Intake Validation
+  → INTAKE SNAPSHOT (immutable, BEFORE GPT) → GPT Execution → JSON Output
+  → Document Rendering (DOCX + PDF) → Versioning + Hashing → Human Review
+  → Approve → Auto-Deliver → COMPLETE
+     or Regenerate (with mandatory reason) → New Version → Review
+     or Request Info → Client Input → Resume Review
+  ```
+  
+  **Key Functions:**
+  - `create_intake_snapshot()` - Creates immutable copy with hash BEFORE GPT
+  - `execute_full_pipeline()` - Complete generation + rendering pipeline
+  - `mark_reviewed()` - Fixed to use `find_one_and_update()` for proper sorting
+
+- **Orchestration API Updates ✅** (`/app/backend/routes/orchestration.py`)
+  
+  **New Endpoints:**
+  - `GET /api/orchestration/versions/{order_id}` - All versions with hashes
+  - `GET /api/orchestration/versions/{order_id}/{version}` - Specific version
+  
+  **Validation Rules:**
+  - Regeneration requires mandatory `regeneration_notes` (min 10 chars)
+  - Review rejection requires mandatory `review_notes` (min 10 chars)
+  - Review approval marks document as FINAL
+  
+  **Bug Fixed:**
+  - `mark_reviewed()` was using unsupported `sort` with `update_one()`
+  - Changed to `find_one_and_update()` which supports sort parameter
+  
+  **TEST REPORT:** `/app/test_reports/iteration_42.json` (27/27 tests - 100%)
+
 ### January 22, 2026 - Document Orchestration Phase 2 Complete ✅
 - **GPT Prompt Registry ✅** (`/app/backend/services/gpt_prompt_registry.py`)
   
