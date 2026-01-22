@@ -3361,6 +3361,15 @@ const AdminDashboard = () => {
               {/* Billing & Subscriptions Link */}
               <hr className="my-3" />
               <button
+                onClick={() => navigate('/admin/orders')}
+                data-testid="admin-orders-link"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
+              >
+                <ClipboardCheck className="w-5 h-5" />
+                <span className="font-medium">Orders Pipeline</span>
+                <ExternalLink className="w-3 h-3 ml-auto" />
+              </button>
+              <button
                 onClick={() => navigate('/admin/billing')}
                 data-testid="admin-billing-link"
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
