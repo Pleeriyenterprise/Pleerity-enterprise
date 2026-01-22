@@ -613,8 +613,8 @@ Return ONLY the JSON object, no additional text or markdown formatting.
         
         status = OrchestrationStatus.APPROVED if approved else OrchestrationStatus.REJECTED
         
-        # Update latest execution
-        result = await db[self.COLLECTION].update_one(
+        # Find and update latest execution using find_one_and_update with sort
+        result = await db[self.COLLECTION].find_one_and_update(
             {"order_id": order_id},
             {
                 "$set": {
@@ -624,7 +624,8 @@ Return ONLY the JSON object, no additional text or markdown formatting.
                     "review_notes": review_notes,
                 }
             },
-            sort=[("created_at", -1)]
+            sort=[("created_at", -1)],
+            return_document=False  # Return original document (before update)
         )
         
         # Update order status
