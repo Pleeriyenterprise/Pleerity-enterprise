@@ -623,25 +623,32 @@ async def trigger_document_generation(
 
 
 # ============================================
-# DELETE ORDER ENDPOINT
+# CANCEL / ARCHIVE ORDER (Replaces DELETE)
 # ============================================
 
-class DeleteRequest(BaseModel):
+class CancelRequest(BaseModel):
     reason: str  # Mandatory
 
 
-@router.post("/{order_id}/delete")
-async def delete_order(
+class ArchiveRequest(BaseModel):
+    reason: str  # Mandatory
+
+
+@router.post("/{order_id}/cancel")
+async def cancel_order(
     order_id: str,
-    request: DeleteRequest,
+    request: CancelRequest,
     current_user: dict = Depends(admin_route_guard),
 ):
     """
-    Delete an order permanently.
-    Requires mandatory reason. Logged as admin_delete.
+    Cancel an order (soft delete).
+    - Orders are NEVER hard deleted
+    - Cannot cancel if payment has been made or documents generated
+    - Moves order to CANCELLED status
+    - Order remains for audit/evidence purposes
     """
     if not request.reason.strip():
-        raise HTTPException(status_code=400, detail="Reason is required for deletion")
+        raise HTTPException(status_code=400, detail="Reason is required for cancellation")
     
     db = database.get_db()
     
@@ -649,33 +656,192 @@ async def delete_order(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    # Create audit log entry before deletion
+    # Check if cancellation is blocked
+    has_payment = order.get("payment_intent_id") or order.get("status") not in ["CREATED", "PAID"]
+    has_documents = len(order.get("document_versions", [])) > 0
+    
+    # After payment or document generation, cancellation is blocked
+    if order.get("status") not in ["CREATED"]:
+        # Order has progressed beyond initial creation
+        if has_documents:
+            raise HTTPException(
+                status_code=400, 
+                detail="Cannot cancel order: Documents have been generated. Use Archive instead."
+            )
+    
+    # Audit log
     from services.order_service import create_workflow_execution
     await create_workflow_execution(
         order_id=order_id,
         previous_state=order["status"],
-        new_state="DELETED",
-        transition_type="admin_delete",
+        new_state="CANCELLED",
+        transition_type="admin_cancel",
         triggered_by_type="admin",
         triggered_by_user_id=current_user.get("user_id"),
         triggered_by_email=current_user.get("email"),
         reason=request.reason,
-        metadata={"deleted_order_snapshot": {
-            "service_name": order.get("service_name"),
-            "customer_email": order.get("customer", {}).get("email"),
-            "total_amount": order.get("pricing", {}).get("total_amount"),
-        }},
+        metadata={
+            "action": "cancel",
+            "cancellation_reason": request.reason,
+        },
     )
     
-    # Delete the order
-    await db.orders.delete_one({"order_id": order_id})
+    # Update order status to CANCELLED
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {
+            "$set": {
+                "status": "CANCELLED",
+                "cancelled_at": datetime.now(timezone.utc),
+                "cancelled_by": current_user.get("email"),
+                "cancellation_reason": request.reason,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        }
+    )
     
-    logger.info(f"Order {order_id} deleted by {current_user.get('email')}: {request.reason}")
+    logger.info(f"Order {order_id} cancelled by {current_user.get('email')}: {request.reason}")
     
     return {
         "success": True,
-        "message": f"Order {order_id} has been deleted",
+        "message": f"Order {order_id} has been cancelled",
+        "order_status": "CANCELLED",
     }
+
+
+@router.post("/{order_id}/archive")
+async def archive_order(
+    order_id: str,
+    request: ArchiveRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Archive an order (admin-only soft removal from active pipeline).
+    - Used for completed or old orders
+    - Order remains fully intact for audit/evidence
+    - Can be unarchived if needed
+    """
+    if not request.reason.strip():
+        raise HTTPException(status_code=400, detail="Reason is required for archiving")
+    
+    db = database.get_db()
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Audit log
+    from services.order_service import create_workflow_execution
+    await create_workflow_execution(
+        order_id=order_id,
+        previous_state=order["status"],
+        new_state=order["status"],  # Status doesn't change
+        transition_type="admin_archive",
+        triggered_by_type="admin",
+        triggered_by_user_id=current_user.get("user_id"),
+        triggered_by_email=current_user.get("email"),
+        reason=request.reason,
+        metadata={
+            "action": "archive",
+            "archive_reason": request.reason,
+            "previous_archived_status": order.get("is_archived", False),
+        },
+    )
+    
+    # Mark as archived
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {
+            "$set": {
+                "is_archived": True,
+                "archived_at": datetime.now(timezone.utc),
+                "archived_by": current_user.get("email"),
+                "archive_reason": request.reason,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        }
+    )
+    
+    logger.info(f"Order {order_id} archived by {current_user.get('email')}: {request.reason}")
+    
+    return {
+        "success": True,
+        "message": f"Order {order_id} has been archived",
+    }
+
+
+@router.post("/{order_id}/unarchive")
+async def unarchive_order(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Unarchive an order (restore to active pipeline).
+    """
+    db = database.get_db()
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    if not order.get("is_archived"):
+        raise HTTPException(status_code=400, detail="Order is not archived")
+    
+    # Audit log
+    from services.order_service import create_workflow_execution
+    await create_workflow_execution(
+        order_id=order_id,
+        previous_state=order["status"],
+        new_state=order["status"],
+        transition_type="admin_unarchive",
+        triggered_by_type="admin",
+        triggered_by_user_id=current_user.get("user_id"),
+        triggered_by_email=current_user.get("email"),
+        reason="Order restored from archive",
+        metadata={"action": "unarchive"},
+    )
+    
+    # Remove archived flag
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {
+            "$set": {
+                "is_archived": False,
+                "unarchived_at": datetime.now(timezone.utc),
+                "unarchived_by": current_user.get("email"),
+                "updated_at": datetime.now(timezone.utc),
+            }
+        }
+    )
+    
+    logger.info(f"Order {order_id} unarchived by {current_user.get('email')}")
+    
+    return {
+        "success": True,
+        "message": f"Order {order_id} has been restored from archive",
+    }
+
+
+# ============================================
+# DELETE ENDPOINT - DISABLED
+# ============================================
+# DELETE operations are NOT permitted on Orders.
+# Orders are immutable records for audit and evidence.
+
+@router.delete("/{order_id}")
+async def delete_order_disabled(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    DELETE is disabled for Orders.
+    Orders are immutable records and cannot be permanently deleted.
+    Use Cancel (for pre-payment orders) or Archive (for completed orders) instead.
+    """
+    raise HTTPException(
+        status_code=405,
+        detail="DELETE is not permitted. Orders are immutable records. Use /cancel for pre-payment orders or /archive for completed orders."
+    )
 
 
 # ============================================
