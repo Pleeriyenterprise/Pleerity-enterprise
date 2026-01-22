@@ -28,6 +28,7 @@ const AdminLayout = ({ children }) => {
   const navItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/orders', label: 'Orders Pipeline', icon: ClipboardCheck },
+    { href: '/admin/services', label: 'Service Catalogue', icon: Package },
     { href: '/admin/billing', label: 'Billing', icon: CreditCard },
     { href: '/admin/assistant', label: 'AI Assistant', icon: Sparkles },
   ];
