@@ -657,16 +657,21 @@ async def cancel_order(
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Check if cancellation is blocked
-    has_payment = order.get("payment_intent_id") or order.get("status") not in ["CREATED", "PAID"]
     has_documents = len(order.get("document_versions", [])) > 0
+    has_payment = order.get("payment_intent_id") is not None
     
     # After payment or document generation, cancellation is blocked
-    if order.get("status") not in ["CREATED"]:
+    if has_payment or order.get("status") not in ["CREATED"]:
         # Order has progressed beyond initial creation
         if has_documents:
             raise HTTPException(
                 status_code=400, 
                 detail="Cannot cancel order: Documents have been generated. Use Archive instead."
+            )
+        if has_payment:
+            raise HTTPException(
+                status_code=400, 
+                detail="Cannot cancel order: Payment has been processed. Use Archive instead."
             )
     
     # Audit log
