@@ -69,14 +69,17 @@ const AdminLayout = ({ children }) => {
               ))}
             </nav>
 
-            <Button
-              variant="ghost"
-              className="text-gray-300 hover:text-white hover:bg-white/10"
-              onClick={handleLogout}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex items-center space-x-2">
+              <NotificationBell />
+              <Button
+                variant="ghost"
+                className="text-gray-300 hover:text-white hover:bg-white/10"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
