@@ -227,16 +227,55 @@ const NotificationBell = () => {
     }
   };
 
-  // Fetch on mount and when popover opens
+  // Fetch on mount
   useEffect(() => {
-    fetchUnreadCount();
-  }, [fetchUnreadCount]);
+    // Use a flag to prevent state updates on unmounted component
+    let mounted = true;
+    
+    const loadInitial = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/admin/notifications/unread-count`, {
+          headers: getAuthHeaders(),
+        });
+        if (response.ok && mounted) {
+          const data = await response.json();
+          setUnreadCount(data.unread_count || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch unread count:', error);
+      }
+    };
+    
+    loadInitial();
+    
+    return () => { mounted = false; };
+  }, []);
 
+  // Fetch full list when popover opens
   useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-    }
-  }, [isOpen, fetchNotifications]);
+    if (!isOpen) return;
+    
+    let mounted = true;
+    
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/admin/notifications/?limit=20`, {
+          headers: getAuthHeaders(),
+        });
+        if (response.ok && mounted) {
+          const data = await response.json();
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unread_count || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+      }
+    };
+    
+    loadNotifications();
+    
+    return () => { mounted = false; };
+  }, [isOpen]);
 
   // Poll for unread count
   useEffect(() => {
