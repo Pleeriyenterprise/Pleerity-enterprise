@@ -1379,7 +1379,7 @@ const AdminOrdersPage = () => {
                       <SelectValue placeholder="No deadline" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No deadline</SelectItem>
+                      <SelectItem value="none">No deadline</SelectItem>
                       <SelectItem value="3">3 days</SelectItem>
                       <SelectItem value="5">5 days</SelectItem>
                       <SelectItem value="7">7 days</SelectItem>
