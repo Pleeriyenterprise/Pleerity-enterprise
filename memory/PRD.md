@@ -1331,6 +1331,49 @@
   
   **TEST REPORT:** /app/test_reports/iteration_32.json (24/24 tests - 100%)
 
+### January 22, 2026 - Admin-Managed Blog/Insights Feature Complete
+- **Blog Backend APIs ✅**
+  - `POST /api/blog/admin/posts` - Create blog post with auto-slug generation
+  - `GET /api/blog/admin/posts` - List all posts with pagination, filtering (status, category), search
+  - `GET /api/blog/admin/posts/{id}` - Get single post by ID
+  - `PUT /api/blog/admin/posts/{id}` - Update post
+  - `DELETE /api/blog/admin/posts/{id}` - Delete post
+  - `POST /api/blog/admin/posts/{id}/publish` - Publish draft post
+  - `POST /api/blog/admin/posts/{id}/unpublish` - Unpublish to draft
+  - `GET /api/blog/admin/categories` - Get categories list
+  - `GET /api/blog/admin/tags` - Get tags list
+  
+- **Public Blog APIs ✅**
+  - `GET /api/blog/posts` - List published posts only (with pagination)
+  - `GET /api/blog/posts/{slug}` - Get single post by slug (increments view count)
+  - `GET /api/blog/categories` - Get categories with post counts
+  - `GET /api/blog/tags/popular` - Get popular tags with counts
+  - `GET /api/blog/featured` - Get featured/recent posts
+  
+- **Admin Blog UI ✅** (`/admin/blog`)
+  - Stats cards: Total Posts, Published, Drafts, Categories
+  - Posts table with status badges, view counts, actions
+  - Search and filter by status/category
+  - Post editor modal with Content/Settings/SEO tabs
+  - Create, edit, publish/unpublish, delete posts
+  - Auto-slug generation from title
+  - Tag management (comma-separated)
+  - Featured image URL with preview
+  
+- **Public Insights Page ✅** (`/insights`)
+  - Hero section with search bar
+  - Category filter buttons with counts
+  - Post cards grid with featured images, excerpts
+  - Popular tags sidebar
+  - Single post view at `/insights/{slug}`
+  - Markdown-like content rendering
+  - View count display
+  - Related CTA sections
+  
+- **DB Schema:** `blog_posts` collection with: title, slug, excerpt, content, featured_image, category, tags, status, author_id, author_name, meta_title, meta_description, view_count, created_at, updated_at, published_at
+  
+- **TEST REPORT:** `/app/test_reports/iteration_39.json` (25/25 tests - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
