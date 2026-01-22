@@ -102,9 +102,12 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/compliance-vault-pro" element={<CVPLandingPage />} />
               <Route path="/services" element={<ServicesHubPage />} />
+              <Route path="/services/catalogue" element={<ServicesCataloguePage />} />
               <Route path="/services/:serviceSlug" element={<ServiceDetailPage />} />
               <Route path="/services/compliance-audits/hmo" element={<ServiceDetailPage />} />
               <Route path="/services/compliance-audits/full" element={<ServiceDetailPage />} />
+              <Route path="/order/:serviceCode" element={<ServiceOrderPage />} />
+              <Route path="/order-success" element={<OrderSuccessPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/booking" element={<BookingPage />} />
               <Route path="/insights" element={<InsightsHubPage />} />
