@@ -681,10 +681,11 @@ async def approve_document_version(
     """
     Approve a specific document version.
     Once approved, this version is locked and becomes the final deliverable.
+    Sets status to FINAL.
     """
     db = database.get_db()
     
-    # Update the specific version
+    # Update the specific version - set status to FINAL and mark approved
     result = await db.orders.update_one(
         {
             "order_id": order_id,
@@ -692,6 +693,7 @@ async def approve_document_version(
         },
         {
             "$set": {
+                "document_versions.$.status": DocumentStatus.FINAL.value,
                 "document_versions.$.is_approved": True,
                 "document_versions.$.approved_at": datetime.now(timezone.utc).isoformat(),
                 "document_versions.$.approved_by": approved_by,
@@ -703,6 +705,22 @@ async def approve_document_version(
     
     if result.modified_count == 0:
         raise ValueError(f"Document version {version} not found for order {order_id}")
+    
+    # Mark all other versions as SUPERSEDED
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {
+            "$set": {
+                "document_versions.$[elem].status": DocumentStatus.SUPERSEDED.value
+            }
+        },
+        array_filters=[
+            {
+                "elem.version": {"$ne": version},
+                "elem.status": {"$nin": [DocumentStatus.VOID.value]}
+            }
+        ]
+    )
     
     # Return the updated version
     versions = await get_document_versions(order_id)
