@@ -1680,6 +1680,30 @@
   - COMPLETED: 2 (up from 0)
   - All state transitions logged with timestamps
 
+### January 23, 2026 - Document Preview Auth & Admin Notifications
+- **Document Preview Token System:**
+  - Created `document_access_token.py` service for generating signed JWT tokens
+  - New endpoint: `GET /api/admin/orders/{id}/documents/{version}/token` - Generates 30-minute access token
+  - New endpoint: `GET /api/admin/orders/{id}/documents/{version}/view?token=...` - Token-based document access
+  - Frontend `DocumentPreviewModal.jsx` now fetches token before rendering iframe
+  - PDF preview works in iframe without Bearer header
+
+- **Admin Notifications System:**
+  - Created `order_notification_service.py` with event-based notifications
+  - 12 notification event types: NEW_ORDER, DOCUMENT_READY, CLIENT_INPUT_REQUIRED, DOCUMENT_APPROVED, ORDER_DELIVERED, DELIVERY_FAILED, ORDER_FAILED, PRIORITY_FLAGGED, SLA_WARNING, SLA_BREACH, CLIENT_RESPONDED, REGENERATION_REQUESTED
+  - Supports Email, SMS, and In-app channels (configurable per admin)
+  - Priority levels: LOW, MEDIUM, HIGH, URGENT
+  - Created `NotificationBell.jsx` component in admin header
+  - Bell icon shows unread count badge
+  - Dropdown displays recent notifications with mark-as-read
+  - Notifications linked to orders for quick navigation
+  - Hooks into delivery service for automatic notifications
+
+- **Files Created:**
+  - `/app/backend/services/document_access_token.py`
+  - `/app/backend/services/order_notification_service.py`
+  - `/app/frontend/src/components/admin/NotificationBell.jsx`
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
