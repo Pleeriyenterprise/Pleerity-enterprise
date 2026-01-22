@@ -84,21 +84,48 @@ import AdminBillingPage from './pages/AdminBillingPage';
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <div className="App">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/admin/signin" element={<LoginPage />} />
-            <Route path="/set-password" element={<SetPasswordPage />} />
-            <Route path="/intake/start" element={<IntakePage />} />
-            <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
-            <Route path="/checkout/success" element={<CheckoutSuccessRedirect />} />
-            <Route path="/checkout/cancel" element={<Navigate to="/intake/start" replace />} />
+    <HelmetProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <div className="App">
+            <Routes>
+              {/* ========================================
+                  PUBLIC WEBSITE ROUTES (NEW)
+                  No auth required, SEO-optimized
+                  ======================================== */}
+              <Route path="/" element={<HomePage />} />
+              <Route path="/compliance-vault-pro" element={<CVPLandingPage />} />
+              <Route path="/services" element={<ServicesHubPage />} />
+              <Route path="/services/:serviceSlug" element={<ServiceDetailPage />} />
+              <Route path="/services/compliance-audits/hmo" element={<ServiceDetailPage />} />
+              <Route path="/services/compliance-audits/full" element={<ServiceDetailPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/booking" element={<BookingPage />} />
+              <Route path="/insights" element={<InsightsHubPage />} />
+              <Route path="/insights/:slug" element={<InsightsHubPage />} />
+              <Route path="/insights/category/:category" element={<InsightsHubPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/careers" element={<CareersPage />} />
+              <Route path="/partnerships" element={<PartnershipsPage />} />
+              <Route path="/legal/privacy" element={<PrivacyPage />} />
+              <Route path="/legal/terms" element={<TermsPage />} />
 
-            {/* Client Routes - Protected */}
+              {/* ========================================
+                  AUTH & ONBOARDING ROUTES
+                  ======================================== */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/admin/signin" element={<LoginPage />} />
+              <Route path="/set-password" element={<SetPasswordPage />} />
+              <Route path="/intake/start" element={<IntakePage />} />
+              <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
+              <Route path="/checkout/success" element={<CheckoutSuccessRedirect />} />
+              <Route path="/checkout/cancel" element={<Navigate to="/intake/start" replace />} />
+
+              {/* ========================================
+                  CLIENT PORTAL ROUTES (Protected)
+                  Existing CVP functionality - DO NOT MODIFY
+                  ======================================== */}
             <Route 
               path="/app/dashboard" 
               element={
