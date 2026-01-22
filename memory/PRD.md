@@ -324,8 +324,8 @@
 - [x] ~~Document version history~~ ✅ COMPLETED (Document-Centric Review Session)
 - [ ] Multi-language support
 - [ ] Full calendar export (subscribe via external URL)
-- [ ] Admin-Managed Blog/Insights system
-- [ ] Real document generation (replace MOCK with actual DOCX/PDF generation)
+- [x] ~~Admin-Managed Blog/Insights system~~ ✅ COMPLETED (January 22, 2026)
+- [x] ~~Real document generation (replace MOCK with actual DOCX/PDF generation)~~ ✅ COMPLETED (Document-Centric Review Session)
 
 ### P3 (Low Priority)
 - [ ] Mobile app (React Native)
