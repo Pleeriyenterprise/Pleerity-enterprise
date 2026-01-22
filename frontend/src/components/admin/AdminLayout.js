@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
+import NotificationBell from './NotificationBell';
 import {
   LayoutDashboard,
   ClipboardCheck,
