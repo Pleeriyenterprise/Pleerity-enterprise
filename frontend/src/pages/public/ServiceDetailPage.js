@@ -2,8 +2,8 @@ import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead, createServiceSchema } from '../../components/public/SEOHead';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent } from '../../components/ui/card';
 import {
   Sparkles,
   Building2,
