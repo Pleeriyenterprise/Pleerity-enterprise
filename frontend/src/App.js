@@ -1,12 +1,29 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './utils/ProtectedRoute';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 
-// Public pages
-import LandingPage from './pages/LandingPage';
+// Public Website Pages (NEW)
+import {
+  HomePage,
+  CVPLandingPage,
+  ServicesHubPage,
+  ServiceDetailPage,
+  PricingPage,
+  BookingPage,
+  InsightsHubPage,
+  AboutPage,
+  ContactPage,
+  CareersPage,
+  PartnershipsPage,
+  PrivacyPage,
+  TermsPage,
+} from './pages/public';
+
+// Auth & Onboarding pages
 import LoginPage from './pages/LoginPage';
 import SetPasswordPage from './pages/SetPasswordPage';
 import IntakePage from './pages/IntakePage';
