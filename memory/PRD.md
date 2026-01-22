@@ -1657,6 +1657,29 @@
   - `POST /api/admin/orders/{id}/manual-complete` - Admin override completion
   - `POST /api/admin/orders/batch/process-delivery` - Process all pending
 
+### January 23, 2026 - Background Job: Automatic Delivery Processing
+- **APScheduler Job Added:**
+  - Job ID: `order_delivery_processing`
+  - Schedule: Every 5 minutes (`*/5`)
+  - Function: `run_order_delivery_processing()`
+  
+- **Verified Automatic Flow:**
+  - Order: ORD-TEST-891CB5FA (Section 21 Notice Pack)
+  - Approval: Admin approved document v1
+  - Auto-delivery: Job processed FINALISING → DELIVERING → COMPLETED
+  - Delivered at: 2026-01-22T20:35:23
+  - Email sent to customer with DOCX + PDF links
+  
+- **Full Audit Trail:**
+  1. INTERNAL_REVIEW - Order created
+  2. FINALISING - Admin approved document
+  3. DELIVERING - Auto-delivery initiated
+  4. COMPLETED - Documents delivered via email
+
+- **Pipeline Counts After Test:**
+  - COMPLETED: 2 (up from 0)
+  - All state transitions logged with timestamps
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
