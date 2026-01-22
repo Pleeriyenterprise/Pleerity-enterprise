@@ -89,6 +89,7 @@ import AdminAssistantPage from './pages/AdminAssistantPage';
 import AdminBillingPage from './pages/AdminBillingPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminServiceCataloguePage from './pages/AdminServiceCataloguePage';
+import AdminNotificationPreferencesPage from './pages/AdminNotificationPreferencesPage';
 
 function App() {
   return (
