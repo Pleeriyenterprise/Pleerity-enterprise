@@ -318,6 +318,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/admin/services" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminServiceCataloguePage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
