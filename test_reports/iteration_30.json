@@ -1,0 +1,144 @@
+{
+  "summary": "Iteration 30 - Orders System with 14-State Workflow Machine Testing Complete. All 24 backend tests passed (100%). Frontend pipeline view working correctly after fixing localStorage key issue. Admin review actions (approve, regen, request-info) functional. Workflow timeline displays correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_iteration30_orders_system.py",
+    "/app/test_reports/pytest/pytest_results_iter30.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed: /api/admin/orders/search route was defined after /{order_id} causing 404 - moved search route before dynamic route",
+    "Fixed: AdminOrdersPage.js was using localStorage.getItem('token') instead of localStorage.getItem('auth_token') - causing 401 errors",
+    "Order workflow state machine correctly implements 14 states with proper transition validation",
+    "Audit trail correctly logs all state transitions in workflow_executions collection",
+    "Admin review actions (approve, regen, request-info) only available in INTERNAL_REVIEW state",
+    "SLA pause/resume logic implemented for CLIENT_INPUT_REQUIRED state",
+    "CVP isolation maintained - Orders system uses separate collections (orders, workflow_executions)"
+  ],
+  "updated_files": [
+    "/app/backend/routes/admin_orders.py",
+    "/app/frontend/src/pages/AdminOrdersPage.js",
+    "/app/tests/test_iteration30_orders_system.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin_email": "admin@pleerity.com",
+    "admin_password": "Admin123!"
+  },
+  "seed_data_creation": "Multiple test orders created with TEST_ prefix emails during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Orders System fully tested. 14-state workflow machine working. Pipeline view shows orders in PAID+ states. Admin can transition orders, approve from INTERNAL_REVIEW, request regeneration, request client info. Workflow timeline displays all transitions with audit trail. Stripe webhook for order payments is MOCKED (STRIPE_ORDERS_WEBHOOK_SECRET not set).",
+  "verified_features": {
+    "order_creation": {
+      "status": "PASS",
+      "endpoint": "POST /api/orders/create",
+      "details": "Creates order in CREATED status, returns order_id, status, total_amount"
+    },
+    "order_status": {
+      "status": "PASS",
+      "endpoint": "GET /api/orders/{order_id}/status",
+      "details": "Returns public order status view"
+    },
+    "pipeline_view": {
+      "status": "PASS",
+      "endpoint": "GET /api/admin/orders/pipeline",
+      "details": "Returns orders grouped by status with counts"
+    },
+    "pipeline_counts": {
+      "status": "PASS",
+      "endpoint": "GET /api/admin/orders/pipeline/counts",
+      "details": "Returns status counts and 11 column configurations"
+    },
+    "order_detail": {
+      "status": "PASS",
+      "endpoint": "GET /api/admin/orders/{order_id}",
+      "details": "Returns order detail with timeline, allowed_transitions, admin_actions"
+    },
+    "order_timeline": {
+      "status": "PASS",
+      "endpoint": "GET /api/admin/orders/{order_id}/timeline",
+      "details": "Returns workflow execution audit trail"
+    },
+    "manual_transition": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{order_id}/transition",
+      "details": "Validates transitions per state machine, requires reason"
+    },
+    "approve_order": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{order_id}/approve",
+      "details": "Transitions INTERNAL_REVIEW → FINALISING"
+    },
+    "request_regen": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{order_id}/request-regen",
+      "details": "Transitions INTERNAL_REVIEW → REGEN_REQUESTED with note"
+    },
+    "request_info": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{order_id}/request-info",
+      "details": "Transitions INTERNAL_REVIEW → CLIENT_INPUT_REQUIRED, pauses SLA"
+    },
+    "add_note": {
+      "status": "PASS",
+      "endpoint": "POST /api/admin/orders/{order_id}/notes",
+      "details": "Adds internal note without state change"
+    },
+    "search_orders": {
+      "status": "PASS",
+      "endpoint": "GET /api/admin/orders/search",
+      "details": "Searches by order_id, customer email, customer name"
+    },
+    "admin_orders_page": {
+      "status": "PASS",
+      "url": "/admin/orders",
+      "details": "Pipeline/kanban view with 8 columns, order cards, detail dialog"
+    },
+    "order_detail_dialog": {
+      "status": "PASS",
+      "details": "Shows customer info, service info, workflow timeline, admin actions"
+    },
+    "admin_review_actions_ui": {
+      "status": "PASS",
+      "details": "Approve & Finalize, Request Regeneration, Request More Info buttons visible in INTERNAL_REVIEW"
+    },
+    "cvp_login": {
+      "status": "PASS",
+      "details": "Existing CVP login still works"
+    },
+    "public_website": {
+      "status": "PASS",
+      "details": "Public services API still works"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Stripe order payment webhook (STRIPE_ORDERS_WEBHOOK_SECRET not set) - orders stay in CREATED until manually transitioned"
+    ]
+  },
+  "fixes_applied": [
+    {
+      "file": "/app/backend/routes/admin_orders.py",
+      "issue": "Search endpoint returning 404 because it was defined after /{order_id} route",
+      "fix": "Moved /search route definition before /{order_id} route"
+    },
+    {
+      "file": "/app/frontend/src/pages/AdminOrdersPage.js",
+      "issue": "API calls returning 401 because wrong localStorage key was used",
+      "fix": "Changed localStorage.getItem('token') to localStorage.getItem('auth_token')"
+    }
+  ]
+}
