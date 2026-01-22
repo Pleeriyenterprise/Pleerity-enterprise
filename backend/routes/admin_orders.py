@@ -5,7 +5,7 @@ NO CVP COLLECTIONS TOUCHED - Works only with orders and workflow_executions.
 """
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime, timezone
 from database import database
 from middleware import admin_route_guard
