@@ -147,7 +147,6 @@ class OrderDeliveryService:
         
         for doc in document_versions:
             if doc.get("version") == approved_version:
-                approved_doc = doc
                 if doc.get("filename_pdf"):
                     documents.append({
                         "name": f"{order.get('service_name', 'Document')} (PDF)",
