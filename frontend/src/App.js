@@ -351,6 +351,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/admin/notifications/preferences" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminNotificationPreferencesPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
