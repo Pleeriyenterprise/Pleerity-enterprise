@@ -192,6 +192,11 @@ const AdminOrdersPage = () => {
   const [showInfoRequestModal, setShowInfoRequestModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  
+  // Document comparison state
+  const [compareVersion1, setCompareVersion1] = useState(null);
+  const [compareVersion2, setCompareVersion2] = useState(null);
   
   // Regeneration modal state
   const [regenReason, setRegenReason] = useState('');
