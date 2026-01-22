@@ -540,6 +540,11 @@ class WorkflowAutomationService:
         
         Trigger: Client submits requested information
         Action: CLIENT_INPUT_REQUIRED → INTERNAL_REVIEW (SLA resumes)
+        Side effects:
+        - Store client response with version
+        - Resume SLA clock
+        - Log SLA_RESUMED event
+        - Notify admins
         """
         db = database.get_db()
         order = await get_order(order_id)
@@ -565,16 +570,27 @@ class WorkflowAutomationService:
             pause_start_dt = datetime.fromisoformat(pause_start.replace("Z", "+00:00")) if isinstance(pause_start, str) else pause_start
             pause_duration_hours = (datetime.now(timezone.utc) - pause_start_dt).total_seconds() / 3600
         
+        total_paused = order.get("sla_total_paused_duration", 0) + pause_duration_hours
+        
         await db.orders.update_one(
             {"order_id": order_id},
             {
                 "$set": {
                     "client_input_responses": client_responses,
                     "sla_paused_at": None,
-                    "sla_pause_duration_hours": order.get("sla_pause_duration_hours", 0) + pause_duration_hours,
+                    "sla_total_paused_duration": total_paused,
+                    # Keep old field for backwards compat
+                    "sla_pause_duration_hours": total_paused,
                 }
             }
         )
+        
+        # Log SLA resume event
+        await log_sla_event(order_id, "SLA_RESUMED", {
+            "paused_duration_hours": pause_duration_hours,
+            "total_paused_hours": total_paused,
+            "response_version": len(client_responses),
+        })
         
         # Transition back to INTERNAL_REVIEW
         await transition_order_state(
@@ -592,7 +608,7 @@ class WorkflowAutomationService:
         except Exception as e:
             logger.warning(f"WF5: Failed to send client response notification: {e}")
         
-        logger.info(f"WF5: Client response received for {order_id}, SLA resumed")
+        logger.info(f"WF5: Client response received for {order_id}, SLA resumed (paused {pause_duration_hours:.1f}h)")
         return {"success": True, "status": "INTERNAL_REVIEW", "workflow": "WF5"}
     
     # =========================================================================
