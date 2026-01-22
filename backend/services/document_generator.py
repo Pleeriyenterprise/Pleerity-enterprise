@@ -631,20 +631,29 @@ Document Version: v{version}
 """
 
 
-# Singleton instance - Mock generator for Phase 1
-document_generator = MockDocumentGenerator()
+# Import real document generator
+from services.real_document_generator import RealDocumentGenerator
+
+# Use real document generator for production
+# To switch back to mock, change this to MockDocumentGenerator()
+document_generator = RealDocumentGenerator()
 
 
 # Main interface function
 async def generate_documents(
     order_id: str,
     regeneration_notes: Optional[str] = None,
+    regenerated_from_version: Optional[int] = None,
 ) -> DocumentVersion:
     """
     Generate documents for an order.
     This is the main entry point - swap document_generator instance to change implementation.
     """
-    return await document_generator.generate_documents(order_id, regeneration_notes)
+    return await document_generator.generate_documents(
+        order_id, 
+        regeneration_notes,
+        regenerated_from_version
+    )
 
 
 async def get_document_versions(order_id: str) -> List[DocumentVersion]:
