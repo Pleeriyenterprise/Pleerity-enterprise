@@ -214,10 +214,11 @@ class MockDocumentGenerator(DocumentGenerator):
         self,
         order_id: str,
         regeneration_notes: Optional[str] = None,
+        regenerated_from_version: Optional[int] = None,
     ) -> DocumentVersion:
         """
         Generate mock DOCX + PDF for an order.
-        Stores in GridFS and returns DocumentVersion.
+        Stores in GridFS with proper file naming and returns DocumentVersion.
         """
         db = database.get_db()
         
@@ -230,8 +231,28 @@ class MockDocumentGenerator(DocumentGenerator):
         existing_versions = order.get("document_versions", [])
         new_version = len(existing_versions) + 1
         
+        # Get service code
+        service_code = order.get("service_code", "GENERAL")
+        
+        # Determine status
+        is_regeneration = new_version > 1 or regeneration_notes is not None
+        status = DocumentStatus.REGENERATED if is_regeneration else DocumentStatus.DRAFT
+        
+        # Mark previous versions as SUPERSEDED
+        if new_version > 1:
+            await self._mark_previous_versions_superseded(db, order_id)
+        
         # Get document type
-        doc_type = self.get_document_type_for_service(order.get("service_code", ""))
+        doc_type = self.get_document_type_for_service(service_code)
+        
+        # Calculate input data hash for traceability
+        import json
+        input_data = {
+            "customer": order.get("customer", {}),
+            "parameters": order.get("parameters", {}),
+            "service_code": service_code,
+        }
+        input_data_hash = hashlib.sha256(json.dumps(input_data, sort_keys=True).encode()).hexdigest()
         
         # Generate DOCX content
         docx_content = self._generate_mock_docx(order, new_version, doc_type, regeneration_notes)
@@ -239,8 +260,23 @@ class MockDocumentGenerator(DocumentGenerator):
         # Generate PDF content
         pdf_content = self._generate_mock_pdf(order, new_version, doc_type, regeneration_notes)
         
+        # Generate proper filenames
+        docx_filename = generate_document_filename(
+            order_id=order_id,
+            service_code=service_code,
+            version=new_version,
+            status=status,
+            extension="docx",
+        )
+        pdf_filename = generate_document_filename(
+            order_id=order_id,
+            service_code=service_code,
+            version=new_version,
+            status=status,
+            extension="pdf",
+        )
+        
         # Upload DOCX to storage
-        docx_filename = f"{order_id}_v{new_version}.docx"
         docx_meta = await upload_order_document(
             order_id=order_id,
             file_data=io.BytesIO(docx_content),
@@ -252,7 +288,6 @@ class MockDocumentGenerator(DocumentGenerator):
         )
         
         # Upload PDF to storage
-        pdf_filename = f"{order_id}_v{new_version}.pdf"
         pdf_meta = await upload_order_document(
             order_id=order_id,
             file_data=io.BytesIO(pdf_content),
@@ -267,13 +302,18 @@ class MockDocumentGenerator(DocumentGenerator):
         doc_version = DocumentVersion(
             version=new_version,
             document_type=doc_type,
+            status=status,
             file_id_docx=docx_meta.file_id,
             file_id_pdf=pdf_meta.file_id,
+            filename_docx=docx_filename,
+            filename_pdf=pdf_filename,
             generated_at=datetime.now(timezone.utc),
             generated_by="system",
-            is_regeneration=new_version > 1,
+            is_regeneration=is_regeneration,
             regeneration_notes=regeneration_notes,
+            regenerated_from_version=regenerated_from_version,
             content_hash=docx_meta.sha256_hash,
+            input_data_hash=input_data_hash,
         )
         
         # Update order with new version
