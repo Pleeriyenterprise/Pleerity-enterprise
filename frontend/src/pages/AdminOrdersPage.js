@@ -1439,10 +1439,13 @@ const AdminOrdersPage = () => {
               
               <TabsContent value="timeline">
                 <ScrollArea className="max-h-[50vh]">
-                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
                     <History className="h-4 w-4" />
                     Audit Timeline
                   </h4>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Click on document events to open that version in the viewer
+                  </p>
                   {renderAuditTimeline()}
                 </ScrollArea>
               </TabsContent>
