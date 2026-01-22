@@ -47,26 +47,28 @@ class TransitionType(str, Enum):
 
 
 # Valid state transitions - whitelist approach
+# Includes both forward transitions AND rollback transitions for resilience
 ALLOWED_TRANSITIONS: Dict[OrderStatus, List[OrderStatus]] = {
     OrderStatus.CREATED: [OrderStatus.PAID, OrderStatus.CANCELLED],
     OrderStatus.PAID: [OrderStatus.QUEUED, OrderStatus.CANCELLED],
-    OrderStatus.QUEUED: [OrderStatus.IN_PROGRESS, OrderStatus.CANCELLED],
-    OrderStatus.IN_PROGRESS: [OrderStatus.DRAFT_READY, OrderStatus.FAILED],
-    OrderStatus.DRAFT_READY: [OrderStatus.INTERNAL_REVIEW],
+    OrderStatus.QUEUED: [OrderStatus.IN_PROGRESS, OrderStatus.PAID, OrderStatus.CANCELLED],  # +rollback
+    OrderStatus.IN_PROGRESS: [OrderStatus.DRAFT_READY, OrderStatus.QUEUED, OrderStatus.FAILED],  # +rollback
+    OrderStatus.DRAFT_READY: [OrderStatus.INTERNAL_REVIEW, OrderStatus.IN_PROGRESS],  # +rollback
     OrderStatus.INTERNAL_REVIEW: [
         OrderStatus.FINALISING,           # Approve
         OrderStatus.REGEN_REQUESTED,      # Request regen
         OrderStatus.CLIENT_INPUT_REQUIRED,  # Request info
+        OrderStatus.DRAFT_READY,          # Rollback
         OrderStatus.CANCELLED,
     ],
-    OrderStatus.REGEN_REQUESTED: [OrderStatus.REGENERATING],
+    OrderStatus.REGEN_REQUESTED: [OrderStatus.REGENERATING, OrderStatus.INTERNAL_REVIEW],  # +rollback
     OrderStatus.REGENERATING: [OrderStatus.INTERNAL_REVIEW, OrderStatus.FAILED],
     OrderStatus.CLIENT_INPUT_REQUIRED: [OrderStatus.INTERNAL_REVIEW],
-    OrderStatus.FINALISING: [OrderStatus.DELIVERING, OrderStatus.FAILED],
-    OrderStatus.DELIVERING: [OrderStatus.COMPLETED, OrderStatus.DELIVERY_FAILED],
+    OrderStatus.FINALISING: [OrderStatus.DELIVERING, OrderStatus.INTERNAL_REVIEW, OrderStatus.FAILED],  # +rollback
+    OrderStatus.DELIVERING: [OrderStatus.COMPLETED, OrderStatus.FINALISING, OrderStatus.DELIVERY_FAILED],  # +rollback
     # Terminal states
     OrderStatus.COMPLETED: [],
-    OrderStatus.DELIVERY_FAILED: [OrderStatus.DELIVERING, OrderStatus.FAILED],  # Retry or escalate
+    OrderStatus.DELIVERY_FAILED: [OrderStatus.DELIVERING, OrderStatus.FINALISING, OrderStatus.FAILED],  # +rollback
     OrderStatus.FAILED: [OrderStatus.QUEUED],  # Admin can re-queue
     OrderStatus.CANCELLED: [],
 }
