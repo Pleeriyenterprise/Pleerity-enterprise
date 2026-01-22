@@ -115,6 +115,14 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Compliance Vault Pro API")
     await database.connect()
     
+    # Seed service catalogue
+    try:
+        from services.service_catalogue import seed_service_catalogue
+        await seed_service_catalogue()
+        logger.info("Service catalogue seeded successfully")
+    except Exception as e:
+        logger.error(f"Failed to seed service catalogue: {e}")
+    
     # Configure scheduled jobs
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
