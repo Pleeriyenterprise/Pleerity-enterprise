@@ -1,0 +1,90 @@
+{
+  "summary": "Service Catalogue V2 Phase 1 testing complete. All 34 backend API tests passed (100%). Frontend verified: cleaning services removed from navigation, /services page loads correctly with 4 service categories.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_service_catalogue_v2.py",
+    "/app/test_reports/pytest/pytest_results_iter40.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "V2 Service Catalogue properly implements pack hierarchy (Essential → Plus → Pro)",
+    "Document inheritance working correctly: Essential=5, Plus=11 (5+6), Pro=15 (11+4)",
+    "Add-on pricing correctly implemented: Fast Track +£20, Printed Copy +£25",
+    "Admin V2 APIs properly protected with admin_route_guard",
+    "Public V2 APIs correctly exclude CVP-only features",
+    "All 12 services seeded correctly (11 public + 1 CVP subscription)",
+    "Cleaning services successfully removed from PublicHeader.js and ServicesHubPage.js"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_service_catalogue_v2.py"
+  ],
+  "success_rate": {
+    "backend": "100% (34/34 tests passed)",
+    "frontend": "100% (all UI flows verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@pleerity.com / Admin123!"
+  },
+  "seed_data_creation": "No test data created - used existing seeded catalogue data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Service Catalogue V2 Phase 1 fully implemented and tested. V2 APIs at /api/public/v2/* and /api/admin/services/v2/*. 12 services in catalogue (3 AI Automation, 2 Market Research, 3 Compliance, 3 Document Packs, 1 CVP Subscription). Pack hierarchy working with document inheritance. Test file at /app/backend/tests/test_service_catalogue_v2.py covers all V2 endpoints.",
+  "verified_features": {
+    "public_v2_apis": {
+      "GET /api/public/v2/services": "PASS - Returns 11 active non-CVP services",
+      "GET /api/public/v2/services/by-category": "PASS - Groups services by category correctly",
+      "GET /api/public/v2/services/document-packs": "PASS - Returns 3 packs in tier order with inherited docs",
+      "GET /api/public/v2/services/{service_code}": "PASS - Returns service details",
+      "GET /api/public/v2/services/{service_code}/intake": "PASS - Returns CRM field dictionary intake fields",
+      "GET /api/public/v2/services/{service_code}/price": "PASS - Calculates base price correctly",
+      "GET /api/public/v2/services/{service_code}/price?fast_track=true": "PASS - Adds £20 for fast track",
+      "GET /api/public/v2/services/{service_code}/price?printed_copy=true": "PASS - Adds £25 for printed copy (doc packs only)",
+      "GET /api/public/v2/cvp/plans": "PASS - Returns 3 CVP subscription tiers"
+    },
+    "admin_v2_apis": {
+      "GET /api/admin/services/v2/": "PASS - Requires admin auth, returns all 12 services",
+      "GET /api/admin/services/v2/stats": "PASS - Returns correct counts by category",
+      "GET /api/admin/services/v2/categories": "PASS - Returns all enum options",
+      "GET /api/admin/services/v2/{service_code}": "PASS - Returns service details",
+      "GET /api/admin/services/v2/{service_code}/documents": "PASS - Returns docs with/without inheritance",
+      "GET /api/admin/services/v2/{service_code}/price": "PASS - Calculates price with add-ons"
+    },
+    "pack_hierarchy": {
+      "DOC_PACK_ESSENTIAL": "PASS - 5 documents (own only)",
+      "DOC_PACK_PLUS": "PASS - 11 documents (5 inherited + 6 own)",
+      "DOC_PACK_PRO": "PASS - 15 documents (11 inherited + 4 own)"
+    },
+    "frontend": {
+      "cleaning_services_removed_from_header": "PASS - Services dropdown shows only 4 services",
+      "cleaning_services_removed_from_services_page": "PASS - ServicesHubPage shows 4 service cards",
+      "/services_page_loads": "PASS - Page loads without errors"
+    },
+    "service_codes_verified": [
+      "AI_WF_BLUEPRINT (ai_automation, £79)",
+      "AI_PROC_MAP (ai_automation, £129)",
+      "AI_TOOLS (ai_automation, £59)",
+      "MR_BASIC (market_research, £69)",
+      "MR_ADV (market_research, £149)",
+      "COMP_HMO (compliance, £79)",
+      "COMP_FULL_AUDIT (compliance, £99)",
+      "COMP_MOVEOUT (compliance, £35)",
+      "DOC_PACK_ESSENTIAL (document_pack, £29)",
+      "DOC_PACK_PLUS (document_pack, £49)",
+      "DOC_PACK_PRO (document_pack, £79)",
+      "CVP_SUBSCRIPTION (subscription, varies by tier)"
+    ]
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": [],
+    "note": "All V2 catalogue APIs use real MongoDB database"
+  }
+}
