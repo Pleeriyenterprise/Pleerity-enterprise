@@ -231,11 +231,47 @@ const DocumentPreviewModal = ({
   isLocked = false,
 }) => {
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
-  // Reset review checkbox when version changes
+  // Fetch token-based preview URL when version changes
   React.useEffect(() => {
     setHasReviewed(false);
-  }, [selectedVersion?.version]);
+    setPreviewUrl(null);
+    
+    if (!selectedVersion || !orderId) return;
+    
+    const fetchPreviewToken = async () => {
+      setIsLoadingPreview(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(
+          `${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/token?format=pdf`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          setPreviewUrl(data.preview_url);
+        } else {
+          console.error('Failed to get preview token');
+          // Fallback to direct URL (won't work in iframe but downloads will work)
+          setPreviewUrl(`${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`);
+        }
+      } catch (error) {
+        console.error('Error fetching preview token:', error);
+        setPreviewUrl(`${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`);
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    };
+    
+    fetchPreviewToken();
+  }, [selectedVersion?.version, orderId]);
 
   const handleApprove = () => {
     if (!hasReviewed) {
@@ -244,10 +280,6 @@ const DocumentPreviewModal = ({
     }
     onApprove(selectedVersion);
   };
-
-  const previewUrl = selectedVersion
-    ? `${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`
-    : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
