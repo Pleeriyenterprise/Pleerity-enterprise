@@ -74,6 +74,8 @@ import {
   Upload,
   Check,
   Info,
+  Archive,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
