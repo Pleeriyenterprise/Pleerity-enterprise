@@ -701,10 +701,11 @@ const AdminOrdersPage = () => {
   // RENDER: Client Input Section (for CLIENT_INPUT_REQUIRED)
   // ==========================================
   const renderClientInputSection = () => {
-    if (!orderDetail?.client_input_request) return null;
+    const order = orderDetail?.order || orderDetail;
+    if (!order?.client_input_request) return null;
     
-    const request = orderDetail.client_input_request;
-    const responses = orderDetail.client_input_responses || [];
+    const request = order.client_input_request;
+    const responses = order.client_input_responses || [];
     
     return (
       <div className="space-y-4 border-t pt-4 mt-4">
