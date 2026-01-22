@@ -983,26 +983,35 @@ class WorkflowAutomationService:
         """
         Process queued orders in priority order.
         Called by background job.
+        
+        Priority ordering:
+        1. queue_priority (higher = first) - Fast-track=5, Priority=10
+        2. fast_track flag
+        3. priority flag  
+        4. created_at (oldest first)
         """
         db = database.get_db()
         
-        # Get QUEUED orders, priority first, then by created_at
+        # Get QUEUED orders, sorted by priority
         queued_orders = await db.orders.find({
             "status": OrderStatus.QUEUED.value,
         }).sort([
-            ("priority", -1),
-            ("fast_track", -1),
-            ("created_at", 1),
+            ("queue_priority", -1),  # Higher priority first
+            ("priority", -1),        # Then priority flag
+            ("fast_track", -1),      # Then fast-track flag
+            ("created_at", 1),       # Then oldest first
         ]).limit(limit).to_list(length=limit)
         
         results = {
             "processed": 0,
             "to_review": 0,
             "failed": 0,
+            "fast_track_processed": 0,
         }
         
         for order in queued_orders:
             order_id = order["order_id"]
+            is_expedited = order.get("expedited", False) or order.get("fast_track", False)
             results["processed"] += 1
             
             try:
@@ -1014,6 +1023,8 @@ class WorkflowAutomationService:
                     review_result = await self.wf3_draft_to_review(order_id)
                     if review_result.get("success"):
                         results["to_review"] += 1
+                        if is_expedited:
+                            results["fast_track_processed"] += 1
                     else:
                         results["failed"] += 1
                 else:
