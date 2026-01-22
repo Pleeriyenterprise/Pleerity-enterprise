@@ -463,8 +463,8 @@ const AdminOrdersPage = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold text-midnight-blue">Orders Pipeline</h1>
-            <p className="text-gray-500 flex items-center gap-2">
-              Operational Control Center
+            <div className="text-gray-500 flex items-center gap-2">
+              <span>Operational Control Center</span>
               {lastUpdated && (
                 <span className="text-xs">
                   • Last updated: {lastUpdated.toLocaleTimeString()}
@@ -476,7 +476,7 @@ const AdminOrdersPage = () => {
                   Live
                 </Badge>
               )}
-            </p>
+            </div>
           </div>
           <div className="flex items-center space-x-3">
             {/* Search */}
