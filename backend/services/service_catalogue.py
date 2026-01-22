@@ -759,32 +759,7 @@ SEED_SERVICES = [
         "display_order": 41,
     },
     
-    # Standalone Reports - Property Services (NEW)
-    {
-        "service_code": "INVENTORY_PRO",
-        "service_name": "Professional Property Inventory",
-        "description": "Comprehensive property inventory with room-by-room condition assessment, suitable for legal disputes",
-        "category": "STANDALONE_REPORT",
-        "pricing_model": "one_time",
-        "price_amount": 19900,  # £199
-        "delivery_type": "portal+email",
-        "documents_generated": [
-            {"document_code": "INVENTORY_REPORT", "document_name": "Property Inventory Report", "generation_order": 1, "review_order": 1, "format": "pdf", "is_primary": True},
-            {"document_code": "CONDITION_SCHEDULE", "document_name": "Schedule of Condition", "generation_order": 2, "review_order": 2, "format": "pdf", "is_primary": False},
-        ],
-        "intake_fields": [
-            {"field_id": "property_address", "label": "Property Address", "field_type": "address", "required": True, "order": 1},
-            {"field_id": "property_type", "label": "Property Type", "field_type": "select", "required": True, "options": ["Flat", "House", "HMO", "Studio"], "order": 2},
-            {"field_id": "num_bedrooms", "label": "Number of Bedrooms", "field_type": "number", "required": True, "order": 3},
-            {"field_id": "furnished", "label": "Furnished Status", "field_type": "select", "required": True, "options": ["Furnished", "Part-Furnished", "Unfurnished"], "order": 4},
-            {"field_id": "inspection_date", "label": "Inspection Date", "field_type": "date", "required": True, "order": 5},
-        ],
-        "review_required": True,
-        "generation_mode": "TEMPLATE_ONLY",
-        "requires_cvp_subscription": False,
-        "active": True,
-        "display_order": 42,
-    },
+    # Property Services - Active Only
     {
         "service_code": "DUE_DILIGENCE",
         "service_name": "Investment Due Diligence Report",
