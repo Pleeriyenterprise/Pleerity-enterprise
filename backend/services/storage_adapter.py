@@ -369,3 +369,16 @@ async def get_order_documents(order_id: str) -> List[FileMetadata]:
         prefix=f"orders/{order_id}/",
         metadata_filter={"order_id": order_id},
     )
+
+
+async def get_file_content(file_id: str) -> io.BytesIO:
+    """
+    Get file content as a streaming BytesIO object.
+    Used for serving documents to clients.
+    """
+    try:
+        content, _ = await storage_adapter.download_file(file_id)
+        return io.BytesIO(content)
+    except Exception as e:
+        logger.error(f"Failed to get file content for {file_id}: {e}")
+        raise FileNotFoundError(f"File not found: {file_id}")
