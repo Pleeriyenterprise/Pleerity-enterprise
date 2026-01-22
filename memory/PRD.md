@@ -321,9 +321,11 @@
 - [ ] Property Price Context - Show average property price in area after postcode selection
 - [ ] Admin Test Monitoring UI - View test runs, webhook delivery logs, job statuses
 - [ ] Production SMS sending with real Twilio credentials
-- [ ] Document version history
+- [x] ~~Document version history~~ ✅ COMPLETED (Document-Centric Review Session)
 - [ ] Multi-language support
 - [ ] Full calendar export (subscribe via external URL)
+- [ ] Admin-Managed Blog/Insights system
+- [ ] Real document generation (replace MOCK with actual DOCX/PDF generation)
 
 ### P3 (Low Priority)
 - [ ] Mobile app (React Native)
