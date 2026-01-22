@@ -1053,9 +1053,9 @@ const AdminOrdersPage = () => {
                       Customer
                     </h4>
                     <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
-                      <p><span className="text-gray-500">Name:</span> {orderDetail?.customer?.full_name}</p>
-                      <p><span className="text-gray-500">Email:</span> {orderDetail?.customer?.email}</p>
-                      <p><span className="text-gray-500">Phone:</span> {orderDetail?.customer?.phone || '-'}</p>
+                      <p><span className="text-gray-500">Name:</span> {orderDetail?.order?.customer?.full_name || orderDetail?.customer?.full_name}</p>
+                      <p><span className="text-gray-500">Email:</span> {orderDetail?.order?.customer?.email || orderDetail?.customer?.email}</p>
+                      <p><span className="text-gray-500">Phone:</span> {orderDetail?.order?.customer?.phone || orderDetail?.customer?.phone || '-'}</p>
                     </div>
                   </div>
                   
@@ -1066,10 +1066,10 @@ const AdminOrdersPage = () => {
                       Service
                     </h4>
                     <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
-                      <p><span className="text-gray-500">Name:</span> {orderDetail?.service_name}</p>
-                      <p><span className="text-gray-500">Code:</span> {orderDetail?.service_code}</p>
-                      <p><span className="text-gray-500">Category:</span> {orderDetail?.service_category}</p>
-                      <p><span className="text-gray-500">Amount:</span> £{orderDetail?.pricing?.amount}</p>
+                      <p><span className="text-gray-500">Name:</span> {orderDetail?.order?.service_name || orderDetail?.service_name}</p>
+                      <p><span className="text-gray-500">Code:</span> {orderDetail?.order?.service_code || orderDetail?.service_code}</p>
+                      <p><span className="text-gray-500">Category:</span> {orderDetail?.order?.service_category || orderDetail?.service_category}</p>
+                      <p><span className="text-gray-500">Amount:</span> £{orderDetail?.order?.pricing?.total_amount || orderDetail?.pricing?.total_amount || orderDetail?.pricing?.amount}</p>
                     </div>
                   </div>
                   
@@ -1080,10 +1080,10 @@ const AdminOrdersPage = () => {
                       Dates
                     </h4>
                     <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
-                      <p><span className="text-gray-500">Created:</span> {formatDate(orderDetail?.created_at)}</p>
-                      <p><span className="text-gray-500">Updated:</span> {formatDate(orderDetail?.updated_at)}</p>
-                      {orderDetail?.completed_at && (
-                        <p><span className="text-gray-500">Completed:</span> {formatDate(orderDetail?.completed_at)}</p>
+                      <p><span className="text-gray-500">Created:</span> {formatDate(orderDetail?.order?.created_at || orderDetail?.created_at)}</p>
+                      <p><span className="text-gray-500">Updated:</span> {formatDate(orderDetail?.order?.updated_at || orderDetail?.updated_at)}</p>
+                      {(orderDetail?.order?.completed_at || orderDetail?.completed_at) && (
+                        <p><span className="text-gray-500">Completed:</span> {formatDate(orderDetail?.order?.completed_at || orderDetail?.completed_at)}</p>
                       )}
                     </div>
                   </div>
