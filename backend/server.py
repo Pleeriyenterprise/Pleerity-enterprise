@@ -257,6 +257,26 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
+    # SLA monitoring - runs every 15 minutes
+    # Sends warnings at 75% SLA, breach notifications at 100%
+    scheduler.add_job(
+        run_sla_monitoring,
+        CronTrigger(minute="*/15"),  # Every 15 minutes
+        id="sla_monitoring",
+        name="SLA Monitoring",
+        replace_existing=True
+    )
+    
+    # Queued order processing - runs every 10 minutes
+    # Processes queued orders through document generation
+    scheduler.add_job(
+        run_queued_order_processing,
+        CronTrigger(minute="*/10"),  # Every 10 minutes
+        id="queued_order_processing",
+        name="Queued Order Processing",
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("Background job scheduler started")
     
