@@ -1612,16 +1612,25 @@ const AdminOrdersPage = () => {
                 />
             </div>
             
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteOrder}
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel>Close</AlertDialogCancel>
+              <Button
+                variant="outline"
+                onClick={handleCancelOrder}
                 disabled={isSubmitting || !deleteReason.trim()}
-                className="bg-red-600 hover:bg-red-700"
+                className="border-orange-500 text-orange-600 hover:bg-orange-50"
               >
-                {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                Delete Order
-              </AlertDialogAction>
+                {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <X className="h-4 w-4 mr-2" />}
+                Cancel Order
+              </Button>
+              <Button
+                onClick={handleArchiveOrder}
+                disabled={isSubmitting || !deleteReason.trim()}
+                className="bg-gray-600 hover:bg-gray-700"
+              >
+                {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Archive className="h-4 w-4 mr-2" />}
+                Archive Order
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
