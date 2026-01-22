@@ -1049,6 +1049,69 @@
   - Workflow audit trail verified
   - CVP isolation verified
 
+### January 22, 2026 (Session - Document-Centric Internal Review System)
+- **Enterprise-Grade Orders Pipeline Complete ✅**
+  
+  **Document-Centric Internal Review:**
+  - Admin must view document before taking action (document viewer modal)
+  - Document version display with version number, timestamps, regeneration status
+  - Approval locks the reviewed version as final (prevents further edits)
+  - Reopen endpoint for exceptional edits with audit trail
+  
+  **Structured Regeneration (No Blind Regeneration):**
+  - Mandatory reason dropdown (Missing info, Incorrect wording, Tone/style, etc.)
+  - Required correction/reviewer notes field
+  - Optional affected sections selection
+  - Optional guardrails (preserve names/dates, preserve format)
+  - All regeneration requests stored in audit log with full context
+  
+  **Request More Information Flow:**
+  - Admin specifies what information is needed
+  - Optional requested fields checklist
+  - Optional deadline
+  - Order transitions to CLIENT_INPUT_REQUIRED
+  - SLA timer pauses automatically
+  - Branded email sent to client with portal link
+  - Client submits via /app/orders/{orderId}/provide-info
+  - Client response stored versioned (v1, v2...)
+  - Auto-transition back to INTERNAL_REVIEW
+  - Admin receives email + in-app notification
+  
+  **Admin Notification Preferences:**
+  - Email notifications (enabled/disabled + custom email)
+  - SMS notifications (enabled/disabled + custom phone)
+  - In-app notifications (bell icon with unread count)
+  - Profile page for updating notification settings
+  
+  **Backend Services Created:**
+  - `/app/backend/services/storage_adapter.py` - GridFS storage with abstraction for S3 migration
+  - `/app/backend/services/document_generator.py` - Mock document generator (DOCX/PDF) with versioning
+  - `/app/backend/services/order_email_templates.py` - Branded HTML email templates
+  - `/app/backend/routes/client_orders.py` - Client order endpoints
+  - `/app/backend/routes/admin_notifications.py` - Notification preferences API
+  
+  **Frontend Pages:**
+  - `/app/frontend/src/pages/AdminOrdersPage.js` - Complete rewrite with document viewer, modals
+  - `/app/frontend/src/pages/ClientProvideInfoPage.js` - Client submission form
+  
+  **API Endpoints:**
+  - `POST /api/admin/orders/{id}/approve` - Approve with version lock
+  - `POST /api/admin/orders/{id}/request-regen` - Structured regeneration
+  - `POST /api/admin/orders/{id}/request-info` - Request client information
+  - `POST /api/admin/orders/{id}/generate-documents` - Generate mock documents
+  - `GET /api/admin/orders/{id}/documents` - Get document versions
+  - `GET/PUT /api/admin/notifications/preferences` - Notification settings
+  - `POST /api/client/orders/{id}/submit-input` - Client submits info
+  - `POST /api/client/orders/{id}/upload-file` - Client uploads files
+  - `POST /api/orders/create-test-order` - Dev endpoint for testing
+  
+  **MOCKED:**
+  - Document generator produces text/XML files with DRAFT watermark (not real DOCX/PDF)
+  - Email sending in test mode
+  - SMS sending in test mode
+  
+  **TEST REPORT:** /app/test_reports/iteration_32.json (24/24 tests - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
