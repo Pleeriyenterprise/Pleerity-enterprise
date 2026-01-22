@@ -271,7 +271,10 @@ function App() {
               } 
             />
 
-            {/* Admin Routes - Protected */}
+            {/* ========================================
+                  ADMIN PORTAL ROUTES (Protected)
+                  Existing CVP functionality - DO NOT MODIFY
+                  ======================================== */}
             <Route 
               path="/admin/dashboard" 
               element={
@@ -304,6 +307,7 @@ function App() {
         </div>
       </BrowserRouter>
     </AuthProvider>
+    </HelmetProvider>
   );
 }
 
