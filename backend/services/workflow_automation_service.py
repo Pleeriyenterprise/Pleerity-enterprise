@@ -697,12 +697,13 @@ class WorkflowAutomationService:
             warning_threshold = sla_config["warning_threshold"]
             
             # Calculate effective time (excluding pause duration)
-            created_at = order.get("created_at")
-            if isinstance(created_at, str):
-                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            # SLA clock starts at PAID, not created_at
+            sla_start = order.get("paid_at") or order.get("created_at")
+            if isinstance(sla_start, str):
+                sla_start = datetime.fromisoformat(sla_start.replace("Z", "+00:00"))
             
             pause_duration = order.get("sla_pause_duration_hours", 0)
-            effective_hours = ((now - created_at).total_seconds() / 3600) - pause_duration
+            effective_hours = ((now - sla_start).total_seconds() / 3600) - pause_duration
             
             # Check for existing SLA flags
             sla_warning_sent = order.get("sla_warning_sent", False)
