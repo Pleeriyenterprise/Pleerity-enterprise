@@ -60,19 +60,21 @@ async def generate_documents(
     """
     Generate documents for a paid order.
     
-    This endpoint:
+    This endpoint executes the FULL pipeline:
     1. Validates the order has been paid
-    2. Selects the appropriate prompt based on service_code
-    3. Executes GPT generation with intake data
-    4. Returns structured JSON output
-    5. Sets order status to pending review
+    2. Creates immutable intake snapshot
+    3. Selects the appropriate prompt based on service_code
+    4. Executes GPT generation
+    5. Renders DOCX + PDF documents
+    6. Stores with versioning and hashes
+    7. Sets order status to review_pending
     
     Requires admin authentication.
     """
     logger.info(f"Document generation requested for order {request.order_id} by {current_user.get('email')}")
     
-    # Execute generation
-    result = await document_orchestrator.execute_generation(
+    # Execute full pipeline (generation + rendering)
+    result = await document_orchestrator.execute_full_pipeline(
         order_id=request.order_id,
         intake_data=request.intake_data,
         regeneration=False,
@@ -88,8 +90,10 @@ async def generate_documents(
         "success": True,
         "order_id": result.order_id,
         "service_code": result.service_code,
+        "version": result.version,
         "status": result.status.value,
         "structured_output": result.structured_output,
+        "rendered_documents": result.rendered_documents,
         "validation_issues": result.validation_issues,
         "data_gaps": result.data_gaps,
         "execution_time_ms": result.execution_time_ms,
@@ -97,7 +101,7 @@ async def generate_documents(
             "prompt": result.prompt_tokens,
             "completion": result.completion_tokens,
         },
-        "message": "Document generated successfully. Ready for review.",
+        "message": f"Document v{result.version} generated and rendered. Ready for review.",
     }
 
 
@@ -109,12 +113,19 @@ async def regenerate_documents(
     """
     Regenerate documents with changes.
     
+    MANDATORY: regeneration_notes must be provided.
     This is used when a reviewer requests changes to the generated content.
-    The regeneration_notes are included in the prompt context.
+    The regeneration_notes are stored in the audit trail.
     """
-    logger.info(f"Document regeneration requested for order {request.order_id} by {current_user.get('email')}")
+    if not request.regeneration_notes or len(request.regeneration_notes.strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Regeneration requires detailed notes (minimum 10 characters)"
+        )
     
-    result = await document_orchestrator.execute_generation(
+    logger.info(f"Document regeneration requested for order {request.order_id} by {current_user.get('email')}: {request.regeneration_notes[:50]}...")
+    
+    result = await document_orchestrator.execute_full_pipeline(
         order_id=request.order_id,
         intake_data=request.intake_data,
         regeneration=True,
