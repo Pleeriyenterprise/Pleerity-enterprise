@@ -1,23 +1,36 @@
 """
 Document Orchestrator Service - Core orchestration for GPT-powered document generation.
 
-This service:
-1. Validates payment status before execution
-2. Selects correct prompt based on service_code
-3. Executes GPT generation with intake data
-4. Produces structured JSON output
-5. Routes to template renderer
-6. Manages human review gate
+This service implements the complete document generation pipeline:
 
-WORKFLOW:
-Payment Verified → Select Prompt → Validate Intake → Execute GPT → 
-Structured JSON → Template Render → Human Review → Final Delivery
+CORRECT FLOW (Audit-safe, Dispute-resolution ready):
+Payment Verified
+→ Service Identified (service_code)
+→ Prompt Selected (from registry)
+→ Intake Validation
+→ Intake Snapshot (IMMUTABLE COPY - locked before GPT)
+→ GPT Execution
+→ Structured JSON Output
+→ Document Rendering (DOCX + PDF)
+→ Versioning + Hashing
+→ Human Review
+   ├─ Approve → Auto-Deliver → COMPLETE
+   ├─ Regenerate (with reason) → New Version → Review
+   └─ Request Info → Client Input → Resume Review
+
+IMMUTABILITY RULES:
+- Intake data is snapshotted BEFORE GPT execution
+- Each version is immutable (no overwrites)
+- Previous versions marked SUPERSEDED, never deleted
+- All versions retained for audit trail
+- SHA256 hashes stored for tamper detection
 """
 from typing import Dict, Optional, List, Any, Tuple
 from datetime import datetime, timezone
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import json
+import hashlib
 import logging
 import os
 
@@ -36,13 +49,17 @@ logger = logging.getLogger(__name__)
 class OrchestrationStatus(str, Enum):
     """Status of orchestration execution."""
     PENDING = "PENDING"
-    VALIDATING = "VALIDATING"
-    GENERATING = "GENERATING"
-    GENERATED = "GENERATED"
-    RENDERING = "RENDERING"
-    REVIEW_PENDING = "REVIEW_PENDING"
-    APPROVED = "APPROVED"
-    REJECTED = "REJECTED"
+    INTAKE_LOCKED = "INTAKE_LOCKED"      # Intake snapshot created
+    GENERATING = "GENERATING"             # GPT execution in progress
+    GENERATED = "GENERATED"               # JSON output ready
+    RENDERING = "RENDERING"               # Document rendering in progress
+    RENDERED = "RENDERED"                 # DOCX + PDF ready
+    REVIEW_PENDING = "REVIEW_PENDING"     # Awaiting human review
+    APPROVED = "APPROVED"                 # Human approved
+    REJECTED = "REJECTED"                 # Human requested changes
+    INFO_REQUESTED = "INFO_REQUESTED"     # Awaiting client input
+    DELIVERING = "DELIVERING"             # Auto-delivery in progress
+    COMPLETE = "COMPLETE"                 # Delivered successfully
     FAILED = "FAILED"
 
 
@@ -53,10 +70,12 @@ class OrchestrationResult:
     status: OrchestrationStatus
     service_code: str
     order_id: str
+    version: int = 0
     structured_output: Optional[Dict[str, Any]] = None
+    rendered_documents: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
-    validation_issues: List[str] = None
-    data_gaps: List[str] = None
+    validation_issues: List[str] = field(default_factory=list)
+    data_gaps: List[str] = field(default_factory=list)
     execution_time_ms: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
