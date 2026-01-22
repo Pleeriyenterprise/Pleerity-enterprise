@@ -116,10 +116,17 @@ const getVersionFromEvent = (event) => {
 };
 
 /**
+ * Render icon based on event type
+ */
+const renderEventIcon = (event) => {
+  const Icon = getEventIcon(event);
+  return <Icon className="h-4 w-4" />;
+};
+
+/**
  * Single timeline event component
  */
 const TimelineEvent = ({ event, index, isLast, onDocumentClick }) => {
-  const Icon = getEventIcon(event);
   const colorClass = getEventColor(event);
   const clickable = isClickableEvent(event);
   const version = clickable ? getVersionFromEvent(event) : null;
@@ -147,7 +154,7 @@ const TimelineEvent = ({ event, index, isLast, onDocumentClick }) => {
             colorClass
           )}
         >
-          <Icon className="h-4 w-4" />
+          {renderEventIcon(event)}
         </div>
         {!isLast && <div className="w-0.5 flex-1 bg-gray-200 mt-1" />}
       </div>
