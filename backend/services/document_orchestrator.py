@@ -86,7 +86,9 @@ class OrchestrationResult:
             "status": self.status.value,
             "service_code": self.service_code,
             "order_id": self.order_id,
+            "version": self.version,
             "structured_output": self.structured_output,
+            "rendered_documents": self.rendered_documents,
             "error_message": self.error_message,
             "validation_issues": self.validation_issues or [],
             "data_gaps": self.data_gaps or [],
@@ -94,6 +96,23 @@ class OrchestrationResult:
             "prompt_tokens": self.prompt_tokens,
             "completion_tokens": self.completion_tokens,
         }
+
+
+def create_intake_snapshot(intake_data: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
+    """
+    Create immutable snapshot of intake data with hash.
+    This MUST be called BEFORE GPT execution.
+    """
+    # Deep copy to ensure immutability
+    snapshot = json.loads(json.dumps(intake_data, default=str))
+    snapshot["_snapshot_created_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Compute hash for integrity verification
+    snapshot_hash = hashlib.sha256(
+        json.dumps(snapshot, sort_keys=True, default=str).encode()
+    ).hexdigest()
+    
+    return snapshot, snapshot_hash
 
 
 class DocumentOrchestrator:
