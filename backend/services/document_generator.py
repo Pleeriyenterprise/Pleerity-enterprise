@@ -232,7 +232,6 @@ class MockDocumentGenerator(DocumentGenerator):
         # For mock, we generate a simple XML structure that represents a DOCX
         
         customer = order.get("customer", {})
-        params = order.get("parameters", {})
         
         # Build document content based on type
         content_sections = self._build_document_sections(order, doc_type, version, regeneration_notes)
@@ -281,7 +280,6 @@ class MockDocumentGenerator(DocumentGenerator):
         # For mock, we generate a simple text-based representation
         
         customer = order.get("customer", {})
-        params = order.get("parameters", {})
         
         content_sections = self._build_document_sections(order, doc_type, version, regeneration_notes)
         
