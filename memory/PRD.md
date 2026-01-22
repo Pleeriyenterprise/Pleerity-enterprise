@@ -1331,6 +1331,73 @@
   
   **TEST REPORT:** /app/test_reports/iteration_32.json (24/24 tests - 100%)
 
+### January 22, 2026 - Service Catalogue V2 Phase 1 Complete ✅
+- **Authoritative Service Catalogue V2 (Foundation) ✅**
+  
+  **New Categories (Explicit, as Defined):**
+  - `ai_automation` - Workflow blueprints, process mapping, AI tools
+  - `market_research` - Basic and advanced market research
+  - `compliance` - HMO audits, full audits, move-in/out checklists
+  - `document_pack` - Essential, Plus (Tenancy), Pro (Ultimate) packs
+  - `subscription` - CVP subscription tiers
+  
+  **12 Authoritative Services Defined:**
+  - AI_WF_BLUEPRINT: Workflow Automation Blueprint @ £79
+  - AI_PROC_MAP: Business Process Mapping @ £129
+  - AI_TOOLS: AI Tool Recommendation Report @ £59
+  - MR_BASIC: Market Research – Basic @ £69
+  - MR_ADV: Market Research – Advanced @ £149
+  - COMP_HMO: HMO Compliance Audit @ £79
+  - COMP_FULL_AUDIT: Full Compliance Audit Report @ £99
+  - COMP_MOVEOUT: Move-In / Move-Out Checklist @ £35
+  - DOC_PACK_ESSENTIAL: Essential Landlord Document Pack @ £29
+  - DOC_PACK_PLUS: Tenancy Legal & Notices Pack @ £49
+  - DOC_PACK_PRO: Ultimate Landlord Document Pack @ £79
+  - CVP_SUBSCRIPTION: Compliance Vault Pro (3 tiers)
+  
+  **Pack Hierarchy Enforcement (Essential → Plus → Pro):**
+  - DOC_PACK_ESSENTIAL: 5 documents (Rent Arrears, Deposit Refund, Tenant Reference, Rent Receipt, GDPR Notice)
+  - DOC_PACK_PLUS: 11 documents (5 inherited + AST, PRT, Renewal, Notice to Quit, Rent Increase, Guarantor)
+  - DOC_PACK_PRO: 15 documents (11 inherited + Inventory, Deposit Info, Property Access, Additional Notice)
+  
+  **Add-on Enforcement:**
+  - Fast Track: +£20, 24hr delivery (all services)
+  - Printed Copy: +£25, postal delivery (document packs only)
+  
+  **CVP Subscription Tiers:**
+  - Solo Landlord: £19/month + £49 setup (up to 2 properties)
+  - Portfolio: £39/month + £79 setup (up to 10 properties)
+  - Professional: £79/month + £149 setup (up to 25 properties)
+  
+  **New Backend Files:**
+  - `/app/backend/services/service_catalogue_v2.py` - V2 Service Catalogue schema and service
+  - `/app/backend/services/service_definitions_v2.py` - 12 authoritative service definitions with seed function
+  - `/app/backend/routes/admin_services_v2.py` - Admin CRUD APIs for V2 catalogue
+  - `/app/backend/routes/public_services_v2.py` - Public read APIs for V2 catalogue
+  
+  **New API Endpoints (V2):**
+  - `GET /api/public/v2/services` - List all active non-CVP services
+  - `GET /api/public/v2/services/by-category` - Services grouped by category
+  - `GET /api/public/v2/services/document-packs` - Document packs with hierarchy
+  - `GET /api/public/v2/services/{service_code}` - Service details
+  - `GET /api/public/v2/services/{service_code}/intake` - CRM field dictionary intake fields
+  - `GET /api/public/v2/services/{service_code}/price` - Price calculation with add-ons
+  - `GET /api/public/v2/cvp/plans` - CVP subscription plans
+  - `GET /api/admin/services/v2/*` - Admin CRUD for catalogue management
+  
+  **Frontend Updates:**
+  - Removed cleaning services from PublicHeader.js navigation
+  - Removed cleaning services from PublicFooter.js links
+  - Removed cleaning services section from ServicesHubPage.js
+  - Removed cleaning entry from ServiceDetailPage.js
+  
+  **CVP Boundary (Hard Rule Maintained):**
+  - CVP remains isolated - no changes to CVP collections
+  - CVP documents = reports/summaries/audits only
+  - Legal/operational documents flow through Orders system only
+  
+  **TEST REPORT:** `/app/test_reports/iteration_40.json` (34/34 backend tests - 100%)
+
 ### January 22, 2026 - Admin-Managed Blog/Insights Feature Complete
 - **Blog Backend APIs ✅**
   - `POST /api/blog/admin/posts` - Create blog post with auto-slug generation
