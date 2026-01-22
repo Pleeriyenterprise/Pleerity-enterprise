@@ -248,6 +248,18 @@ class OrderDeliveryService:
                     }
                 )
                 
+                # Send notification (fire and forget - don't fail delivery on notification error)
+                try:
+                    from services.order_notification_service import order_notification_service, OrderNotificationEvent
+                    await order_notification_service.notify_order_event(
+                        event_type=OrderNotificationEvent.ORDER_DELIVERED,
+                        order_id=order_id,
+                        order=order,
+                        message=f"Documents delivered to {customer_email}",
+                    )
+                except Exception as notif_error:
+                    logger.warning(f"Failed to send delivery notification for {order_id}: {notif_error}")
+                
                 return {
                     "success": True,
                     "order_id": order_id,
