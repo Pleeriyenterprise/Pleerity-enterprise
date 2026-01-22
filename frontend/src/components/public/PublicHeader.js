@@ -28,7 +28,6 @@ const PublicHeader = () => {
     { href: '/services/market-research', label: 'Market Research', description: 'Property market insights' },
     { href: '/services/document-packs', label: 'Document Packs', description: 'Ready-to-use legal documents' },
     { href: '/services/compliance-audits', label: 'Compliance Audits', description: 'HMO and full property audits' },
-    { href: '/services/cleaning', label: 'Cleaning Services', description: 'Professional property cleaning' },
   ];
 
   return (
