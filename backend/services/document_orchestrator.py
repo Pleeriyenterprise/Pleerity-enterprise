@@ -191,7 +191,7 @@ class DocumentOrchestrator:
         
         return True, "", order
     
-    async def execute_generation(
+    async def execute_full_pipeline(
         self,
         order_id: str,
         intake_data: Dict[str, Any],
@@ -199,23 +199,37 @@ class DocumentOrchestrator:
         regeneration_notes: Optional[str] = None,
     ) -> OrchestrationResult:
         """
-        Execute document generation for an order.
+        Execute the FULL document generation pipeline.
         
-        This is the main entry point for document generation.
+        This is the correct, audit-safe flow:
+        1. Payment Verified
+        2. Service Identified
+        3. Prompt Selected
+        4. Intake Validation
+        5. Intake Snapshot (IMMUTABLE - locked before GPT)
+        6. GPT Execution
+        7. Structured JSON Output
+        8. Document Rendering (DOCX + PDF)
+        9. Versioning + Hashing
+        10. Ready for Human Review
         
         Args:
             order_id: The order ID
             intake_data: Form data from the intake
             regeneration: Whether this is a regeneration request
-            regeneration_notes: Notes for regeneration (changes requested)
+            regeneration_notes: Notes for regeneration (MANDATORY for regeneration)
         
         Returns:
-            OrchestrationResult with structured output or error
+            OrchestrationResult with rendered documents ready for review
         """
+        from services.template_renderer import template_renderer
+        
         start_time = datetime.now(timezone.utc)
         db = database.get_db()
         
-        # Step 1: Validate order
+        # ================================================================
+        # STEP 1: Validate order (Payment Verified)
+        # ================================================================
         is_valid, error_msg, order = await self.validate_order_for_generation(order_id)
         if not is_valid:
             return OrchestrationResult(
@@ -228,7 +242,9 @@ class DocumentOrchestrator:
         
         service_code = order.get("service_code")
         
-        # Step 2: Get prompt for service
+        # ================================================================
+        # STEP 2: Get prompt for service (Prompt Selected)
+        # ================================================================
         prompt_def = get_prompt_for_service(service_code)
         if not prompt_def:
             # For document packs, use orchestrator prompt
@@ -246,7 +262,9 @@ class DocumentOrchestrator:
                     error_message=f"No prompt defined for service: {service_code}",
                 )
         
-        # Step 3: Validate intake data
+        # ================================================================
+        # STEP 3: Validate intake data
+        # ================================================================
         is_valid, missing_fields = validate_intake_data(
             prompt_def.service_code,
             intake_data
@@ -256,9 +274,25 @@ class DocumentOrchestrator:
             logger.warning(f"Intake validation failed for {order_id}: {missing_fields}")
             # Don't fail - proceed with available data and flag gaps
         
-        # Step 4: Build the prompt
+        # ================================================================
+        # STEP 4: CREATE INTAKE SNAPSHOT (IMMUTABLE - BEFORE GPT)
+        # This is critical for audit trail and dispute resolution
+        # ================================================================
+        intake_snapshot, intake_hash = create_intake_snapshot(intake_data)
+        
+        logger.info(f"Intake snapshot created for {order_id}: hash={intake_hash[:16]}...")
+        
+        # Update order status
+        await db.orders.update_one(
+            {"order_id": order_id},
+            {"$set": {"orchestration_status": OrchestrationStatus.INTAKE_LOCKED.value}}
+        )
+        
+        # ================================================================
+        # STEP 5: Build the prompt
+        # ================================================================
         try:
-            user_prompt = self._build_user_prompt(prompt_def, intake_data, regeneration, regeneration_notes)
+            user_prompt = self._build_user_prompt(prompt_def, intake_snapshot, regeneration, regeneration_notes)
         except Exception as e:
             return OrchestrationResult(
                 success=False,
@@ -268,7 +302,14 @@ class DocumentOrchestrator:
                 error_message=f"Failed to build prompt: {str(e)}",
             )
         
-        # Step 5: Execute GPT generation
+        # ================================================================
+        # STEP 6: Execute GPT generation
+        # ================================================================
+        await db.orders.update_one(
+            {"order_id": order_id},
+            {"$set": {"orchestration_status": OrchestrationStatus.GENERATING.value}}
+        )
+        
         try:
             structured_output, tokens = await self._execute_gpt(
                 prompt_def,
@@ -284,56 +325,151 @@ class DocumentOrchestrator:
                 error_message=f"GPT execution failed: {str(e)}",
             )
         
-        # Step 6: Extract data gaps from output
-        data_gaps = structured_output.get("data_gaps_flagged", [])
+        # ================================================================
+        # STEP 7: Render documents (DOCX + PDF)
+        # ================================================================
+        await db.orders.update_one(
+            {"order_id": order_id},
+            {"$set": {"orchestration_status": OrchestrationStatus.RENDERING.value}}
+        )
         
-        # Calculate execution time
+        try:
+            render_result = await template_renderer.render_from_orchestration(
+                order_id=order_id,
+                structured_output=structured_output,
+                intake_snapshot=intake_snapshot,
+                is_regeneration=regeneration,
+                regeneration_notes=regeneration_notes,
+            )
+            
+            if not render_result.success:
+                return OrchestrationResult(
+                    success=False,
+                    status=OrchestrationStatus.FAILED,
+                    service_code=service_code,
+                    order_id=order_id,
+                    error_message=f"Rendering failed: {render_result.error_message}",
+                )
+        except Exception as e:
+            logger.error(f"Rendering failed for {order_id}: {e}")
+            return OrchestrationResult(
+                success=False,
+                status=OrchestrationStatus.FAILED,
+                service_code=service_code,
+                order_id=order_id,
+                error_message=f"Rendering failed: {str(e)}",
+            )
+        
+        # ================================================================
+        # STEP 8: Store execution record with full audit trail
+        # ================================================================
+        data_gaps = structured_output.get("data_gaps_flagged", [])
         execution_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
         
-        # Step 7: Store execution record
         execution_record = {
             "order_id": order_id,
             "service_code": service_code,
             "prompt_id": prompt_def.prompt_id,
-            "status": OrchestrationStatus.GENERATED.value,
+            "version": render_result.version,
+            "status": OrchestrationStatus.REVIEW_PENDING.value,
+            # Immutable snapshots
+            "intake_snapshot": intake_snapshot,
+            "intake_snapshot_hash": intake_hash,
             "structured_output": structured_output,
-            "intake_data_snapshot": intake_data,
+            "json_output_hash": render_result.json_output_hash,
+            # Rendered documents
+            "rendered_documents": {
+                "docx": {
+                    "filename": render_result.docx.filename,
+                    "sha256_hash": render_result.docx.sha256_hash,
+                    "size_bytes": render_result.docx.size_bytes,
+                },
+                "pdf": {
+                    "filename": render_result.pdf.filename,
+                    "sha256_hash": render_result.pdf.sha256_hash,
+                    "size_bytes": render_result.pdf.size_bytes,
+                },
+            },
+            # Validation & gaps
             "validation_issues": missing_fields if not is_valid else [],
             "data_gaps": data_gaps,
+            # Regeneration context
             "is_regeneration": regeneration,
             "regeneration_notes": regeneration_notes,
+            # Metrics
             "execution_time_ms": execution_time,
+            "render_time_ms": render_result.render_time_ms,
             "prompt_tokens": tokens.get("prompt_tokens", 0),
             "completion_tokens": tokens.get("completion_tokens", 0),
+            # Audit
             "created_at": datetime.now(timezone.utc),
         }
         
         await db[self.COLLECTION].insert_one(execution_record)
         
-        # Step 8: Update order status
+        # ================================================================
+        # STEP 9: Update order status - Ready for Human Review
+        # ================================================================
         await db.orders.update_one(
             {"order_id": order_id},
             {
                 "$set": {
-                    "document_status": "draft_generated",
+                    "document_status": "rendered",
                     "review_status": "pending",
+                    "orchestration_status": OrchestrationStatus.REVIEW_PENDING.value,
+                    "current_version": render_result.version,
                     "last_generation_at": datetime.now(timezone.utc),
                 },
                 "$inc": {"regeneration_count": 1} if regeneration else {}
             }
         )
         
+        logger.info(f"Pipeline complete for {order_id} v{render_result.version}: DOCX={render_result.docx.sha256_hash[:8]}, PDF={render_result.pdf.sha256_hash[:8]}")
+        
         return OrchestrationResult(
             success=True,
-            status=OrchestrationStatus.GENERATED,
+            status=OrchestrationStatus.REVIEW_PENDING,
             service_code=service_code,
             order_id=order_id,
+            version=render_result.version,
             structured_output=structured_output,
-            validation_issues=missing_fields if not is_valid else None,
-            data_gaps=data_gaps if data_gaps else None,
+            rendered_documents={
+                "docx": {
+                    "filename": render_result.docx.filename,
+                    "sha256_hash": render_result.docx.sha256_hash,
+                    "size_bytes": render_result.docx.size_bytes,
+                },
+                "pdf": {
+                    "filename": render_result.pdf.filename,
+                    "sha256_hash": render_result.pdf.sha256_hash,
+                    "size_bytes": render_result.pdf.size_bytes,
+                },
+            },
+            validation_issues=missing_fields if not is_valid else [],
+            data_gaps=data_gaps if data_gaps else [],
             execution_time_ms=execution_time,
             prompt_tokens=tokens.get("prompt_tokens", 0),
             completion_tokens=tokens.get("completion_tokens", 0),
+        )
+    
+    # Keep legacy method for backwards compatibility
+    async def execute_generation(
+        self,
+        order_id: str,
+        intake_data: Dict[str, Any],
+        regeneration: bool = False,
+        regeneration_notes: Optional[str] = None,
+    ) -> OrchestrationResult:
+        """
+        Execute document generation - delegates to full pipeline.
+        
+        DEPRECATED: Use execute_full_pipeline directly.
+        """
+        return await self.execute_full_pipeline(
+            order_id=order_id,
+            intake_data=intake_data,
+            regeneration=regeneration,
+            regeneration_notes=regeneration_notes,
         )
     
     def _build_user_prompt(
