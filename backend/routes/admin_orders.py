@@ -502,6 +502,7 @@ async def get_document_preview(
     """
     Get document content for preview/download.
     Returns the actual document file.
+    Requires Bearer token authentication.
     """
     from services.document_generator import get_document_versions
     from services.storage_adapter import storage_adapter
@@ -532,6 +533,121 @@ async def get_document_preview(
             content=content,
             media_type=content_type,
             headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        )
+    except Exception as e:
+        logger.error(f"Failed to retrieve document: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve document")
+
+
+@router.get("/{order_id}/documents/{version}/token")
+async def get_document_access_token(
+    order_id: str,
+    version: int,
+    format: str = "pdf",
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Generate a temporary access token for document preview.
+    Use this token to embed documents in iframes without auth headers.
+    Token expires in 30 minutes.
+    """
+    from services.document_access_token import generate_document_access_token, get_document_preview_url
+    import os
+    
+    # Verify document exists
+    from services.document_generator import get_document_versions
+    versions = await get_document_versions(order_id)
+    target_version = None
+    for v in versions:
+        if v.version == version:
+            target_version = v
+            break
+    
+    if not target_version:
+        raise HTTPException(status_code=404, detail=f"Document version {version} not found")
+    
+    # Generate token
+    token = generate_document_access_token(
+        order_id=order_id,
+        version=version,
+        format=format,
+        admin_email=current_user.get("email", "unknown"),
+    )
+    
+    # Build full URL
+    base_url = os.environ.get("REACT_APP_BACKEND_URL", "")
+    preview_url = f"{base_url}/api/admin/orders/{order_id}/documents/{version}/view?format={format}&token={token}"
+    
+    return {
+        "token": token,
+        "preview_url": preview_url,
+        "expires_in_minutes": 30,
+        "format": format,
+    }
+
+
+@router.get("/{order_id}/documents/{version}/view")
+async def view_document_with_token(
+    order_id: str,
+    version: int,
+    format: str = "pdf",
+    token: str = None,
+):
+    """
+    View document using temporary access token.
+    This endpoint does NOT require Bearer auth - uses token parameter instead.
+    Designed for iframe embedding.
+    """
+    from services.document_access_token import validate_document_access_token
+    from services.document_generator import get_document_versions
+    from services.storage_adapter import storage_adapter
+    from fastapi.responses import Response
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Access token required")
+    
+    # Validate token
+    payload = validate_document_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired access token")
+    
+    # Verify token matches requested document
+    if payload.get("order_id") != order_id:
+        raise HTTPException(status_code=403, detail="Token not valid for this order")
+    if payload.get("version") != version:
+        raise HTTPException(status_code=403, detail="Token not valid for this version")
+    if payload.get("format") != format:
+        raise HTTPException(status_code=403, detail="Token not valid for this format")
+    
+    # Get document
+    versions = await get_document_versions(order_id)
+    target_version = None
+    for v in versions:
+        if v.version == version:
+            target_version = v
+            break
+    
+    if not target_version:
+        raise HTTPException(status_code=404, detail=f"Document version {version} not found")
+    
+    # Get the file ID based on format
+    file_id = target_version.file_id_pdf if format == "pdf" else target_version.file_id_docx
+    if not file_id:
+        raise HTTPException(status_code=404, detail=f"No {format} file for version {version}")
+    
+    try:
+        content, metadata = await storage_adapter.download_file(file_id)
+        
+        content_type = "application/pdf" if format == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        filename = f"{order_id}_v{version}.{format}"
+        
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "private, max-age=1800",  # 30 min cache
+            }
         )
     except Exception as e:
         logger.error(f"Failed to retrieve document: {e}")
