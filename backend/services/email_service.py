@@ -455,27 +455,6 @@ class EmailService:
             </body>
             </html>
             """
-        else:
-            # Generic template
-            footer = self._build_email_footer(model)
-            customer_ref = model.get('customer_reference', '')
-            ref_line = f"<p>Your Reference: <strong>{customer_ref}</strong></p>" if customer_ref else ""
-            
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0;">Compliance Vault Pro</h1>
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
-                    {ref_line}
-                    <p>{model.get('message', 'You have a new notification from Compliance Vault Pro.')}</p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
         elif template_alias == EmailTemplateAlias.ORDER_DELIVERED:
             # Order documents delivered notification
             footer = self._build_email_footer(model)
@@ -518,6 +497,27 @@ class EmailService:
                     <p style="color: #64748b; font-size: 14px; text-align: center;">
                         Your documents are also available in your <a href="{model.get('portal_link', '#')}" style="color: #00B8A9;">portal dashboard</a>.
                     </p>
+                </div>
+                {footer}
+            </body>
+            </html>
+            """
+        else:
+            # Generic template
+            footer = self._build_email_footer(model)
+            customer_ref = model.get('customer_reference', '')
+            ref_line = f"<p>Your Reference: <strong>{customer_ref}</strong></p>" if customer_ref else ""
+            
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0;">Compliance Vault Pro</h1>
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('client_name', 'there')},</p>
+                    {ref_line}
+                    <p>{model.get('message', 'You have a new notification from Compliance Vault Pro.')}</p>
                 </div>
                 {footer}
             </body>
