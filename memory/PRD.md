@@ -315,7 +315,9 @@
 - [x] ~~iCal Calendar Export~~ ✅ COMPLETED (Session 7)
 - [x] ~~White-Label Branding~~ ✅ COMPLETED (Session 7)
 - [x] ~~Professional PDF Reports~~ ✅ COMPLETED (Session 7)
+- [x] ~~Service Catalogue V2 Phase 1~~ ✅ COMPLETED (January 22, 2026) - Authoritative catalogue with pack hierarchy
 - [ ] Full Address Autocomplete with `getaddress.io` (PAUSED by user)
+- [ ] Deprecate `plan_gating.py` - Refactor legacy service to use Service Catalogue V2
 
 ### P2 (Medium Priority)
 - [ ] Property Price Context - Show average property price in area after postcode selection
