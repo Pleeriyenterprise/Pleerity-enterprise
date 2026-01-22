@@ -636,6 +636,36 @@ WHAT HAPPENS NEXT:
 View in Dashboard: {model.get('portal_link', '#')}
 {footer}
             """
+        elif template_alias == EmailTemplateAlias.ORDER_DELIVERED:
+            # Build documents list for text
+            documents = model.get('documents', [])
+            docs_text = ""
+            for doc in documents:
+                doc_name = doc if isinstance(doc, str) else doc.get('name', 'Document')
+                docs_text += f"  • {doc_name}\n"
+            
+            return f"""
+📦 YOUR DOCUMENTS ARE READY
+===========================
+Order Reference: {model.get('order_reference', '')}
+
+Hello {model.get('client_name', 'there')},
+
+Your {model.get('service_name', 'order')} is complete and your documents are ready!
+
+INCLUDED DOCUMENTS:
+-------------------
+{docs_text}
+
+Download your documents here:
+{model.get('download_link', '#')}
+
+Your documents are also available in your portal dashboard:
+{model.get('portal_link', '#')}
+
+Need help? Contact us at info@pleerityenterprise.co.uk
+{footer}
+            """
         else:
             return f"""
 Compliance Vault Pro
