@@ -1620,6 +1620,32 @@
   
 - **TEST REPORT:** `/app/test_reports/iteration_43.json` (10/10 features - 100%)
 
+### January 23, 2026 - E2E Evidence: Document Pack Flow
+- **Full Order Lifecycle Demonstrated:**
+  - Order: ORD-2026-C63D54 (DOC_PACK_TENANCY - Tenancy Legal & Notices Pack)
+  - Customer: Compare Test User (compare-test@example.com)
+  
+- **Document Generation Pipeline:**
+  - v1 DRAFT → SUPERSEDED (auto-regenerated)
+  - v2 REGENERATED → APPROVED & LOCKED
+  - Both versions have DOCX + PDF with SHA256 hashes
+  - Intake data snapshotted before each generation
+  
+- **Approval Flow:**
+  - Admin reviewed document in INTERNAL_REVIEW status
+  - Approved at: 2026-01-22T20:18:38
+  - Approved by: admin@pleerity.com
+  - Document v2 locked as final
+  - Order transitioned: INTERNAL_REVIEW → FINALISING
+  
+- **Audit Trail Captured:**
+  - CREATED (system)
+  - FINALISING (admin_manual) - Full audit with who, when, reason
+  
+- **Deliverables Ready:**
+  - DOCX: ORD-2026-C63D54_DOC_PACK_TENANCY_v2_REGENERATED_20260122-1643.docx
+  - PDF: ORD-2026-C63D54_DOC_PACK_TENANCY_v2_REGENERATED_20260122-1643.pdf
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
