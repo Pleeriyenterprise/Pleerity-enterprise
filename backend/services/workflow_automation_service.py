@@ -691,14 +691,8 @@ class WorkflowAutomationService:
                 results["paused_skipped"] += 1
                 continue
             
-            # Determine SLA tier
-            tier = "standard"
-            if order.get("priority"):
-                tier = "priority"
-            elif order.get("fast_track"):
-                tier = "fast_track"
-            
-            sla_config = SLA_CONFIG[tier]
+            # Get service-specific SLA configuration
+            sla_config = get_sla_hours_for_order(order)
             target_hours = sla_config["target_hours"]
             warning_threshold = sla_config["warning_threshold"]
             
