@@ -83,6 +83,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminAssistantPage from './pages/AdminAssistantPage';
 import AdminBillingPage from './pages/AdminBillingPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
+import AdminServiceCataloguePage from './pages/AdminServiceCataloguePage';
 
 function App() {
   return (
