@@ -165,9 +165,15 @@ const OrderInfoSection = ({ order }) => {
           </Badge>
         )}
         {order.fast_track && (
-          <Badge className="bg-purple-100 text-purple-800">
+          <Badge className="bg-purple-100 text-purple-800 animate-pulse">
             <Zap className="h-3 w-3 mr-1" />
             Fast Track
+          </Badge>
+        )}
+        {order.requires_postal_delivery && (
+          <Badge className="bg-cyan-100 text-cyan-800">
+            <Package className="h-3 w-3 mr-1" />
+            Printed Copy
           </Badge>
         )}
         {order.version_locked && (
@@ -182,6 +188,36 @@ const OrderInfoSection = ({ order }) => {
             Archived
           </Badge>
         )}
+      </div>
+      
+      {/* Postal Delivery Section */}
+      {order.requires_postal_delivery && (
+        <div className="mt-3 p-3 bg-cyan-50 rounded-lg border border-cyan-200">
+          <div className="flex items-center gap-2 mb-2">
+            <Package className="h-4 w-4 text-cyan-600" />
+            <span className="font-medium text-cyan-800">Postal Delivery</span>
+            <Badge className={`text-xs ${
+              order.postal_status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+              order.postal_status === 'DISPATCHED' ? 'bg-blue-100 text-blue-800' :
+              order.postal_status === 'PRINTED' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {order.postal_status || 'PENDING_PRINT'}
+            </Badge>
+          </div>
+          {order.postal_tracking_number && (
+            <p className="text-sm text-cyan-700">
+              Tracking: <span className="font-mono">{order.postal_tracking_number}</span>
+              {order.postal_carrier && ` (${order.postal_carrier})`}
+            </p>
+          )}
+          {order.postal_delivery_address && (
+            <p className="text-sm text-gray-600 mt-1">
+              📍 {order.postal_delivery_address}
+            </p>
+          )}
+        </div>
+      )}
       </div>
     </div>
   );
