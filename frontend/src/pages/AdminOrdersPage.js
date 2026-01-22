@@ -1349,7 +1349,7 @@ const AdminOrdersPage = () => {
                       <div className="text-center py-8 text-gray-500">
                         <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
                         <p>No documents generated yet</p>
-                        <p className="text-xs text-gray-400 mt-1">Click "Generate Draft" to create the first version</p>
+                        <p className="text-xs text-gray-400 mt-1">Click &quot;Generate Draft&quot; to create the first version</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
