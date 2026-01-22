@@ -897,16 +897,27 @@ const AdminOrdersPage = () => {
         {!hasDocuments ? (
           <div className="bg-gray-50 rounded-lg p-4 text-center">
             <FileText className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-            <p className="text-sm text-gray-500">No documents generated yet</p>
-            <Button
-              onClick={handleGenerateDocuments}
-              disabled={isSubmitting}
-              className="mt-3"
-              size="sm"
-            >
-              {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
-              Generate Documents
-            </Button>
+            <p className="text-sm text-gray-500 mb-1">No documents generated yet</p>
+            <p className="text-xs text-gray-400 mb-3">Generate a draft document to begin the review process</p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleGenerateDocuments}
+                    disabled={isSubmitting}
+                    className="mt-2"
+                    size="sm"
+                    data-testid="generate-draft-btn"
+                  >
+                    {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
+                    Generate Draft
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Creates an initial draft document (DOCX + PDF) for review</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         ) : (
           <>
@@ -920,47 +931,89 @@ const AdminOrdersPage = () => {
             
             {/* Document preview button */}
             {selectedDocVersion && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowDocumentViewer(true)}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview Document v{selectedDocVersion.version}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setShowDocumentViewer(true)}
+                      data-testid="preview-doc-btn"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview v{selectedDocVersion.version}
+                      {selectedDocVersion.status && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {selectedDocVersion.status}
+                        </Badge>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>View document content, download DOCX (editable) or PDF (delivery)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             
-            {/* Action buttons */}
+            {/* Action buttons with tooltips */}
             <div className="grid grid-cols-1 gap-2">
-              <Button
-                onClick={handleApproveClick}
-                disabled={isLocked || isSubmitting}
-                className="bg-green-600 hover:bg-green-700"
-                data-testid="approve-finalize-btn"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Approve & Finalize
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleApproveClick}
+                      disabled={isLocked || isSubmitting}
+                      className="bg-green-600 hover:bg-green-700"
+                      data-testid="approve-finalize-btn"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Approve & Finalize
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Lock document as FINAL, move order to delivery stage</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               
-              <Button
-                variant="outline"
-                onClick={handleRegenClick}
-                disabled={isLocked || isSubmitting}
-                data-testid="request-regen-btn"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Request Regeneration
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      onClick={handleRegenClick}
+                      disabled={isLocked || isSubmitting}
+                      data-testid="request-regen-btn"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Request Revision
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Create a new document version with changes (old version marked SUPERSEDED)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               
-              <Button
-                variant="outline"
-                onClick={handleRequestInfoClick}
-                disabled={isSubmitting}
-                data-testid="request-info-btn"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Request More Info
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      onClick={handleRequestInfoClick}
+                      disabled={isSubmitting}
+                      data-testid="request-info-btn"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Request Client Info
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Pause workflow, send email to client requesting additional information</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </>
         )}
