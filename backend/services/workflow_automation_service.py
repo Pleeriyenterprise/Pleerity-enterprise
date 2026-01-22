@@ -28,21 +28,119 @@ from services.order_service import transition_order_state, get_order
 
 logger = logging.getLogger(__name__)
 
-# SLA Configuration (in hours)
-SLA_CONFIG = {
-    "standard": {
-        "target_hours": 48,
+# ============================================================================
+# SLA Configuration (User-Specified)
+# ============================================================================
+# SLA clock: Starts at PAID, Pauses at CLIENT_INPUT_REQUIRED, Ends at COMPLETED
+#
+# Category-based SLA targets:
+# - Document Packs: 48 hours standard, 24 hours fast-track
+# - Compliance Services: 72 hours standard
+# - Automation Services: 5 business days (120 hours)
+# - Market Research: 3-5 business days depending on complexity
+# ============================================================================
+
+SLA_CONFIG_BY_CATEGORY = {
+    "document_pack": {
+        "standard_hours": 48,       # 2 business days
+        "fast_track_hours": 24,     # 1 business day
         "warning_threshold": 0.75,  # Warn at 75% of SLA
     },
-    "fast_track": {
-        "target_hours": 24,
+    "compliance": {
+        "standard_hours": 72,       # 3 business days (HMO, Full Audit)
+        "fast_track_hours": 24,     # Fast-track override
         "warning_threshold": 0.75,
     },
-    "priority": {
-        "target_hours": 12,
-        "warning_threshold": 0.5,  # Earlier warning for priority
+    "ai_automation": {
+        "standard_hours": 120,      # 5 business days
+        "fast_track_hours": 72,     # 3 business days for fast-track
+        "warning_threshold": 0.80,  # Warn at 80% for longer SLAs
+    },
+    "market_research": {
+        "standard_hours": 72,       # Basic: 3 days
+        "advanced_hours": 120,      # Advanced: 5 days
+        "fast_track_hours": 24,
+        "warning_threshold": 0.75,
+    },
+    "subscription": {
+        "standard_hours": 24,       # CVP features - on-demand
+        "fast_track_hours": 12,
+        "warning_threshold": 0.80,
+    },
+    # Default fallback
+    "default": {
+        "standard_hours": 48,
+        "fast_track_hours": 24,
+        "warning_threshold": 0.75,
     },
 }
+
+# Specific service code SLA overrides (in hours)
+SLA_SERVICE_OVERRIDES = {
+    # Compliance services
+    "COMP_HMO": {"standard": 72, "fast_track": 24},            # HMO Audit
+    "COMP_FULL_AUDIT": {"standard": 72, "fast_track": 24},     # Full Compliance Audit
+    "COMP_MOVEOUT": {"standard": 48, "fast_track": 24},        # Move-in/out checklist
+    
+    # Automation services (longer turnaround)
+    "AI_WF_BLUEPRINT": {"standard": 120, "fast_track": 72},    # Workflow Blueprint - 5 days
+    "AI_PROC_MAP": {"standard": 120, "fast_track": 72},        # Business Process Mapping
+    "AI_TOOLS": {"standard": 72, "fast_track": 48},            # AI Tool Report - 3 days
+    
+    # Market research
+    "MR_BASIC": {"standard": 72, "fast_track": 24},            # Basic - 3 days
+    "MR_ADV": {"standard": 120, "fast_track": 48},             # Advanced - 5 days
+    
+    # Document packs (fastest)
+    "DOC_PACK_ESSENTIAL": {"standard": 48, "fast_track": 24},  # Essential - 2 days
+    "DOC_PACK_PLUS": {"standard": 48, "fast_track": 24},       # Plus - 2 days
+    "DOC_PACK_PRO": {"standard": 48, "fast_track": 24},        # Pro - 2 days
+}
+
+# Fast-track MUST NOT bypass these controls
+FAST_TRACK_GUARDRAILS = [
+    "human_review",      # Admin must review before approval
+    "audit_logs",        # All actions logged
+    "versioning",        # Document versions tracked
+    "sla_tracking",      # SLA still monitored
+]
+
+
+def get_sla_hours_for_order(order: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get SLA configuration for an order based on service code and category.
+    
+    Returns dict with:
+    - target_hours: SLA deadline in hours
+    - warning_threshold: Percentage at which to send warning (0.75 = 75%)
+    - sla_pause_states: States where SLA clock pauses
+    """
+    service_code = order.get("service_code", "")
+    is_fast_track = order.get("fast_track", False) or order.get("priority", False)
+    
+    # Check service-specific overrides first
+    if service_code in SLA_SERVICE_OVERRIDES:
+        override = SLA_SERVICE_OVERRIDES[service_code]
+        target = override["fast_track"] if is_fast_track else override["standard"]
+        return {
+            "target_hours": target,
+            "warning_threshold": 0.75,
+            "sla_pause_states": [OrderStatus.CLIENT_INPUT_REQUIRED.value],
+        }
+    
+    # Fall back to category-based config
+    category = order.get("category", "default")
+    if category not in SLA_CONFIG_BY_CATEGORY:
+        category = "default"
+    
+    config = SLA_CONFIG_BY_CATEGORY[category]
+    target = config.get("fast_track_hours", 24) if is_fast_track else config.get("standard_hours", 48)
+    
+    return {
+        "target_hours": target,
+        "warning_threshold": config.get("warning_threshold", 0.75),
+        "sla_pause_states": [OrderStatus.CLIENT_INPUT_REQUIRED.value],
+    }
 
 # Max retry attempts for delivery
 MAX_DELIVERY_RETRIES = 3
