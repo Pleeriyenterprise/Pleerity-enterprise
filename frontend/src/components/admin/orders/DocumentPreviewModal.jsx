@@ -329,7 +329,14 @@ const DocumentPreviewModal = ({
               className="border rounded-lg bg-gray-100 overflow-hidden" 
               style={{ height: '55vh' }}
             >
-              {previewUrl ? (
+              {isLoadingPreview ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-2"></div>
+                    <p>Loading document preview...</p>
+                  </div>
+                </div>
+              ) : previewUrl ? (
                 <iframe
                   src={previewUrl}
                   className="w-full h-full"
