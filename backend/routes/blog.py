@@ -10,7 +10,7 @@ import re
 import logging
 
 from database import database
-from utils.auth import get_current_user, require_admin
+from middleware import admin_route_guard
 
 logger = logging.getLogger(__name__)
 
