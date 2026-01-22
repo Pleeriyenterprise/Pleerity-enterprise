@@ -49,8 +49,8 @@ async def seed_database():
     
     print("\n✅ Database seeding complete!")
     print("\n📝 Quick Start Guide:")
-    print("   1. Admin Login: https://enterprise-saas-6.preview.emergentagent.com/admin/signin")
-    print("   2. Client Signup: https://enterprise-saas-6.preview.emergentagent.com/intake/start")
+    print("   1. Admin Login: https://order-manager-140.preview.emergentagent.com/admin/signin")
+    print("   2. Client Signup: https://order-manager-140.preview.emergentagent.com/intake/start")
     print("\n🔐 Admin Credentials:")
     print("   Email: admin@pleerity.com")
     print("   Password: Admin123!")

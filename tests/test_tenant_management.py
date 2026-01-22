@@ -13,7 +13,7 @@ import os
 import uuid
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://enterprise-saas-6.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://order-manager-140.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 CLIENT_EMAIL = "test@pleerity.com"
