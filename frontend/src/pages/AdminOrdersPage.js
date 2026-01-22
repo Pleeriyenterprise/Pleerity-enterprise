@@ -80,7 +80,7 @@ const AdminOrdersPage = () => {
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/api/admin/orders/pipeline`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -104,7 +104,7 @@ const AdminOrdersPage = () => {
 
   const fetchOrderDetail = async (orderId) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/api/admin/orders/${orderId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -136,7 +136,7 @@ const AdminOrdersPage = () => {
     
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       
       let endpoint = '';
       let body = {};
