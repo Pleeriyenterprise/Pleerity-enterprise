@@ -81,6 +81,7 @@ import BillingPage from './pages/BillingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminAssistantPage from './pages/AdminAssistantPage';
 import AdminBillingPage from './pages/AdminBillingPage';
+import AdminOrdersPage from './pages/AdminOrdersPage';
 
 function App() {
   return (
