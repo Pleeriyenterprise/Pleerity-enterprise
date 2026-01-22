@@ -1051,6 +1051,37 @@
   - Workflow audit trail verified
   - CVP isolation verified
 
+### January 22, 2026 (Session - Phase D Service Expansion Complete)
+- **Phase D: Service Expansion - 9 New Services Added ✅**
+  
+  **New Property Services:**
+  - `INVENTORY_PRO` - Professional Property Inventory (£199)
+  - `DUE_DILIGENCE` - Investment Due Diligence Report (£499)
+  - `RENT_REVIEW` - Rent Review Analysis (£79)
+  - `TENANT_REF` - Tenant Referencing Report (£35)
+  - `EPC_CONSULT` - Energy Performance Consultation (£99)
+  
+  **New Specialist Services:**
+  - `HMO_LICENCE_SUPPORT` - HMO Licensing Support Pack (£299)
+  - `PORTFOLIO_ANALYSIS` - Portfolio Performance Analysis (£399)
+  - `LEASE_EXTENSION` - Lease Extension Valuation (£249)
+  - `AIRBNB_SETUP` - Short-Let Setup Consultation (£199)
+  
+  **Service Features:**
+  - All services have detailed intake_fields with proper validation
+  - All services have documents_generated definitions
+  - Mix of TEMPLATE_ONLY, AI_ASSISTED_JSON, and HYBRID generation modes
+  - Delivery via portal+email
+  - Review required for quality assurance
+  
+  **Total Services in Catalogue: 23**
+  - CVP Features: 2 (included)
+  - CVP Add-ons: 3 (£49-£149)
+  - Document Packs: 3 (£49.99-£149.99)
+  - Standalone Reports: 14 (£35-£499)
+  
+  **TEST REPORT:** /app/test_reports/iteration_36.json (13/13 tests - 100%)
+
 ### January 22, 2026 (Session - Phase C UX Polish Complete)
 - **Phase C: UX Polish - Enhanced User Experience ✅**
   
