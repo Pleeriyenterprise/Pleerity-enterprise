@@ -76,6 +76,7 @@ import BulkPropertyImportPage from './pages/BulkPropertyImportPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import BrandingSettingsPage from './pages/BrandingSettingsPage';
 import BillingPage from './pages/BillingPage';
+import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
