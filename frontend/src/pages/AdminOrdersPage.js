@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Label } from '../components/ui/label';
+import { Checkbox } from '../components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../components/ui/alert-dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../components/ui/tabs';
 import { Textarea } from '../components/ui/textarea';
+import { ScrollArea } from '../components/ui/scroll-area';
+import { Separator } from '../components/ui/separator';
 import {
   Search,
   RefreshCw,
@@ -55,6 +64,16 @@ import {
   Calendar,
   Timer,
   Zap,
+  Eye,
+  Lock,
+  Unlock,
+  Download,
+  File,
+  History,
+  Send,
+  Upload,
+  Check,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -83,7 +102,7 @@ const statusColors = {
   CANCELLED: 'bg-gray-100 text-gray-500',
 };
 
-// Pipeline columns configuration with emphasis colors
+// Pipeline columns configuration
 const pipelineColumns = [
   { status: 'PAID', label: 'Paid', color: 'blue', bgActive: 'bg-blue-50', borderActive: 'border-blue-500', bgMuted: 'bg-gray-50', borderMuted: 'border-gray-200' },
   { status: 'QUEUED', label: 'Queued', color: 'slate', bgActive: 'bg-slate-100', borderActive: 'border-slate-500', bgMuted: 'bg-gray-50', borderMuted: 'border-gray-200' },
@@ -98,6 +117,34 @@ const pipelineColumns = [
   { status: 'FAILED', label: 'Failed', color: 'red', bgActive: 'bg-red-100', borderActive: 'border-red-600', bgMuted: 'bg-gray-50', borderMuted: 'border-gray-200' },
 ];
 
+// Regeneration reasons dropdown options
+const regenReasons = [
+  { value: 'missing_info', label: 'Missing Information' },
+  { value: 'incorrect_wording', label: 'Incorrect Wording' },
+  { value: 'tone_style', label: 'Tone/Style Issue' },
+  { value: 'wrong_emphasis', label: 'Wrong Section Emphasis' },
+  { value: 'formatting', label: 'Formatting Issue' },
+  { value: 'factual_error', label: 'Factual Error' },
+  { value: 'legal_compliance', label: 'Legal/Compliance Issue' },
+  { value: 'other', label: 'Other' },
+];
+
+// Common requested fields for client info
+const commonRequestedFields = [
+  { id: 'tenant_name', label: 'Tenant Full Name' },
+  { id: 'property_address', label: 'Property Address Confirmation' },
+  { id: 'tenancy_start_date', label: 'Tenancy Start Date' },
+  { id: 'tenancy_end_date', label: 'Tenancy End Date' },
+  { id: 'notice_date', label: 'Notice Date' },
+  { id: 'deposit_amount', label: 'Deposit Amount' },
+  { id: 'monthly_rent', label: 'Monthly Rent' },
+  { id: 'eicr_date', label: 'EICR Certificate Date' },
+  { id: 'gas_cert_date', label: 'Gas Safety Certificate Date' },
+  { id: 'epc_rating', label: 'EPC Rating' },
+  { id: 'landlord_details', label: 'Landlord Details' },
+  { id: 'clarification', label: 'General Clarification' },
+];
+
 // Sort options
 const sortOptions = [
   { value: 'entered_desc', label: 'Entered Stage (Latest First)' },
@@ -107,63 +154,6 @@ const sortOptions = [
   { value: 'created_desc', label: 'Created (Newest First)' },
   { value: 'created_asc', label: 'Created (Oldest First)' },
 ];
-
-// State-specific actions configuration
-const stateActions = {
-  CREATED: [
-    { key: 'cancel', label: 'Cancel Order', icon: XCircle, variant: 'destructive', requiresReason: true },
-  ],
-  PAID: [
-    { key: 'transition_queued', label: 'Move to Queue', icon: ArrowRight, variant: 'default', requiresReason: true },
-    { key: 'cancel', label: 'Cancel Order', icon: XCircle, variant: 'destructive', requiresReason: true },
-  ],
-  QUEUED: [
-    { key: 'transition_in_progress', label: 'Start Processing', icon: Play, variant: 'default', requiresReason: true },
-    { key: 'cancel', label: 'Cancel Order', icon: XCircle, variant: 'destructive', requiresReason: true },
-  ],
-  IN_PROGRESS: [
-    { key: 'transition_draft_ready', label: 'Mark Draft Ready', icon: CheckCircle2, variant: 'default', requiresReason: true },
-    { key: 'transition_failed', label: 'Mark Failed', icon: AlertTriangle, variant: 'destructive', requiresReason: true },
-  ],
-  DRAFT_READY: [
-    { key: 'transition_internal_review', label: 'Send to Review', icon: ArrowRight, variant: 'default', requiresReason: true },
-  ],
-  INTERNAL_REVIEW: [
-    { key: 'approve', label: 'Approve & Finalize', icon: CheckCircle2, variant: 'success', requiresReason: false },
-    { key: 'regen', label: 'Request Regeneration', icon: RotateCcw, variant: 'outline', requiresReason: true },
-    { key: 'request_info', label: 'Request More Info', icon: MessageSquare, variant: 'outline', requiresReason: true },
-    { key: 'cancel', label: 'Cancel Order', icon: XCircle, variant: 'destructive', requiresReason: true },
-  ],
-  REGEN_REQUESTED: [
-    { key: 'transition_regenerating', label: 'Start Regeneration', icon: Play, variant: 'default', requiresReason: true },
-  ],
-  REGENERATING: [
-    { key: 'transition_internal_review', label: 'Return to Review', icon: ArrowRight, variant: 'default', requiresReason: true },
-    { key: 'transition_failed', label: 'Mark Failed', icon: AlertTriangle, variant: 'destructive', requiresReason: true },
-  ],
-  CLIENT_INPUT_REQUIRED: [
-    { key: 'resend_request', label: 'Resend Request', icon: RefreshCw, variant: 'outline', requiresReason: true },
-    { key: 'transition_internal_review', label: 'Resume (Client Responded)', icon: Play, variant: 'default', requiresReason: true },
-  ],
-  FINALISING: [
-    { key: 'transition_delivering', label: 'Start Delivery', icon: ArrowRight, variant: 'default', requiresReason: true },
-    { key: 'transition_failed', label: 'Mark Failed', icon: AlertTriangle, variant: 'destructive', requiresReason: true },
-  ],
-  DELIVERING: [
-    { key: 'transition_completed', label: 'Mark Completed', icon: CheckCircle2, variant: 'success', requiresReason: true },
-    { key: 'transition_delivery_failed', label: 'Delivery Failed', icon: AlertTriangle, variant: 'destructive', requiresReason: true },
-  ],
-  DELIVERY_FAILED: [
-    { key: 'retry_delivery', label: 'Retry Delivery', icon: RotateCcw, variant: 'default', requiresReason: true },
-    { key: 'transition_failed', label: 'Escalate to Failed', icon: AlertTriangle, variant: 'destructive', requiresReason: true },
-  ],
-  FAILED: [
-    { key: 'retry_queued', label: 'Re-queue Order', icon: RotateCcw, variant: 'default', requiresReason: true },
-    { key: 'rollback', label: 'Rollback to Prior Stage', icon: ArrowLeft, variant: 'outline', requiresReason: true },
-  ],
-  COMPLETED: [],
-  CANCELLED: [],
-};
 
 const AdminOrdersPage = () => {
   // Data state
@@ -176,6 +166,8 @@ const AdminOrdersPage = () => {
   const [selectedStage, setSelectedStage] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
+  const [documentVersions, setDocumentVersions] = useState([]);
+  const [selectedDocVersion, setSelectedDocVersion] = useState(null);
   
   // Sorting
   const [sortBy, setSortBy] = useState('priority');
@@ -186,13 +178,34 @@ const AdminOrdersPage = () => {
   // Dialog states
   const [showStageDialog, setShowStageDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const [showActionDialog, setShowActionDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRegenModal, setShowRegenModal] = useState(false);
+  const [showInfoRequestModal, setShowInfoRequestModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+  
+  // Regeneration modal state
+  const [regenReason, setRegenReason] = useState('');
+  const [regenNotes, setRegenNotes] = useState('');
+  const [regenSections, setRegenSections] = useState([]);
+  const [regenGuardrails, setRegenGuardrails] = useState({
+    preserve_names_dates: false,
+    preserve_format: false,
+  });
+  
+  // Info request modal state
+  const [infoRequestNotes, setInfoRequestNotes] = useState('');
+  const [requestedFields, setRequestedFields] = useState([]);
+  const [deadlineDays, setDeadlineDays] = useState('');
+  const [requestAttachments, setRequestAttachments] = useState(false);
+  
+  // Approval modal state
+  const [approveVersion, setApproveVersion] = useState(null);
+  const [approveNotes, setApproveNotes] = useState('');
   
   // Action state
-  const [currentAction, setCurrentAction] = useState(null);
-  const [actionReason, setActionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
   
   // Auto-refresh
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -230,7 +243,7 @@ const AdminOrdersPage = () => {
   useEffect(() => {
     if (autoRefresh) {
       refreshIntervalRef.current = setInterval(() => {
-        fetchOrders(false); // Silent refresh
+        fetchOrders(false);
       }, AUTO_REFRESH_INTERVAL);
     }
     
@@ -252,6 +265,20 @@ const AdminOrdersPage = () => {
       if (response.ok) {
         const data = await response.json();
         setOrderDetail(data);
+        
+        // Also fetch document versions
+        const docsResponse = await fetch(`${API_URL}/api/admin/orders/${orderId}/documents`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (docsResponse.ok) {
+          const docsData = await docsResponse.json();
+          setDocumentVersions(docsData.versions || []);
+          if (docsData.current_version) {
+            setSelectedDocVersion(docsData.current_version);
+          }
+        }
+        
         setShowDetailDialog(true);
       }
     } catch (error) {
@@ -264,9 +291,7 @@ const AdminOrdersPage = () => {
   const getOrdersForStatus = useCallback((status) => {
     let filtered = orders.filter((o) => o.status === status);
     
-    // Sort orders
     filtered.sort((a, b) => {
-      // Priority orders always first
       if (a.priority && !b.priority) return -1;
       if (!a.priority && b.priority) return 1;
       
@@ -276,7 +301,6 @@ const AdminOrdersPage = () => {
         case 'entered_asc':
           return new Date(a.updated_at) - new Date(b.updated_at);
         case 'priority':
-          // Already handled above, fall through to entered_desc
           return new Date(b.updated_at) - new Date(a.updated_at);
         case 'sla_asc':
           const slaA = a.sla_hours ? a.sla_hours - getHoursInState(a) : Infinity;
@@ -332,660 +356,1150 @@ const AdminOrdersPage = () => {
     fetchOrderDetail(order.order_id);
   };
 
-  // Handle action button click
-  const handleActionClick = (action) => {
-    setCurrentAction(action);
-    setActionReason('');
-    if (action.requiresReason) {
-      setShowActionDialog(true);
-    } else {
-      // Execute immediately for actions that don't require reason
-      executeAction(action, '');
+  // ==========================================
+  // APPROVAL ACTION
+  // ==========================================
+  const handleApproveClick = () => {
+    if (!documentVersions.length) {
+      toast.error('No document to approve. Generate documents first.');
+      return;
     }
+    setApproveVersion(documentVersions[documentVersions.length - 1]?.version || 1);
+    setApproveNotes('');
+    setShowApproveModal(true);
   };
 
-  // Execute action
-  const executeAction = async (action, reason) => {
-    if (!selectedOrder) return;
+  const submitApproval = async () => {
+    if (!approveVersion) {
+      toast.error('Please select a version to approve');
+      return;
+    }
     
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('auth_token');
-      let endpoint = '';
-      let body = {};
-      
-      // Map action keys to API endpoints
-      switch (action.key) {
-        case 'approve':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/approve`;
-          break;
-        case 'regen':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/request-regen`;
-          body = { note: reason };
-          break;
-        case 'request_info':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/request-info`;
-          body = { note: reason };
-          break;
-        case 'cancel':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/transition`;
-          body = { new_status: 'CANCELLED', reason };
-          break;
-        case 'delete':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/delete`;
-          body = { reason };
-          break;
-        case 'resend_request':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/resend-request`;
-          body = { reason };
-          break;
-        case 'retry_delivery':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/transition`;
-          body = { new_status: 'DELIVERING', reason: `Retry delivery: ${reason}` };
-          break;
-        case 'retry_queued':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/transition`;
-          body = { new_status: 'QUEUED', reason: `Re-queued: ${reason}` };
-          break;
-        case 'rollback':
-          endpoint = `/api/admin/orders/${selectedOrder.order_id}/rollback`;
-          body = { reason };
-          break;
-        default:
-          // Handle transition_* actions
-          if (action.key.startsWith('transition_')) {
-            const newStatus = action.key.replace('transition_', '').toUpperCase();
-            endpoint = `/api/admin/orders/${selectedOrder.order_id}/transition`;
-            body = { new_status: newStatus, reason };
-          }
-          break;
-      }
-      
-      if (!endpoint) {
-        toast.error('Unknown action');
-        return;
-      }
-      
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await fetch(`${API_URL}/api/admin/orders/${selectedOrder.order_id}/approve`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          version: approveVersion,
+          notes: approveNotes || null,
+        }),
       });
       
+      const data = await response.json();
+      
       if (response.ok) {
-        toast.success('Action completed successfully');
-        setShowActionDialog(false);
+        toast.success(`Order approved! Document v${approveVersion} locked as final.`);
+        setShowApproveModal(false);
         setShowDetailDialog(false);
-        setShowDeleteDialog(false);
         fetchOrders();
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Action failed');
+        toast.error(data.detail || 'Failed to approve order');
       }
     } catch (error) {
-      console.error('Action failed:', error);
-      toast.error('Action failed');
+      toast.error('Failed to approve order');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle delete
-  const handleDelete = () => {
-    setShowDeleteDialog(true);
+  // ==========================================
+  // REGENERATION ACTION
+  // ==========================================
+  const handleRegenClick = () => {
+    setRegenReason('');
+    setRegenNotes('');
+    setRegenSections([]);
+    setRegenGuardrails({ preserve_names_dates: false, preserve_format: false });
+    setShowRegenModal(true);
   };
 
-  const confirmDelete = async () => {
-    if (!actionReason.trim()) {
-      toast.error('Reason is required for deletion');
+  const submitRegeneration = async () => {
+    if (!regenReason) {
+      toast.error('Please select a reason for regeneration');
       return;
     }
-    await executeAction({ key: 'delete', requiresReason: true }, actionReason);
+    if (!regenNotes.trim()) {
+      toast.error('Correction notes are required for regeneration');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/admin/orders/${selectedOrder.order_id}/request-regen`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reason: regenReason,
+          correction_notes: regenNotes,
+          affected_sections: regenSections.length ? regenSections : null,
+          guardrails: regenGuardrails,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success('Regeneration requested. System will regenerate automatically.');
+        setShowRegenModal(false);
+        setShowDetailDialog(false);
+        fetchOrders();
+      } else {
+        toast.error(data.detail || 'Failed to request regeneration');
+      }
+    } catch (error) {
+      toast.error('Failed to request regeneration');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Get actions for current order state
-  const getActionsForState = (status) => {
-    return stateActions[status] || [];
+  // ==========================================
+  // REQUEST MORE INFO ACTION
+  // ==========================================
+  const handleRequestInfoClick = () => {
+    setInfoRequestNotes('');
+    setRequestedFields([]);
+    setDeadlineDays('');
+    setRequestAttachments(false);
+    setShowInfoRequestModal(true);
   };
 
-  // Check if stage has orders (for emphasis)
-  const stageHasOrders = (status) => {
-    return (counts[status] || 0) > 0;
+  const toggleRequestedField = (fieldId) => {
+    setRequestedFields(prev => 
+      prev.includes(fieldId) 
+        ? prev.filter(f => f !== fieldId)
+        : [...prev, fieldId]
+    );
   };
 
-  return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-midnight-blue">Orders Pipeline</h1>
-            <div className="text-gray-500 flex items-center gap-2">
-              <span>Operational Control Center</span>
-              {lastUpdated && (
-                <span className="text-xs">
-                  • Last updated: {lastUpdated.toLocaleTimeString()}
-                </span>
+  const submitInfoRequest = async () => {
+    if (!infoRequestNotes.trim()) {
+      toast.error('Please specify what information you need');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/admin/orders/${selectedOrder.order_id}/request-info`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          request_notes: infoRequestNotes,
+          requested_fields: requestedFields.length ? requestedFields : null,
+          deadline_days: deadlineDays ? parseInt(deadlineDays) : null,
+          request_attachments: requestAttachments,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success('Info request sent to client. SLA paused.');
+        setShowInfoRequestModal(false);
+        setShowDetailDialog(false);
+        fetchOrders();
+      } else {
+        toast.error(data.detail || 'Failed to send info request');
+      }
+    } catch (error) {
+      toast.error('Failed to send info request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ==========================================
+  // GENERATE DOCUMENTS
+  // ==========================================
+  const handleGenerateDocuments = async () => {
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/admin/orders/${selectedOrder.order_id}/generate-documents`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success(`Document v${data.version.version} generated`);
+        // Refresh order details
+        fetchOrderDetail(selectedOrder.order_id);
+      } else {
+        toast.error(data.detail || 'Failed to generate documents');
+      }
+    } catch (error) {
+      toast.error('Failed to generate documents');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ==========================================
+  // DELETE ACTION
+  // ==========================================
+  const handleDeleteOrder = async () => {
+    if (!deleteReason.trim()) {
+      toast.error('Reason is required to delete order');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/admin/orders/${selectedOrder.order_id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: deleteReason }),
+      });
+      
+      if (response.ok) {
+        toast.success('Order deleted');
+        setShowDeleteDialog(false);
+        setShowDetailDialog(false);
+        fetchOrders();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to delete order');
+      }
+    } catch (error) {
+      toast.error('Failed to delete order');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ==========================================
+  // GENERIC TRANSITION
+  // ==========================================
+  const handleTransition = async (newStatus, reason) => {
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/admin/orders/${selectedOrder.order_id}/transition`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ new_status: newStatus, reason }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success(`Order moved to ${newStatus}`);
+        setShowDetailDialog(false);
+        fetchOrders();
+      } else {
+        toast.error(data.detail || 'Failed to transition order');
+      }
+    } catch (error) {
+      toast.error('Failed to transition order');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ==========================================
+  // RENDER: Pipeline Column
+  // ==========================================
+  const renderPipelineColumn = (column) => {
+    const count = counts[column.status] || 0;
+    const hasOrders = count > 0;
+    
+    return (
+      <div
+        key={column.status}
+        data-testid={`pipeline-column-${column.status.toLowerCase()}`}
+        onClick={() => count > 0 && handleStageClick(column.status)}
+        className={cn(
+          'flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all min-w-[100px]',
+          hasOrders ? column.bgActive : column.bgMuted,
+          hasOrders ? column.borderActive : column.borderMuted,
+          count > 0 && 'cursor-pointer hover:scale-105 hover:shadow-md',
+        )}
+      >
+        <span className={cn(
+          'text-2xl font-bold',
+          hasOrders ? `text-${column.color}-700` : 'text-gray-400'
+        )}>
+          {count}
+        </span>
+        <span className={cn(
+          'text-xs font-medium text-center',
+          hasOrders ? `text-${column.color}-600` : 'text-gray-400'
+        )}>
+          {column.label}
+        </span>
+      </div>
+    );
+  };
+
+  // ==========================================
+  // RENDER: Document Version Item
+  // ==========================================
+  const renderDocumentVersion = (version) => {
+    const isSelected = selectedDocVersion?.version === version.version;
+    const isApproved = version.is_approved;
+    
+    return (
+      <div
+        key={version.version}
+        onClick={() => setSelectedDocVersion(version)}
+        className={cn(
+          'p-3 rounded-lg border cursor-pointer transition-all',
+          isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300',
+          isApproved && 'ring-2 ring-green-500'
+        )}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-gray-500" />
+            <span className="font-medium">v{version.version}</span>
+            {version.is_regeneration && (
+              <Badge variant="outline" className="text-xs">Regenerated</Badge>
+            )}
+            {isApproved && (
+              <Badge className="bg-green-100 text-green-800 text-xs">
+                <Lock className="h-3 w-3 mr-1" />
+                Approved
+              </Badge>
+            )}
+          </div>
+          <span className="text-xs text-gray-500">
+            {formatDate(version.generated_at)}
+          </span>
+        </div>
+        {version.regeneration_notes && (
+          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+            {version.regeneration_notes}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // RENDER: Client Input Section (for CLIENT_INPUT_REQUIRED)
+  // ==========================================
+  const renderClientInputSection = () => {
+    if (!orderDetail?.client_input_request) return null;
+    
+    const request = orderDetail.client_input_request;
+    const responses = orderDetail.client_input_responses || [];
+    
+    return (
+      <div className="space-y-4 border-t pt-4 mt-4">
+        <h4 className="font-medium flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />
+          Client Input Request
+        </h4>
+        
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <p className="text-sm font-medium text-yellow-800">What we requested:</p>
+          <p className="text-sm mt-1 whitespace-pre-wrap">{request.request_notes}</p>
+          {request.requested_fields?.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs font-medium text-yellow-700">Requested fields:</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {request.requested_fields.map(f => (
+                  <Badge key={f} variant="outline" className="text-xs">{f}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-yellow-600 mt-2">
+            Requested: {formatDate(request.requested_at)} by {request.requested_by_admin_email}
+          </p>
+        </div>
+        
+        {responses.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Client Responses:</p>
+            {responses.map((resp, idx) => (
+              <div key={idx} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="outline" className="text-xs">Response v{resp.version}</Badge>
+                  <span className="text-xs text-gray-500">{formatDate(resp.submitted_at)}</span>
+                </div>
+                <div className="space-y-1">
+                  {Object.entries(resp.payload || {}).map(([key, value]) => (
+                    <div key={key} className="flex">
+                      <span className="text-xs font-medium w-32 text-gray-600">{key.replace(/_/g, ' ')}:</span>
+                      <span className="text-xs">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // RENDER: Review Actions (INTERNAL_REVIEW specific)
+  // ==========================================
+  const renderReviewActions = () => {
+    if (orderDetail?.status !== 'INTERNAL_REVIEW') return null;
+    
+    const isLocked = orderDetail?.version_locked;
+    const hasDocuments = documentVersions.length > 0;
+    
+    return (
+      <div className="space-y-4 border-t pt-4 mt-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            Document Review Actions
+          </h4>
+          {isLocked && (
+            <Badge className="bg-green-100 text-green-800">
+              <Lock className="h-3 w-3 mr-1" />
+              Version Locked
+            </Badge>
+          )}
+        </div>
+        
+        {!hasDocuments ? (
+          <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <FileText className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+            <p className="text-sm text-gray-500">No documents generated yet</p>
+            <Button
+              onClick={handleGenerateDocuments}
+              disabled={isSubmitting}
+              className="mt-3"
+              size="sm"
+            >
+              {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
+              Generate Documents
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Document versions list */}
+            <div className="space-y-2">
+              <Label className="text-sm">Document Versions</Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {documentVersions.map(renderDocumentVersion)}
+              </div>
+            </div>
+            
+            {/* Document preview button */}
+            {selectedDocVersion && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowDocumentViewer(true)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview Document v{selectedDocVersion.version}
+              </Button>
+            )}
+            
+            {/* Action buttons */}
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                onClick={handleApproveClick}
+                disabled={isLocked || isSubmitting}
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="approve-finalize-btn"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Approve & Finalize
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={handleRegenClick}
+                disabled={isLocked || isSubmitting}
+                data-testid="request-regen-btn"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Request Regeneration
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={handleRequestInfoClick}
+                disabled={isSubmitting}
+                data-testid="request-info-btn"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Request More Info
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // RENDER: Audit Timeline
+  // ==========================================
+  const renderAuditTimeline = () => {
+    if (!orderDetail?.timeline?.length) return null;
+    
+    return (
+      <div className="space-y-2">
+        {orderDetail.timeline.map((event, idx) => (
+          <div key={idx} className="flex gap-3 text-sm">
+            <div className="flex flex-col items-center">
+              <div className={cn(
+                'w-2 h-2 rounded-full',
+                idx === 0 ? 'bg-blue-500' : 'bg-gray-300'
+              )} />
+              {idx < orderDetail.timeline.length - 1 && (
+                <div className="w-0.5 h-full bg-gray-200 mt-1" />
               )}
-              {autoRefresh && (
+            </div>
+            <div className="flex-1 pb-4">
+              <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  <Zap className="w-3 h-3 mr-1" />
-                  Live
+                  {event.new_state || event.action}
                 </Badge>
+                <span className="text-xs text-gray-500">{formatDate(event.timestamp)}</span>
+              </div>
+              <p className="text-xs text-gray-600 mt-1">{event.reason}</p>
+              {event.triggered_by_email && (
+                <p className="text-xs text-gray-400">by {event.triggered_by_email}</p>
               )}
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search orders..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-64"
-                data-testid="orders-search"
-              />
+        ))}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // MAIN RENDER
+  // ==========================================
+  return (
+    <AdminLayout>
+      <div className="space-y-6" data-testid="admin-orders-page">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Orders Pipeline</h1>
+            <p className="text-gray-500 text-sm">
+              Enterprise-grade order management and workflow control
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Clock className="h-4 w-4" />
+              <span>Updated: {lastUpdated ? formatDate(lastUpdated) : '-'}</span>
             </div>
-            
-            {/* Sort */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={autoRefresh ? 'text-green-600' : 'text-gray-500'}
+            >
+              {autoRefresh ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => fetchOrders()}>
+              <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+            </Button>
+          </div>
+        </div>
+
+        {/* Pipeline View */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Pipeline Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {pipelineColumns.map(renderPipelineColumn)}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sort Controls */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm text-gray-500">Sort by:</Label>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-48" data-testid="sort-select">
-                <SelectValue placeholder="Sort by..." />
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {sortOptions.map((opt) => (
+                {sortOptions.map(opt => (
                   <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
-            {/* Auto-refresh toggle */}
-            <Button
-              variant={autoRefresh ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              data-testid="auto-refresh-toggle"
-            >
-              {autoRefresh ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
-              {autoRefresh ? 'Pause' : 'Live'}
-            </Button>
-            
-            {/* Manual refresh */}
-            <Button
-              variant="outline"
-              onClick={() => fetchOrders()}
-              disabled={isLoading}
-              data-testid="refresh-orders"
-            >
-              <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
-              Refresh
-            </Button>
+          </div>
+          <div className="flex-1">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search orders..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Pipeline View - Clickable Stages with Visual Emphasis */}
-        <div className="overflow-x-auto pb-4">
-          <div className="flex space-x-3 min-w-max">
-            {pipelineColumns.map((column) => {
-              const hasOrders = stageHasOrders(column.status);
-              const orderCount = counts[column.status] || 0;
-              const stageOrders = getOrdersForStatus(column.status);
-              
-              return (
-                <div
-                  key={column.status}
-                  className={cn(
-                    "w-56 flex-shrink-0 rounded-lg border-t-4 transition-all cursor-pointer",
-                    hasOrders
-                      ? `${column.bgActive} ${column.borderActive} shadow-md hover:shadow-lg`
-                      : `${column.bgMuted} ${column.borderMuted} opacity-60 hover:opacity-80`
-                  )}
-                  onClick={() => handleStageClick(column.status)}
-                  data-testid={`pipeline-stage-${column.status.toLowerCase()}`}
-                >
-                  {/* Stage Header - Clickable */}
-                  <div className={cn(
-                    "p-3 border-b cursor-pointer",
-                    hasOrders ? "border-gray-200" : "border-gray-100"
-                  )}>
-                    <div className="flex justify-between items-center">
-                      <h3 className={cn(
-                        "font-semibold text-sm",
-                        hasOrders ? "text-midnight-blue" : "text-gray-400"
-                      )}>
-                        {column.label}
-                      </h3>
-                      <Badge
-                        variant={hasOrders ? "default" : "secondary"}
-                        className={cn(
-                          "text-xs",
-                          hasOrders && `bg-${column.color}-500`
-                        )}
-                      >
-                        {orderCount}
-                      </Badge>
-                    </div>
-                    {hasOrders && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Click to view all
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* Order Preview (max 3) */}
-                  <div className="p-2 space-y-2 min-h-[120px]">
-                    {isLoading ? (
-                      <div className="animate-pulse space-y-2">
-                        <div className="h-16 bg-gray-200 rounded" />
-                      </div>
-                    ) : stageOrders.length === 0 ? (
-                      <div className="text-center py-4 text-gray-400 text-xs">
-                        No orders
-                      </div>
-                    ) : (
-                      <>
-                        {stageOrders.slice(0, 3).map((order) => (
-                          <Card
-                            key={order.order_id}
-                            className={cn(
-                              "cursor-pointer hover:shadow-md transition-shadow",
-                              order.priority && "border-l-4 border-l-red-500"
-                            )}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOrderClick(order);
-                            }}
-                            data-testid={`order-card-${order.order_id}`}
-                          >
-                            <CardContent className="p-2">
-                              <div className="flex justify-between items-start">
-                                <span className="text-xs font-mono text-gray-500 truncate">
-                                  {order.order_id}
-                                </span>
-                                {order.priority && (
-                                  <Flag className="w-3 h-3 text-red-500" />
-                                )}
-                              </div>
-                              <p className="font-medium text-xs text-midnight-blue truncate mt-1">
-                                {order.service_name}
-                              </p>
-                              <div className="flex justify-between items-center mt-1">
-                                <span className="text-xs text-gray-400 truncate">
-                                  {order.customer?.full_name}
-                                </span>
-                                <span className="text-xs text-gray-400 flex items-center">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  {formatTimeInState(order)}
-                                </span>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                        {stageOrders.length > 3 && (
-                          <div className="text-center text-xs text-gray-500 py-1">
-                            +{stageOrders.length - 3} more
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Stage Detail Dialog - Shows all orders in selected stage */}
+        {/* Stage Dialog - Shows orders in selected stage */}
         <Dialog open={showStageDialog} onOpenChange={setShowStageDialog}>
-          <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-2xl max-h-[80vh]">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {selectedStage && (
-                  <>
-                    <Badge className={statusColors[selectedStage]}>
-                      {selectedStage}
-                    </Badge>
-                    <span>Orders</span>
-                    <Badge variant="outline">{counts[selectedStage] || 0}</Badge>
-                  </>
-                )}
+              <DialogTitle>
+                {pipelineColumns.find(c => c.status === selectedStage)?.label || selectedStage} Orders
               </DialogTitle>
               <DialogDescription>
-                All orders currently in this pipeline stage
+                {counts[selectedStage] || 0} orders in this stage
               </DialogDescription>
             </DialogHeader>
-            
-            {/* Sort controls */}
-            <div className="flex items-center gap-4 py-2 border-b">
-              <Label className="text-sm text-gray-500">Sort by:</Label>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-56">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Orders list */}
-            <div className="flex-1 overflow-y-auto py-4 space-y-3">
-              {selectedStage && getOrdersForStatus(selectedStage).length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  No orders in this stage
-                </div>
-              ) : (
-                selectedStage && getOrdersForStatus(selectedStage).map((order) => (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-3 pr-4">
+                {getOrdersForStatus(selectedStage).map(order => (
                   <Card
                     key={order.order_id}
-                    className={cn(
-                      "cursor-pointer hover:shadow-md transition-shadow",
-                      order.priority && "border-l-4 border-l-red-500"
-                    )}
-                    onClick={() => handleOrderClick(order)}
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => {
+                      setShowStageDialog(false);
+                      handleOrderClick(order);
+                    }}
                   >
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-medium">
-                              {order.order_id}
-                            </span>
-                            {order.priority && (
-                              <Badge variant="destructive" className="text-xs">
-                                <Flag className="w-3 h-3 mr-1" />
-                                Priority
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="font-semibold text-midnight-blue mt-1">
-                            {order.service_name}
-                          </p>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium">{order.order_id}</p>
+                          <p className="text-sm text-gray-500">{order.service_name}</p>
                           <p className="text-sm text-gray-500">
-                            {order.customer?.full_name} • {order.customer?.email}
+                            {order.customer?.full_name || order.customer?.email}
                           </p>
                         </div>
-                        <div className="text-right text-sm">
-                          <div className="flex items-center text-gray-500">
-                            <Calendar className="w-4 h-4 mr-1" />
-                            Entered: {formatDate(order.updated_at)}
-                          </div>
-                          <div className="flex items-center text-gray-500 mt-1">
-                            <Timer className="w-4 h-4 mr-1" />
-                            Time in stage: {formatTimeInState(order)}
-                          </div>
-                          {order.sla_hours && (
-                            <div className={cn(
-                              "flex items-center mt-1",
-                              getHoursInState(order) > order.sla_hours * 0.8
-                                ? "text-red-500"
-                                : "text-gray-500"
-                            )}>
-                              <AlertCircle className="w-4 h-4 mr-1" />
-                              SLA: {order.sla_hours}h
-                            </div>
+                        <div className="text-right">
+                          <Badge className={statusColors[order.status]}>
+                            {order.status.replace(/_/g, ' ')}
+                          </Badge>
+                          <p className="text-xs text-gray-500 mt-1">
+                            <Timer className="inline h-3 w-3 mr-1" />
+                            {formatTimeInState(order)}
+                          </p>
+                          {order.priority && (
+                            <Badge className="bg-red-100 text-red-800 mt-1">
+                              <Flag className="h-3 w-3 mr-1" />
+                              Priority
+                            </Badge>
                           )}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
 
-        {/* Order Detail Dialog with Action Panel */}
+        {/* Order Detail Dialog */}
         <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            {orderDetail && (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span>{orderDetail.order?.order_id}</span>
-                      {orderDetail.order?.priority && (
-                        <Badge variant="destructive">
-                          <Flag className="w-3 h-3 mr-1" />
-                          Priority
-                        </Badge>
+          <DialogContent className="max-w-3xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                Order: {orderDetail?.order_id}
+                <Badge className={statusColors[orderDetail?.status]}>
+                  {orderDetail?.status?.replace(/_/g, ' ')}
+                </Badge>
+              </DialogTitle>
+            </DialogHeader>
+            
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="space-y-4">
+                <ScrollArea className="max-h-[50vh]">
+                  {/* Customer Info */}
+                  <div className="space-y-2">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Customer
+                    </h4>
+                    <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                      <p><span className="text-gray-500">Name:</span> {orderDetail?.customer?.full_name}</p>
+                      <p><span className="text-gray-500">Email:</span> {orderDetail?.customer?.email}</p>
+                      <p><span className="text-gray-500">Phone:</span> {orderDetail?.customer?.phone || '-'}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Service Info */}
+                  <div className="space-y-2 mt-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Service
+                    </h4>
+                    <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                      <p><span className="text-gray-500">Name:</span> {orderDetail?.service_name}</p>
+                      <p><span className="text-gray-500">Code:</span> {orderDetail?.service_code}</p>
+                      <p><span className="text-gray-500">Category:</span> {orderDetail?.service_category}</p>
+                      <p><span className="text-gray-500">Amount:</span> £{orderDetail?.pricing?.amount}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Dates */}
+                  <div className="space-y-2 mt-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Dates
+                    </h4>
+                    <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                      <p><span className="text-gray-500">Created:</span> {formatDate(orderDetail?.created_at)}</p>
+                      <p><span className="text-gray-500">Updated:</span> {formatDate(orderDetail?.updated_at)}</p>
+                      {orderDetail?.completed_at && (
+                        <p><span className="text-gray-500">Completed:</span> {formatDate(orderDetail?.completed_at)}</p>
                       )}
                     </div>
-                    <Badge className={statusColors[orderDetail.order?.status]}>
-                      {orderDetail.order?.status}
-                    </Badge>
-                  </DialogTitle>
-                  <DialogDescription>
-                    {orderDetail.order?.service_name}
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-6 py-4">
-                  {/* Stage Entry Time */}
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Entered current stage: {formatDate(orderDetail.order?.updated_at)}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Timer className="w-4 h-4 mr-2" />
-                      Time in stage: {orderDetail.order && formatTimeInState(orderDetail.order)}
-                    </div>
                   </div>
-
-                  {/* Customer & Service Info */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center">
-                          <User className="w-4 h-4 mr-2" />
-                          Customer
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-sm">
-                        <p className="font-medium">{orderDetail.order?.customer?.full_name}</p>
-                        <p className="text-gray-500">{orderDetail.order?.customer?.email}</p>
-                        {orderDetail.order?.customer?.phone && (
-                          <p className="text-gray-500">{orderDetail.order?.customer?.phone}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center">
-                          <Package className="w-4 h-4 mr-2" />
-                          Service
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-sm">
-                        <p className="font-medium">{orderDetail.order?.service_name}</p>
-                        <p className="text-gray-500">Category: {orderDetail.order?.service_category}</p>
-                        <p className="text-gray-500">
-                          Total: £{((orderDetail.order?.pricing?.total_amount || 0) / 100).toFixed(2)}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* STATE-SPECIFIC ACTION PANEL */}
-                  {orderDetail.order?.status && getActionsForState(orderDetail.order.status).length > 0 && (
-                    <Card className="border-2 border-electric-teal">
-                      <CardHeader className="pb-2 bg-electric-teal/5">
-                        <CardTitle className="text-sm flex items-center text-electric-teal">
-                          <Zap className="w-4 h-4 mr-2" />
-                          Available Actions for {orderDetail.order.status}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-4">
-                        <div className="flex flex-wrap gap-3">
-                          {getActionsForState(orderDetail.order.status).map((action) => (
-                            <Button
-                              key={action.key}
-                              variant={action.variant === 'success' ? 'default' : action.variant}
-                              className={cn(
-                                action.variant === 'success' && 'bg-green-600 hover:bg-green-700'
-                              )}
-                              onClick={() => handleActionClick(action)}
-                              data-testid={`action-${action.key}`}
-                            >
-                              <action.icon className="w-4 h-4 mr-2" />
-                              {action.label}
-                            </Button>
-                          ))}
-                        </div>
-                        
-                        {/* Always show delete option */}
-                        <div className="mt-4 pt-4 border-t">
+                  
+                  {/* Client Input Section */}
+                  {orderDetail?.status === 'CLIENT_INPUT_REQUIRED' && renderClientInputSection()}
+                  
+                  {/* Review Actions */}
+                  {renderReviewActions()}
+                </ScrollArea>
+              </TabsContent>
+              
+              <TabsContent value="documents" className="space-y-4">
+                <ScrollArea className="max-h-[50vh]">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Document Versions</h4>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleGenerateDocuments}
+                        disabled={isSubmitting}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate New
+                      </Button>
+                    </div>
+                    
+                    {documentVersions.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No documents generated yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {documentVersions.map(renderDocumentVersion)}
+                      </div>
+                    )}
+                    
+                    {selectedDocVersion && (
+                      <div className="border-t pt-4 space-y-2">
+                        <h4 className="font-medium">Selected: v{selectedDocVersion.version}</h4>
+                        <div className="flex gap-2">
                           <Button
-                            variant="ghost"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={handleDelete}
-                            data-testid="action-delete"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowDocumentViewer(true)}
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Order (Requires Reason)
+                            <Eye className="h-4 w-4 mr-2" />
+                            Preview
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              // Download PDF
+                              window.open(
+                                `${API_URL}/api/admin/orders/${orderDetail.order_id}/documents/${selectedDocVersion.version}/preview?format=pdf`,
+                                '_blank'
+                              );
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download PDF
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Workflow Timeline */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Workflow Timeline (Audit Trail)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4 max-h-64 overflow-y-auto">
-                        {orderDetail.timeline?.map((entry, index) => (
-                          <div key={entry.execution_id} className="flex">
-                            <div className="flex flex-col items-center mr-4">
-                              <div className={cn(
-                                "w-3 h-3 rounded-full",
-                                index === orderDetail.timeline.length - 1
-                                  ? "bg-electric-teal"
-                                  : entry.transition_type === 'admin_manual'
-                                    ? "bg-orange-500"
-                                    : "bg-gray-300"
-                              )} />
-                              {index < orderDetail.timeline.length - 1 && (
-                                <div className="w-0.5 h-full bg-gray-200 mt-1" />
-                              )}
-                            </div>
-                            <div className="flex-1 pb-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <span className="font-medium text-sm">
-                                    {entry.previous_state || 'Created'} → {entry.new_state}
-                                  </span>
-                                  <Badge
-                                    variant="outline"
-                                    className={cn(
-                                      "ml-2 text-xs",
-                                      entry.transition_type === 'admin_manual' && "border-orange-500 text-orange-600",
-                                      entry.transition_type === 'admin_delete' && "border-red-500 text-red-600"
-                                    )}
-                                  >
-                                    {entry.transition_type}
-                                  </Badge>
-                                </div>
-                                <span className="text-xs text-gray-400">
-                                  {formatDate(entry.created_at)}
-                                </span>
-                              </div>
-                              {entry.triggered_by?.user_email && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  By: {entry.triggered_by.user_email}
-                                </p>
-                              )}
-                              {entry.reason && (
-                                <p className="text-xs text-gray-600 mt-1 bg-gray-50 p-2 rounded">
-                                  <strong>Reason:</strong> {entry.reason}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Internal Notes */}
-                  {orderDetail.order?.internal_notes && (
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Internal Notes</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <pre className="text-xs text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded">
-                          {orderDetail.order.internal_notes}
-                        </pre>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </>
-            )}
+                    )}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+              
+              <TabsContent value="timeline">
+                <ScrollArea className="max-h-[50vh]">
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Audit Timeline
+                  </h4>
+                  {renderAuditTimeline()}
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+            
+            <DialogFooter className="flex justify-between">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setDeleteReason('');
+                  setShowDeleteDialog(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Order
+              </Button>
+              <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
+                Close
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Action Confirmation Dialog */}
-        <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
+        {/* Approval Modal */}
+        <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center">
-                {currentAction?.icon && <currentAction.icon className="w-5 h-5 mr-2" />}
-                {currentAction?.label}
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                Approve & Finalize Order
               </DialogTitle>
               <DialogDescription>
-                {currentAction?.key === 'approve' 
-                  ? 'This will finalize the order and trigger automatic delivery.'
-                  : 'Please provide a reason for this action. This will be logged in the audit trail.'}
+                This will lock document v{approveVersion} as the final version and proceed to delivery.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="py-4">
-              <Label htmlFor="action-reason">
-                Reason {currentAction?.requiresReason ? '(Required)' : '(Optional)'}
-              </Label>
-              <Textarea
-                id="action-reason"
-                placeholder="Enter reason for this action..."
-                value={actionReason}
-                onChange={(e) => setActionReason(e.target.value)}
-                rows={4}
-                className="mt-2"
-                data-testid="action-reason-input"
-              />
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-green-800">
+                  <Lock className="h-4 w-4" />
+                  <span className="font-medium">Version Locking</span>
+                </div>
+                <p className="text-sm text-green-700 mt-1">
+                  Document v{approveVersion} will be locked as final. No further regeneration or edits 
+                  will be allowed unless explicitly reopened.
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Approval Notes (Optional)</Label>
+                <Textarea
+                  value={approveNotes}
+                  onChange={(e) => setApproveNotes(e.target.value)}
+                  placeholder="Any notes for this approval..."
+                  rows={3}
+                />
+              </div>
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowActionDialog(false)}>
+              <Button variant="outline" onClick={() => setShowApproveModal(false)}>
                 Cancel
               </Button>
               <Button
-                onClick={() => executeAction(currentAction, actionReason)}
-                disabled={isSubmitting || (currentAction?.requiresReason && !actionReason.trim())}
-                className={cn(
-                  currentAction?.variant === 'success' && 'bg-green-600 hover:bg-green-700',
-                  currentAction?.variant === 'destructive' && 'bg-red-600 hover:bg-red-700'
-                )}
-                data-testid="action-confirm"
+                onClick={submitApproval}
+                disabled={isSubmitting}
+                className="bg-green-600 hover:bg-green-700"
               >
-                {isSubmitting ? 'Processing...' : 'Confirm'}
+                {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                Approve & Lock v{approveVersion}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Regeneration Modal */}
+        <Dialog open={showRegenModal} onOpenChange={setShowRegenModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RotateCcw className="h-5 w-5 text-blue-600" />
+                Request Document Regeneration
+              </DialogTitle>
+              <DialogDescription>
+                Provide detailed instructions for regeneration. This is required for audit purposes.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Reason for Regeneration *</Label>
+                <Select value={regenReason} onValueChange={setRegenReason}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a reason..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regenReasons.map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Correction / Reviewer Notes *</Label>
+                <Textarea
+                  value={regenNotes}
+                  onChange={(e) => setRegenNotes(e.target.value)}
+                  placeholder="Describe exactly what needs to be fixed or changed..."
+                  rows={4}
+                  className="min-h-[100px]"
+                />
+                <p className="text-xs text-gray-500">
+                  Be specific about what to change. These notes will be stored in the audit log.
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Guardrails (Optional)</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="preserve_names_dates"
+                      checked={regenGuardrails.preserve_names_dates}
+                      onCheckedChange={(checked) => 
+                        setRegenGuardrails(prev => ({...prev, preserve_names_dates: checked}))
+                      }
+                    />
+                    <label htmlFor="preserve_names_dates" className="text-sm">
+                      Do not change names, addresses, or dates
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="preserve_format"
+                      checked={regenGuardrails.preserve_format}
+                      onCheckedChange={(checked) => 
+                        setRegenGuardrails(prev => ({...prev, preserve_format: checked}))
+                      }
+                    />
+                    <label htmlFor="preserve_format" className="text-sm">
+                      Keep same tone and format
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowRegenModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={submitRegeneration}
+                disabled={isSubmitting || !regenReason || !regenNotes.trim()}
+              >
+                {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Request Regeneration
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Request More Info Modal */}
+        <Dialog open={showInfoRequestModal} onOpenChange={setShowInfoRequestModal}>
+          <DialogContent className="max-w-lg max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-blue-600" />
+                Request Client Information
+              </DialogTitle>
+              <DialogDescription>
+                The client will receive an email and be asked to provide this information via the portal.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-4 pr-4">
+                <div className="space-y-2">
+                  <Label>What information do you need? *</Label>
+                  <Textarea
+                    value={infoRequestNotes}
+                    onChange={(e) => setInfoRequestNotes(e.target.value)}
+                    placeholder="Describe what information is missing and why it's needed..."
+                    rows={4}
+                    className="min-h-[100px]"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Requested Fields (Optional)</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Select specific fields for the client to fill out
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {commonRequestedFields.map(field => (
+                      <div key={field.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={field.id}
+                          checked={requestedFields.includes(field.id)}
+                          onCheckedChange={() => toggleRequestedField(field.id)}
+                        />
+                        <label htmlFor={field.id} className="text-sm">
+                          {field.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Response Deadline (Optional)</Label>
+                  <Select value={deadlineDays} onValueChange={setDeadlineDays}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="No deadline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No deadline</SelectItem>
+                      <SelectItem value="3">3 days</SelectItem>
+                      <SelectItem value="5">5 days</SelectItem>
+                      <SelectItem value="7">7 days</SelectItem>
+                      <SelectItem value="14">14 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="request_attachments"
+                    checked={requestAttachments}
+                    onCheckedChange={setRequestAttachments}
+                  />
+                  <label htmlFor="request_attachments" className="text-sm">
+                    Request file/document uploads
+                  </label>
+                </div>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-medium">What happens next:</p>
+                      <ul className="list-disc list-inside mt-1 text-xs space-y-1">
+                        <li>Order moves to CLIENT_INPUT_REQUIRED</li>
+                        <li>SLA timer pauses automatically</li>
+                        <li>Client receives branded email with portal link</li>
+                        <li>Once client submits, order returns to INTERNAL_REVIEW</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowInfoRequestModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={submitInfoRequest}
+                disabled={isSubmitting || !infoRequestNotes.trim()}
+              >
+                {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Send Request to Client
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Document Viewer Modal */}
+        <Dialog open={showDocumentViewer} onOpenChange={setShowDocumentViewer}>
+          <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Document Preview - v{selectedDocVersion?.version}
+                {selectedDocVersion?.is_approved && (
+                  <Badge className="bg-green-100 text-green-800">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Approved
+                  </Badge>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="border rounded-lg bg-gray-50 p-4 overflow-auto max-h-[60vh]">
+              {/* MOCK document preview */}
+              <div className="bg-white border shadow-sm p-6 min-h-[400px]">
+                <div className="text-center mb-6">
+                  <Badge className="bg-yellow-100 text-yellow-800 text-lg px-4 py-2">
+                    DRAFT / MOCK DOCUMENT
+                  </Badge>
+                </div>
+                
+                <div className="space-y-4 font-mono text-sm">
+                  <div className="border-b pb-2">
+                    <p className="text-gray-500">Document Type: {selectedDocVersion?.document_type}</p>
+                    <p className="text-gray-500">Version: v{selectedDocVersion?.version}</p>
+                    <p className="text-gray-500">Generated: {formatDate(selectedDocVersion?.generated_at)}</p>
+                    {selectedDocVersion?.is_regeneration && (
+                      <p className="text-blue-600">This is a regenerated version</p>
+                    )}
+                  </div>
+                  
+                  <div className="bg-gray-100 p-4 rounded">
+                    <p className="text-center text-gray-600">
+                      [MOCK DOCUMENT CONTENT]
+                    </p>
+                    <p className="text-center text-gray-500 text-xs mt-2">
+                      In production, this would display the actual document content.
+                    </p>
+                  </div>
+                  
+                  {selectedDocVersion?.regeneration_notes && (
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                      <p className="text-blue-800 font-medium">Regeneration Notes:</p>
+                      <p className="text-blue-700 text-sm">{selectedDocVersion.regeneration_notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.open(
+                    `${API_URL}/api/admin/orders/${orderDetail?.order_id}/documents/${selectedDocVersion?.version}/preview?format=pdf`,
+                    '_blank'
+                  );
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+              <Button variant="outline" onClick={() => setShowDocumentViewer(false)}>
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -995,40 +1509,34 @@ const AdminOrdersPage = () => {
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center text-red-600">
-                <Trash2 className="w-5 h-5 mr-2" />
+              <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                <Trash2 className="h-5 w-5" />
                 Delete Order
               </AlertDialogTitle>
               <AlertDialogDescription>
                 This action cannot be undone. The order will be permanently deleted.
-                A mandatory reason is required and will be logged as <code>admin_delete</code>.
               </AlertDialogDescription>
             </AlertDialogHeader>
             
-            <div className="py-4">
-              <Label htmlFor="delete-reason" className="text-red-600">
-                Reason (Required)
-              </Label>
+            <div className="space-y-2">
+              <Label>Reason for deletion *</Label>
               <Textarea
-                id="delete-reason"
-                placeholder="Why is this order being deleted?"
-                value={actionReason}
-                onChange={(e) => setActionReason(e.target.value)}
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Explain why this order is being deleted..."
                 rows={3}
-                className="mt-2 border-red-200 focus:border-red-500"
-                data-testid="delete-reason-input"
               />
             </div>
             
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={confirmDelete}
-                disabled={isSubmitting || !actionReason.trim()}
+                onClick={handleDeleteOrder}
+                disabled={isSubmitting || !deleteReason.trim()}
                 className="bg-red-600 hover:bg-red-700"
-                data-testid="delete-confirm"
               >
-                {isSubmitting ? 'Deleting...' : 'Delete Order'}
+                {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                Delete Order
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
