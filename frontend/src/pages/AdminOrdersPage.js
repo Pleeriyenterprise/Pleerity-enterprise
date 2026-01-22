@@ -1915,6 +1915,232 @@ const AdminOrdersPage = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Side-by-Side Document Comparison Modal */}
+        <Dialog open={showComparisonModal} onOpenChange={setShowComparisonModal}>
+          <DialogContent className="max-w-7xl max-h-[95vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <GitCompare className="h-5 w-5 text-blue-600" />
+                Compare Document Versions
+              </DialogTitle>
+              <DialogDescription>
+                View two document versions side-by-side to identify changes
+              </DialogDescription>
+            </DialogHeader>
+            
+            {/* Version Selection Row */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Left Panel (Older)</Label>
+                <Select
+                  value={compareVersion1?.version?.toString() || ''}
+                  onValueChange={(val) => {
+                    const v = documentVersions.find(dv => dv.version === parseInt(val));
+                    setCompareVersion1(v);
+                  }}
+                >
+                  <SelectTrigger data-testid="compare-select-left">
+                    <SelectValue placeholder="Select version" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {documentVersions.map((v) => (
+                      <SelectItem 
+                        key={v.version} 
+                        value={v.version.toString()}
+                        disabled={v.version === compareVersion2?.version}
+                      >
+                        v{v.version} - {v.status} ({formatDate(v.generated_at)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Right Panel (Newer)</Label>
+                <Select
+                  value={compareVersion2?.version?.toString() || ''}
+                  onValueChange={(val) => {
+                    const v = documentVersions.find(dv => dv.version === parseInt(val));
+                    setCompareVersion2(v);
+                  }}
+                >
+                  <SelectTrigger data-testid="compare-select-right">
+                    <SelectValue placeholder="Select version" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {documentVersions.map((v) => (
+                      <SelectItem 
+                        key={v.version} 
+                        value={v.version.toString()}
+                        disabled={v.version === compareVersion1?.version}
+                      >
+                        v{v.version} - {v.status} ({formatDate(v.generated_at)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* Side-by-Side Document Preview */}
+            <div className="grid grid-cols-2 gap-4" style={{ height: '55vh' }}>
+              {/* Left Panel */}
+              <div className="border rounded-lg overflow-hidden flex flex-col">
+                <div className="bg-gray-100 px-3 py-2 border-b flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      v{compareVersion1?.version || '?'}
+                    </Badge>
+                    {compareVersion1?.status && (
+                      <Badge className={cn(
+                        'text-xs',
+                        compareVersion1.status === 'FINAL' && 'bg-green-100 text-green-800',
+                        compareVersion1.status === 'DRAFT' && 'bg-amber-100 text-amber-800',
+                        compareVersion1.status === 'REGENERATED' && 'bg-blue-100 text-blue-800',
+                        compareVersion1.status === 'SUPERSEDED' && 'bg-gray-100 text-gray-600'
+                      )}>
+                        {compareVersion1.status}
+                      </Badge>
+                    )}
+                  </div>
+                  {compareVersion1 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        window.open(
+                          `${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${compareVersion1.version}/preview?format=pdf`,
+                          '_blank'
+                        );
+                      }}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      PDF
+                    </Button>
+                  )}
+                </div>
+                <div className="flex-1 bg-gray-50">
+                  {compareVersion1?.file_id_pdf ? (
+                    <iframe
+                      src={`${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${compareVersion1.version}/preview?format=pdf`}
+                      className="w-full h-full"
+                      title={`PDF Preview v${compareVersion1.version}`}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      <div className="text-center">
+                        <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>Select a version to compare</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {compareVersion1?.regeneration_notes && (
+                  <div className="bg-blue-50 px-3 py-2 border-t text-xs text-blue-700">
+                    <strong>Notes:</strong> {compareVersion1.regeneration_notes}
+                  </div>
+                )}
+              </div>
+              
+              {/* Right Panel */}
+              <div className="border rounded-lg overflow-hidden flex flex-col">
+                <div className="bg-gray-100 px-3 py-2 border-b flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      v{compareVersion2?.version || '?'}
+                    </Badge>
+                    {compareVersion2?.status && (
+                      <Badge className={cn(
+                        'text-xs',
+                        compareVersion2.status === 'FINAL' && 'bg-green-100 text-green-800',
+                        compareVersion2.status === 'DRAFT' && 'bg-amber-100 text-amber-800',
+                        compareVersion2.status === 'REGENERATED' && 'bg-blue-100 text-blue-800',
+                        compareVersion2.status === 'SUPERSEDED' && 'bg-gray-100 text-gray-600'
+                      )}>
+                        {compareVersion2.status}
+                      </Badge>
+                    )}
+                  </div>
+                  {compareVersion2 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        window.open(
+                          `${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${compareVersion2.version}/preview?format=pdf`,
+                          '_blank'
+                        );
+                      }}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      PDF
+                    </Button>
+                  )}
+                </div>
+                <div className="flex-1 bg-gray-50">
+                  {compareVersion2?.file_id_pdf ? (
+                    <iframe
+                      src={`${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${compareVersion2.version}/preview?format=pdf`}
+                      className="w-full h-full"
+                      title={`PDF Preview v${compareVersion2.version}`}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      <div className="text-center">
+                        <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>Select a version to compare</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {compareVersion2?.regeneration_notes && (
+                  <div className="bg-blue-50 px-3 py-2 border-t text-xs text-blue-700">
+                    <strong>Notes:</strong> {compareVersion2.regeneration_notes}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Comparison Info */}
+            {compareVersion1 && compareVersion2 && (
+              <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-gray-500">Comparing:</span>
+                    <span className="ml-2 font-medium">
+                      v{compareVersion1.version} ({compareVersion1.status})
+                    </span>
+                    <span className="mx-2 text-gray-400">→</span>
+                    <span className="font-medium">
+                      v{compareVersion2.version} ({compareVersion2.status})
+                    </span>
+                  </div>
+                  <div className="text-gray-500 text-xs">
+                    Time difference: {
+                      (() => {
+                        const d1 = new Date(compareVersion1.generated_at);
+                        const d2 = new Date(compareVersion2.generated_at);
+                        const diffMs = Math.abs(d2 - d1);
+                        const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+                        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                        if (diffHrs > 24) return `${Math.floor(diffHrs / 24)} days`;
+                        if (diffHrs > 0) return `${diffHrs}h ${diffMins}m`;
+                        return `${diffMins} minutes`;
+                      })()
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowComparisonModal(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
