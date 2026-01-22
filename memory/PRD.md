@@ -1051,6 +1051,39 @@
   - Workflow audit trail verified
   - CVP isolation verified
 
+### January 22, 2026 (Session - Side-by-Side Document Comparison Complete)
+- **Side-by-Side Document Comparison ✅**
+  
+  **Compare Button:**
+  - "Compare" button appears in Documents tab when order has 2+ versions
+  - Button hidden for orders with 0-1 versions
+  - data-testid: compare-versions-btn
+  - Defaults to comparing last two versions (previous vs latest)
+  
+  **Comparison Modal:**
+  - Title: "Compare Document Versions" with GitCompare icon
+  - Description: "View two document versions side-by-side to identify changes"
+  - Two panels: Left Panel (Older) and Right Panel (Newer)
+  - Version dropdowns for selecting any version to compare
+  - Selected version disabled in opposite dropdown
+  - Status badges: DRAFT (amber), SUPERSEDED (gray), REGENERATED (blue), FINAL (green)
+  - PDF download button in each panel header
+  
+  **Comparison Info Bar:**
+  - Shows: "Comparing: v{X} (STATUS) → v{Y} (STATUS)"
+  - Shows time difference calculation (minutes, hours, or days)
+  
+  **Technical Notes:**
+  - PDF iframe preview shows "Not authenticated" (browser auth limitation)
+  - Users should use PDF download buttons to view documents
+  - Close modal via Close button, Escape key, or clicking outside
+  
+  **States Added:**
+  - showComparisonModal: boolean
+  - compareVersion1, compareVersion2: DocumentVersion objects
+  
+  **TEST REPORT:** /app/test_reports/iteration_38.json (9/9 features - 100%)
+
 ### January 22, 2026 (Session - Frontend Order Intake Complete)
 - **Frontend Order Intake - Public Service Ordering ✅**
   
