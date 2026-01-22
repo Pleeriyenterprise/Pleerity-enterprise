@@ -171,6 +171,9 @@ class EmailTemplateAlias(str, Enum):
     PAYMENT_FAILED = "payment-failed"  # Payment failure notification
     RENEWAL_REMINDER = "renewal-reminder"  # 7 days before renewal
     SUBSCRIPTION_CANCELED = "subscription-canceled"  # Cancellation confirmation
+    # Order system emails
+    ORDER_DELIVERED = "order-delivered"  # Documents ready for download
+    ORDER_CLIENT_INFO_REQUEST = "order-client-info-request"  # Request for client input
 
 
 class ReportScheduleFrequency(str, Enum):
