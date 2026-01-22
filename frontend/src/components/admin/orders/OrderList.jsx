@@ -128,9 +128,15 @@ const OrderCard = ({ order, onClick }) => {
                 </Badge>
               )}
               {order.fast_track && (
-                <Badge className="bg-purple-100 text-purple-800 text-xs">
+                <Badge className="bg-purple-100 text-purple-800 text-xs animate-pulse">
                   <Zap className="h-3 w-3 mr-1" />
                   Fast Track
+                </Badge>
+              )}
+              {order.requires_postal_delivery && (
+                <Badge className="bg-cyan-100 text-cyan-800 text-xs">
+                  <Package className="h-3 w-3 mr-1" />
+                  Print Copy
                 </Badge>
               )}
             </div>
