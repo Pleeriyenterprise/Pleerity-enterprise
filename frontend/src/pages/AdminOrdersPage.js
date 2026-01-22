@@ -1507,27 +1507,36 @@ const AdminOrdersPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Cancel/Archive Order Dialog */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-                <Trash2 className="h-5 w-5" />
-                Delete Order
+              <AlertDialogTitle className="flex items-center gap-2 text-orange-600">
+                <Archive className="h-5 w-5" />
+                Cancel or Archive Order
               </AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. The order will be permanently deleted.
+                Orders are immutable records and cannot be deleted. Choose an action:
               </AlertDialogDescription>
             </AlertDialogHeader>
             
-            <div className="space-y-2">
-              <Label>Reason for deletion *</Label>
-              <Textarea
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                placeholder="Explain why this order is being deleted..."
-                rows={3}
-              />
+            <div className="space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <p className="text-sm text-orange-800">
+                  <strong>Cancel:</strong> For orders that have not been paid or had documents generated.
+                  <br />
+                  <strong>Archive:</strong> For completed orders you want to hide from the active pipeline.
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Reason *</Label>
+                <Textarea
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  placeholder="Explain why this order is being cancelled/archived..."
+                  rows={3}
+                />
             </div>
             
             <AlertDialogFooter>
