@@ -218,7 +218,6 @@ const OrderInfoSection = ({ order }) => {
           )}
         </div>
       )}
-      </div>
     </div>
   );
 };
