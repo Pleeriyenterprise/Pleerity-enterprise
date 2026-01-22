@@ -1638,13 +1638,24 @@
   - Document v2 locked as final
   - Order transitioned: INTERNAL_REVIEW → FINALISING
   
-- **Audit Trail Captured:**
-  - CREATED (system)
-  - FINALISING (admin_manual) - Full audit with who, when, reason
+- **Delivery Automation:**
+  - Triggered: FINALISING → DELIVERING → COMPLETED
+  - Email sent to: compare-test@example.com
+  - Documents: 2 (PDF + DOCX)
+  - Delivered at: 2026-01-22T20:28:02
+  - Deliverables recorded in order with filenames
   
-- **Deliverables Ready:**
-  - DOCX: ORD-2026-C63D54_DOC_PACK_TENANCY_v2_REGENERATED_20260122-1643.docx
-  - PDF: ORD-2026-C63D54_DOC_PACK_TENANCY_v2_REGENERATED_20260122-1643.pdf
+- **Complete Audit Trail:**
+  - CREATED (system)
+  - FINALISING (admin_manual) - Document v2 locked
+  - DELIVERING (system) - Auto-delivery initiated
+  - COMPLETED (system) - Documents delivered via email
+  
+- **Delivery Endpoints Added:**
+  - `POST /api/admin/orders/{id}/deliver` - Trigger delivery
+  - `POST /api/admin/orders/{id}/retry-delivery` - Retry failed delivery
+  - `POST /api/admin/orders/{id}/manual-complete` - Admin override completion
+  - `POST /api/admin/orders/batch/process-delivery` - Process all pending
 
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
