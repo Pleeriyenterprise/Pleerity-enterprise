@@ -472,7 +472,7 @@ async def resend_client_request(
     if order["status"] != OrderStatus.CLIENT_INPUT_REQUIRED.value:
         raise HTTPException(
             status_code=400, 
-            detail=f"Can only resend request in CLIENT_INPUT_REQUIRED state"
+            detail="Can only resend request in CLIENT_INPUT_REQUIRED state"
         )
     
     # Create audit entry for resend
