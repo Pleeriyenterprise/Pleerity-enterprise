@@ -15,7 +15,6 @@ const PublicFooter = () => {
     { href: '/services/market-research', label: 'Market Research' },
     { href: '/services/document-packs', label: 'Document Packs' },
     { href: '/services/compliance-audits', label: 'Compliance Audits' },
-    { href: '/services/cleaning', label: 'Cleaning' },
   ];
 
   const companyLinks = [
