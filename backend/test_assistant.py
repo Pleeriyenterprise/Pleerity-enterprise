@@ -13,7 +13,7 @@ import requests
 import json
 import time
 
-API_URL = "https://pleeritydocs.preview.emergentagent.com/api"
+API_URL = "https://workmaster-app.preview.emergentagent.com/api"
 
 class AssistantTester:
     def __init__(self):
@@ -146,7 +146,7 @@ class AssistantTester:
         # Test frontend is accessible
         try:
             response = requests.get(
-                "https://pleeritydocs.preview.emergentagent.com/app/assistant",
+                "https://workmaster-app.preview.emergentagent.com/app/assistant",
                 timeout=5
             )
             # Will redirect to login if not authenticated, but route exists

@@ -513,7 +513,7 @@ class TestIntakeCheckoutAPI:
         checkout_response = requests.post(
             f"{BASE_URL}/api/intake/checkout",
             params={"client_id": client_id},
-            headers={"origin": "https://pleeritydocs.preview.emergentagent.com"}
+            headers={"origin": "https://workmaster-app.preview.emergentagent.com"}
         )
         assert checkout_response.status_code == 200
         
@@ -528,7 +528,7 @@ class TestIntakeCheckoutAPI:
         response = requests.post(
             f"{BASE_URL}/api/intake/checkout",
             params={"client_id": "non-existent-client-id"},
-            headers={"origin": "https://pleeritydocs.preview.emergentagent.com"}
+            headers={"origin": "https://workmaster-app.preview.emergentagent.com"}
         )
         assert response.status_code == 404
 

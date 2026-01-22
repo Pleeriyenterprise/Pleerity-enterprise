@@ -65,7 +65,7 @@ echo ""
 
 echo "4. FRONTEND BUILD"
 echo "-----------------"
-check_requirement "Frontend accessible" "curl -s https://pleeritydocs.preview.emergentagent.com > /dev/null"
+check_requirement "Frontend accessible" "curl -s https://workmaster-app.preview.emergentagent.com > /dev/null"
 echo ""
 
 echo "5. CRITICAL FILES"
