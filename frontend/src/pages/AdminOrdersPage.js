@@ -760,9 +760,10 @@ const AdminOrdersPage = () => {
   // RENDER: Review Actions (INTERNAL_REVIEW specific)
   // ==========================================
   const renderReviewActions = () => {
-    if (orderDetail?.status !== 'INTERNAL_REVIEW') return null;
+    const status = orderDetail?.order?.status || orderDetail?.status;
+    if (status !== 'INTERNAL_REVIEW') return null;
     
-    const isLocked = orderDetail?.version_locked;
+    const isLocked = orderDetail?.order?.version_locked || orderDetail?.version_locked;
     const hasDocuments = documentVersions.length > 0;
     
     return (
