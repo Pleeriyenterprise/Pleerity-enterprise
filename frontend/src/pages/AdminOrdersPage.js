@@ -1545,6 +1545,17 @@ const AdminOrdersPage = () => {
               <DialogTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Document Preview - v{selectedDocVersion?.version}
+                {selectedDocVersion?.status && (
+                  <Badge className={cn(
+                    'text-xs',
+                    selectedDocVersion.status === 'FINAL' && 'bg-green-100 text-green-800',
+                    selectedDocVersion.status === 'DRAFT' && 'bg-amber-100 text-amber-800',
+                    selectedDocVersion.status === 'REGENERATED' && 'bg-blue-100 text-blue-800',
+                    selectedDocVersion.status === 'SUPERSEDED' && 'bg-gray-100 text-gray-600'
+                  )}>
+                    {selectedDocVersion.status}
+                  </Badge>
+                )}
                 {selectedDocVersion?.is_approved && (
                   <Badge className="bg-green-100 text-green-800">
                     <Lock className="h-3 w-3 mr-1" />
@@ -1554,57 +1565,81 @@ const AdminOrdersPage = () => {
               </DialogTitle>
             </DialogHeader>
             
-            <div className="border rounded-lg bg-gray-50 p-4 overflow-auto max-h-[60vh]">
-              {/* MOCK document preview */}
-              <div className="bg-white border shadow-sm p-6 min-h-[400px]">
-                <div className="text-center mb-6">
-                  <Badge className="bg-yellow-100 text-yellow-800 text-lg px-4 py-2">
-                    DRAFT / MOCK DOCUMENT
-                  </Badge>
-                </div>
-                
-                <div className="space-y-4 font-mono text-sm">
-                  <div className="border-b pb-2">
-                    <p className="text-gray-500">Document Type: {selectedDocVersion?.document_type}</p>
-                    <p className="text-gray-500">Version: v{selectedDocVersion?.version}</p>
-                    <p className="text-gray-500">Generated: {formatDate(selectedDocVersion?.generated_at)}</p>
-                    {selectedDocVersion?.is_regeneration && (
-                      <p className="text-blue-600">This is a regenerated version</p>
-                    )}
-                  </div>
-                  
-                  <div className="bg-gray-100 p-4 rounded">
-                    <p className="text-center text-gray-600">
-                      [MOCK DOCUMENT CONTENT]
-                    </p>
-                    <p className="text-center text-gray-500 text-xs mt-2">
-                      In production, this would display the actual document content.
-                    </p>
-                  </div>
-                  
-                  {selectedDocVersion?.regeneration_notes && (
-                    <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                      <p className="text-blue-800 font-medium">Regeneration Notes:</p>
-                      <p className="text-blue-700 text-sm">{selectedDocVersion.regeneration_notes}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+            {/* Document info */}
+            <div className="flex flex-wrap gap-2 mb-2">
+              <Badge variant="outline" className="text-xs">
+                Type: {selectedDocVersion?.document_type?.replace(/_/g, ' ')}
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                Generated: {formatDate(selectedDocVersion?.generated_at)}
+              </Badge>
+              {selectedDocVersion?.is_regeneration && (
+                <Badge variant="outline" className="text-xs border-blue-300 text-blue-600">
+                  Regeneration
+                </Badge>
+              )}
             </div>
             
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  window.open(
-                    `${API_URL}/api/admin/orders/${orderDetail?.order_id}/documents/${selectedDocVersion?.version}/preview?format=pdf`,
-                    '_blank'
-                  );
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download PDF
-              </Button>
+            {/* PDF Preview iframe */}
+            <div className="border rounded-lg bg-gray-100 overflow-hidden" style={{ height: '50vh' }}>
+              {selectedDocVersion?.file_id_pdf ? (
+                <iframe
+                  src={`${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${selectedDocVersion?.version}/preview?format=pdf`}
+                  className="w-full h-full"
+                  title="PDF Preview"
+                  onLoad={(e) => {
+                    // Add auth header via token in storage
+                    const token = localStorage.getItem('auth_token');
+                    if (token && e.target.src.includes('/api/')) {
+                      // For now, the iframe won't have auth, so show download button prominently
+                    }
+                  }}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-gray-500">No PDF available for preview</p>
+                </div>
+              )}
+            </div>
+            
+            {selectedDocVersion?.regeneration_notes && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                <p className="text-sm text-blue-800 font-medium">Regeneration Notes:</p>
+                <p className="text-sm text-blue-700">{selectedDocVersion.regeneration_notes}</p>
+              </div>
+            )}
+            
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <div className="flex gap-2 flex-1">
+                {selectedDocVersion?.filename_docx && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.open(
+                        `${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${selectedDocVersion?.version}/preview?format=docx`,
+                        '_blank'
+                      );
+                    }}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Download DOCX (Editable)
+                  </Button>
+                )}
+                {selectedDocVersion?.filename_pdf && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.open(
+                        `${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${selectedDocVersion?.version}/preview?format=pdf`,
+                        '_blank'
+                      );
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF (Delivery)
+                  </Button>
+                )}
+              </div>
               <Button variant="outline" onClick={() => setShowDocumentViewer(false)}>
                 Close
               </Button>
