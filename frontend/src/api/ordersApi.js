@@ -340,6 +340,67 @@ export const ordersApi = {
   },
 
   // =============================================================================
+  // DELIVERY OPERATIONS
+  // =============================================================================
+
+  /**
+   * Trigger delivery for a FINALISING order
+   */
+  deliverOrder: async (orderId) => {
+    const response = await fetch(
+      `${API_URL}/api/admin/orders/${orderId}/deliver`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Retry delivery for a DELIVERY_FAILED order
+   */
+  retryDelivery: async (orderId) => {
+    const response = await fetch(
+      `${API_URL}/api/admin/orders/${orderId}/retry-delivery`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Manually complete an order (admin override)
+   */
+  manualComplete: async (orderId, reason) => {
+    const response = await fetch(
+      `${API_URL}/api/admin/orders/${orderId}/manual-complete`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ reason }),
+      }
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Process all pending deliveries (batch)
+   */
+  processAllDeliveries: async () => {
+    const response = await fetch(
+      `${API_URL}/api/admin/orders/batch/process-delivery`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }
+    );
+    return handleResponse(response);
+  },
+
+  // =============================================================================
   // ADMIN ACTIONS
   // =============================================================================
 
