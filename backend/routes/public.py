@@ -189,94 +189,85 @@ async def submit_service_inquiry(inquiry: ServiceInquiry, request: Request):
 @router.get("/services")
 async def get_services():
     """
-    Get list of available services with pricing.
+    Get list of available services with pricing from database.
     Public endpoint - no auth required.
+    Redirects to database-driven service catalogue.
     """
-    services = [
-        {
-            "code": "AI_WORKFLOW",
-            "name": "AI Workflow Automation",
-            "description": "Automate repetitive property management tasks",
-            "category": "workflow",
-            "pricing": "Custom",
-            "pricing_note": "Based on portfolio size",
-        },
-        {
-            "code": "MARKET_RESEARCH",
-            "name": "Market Research",
-            "description": "Comprehensive property market insights",
-            "category": "research",
-            "pricing": "From £149",
-            "pricing_note": "Per report",
-        },
-        {
-            "code": "DOC_PACK_TENANCY",
-            "name": "Tenancy Document Pack",
-            "description": "Complete tenancy agreement and documents",
-            "category": "documents",
-            "pricing": "From £29",
-            "pricing_note": "Per pack",
-        },
-        {
-            "code": "AUDIT_HMO",
-            "name": "HMO Compliance Audit",
-            "description": "Full HMO licensing compliance review",
-            "category": "audit",
-            "pricing": "From £199",
-            "pricing_note": "Per property",
-        },
-        {
-            "code": "AUDIT_FULL",
-            "name": "Full Property Audit",
-            "description": "Comprehensive property compliance assessment",
-            "category": "audit",
-            "pricing": "From £299",
-            "pricing_note": "Per property",
-        },
-        {
-            "code": "CLEANING_EOT",
-            "name": "End of Tenancy Cleaning",
-            "description": "Professional end of tenancy clean",
-            "category": "cleaning",
-            "pricing": "From £149",
-            "pricing_note": "1-bed property",
-        },
-        {
-            "code": "CLEANING_DEEP",
-            "name": "Deep Clean",
-            "description": "Intensive property deep clean",
-            "category": "cleaning",
-            "pricing": "From £199",
-            "pricing_note": "1-bed property",
-        },
-    ]
+    from services.service_catalogue import service_catalogue
     
-    return {"services": services}
+    services = await service_catalogue.list_services(active_only=True)
+    
+    # Return public-safe fields
+    public_services = []
+    for s in services:
+        public_services.append({
+            "service_code": s.service_code,
+            "service_name": s.service_name,
+            "description": s.description,
+            "short_description": s.short_description,
+            "category": s.category.value,
+            "pricing_model": s.pricing_model.value,
+            "price_amount": s.price_amount,
+            "price_currency": s.price_currency,
+            "vat_rate": s.vat_rate,
+            "delivery_type": s.delivery_type.value,
+            "turnaround_hours": s.estimated_turnaround_hours,
+            "requires_cvp_subscription": s.requires_cvp_subscription,
+            "display_order": s.display_order,
+            "review_required": s.review_required,
+            "documents_generated": [
+                {
+                    "document_code": d.document_code,
+                    "document_name": d.document_name,
+                    "format": d.format,
+                    "is_primary": d.is_primary,
+                }
+                for d in s.documents_generated
+            ] if s.documents_generated else [],
+        })
+    
+    return {
+        "services": public_services,
+        "total": len(public_services),
+    }
 
 
 @router.get("/services/{service_code}")
 async def get_service_detail(service_code: str):
     """
-    Get detailed information about a specific service.
+    Get detailed information about a specific service from database.
     """
-    # Service details mapping
-    service_details = {
-        "AI_WORKFLOW": {
-            "code": "AI_WORKFLOW",
-            "name": "AI Workflow Automation",
-            "description": "Automate repetitive property management tasks with intelligent AI-powered workflows.",
-            "long_description": "Our AI workflow automation service helps property managers eliminate manual tasks.",
-            "features": [
-                "Document Processing",
-                "Email Automation",
-                "Report Generation",
-                "Reminder Scheduling",
-            ],
-            "category": "workflow",
-            "pricing": "Custom",
-            "pricing_note": "Based on portfolio size",
-        },
-        # Add other services as needed
+    from services.service_catalogue import service_catalogue
+    
+    service = await service_catalogue.get_active_service(service_code)
+    
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    
+    return {
+        "service_code": service.service_code,
+        "service_name": service.service_name,
+        "description": service.description,
+        "short_description": service.short_description,
+        "category": service.category.value,
+        "pricing_model": service.pricing_model.value,
+        "price_amount": service.price_amount,
+        "price_currency": service.price_currency,
+        "vat_rate": service.vat_rate,
+        "delivery_type": service.delivery_type.value,
+        "turnaround_hours": service.estimated_turnaround_hours,
+        "intake_fields": [f.model_dump() for f in service.intake_fields] if service.intake_fields else [],
+        "documents_generated": [
+            {
+                "document_code": d.document_code,
+                "document_name": d.document_name,
+                "format": d.format,
+                "is_primary": d.is_primary,
+            }
+            for d in service.documents_generated
+        ] if service.documents_generated else [],
+        "review_required": service.review_required,
+        "requires_cvp_subscription": service.requires_cvp_subscription,
     }
     
     service = service_details.get(service_code.upper())
