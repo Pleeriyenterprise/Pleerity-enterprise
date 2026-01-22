@@ -476,8 +476,53 @@ class EmailService:
             </body>
             </html>
             """
-    
-    def _build_text_footer(self, model: Dict[str, Any]) -> str:
+        elif template_alias == EmailTemplateAlias.ORDER_DELIVERED:
+            # Order documents delivered notification
+            footer = self._build_email_footer(model)
+            
+            # Build documents list
+            documents = model.get('documents', [])
+            docs_html = ""
+            if documents:
+                docs_html = "<ul style='margin: 10px 0; padding-left: 20px;'>"
+                for doc in documents:
+                    doc_name = doc if isinstance(doc, str) else doc.get('name', 'Document')
+                    docs_html += f"<li style='margin: 5px 0;'>{doc_name}</li>"
+                docs_html += "</ul>"
+            
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0;">📦 Your Documents Are Ready</h1>
+                    <p style="color: #94a3b8; margin: 10px 0 0 0;">Order {model.get('order_reference', '')}</p>
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('client_name', 'there')},</p>
+                    <p>Your <strong>{model.get('service_name', 'order')}</strong> is complete and your documents are ready for download!</p>
+                    
+                    <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 20px; margin: 20px 0;">
+                        <p style="margin: 0 0 10px 0; font-weight: bold; color: #166534;">Included Documents:</p>
+                        {docs_html}
+                    </div>
+                    
+                    <p style="margin: 25px 0; text-align: center;">
+                        <a href="{model.get('download_link', '#')}" 
+                           style="background-color: #00B8A9; color: white; padding: 14px 28px; 
+                                  text-decoration: none; border-radius: 6px; display: inline-block;
+                                  font-weight: bold; font-size: 16px;">
+                            Download Documents
+                        </a>
+                    </p>
+                    
+                    <p style="color: #64748b; font-size: 14px; text-align: center;">
+                        Your documents are also available in your <a href="{model.get('portal_link', '#')}" style="color: #00B8A9;">portal dashboard</a>.
+                    </p>
+                </div>
+                {footer}
+            </body>
+            </html>
+            """
         """Build consistent plain text footer with CRN."""
         customer_ref = model.get('customer_reference', '')
         ref_line = f"\nYour Reference: {customer_ref}" if customer_ref else ""
