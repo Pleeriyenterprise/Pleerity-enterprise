@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /intake/
+Disallow: /checkout/
+Disallow: /set-password
+Disallow: /onboarding-status
+
+Sitemap: https://pleerity.com/sitemap.xml
