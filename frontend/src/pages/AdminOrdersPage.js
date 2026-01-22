@@ -499,7 +499,7 @@ const AdminOrdersPage = () => {
         body: JSON.stringify({
           request_notes: infoRequestNotes,
           requested_fields: requestedFields.length ? requestedFields : null,
-          deadline_days: deadlineDays ? parseInt(deadlineDays) : null,
+          deadline_days: deadlineDays && deadlineDays !== 'none' ? parseInt(deadlineDays) : null,
           request_attachments: requestAttachments,
         }),
       });
