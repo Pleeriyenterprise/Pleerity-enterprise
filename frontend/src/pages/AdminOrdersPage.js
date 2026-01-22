@@ -1030,9 +1030,9 @@ const AdminOrdersPage = () => {
           <DialogContent className="max-w-3xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                Order: {orderDetail?.order_id}
-                <Badge className={statusColors[orderDetail?.status]}>
-                  {orderDetail?.status?.replace(/_/g, ' ')}
+                Order: {orderDetail?.order?.order_id || orderDetail?.order_id}
+                <Badge className={statusColors[orderDetail?.order?.status || orderDetail?.status]}>
+                  {(orderDetail?.order?.status || orderDetail?.status)?.replace(/_/g, ' ')}
                 </Badge>
               </DialogTitle>
             </DialogHeader>
@@ -1089,7 +1089,7 @@ const AdminOrdersPage = () => {
                   </div>
                   
                   {/* Client Input Section */}
-                  {orderDetail?.status === 'CLIENT_INPUT_REQUIRED' && renderClientInputSection()}
+                  {(orderDetail?.order?.status || orderDetail?.status) === 'CLIENT_INPUT_REQUIRED' && renderClientInputSection()}
                   
                   {/* Review Actions */}
                   {renderReviewActions()}
