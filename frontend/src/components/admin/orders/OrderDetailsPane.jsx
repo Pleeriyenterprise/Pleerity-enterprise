@@ -615,7 +615,7 @@ const OrderDetailsPane = ({
               <TabsContent value="documents" className="space-y-4 pr-4">
                 <DocumentVersionsSection
                   versions={documentVersions}
-                  selectedVersion={selectedDocVersion}
+                  selectedVersion={currentDocVersion}
                   onVersionSelect={setSelectedDocVersion}
                   onPreview={onOpenDocumentPreview}
                   isLocked={isLocked}
@@ -623,8 +623,8 @@ const OrderDetailsPane = ({
                 <ReviewActionsSection
                   order={order}
                   documentVersions={documentVersions}
-                  selectedVersion={selectedDocVersion}
-                  onApprove={() => onApprove(selectedDocVersion)}
+                  selectedVersion={currentDocVersion}
+                  onApprove={() => onApprove(currentDocVersion)}
                   onRequestRegen={onRequestRegen}
                   onRequestInfo={onRequestInfo}
                   onGenerateDocuments={onGenerateDocuments}
