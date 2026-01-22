@@ -649,7 +649,8 @@ Return ONLY the JSON object, no additional text or markdown formatting.
                 }
             )
         
-        return result.modified_count > 0
+        # find_one_and_update returns the document if found, None otherwise
+        return result is not None
 
 
 # Singleton instance
