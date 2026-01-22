@@ -287,6 +287,17 @@ class OrderDeliveryService:
                     }
                 )
                 
+                # Send notification for failed delivery
+                try:
+                    from services.order_notification_service import order_notification_service
+                    await order_notification_service.notify_delivery_failed(
+                        order_id=order_id,
+                        error=delivery_error,
+                        order=order,
+                    )
+                except Exception as notif_error:
+                    logger.warning(f"Failed to send delivery failure notification for {order_id}: {notif_error}")
+                
                 return {
                     "success": False,
                     "order_id": order_id,
