@@ -142,6 +142,89 @@ def get_sla_hours_for_order(order: Dict[str, Any]) -> Dict[str, Any]:
         "sla_pause_states": [OrderStatus.CLIENT_INPUT_REQUIRED.value],
     }
 
+
+async def initialize_order_sla(order_id: str, order: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Initialize SLA fields for a newly paid order.
+    Call this when order transitions to PAID status (WF1).
+    
+    Sets:
+    - sla_target_at: When SLA deadline occurs
+    - sla_warning_at: When SLA warning should trigger
+    - sla_started_at: When SLA clock started (now)
+    """
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    
+    sla_config = get_sla_hours_for_order(order)
+    target_hours = sla_config["target_hours"]
+    warning_threshold = sla_config["warning_threshold"]
+    
+    sla_target = now + timedelta(hours=target_hours)
+    sla_warning = now + timedelta(hours=target_hours * warning_threshold)
+    
+    sla_fields = {
+        "sla_started_at": now,
+        "sla_target_at": sla_target,
+        "sla_warning_at": sla_warning,
+        "sla_target_hours": target_hours,
+        "sla_paused_at": None,
+        "sla_total_paused_duration": 0,
+        "sla_warning_sent": False,
+        "sla_breach_sent": False,
+    }
+    
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {"$set": sla_fields}
+    )
+    
+    # Log SLA start event
+    await db.workflow_executions.insert_one({
+        "order_id": order_id,
+        "event_type": "SLA_STARTED",
+        "previous_state": None,
+        "new_state": "SLA_ACTIVE",
+        "triggered_by_type": "system",
+        "timestamp": now,
+        "metadata": {
+            "target_hours": target_hours,
+            "target_at": sla_target.isoformat(),
+            "warning_at": sla_warning.isoformat(),
+            "service_code": order.get("service_code"),
+            "fast_track": order.get("fast_track", False),
+        },
+    })
+    
+    logger.info(f"SLA initialized for order {order_id}: {target_hours}h target, deadline {sla_target.isoformat()}")
+    return sla_fields
+
+
+async def log_sla_event(order_id: str, event_type: str, metadata: Dict[str, Any] = None):
+    """
+    Log an SLA timeline event for audit purposes.
+    
+    Event types:
+    - SLA_STARTED: SLA clock began
+    - SLA_PAUSED: Waiting for client input
+    - SLA_RESUMED: Client provided input
+    - SLA_WARNING_ISSUED: Warning notification sent
+    - SLA_BREACHED: SLA deadline missed
+    """
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    
+    await db.workflow_executions.insert_one({
+        "order_id": order_id,
+        "event_type": event_type,
+        "triggered_by_type": "system",
+        "timestamp": now,
+        "metadata": metadata or {},
+    })
+    
+    logger.info(f"SLA event logged for {order_id}: {event_type}")
+
+
 # Max retry attempts for delivery
 MAX_DELIVERY_RETRIES = 3
 
