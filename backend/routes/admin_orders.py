@@ -80,6 +80,52 @@ async def get_pipeline_status_counts(
 
 
 # ============================================
+# SEARCH ENDPOINTS (must be before /{order_id} to avoid route conflict)
+# ============================================
+
+@router.get("/search")
+async def search_orders(
+    q: Optional[str] = None,
+    status: Optional[str] = None,
+    service_category: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Search orders by various criteria"""
+    
+    db = database.get_db()
+    
+    # Build query
+    query = {}
+    
+    if q:
+        query["$or"] = [
+            {"order_id": {"$regex": q, "$options": "i"}},
+            {"customer.email": {"$regex": q, "$options": "i"}},
+            {"customer.full_name": {"$regex": q, "$options": "i"}},
+        ]
+    
+    if status:
+        query["status"] = status
+    
+    if service_category:
+        query["service_category"] = service_category
+    
+    # Execute query
+    cursor = db.orders.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit)
+    orders = await cursor.to_list(length=None)
+    total = await db.orders.count_documents(query)
+    
+    return {
+        "orders": orders,
+        "total": total,
+        "limit": limit,
+        "skip": skip,
+    }
+
+
+# ============================================
 # ORDER DETAIL ENDPOINTS
 # ============================================
 
