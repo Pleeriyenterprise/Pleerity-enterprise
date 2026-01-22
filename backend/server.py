@@ -108,6 +108,27 @@ async def run_compliance_score_snapshots():
     except Exception as e:
         logger.error(f"Compliance score snapshots job failed: {e}")
 
+
+async def run_order_delivery_processing():
+    """Scheduled job: Process orders in FINALISING status for automatic delivery."""
+    try:
+        from services.order_delivery_service import order_delivery_service
+        result = await order_delivery_service.process_finalising_orders()
+        
+        if result['processed'] > 0:
+            logger.info(
+                f"Order delivery job: {result['processed']} processed, "
+                f"{result['delivered']} delivered, {result['failed']} failed"
+            )
+            if result['errors']:
+                for err in result['errors']:
+                    logger.warning(f"Delivery failed for {err['order_id']}: {err['error']}")
+        else:
+            logger.debug("Order delivery job: No orders to process")
+            
+    except Exception as e:
+        logger.error(f"Order delivery job failed: {e}")
+
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
