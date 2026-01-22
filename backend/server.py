@@ -129,6 +129,44 @@ async def run_order_delivery_processing():
     except Exception as e:
         logger.error(f"Order delivery job failed: {e}")
 
+
+async def run_sla_monitoring():
+    """Scheduled job: Check SLA for all active orders and send warnings/breach notifications."""
+    try:
+        from services.workflow_automation_service import workflow_automation_service
+        result = await workflow_automation_service.wf9_sla_check()
+        
+        results = result.get('results', {})
+        if results.get('warnings_sent', 0) > 0 or results.get('breaches_sent', 0) > 0:
+            logger.info(
+                f"SLA monitoring: {results['checked']} checked, "
+                f"{results['warnings_sent']} warnings, {results['breaches_sent']} breaches"
+            )
+        else:
+            logger.debug(f"SLA monitoring: {results['checked']} orders checked, no alerts")
+            
+    except Exception as e:
+        logger.error(f"SLA monitoring job failed: {e}")
+
+
+async def run_queued_order_processing():
+    """Scheduled job: Process queued orders through document generation."""
+    try:
+        from services.workflow_automation_service import workflow_automation_service
+        result = await workflow_automation_service.process_queued_orders(limit=5)
+        
+        results = result.get('results', {})
+        if results.get('processed', 0) > 0:
+            logger.info(
+                f"Queue processing: {results['processed']} processed, "
+                f"{results['to_review']} to review, {results['failed']} failed"
+            )
+        else:
+            logger.debug("Queue processing: No orders to process")
+            
+    except Exception as e:
+        logger.error(f"Queue processing job failed: {e}")
+
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
