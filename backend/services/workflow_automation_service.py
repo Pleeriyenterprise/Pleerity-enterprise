@@ -836,6 +836,14 @@ class WorkflowAutomationService:
                         {"$set": {"sla_warning_sent": True, "sla_warning_at": now}}
                     )
                     
+                    # Log SLA warning event
+                    await log_sla_event(order_id, "SLA_WARNING_ISSUED", {
+                        "hours_remaining": hours_remaining,
+                        "target_hours": target_hours,
+                        "effective_hours": effective_hours,
+                        "service_code": order.get("service_code"),
+                    })
+                    
                     results["warnings_sent"] += 1
                     logger.info(f"WF9: SLA warning sent for {order_id} ({hours_remaining:.1f}h remaining)")
                 except Exception as e:
@@ -857,6 +865,14 @@ class WorkflowAutomationService:
                         {"order_id": order_id},
                         {"$set": {"sla_breach_sent": True, "sla_breach_at": now}}
                     )
+                    
+                    # Log SLA breach event
+                    await log_sla_event(order_id, "SLA_BREACHED", {
+                        "hours_overdue": hours_overdue,
+                        "target_hours": target_hours,
+                        "effective_hours": effective_hours,
+                        "service_code": order.get("service_code"),
+                    })
                     
                     results["breaches_sent"] += 1
                     logger.warning(f"WF9: SLA BREACH for {order_id} ({hours_overdue:.1f}h overdue)")
