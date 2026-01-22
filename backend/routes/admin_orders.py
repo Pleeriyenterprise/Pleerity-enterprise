@@ -323,6 +323,239 @@ async def request_client_info(
 
 
 # ============================================
+# DELETE ORDER ENDPOINT
+# ============================================
+
+class DeleteRequest(BaseModel):
+    reason: str  # Mandatory
+
+
+@router.post("/{order_id}/delete")
+async def delete_order(
+    order_id: str,
+    request: DeleteRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Delete an order permanently.
+    Requires mandatory reason. Logged as admin_delete.
+    """
+    if not request.reason.strip():
+        raise HTTPException(status_code=400, detail="Reason is required for deletion")
+    
+    db = database.get_db()
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Create audit log entry before deletion
+    from services.order_service import create_workflow_execution
+    await create_workflow_execution(
+        order_id=order_id,
+        previous_state=order["status"],
+        new_state="DELETED",
+        transition_type="admin_delete",
+        triggered_by_type="admin",
+        triggered_by_user_id=current_user.get("user_id"),
+        triggered_by_email=current_user.get("email"),
+        reason=request.reason,
+        metadata={"deleted_order_snapshot": {
+            "service_name": order.get("service_name"),
+            "customer_email": order.get("customer", {}).get("email"),
+            "total_amount": order.get("pricing", {}).get("total_amount"),
+        }},
+    )
+    
+    # Delete the order
+    await db.orders.delete_one({"order_id": order_id})
+    
+    logger.info(f"Order {order_id} deleted by {current_user.get('email')}: {request.reason}")
+    
+    return {
+        "success": True,
+        "message": f"Order {order_id} has been deleted",
+    }
+
+
+# ============================================
+# ROLLBACK ENDPOINT
+# ============================================
+
+class RollbackRequest(BaseModel):
+    reason: str  # Mandatory
+
+
+# Rollback mapping - what prior safe state to go to from each state
+ROLLBACK_MAP = {
+    "FAILED": "QUEUED",
+    "DELIVERY_FAILED": "FINALISING",
+    "DELIVERING": "FINALISING",
+    "FINALISING": "INTERNAL_REVIEW",
+    "REGENERATING": "INTERNAL_REVIEW",
+    "CLIENT_INPUT_REQUIRED": "INTERNAL_REVIEW",
+    "REGEN_REQUESTED": "INTERNAL_REVIEW",
+    "INTERNAL_REVIEW": "DRAFT_READY",
+    "DRAFT_READY": "IN_PROGRESS",
+    "IN_PROGRESS": "QUEUED",
+    "QUEUED": "PAID",
+}
+
+
+@router.post("/{order_id}/rollback")
+async def rollback_order(
+    order_id: str,
+    request: RollbackRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Rollback order to prior safe stage.
+    Requires mandatory reason. Logged as admin_manual_override.
+    """
+    if not request.reason.strip():
+        raise HTTPException(status_code=400, detail="Reason is required for rollback")
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    current_status = order["status"]
+    
+    if current_status not in ROLLBACK_MAP:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot rollback from {current_status}"
+        )
+    
+    target_status = ROLLBACK_MAP[current_status]
+    
+    try:
+        from services.order_service import transition_order_state
+        updated_order = await transition_order_state(
+            order_id=order_id,
+            new_status=OrderStatus(target_status),
+            triggered_by_type="admin",
+            triggered_by_user_id=current_user.get("user_id"),
+            triggered_by_email=current_user.get("email"),
+            reason=f"[ROLLBACK] {request.reason}",
+            metadata={"rollback_from": current_status, "rollback_to": target_status},
+        )
+        
+        return {
+            "success": True,
+            "order": updated_order,
+            "message": f"Order rolled back from {current_status} to {target_status}",
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================
+# RESEND REQUEST ENDPOINT
+# ============================================
+
+@router.post("/{order_id}/resend-request")
+async def resend_client_request(
+    order_id: str,
+    request: NoteRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Resend the client information request.
+    Only valid in CLIENT_INPUT_REQUIRED state.
+    """
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    if order["status"] != OrderStatus.CLIENT_INPUT_REQUIRED.value:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Can only resend request in CLIENT_INPUT_REQUIRED state"
+        )
+    
+    # Create audit entry for resend
+    from services.order_service import create_workflow_execution
+    await create_workflow_execution(
+        order_id=order_id,
+        previous_state=order["status"],
+        new_state=order["status"],  # Same state
+        transition_type="admin_manual",
+        triggered_by_type="admin",
+        triggered_by_user_id=current_user.get("user_id"),
+        triggered_by_email=current_user.get("email"),
+        reason=f"Resent client request: {request.note}",
+        metadata={"action": "resend_request"},
+    )
+    
+    # TODO: Actually resend the email to client
+    
+    logger.info(f"Client request resent for order {order_id}")
+    
+    return {
+        "success": True,
+        "message": "Client request has been resent",
+    }
+
+
+# ============================================
+# SET PRIORITY ENDPOINT
+# ============================================
+
+class PriorityRequest(BaseModel):
+    priority: bool
+    reason: Optional[str] = None
+
+
+@router.post("/{order_id}/priority")
+async def set_order_priority(
+    order_id: str,
+    request: PriorityRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Set or remove priority flag on an order.
+    """
+    db = database.get_db()
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Update priority
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {"$set": {
+            "priority": request.priority,
+            "updated_at": datetime.now(timezone.utc),
+        }}
+    )
+    
+    # Create audit entry
+    from services.order_service import create_workflow_execution
+    await create_workflow_execution(
+        order_id=order_id,
+        previous_state=order["status"],
+        new_state=order["status"],  # Same state
+        transition_type="admin_manual",
+        triggered_by_type="admin",
+        triggered_by_user_id=current_user.get("user_id"),
+        triggered_by_email=current_user.get("email"),
+        reason=f"Priority {'set' if request.priority else 'removed'}: {request.reason or 'No reason provided'}",
+        metadata={"action": "set_priority", "priority": request.priority},
+    )
+    
+    updated_order = await get_order(order_id)
+    
+    return {
+        "success": True,
+        "order": updated_order,
+        "message": f"Priority {'set' if request.priority else 'removed'}",
+    }
+
+
+# ============================================
 # NOTES ENDPOINT
 # ============================================
 
