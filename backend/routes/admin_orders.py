@@ -52,8 +52,6 @@ async def get_orders_pipeline(
     Get orders for pipeline/kanban view.
     Returns orders grouped by status with counts.
     """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     result = await get_orders_for_pipeline(
         status_filter=status,
@@ -69,8 +67,6 @@ async def get_pipeline_status_counts(
     current_user: dict = Depends(admin_route_guard),
 ):
     """Get count of orders in each status"""
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     counts = await get_pipeline_counts()
     
@@ -93,8 +89,6 @@ async def get_order_detail(
     current_user: dict = Depends(admin_route_guard),
 ):
     """Get full order details including timeline"""
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     order = await get_order(order_id)
     if not order:
@@ -126,8 +120,6 @@ async def get_order_timeline_only(
     current_user: dict = Depends(admin_route_guard),
 ):
     """Get just the audit timeline for an order"""
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     order = await get_order(order_id)
     if not order:
@@ -153,8 +145,6 @@ async def transition_order(
     Requires admin role and mandatory reason.
     Only allowed transitions per state machine are permitted.
     """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     try:
         new_status = OrderStatus(request.new_status)
@@ -195,8 +185,6 @@ async def approve_order(
     Approve order from INTERNAL_REVIEW → FINALISING.
     System will automatically proceed to delivery.
     """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     try:
         updated_order = await transition_order_state(
@@ -230,8 +218,6 @@ async def request_regeneration(
     Request regeneration from INTERNAL_REVIEW → REGEN_REQUESTED.
     System will automatically regenerate and return to INTERNAL_REVIEW.
     """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     try:
         updated_order = await transition_order_state(
@@ -266,8 +252,6 @@ async def request_client_info(
     Request more info from INTERNAL_REVIEW → CLIENT_INPUT_REQUIRED.
     SLA timer pauses. System will send request to client.
     """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     try:
         updated_order = await transition_order_state(
@@ -306,8 +290,6 @@ async def add_order_note(
     Add internal note to order.
     Does NOT change order state.
     """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     try:
         updated_order = await add_internal_note(
@@ -339,8 +321,6 @@ async def search_orders(
     current_user: dict = Depends(admin_route_guard),
 ):
     """Search orders by various criteria"""
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     db = database.get_db()
     
