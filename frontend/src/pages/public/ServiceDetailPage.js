@@ -106,28 +106,6 @@ const serviceData = {
       { href: '/services/compliance-audits/full', label: 'Full Audit' },
     ],
   },
-  'cleaning': {
-    title: 'Cleaning Services',
-    description: 'Professional property cleaning services for end-of-tenancy, deep cleans, and regular maintenance.',
-    longDescription: 'Our professional cleaning service ensures your properties are presented to the highest standard. Whether you need an end-of-tenancy clean or regular maintenance, our trained teams deliver consistent quality.',
-    icon: Brush,
-    color: 'bg-teal-500',
-    features: [
-      { title: 'End of Tenancy', description: 'Thorough clean meeting deposit scheme standards.' },
-      { title: 'Deep Clean', description: 'Intensive cleaning for neglected properties.' },
-      { title: 'Regular Service', description: 'Scheduled cleaning for HMO common areas.' },
-      { title: 'Post-Renovation', description: 'Builder\'s clean after property works.' },
-    ],
-    benefits: [
-      'Deposit scheme approved standards',
-      'Insured and vetted cleaners',
-      'Flexible scheduling',
-      'Satisfaction guaranteed',
-    ],
-    pricing: 'From £149 for end-of-tenancy (1-bed)',
-    cta: 'Get a cleaning quote',
-    separate: true,
-  },
 };
 
 const ServiceDetailPage = () => {
