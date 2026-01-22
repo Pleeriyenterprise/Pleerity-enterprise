@@ -209,7 +209,10 @@ const TimelineEvent = ({ event, index, isLast, onDocumentClick }) => {
         {(event.triggered_by_email || event.triggered_by) && (
           <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
             <User className="h-3 w-3" />
-            {event.triggered_by_email || event.triggered_by}
+            {event.triggered_by_email || 
+              (typeof event.triggered_by === 'object' 
+                ? (event.triggered_by?.user_email || event.triggered_by?.email || 'System')
+                : event.triggered_by)}
           </p>
         )}
 
