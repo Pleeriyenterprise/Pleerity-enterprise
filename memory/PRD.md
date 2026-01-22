@@ -1772,6 +1772,48 @@
   - Admin notification preferences API tested
   - Both frontend pages render correctly with all UI elements
 
+### January 23, 2026 - FastTrack, Postal Tracking & Compliance Score Enhancement ✅
+- **Legacy Services Removed from V1 Catalogue:**
+  - Removed: INVENTORY_PRO, EPC_CONSULT, HMO_LICENCE_SUPPORT, PORTFOLIO_ANALYSIS, LEASE_EXTENSION, AIRBNB_SETUP
+  - These were not part of Pleerity's service offering
+  - Active services preserved: CVP_COMPLIANCE_REPORT, DOC_PACK_*, AI_WF_BLUEPRINT, MR_BASIC, etc.
+
+- **FastTrack Queue Priority:**
+  - WF1 sets `queue_priority`: 10 for priority, 5 for fast_track orders
+  - `expedited` flag set on fast-track/priority orders
+  - `process_queued_orders` sorts by queue_priority DESC, then priority, then fast_track, then created_at
+  - Admin notification sent for fast-track orders with ⚡ indicator
+  - Frontend: Purple badge with `animate-pulse` class for visual attention
+
+- **Printed Copy Postal Tracking:**
+  - New fields on orders: `requires_postal_delivery`, `postal_status`, `postal_tracking_number`, `postal_carrier`, `postal_delivery_address`
+  - Status flow: PENDING_PRINT → PRINTED → DISPATCHED → DELIVERED (with FAILED option)
+  - NEW endpoint: `GET /api/admin/orders/postal/pending` - Lists orders grouped by postal status
+  - NEW endpoint: `POST /api/admin/orders/{id}/postal/status` - Update postal status with tracking
+  - NEW endpoint: `POST /api/admin/orders/{id}/postal/address` - Set delivery address
+  - NEW endpoint: `GET /api/admin/orders/{id}/postal` - Get postal details
+  - Email notification sent to customer when order is DISPATCHED with tracking number
+  - Frontend: Cyan badge showing "Print Copy" on orders, postal section in OrderDetailsPane
+
+- **Enhanced Compliance Score:**
+  - **Requirement Type Weighting:**
+    - GAS_SAFETY: 1.5x (critical legal requirement)
+    - EICR: 1.4x (legally required)
+    - HMO_LICENCE: 1.6x (critical for HMO)
+    - FIRE_RISK_ASSESSMENT: 1.5x
+    - SMOKE_ALARM/CO_ALARM: 1.3x
+    - EPC: 1.2x
+    - DEPOSIT_PROTECTION: 1.1x
+    - Standard requirements: 1.0x
+  - **HMO Property Multiplier:** 0.9x (stricter scoring for HMO properties)
+  - **Document Verification:** Only VERIFIED documents count for scoring
+  - **New Weights:** Status 35%, Expiry 25%, Documents 15%, Overdue Penalty 15%, Risk Factor 10%
+  - **Breakdown Fields:** status_score, expiry_score, document_score, overdue_penalty_score, risk_score
+  - **Critical Overdue Tracking:** Extra penalty for critical requirements (Gas Safety, EICR, HMO Licence)
+  - **Prioritized Recommendations:** Sorted by priority with impact estimates
+
+- **TEST REPORT:** `/app/test_reports/iteration_45.json` (26/26 backend tests - 100%)
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
