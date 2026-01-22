@@ -1051,6 +1051,36 @@
   - Workflow audit trail verified
   - CVP isolation verified
 
+### January 22, 2026 (Session - Phase C UX Polish Complete)
+- **Phase C: UX Polish - Enhanced User Experience ✅**
+  
+  **Improved Button Labels:**
+  - "Generate Documents" → "Generate Draft" (clearer purpose)
+  - "Request Regeneration" → "Request Revision" (user-friendly)
+  - "Request More Info" → "Request Client Info" (specific action)
+  - "Generate New" → "Create New Version" (contextual)
+  
+  **Descriptive Hover Tooltips:**
+  - "Generate Draft": Creates an initial draft document (DOCX + PDF) for review
+  - "Approve & Finalize": Lock document as FINAL, move order to delivery stage
+  - "Request Revision": Create a new document version with changes (old version marked SUPERSEDED)
+  - "Request Client Info": Pause workflow, send email to client requesting additional information
+  - "DOCX": Download editable Word document (for internal use)
+  - "PDF": Download PDF for delivery to customer
+  
+  **Clickable Timeline Events:**
+  - Document-related events now clickable (cursor-pointer, blue hover)
+  - Shows "v{X}" badge for version-related events
+  - "Click to view document" helper text
+  - Clicking opens document in viewer modal
+  - Timeline tab has helper text: "Click on document events to open that version in the viewer"
+  
+  **UI Components Added:**
+  - Imported Tooltip, TooltipContent, TooltipProvider, TooltipTrigger from UI components
+  - ExternalLink icon for clickable timeline events
+  
+  **TEST REPORT:** /app/test_reports/iteration_35.json (8/8 features - 100%)
+
 ### January 22, 2026 (Session - Phase B Document Quality Complete)
 - **Phase B: Document Quality - Real Document Generation ✅**
   
