@@ -190,6 +190,17 @@ async def review_generated_content(
     
     status = "approved" if request.approved else "changes_requested"
     
+    # Mark document version as FINAL if approved
+    if request.approved:
+        from services.template_renderer import template_renderer
+        latest = await document_orchestrator.get_latest_execution(request.order_id)
+        if latest and latest.get("version"):
+            await template_renderer.mark_final(
+                order_id=request.order_id,
+                version=latest["version"],
+                approved_by=current_user.get("email"),
+            )
+    
     return {
         "success": True,
         "order_id": request.order_id,
@@ -197,6 +208,59 @@ async def review_generated_content(
         "reviewed_by": current_user.get("email"),
         "message": f"Document {status}. {'Ready for delivery.' if request.approved else 'Regeneration required.'}",
     }
+
+
+@router.get("/versions/{order_id}")
+async def get_document_versions(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Get all document versions for an order.
+    Returns full audit trail with hashes for integrity verification.
+    """
+    from services.template_renderer import template_renderer
+    versions = await template_renderer.get_all_versions(order_id)
+    
+    return {
+        "order_id": order_id,
+        "versions": [
+            {
+                "version": v.get("version"),
+                "status": v.get("status"),
+                "is_regeneration": v.get("is_regeneration", False),
+                "regeneration_notes": v.get("regeneration_notes"),
+                "docx": v.get("docx"),
+                "pdf": v.get("pdf"),
+                "intake_snapshot_hash": v.get("intake_snapshot_hash"),
+                "json_output_hash": v.get("json_output_hash"),
+                "created_at": v.get("created_at"),
+                "approved_at": v.get("approved_at"),
+                "approved_by": v.get("approved_by"),
+            }
+            for v in versions
+        ],
+        "total": len(versions),
+    }
+
+
+@router.get("/versions/{order_id}/{version}")
+async def get_document_version(
+    order_id: str,
+    version: int,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Get a specific document version with full audit data."""
+    from services.template_renderer import template_renderer
+    version_data = await template_renderer.get_version(order_id, version)
+    
+    if not version_data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Version {version} not found for order {order_id}"
+        )
+    
+    return version_data
 
 
 @router.get("/history/{order_id}")
