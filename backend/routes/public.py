@@ -269,9 +269,3 @@ async def get_service_detail(service_code: str):
         "review_required": service.review_required,
         "requires_cvp_subscription": service.requires_cvp_subscription,
     }
-    
-    service = service_details.get(service_code.upper())
-    if not service:
-        raise HTTPException(status_code=404, detail="Service not found")
-    
-    return service
