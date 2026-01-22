@@ -208,7 +208,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                         weight = get_requirement_weight(req_type)
                         if weight >= 1.3 and days_until < min_days_until_critical:
                             min_days_until_critical = days_until
-                    except:
+                    except Exception:
                         pass
         
         # Use critical expiry if available, otherwise use any expiry
