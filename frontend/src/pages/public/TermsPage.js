@@ -1,6 +1,6 @@
 import React from 'react';
-import PublicLayout from '../components/public/PublicLayout';
-import { SEOHead } from '../components/public/SEOHead';
+import PublicLayout from '../../components/public/PublicLayout';
+import { SEOHead } from '../../components/public/SEOHead';
 
 const TermsPage = () => {
   return (

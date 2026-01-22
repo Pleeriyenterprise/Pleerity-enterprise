@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import PublicLayout from '../components/public/PublicLayout';
-import { SEOHead } from '../components/public/SEOHead';
+import PublicLayout from '../../components/public/PublicLayout';
+import { SEOHead } from '../../components/public/SEOHead';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';

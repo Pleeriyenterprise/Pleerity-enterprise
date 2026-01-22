@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import PublicLayout from '../components/public/PublicLayout';
-import { SEOHead } from '../components/public/SEOHead';
+import PublicLayout from '../../components/public/PublicLayout';
+import { SEOHead } from '../../components/public/SEOHead';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';

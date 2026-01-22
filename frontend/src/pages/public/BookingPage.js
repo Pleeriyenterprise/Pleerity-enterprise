@@ -1,6 +1,6 @@
 import React from 'react';
-import PublicLayout from '../components/public/PublicLayout';
-import { SEOHead } from '../components/public/SEOHead';
+import PublicLayout from '../../components/public/PublicLayout';
+import { SEOHead } from '../../components/public/SEOHead';
 import { Card, CardContent } from '../components/ui/card';
 import { Calendar, Clock, CheckCircle2 } from 'lucide-react';
 
