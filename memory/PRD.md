@@ -1003,6 +1003,52 @@
   - `/app/backend/routes/public.py` - New backend route file
   - `/app/frontend/public/robots.txt` - SEO robots file
 
+### January 22, 2026 (Session 13b) - Orders System & Admin Pipeline ✅
+- **Orders Workflow System** (NEW - CVP Isolated):
+  - Created `/app/backend/services/order_workflow.py` - 14-state workflow machine
+  - Created `/app/backend/services/order_service.py` - Order business logic with audit logging
+  - Created `/app/backend/routes/orders.py` - Public order creation API
+  - Created `/app/backend/routes/admin_orders.py` - Admin orders management API
+  
+- **Order Workflow States (14 total)**:
+  - Payment & Intake: CREATED → PAID
+  - Execution: QUEUED → IN_PROGRESS → DRAFT_READY → INTERNAL_REVIEW
+  - Review Outcomes: REGEN_REQUESTED, REGENERATING, CLIENT_INPUT_REQUIRED
+  - Delivery: FINALISING → DELIVERING
+  - Terminal: COMPLETED, DELIVERY_FAILED, FAILED, CANCELLED
+
+- **Admin Pipeline View** (`/admin/orders`):
+  - Kanban-style pipeline with 8 visible columns
+  - Order cards with customer name, service, time in state
+  - Click-to-view order detail with full timeline
+  - Admin review actions (Approve, Request Regen, Request Info)
+  - Internal notes functionality
+
+- **Backend APIs Created**:
+  - `POST /api/orders/create` - Create new order
+  - `GET /api/orders/{id}/status` - Public order status
+  - `GET /api/admin/orders/pipeline` - Orders by status
+  - `GET /api/admin/orders/pipeline/counts` - Status counts
+  - `GET /api/admin/orders/{id}` - Order detail + timeline
+  - `POST /api/admin/orders/{id}/transition` - Manual transition
+  - `POST /api/admin/orders/{id}/approve` - Approve from INTERNAL_REVIEW
+  - `POST /api/admin/orders/{id}/request-regen` - Request regeneration
+  - `POST /api/admin/orders/{id}/request-info` - Request client info (pauses SLA)
+  - `POST /api/admin/orders/{id}/notes` - Add internal note
+
+- **Audit Logging**:
+  - All state transitions logged to `workflow_executions` collection
+  - Each entry includes: previous_state → new_state, triggered_by, timestamp, reason
+  - Admin manual transitions require mandatory reason field
+
+- **TEST REPORT**: `/app/test_reports/iteration_30.json` (24/24 tests - 100%)
+  - Order creation and status verified
+  - Pipeline view and counts verified
+  - State transitions with validation verified
+  - Admin review actions verified
+  - Workflow audit trail verified
+  - CVP isolation verified
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
