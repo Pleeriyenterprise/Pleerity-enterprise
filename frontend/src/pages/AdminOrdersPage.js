@@ -733,6 +733,22 @@ const AdminOrdersPage = () => {
     const isSelected = selectedDocVersion?.version === version.version;
     const isApproved = version.is_approved;
     
+    // Determine status badge color
+    const getStatusBadge = (status) => {
+      switch (status) {
+        case 'FINAL':
+          return <Badge className="bg-green-100 text-green-800 text-xs">FINAL</Badge>;
+        case 'DRAFT':
+          return <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">DRAFT</Badge>;
+        case 'REGENERATED':
+          return <Badge variant="outline" className="text-xs border-blue-500 text-blue-600">REGENERATED</Badge>;
+        case 'SUPERSEDED':
+          return <Badge variant="secondary" className="text-xs opacity-60">SUPERSEDED</Badge>;
+        default:
+          return <Badge variant="outline" className="text-xs">{status}</Badge>;
+      }
+    };
+    
     return (
       <div
         key={version.version}
@@ -740,16 +756,15 @@ const AdminOrdersPage = () => {
         className={cn(
           'p-3 rounded-lg border cursor-pointer transition-all',
           isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300',
-          isApproved && 'ring-2 ring-green-500'
+          isApproved && 'ring-2 ring-green-500',
+          version.status === 'SUPERSEDED' && 'opacity-60'
         )}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-gray-500" />
             <span className="font-medium">v{version.version}</span>
-            {version.is_regeneration && (
-              <Badge variant="outline" className="text-xs">Regenerated</Badge>
-            )}
+            {version.status && getStatusBadge(version.status)}
             {isApproved && (
               <Badge className="bg-green-100 text-green-800 text-xs">
                 <Lock className="h-3 w-3 mr-1" />
@@ -761,9 +776,26 @@ const AdminOrdersPage = () => {
             {formatDate(version.generated_at)}
           </span>
         </div>
+        
+        {/* File format badges */}
+        <div className="flex items-center gap-2 mt-2">
+          {version.filename_docx && (
+            <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
+              <FileText className="h-3 w-3 mr-1" />
+              DOCX (Editable)
+            </Badge>
+          )}
+          {version.filename_pdf && (
+            <Badge variant="outline" className="text-xs bg-red-50 border-red-200">
+              <FileText className="h-3 w-3 mr-1" />
+              PDF (Delivery)
+            </Badge>
+          )}
+        </div>
+        
         {version.regeneration_notes && (
-          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-            {version.regeneration_notes}
+          <p className="text-xs text-gray-500 mt-2 line-clamp-2">
+            Notes: {version.regeneration_notes}
           </p>
         )}
       </div>
