@@ -235,6 +235,8 @@ app.include_router(admin_notifications.router)
 app.include_router(admin_services.router)
 app.include_router(public_services.router)
 app.include_router(blog.router)
+app.include_router(admin_services_v2.router)
+app.include_router(public_services_v2.router)
 
 # Root endpoint
 @app.get("/api")
