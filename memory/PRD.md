@@ -1333,6 +1333,78 @@
   
   **TEST REPORT:** /app/test_reports/iteration_32.json (24/24 tests - 100%)
 
+### January 22, 2026 - Document Orchestration Phase 2 Complete ✅
+- **GPT Prompt Registry ✅** (`/app/backend/services/gpt_prompt_registry.py`)
+  
+  **AUTHORITATIVE_FRAMEWORK (7 Hard Guardrails):**
+  1. Never fabricate or estimate numerical figures
+  2. Never provide legal or financial advice
+  3. Never recommend specific contractors/service providers by name
+  4. Never speculate on outcomes
+  5. Never generate content outside user-provided inputs
+  6. Flag missing/ambiguous data explicitly
+  7. Cite UK-specific compliance standards
+  
+  **9 Prompts Defined:**
+  - `AI_WF_BLUEPRINT_MASTER` - Workflow Automation Blueprint
+  - `AI_PROC_MAP_MASTER` - Business Process Mapping
+  - `AI_TOOLS_MASTER` - AI Tool Recommendation Report
+  - `MR_BASIC_MASTER` - Basic Market Research
+  - `MR_ADV_MASTER` - Advanced Market Research
+  - `COMP_HMO_MASTER` - HMO Compliance Audit
+  - `COMP_FULL_AUDIT_MASTER` - Full Compliance Audit
+  - `COMP_MOVEOUT_MASTER` - Move-In/Move-Out Checklist
+  - `DOC_PACK_ORCHESTRATOR` - Document Pack Orchestrator
+  
+  **Prompt Features:**
+  - Structured JSON output schemas per service
+  - Required fields validation
+  - Temperature tuning (0.2 compliance, 0.3-0.4 AI/research)
+  - GPT sections mapping to template placeholders
+  - max_tokens configured per service complexity
+
+- **Document Orchestrator Service ✅** (`/app/backend/services/document_orchestrator.py`)
+  
+  **Workflow:**
+  Payment Verified → Select Prompt → Validate Intake → Execute GPT → 
+  Structured JSON → Template Render → Human Review → Final Delivery
+  
+  **Payment Gating:**
+  - `validate_order_for_generation()` checks `stripe_payment_status == 'paid'`
+  - Blocks cancelled/completed/archived orders
+  - Validates service_code against V2 catalogue
+  
+  **Execution Features:**
+  - `execute_generation()` - Main entry point
+  - `_build_user_prompt()` - Template substitution
+  - `_execute_gpt()` - Gemini integration via emergentintegrations
+  - Execution history tracking in `orchestration_executions` collection
+  - Token usage tracking
+  
+  **Human Review Gate:**
+  - `mark_reviewed()` - Approve or reject
+  - Approved → `final_ready` for delivery
+  - Rejected → `changes_requested` for regeneration
+
+- **Orchestration API Routes ✅** (`/app/backend/routes/orchestration.py`)
+  
+  **Endpoints (Admin Auth Required):**
+  - `POST /api/orchestration/generate` - Generate documents for paid order
+  - `POST /api/orchestration/regenerate` - Regenerate with changes
+  - `POST /api/orchestration/review` - Approve/reject generated content
+  - `GET /api/orchestration/history/{order_id}` - Get generation history
+  - `GET /api/orchestration/latest/{order_id}` - Get latest generation
+  - `GET /api/orchestration/validate/{service_code}` - Get prompt definition
+  - `POST /api/orchestration/validate-data` - Validate intake against requirements
+  - `GET /api/orchestration/stats` - Get execution statistics
+
+- **Integration:**
+  - Uses Emergent LLM Key for Gemini integration
+  - Service Catalogue V2 integration for service validation
+  - Order status updates on generation/review
+  
+  **TEST REPORT:** `/app/test_reports/iteration_41.json` (33/33 backend tests - 100%)
+
 ### January 22, 2026 - Service Catalogue V2 Phase 1 Complete ✅
 - **Authoritative Service Catalogue V2 (Foundation) ✅**
   
