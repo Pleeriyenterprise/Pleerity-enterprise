@@ -3,12 +3,12 @@ Admin Orders Routes - NEW FILE
 Handles admin operations for the Orders system.
 NO CVP COLLECTIONS TOUCHED - Works only with orders and workflow_executions.
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone
 from database import database
-from utils.auth import get_current_user
+from middleware import admin_route_guard
 from services.order_workflow import (
     OrderStatus, get_allowed_transitions, get_admin_actions_for_review,
     PIPELINE_COLUMNS, is_valid_transition, requires_admin_action
