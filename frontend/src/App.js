@@ -272,6 +272,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/app/orders/:orderId/provide-info" 
+              element={
+                <ProtectedRoute>
+                  <ClientProvideInfoPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* ========================================
                   ADMIN PORTAL ROUTES (Protected)
