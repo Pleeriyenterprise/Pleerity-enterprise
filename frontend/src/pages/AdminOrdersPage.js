@@ -1322,21 +1322,34 @@ const AdminOrdersPage = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium">Document Versions</h4>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleGenerateDocuments}
-                        disabled={isSubmitting}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Generate New
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleGenerateDocuments}
+                              disabled={isSubmitting}
+                              data-testid="generate-new-version-btn"
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              {documentVersions.length === 0 ? 'Generate Draft' : 'Create New Version'}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{documentVersions.length === 0 
+                              ? 'Generate initial draft document for review' 
+                              : 'Create a new version (previous marked SUPERSEDED)'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     
                     {documentVersions.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
                         <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
                         <p>No documents generated yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Click "Generate Draft" to create the first version</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1346,30 +1359,77 @@ const AdminOrdersPage = () => {
                     
                     {selectedDocVersion && (
                       <div className="border-t pt-4 space-y-2">
-                        <h4 className="font-medium">Selected: v{selectedDocVersion.version}</h4>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowDocumentViewer(true)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Preview
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              // Download PDF
-                              window.open(
-                                `${API_URL}/api/admin/orders/${orderDetail.order_id}/documents/${selectedDocVersion.version}/preview?format=pdf`,
-                                '_blank'
-                              );
-                            }}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download PDF
-                          </Button>
+                        <h4 className="font-medium flex items-center gap-2">
+                          Selected: v{selectedDocVersion.version}
+                          {selectedDocVersion.status && (
+                            <Badge variant="outline" className="text-xs">{selectedDocVersion.status}</Badge>
+                          )}
+                        </h4>
+                        <div className="flex gap-2 flex-wrap">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setShowDocumentViewer(true)}
+                                  data-testid="preview-selected-btn"
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Preview
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Open document in viewer with download options</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    window.open(
+                                      `${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${selectedDocVersion.version}/preview?format=docx`,
+                                      '_blank'
+                                    );
+                                  }}
+                                  data-testid="download-docx-btn"
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  DOCX
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Download editable Word document (for internal use)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    window.open(
+                                      `${API_URL}/api/admin/orders/${orderDetail?.order?.order_id || orderDetail?.order_id}/documents/${selectedDocVersion.version}/preview?format=pdf`,
+                                      '_blank'
+                                    );
+                                  }}
+                                  data-testid="download-pdf-btn"
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  PDF
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Download PDF for delivery to customer</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </div>
                     )}
