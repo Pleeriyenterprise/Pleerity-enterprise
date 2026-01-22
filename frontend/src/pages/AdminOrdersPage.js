@@ -1329,27 +1329,55 @@ const AdminOrdersPage = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium">Document Versions</h4>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleGenerateDocuments}
-                              disabled={isSubmitting}
-                              data-testid="generate-new-version-btn"
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              {documentVersions.length === 0 ? 'Generate Draft' : 'Create New Version'}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{documentVersions.length === 0 
-                              ? 'Generate initial draft document for review' 
-                              : 'Create a new version (previous marked SUPERSEDED)'}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <div className="flex gap-2">
+                        {documentVersions.length >= 2 && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    // Default to comparing last two versions
+                                    const sorted = [...documentVersions].sort((a, b) => b.version - a.version);
+                                    setCompareVersion1(sorted[1]); // Previous version
+                                    setCompareVersion2(sorted[0]); // Latest version
+                                    setShowComparisonModal(true);
+                                  }}
+                                  data-testid="compare-versions-btn"
+                                >
+                                  <GitCompare className="h-4 w-4 mr-2" />
+                                  Compare
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Compare two document versions side-by-side</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleGenerateDocuments}
+                                disabled={isSubmitting}
+                                data-testid="generate-new-version-btn"
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                {documentVersions.length === 0 ? 'Generate Draft' : 'Create New Version'}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{documentVersions.length === 0 
+                                ? 'Generate initial draft document for review' 
+                                : 'Create a new version (previous marked SUPERSEDED)'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </div>
                     
                     {documentVersions.length === 0 ? (
