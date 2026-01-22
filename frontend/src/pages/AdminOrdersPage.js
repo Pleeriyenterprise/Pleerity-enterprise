@@ -974,33 +974,88 @@ const AdminOrdersPage = () => {
   const renderAuditTimeline = () => {
     if (!orderDetail?.timeline?.length) return null;
     
+    // Helper to determine if an event is clickable (document-related)
+    const isClickableEvent = (event) => {
+      const action = (event.new_state || event.action || '').toLowerCase();
+      return action.includes('generated') || 
+             action.includes('approved') || 
+             action.includes('regenerat') ||
+             action.includes('document');
+    };
+    
+    // Helper to get version from event
+    const getVersionFromEvent = (event) => {
+      const reason = event.reason || '';
+      const match = reason.match(/v(\d+)/i) || reason.match(/version\s*(\d+)/i);
+      return match ? parseInt(match[1]) : null;
+    };
+    
+    // Handle timeline event click
+    const handleTimelineEventClick = (event) => {
+      const version = getVersionFromEvent(event);
+      if (version && documentVersions.length > 0) {
+        const docVersion = documentVersions.find(v => v.version === version);
+        if (docVersion) {
+          setSelectedDocVersion(docVersion);
+          setShowDocumentViewer(true);
+          toast.info(`Opening document v${version}`);
+        } else {
+          toast.error(`Document version ${version} not found`);
+        }
+      }
+    };
+    
     return (
       <div className="space-y-2">
-        {orderDetail.timeline.map((event, idx) => (
-          <div key={idx} className="flex gap-3 text-sm">
-            <div className="flex flex-col items-center">
-              <div className={cn(
-                'w-2 h-2 rounded-full',
-                idx === 0 ? 'bg-blue-500' : 'bg-gray-300'
-              )} />
-              {idx < orderDetail.timeline.length - 1 && (
-                <div className="w-0.5 h-full bg-gray-200 mt-1" />
+        {orderDetail.timeline.map((event, idx) => {
+          const clickable = isClickableEvent(event);
+          const version = getVersionFromEvent(event);
+          
+          return (
+            <div 
+              key={idx} 
+              className={cn(
+                'flex gap-3 text-sm rounded-lg p-2 -mx-2 transition-colors',
+                clickable && 'cursor-pointer hover:bg-blue-50'
               )}
-            </div>
-            <div className="flex-1 pb-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {event.new_state || event.action}
-                </Badge>
-                <span className="text-xs text-gray-500">{formatDate(event.timestamp)}</span>
+              onClick={() => clickable && handleTimelineEventClick(event)}
+            >
+              <div className="flex flex-col items-center">
+                <div className={cn(
+                  'w-2 h-2 rounded-full',
+                  idx === 0 ? 'bg-blue-500' : 'bg-gray-300'
+                )} />
+                {idx < orderDetail.timeline.length - 1 && (
+                  <div className="w-0.5 h-full bg-gray-200 mt-1" />
+                )}
               </div>
-              <p className="text-xs text-gray-600 mt-1">{event.reason}</p>
-              {event.triggered_by_email && (
-                <p className="text-xs text-gray-400">by {event.triggered_by_email}</p>
-              )}
+              <div className="flex-1 pb-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={cn(
+                    'text-xs',
+                    clickable && 'border-blue-300 text-blue-700'
+                  )}>
+                    {event.new_state || event.action}
+                  </Badge>
+                  {clickable && version && (
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      v{version}
+                    </Badge>
+                  )}
+                  <span className="text-xs text-gray-500">{formatDate(event.timestamp)}</span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1">{event.reason}</p>
+                {event.triggered_by_email && (
+                  <p className="text-xs text-gray-400">by {event.triggered_by_email}</p>
+                )}
+                {clickable && (
+                  <p className="text-xs text-blue-500 mt-1">Click to view document</p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
