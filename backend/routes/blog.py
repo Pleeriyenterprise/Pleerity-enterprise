@@ -95,7 +95,7 @@ async def list_admin_posts(
     status: Optional[str] = None,
     category: Optional[str] = None,
     search: Optional[str] = None,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """List all blog posts (admin view)."""
     db = database.get_db()
@@ -132,7 +132,7 @@ async def list_admin_posts(
 @router.post("/admin/posts")
 async def create_post(
     post: BlogPostCreate,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Create a new blog post."""
     db = database.get_db()
@@ -182,7 +182,7 @@ async def create_post(
 @router.get("/admin/posts/{post_id}")
 async def get_admin_post(
     post_id: str,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Get a single blog post (admin view)."""
     db = database.get_db()
@@ -202,7 +202,7 @@ async def get_admin_post(
 async def update_post(
     post_id: str,
     updates: BlogPostUpdate,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Update a blog post."""
     db = database.get_db()
@@ -279,7 +279,7 @@ async def update_post(
 @router.delete("/admin/posts/{post_id}")
 async def delete_post(
     post_id: str,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Delete a blog post."""
     db = database.get_db()
@@ -303,7 +303,7 @@ async def delete_post(
 @router.post("/admin/posts/{post_id}/publish")
 async def publish_post(
     post_id: str,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Publish a draft post."""
     db = database.get_db()
@@ -340,7 +340,7 @@ async def publish_post(
 @router.post("/admin/posts/{post_id}/unpublish")
 async def unpublish_post(
     post_id: str,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Unpublish a post (set to draft)."""
     db = database.get_db()
@@ -373,7 +373,7 @@ async def unpublish_post(
 
 @router.get("/admin/categories")
 async def get_categories(
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Get all unique categories."""
     db = database.get_db()
@@ -399,7 +399,7 @@ async def get_categories(
 
 @router.get("/admin/tags")
 async def get_tags(
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Get all unique tags."""
     db = database.get_db()
