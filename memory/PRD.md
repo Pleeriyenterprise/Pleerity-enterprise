@@ -950,6 +950,59 @@
   - Background jobs verified to filter by entitlement_status
   - Job endpoints verified for admin auth requirement
 
+### January 22, 2026 (Session 13) - Public Website Build Phase 1 ✅
+- **Public Website Infrastructure** (NEW - Additive, no CVP modifications):
+  - Created `/app/frontend/src/pages/public/` directory with 13 new pages
+  - Created `/app/frontend/src/components/public/` with shared components
+  - All new routes added to App.js without modifying existing client/admin routes
+  - SEO support via `react-helmet-async` library
+
+- **New Public Pages Created**:
+  - **HomePage.js** (`/`) - Main landing page with hero, features, services preview
+  - **CVPLandingPage.js** (`/compliance-vault-pro`) - Product landing page
+  - **ServicesHubPage.js** (`/services`) - Services overview hub
+  - **ServiceDetailPage.js** (`/services/:slug`) - Individual service pages
+  - **PricingPage.js** (`/pricing`) - Plan comparison with monthly/yearly toggle
+  - **BookingPage.js** (`/booking`) - Calendly embed for consultations
+  - **InsightsHubPage.js** (`/insights`) - Blog/insights hub
+  - **AboutPage.js** (`/about`) - Company information
+  - **ContactPage.js** (`/contact`) - Contact form with API integration
+  - **CareersPage.js** (`/careers`) - Careers page
+  - **PartnershipsPage.js** (`/partnerships`) - Partner opportunities
+  - **PrivacyPage.js** (`/legal/privacy`) - Privacy policy
+  - **TermsPage.js** (`/legal/terms`) - Terms of service
+
+- **Shared Components Created**:
+  - **PublicLayout.js** - Wrapper with header/footer
+  - **PublicHeader.js** - Navigation with Platform/Services dropdowns
+  - **PublicFooter.js** - Footer with link sections
+  - **SEOHead.js** - Meta tags, OpenGraph, schema.org support
+
+- **Backend Public API** (`/app/backend/routes/public.py`):
+  - `POST /api/public/contact` - Contact form submission with rate limiting
+  - `POST /api/public/service-inquiry` - Service inquiry submission
+  - `GET /api/public/services` - List available services
+  - `GET /api/public/services/:code` - Service details
+  - Rate limiting: 5 requests per minute per IP
+  - New collections: `contact_submissions`, `service_inquiries`
+
+- **Design Implementation**:
+  - Light theme with teal (#00B8A9) + white + charcoal grey
+  - Modern UK corporate aesthetic
+  - Trust-first look (no startup-y neon, no heavy animations)
+  - Accessible contrast, lots of whitespace
+
+- **CVP Isolation Verified**:
+  - Zero modifications to existing CVP routes
+  - Zero writes to CVP collections
+  - Login, intake, client dashboard all still functional
+
+- **Files Created**:
+  - 13 page components in `/app/frontend/src/pages/public/`
+  - 4 shared components in `/app/frontend/src/components/public/`
+  - `/app/backend/routes/public.py` - New backend route file
+  - `/app/frontend/public/robots.txt` - SEO robots file
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
