@@ -331,6 +331,20 @@ class MockDocumentGenerator(DocumentGenerator):
         logger.info(f"Generated mock documents for order {order_id} v{new_version}")
         return doc_version
     
+    async def _mark_previous_versions_superseded(self, db, order_id: str):
+        """Mark all previous non-final versions as SUPERSEDED."""
+        await db.orders.update_one(
+            {"order_id": order_id},
+            {
+                "$set": {
+                    "document_versions.$[elem].status": DocumentStatus.SUPERSEDED.value
+                }
+            },
+            array_filters=[
+                {"elem.status": {"$nin": [DocumentStatus.FINAL.value, DocumentStatus.VOID.value]}}
+            ]
+        )
+    
     def _generate_mock_docx(
         self,
         order: Dict[str, Any],
