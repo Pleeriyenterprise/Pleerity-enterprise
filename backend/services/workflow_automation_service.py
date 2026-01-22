@@ -267,7 +267,6 @@ class WorkflowAutomationService:
         - Initialize SLA tracking (clock starts now)
         - Notify admins of new order
         """
-        db = database.get_db()
         order = await get_order(order_id)
         
         if not order:
