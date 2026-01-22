@@ -266,6 +266,7 @@ class WorkflowAutomationService:
         Side effects:
         - Initialize SLA tracking (clock starts now)
         - Notify admins of new order
+        - Special notification for fast-track/priority orders
         """
         order = await get_order(order_id)
         
@@ -275,12 +276,33 @@ class WorkflowAutomationService:
         if order["status"] != OrderStatus.PAID.value:
             return {"success": False, "error": f"Order not in PAID status (current: {order['status']})"}
         
+        # Check for fast-track or priority
+        is_fast_track = order.get("fast_track", False)
+        is_priority = order.get("priority", False)
+        has_printed_copy = order.get("printed_copy", False)
+        
         # Initialize SLA tracking - clock starts at payment
         try:
             sla_fields = await initialize_order_sla(order_id, order)
             logger.info(f"WF1: SLA initialized for {order_id} - {sla_fields['sla_target_hours']}h deadline")
         except Exception as e:
             logger.warning(f"WF1: Failed to initialize SLA for {order_id}: {e}")
+        
+        # Mark order with special flags for queue processing
+        db = database.get_db()
+        update_fields = {}
+        if is_fast_track or is_priority:
+            update_fields["queue_priority"] = 10 if is_priority else 5  # Higher = processed first
+            update_fields["expedited"] = True
+        if has_printed_copy:
+            update_fields["requires_postal_delivery"] = True
+            update_fields["postal_status"] = "PENDING_PRINT"
+        
+        if update_fields:
+            await db.orders.update_one(
+                {"order_id": order_id},
+                {"$set": update_fields}
+            )
         
         # Transition to QUEUED
         await transition_order_state(
@@ -294,16 +316,31 @@ class WorkflowAutomationService:
         try:
             notif_service = self._get_notification_service()
             from services.order_notification_service import OrderNotificationEvent
+            
+            # Standard notification
             await notif_service.notify_order_event(
                 event_type=OrderNotificationEvent.NEW_ORDER,
                 order_id=order_id,
                 order=order,
             )
+            
+            # Special notification for fast-track/priority
+            if is_fast_track or is_priority:
+                await notif_service.notify_order_event(
+                    event_type=OrderNotificationEvent.PRIORITY_FLAGGED,
+                    order_id=order_id,
+                    order=order,
+                    metadata={
+                        "fast_track": is_fast_track,
+                        "priority": is_priority,
+                        "message": "⚡ FAST-TRACK order requires expedited processing"
+                    }
+                )
         except Exception as e:
             logger.warning(f"WF1: Failed to send new order notification: {e}")
         
-        logger.info(f"WF1: Order {order_id} queued for processing")
-        return {"success": True, "status": "QUEUED", "workflow": "WF1"}
+        logger.info(f"WF1: Order {order_id} queued for processing (fast_track={is_fast_track}, priority={is_priority})")
+        return {"success": True, "status": "QUEUED", "workflow": "WF1", "expedited": is_fast_track or is_priority}
     
     # =========================================================================
     # WF2: Queue → Document Generation (GPT + Render)
