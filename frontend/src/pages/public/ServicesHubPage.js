@@ -53,7 +53,7 @@ const ServicesHubPage = () => {
     <PublicLayout>
       <SEOHead
         title="Property Compliance Services"
-        description="Professional compliance services for UK landlords: market research, document preparation, HMO audits, and cleaning services."
+        description="Professional compliance services for UK landlords: AI workflow automation, market research, document packs, and compliance audits."
         canonicalUrl="/services"
       />
 
