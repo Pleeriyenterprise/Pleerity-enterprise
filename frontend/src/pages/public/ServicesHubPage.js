@@ -9,7 +9,6 @@ import {
   Building2,
   FileText,
   ClipboardCheck,
-  Brush,
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
@@ -47,15 +46,6 @@ const ServicesHubPage = () => {
       description: 'Comprehensive property compliance audits including HMO licensing reviews and full property assessments.',
       features: ['HMO Audits', 'Full Audits', 'Gap Analysis'],
       color: 'bg-amber-500',
-    },
-    {
-      href: '/services/cleaning',
-      icon: Brush,
-      title: 'Cleaning Services',
-      description: 'Professional property cleaning services for end-of-tenancy, deep cleans, and regular maintenance.',
-      features: ['End of Tenancy', 'Deep Clean', 'Regular Service'],
-      color: 'bg-teal-500',
-      separate: true,
     },
   ];
 
