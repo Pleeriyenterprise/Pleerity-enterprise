@@ -87,6 +87,35 @@ const VersionStatusBadge = ({ status }) => {
 };
 
 /**
+ * Single metadata row component
+ */
+const MetadataRow = ({ label, value, copyable = false, icon: Icon, onCopy, copiedField }) => (
+  <div className="flex items-center justify-between py-1.5 text-sm">
+    <span className="text-gray-500 flex items-center gap-2">
+      {Icon && <Icon className="h-3.5 w-3.5" />}
+      {label}
+    </span>
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-xs">{value || '-'}</span>
+      {copyable && value && onCopy && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={() => onCopy(value, label)}
+        >
+          {copiedField === label ? (
+            <Check className="h-3 w-3 text-green-600" />
+          ) : (
+            <Copy className="h-3 w-3 text-gray-400" />
+          )}
+        </Button>
+      )}
+    </div>
+  </div>
+);
+
+/**
  * Document metadata display
  */
 const DocumentMetadata = ({ version, orderId, serviceCode }) => {
@@ -98,37 +127,11 @@ const DocumentMetadata = ({ version, orderId, serviceCode }) => {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const MetadataRow = ({ label, value, copyable = false, icon: Icon }) => (
-    <div className="flex items-center justify-between py-1.5 text-sm">
-      <span className="text-gray-500 flex items-center gap-2">
-        {Icon && <Icon className="h-3.5 w-3.5" />}
-        {label}
-      </span>
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-xs">{value || '-'}</span>
-        {copyable && value && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={() => handleCopy(value, label)}
-          >
-            {copiedField === label ? (
-              <Check className="h-3 w-3 text-green-600" />
-            ) : (
-              <Copy className="h-3 w-3 text-gray-400" />
-            )}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <div className="bg-gray-50 rounded-lg p-3 space-y-0.5">
       <h4 className="text-sm font-medium mb-2">Document Metadata</h4>
-      <MetadataRow label="Order Ref" value={orderId} copyable icon={FileText} />
-      <MetadataRow label="Service Code" value={serviceCode} copyable />
+      <MetadataRow label="Order Ref" value={orderId} copyable icon={FileText} onCopy={handleCopy} copiedField={copiedField} />
+      <MetadataRow label="Service Code" value={serviceCode} copyable onCopy={handleCopy} copiedField={copiedField} />
       <MetadataRow label="Version" value={`v${version?.version}`} />
       <MetadataRow label="Status" value={version?.status} />
       <MetadataRow label="Generated At" value={formatDate(version?.generated_at || version?.created_at)} icon={Clock} />
@@ -139,13 +142,17 @@ const DocumentMetadata = ({ version, orderId, serviceCode }) => {
           value={`${version.sha256_hash.substring(0, 16)}...`} 
           copyable 
           icon={Hash}
+          onCopy={handleCopy}
+          copiedField={copiedField}
         />
       )}
       {version?.intake_snapshot_hash && (
         <MetadataRow 
           label="Intake Hash" 
           value={`${version.intake_snapshot_hash.substring(0, 16)}...`} 
-          copyable 
+          copyable
+          onCopy={handleCopy}
+          copiedField={copiedField}
         />
       )}
     </div>
