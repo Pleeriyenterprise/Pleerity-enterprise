@@ -575,7 +575,7 @@ async def get_document_access_token(
     )
     
     # Build full URL
-    base_url = os.environ.get("REACT_APP_BACKEND_URL", "")
+    base_url = os.environ.get("FRONTEND_URL", "")
     preview_url = f"{base_url}/api/admin/orders/{order_id}/documents/{version}/view?format={format}&token={token}"
     
     return {
