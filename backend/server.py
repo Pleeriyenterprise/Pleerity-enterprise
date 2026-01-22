@@ -223,6 +223,7 @@ app.include_router(public.router)
 app.include_router(admin_orders.router)
 app.include_router(orders.router)
 app.include_router(client_orders.router)
+app.include_router(admin_notifications.router)
 
 # Root endpoint
 @app.get("/api")
