@@ -123,6 +123,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to seed service catalogue: {e}")
     
+    # Seed service catalogue V2 (authoritative)
+    try:
+        from services.service_definitions_v2 import seed_service_catalogue_v2
+        result = await seed_service_catalogue_v2()
+        logger.info(f"Service catalogue V2 seeded: {result['created']} created, {result['skipped']} skipped")
+    except Exception as e:
+        logger.error(f"Failed to seed service catalogue V2: {e}")
+    
     # Configure scheduled jobs
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
