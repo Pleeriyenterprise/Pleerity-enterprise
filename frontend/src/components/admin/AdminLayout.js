@@ -9,6 +9,7 @@ import {
   Sparkles,
   LogOut,
   ChevronRight,
+  Package,
 } from 'lucide-react';
 
 /**
