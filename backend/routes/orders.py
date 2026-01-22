@@ -235,3 +235,75 @@ async def handle_order_payment_webhook(request: Request):
                 logger.error(f"Error processing order payment: {e}")
     
     return {"received": True}
+
+
+@router.post("/create-test-order")
+async def create_test_order_for_development():
+    """
+    DEV ONLY: Create a test order that skips payment and goes directly to INTERNAL_REVIEW.
+    This allows testing the review workflow without Stripe.
+    """
+    import uuid
+    
+    # Generate test order data
+    test_order_id = f"ORD-TEST-{uuid.uuid4().hex[:8].upper()}"
+    
+    db = database.get_db()
+    
+    # Create the order directly
+    order_data = {
+        "order_id": test_order_id,
+        "order_type": "document_pack",
+        "status": OrderStatus.INTERNAL_REVIEW.value,
+        "service_code": "DOC_PACK_TENANCY",
+        "service_name": "Section 21 Notice Pack",
+        "service_category": "document_packs",
+        "customer": {
+            "email": "test@example.com",
+            "full_name": "Test Client",
+            "phone": "07123456789",
+            "company": None,
+        },
+        "parameters": {
+            "property_address": "123 Test Street, London, W1A 1AA",
+            "tenant_names": "John Doe, Jane Doe",
+            "tenancy_start_date": "2024-01-15",
+            "landlord_name": "Test Landlord Ltd",
+            "landlord_address": "456 Landlord Road, London, EC1A 1BB",
+        },
+        "pricing": {
+            "amount": 4999,
+            "vat_amount": 1000,
+            "total_amount": 5999,
+            "currency": "gbp",
+        },
+        "priority": False,
+        "sla_hours": 24,
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+        "document_versions": [],
+        "internal_notes": "",
+    }
+    
+    await db.orders.insert_one(order_data)
+    
+    # Create initial workflow execution
+    from services.order_service import create_workflow_execution
+    await create_workflow_execution(
+        order_id=test_order_id,
+        previous_state=None,
+        new_state=OrderStatus.INTERNAL_REVIEW.value,
+        transition_type="system_auto",
+        triggered_by_type="system",
+        reason="[TEST] Order created directly in INTERNAL_REVIEW for testing",
+    )
+    
+    logger.info(f"Test order created: {test_order_id}")
+    
+    return {
+        "success": True,
+        "order_id": test_order_id,
+        "status": "INTERNAL_REVIEW",
+        "message": "Test order created for development. Ready for review workflow testing.",
+    }
+
