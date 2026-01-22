@@ -15,19 +15,21 @@ ADMIN_EMAIL = "admin@pleerity.com"
 ADMIN_PASSWORD = "Admin123!"
 
 
+def get_admin_token():
+    """Get admin authentication token"""
+    response = requests.post(f"{BASE_URL}/api/auth/login", json={
+        "email": ADMIN_EMAIL,
+        "password": ADMIN_PASSWORD
+    })
+    if response.status_code == 200:
+        data = response.json()
+        # Handle both token formats
+        return data.get("access_token") or data.get("token")
+    return None
+
+
 class TestOrdersSystemSetup:
     """Setup and authentication tests"""
-    
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip(f"Admin authentication failed: {response.status_code}")
     
     def test_health_check(self):
         """Verify API is healthy"""
@@ -45,8 +47,9 @@ class TestOrdersSystemSetup:
         })
         assert response.status_code == 200
         data = response.json()
-        assert "token" in data
-        assert data.get("user", {}).get("role") == "admin"
+        # Handle both token formats
+        assert "access_token" in data or "token" in data
+        assert data.get("user", {}).get("role") in ["admin", "ROLE_ADMIN"]
         print(f"✓ Admin login successful: {data.get('user', {}).get('email')}")
 
 
@@ -81,7 +84,6 @@ class TestOrderCreation:
         assert data["total_amount"] == 11880  # base + vat
         
         print(f"✓ Order created: {data['order_id']} with status {data['status']}")
-        return data["order_id"]
     
     def test_create_order_missing_fields(self):
         """Test order creation with missing required fields"""
@@ -128,20 +130,12 @@ class TestOrderCreation:
 class TestAdminPipelineView:
     """Test admin pipeline/kanban view endpoints"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
-    def test_get_pipeline_orders(self, admin_token):
+    def test_get_pipeline_orders(self):
         """Test GET /api/admin/orders/pipeline - Returns orders grouped by status"""
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.get(f"{BASE_URL}/api/admin/orders/pipeline", headers=headers)
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -155,9 +149,12 @@ class TestAdminPipelineView:
         
         print(f"✓ Pipeline view: {data['total']} total orders, counts: {data['counts']}")
     
-    def test_get_pipeline_counts(self, admin_token):
+    def test_get_pipeline_counts(self):
         """Test GET /api/admin/orders/pipeline/counts - Returns status counts and column config"""
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.get(f"{BASE_URL}/api/admin/orders/pipeline/counts", headers=headers)
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -191,20 +188,12 @@ class TestAdminPipelineView:
 class TestOrderDetail:
     """Test order detail and timeline endpoints"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
-    @pytest.fixture(scope="class")
-    def test_order_id(self):
-        """Create a test order for detail tests"""
+    def test_get_order_detail(self):
+        """Test GET /api/admin/orders/{order_id} - Returns order detail with timeline"""
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        # Create a test order first
         order_data = {
             "order_type": "service",
             "service_code": "DOC_PACK_TENANCY",
@@ -217,14 +206,11 @@ class TestOrderDetail:
             "sla_hours": 48
         }
         
-        response = requests.post(f"{BASE_URL}/api/orders/create", json=order_data)
-        if response.status_code == 200:
-            return response.json()["order_id"]
-        pytest.skip("Failed to create test order")
-    
-    def test_get_order_detail(self, admin_token, test_order_id):
-        """Test GET /api/admin/orders/{order_id} - Returns order detail with timeline"""
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        create_response = requests.post(f"{BASE_URL}/api/orders/create", json=order_data)
+        assert create_response.status_code == 200
+        test_order_id = create_response.json()["order_id"]
+        
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.get(f"{BASE_URL}/api/admin/orders/{test_order_id}", headers=headers)
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -247,9 +233,28 @@ class TestOrderDetail:
         
         print(f"✓ Order detail retrieved: {test_order_id} with {len(data['timeline'])} timeline entries")
     
-    def test_get_order_timeline(self, admin_token, test_order_id):
+    def test_get_order_timeline(self):
         """Test GET /api/admin/orders/{order_id}/timeline"""
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        # Create a test order first
+        order_data = {
+            "order_type": "service",
+            "service_code": "AI_WORKFLOW",
+            "service_name": "Timeline Test",
+            "service_category": "workflow",
+            "customer_email": "test_timeline@example.com",
+            "customer_name": "Timeline Test",
+            "base_price": 1000,
+            "vat_amount": 200
+        }
+        
+        create_response = requests.post(f"{BASE_URL}/api/orders/create", json=order_data)
+        assert create_response.status_code == 200
+        test_order_id = create_response.json()["order_id"]
+        
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.get(f"{BASE_URL}/api/admin/orders/{test_order_id}/timeline", headers=headers)
         assert response.status_code == 200
@@ -269,9 +274,12 @@ class TestOrderDetail:
         
         print(f"✓ Order timeline retrieved: {len(data['timeline'])} entries")
     
-    def test_get_nonexistent_order(self, admin_token):
+    def test_get_nonexistent_order(self):
         """Test getting a non-existent order returns 404"""
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.get(f"{BASE_URL}/api/admin/orders/ORD-9999-NOTFOUND", headers=headers)
         assert response.status_code == 404
@@ -281,19 +289,11 @@ class TestOrderDetail:
 class TestStateTransitions:
     """Test manual state transitions via admin API"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
-    def test_transition_requires_reason(self, admin_token):
+    def test_transition_requires_reason(self):
         """Test that manual transitions require a reason"""
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
         # Create an order first
         order_data = {
             "order_type": "service",
@@ -310,7 +310,7 @@ class TestStateTransitions:
         assert create_response.status_code == 200
         order_id = create_response.json()["order_id"]
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Try transition without reason (should fail validation)
         transition_data = {
@@ -326,8 +326,11 @@ class TestStateTransitions:
         assert response.status_code == 422  # Validation error
         print("✓ Transition correctly requires reason")
     
-    def test_valid_transition_created_to_paid(self, admin_token):
+    def test_valid_transition_created_to_paid(self):
         """Test valid transition from CREATED to PAID"""
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
         # Create an order
         order_data = {
             "order_type": "service",
@@ -344,7 +347,7 @@ class TestStateTransitions:
         assert create_response.status_code == 200
         order_id = create_response.json()["order_id"]
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Transition to PAID
         transition_data = {
@@ -364,10 +367,12 @@ class TestStateTransitions:
         assert data["order"]["status"] == "PAID"
         
         print(f"✓ Order {order_id} transitioned to PAID")
-        return order_id
     
-    def test_invalid_transition_rejected(self, admin_token):
+    def test_invalid_transition_rejected(self):
         """Test that invalid transitions are rejected"""
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
         # Create an order in CREATED status
         order_data = {
             "order_type": "service",
@@ -384,7 +389,7 @@ class TestStateTransitions:
         assert create_response.status_code == 200
         order_id = create_response.json()["order_id"]
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Try invalid transition: CREATED -> COMPLETED (not allowed)
         transition_data = {
@@ -406,18 +411,7 @@ class TestStateTransitions:
 class TestAdminReviewActions:
     """Test admin review actions (approve, regen, request info)"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
-    def _create_order_in_review(self, admin_token):
+    def _create_order_in_review(self, token):
         """Helper to create an order and move it to INTERNAL_REVIEW"""
         # Create order
         order_data = {
@@ -436,7 +430,7 @@ class TestAdminReviewActions:
             return None
         order_id = create_response.json()["order_id"]
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Transition through states: CREATED -> PAID -> QUEUED -> IN_PROGRESS -> DRAFT_READY -> INTERNAL_REVIEW
         transitions = [
@@ -459,13 +453,16 @@ class TestAdminReviewActions:
         
         return order_id
     
-    def test_approve_order(self, admin_token):
+    def test_approve_order(self):
         """Test POST /api/admin/orders/{order_id}/approve"""
-        order_id = self._create_order_in_review(admin_token)
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        order_id = self._create_order_in_review(token)
         if not order_id:
             pytest.skip("Could not create order in INTERNAL_REVIEW state")
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.post(
             f"{BASE_URL}/api/admin/orders/{order_id}/approve",
@@ -479,13 +476,16 @@ class TestAdminReviewActions:
         
         print(f"✓ Order {order_id} approved and moved to FINALISING")
     
-    def test_request_regen(self, admin_token):
+    def test_request_regen(self):
         """Test POST /api/admin/orders/{order_id}/request-regen"""
-        order_id = self._create_order_in_review(admin_token)
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        order_id = self._create_order_in_review(token)
         if not order_id:
             pytest.skip("Could not create order in INTERNAL_REVIEW state")
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.post(
             f"{BASE_URL}/api/admin/orders/{order_id}/request-regen",
@@ -500,13 +500,16 @@ class TestAdminReviewActions:
         
         print(f"✓ Order {order_id} regeneration requested")
     
-    def test_request_info(self, admin_token):
+    def test_request_info(self):
         """Test POST /api/admin/orders/{order_id}/request-info"""
-        order_id = self._create_order_in_review(admin_token)
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        order_id = self._create_order_in_review(token)
         if not order_id:
             pytest.skip("Could not create order in INTERNAL_REVIEW state")
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.post(
             f"{BASE_URL}/api/admin/orders/{order_id}/request-info",
@@ -521,8 +524,11 @@ class TestAdminReviewActions:
         
         print(f"✓ Order {order_id} info requested, SLA paused")
     
-    def test_approve_requires_review_state(self, admin_token):
+    def test_approve_requires_review_state(self):
         """Test that approve only works from INTERNAL_REVIEW state"""
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
         # Create order in CREATED state
         order_data = {
             "order_type": "service",
@@ -539,7 +545,7 @@ class TestAdminReviewActions:
         assert create_response.status_code == 200
         order_id = create_response.json()["order_id"]
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Try to approve from CREATED state (should fail)
         response = requests.post(
@@ -554,19 +560,11 @@ class TestAdminReviewActions:
 class TestInternalNotes:
     """Test internal notes functionality"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
-    def test_add_internal_note(self, admin_token):
+    def test_add_internal_note(self):
         """Test POST /api/admin/orders/{order_id}/notes"""
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
         # Create an order
         order_data = {
             "order_type": "service",
@@ -583,7 +581,7 @@ class TestInternalNotes:
         assert create_response.status_code == 200
         order_id = create_response.json()["order_id"]
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Add a note
         response = requests.post(
@@ -607,19 +605,11 @@ class TestInternalNotes:
 class TestWorkflowAuditTrail:
     """Test workflow audit trail in workflow_executions collection"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
-    def test_audit_trail_created_on_transitions(self, admin_token):
+    def test_audit_trail_created_on_transitions(self):
         """Test that workflow_executions are created for each transition"""
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
         # Create an order
         order_data = {
             "order_type": "service",
@@ -636,7 +626,7 @@ class TestWorkflowAuditTrail:
         assert create_response.status_code == 200
         order_id = create_response.json()["order_id"]
         
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Transition to PAID
         requests.post(
@@ -673,20 +663,12 @@ class TestWorkflowAuditTrail:
 class TestExistingOrderVerification:
     """Test the existing test order mentioned in the request"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
-    def test_existing_order_exists(self, admin_token):
+    def test_existing_order_exists(self):
         """Verify the test order ORD-2026-B61796 exists"""
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.get(
             f"{BASE_URL}/api/admin/orders/ORD-2026-B61796",
@@ -703,17 +685,6 @@ class TestExistingOrderVerification:
 class TestCVPIsolation:
     """Verify CVP collections are not touched by Orders system"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
     def test_cvp_login_still_works(self):
         """Verify existing CVP login still works"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
@@ -723,31 +694,22 @@ class TestCVPIsolation:
         assert response.status_code == 200
         print("✓ CVP login still works")
     
-    def test_cvp_intake_endpoint_exists(self):
-        """Verify CVP intake endpoint still exists"""
-        response = requests.get(f"{BASE_URL}/api/intake/services")
-        # Should return 200 or 401 (auth required), not 404
-        assert response.status_code != 404
-        print("✓ CVP intake endpoint still exists")
+    def test_public_website_still_works(self):
+        """Verify public website endpoints still work"""
+        response = requests.get(f"{BASE_URL}/api/public/services")
+        assert response.status_code == 200
+        print("✓ Public website services endpoint still works")
 
 
 class TestSearchEndpoint:
     """Test order search functionality"""
     
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        if response.status_code == 200:
-            return response.json().get("token")
-        pytest.skip("Admin authentication failed")
-    
-    def test_search_orders(self, admin_token):
+    def test_search_orders(self):
         """Test GET /api/admin/orders/search"""
-        headers = {"Authorization": f"Bearer {admin_token}"}
+        token = get_admin_token()
+        assert token, "Failed to get admin token"
+        
+        headers = {"Authorization": f"Bearer {token}"}
         
         response = requests.get(
             f"{BASE_URL}/api/admin/orders/search",
