@@ -523,6 +523,8 @@ class EmailService:
             </body>
             </html>
             """
+    
+    def _build_text_footer(self, model: Dict[str, Any]) -> str:
         """Build consistent plain text footer with CRN."""
         customer_ref = model.get('customer_reference', '')
         ref_line = f"\nYour Reference: {customer_ref}" if customer_ref else ""
