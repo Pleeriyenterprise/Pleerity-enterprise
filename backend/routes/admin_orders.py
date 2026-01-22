@@ -1055,3 +1055,97 @@ async def add_order_note(
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+
+# ============================================
+# DELIVERY ENDPOINTS
+# ============================================
+
+@router.post("/{order_id}/deliver")
+async def deliver_order(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Manually trigger delivery for an order in FINALISING state.
+    Sends delivery email and transitions to COMPLETED.
+    """
+    from services.order_delivery_service import order_delivery_service
+    
+    result = await order_delivery_service.deliver_order(order_id)
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Delivery failed"))
+    
+    return result
+
+
+@router.post("/{order_id}/retry-delivery")
+async def retry_order_delivery(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Retry delivery for an order in DELIVERY_FAILED state.
+    """
+    from services.order_delivery_service import order_delivery_service
+    
+    result = await order_delivery_service.retry_delivery(order_id)
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Retry failed"))
+    
+    return result
+
+
+class ManualCompleteRequest(BaseModel):
+    reason: str  # Mandatory reason for manual completion
+
+
+@router.post("/{order_id}/manual-complete")
+async def manual_complete_order(
+    order_id: str,
+    request: ManualCompleteRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Manually mark order as completed (admin override).
+    Use when delivery was done through alternative means.
+    """
+    if not request.reason.strip():
+        raise HTTPException(status_code=400, detail="Reason is required for manual completion")
+    
+    from services.order_delivery_service import order_delivery_service
+    
+    result = await order_delivery_service.manual_complete(
+        order_id=order_id,
+        admin_email=current_user.get("email", "unknown"),
+        reason=request.reason.strip(),
+    )
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Manual completion failed"))
+    
+    return result
+
+
+@router.post("/batch/process-delivery")
+async def process_pending_deliveries(
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Process all orders in FINALISING state.
+    Triggers automatic delivery for all ready orders.
+    
+    This can be called manually or by a background job.
+    """
+    from services.order_delivery_service import order_delivery_service
+    
+    result = await order_delivery_service.process_finalising_orders()
+    
+    return {
+        "success": True,
+        "summary": result,
+        "message": f"Processed {result['processed']} orders: {result['delivered']} delivered, {result['failed']} failed"
+    }
