@@ -263,6 +263,9 @@ class WorkflowAutomationService:
         
         Trigger: Stripe webhook confirms payment
         Action: PAID → QUEUED
+        Side effects:
+        - Initialize SLA tracking (clock starts now)
+        - Notify admins of new order
         """
         db = database.get_db()
         order = await get_order(order_id)
@@ -272,6 +275,13 @@ class WorkflowAutomationService:
         
         if order["status"] != OrderStatus.PAID.value:
             return {"success": False, "error": f"Order not in PAID status (current: {order['status']})"}
+        
+        # Initialize SLA tracking - clock starts at payment
+        try:
+            sla_fields = await initialize_order_sla(order_id, order)
+            logger.info(f"WF1: SLA initialized for {order_id} - {sla_fields['sla_target_hours']}h deadline")
+        except Exception as e:
+            logger.warning(f"WF1: Failed to initialize SLA for {order_id}: {e}")
         
         # Transition to QUEUED
         await transition_order_state(
