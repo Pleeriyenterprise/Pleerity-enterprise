@@ -209,6 +209,16 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
+    # Order delivery processing - runs every 5 minutes
+    # Automatically delivers orders in FINALISING status
+    scheduler.add_job(
+        run_order_delivery_processing,
+        CronTrigger(minute="*/5"),  # Every 5 minutes
+        id="order_delivery_processing",
+        name="Order Delivery Processing",
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("Background job scheduler started")
     
