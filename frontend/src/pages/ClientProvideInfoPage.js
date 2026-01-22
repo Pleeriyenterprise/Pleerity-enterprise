@@ -473,7 +473,7 @@ const ClientProvideInfoPage = () => {
                 <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
                 <p className="text-sm text-gray-600">
                   Once you submit, your order will automatically resume processing. 
-                  You'll receive an update when your documents are ready.
+                  You&apos;ll receive an update when your documents are ready.
                 </p>
               </div>
             </div>
