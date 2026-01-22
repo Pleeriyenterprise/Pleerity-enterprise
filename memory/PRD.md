@@ -317,6 +317,9 @@
 - [x] ~~Professional PDF Reports~~ ✅ COMPLETED (Session 7)
 - [x] ~~Service Catalogue V2 Phase 1~~ ✅ COMPLETED (January 22, 2026) - Authoritative catalogue with pack hierarchy
 - [x] ~~Orders Pipeline Frontend Refactoring~~ ✅ COMPLETED (January 23, 2026) - Enterprise-grade workflow UI
+- [x] ~~Service-Specific SLA Monitoring~~ ✅ COMPLETED (January 23, 2026) - Category-based SLA hours, auto-tracking
+- [x] ~~Client Portal Document Downloads~~ ✅ COMPLETED (January 23, 2026) - Client orders page with doc downloads
+- [x] ~~Admin Notification Preferences~~ ✅ COMPLETED (January 23, 2026) - Email/SMS/In-app channel toggles
 - [ ] Full Address Autocomplete with `getaddress.io` (PAUSED by user)
 - [ ] Deprecate `plan_gating.py` - Refactor legacy service to use Service Catalogue V2
 
@@ -329,11 +332,13 @@
 - [ ] Full calendar export (subscribe via external URL)
 - [x] ~~Admin-Managed Blog/Insights system~~ ✅ COMPLETED (January 22, 2026)
 - [x] ~~Real document generation (replace MOCK with actual DOCX/PDF generation)~~ ✅ COMPLETED (Document-Centric Review Session)
+- [ ] Update "Learn More" public pages - Connect to Service Catalogue V2 dynamic content
 
 ### P3 (Low Priority)
 - [ ] Mobile app (React Native)
 - [ ] Integration with property management systems
 - [ ] Advanced analytics dashboard
+- [ ] Deprecate Legacy V1 Services - Remove obsolete /app/backend/services/service_catalogue.py
 
 ---
 
