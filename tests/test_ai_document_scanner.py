@@ -15,7 +15,7 @@ import os
 import io
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://secure-compliance-5.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://enterprise-comply.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 CLIENT_EMAIL = "test@pleerity.com"

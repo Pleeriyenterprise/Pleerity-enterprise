@@ -433,7 +433,7 @@ class JobScheduler:
                 
                 # Send email alert if there are properties with degraded status
                 if properties_with_changes and status_alerts_enabled:
-                    frontend_url = os.getenv("FRONTEND_URL", "https://secure-compliance-5.preview.emergentagent.com")
+                    frontend_url = os.getenv("FRONTEND_URL", "https://enterprise-comply.preview.emergentagent.com")
                     
                     await email_service.send_compliance_alert_email(
                         recipient=client["email"],
@@ -599,7 +599,7 @@ class JobScheduler:
                         renewal_date_str = str(renewal_date)[:10] if renewal_date else "soon"
                     
                     amount = f"£{plan_def.get('monthly_price', 0):.2f}"
-                    frontend_url = os.environ.get("FRONTEND_URL", "https://secure-compliance-5.preview.emergentagent.com")
+                    frontend_url = os.environ.get("FRONTEND_URL", "https://enterprise-comply.preview.emergentagent.com")
                     
                     # Send renewal reminder email
                     await email_service.send_renewal_reminder_email(

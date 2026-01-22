@@ -203,7 +203,7 @@ ENVIRONMENT=development
 
 **Frontend (`.env`):**
 ```bash
-REACT_APP_BACKEND_URL=https://secure-compliance-5.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://enterprise-comply.preview.emergentagent.com
 ```
 
 ### Quick Start
@@ -229,7 +229,7 @@ Password: Admin123!
 
 ### API Health Check
 ```bash
-curl https://secure-compliance-5.preview.emergentagent.com/api/health
+curl https://enterprise-comply.preview.emergentagent.com/api/health
 ```
 
 ---
@@ -327,10 +327,10 @@ curl https://secure-compliance-5.preview.emergentagent.com/api/health
 
 ```bash
 # Health check
-curl https://secure-compliance-5.preview.emergentagent.com/api/health
+curl https://enterprise-comply.preview.emergentagent.com/api/health
 
 # Submit intake
-curl -X POST https://secure-compliance-5.preview.emergentagent.com/api/intake/submit \
+curl -X POST https://enterprise-comply.preview.emergentagent.com/api/intake/submit \
   -H "Content-Type: application/json" \
   -d '{
     "full_name": "Test User",
@@ -344,7 +344,7 @@ curl -X POST https://secure-compliance-5.preview.emergentagent.com/api/intake/su
   }'
 
 # Login
-curl -X POST https://secure-compliance-5.preview.emergentagent.com/api/auth/login \
+curl -X POST https://enterprise-comply.preview.emergentagent.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "password": "Password123"}'
 ```

@@ -8,7 +8,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://secure-compliance-5.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://enterprise-comply.preview.emergentagent.com')
 
 # Test credentials
 TEST_CLIENT_EMAIL = "test@pleerity.com"
