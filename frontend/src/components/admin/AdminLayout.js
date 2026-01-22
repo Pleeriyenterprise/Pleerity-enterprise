@@ -10,6 +10,7 @@ import {
   LogOut,
   ChevronRight,
   Package,
+  FileText,
 } from 'lucide-react';
 
 /**
@@ -29,6 +30,7 @@ const AdminLayout = ({ children }) => {
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/orders', label: 'Orders Pipeline', icon: ClipboardCheck },
     { href: '/admin/services', label: 'Service Catalogue', icon: Package },
+    { href: '/admin/blog', label: 'Blog', icon: FileText },
     { href: '/admin/billing', label: 'Billing', icon: CreditCard },
     { href: '/admin/assistant', label: 'AI Assistant', icon: Sparkles },
   ];
