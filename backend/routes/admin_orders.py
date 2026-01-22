@@ -46,7 +46,7 @@ async def get_orders_pipeline(
     status: Optional[str] = None,
     limit: int = 50,
     skip: int = 0,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """
     Get orders for pipeline/kanban view.
@@ -66,7 +66,7 @@ async def get_orders_pipeline(
 
 @router.get("/pipeline/counts")
 async def get_pipeline_status_counts(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Get count of orders in each status"""
     if current_user.get("role") != "admin":
@@ -90,7 +90,7 @@ async def get_pipeline_status_counts(
 @router.get("/{order_id}")
 async def get_order_detail(
     order_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Get full order details including timeline"""
     if current_user.get("role") != "admin":
@@ -123,7 +123,7 @@ async def get_order_detail(
 @router.get("/{order_id}/timeline")
 async def get_order_timeline_only(
     order_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Get just the audit timeline for an order"""
     if current_user.get("role") != "admin":
@@ -146,7 +146,7 @@ async def get_order_timeline_only(
 async def transition_order(
     order_id: str,
     request: TransitionRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """
     Manually transition an order to a new state.
@@ -189,7 +189,7 @@ async def transition_order(
 @router.post("/{order_id}/approve")
 async def approve_order(
     order_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """
     Approve order from INTERNAL_REVIEW → FINALISING.
@@ -224,7 +224,7 @@ async def approve_order(
 async def request_regeneration(
     order_id: str,
     request: NoteRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """
     Request regeneration from INTERNAL_REVIEW → REGEN_REQUESTED.
@@ -260,7 +260,7 @@ async def request_regeneration(
 async def request_client_info(
     order_id: str,
     request: NoteRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """
     Request more info from INTERNAL_REVIEW → CLIENT_INPUT_REQUIRED.
@@ -300,7 +300,7 @@ async def request_client_info(
 async def add_order_note(
     order_id: str,
     request: NoteRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """
     Add internal note to order.
@@ -336,7 +336,7 @@ async def search_orders(
     service_category: Optional[str] = None,
     limit: int = 50,
     skip: int = 0,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_route_guard),
 ):
     """Search orders by various criteria"""
     if current_user.get("role") != "admin":
