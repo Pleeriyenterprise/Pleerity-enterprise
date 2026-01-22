@@ -1610,6 +1610,7 @@ const AdminOrdersPage = () => {
                   placeholder="Explain why this order is being cancelled/archived..."
                   rows={3}
                 />
+              </div>
             </div>
             
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
