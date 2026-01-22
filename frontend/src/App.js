@@ -81,6 +81,7 @@ import IntegrationsPage from './pages/IntegrationsPage';
 import BrandingSettingsPage from './pages/BrandingSettingsPage';
 import BillingPage from './pages/BillingPage';
 import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
+import ClientOrdersPage from './pages/ClientOrdersPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
