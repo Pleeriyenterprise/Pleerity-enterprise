@@ -1051,6 +1051,51 @@
   - Workflow audit trail verified
   - CVP isolation verified
 
+### January 22, 2026 (Session - Phase A Foundation Complete)
+- **Phase A: Foundation - Enterprise Hardening ✅**
+  
+  **Service Catalogue (Database-Driven):**
+  - NEW `/app/backend/services/service_catalogue.py` - Single source of truth for services
+  - 13 services seeded: CVP features, add-ons, document packs, standalone reports
+  - NEW `/app/backend/routes/admin_services.py` - Full CRUD API for service management
+  - NEW `/app/frontend/src/pages/AdminServiceCataloguePage.js` - Admin UI for service management
+  - Service Catalogue navigation link added to admin header
+  - Categories: CVP_FEATURE, CVP_ADDON, STANDALONE_REPORT, DOCUMENT_PACK
+  - Pricing models: one_time, subscription, addon, included
+  - Delivery types: portal, email, portal+email
+  - Generation modes: TEMPLATE_ONLY, AI_ASSISTED_JSON, HYBRID
+  
+  **Immutable Order Records (Cancel/Archive replacing DELETE):**
+  - DELETE endpoint returns 405 with message: "Use /cancel or /archive"
+  - `POST /api/admin/orders/{id}/cancel` - Soft-delete for unpaid orders (requires reason)
+  - `POST /api/admin/orders/{id}/archive` - Hide completed orders from pipeline (requires reason)
+  - `POST /api/admin/orders/{id}/unarchive` - Restore archived orders
+  - All actions logged to workflow_executions with full audit trail
+  - Cancel/Archive modal in AdminOrdersPage with proper UX explanation
+  
+  **Document Status Labels:**
+  - DocumentStatus enum: DRAFT, FINAL, SUPERSEDED, ARCHIVED
+  - Status tracked per document version
+  - Approval locks status to FINAL
+  - Regeneration marks old versions as SUPERSEDED
+  
+  **Deterministic File Naming:**
+  - Format: `{order_ref}_{service_code}_v{version}_{status}_{YYYYMMDD-HHMM}.{ext}`
+  - Example: `ORD-2026-ABC123_DOC_PACK_ESSENTIAL_v1_DRAFT_20260122-1430.pdf`
+  - Parseable, sortable, and conflict-free
+  
+  **API Endpoints Added:**
+  - `GET /api/admin/services/` - List all services
+  - `GET /api/admin/services/categories` - Get dropdown options
+  - `GET /api/admin/services/{code}` - Get single service
+  - `POST /api/admin/services/` - Create service
+  - `PUT /api/admin/services/{code}` - Update service
+  - `POST /api/admin/services/{code}/activate` - Activate service
+  - `POST /api/admin/services/{code}/deactivate` - Deactivate service
+  - `GET /api/public/services` - Public services (no auth)
+  
+  **TEST REPORT:** /app/test_reports/iteration_33.json (20/20 tests - 100%)
+
 ### January 22, 2026 (Session - Document-Centric Internal Review System)
 - **Enterprise-Grade Orders Pipeline Complete ✅**
   
