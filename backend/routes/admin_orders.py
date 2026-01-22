@@ -1266,3 +1266,269 @@ async def process_pending_deliveries(
         "message": f"Processed {result['processed']} orders: {result['delivered']} delivered, {result['failed']} failed"
     }
 
+
+
+# ============================================
+# POSTAL DELIVERY / PRINTED COPY ENDPOINTS
+# ============================================
+
+class PostalDeliveryRequest(BaseModel):
+    delivery_address: str
+    recipient_name: str
+    tracking_number: Optional[str] = None
+    carrier: Optional[str] = "Royal Mail"
+    notes: Optional[str] = None
+
+
+class PostalStatusUpdate(BaseModel):
+    status: str  # PENDING_PRINT, PRINTED, DISPATCHED, DELIVERED, FAILED
+    tracking_number: Optional[str] = None
+    carrier: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.get("/postal/pending")
+async def get_pending_postal_orders(
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Get all orders requiring postal delivery (printed copies).
+    Returns orders with requires_postal_delivery=True that aren't yet delivered.
+    """
+    db = database.get_db()
+    
+    postal_orders = await db.orders.find(
+        {
+            "requires_postal_delivery": True,
+            "postal_status": {"$nin": ["DELIVERED", "CANCELLED"]},
+        },
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(length=100)
+    
+    # Group by status
+    grouped = {
+        "PENDING_PRINT": [],
+        "PRINTED": [],
+        "DISPATCHED": [],
+        "OTHER": [],
+    }
+    
+    for order in postal_orders:
+        status = order.get("postal_status", "PENDING_PRINT")
+        if status in grouped:
+            grouped[status].append({
+                "order_id": order["order_id"],
+                "service_name": order.get("service_name"),
+                "customer_name": order.get("customer", {}).get("full_name"),
+                "customer_email": order.get("customer", {}).get("email"),
+                "delivery_address": order.get("postal_delivery_address"),
+                "postal_status": status,
+                "created_at": order.get("created_at"),
+                "status": order.get("status"),
+            })
+        else:
+            grouped["OTHER"].append(order)
+    
+    return {
+        "total": len(postal_orders),
+        "pending_print": len(grouped["PENDING_PRINT"]),
+        "printed": len(grouped["PRINTED"]),
+        "dispatched": len(grouped["DISPATCHED"]),
+        "orders": grouped,
+    }
+
+
+@router.post("/{order_id}/postal/address")
+async def set_postal_address(
+    order_id: str,
+    request: PostalDeliveryRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Set/update the postal delivery address for an order requiring printed copy.
+    """
+    db = database.get_db()
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    if not order.get("requires_postal_delivery"):
+        raise HTTPException(status_code=400, detail="This order does not require postal delivery")
+    
+    update_fields = {
+        "postal_delivery_address": request.delivery_address,
+        "postal_recipient_name": request.recipient_name,
+        "postal_carrier": request.carrier,
+        "postal_updated_at": datetime.now(timezone.utc),
+        "postal_updated_by": current_user.get("email"),
+    }
+    
+    if request.tracking_number:
+        update_fields["postal_tracking_number"] = request.tracking_number
+    
+    if request.notes:
+        update_fields["postal_notes"] = request.notes
+    
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {"$set": update_fields}
+    )
+    
+    # Log the action
+    await db.workflow_executions.insert_one({
+        "order_id": order_id,
+        "event_type": "POSTAL_ADDRESS_SET",
+        "triggered_by_type": "admin",
+        "triggered_by_email": current_user.get("email"),
+        "timestamp": datetime.now(timezone.utc),
+        "metadata": {
+            "address": request.delivery_address,
+            "recipient": request.recipient_name,
+        },
+    })
+    
+    return {
+        "success": True,
+        "order_id": order_id,
+        "postal_address": request.delivery_address,
+    }
+
+
+@router.post("/{order_id}/postal/status")
+async def update_postal_status(
+    order_id: str,
+    request: PostalStatusUpdate,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Update the postal delivery status for an order.
+    
+    Status flow: PENDING_PRINT → PRINTED → DISPATCHED → DELIVERED
+    """
+    db = database.get_db()
+    
+    valid_statuses = ["PENDING_PRINT", "PRINTED", "DISPATCHED", "DELIVERED", "FAILED"]
+    if request.status not in valid_statuses:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+        )
+    
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    if not order.get("requires_postal_delivery"):
+        raise HTTPException(status_code=400, detail="This order does not require postal delivery")
+    
+    old_status = order.get("postal_status", "PENDING_PRINT")
+    
+    update_fields = {
+        "postal_status": request.status,
+        "postal_status_updated_at": datetime.now(timezone.utc),
+        "postal_status_updated_by": current_user.get("email"),
+    }
+    
+    if request.tracking_number:
+        update_fields["postal_tracking_number"] = request.tracking_number
+    
+    if request.carrier:
+        update_fields["postal_carrier"] = request.carrier
+    
+    # Set timestamps for specific statuses
+    if request.status == "PRINTED":
+        update_fields["postal_printed_at"] = datetime.now(timezone.utc)
+    elif request.status == "DISPATCHED":
+        update_fields["postal_dispatched_at"] = datetime.now(timezone.utc)
+    elif request.status == "DELIVERED":
+        update_fields["postal_delivered_at"] = datetime.now(timezone.utc)
+    
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {"$set": update_fields}
+    )
+    
+    # Log the status change
+    await db.workflow_executions.insert_one({
+        "order_id": order_id,
+        "event_type": "POSTAL_STATUS_CHANGED",
+        "previous_state": old_status,
+        "new_state": request.status,
+        "triggered_by_type": "admin",
+        "triggered_by_email": current_user.get("email"),
+        "timestamp": datetime.now(timezone.utc),
+        "metadata": {
+            "tracking_number": request.tracking_number,
+            "carrier": request.carrier,
+            "notes": request.notes,
+        },
+    })
+    
+    # Notify customer if dispatched
+    if request.status == "DISPATCHED" and request.tracking_number:
+        try:
+            from services.email_service import email_service
+            customer = order.get("customer", {})
+            await email_service.send_custom_notification(
+                to_email=customer.get("email"),
+                subject=f"Your order {order_id} has been dispatched",
+                body=f"""
+Dear {customer.get('full_name', 'Customer')},
+
+Your printed documents for order {order_id} have been dispatched.
+
+Tracking Number: {request.tracking_number}
+Carrier: {request.carrier or 'Royal Mail'}
+
+You can track your delivery at the carrier's website.
+
+Thank you for your business.
+
+Best regards,
+Pleerity Enterprise Ltd
+                """.strip(),
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send dispatch notification: {e}")
+    
+    return {
+        "success": True,
+        "order_id": order_id,
+        "old_status": old_status,
+        "new_status": request.status,
+        "tracking_number": request.tracking_number,
+    }
+
+
+@router.get("/{order_id}/postal")
+async def get_postal_details(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Get postal delivery details for an order.
+    """
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    if not order.get("requires_postal_delivery"):
+        return {
+            "requires_postal_delivery": False,
+            "message": "This order does not require postal delivery",
+        }
+    
+    return {
+        "requires_postal_delivery": True,
+        "postal_status": order.get("postal_status", "PENDING_PRINT"),
+        "delivery_address": order.get("postal_delivery_address"),
+        "recipient_name": order.get("postal_recipient_name"),
+        "tracking_number": order.get("postal_tracking_number"),
+        "carrier": order.get("postal_carrier"),
+        "printed_at": order.get("postal_printed_at"),
+        "dispatched_at": order.get("postal_dispatched_at"),
+        "delivered_at": order.get("postal_delivered_at"),
+        "notes": order.get("postal_notes"),
+    }
+
