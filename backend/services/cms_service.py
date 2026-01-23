@@ -828,6 +828,38 @@ async def get_published_page(slug: str) -> Optional[Dict[str, Any]]:
     }
 
 
+async def get_page_by_slug(slug: str) -> Optional[Dict[str, Any]]:
+    """Get page by slug (any status)"""
+    page = await get_db().cms_pages.find_one({"slug": slug}, {"_id": 0})
+    return page
+
+
+async def clear_page_blocks(page_id: str, admin_id: str, admin_email: str):
+    """Clear all blocks from a page (for template replacement)"""
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
+    if not page:
+        raise ValueError(f"Page {page_id} not found")
+    
+    await get_db().cms_pages.update_one(
+        {"page_id": page_id},
+        {"$set": {
+            "blocks": [],
+            "updated_at": now_utc(),
+            "updated_by": admin_id,
+            "status": PageStatus.DRAFT.value
+        }}
+    )
+    
+    await log_audit(
+        action="cms_page_update",
+        entity_type="cms_page",
+        entity_id=page_id,
+        user_id=admin_id,
+        user_email=admin_email,
+        changes={"action": "clear_blocks_for_template"}
+    )
+
+
 # ============================================
 # Helpers
 # ============================================
