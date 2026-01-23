@@ -258,15 +258,15 @@ class PromptService:
         Validate that service_code exists in catalogue and doc_type is allowed.
         
         ARCHITECTURAL ENFORCEMENT:
-        - service_code MUST exist in services_v2 collection
+        - service_code MUST exist in service_catalogue_v2 collection
         - doc_type MUST be canonical for that service
         
         Returns: (is_valid, error_message)
         """
         db = database.get_db()
         
-        # Check service exists in catalogue
-        service = await db.services_v2.find_one(
+        # Check service exists in catalogue (service_catalogue_v2)
+        service = await db.service_catalogue_v2.find_one(
             {"service_code": service_code},
             {"service_code": 1, "service_name": 1}
         )
