@@ -55,7 +55,7 @@ async def create_page(
             slug=data.slug,
             title=data.title,
             description=data.description,
-            admin_id=admin["user_id"],
+            admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
         return page
@@ -89,7 +89,7 @@ async def update_page(
             description=data.description,
             blocks=[b.dict() for b in data.blocks] if data.blocks else None,
             seo=data.seo.dict() if data.seo else None,
-            admin_id=admin["user_id"],
+            admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
         return page
@@ -105,7 +105,7 @@ async def delete_page(
     """Archive a CMS page (Admin only)"""
     success = await cms_service.delete_page(
         page_id=page_id,
-        admin_id=admin["user_id"],
+        admin_id=admin["portal_user_id"],
         admin_email=admin["email"]
     )
     if not success:
@@ -130,7 +130,7 @@ async def add_block(
             block_type=data.block_type,
             content=data.content,
             position=data.position,
-            admin_id=admin["user_id"],
+            admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
         return block
@@ -152,7 +152,7 @@ async def update_block(
             block_id=block_id,
             content=data.content,
             visible=data.visible,
-            admin_id=admin["user_id"],
+            admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
         return block
@@ -171,7 +171,7 @@ async def delete_block(
         success = await cms_service.delete_block(
             page_id=page_id,
             block_id=block_id,
-            admin_id=admin["user_id"],
+            admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
         if not success:
@@ -192,7 +192,7 @@ async def reorder_blocks(
         blocks = await cms_service.reorder_blocks(
             page_id=page_id,
             block_order=data.block_order,
-            admin_id=admin["user_id"],
+            admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
         return blocks
@@ -215,7 +215,7 @@ async def publish_page(
         page = await cms_service.publish_page(
             page_id=page_id,
             notes=data.notes,
-            admin_id=admin["user_id"],
+            admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
         return page
@@ -262,7 +262,7 @@ async def rollback_page(
             page_id=page_id,
             revision_id=data.revision_id,
             notes=data.notes,
-            admin_id=admin["user_id"],
+            admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
         return page
@@ -340,7 +340,7 @@ async def upload_media(
         file_size=len(content),
         alt_text=alt_text,
         tags=tag_list,
-        admin_id=admin["user_id"],
+        admin_id=admin["portal_user_id"],
         admin_email=admin["email"]
     )
     
@@ -367,7 +367,7 @@ async def delete_media(
     """Delete a media item (Admin only)"""
     success = await cms_service.delete_media(
         media_id=media_id,
-        admin_id=admin["user_id"],
+        admin_id=admin["portal_user_id"],
         admin_email=admin["email"]
     )
     if not success:
