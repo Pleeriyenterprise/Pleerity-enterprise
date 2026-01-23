@@ -174,7 +174,11 @@ const ServiceDetailPage = () => {
           longDescription: data.long_description || data.description,
           category: data.category,
           pricing: `£${(data.base_price / 100).toFixed(data.base_price % 100 === 0 ? 0 : 2)}`,
-          turnaround: `${data.standard_turnaround_hours} hours`,
+          turnaround: data.standard_turnaround_hours 
+            ? `${data.standard_turnaround_hours} hours` 
+            : data.sla_hours 
+              ? `${data.sla_hours} hours`
+              : 'Standard delivery',
           features: (data.documents_generated || []).map(doc => ({
             title: doc.template_name,
             description: `${doc.format?.toUpperCase() || 'Document'} format`,
