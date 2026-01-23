@@ -740,6 +740,252 @@ export default function AdminPromptManagerPage() {
             </Card>
           </TabsContent>
           
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Prompt Performance Analytics</h3>
+                <p className="text-sm text-gray-500">
+                  Track execution success rates, token usage, and performance metrics
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={analyticsDays.toString()}
+                  onValueChange={(v) => setAnalyticsDays(parseInt(v))}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">Last 7 days</SelectItem>
+                    <SelectItem value="14">Last 14 days</SelectItem>
+                    <SelectItem value="30">Last 30 days</SelectItem>
+                    <SelectItem value="90">Last 90 days</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadAnalytics}
+                  disabled={analyticsLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${analyticsLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Analytics Stats */}
+            {analytics ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
+                          <Zap className="h-5 w-5" />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <p className="text-2xl font-bold text-gray-900">
+                          {analytics.total_executions || 0}
+                        </p>
+                        <p className="text-sm text-gray-500">Total Executions</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="p-3 rounded-lg bg-green-100 text-green-600">
+                          <TrendingUp className="h-5 w-5" />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <p className="text-2xl font-bold text-gray-900">
+                          {analytics.overall_success_rate || 0}%
+                        </p>
+                        <p className="text-sm text-gray-500">Success Rate</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="p-3 rounded-lg bg-purple-100 text-purple-600">
+                          <Code className="h-5 w-5" />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <p className="text-2xl font-bold text-gray-900">
+                          {analytics.total_tokens_used?.toLocaleString() || 0}
+                        </p>
+                        <p className="text-sm text-gray-500">Tokens Used</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="p-3 rounded-lg bg-amber-100 text-amber-600">
+                          <XCircle className="h-5 w-5" />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <p className="text-2xl font-bold text-gray-900">
+                          {analytics.total_failed || 0}
+                        </p>
+                        <p className="text-sm text-gray-500">Failed Executions</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Top Prompts Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Performing Prompts</CardTitle>
+                    <CardDescription>
+                      Most used prompts in the last {analyticsDays} days
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Prompt</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Source</TableHead>
+                          <TableHead className="text-right">Executions</TableHead>
+                          <TableHead className="text-right">Success Rate</TableHead>
+                          <TableHead className="text-right">Avg Time</TableHead>
+                          <TableHead className="text-right">Tokens</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {topPrompts.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                              No execution data yet. Generate documents to see analytics.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          topPrompts.map((prompt, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium text-gray-900">{prompt.name}</p>
+                                  <p className="text-xs text-gray-500">v{prompt.version}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                                  {prompt.service_code}
+                                </code>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={prompt.source === 'prompt_manager' ? 'default' : 'secondary'}>
+                                  {prompt.source === 'prompt_manager' ? 'Managed' : 'Legacy'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {prompt.total_executions}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span className={
+                                  prompt.success_rate >= 90 ? 'text-green-600' :
+                                  prompt.success_rate >= 70 ? 'text-amber-600' :
+                                  'text-red-600'
+                                }>
+                                  {prompt.success_rate}%
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right text-gray-500">
+                                {prompt.avg_execution_time_ms}ms
+                              </TableCell>
+                              <TableCell className="text-right text-gray-500">
+                                {prompt.total_tokens?.toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+                
+                {/* Per-Prompt Breakdown */}
+                {analytics.by_prompt?.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Detailed Prompt Breakdown</CardTitle>
+                      <CardDescription>
+                        Performance metrics for each prompt version
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {analytics.by_prompt.map((p, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${
+                                p.success_rate >= 90 ? 'bg-green-500' :
+                                p.success_rate >= 70 ? 'bg-amber-500' :
+                                'bg-red-500'
+                              }`} />
+                              <div>
+                                <p className="font-medium text-gray-900">{p.template_id}</p>
+                                <p className="text-xs text-gray-500">{p.service_code} • v{p.version}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-6 text-sm">
+                              <div className="text-right">
+                                <p className="font-medium">{p.total_executions}</p>
+                                <p className="text-xs text-gray-500">executions</p>
+                              </div>
+                              <div className="text-right">
+                                <p className={
+                                  p.success_rate >= 90 ? 'font-medium text-green-600' :
+                                  p.success_rate >= 70 ? 'font-medium text-amber-600' :
+                                  'font-medium text-red-600'
+                                }>{p.success_rate}%</p>
+                                <p className="text-xs text-gray-500">success</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">{p.avg_execution_time_ms}ms</p>
+                                <p className="text-xs text-gray-500">avg time</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">{p.total_tokens?.toLocaleString()}</p>
+                                <p className="text-xs text-gray-500">tokens</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            ) : (
+              <Card>
+                <CardContent className="p-12 text-center text-gray-500">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>No analytics data yet</p>
+                  <p className="text-sm mt-1">
+                    Generate documents using Prompt Manager to see performance metrics
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
           {/* Audit Log Tab */}
           <TabsContent value="audit" className="space-y-4">
             <Card>
