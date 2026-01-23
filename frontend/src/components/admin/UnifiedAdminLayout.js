@@ -74,6 +74,7 @@ const navSections = [
     label: 'Content Management',
     icon: FileText,
     items: [
+      { href: '/admin/site-builder', label: 'Site Builder', icon: PenTool },
       { href: '/admin/knowledge-base', label: 'Knowledge Base', icon: BookOpen },
       { href: '/admin/blog', label: 'Blog / Insights', icon: FileText },
       { href: '/admin/support/responses', label: 'Canned Responses', icon: MessageSquare },
