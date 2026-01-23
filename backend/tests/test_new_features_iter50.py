@@ -69,7 +69,7 @@ class TestWhatsAppHandoffAudit:
             "conversation_id": "TEST_conv_whatsapp_001",
             "user_role": "anonymous",
             "client_id": None,
-            "page_url": "https://leadsquared.preview.emergentagent.com/support",
+            "page_url": "https://content-forge-411.preview.emergentagent.com/support",
             "timestamp": "2026-01-23T12:00:00Z"
         })
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -84,7 +84,7 @@ class TestWhatsAppHandoffAudit:
             "conversation_id": "TEST_conv_whatsapp_002",
             "user_role": "authenticated",
             "client_id": "client-123",
-            "page_url": "https://leadsquared.preview.emergentagent.com/dashboard",
+            "page_url": "https://content-forge-411.preview.emergentagent.com/dashboard",
             "timestamp": "2026-01-23T12:00:00Z"
         })
         assert response.status_code == 200
