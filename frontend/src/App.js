@@ -442,6 +442,14 @@ function App() {
               } 
             />
             <Route 
+              path="/admin/prompts" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPromptManagerPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/admin/support" 
               element={
                 <ProtectedRoute requireAdmin>
