@@ -341,6 +341,9 @@ app.include_router(analytics.router)
 app.include_router(support.public_router)
 app.include_router(support.client_router)
 app.include_router(support.admin_router)
+app.include_router(admin_canned_responses.router)
+app.include_router(knowledge_base.public_router)
+app.include_router(knowledge_base.admin_router)
 
 # Root endpoint
 @app.get("/api")
