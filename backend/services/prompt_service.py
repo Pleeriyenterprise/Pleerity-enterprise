@@ -845,6 +845,11 @@ class PromptService:
         - Must have passed schema validation
         - Previous ACTIVE version becomes DEPRECATED
         - Activation is logged with evidence
+        
+        ARCHITECTURAL ENFORCEMENT:
+        - service_code MUST exist in service catalogue
+        - doc_type MUST be canonical for that service
+        - Prompt cannot be activated if mismatch exists
         """
         db = database.get_db()
         now = datetime.now(timezone.utc)
@@ -857,6 +862,13 @@ class PromptService:
         
         if not template:
             raise ValueError(f"Template not found: {template_id}")
+        
+        # ARCHITECTURAL ENFORCEMENT: Validate service catalogue alignment before activation
+        is_valid, error_msg = await self._validate_service_catalogue_alignment(
+            template["service_code"], template["doc_type"]
+        )
+        if not is_valid:
+            raise ValueError(f"ACTIVATION BLOCKED: {error_msg}")
         
         if template["status"] != PromptStatus.TESTED.value:
             raise ValueError(
