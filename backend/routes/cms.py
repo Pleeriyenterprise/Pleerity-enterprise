@@ -521,17 +521,18 @@ async def apply_template(
                 admin_email=admin["email"]
             )
             
-            # Add template blocks
+            # Add template blocks - page is CMSPageResponse, access as attribute
+            page_id = page.page_id
             for idx, block in enumerate(template["blocks"]):
                 await cms_service.add_block(
-                    page_id=page["page_id"],
+                    page_id=page_id,
                     block_type=block["block_type"],
                     content=block["content"],
                     admin_id=admin["portal_user_id"],
                     admin_email=admin["email"]
                 )
             
-            return {"success": True, "page_id": page["page_id"], "action": "created"}
+            return {"success": True, "page_id": page_id, "action": "created"}
         
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
