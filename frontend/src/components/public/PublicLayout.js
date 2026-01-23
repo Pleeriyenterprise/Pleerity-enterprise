@@ -1,10 +1,12 @@
 import React from 'react';
 import PublicHeader from './PublicHeader';
 import PublicFooter from './PublicFooter';
+import SupportChatWidget from '../SupportChatWidget';
 
 /**
  * PublicLayout - Wrapper component for all public-facing pages
  * Provides consistent header, footer, and page structure
+ * Includes AI support chat widget
  */
 const PublicLayout = ({ children, className = '' }) => {
   return (
@@ -14,6 +16,7 @@ const PublicLayout = ({ children, className = '' }) => {
         {children}
       </main>
       <PublicFooter />
+      <SupportChatWidget isAuthenticated={false} />
     </div>
   );
 };
