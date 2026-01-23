@@ -403,6 +403,8 @@ async def create_ticket_endpoint(
                 "category": body.category,
                 "priority": body.priority,
                 "has_conversation": bool(body.conversation_id),
+                "customer_email_sent": customer_email_sent,
+                "internal_email_sent": internal_email_sent,
             },
             ip_address=request.client.host if request.client else None
         )
@@ -411,7 +413,8 @@ async def create_ticket_endpoint(
             "success": True,
             "ticket_id": ticket["ticket_id"],
             "message": f"Support ticket {ticket['ticket_id']} created. We'll respond within 24 hours.",
-            "email_sent": bool(body.email),
+            "email_sent": customer_email_sent,
+            "internal_notification_sent": internal_email_sent,
         }
         
     except Exception as e:
