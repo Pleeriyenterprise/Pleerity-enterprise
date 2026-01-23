@@ -24,14 +24,30 @@ def get_db():
 
 async def log_audit(action: str, entity_type: str, entity_id: str, user_id: str, user_email: str, changes: dict):
     """Simple audit logging wrapper for CMS operations"""
+    # Map action string to AuditAction enum
+    action_map = {
+        "cms_page_create": AuditAction.CMS_PAGE_CREATE,
+        "cms_page_update": AuditAction.CMS_PAGE_UPDATE,
+        "cms_page_archive": AuditAction.CMS_PAGE_ARCHIVE,
+        "cms_page_publish": AuditAction.CMS_PAGE_PUBLISH,
+        "cms_page_rollback": AuditAction.CMS_PAGE_ROLLBACK,
+        "cms_block_add": AuditAction.CMS_BLOCK_ADD,
+        "cms_block_update": AuditAction.CMS_BLOCK_UPDATE,
+        "cms_block_delete": AuditAction.CMS_BLOCK_DELETE,
+        "cms_blocks_reorder": AuditAction.CMS_BLOCKS_REORDER,
+        "cms_media_upload": AuditAction.CMS_MEDIA_UPLOAD,
+        "cms_media_delete": AuditAction.CMS_MEDIA_DELETE,
+    }
+    
+    audit_action = action_map.get(action, AuditAction.CMS_PAGE_UPDATE)
+    
     await create_audit_log(
-        action=AuditAction.GENERIC,  # Use generic for CMS actions
+        action=audit_action,
         actor_role=UserRole.ROLE_ADMIN,
         actor_id=user_id,
         resource_type=entity_type,
         resource_id=entity_id,
         metadata={
-            "cms_action": action,
             "actor_email": user_email,
             "changes": changes
         }
