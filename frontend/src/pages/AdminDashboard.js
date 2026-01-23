@@ -3273,7 +3273,7 @@ const AdminDashboard = () => {
   ];
 
   const renderContent = () => {
-    switch (activeTab) {
+    switch (effectiveTab) {
       case 'overview': return <DashboardOverview onShowDrilldown={handleShowDrilldown} />;
       case 'statistics': return <StatisticsDashboard />;
       case 'jobs': return <JobsMonitoring />;
