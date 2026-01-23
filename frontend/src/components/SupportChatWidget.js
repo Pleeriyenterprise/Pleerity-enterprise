@@ -2,6 +2,7 @@
  * Pleerity Support Chat Widget
  * 
  * AI-powered chatbot with:
+ * - FAQ Tab with top questions before chat
  * - Quick Actions panel for common requests
  * - Canned responses for instant answers
  * - Live chat via Tawk.to
@@ -9,10 +10,12 @@
  * - Email ticket creation
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   MessageCircle, X, Send, Loader2, User, Bot, Phone,
   Mail, MessageSquare, ExternalLink, Minimize2, Maximize2,
-  Package, Key, FileText, CreditCard, Home, Users, ChevronDown
+  Package, Key, FileText, CreditCard, Home, Users, ChevronDown,
+  Book, Search, ArrowRight
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
