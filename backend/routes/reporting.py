@@ -585,8 +585,10 @@ async def get_report_types(admin: dict = Depends(admin_route_guard)):
             {"value": "consent", "label": "Consent Report", "description": "Cookie consent events"},
         ],
         "formats": [
-            {"value": "csv", "label": "CSV"},
-            {"value": "json", "label": "JSON"},
+            {"value": "csv", "label": "CSV", "description": "Spreadsheet compatible"},
+            {"value": "xlsx", "label": "Excel", "description": "Microsoft Excel format"},
+            {"value": "pdf", "label": "PDF", "description": "Professional document"},
+            {"value": "json", "label": "JSON", "description": "Developer friendly"},
         ],
         "periods": [
             {"value": "today", "label": "Today"},
