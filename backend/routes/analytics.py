@@ -57,6 +57,7 @@ def get_date_range(period: str) -> tuple:
 
 async def get_orders_in_range(start_date: str, end_date: str, filters: dict = None):
     """Get orders within a date range."""
+    db = database.get_db()
     query = {
         "created_at": {"$gte": start_date, "$lte": end_date}
     }
