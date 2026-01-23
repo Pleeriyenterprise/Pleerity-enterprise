@@ -75,7 +75,8 @@ class TestWhatsAppHandoffAudit:
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data.get("success") == True
-        assert "audit_id" in data or "logged" in str(data).lower()
+        # Verify the event type is correct
+        assert data.get("event") == "SUPPORT_WHATSAPP_HANDOFF_CLICKED"
     
     def test_whatsapp_handoff_audit_with_authenticated_user(self):
         """Test audit logging for authenticated user"""
