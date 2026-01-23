@@ -11,7 +11,7 @@ import uuid
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List, Tuple
-import database
+from database import database
 from models.consent import (
     ConsentEventType,
     ConsentActionTaken,
@@ -33,6 +33,11 @@ CONSENT_STATE_COLLECTION = "consent_state"
 
 # Retention configuration (months)
 CONSENT_RETENTION_MONTHS = int(__import__('os').environ.get('CONSENT_RETENTION_MONTHS', '24'))
+
+
+def get_db():
+    """Helper to get database instance."""
+    return database.get_db()
 
 
 def mask_email(email: str) -> str:
