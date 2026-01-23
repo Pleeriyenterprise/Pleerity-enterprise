@@ -3281,7 +3281,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <UnifiedAdminLayout>
       {/* Client Detail Modal */}
       {selectedClientId && (
         <ClientDetailModal 
@@ -3299,96 +3299,38 @@ const AdminDashboard = () => {
         />
       )}
 
-      {/* Header */}
-      <header className="bg-midnight-blue text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Shield className="w-8 h-8 text-electric-teal" />
-              <div>
-                <h1 className="text-lg font-bold">Compliance Vault Pro</h1>
-                <p className="text-xs text-gray-400">Admin Console</p>
-              </div>
-            </div>
-            
-            {/* Global Search */}
-            <GlobalSearch onSelectClient={handleSelectClient} />
-            
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/admin/assistant')}
-                className="flex items-center gap-2 px-3 py-2 text-sm bg-electric-teal/20 hover:bg-electric-teal/30 text-electric-teal rounded-lg transition-colors"
-                data-testid="admin-assistant-link"
-              >
-                <Sparkles className="w-4 h-4" />
-                AI Assistant
-              </button>
-              <span className="text-sm text-gray-300">{user?.email}</span>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                data-testid="admin-logout-btn"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <nav className="w-64 flex-shrink-0">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  data-testid={`admin-tab-${tab.id}`}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === tab.id 
-                      ? 'bg-electric-teal text-white' 
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <tab.icon className="w-5 h-5" />
-                  <span className="font-medium">{tab.label}</span>
-                  {activeTab === tab.id && <ChevronRight className="w-4 h-4 ml-auto" />}
-                </button>
-              ))}
-              
-              {/* Billing & Subscriptions Link */}
-              <hr className="my-3" />
-              <button
-                onClick={() => navigate('/admin/orders')}
-                data-testid="admin-orders-link"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
-              >
-                <ClipboardCheck className="w-5 h-5" />
-                <span className="font-medium">Orders Pipeline</span>
-                <ExternalLink className="w-3 h-3 ml-auto" />
-              </button>
-              <button
-                onClick={() => navigate('/admin/billing')}
-                data-testid="admin-billing-link"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
-              >
-                <CreditCard className="w-5 h-5" />
-                <span className="font-medium">Billing & Subscriptions</span>
-                <ExternalLink className="w-3 h-3 ml-auto" />
-              </button>
-            </div>
-          </nav>
-
-          {/* Main Content */}
-          <main className="flex-1" data-testid="admin-main-content">
-            {renderContent()}
-          </main>
-        </div>
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900" data-testid="admin-dashboard-title">Dashboard Overview</h1>
+        <p className="text-gray-500 mt-1">Manage clients, automation rules, and system settings</p>
       </div>
-    </div>
+
+      {/* Tab Navigation (internal to this page for sub-sections) */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="flex space-x-4 overflow-x-auto pb-1" data-testid="admin-tab-nav">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              data-testid={`admin-tab-${tab.id}`}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+                activeTab === tab.id 
+                  ? 'bg-electric-teal text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <main data-testid="admin-main-content">
+        {renderContent()}
+      </main>
+    </UnifiedAdminLayout>
   );
 };
 
