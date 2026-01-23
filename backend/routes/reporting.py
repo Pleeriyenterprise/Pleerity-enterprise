@@ -1060,3 +1060,239 @@ async def get_report_executions(
     executions = await cursor.to_list(limit)
     
     return {"executions": executions, "total": len(executions)}
+
+
+# ============================================
+# Report Sharing - Public Links
+# ============================================
+
+class ShareReportRequest(BaseModel):
+    """Create a shareable report link"""
+    report_type: str
+    format: str = "pdf"
+    period: str = "30d"
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    expires_in_days: int = Field(default=7, ge=1, le=30)
+    name: Optional[str] = None  # Optional name for the share
+
+
+class ShareLinkResponse(BaseModel):
+    share_id: str
+    share_url: str
+    report_type: str
+    format: str
+    expires_at: str
+    created_at: str
+
+
+@router.post("/share", response_model=ShareLinkResponse)
+async def create_share_link(
+    request: ShareReportRequest,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Create a time-limited shareable link for a report."""
+    db = database.get_db()
+    
+    if request.report_type not in DATA_FETCHERS:
+        raise HTTPException(status_code=400, detail=f"Unknown report type: {request.report_type}")
+    
+    # Determine date range
+    if request.start_date and request.end_date:
+        start = parse_date(request.start_date)
+        end = parse_date(request.end_date)
+    else:
+        start, end = get_date_range(request.period)
+    
+    share_id = f"SHR-{uuid.uuid4().hex[:16].upper()}"
+    now = now_utc()
+    expires_at = now + timedelta(days=request.expires_in_days)
+    
+    share_record = {
+        "share_id": share_id,
+        "report_type": request.report_type,
+        "format": request.format,
+        "period": request.period,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "name": request.name or f"{request.report_type.title()} Report",
+        "created_by": admin.get("portal_user_id"),
+        "created_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "access_count": 0,
+        "is_active": True
+    }
+    
+    await db.report_shares.insert_one(share_record)
+    
+    # Build public URL (using frontend route)
+    base_url = os.environ.get("PUBLIC_URL", "")
+    share_url = f"{base_url}/shared/report/{share_id}"
+    
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=admin.get("portal_user_id"),
+        resource_type="report_share",
+        resource_id=share_id,
+        metadata={"action": "create_share", "report_type": request.report_type, "expires_in_days": request.expires_in_days}
+    )
+    
+    return ShareLinkResponse(
+        share_id=share_id,
+        share_url=share_url,
+        report_type=request.report_type,
+        format=request.format,
+        expires_at=expires_at.isoformat(),
+        created_at=now.isoformat()
+    )
+
+
+@router.get("/shares")
+async def list_share_links(
+    active_only: bool = True,
+    limit: int = Query(50, ge=1, le=200),
+    admin: dict = Depends(admin_route_guard)
+):
+    """List all shareable report links."""
+    db = database.get_db()
+    
+    query = {}
+    if active_only:
+        query["is_active"] = True
+        query["expires_at"] = {"$gt": now_utc().isoformat()}
+    
+    cursor = db.report_shares.find(query, {"_id": 0}).sort("created_at", -1).limit(limit)
+    shares = await cursor.to_list(limit)
+    
+    return {"shares": shares, "total": len(shares)}
+
+
+@router.delete("/shares/{share_id}")
+async def revoke_share_link(
+    share_id: str,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Revoke a shareable report link."""
+    db = database.get_db()
+    
+    result = await db.report_shares.update_one(
+        {"share_id": share_id},
+        {"$set": {"is_active": False, "revoked_at": now_utc().isoformat(), "revoked_by": admin.get("portal_user_id")}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Share link not found")
+    
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=admin.get("portal_user_id"),
+        resource_type="report_share",
+        resource_id=share_id,
+        metadata={"action": "revoke_share"}
+    )
+    
+    return {"success": True}
+
+
+# ============================================
+# Public Report Access (No Auth Required)
+# ============================================
+
+public_router = APIRouter(prefix="/api/public/reports", tags=["Public Reports"])
+
+
+@public_router.get("/shared/{share_id}")
+async def get_shared_report_info(share_id: str):
+    """Get information about a shared report (public)."""
+    db = database.get_db()
+    
+    share = await db.report_shares.find_one({"share_id": share_id}, {"_id": 0})
+    
+    if not share:
+        raise HTTPException(status_code=404, detail="Share link not found")
+    
+    if not share.get("is_active", False):
+        raise HTTPException(status_code=410, detail="This share link has been revoked")
+    
+    expires_at = datetime.fromisoformat(share["expires_at"].replace("Z", "+00:00"))
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="This share link has expired")
+    
+    return {
+        "share_id": share_id,
+        "name": share.get("name"),
+        "report_type": share["report_type"],
+        "format": share["format"],
+        "period": f"{share['start_date'][:10]} to {share['end_date'][:10]}",
+        "expires_at": share["expires_at"]
+    }
+
+
+@public_router.get("/shared/{share_id}/download")
+async def download_shared_report(share_id: str):
+    """Download a shared report (public)."""
+    db = database.get_db()
+    
+    share = await db.report_shares.find_one({"share_id": share_id})
+    
+    if not share:
+        raise HTTPException(status_code=404, detail="Share link not found")
+    
+    if not share.get("is_active", False):
+        raise HTTPException(status_code=410, detail="This share link has been revoked")
+    
+    expires_at = datetime.fromisoformat(share["expires_at"].replace("Z", "+00:00"))
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="This share link has expired")
+    
+    report_type = share["report_type"]
+    if report_type not in DATA_FETCHERS:
+        raise HTTPException(status_code=400, detail="Invalid report type")
+    
+    # Parse dates
+    start = datetime.fromisoformat(share["start_date"].replace("Z", "+00:00"))
+    end = datetime.fromisoformat(share["end_date"].replace("Z", "+00:00"))
+    
+    # Fetch data
+    fetcher = DATA_FETCHERS[report_type]
+    data = await fetcher(start, end, {})
+    
+    # Format output
+    format_type = share.get("format", "pdf")
+    
+    if format_type == "xlsx":
+        output = format_xlsx(data, report_type, start, end)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        extension = "xlsx"
+        content = output.getvalue()
+    elif format_type == "pdf":
+        output = format_pdf(data, report_type, start, end)
+        media_type = "application/pdf"
+        extension = "pdf"
+        content = output.getvalue()
+    elif format_type == "json":
+        output = format_json(data)
+        media_type = "application/json"
+        extension = "json"
+        content = output.getvalue().encode('utf-8')
+    else:  # csv
+        output = format_csv(data)
+        media_type = "text/csv"
+        extension = "csv"
+        content = output.getvalue().encode('utf-8')
+    
+    filename = f"{report_type}_report_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.{extension}"
+    
+    # Update access count
+    await db.report_shares.update_one(
+        {"share_id": share_id},
+        {"$inc": {"access_count": 1}, "$set": {"last_accessed": now_utc().isoformat()}}
+    )
+    
+    return StreamingResponse(
+        iter([content]),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
