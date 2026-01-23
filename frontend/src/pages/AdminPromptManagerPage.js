@@ -345,7 +345,7 @@ export default function AdminPromptManagerPage() {
     }
     
     try {
-      await client.post(`/api/admin/prompts/${selectedTemplate.template_id}/activate`, {
+      await client.post(`/admin/prompts/${selectedTemplate.template_id}/activate`, {
         template_id: selectedTemplate.template_id,
         activation_reason: activationReason,
       });
