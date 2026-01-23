@@ -277,6 +277,34 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
+    # Lead automation jobs
+    # Abandoned intake detection - runs every 15 minutes
+    scheduler.add_job(
+        run_abandoned_intake_detection,
+        CronTrigger(minute="*/15"),  # Every 15 minutes
+        id="abandoned_intake_detection",
+        name="Abandoned Intake Detection",
+        replace_existing=True
+    )
+    
+    # Lead follow-up processing - runs every 15 minutes
+    scheduler.add_job(
+        run_lead_followup_processing,
+        CronTrigger(minute="*/15"),  # Every 15 minutes
+        id="lead_followup_processing",
+        name="Lead Follow-up Processing",
+        replace_existing=True
+    )
+    
+    # Lead SLA breach check - runs every hour
+    scheduler.add_job(
+        run_lead_sla_check,
+        CronTrigger(minute=0),  # Every hour on the hour
+        id="lead_sla_check",
+        name="Lead SLA Breach Check",
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("Background job scheduler started")
     
