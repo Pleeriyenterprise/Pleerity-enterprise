@@ -400,9 +400,11 @@ class TestScheduledReports:
         assert response.status_code == 200
         data = response.json()
         
-        assert "execution_id" in data
+        # Response includes success, schedule_id, report_type, recipients, row_count, email_results
+        assert data.get("success") == True
         assert "schedule_id" in data
         assert "report_type" in data
+        assert "email_results" in data
     
     def test_delete_scheduled_report(self, auth_headers):
         """Test deleting a scheduled report"""
