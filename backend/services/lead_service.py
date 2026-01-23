@@ -195,6 +195,10 @@ class LeadService:
         
         logger.info(f"Lead created: {lead_id} from {request.source_platform.value}")
         
+        # Send HIGH intent notification to admins
+        if intent_score == LeadIntentScore.HIGH:
+            await LeadService.notify_high_intent_lead(lead_doc)
+        
         return {**lead_doc, "is_duplicate": False}
     
     @staticmethod
@@ -803,6 +807,159 @@ class LeadService:
         ).sort("created_at", -1).limit(limit)
         
         return await cursor.to_list(length=limit)
+    
+    @staticmethod
+    async def notify_high_intent_lead(lead: Dict[str, Any]):
+        """
+        Send immediate notification to admins when a HIGH intent lead is captured.
+        Uses Postmark for email delivery.
+        """
+        import os
+        
+        POSTMARK_SERVER_TOKEN = os.environ.get("POSTMARK_SERVER_TOKEN")
+        ADMIN_NOTIFICATION_EMAILS = os.environ.get(
+            "ADMIN_NOTIFICATION_EMAILS", 
+            "admin@pleerity.com"
+        ).split(",")
+        SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
+        ADMIN_DASHBOARD_URL = os.environ.get(
+            "ADMIN_DASHBOARD_URL",
+            "https://leadsquared.preview.emergentagent.com/admin/leads"
+        )
+        
+        if not POSTMARK_SERVER_TOKEN or POSTMARK_SERVER_TOKEN == "leadsquared":
+            logger.warning("Postmark not properly configured, skipping HIGH intent notification")
+            return
+        
+        try:
+            from postmarker.core import PostmarkClient
+            
+            lead_id = lead.get("lead_id")
+            name = lead.get("name") or "Unknown"
+            email = lead.get("email") or "No email"
+            phone = lead.get("phone") or "No phone"
+            service = lead.get("service_interest", "UNKNOWN").replace("_", " ")
+            source = lead.get("source_platform", "UNKNOWN").replace("_", " ")
+            message = lead.get("message_summary") or "No message"
+            
+            subject = f"🔥 HIGH Intent Lead: {name} interested in {service}"
+            
+            html_body = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0; font-size: 24px;">🔥 High Intent Lead Alert</h1>
+                        <p style="margin: 5px 0 0 0; opacity: 0.9;">Immediate follow-up recommended</p>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border: 1px solid #e9ecef; border-top: none;">
+                        <h2 style="color: #1f2937; margin-top: 0;">Lead Details</h2>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Lead ID:</td>
+                                <td style="padding: 8px 0;">{lead_id}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Name:</td>
+                                <td style="padding: 8px 0;">{name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Email:</td>
+                                <td style="padding: 8px 0;"><a href="mailto:{email}">{email}</a></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Phone:</td>
+                                <td style="padding: 8px 0;"><a href="tel:{phone}">{phone}</a></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Service Interest:</td>
+                                <td style="padding: 8px 0;"><strong style="color: #059669;">{service}</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Source:</td>
+                                <td style="padding: 8px 0;">{source}</td>
+                            </tr>
+                        </table>
+                        
+                        <div style="margin-top: 15px; padding: 15px; background: white; border-left: 4px solid #10B981; border-radius: 4px;">
+                            <strong>Message:</strong>
+                            <p style="margin: 10px 0 0 0; color: #4b5563;">{message}</p>
+                        </div>
+                        
+                        <div style="margin-top: 20px; text-align: center;">
+                            <a href="{ADMIN_DASHBOARD_URL}" style="display: inline-block; background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                                View Lead in Dashboard →
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div style="padding: 15px; text-align: center; color: #6b7280; font-size: 12px;">
+                        <p>This is an automated notification from Pleerity Lead Management System</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            text_body = f"""
+HIGH INTENT LEAD ALERT
+======================
+
+Lead ID: {lead_id}
+Name: {name}
+Email: {email}
+Phone: {phone}
+Service Interest: {service}
+Source: {source}
+
+Message:
+{message}
+
+View in dashboard: {ADMIN_DASHBOARD_URL}
+
+---
+Pleerity Lead Management System
+            """
+            
+            postmark_client = PostmarkClient(server_token=POSTMARK_SERVER_TOKEN)
+            
+            for admin_email in ADMIN_NOTIFICATION_EMAILS:
+                admin_email = admin_email.strip()
+                if admin_email:
+                    try:
+                        postmark_client.emails.send(
+                            From=SUPPORT_EMAIL,
+                            To=admin_email,
+                            Subject=subject,
+                            HtmlBody=html_body,
+                            TextBody=text_body,
+                            Tag="high_intent_lead_notification",
+                            Metadata={
+                                "lead_id": lead_id,
+                                "intent_score": "HIGH",
+                            },
+                        )
+                        logger.info(f"HIGH intent notification sent to {admin_email} for lead {lead_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to send HIGH intent notification to {admin_email}: {e}")
+            
+            # Also log this notification
+            await LeadService.log_audit(
+                event=LeadAuditEvent.LEAD_CREATED,
+                lead_id=lead_id,
+                actor_id="system",
+                actor_type="notification",
+                details={
+                    "notification_type": "high_intent_alert",
+                    "recipients": ADMIN_NOTIFICATION_EMAILS,
+                },
+            )
+            
+        except ImportError:
+            logger.warning("postmarker not available, skipping HIGH intent notification")
+        except Exception as e:
+            logger.error(f"Failed to send HIGH intent notification: {e}")
 
 
 class AbandonedIntakeService:
