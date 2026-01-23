@@ -260,6 +260,34 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     }
   }, [isOpen, messages.length, isAuthenticated]);
 
+  // Handle WhatsApp click with proper window.open and audit logging
+  const handleWhatsAppClick = async (whatsappLink) => {
+    // Open WhatsApp in new tab using window.open (avoids iframe blocking)
+    window.open(whatsappLink, '_blank', 'noopener,noreferrer');
+    
+    // Log the event for audit
+    try {
+      await client.post('/support/audit/whatsapp-handoff', {
+        conversation_id: conversationId,
+        user_role: isAuthenticated ? 'authenticated' : 'anonymous',
+        client_id: clientContext?.client_id || null,
+        page_url: window.location.href,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Failed to log WhatsApp handoff:', err);
+    }
+    
+    // Add confirmation message
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      text: '✅ Opening WhatsApp... Your conversation reference has been included in the message.',
+      sender: 'bot',
+      timestamp: new Date().toISOString(),
+    }]);
+    setShowHandoff(false);
+  };
+
   // Handle quick action
   const handleQuickAction = async (actionId) => {
     setLoading(true);
