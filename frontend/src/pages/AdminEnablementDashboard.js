@@ -437,7 +437,7 @@ const SuppressionRules = () => {
     try {
       await client.post('/admin/enablement/suppressions', {
         client_id: newRule.client_id || null,
-        category: newRule.category || null,
+        category: newRule.category === 'ALL_CATEGORIES' ? null : (newRule.category || null),
         template_code: newRule.template_code || null,
         reason: newRule.reason,
       });
