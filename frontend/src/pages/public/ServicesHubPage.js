@@ -130,7 +130,7 @@ const ServicesHubPage = () => {
             Need Help Choosing?
           </h2>
           <p className="text-lg text-gray-300 mb-8">
-            Book a free consultation and we'll help you find the right services for your properties.
+            Book a free consultation and we will help you find the right services for your properties.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
