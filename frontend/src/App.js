@@ -420,6 +420,14 @@ function App() {
               } 
             />
             <Route 
+              path="/admin/reporting" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminReportingPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/admin/support" 
               element={
                 <ProtectedRoute requireAdmin>
