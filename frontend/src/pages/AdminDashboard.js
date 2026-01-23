@@ -3240,16 +3240,12 @@ const AdminDashboard = () => {
   
   // Support URL query param for tab (used by UnifiedAdminLayout sidebar links)
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || 'overview');
+  const [activeTab, setActiveTab] = useState(() => tabFromUrl || 'overview');
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [drilldownType, setDrilldownType] = useState(null);
 
-  // Sync tab with URL param when it changes
-  useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [tabFromUrl]);
+  // Update activeTab when URL changes (e.g., user clicks sidebar link)
+  const effectiveTab = tabFromUrl || activeTab;
 
   const handleLogout = () => {
     logout();
