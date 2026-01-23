@@ -155,7 +155,7 @@ export default function OrderConfirmationPage() {
               <AlertCircle className="h-16 w-16 mx-auto text-red-500" />
               <h2 className="mt-4 text-xl font-semibold text-gray-900">Something Went Wrong</h2>
               <p className="mt-2 text-gray-600">
-                We couldn't confirm your order. If you've been charged, please contact support.
+                We could not confirm your order. If you have been charged, please contact support.
               </p>
               <div className="mt-6 space-x-4">
                 <Button variant="outline" onClick={() => navigate('/services')}>
