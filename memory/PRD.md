@@ -243,6 +243,20 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 | `/api/admin/enablement/events` | GET | Query events |
 | `/api/admin/enablement/event-types` | GET | Get all enum types |
 
+### Full Reporting System (Admin - ROLE_ADMIN only)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/reports/types` | GET | List available report types, formats, periods |
+| `/api/admin/reports/preview/{report_type}` | GET | Preview report data before download |
+| `/api/admin/reports/generate` | POST | Generate and download report (CSV/XLSX/PDF/JSON) |
+| `/api/admin/reports/schedules` | GET | List all scheduled reports |
+| `/api/admin/reports/schedules` | POST | Create new scheduled report |
+| `/api/admin/reports/schedules/{id}/toggle` | PUT | Enable/disable schedule |
+| `/api/admin/reports/schedules/{id}/run` | POST | Manually run scheduled report now |
+| `/api/admin/reports/schedules/{id}` | DELETE | Delete scheduled report |
+| `/api/admin/reports/history` | GET | Get report download history |
+| `/api/admin/reports/executions` | GET | Get scheduled report execution history |
+
 ### Cookie Consent (Public)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
