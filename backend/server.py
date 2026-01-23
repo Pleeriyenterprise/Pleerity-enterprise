@@ -229,6 +229,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to create CMS indexes: {e}")
     
+    # Create Enablement Engine indexes and seed templates
+    try:
+        from services.enablement_templates import ensure_enablement_indexes, seed_enablement_templates
+        await ensure_enablement_indexes()
+        await seed_enablement_templates()
+        logger.info("Enablement engine initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize enablement engine: {e}")
+    
     # Seed service catalogue
     try:
         from services.service_catalogue import seed_service_catalogue
