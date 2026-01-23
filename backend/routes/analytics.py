@@ -11,7 +11,7 @@ Provides business intelligence data for the admin analytics dashboard:
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, timezone, timedelta
 from middleware import admin_route_guard
-from database import db
+from database import database
 from typing import Optional, List
 import logging
 
