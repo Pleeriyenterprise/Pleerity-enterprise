@@ -248,14 +248,42 @@ class DocumentOrchestrator:
         
         # ================================================================
         # STEP 2: Get prompt for service (Prompt Selected)
+        # NEW: Prioritize Prompt Manager ACTIVE prompts
         # ================================================================
-        prompt_def = get_prompt_for_service(service_code)
+        from services.document_generator import DocumentType
+        
+        # Determine document type
+        doc_type_map = {
+            "DOC_PACK_TENANCY": "SECTION_21_NOTICE",
+            "DOC_PACK_ESSENTIAL": "TENANCY_AGREEMENT",
+            "DOC_PACK_ULTIMATE": "TENANCY_AGREEMENT",
+            "DOC_PACK_INVENTORY": "INVENTORY_REPORT",
+            "HMO_AUDIT": "COMPLIANCE_AUDIT",
+            "FULL_AUDIT": "COMPLIANCE_AUDIT",
+            "MR_BASIC": "MARKET_RESEARCH",
+            "MR_ADV": "MARKET_RESEARCH",
+        }
+        doc_type = doc_type_map.get(service_code, "GENERAL_DOCUMENT")
+        
+        # Try Prompt Manager first, fall back to legacy registry
+        prompt_def, prompt_info = await prompt_manager_bridge.get_prompt_for_service(
+            service_code=service_code,
+            doc_type=doc_type,
+        )
+        
+        # Flag whether we're using managed prompt (for different prompt building)
+        using_managed_prompt = prompt_info and prompt_info.source == "prompt_manager"
+        
         if not prompt_def:
             # For document packs, use orchestrator prompt
             if service_code.startswith("DOC_PACK_"):
-                prompt_def = get_prompt_for_service("DOC_PACK_ORCHESTRATOR")
+                prompt_def, prompt_info = await prompt_manager_bridge.get_prompt_for_service(
+                    service_code="DOC_PACK_ORCHESTRATOR",
+                    doc_type=doc_type,
+                )
                 if prompt_def:
                     intake_data["pack_type"] = service_code
+                    using_managed_prompt = prompt_info and prompt_info.source == "prompt_manager"
             
             if not prompt_def:
                 return OrchestrationResult(
@@ -265,6 +293,14 @@ class DocumentOrchestrator:
                     order_id=order_id,
                     error_message=f"No prompt defined for service: {service_code}",
                 )
+        
+        # Store prompt version info for audit
+        prompt_version_used = prompt_info.to_dict() if prompt_info else None
+        
+        logger.info(
+            f"Selected prompt for {order_id}: {prompt_info.template_id if prompt_info else 'unknown'} "
+            f"(source: {prompt_info.source if prompt_info else 'none'})"
+        )
         
         # ================================================================
         # STEP 3: Validate intake data
@@ -294,9 +330,20 @@ class DocumentOrchestrator:
         
         # ================================================================
         # STEP 5: Build the prompt
+        # NEW: Use {{INPUT_DATA_JSON}} pattern for managed prompts
         # ================================================================
         try:
-            user_prompt = self._build_user_prompt(prompt_def, intake_snapshot, regeneration, regeneration_notes)
+            if using_managed_prompt:
+                # Use the single injection pattern for managed prompts
+                user_prompt = prompt_manager_bridge.build_user_prompt_with_json(
+                    template=prompt_def.user_prompt_template,
+                    intake_data=intake_snapshot,
+                    regeneration=regeneration,
+                    regeneration_notes=regeneration_notes,
+                )
+            else:
+                # Legacy prompts use format string substitution
+                user_prompt = self._build_user_prompt(prompt_def, intake_snapshot, regeneration, regeneration_notes)
         except Exception as e:
             return OrchestrationResult(
                 success=False,
