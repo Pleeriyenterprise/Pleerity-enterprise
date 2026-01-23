@@ -374,55 +374,108 @@ async def get_service_codes(
 ):
     """
     Get available service codes from the service catalogue.
-    Useful for the template creation form.
+    
+    AUTHORITATIVE SOURCE: services_v2 collection
+    Only services from the catalogue can be used in prompts.
     """
     db = database.get_db()
     
-    # Get unique service codes from services_v2
-    pipeline = [
-        {"$match": {"status": "active"}},
-        {"$group": {"_id": "$service_code", "name": {"$first": "$name"}}},
-        {"$sort": {"_id": 1}},
-    ]
+    # Get service codes from services_v2 (AUTHORITATIVE)
+    cursor = db.services_v2.find(
+        {"active": True},
+        {"service_code": 1, "service_name": 1, "category": 1, "_id": 0}
+    ).sort("service_code", 1)
     
-    cursor = db.services_v2.aggregate(pipeline)
-    results = await cursor.to_list(length=100)
+    services = await cursor.to_list(length=100)
     
     service_codes = [
-        {"code": r["_id"], "name": r.get("name", r["_id"])}
-        for r in results if r["_id"]
+        {
+            "code": s["service_code"],
+            "name": s.get("service_name", s["service_code"]),
+            "category": s.get("category", "other"),
+            # Canonical doc_type equals service_code
+            "canonical_doc_type": s["service_code"],
+        }
+        for s in services if s.get("service_code")
     ]
     
-    # If no services in DB, provide common defaults for prompt templates
-    if not service_codes:
-        service_codes = [
-            {"code": "AI_WF_BLUEPRINT", "name": "AI Workflow Blueprint"},
-            {"code": "COMPLIANCE_AUDIT", "name": "Compliance Audit"},
-            {"code": "DOCUMENT_ANALYSIS", "name": "Document Analysis"},
-            {"code": "RISK_ASSESSMENT", "name": "Risk Assessment"},
-            {"code": "REPORT_GENERATION", "name": "Report Generation"},
-            {"code": "DATA_EXTRACTION", "name": "Data Extraction"},
-        ]
-    
     return {
-        "service_codes": service_codes
+        "service_codes": service_codes,
+        "note": "Service Code MUST match catalogue. Document Type should be canonical (same as Service Code)."
     }
 
 
 @router.get("/reference/doc-types")
 async def get_doc_types(
+    service_code: Optional[str] = Query(None, description="Get doc types for specific service"),
     current_user: dict = Depends(require_super_admin),
 ):
     """
     Get available document types.
+    
+    CANONICAL RULE: doc_type should equal service_code for service-specific documents.
+    This endpoint returns allowed doc_types per service from SERVICE_DOC_TYPE_MAP.
     """
-    from services.document_generator import DocumentType
+    # Service-specific document type mapping
+    SERVICE_DOC_TYPE_MAP = {
+        "AI_WF_BLUEPRINT": [
+            {"code": "AI_WF_BLUEPRINT", "name": "AI Workflow Blueprint", "canonical": True},
+            {"code": "AI_WORKFLOW_BLUEPRINT", "name": "AI Workflow Blueprint (Alias)", "canonical": False},
+        ],
+        "AI_PROC_MAP": [
+            {"code": "AI_PROC_MAP", "name": "Business Process Map", "canonical": True},
+        ],
+        "AI_TOOLS_REC": [
+            {"code": "AI_TOOLS_REC", "name": "AI Tool Recommendations", "canonical": True},
+        ],
+        "MR_BASIC": [
+            {"code": "MR_BASIC", "name": "Basic Market Research", "canonical": True},
+        ],
+        "MR_ADV": [
+            {"code": "MR_ADV", "name": "Advanced Market Research", "canonical": True},
+        ],
+        "HMO_AUDIT": [
+            {"code": "HMO_AUDIT", "name": "HMO Compliance Audit", "canonical": True},
+        ],
+        "FULL_AUDIT": [
+            {"code": "FULL_AUDIT", "name": "Full Property Audit", "canonical": True},
+        ],
+        "DOC_PACK_ESSENTIAL": [
+            {"code": "DOC_PACK_ESSENTIAL", "name": "Essential Document Pack", "canonical": True},
+        ],
+        "DOC_PACK_TENANCY": [
+            {"code": "DOC_PACK_TENANCY", "name": "Tenancy Document Pack", "canonical": True},
+        ],
+        "DOC_PACK_ULTIMATE": [
+            {"code": "DOC_PACK_ULTIMATE", "name": "Ultimate Document Pack", "canonical": True},
+        ],
+    }
+    
+    if service_code:
+        # Return doc types allowed for specific service
+        doc_types = SERVICE_DOC_TYPE_MAP.get(service_code, [
+            {"code": service_code, "name": service_code.replace("_", " ").title(), "canonical": True}
+        ])
+        return {
+            "service_code": service_code,
+            "doc_types": doc_types,
+            "note": "Use canonical doc_type (same as service_code) for new prompts."
+        }
+    
+    # Return all canonical doc types
+    all_doc_types = []
+    for svc_code, types in SERVICE_DOC_TYPE_MAP.items():
+        for t in types:
+            if t.get("canonical", False):
+                all_doc_types.append({
+                    "code": t["code"],
+                    "name": t["name"],
+                    "service_code": svc_code,
+                })
     
     return {
-        "doc_types": [
-            {"code": dt.value, "name": dt.value.replace("_", " ").title()}
-            for dt in DocumentType
-        ]
+        "doc_types": all_doc_types,
+        "note": "Document Type should be canonical (same as Service Code) for service-specific documents."
     }
 
 
