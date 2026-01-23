@@ -59,6 +59,7 @@ class SaveSchemaOverridesRequest(BaseModel):
 
 async def get_customizations(service_code: str) -> Dict[str, Any]:
     """Get stored customizations for a service."""
+    db = database.get_db()
     doc = await db[COLLECTION].find_one(
         {"service_code": service_code},
         {"_id": 0}
@@ -72,6 +73,7 @@ async def save_customizations(
     updated_by: str
 ):
     """Save schema customizations for a service."""
+    db = database.get_db()
     now = datetime.now(timezone.utc).isoformat()
     
     await db[COLLECTION].update_one(
