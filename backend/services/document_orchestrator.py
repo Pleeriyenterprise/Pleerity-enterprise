@@ -40,6 +40,7 @@ from services.gpt_prompt_registry import (
     PromptDefinition,
     AUTHORITATIVE_FRAMEWORK,
 )
+from services.prompt_manager_bridge import prompt_manager_bridge, ManagedPromptInfo
 from services.service_catalogue_v2 import service_catalogue_v2
 from database import database
 
