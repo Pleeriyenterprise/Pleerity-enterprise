@@ -216,7 +216,7 @@ async def lifespan(app: FastAPI):
     
     # Create CMS indexes
     try:
-        from database import db
+        db = database.get_db()
         await db.cms_pages.create_index("page_id", unique=True)
         await db.cms_pages.create_index("slug", unique=True)
         await db.cms_pages.create_index("status")
