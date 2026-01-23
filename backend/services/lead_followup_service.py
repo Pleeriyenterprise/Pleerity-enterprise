@@ -371,9 +371,16 @@ This is an automated confirmation. Your enquiry reference is {lead_id}.
         """
         Process follow-up queue.
         Called by scheduled job every 15 minutes.
+        
+        CONSENT ENFORCEMENT:
+        - Checks both lead.marketing_consent AND cookie consent state
+        - Only proceeds if both allow marketing outreach
         """
         db = database.get_db()
         now = datetime.now(timezone.utc)
+        
+        # Import consent service for server-side consent check
+        from services.consent_service import ConsentService
         
         # Find leads due for follow-up
         due_leads = await db[LEADS_COLLECTION].find({
@@ -390,6 +397,24 @@ This is an automated confirmation. Your enquiry reference is {lead_id}.
         logger.info(f"Processing {len(due_leads)} leads for follow-up")
         
         for lead in due_leads:
+            # Additional consent check via cookie consent system
+            session_id = lead.get("session_id") or lead.get("source_metadata", {}).get("session_id")
+            
+            if session_id:
+                # Check server-side cookie consent
+                is_eligible = await ConsentService.is_outreach_eligible(session_id=session_id)
+                if not is_eligible:
+                    logger.info(f"Skipping follow-up for lead {lead.get('lead_id')}: cookie consent not granted")
+                    # Update lead to stop follow-up
+                    await db[LEADS_COLLECTION].update_one(
+                        {"lead_id": lead["lead_id"]},
+                        {"$set": {
+                            "followup_status": FollowUpStatus.STOPPED.value,
+                            "followup_stop_reason": "cookie_consent_withdrawn",
+                        }}
+                    )
+                    continue
+            
             await LeadFollowUpService.send_next_followup(lead)
     
     @staticmethod
