@@ -444,6 +444,8 @@ app.include_router(cms.router)  # Admin CMS routes
 app.include_router(cms.public_router)  # Public CMS page rendering
 app.include_router(enablement.router)  # Customer Enablement Automation Engine
 app.include_router(reporting.router)  # Full Reporting System - Export & Scheduling
+app.include_router(reporting.public_router)  # Public Report Sharing
+app.include_router(team.router)  # Team Permissions & Role Management
 
 # Root endpoint
 @app.get("/api")
