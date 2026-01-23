@@ -13,7 +13,7 @@ import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from database import database
-from models.lead_models import (
+from services.lead_models import (
     LeadStatus,
     FollowUpStatus,
     LeadAuditEvent,
