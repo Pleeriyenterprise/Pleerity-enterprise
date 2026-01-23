@@ -93,6 +93,7 @@ const navSections = [
     label: 'Settings & System',
     icon: Settings,
     items: [
+      { href: '/admin/privacy/consent', label: 'Privacy & Consent', icon: Cookie },
       { href: '/admin/dashboard', label: 'Team Management', icon: Shield, tabTarget: 'admins' },
       { href: '/admin/dashboard', label: 'Automation Rules', icon: Zap, tabTarget: 'rules' },
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
