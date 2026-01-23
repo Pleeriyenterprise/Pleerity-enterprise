@@ -18,7 +18,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from database import database
-from models.lead_models import (
+from services.lead_models import (
     LeadSourcePlatform,
     LeadServiceInterest,
     LeadIntentScore,
