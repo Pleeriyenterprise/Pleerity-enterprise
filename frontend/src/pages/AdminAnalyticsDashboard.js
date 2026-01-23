@@ -372,18 +372,55 @@ export default function AdminAnalyticsDashboard() {
                 color="orange"
                 previousValue={advancedSummary?.metrics?.leads?.previous}
               />
-                change={summary?.average_order_value?.change_percent}
-                trend={summary?.average_order_value?.change_percent > 0 ? 'up' : 'down'}
-                icon={TrendingUp}
-                color="purple"
-              />
-              <StatCard
-                title="Completion Rate"
-                value={`${summary?.completion_rate?.percent || 0}%`}
-                icon={Target}
-                color="teal"
+                previousValue={advancedSummary?.metrics?.leads?.previous}
               />
             </div>
+            
+            {/* Breakdown Section */}
+            {breakdownData && (
+              <Card className="mb-8">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Revenue Breakdown</CardTitle>
+                      <CardDescription>Analyze by different dimensions</CardDescription>
+                    </div>
+                    <Select value={breakdownDimension} onValueChange={setBreakdownDimension}>
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="service">By Service</SelectItem>
+                        <SelectItem value="status">By Status</SelectItem>
+                        <SelectItem value="day_of_week">By Day of Week</SelectItem>
+                        <SelectItem value="hour">By Hour</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {breakdownData.items?.length > 0 ? (
+                    <div className="space-y-3">
+                      {breakdownData.items.slice(0, 8).map((item, index) => (
+                        <div key={item.key}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-900">{item.label}</span>
+                            <div className="flex items-center gap-3">
+                              <Badge variant="secondary" className="text-xs">{item.count} orders</Badge>
+                              <span className="text-sm font-semibold">{item.revenue_formatted}</span>
+                              <span className="text-xs text-gray-500">({item.percentage}%)</span>
+                            </div>
+                          </div>
+                          <ProgressBar value={item.revenue} max={breakdownData.items[0]?.revenue || 1} color={index === 0 ? 'teal' : 'blue'} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No data for this breakdown</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Service Performance */}
