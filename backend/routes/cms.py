@@ -201,25 +201,6 @@ async def delete_block(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.put("/pages/{page_id}/blocks/reorder", response_model=List[ContentBlock])
-async def reorder_blocks(
-    page_id: str,
-    data: ReorderBlocksRequest,
-    admin: dict = Depends(admin_route_guard)
-):
-    """Reorder blocks on a page (Admin only)"""
-    try:
-        blocks = await cms_service.reorder_blocks(
-            page_id=page_id,
-            block_order=data.block_order,
-            admin_id=admin["portal_user_id"],
-            admin_email=admin["email"]
-        )
-        return blocks
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 # ============================================
 # Publishing & Revision Routes
 # ============================================
