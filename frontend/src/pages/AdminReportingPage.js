@@ -412,6 +412,10 @@ export default function AdminReportingPage() {
               <Calendar className="h-4 w-4 mr-2" />
               Schedules ({schedules.length})
             </TabsTrigger>
+            <TabsTrigger value="shares" data-testid="tab-shares">
+              <Share2 className="h-4 w-4 mr-2" />
+              Share Links ({shares.length})
+            </TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history">
               <Clock className="h-4 w-4 mr-2" />
               History
