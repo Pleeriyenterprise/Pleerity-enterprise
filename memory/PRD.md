@@ -1960,6 +1960,100 @@
   - Toast error fix verified
   - All UI components working
 
+### January 23, 2026 (Session 3) - 24/7 Support Assistant System ✅
+
+**Complete Support System Implementation:**
+
+**1. AI Support Chatbot (Gemini-powered) ✅**
+  - Custom AI chatbot using Gemini via Emergent LLM Key
+  - Knowledge base with all Pleerity services (CVP, Document Packs, AI Automation, Market Research)
+  - Multi-service routing based on message content
+  - No-legal-advice guardrails (refuses legal interpretation, council enforcement predictions)
+  - Service area and category detection
+  - Urgency detection from message content
+  
+**2. Support Chat Widget (`/app/frontend/src/components/SupportChatWidget.js`) ✅**
+  - Floating chat button on all public pages
+  - Expandable chat window with greeting message
+  - Real-time AI responses
+  - Human handoff with 3 options:
+    - Live Chat via Tawk.to (integration ready, needs property ID)
+    - Email Ticket form (inline)
+    - WhatsApp link with prefilled message
+  - Message history within session
+  - Minimize/maximize/close controls
+  
+**3. Tawk.to Live Chat Integration ✅**
+  - Component: `/app/frontend/src/components/TawkToWidget.js`
+  - Lazy loading of Tawk.to script
+  - API wrapper for show/hide/maximize
+  - Context passing (conversation_id, CRN, service_area)
+  - **MOCKED:** Needs `REACT_APP_TAWKTO_PROPERTY_ID` configuration in .env
+  
+**4. WhatsApp Handoff (Tier 1) ✅**
+  - Prefilled message links with conversation reference
+  - Includes CRN if provided
+  - Format: `https://wa.me/{number}?text={message}`
+  - **Note:** WhatsApp number placeholder needs real number
+  
+**5. Support Ticket System ✅**
+  - **Data Models:**
+    - `support_conversations` - Conversation tracking
+    - `support_messages` - Full message transcript
+    - `support_tickets` - Ticket management
+    - `support_audit_log` - Audit trail
+  - **API Endpoints:**
+    - `POST /api/support/chat` - AI chatbot interaction
+    - `POST /api/support/lookup` - CRN+email verification (sanitized)
+    - `POST /api/support/ticket` - Create support ticket
+    - `GET /api/support/account-snapshot` - Client-scoped (authenticated)
+  
+**6. Admin Support Dashboard (`/admin/support`) ✅**
+  - **Stats Cards:** Open Tickets, High Priority, Open Conversations, Escalated
+  - **Tabs:** Tickets and Chats with filter dropdowns (Status, Priority)
+  - **Conversation Viewer:** Full transcript with User/Bot/Human messages
+  - **Admin Reply:** Reply input sends message to conversation
+  - **Ticket Management:** View, status update, assign, add notes
+  - **CRN Lookup:** Admin-only full account lookup
+  - **API Endpoints:**
+    - `GET /api/admin/support/stats` - Dashboard stats
+    - `GET /api/admin/support/conversations` - List with filters
+    - `GET /api/admin/support/tickets` - List with filters
+    - `GET /api/admin/support/conversation/{id}` - Full transcript
+    - `POST /api/admin/support/conversation/{id}/reply` - Admin reply
+    - `PUT /api/admin/support/ticket/{id}/status` - Update status
+    - `PUT /api/admin/support/ticket/{id}/assign` - Assign ticket
+    - `POST /api/admin/support/ticket/{id}/note` - Add note
+    - `POST /api/admin/support/lookup-by-crn` - Admin lookup
+    - `GET /api/admin/support/audit-log` - View audit logs
+
+**7. Security & Compliance ✅**
+  - All admin endpoints require RBAC authentication
+  - Public lookup requires both CRN and email match
+  - All lookup attempts audit-logged with IP
+  - Rate limiting structure in place (TODO: implement)
+  - No legal advice guardrails enforced by AI
+
+**Files Created:**
+  - `/app/backend/services/support_service.py` - Data models and CRUD services
+  - `/app/backend/services/support_chatbot.py` - AI chatbot with Gemini, guardrails
+  - `/app/backend/routes/support.py` - All API endpoints (public, client, admin)
+  - `/app/frontend/src/components/SupportChatWidget.js` - Chat widget UI
+  - `/app/frontend/src/components/TawkToWidget.js` - Tawk.to integration
+  - `/app/frontend/src/pages/AdminSupportPage.js` - Admin dashboard
+  - `/app/backend/tests/test_support_system.py` - 24 comprehensive tests
+
+**Files Modified:**
+  - `/app/backend/server.py` - Registered support routers
+  - `/app/frontend/src/App.js` - Added TawkToWidget and /admin/support route
+  - `/app/frontend/src/components/public/PublicLayout.js` - Added SupportChatWidget
+
+- **TEST REPORT:** `/app/test_reports/iteration_48.json` (24/24 backend + 100% frontend)
+  - All chat/ticket/conversation APIs verified
+  - AI chatbot responses verified (service info, legal refusal, handoff)
+  - Admin dashboard features verified
+  - Transcript viewer and reply capability verified
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
