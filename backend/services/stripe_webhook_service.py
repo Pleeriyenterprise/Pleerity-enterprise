@@ -190,15 +190,92 @@ class StripeWebhookService:
         """
         Handle checkout.session.completed - PRIMARY provisioning trigger.
         
-        This is the main entry point for new subscriptions.
+        Handles two types of checkouts:
+        1. subscription - CVP subscription provisioning
+        2. payment - Order intake (draft → order conversion)
         """
         db = database.get_db()
         
-        # Only handle subscription mode checkouts
         mode = session.get("mode")
-        if mode != "subscription":
-            logger.info(f"Ignoring non-subscription checkout: {mode}")
+        metadata = session.get("metadata", {})
+        
+        # Route based on checkout type
+        if mode == "payment" and metadata.get("type") == "order_intake":
+            # Handle order intake payment
+            return await self._handle_order_payment(session, event)
+        elif mode == "subscription":
+            # Handle subscription checkout (existing logic)
+            return await self._handle_subscription_checkout(session, event)
+        else:
+            logger.info(f"Ignoring checkout mode: {mode}")
             return {"handled": False, "mode": mode}
+    
+    async def _handle_order_payment(self, session: Dict, event: Dict) -> Dict:
+        """
+        Handle one-time payment for order intake.
+        
+        Converts draft → order and starts workflow.
+        """
+        from services.intake_draft_service import convert_draft_to_order, get_draft
+        
+        metadata = session.get("metadata", {})
+        draft_id = metadata.get("draft_id")
+        draft_ref = metadata.get("draft_ref")
+        
+        if not draft_id:
+            logger.error(f"No draft_id in order payment metadata: {session.get('id')}")
+            raise ValueError("MANDATORY: draft_id missing from session.metadata")
+        
+        # Get payment intent ID
+        payment_intent_id = session.get("payment_intent")
+        session_id = session.get("id")
+        
+        logger.info(f"Processing order payment for draft {draft_ref} (PI: {payment_intent_id})")
+        
+        # Check if already processed (idempotency)
+        db = database.get_db()
+        existing = await db.orders.find_one({"source_draft_id": draft_id})
+        if existing:
+            logger.info(f"Order already exists for draft {draft_id}: {existing.get('order_ref')}")
+            return {
+                "handled": True,
+                "type": "order_payment",
+                "draft_id": draft_id,
+                "order_id": existing.get("order_id"),
+                "order_ref": existing.get("order_ref"),
+                "already_processed": True,
+            }
+        
+        # Convert draft to order
+        try:
+            order = await convert_draft_to_order(
+                draft_id=draft_id,
+                stripe_payment_intent_id=payment_intent_id,
+                stripe_checkout_session_id=session_id,
+            )
+            
+            logger.info(f"Created order {order['order_ref']} from draft {draft_ref}")
+            
+            return {
+                "handled": True,
+                "type": "order_payment",
+                "draft_id": draft_id,
+                "draft_ref": draft_ref,
+                "order_id": order["order_id"],
+                "order_ref": order["order_ref"],
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to convert draft {draft_id} to order: {e}")
+            raise
+    
+    async def _handle_subscription_checkout(self, session: Dict, event: Dict) -> Dict:
+        """
+        Handle subscription checkout - CVP provisioning.
+        
+        This is the existing subscription logic moved to a separate method.
+        """
+        db = database.get_db()
         
         # Extract required data
         stripe_customer_id = session.get("customer")
