@@ -55,6 +55,7 @@ class ExportFormat(str):
     CSV = "csv"
     JSON = "json"
     PDF = "pdf"
+    XLSX = "xlsx"
 
 
 # ============================================
