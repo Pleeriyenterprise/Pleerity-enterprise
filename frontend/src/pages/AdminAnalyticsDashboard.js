@@ -495,7 +495,7 @@ export default function AdminAnalyticsDashboard() {
             </Card>
           </>
         )}
-      </div>
     </div>
+    </UnifiedAdminLayout>
   );
 }
