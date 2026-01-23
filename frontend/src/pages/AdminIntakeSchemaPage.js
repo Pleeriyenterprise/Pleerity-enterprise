@@ -569,6 +569,7 @@ export default function AdminIntakeSchemaPage() {
               </div>
             ) : null}
           </div>
+        </div>
     </div>
     </UnifiedAdminLayout>
   );
