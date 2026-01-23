@@ -21,7 +21,7 @@ from services.consent_service import (
     ConsentService,
     ConsentAdminService,
 )
-from routes.auth import admin_route_guard
+from middleware import admin_route_guard
 import database
 
 logger = logging.getLogger(__name__)
