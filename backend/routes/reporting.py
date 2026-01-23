@@ -840,3 +840,222 @@ async def get_report_history(
     logs = await cursor.to_list(limit)
     
     return {"history": logs, "total": len(logs)}
+
+
+# ============================================
+# Email Delivery
+# ============================================
+
+async def send_report_email(
+    recipients: List[str],
+    report_type: str,
+    format: str,
+    data: List[dict],
+    start: datetime,
+    end: datetime,
+    schedule_name: str = None
+) -> dict:
+    """Generate report and send via email with attachment."""
+    from services.email_service import email_service
+    
+    # Generate file attachment
+    if format == "xlsx":
+        output = format_xlsx(data, report_type, start, end)
+        file_content = output.getvalue()
+        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        extension = "xlsx"
+    elif format == "pdf":
+        output = format_pdf(data, report_type, start, end)
+        file_content = output.getvalue()
+        content_type = "application/pdf"
+        extension = "pdf"
+    else:  # Default CSV
+        output = format_csv(data)
+        file_content = output.getvalue().encode('utf-8')
+        content_type = "text/csv"
+        extension = "csv"
+    
+    filename = f"{report_type}_report_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.{extension}"
+    
+    # Build email body
+    period_str = f"{start.strftime('%d %b %Y')} - {end.strftime('%d %b %Y')}"
+    subject = f"{'[' + schedule_name + '] ' if schedule_name else ''}{report_type.title()} Report - {period_str}"
+    
+    html_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333;">
+        <h2 style="color: #1E3A5F;">Your Report is Ready</h2>
+        <p>Please find attached your <strong>{report_type.title()} Report</strong>.</p>
+        <table style="border-collapse: collapse; margin: 20px 0;">
+            <tr>
+                <td style="padding: 8px 16px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Report Type</strong></td>
+                <td style="padding: 8px 16px; border: 1px solid #ddd;">{report_type.title()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 16px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Period</strong></td>
+                <td style="padding: 8px 16px; border: 1px solid #ddd;">{period_str}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 16px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Total Records</strong></td>
+                <td style="padding: 8px 16px; border: 1px solid #ddd;">{len(data):,}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 16px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Format</strong></td>
+                <td style="padding: 8px 16px; border: 1px solid #ddd;">{format.upper()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 16px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Generated</strong></td>
+                <td style="padding: 8px 16px; border: 1px solid #ddd;">{now_utc().strftime('%d %b %Y %H:%M:%S')} UTC</td>
+            </tr>
+        </table>
+        <p style="color: #666; font-size: 12px;">
+            This is an automated report from Pleerity Enterprise. 
+            If you no longer wish to receive these reports, please update your schedule settings.
+        </p>
+    </body>
+    </html>
+    """
+    
+    text_body = f"""
+Your Report is Ready
+
+Report Type: {report_type.title()}
+Period: {period_str}
+Total Records: {len(data):,}
+Format: {format.upper()}
+Generated: {now_utc().strftime('%d %b %Y %H:%M:%S')} UTC
+
+Please find the report attached to this email.
+
+This is an automated report from Pleerity Enterprise.
+    """
+    
+    results = []
+    import base64
+    
+    for recipient in recipients:
+        try:
+            if email_service.client:
+                response = email_service.client.emails.send(
+                    From=os.environ.get("EMAIL_SENDER", "info@pleerityenterprise.co.uk"),
+                    To=recipient,
+                    Subject=subject,
+                    HtmlBody=html_body,
+                    TextBody=text_body,
+                    TrackOpens=True,
+                    Attachments=[{
+                        "Name": filename,
+                        "Content": base64.b64encode(file_content).decode('utf-8'),
+                        "ContentType": content_type
+                    }]
+                )
+                results.append({"recipient": recipient, "status": "sent", "message_id": response.get("MessageID")})
+            else:
+                logger.warning(f"Email service not configured, would send to {recipient}")
+                results.append({"recipient": recipient, "status": "skipped", "reason": "email_not_configured"})
+        except Exception as e:
+            logger.error(f"Failed to send report email to {recipient}: {e}")
+            results.append({"recipient": recipient, "status": "failed", "error": str(e)})
+    
+    return {"results": results, "filename": filename}
+
+
+@router.post("/schedules/{schedule_id}/run")
+async def run_scheduled_report_now(
+    schedule_id: str,
+    background_tasks: BackgroundTasks,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Manually trigger a scheduled report to run immediately."""
+    db = database.get_db()
+    
+    schedule = await db.report_schedules.find_one({"schedule_id": schedule_id}, {"_id": 0})
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    
+    report_type = schedule["report_type"]
+    if report_type not in DATA_FETCHERS:
+        raise HTTPException(status_code=400, detail=f"Unknown report type: {report_type}")
+    
+    # Get data for last period based on frequency
+    now = now_utc()
+    if schedule["frequency"] == "daily":
+        start = now - timedelta(days=1)
+    elif schedule["frequency"] == "weekly":
+        start = now - timedelta(days=7)
+    else:  # monthly
+        start = now - timedelta(days=30)
+    end = now
+    
+    # Fetch data
+    fetcher = DATA_FETCHERS[report_type]
+    data = await fetcher(start, end, schedule.get("filters", {}))
+    
+    # Send email
+    email_result = await send_report_email(
+        recipients=schedule["recipients"],
+        report_type=report_type,
+        format=schedule.get("format", "csv"),
+        data=data,
+        start=start,
+        end=end,
+        schedule_name=schedule["name"]
+    )
+    
+    # Update last run time
+    await db.report_schedules.update_one(
+        {"schedule_id": schedule_id},
+        {"$set": {"last_run": now.isoformat()}}
+    )
+    
+    # Log the execution
+    await db.report_executions.insert_one({
+        "execution_id": generate_report_id(),
+        "schedule_id": schedule_id,
+        "schedule_name": schedule["name"],
+        "report_type": report_type,
+        "format": schedule.get("format", "csv"),
+        "recipients": schedule["recipients"],
+        "row_count": len(data),
+        "triggered_by": admin.get("portal_user_id"),
+        "trigger_type": "manual",
+        "email_results": email_result["results"],
+        "executed_at": now.isoformat()
+    })
+    
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=admin.get("portal_user_id"),
+        resource_type="report_schedule",
+        resource_id=schedule_id,
+        metadata={"action": "manual_run", "recipients": schedule["recipients"], "row_count": len(data)}
+    )
+    
+    return {
+        "success": True,
+        "schedule_id": schedule_id,
+        "report_type": report_type,
+        "recipients": schedule["recipients"],
+        "row_count": len(data),
+        "email_results": email_result["results"]
+    }
+
+
+@router.get("/executions")
+async def get_report_executions(
+    schedule_id: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=200),
+    admin: dict = Depends(admin_route_guard)
+):
+    """Get scheduled report execution history."""
+    db = database.get_db()
+    
+    query = {}
+    if schedule_id:
+        query["schedule_id"] = schedule_id
+    
+    cursor = db.report_executions.find(query, {"_id": 0}).sort("executed_at", -1).limit(limit)
+    executions = await cursor.to_list(limit)
+    
+    return {"executions": executions, "total": len(executions)}
