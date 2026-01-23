@@ -622,15 +622,27 @@ async def generate_report(
     fetcher = DATA_FETCHERS[request.report_type]
     data = await fetcher(start, end, request.filters)
     
-    # Format output
-    if request.format == "json":
+    # Format output based on requested format
+    if request.format == "xlsx":
+        output = format_xlsx(data, request.report_type, start, end)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        extension = "xlsx"
+        content = output.getvalue()
+    elif request.format == "pdf":
+        output = format_pdf(data, request.report_type, start, end)
+        media_type = "application/pdf"
+        extension = "pdf"
+        content = output.getvalue()
+    elif request.format == "json":
         output = format_json(data)
         media_type = "application/json"
         extension = "json"
+        content = output.getvalue().encode('utf-8') if isinstance(output.getvalue(), str) else output.getvalue()
     else:  # Default to CSV
         output = format_csv(data)
         media_type = "text/csv"
         extension = "csv"
+        content = output.getvalue().encode('utf-8') if isinstance(output.getvalue(), str) else output.getvalue()
     
     filename = f"{request.report_type}_report_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.{extension}"
     
@@ -650,7 +662,7 @@ async def generate_report(
     )
     
     return StreamingResponse(
-        iter([output.getvalue()]),
+        iter([content]),
         media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
