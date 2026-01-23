@@ -487,7 +487,7 @@ async def discard_draft(
     db = database.get_db()
     now = datetime.now(timezone.utc).isoformat()
     
-    result = await db[COLLECTION].update_one(
+    await db[COLLECTION].update_one(
         {"service_code": service_code},
         {
             "$unset": {"draft_overrides": 1, "draft_updated_at": 1, "draft_updated_by": 1},
