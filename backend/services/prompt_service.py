@@ -858,7 +858,7 @@ class PromptService:
             "new_version": template["version"],
             "status": PromptStatus.ACTIVE.value,
             "previous_active_version": previous_active_version,
-            "message": f"Template activated successfully",
+            "message": "Template activated successfully",
             "activated_at": now.isoformat(),
             "activated_by": activated_by,
         }
@@ -884,7 +884,7 @@ class PromptService:
             raise ValueError(f"Template not found: {template_id}")
         
         if template["status"] != PromptStatus.DRAFT.value:
-            raise ValueError(f"Only DRAFT templates can be marked as TESTED")
+            raise ValueError("Only DRAFT templates can be marked as TESTED")
         
         if template["last_test_status"] != PromptTestStatus.PASSED.value:
             raise ValueError(
