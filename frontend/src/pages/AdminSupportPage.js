@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   ArrowLeft, Search, Filter, MessageSquare, Ticket, Clock,
   User, AlertTriangle, CheckCircle2, XCircle, Send, RefreshCw,
