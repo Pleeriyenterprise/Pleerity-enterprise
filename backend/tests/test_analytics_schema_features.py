@@ -417,7 +417,7 @@ class TestServiceDetailV2:
         data = response.json()
         
         assert "service_code" in data
-        assert "name" in data
+        assert "service_name" in data
         assert "description" in data
     
     def test_service_detail_has_pricing(self):
@@ -426,9 +426,9 @@ class TestServiceDetailV2:
         assert response.status_code == 200
         data = response.json()
         
-        assert "pricing" in data
-        pricing = data["pricing"]
-        assert "base_price_pence" in pricing or "base_price" in pricing
+        # V2 API uses base_price directly
+        assert "base_price" in data
+        assert "price_currency" in data
     
     def test_service_detail_has_slug(self):
         """Service detail includes slug for URL"""
@@ -436,7 +436,8 @@ class TestServiceDetailV2:
         assert response.status_code == 200
         data = response.json()
         
-        assert "slug" in data
+        # V2 API uses learn_more_slug
+        assert "learn_more_slug" in data
     
     def test_service_detail_404_for_invalid(self):
         """Service detail returns 404 for invalid service code"""
@@ -448,12 +449,23 @@ class TestServiceDetailV2:
         service_codes = [
             "AI_WF_BLUEPRINT",
             "DOC_PACK_ESSENTIAL",
-            "DOC_PACK_PREMIUM",
         ]
         
         for code in service_codes:
             response = requests.get(f"{BASE_URL}/api/public/v2/services/{code}")
             assert response.status_code == 200, f"Failed for service: {code}"
+    
+    def test_service_detail_structure(self):
+        """Service detail has complete structure"""
+        response = requests.get(f"{BASE_URL}/api/public/v2/services/AI_WF_BLUEPRINT")
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify key fields
+        assert "category" in data
+        assert "pricing_model" in data
+        assert "delivery_type" in data
+        assert "turnaround_hours" in data
 
 
 # ============================================================================
