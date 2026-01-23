@@ -769,7 +769,8 @@ async def create_scheduled_report(
         metadata={"action": "create", "name": request.name, "frequency": request.frequency}
     )
     
-    del schedule["_id"] if "_id" in schedule else None
+    if "_id" in schedule:
+        del schedule["_id"]
     return schedule
 
 
