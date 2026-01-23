@@ -475,22 +475,30 @@ class DocumentOrchestrator:
         
         # ================================================================
         # STEP 9: Update order status - Ready for Human Review
+        # NEW: Store prompt_version_used permanently on order
         # ================================================================
-        await db.orders.update_one(
-            {"order_id": order_id},
-            {
-                "$set": {
-                    "document_status": "rendered",
-                    "review_status": "pending",
-                    "orchestration_status": OrchestrationStatus.REVIEW_PENDING.value,
-                    "current_version": render_result.version,
-                    "last_generation_at": datetime.now(timezone.utc),
-                },
-                "$inc": {"regeneration_count": 1} if regeneration else {}
-            }
-        )
+        order_update = {
+            "$set": {
+                "document_status": "rendered",
+                "review_status": "pending",
+                "orchestration_status": OrchestrationStatus.REVIEW_PENDING.value,
+                "current_version": render_result.version,
+                "last_generation_at": datetime.now(timezone.utc),
+                # CRITICAL: Store prompt_version_used permanently for audit
+                "prompt_version_used": prompt_version_used,
+            },
+        }
         
-        logger.info(f"Pipeline complete for {order_id} v{render_result.version}: DOCX={render_result.docx.sha256_hash[:8]}, PDF={render_result.pdf.sha256_hash[:8]}")
+        if regeneration:
+            order_update["$inc"] = {"regeneration_count": 1}
+        
+        await db.orders.update_one({"order_id": order_id}, order_update)
+        
+        logger.info(
+            f"Pipeline complete for {order_id} v{render_result.version}: "
+            f"DOCX={render_result.docx.sha256_hash[:8]}, PDF={render_result.pdf.sha256_hash[:8]}, "
+            f"Prompt={prompt_info.template_id if prompt_info else 'legacy'}"
+        )
         
         return OrchestrationResult(
             success=True,
@@ -516,6 +524,7 @@ class DocumentOrchestrator:
             execution_time_ms=execution_time,
             prompt_tokens=tokens.get("prompt_tokens", 0),
             completion_tokens=tokens.get("completion_tokens", 0),
+            prompt_version_used=prompt_version_used,
         )
     
     # Keep legacy method for backwards compatibility
