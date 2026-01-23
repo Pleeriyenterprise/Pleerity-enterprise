@@ -437,7 +437,6 @@ export default function AdminIntakeSchemaPage() {
               </div>
             )}
           </div>
-        </div>
         
         <div className="grid grid-cols-12 gap-6">
           {/* Service List Sidebar */}
