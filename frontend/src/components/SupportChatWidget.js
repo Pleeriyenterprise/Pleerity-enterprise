@@ -303,7 +303,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-50"
+        className="fixed bottom-24 right-6 w-14 h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-50"
         data-testid="support-chat-button"
       >
         <MessageCircle className="w-6 h-6" />
@@ -313,7 +313,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
   return (
     <div
-      className={`fixed bottom-6 right-6 bg-white rounded-2xl shadow-2xl z-50 transition-all ${
+      className={`fixed bottom-24 right-6 bg-white rounded-2xl shadow-2xl z-50 transition-all ${
         isMinimized ? 'w-72 h-14' : 'w-96 h-[500px]'
       }`}
       data-testid="support-chat-widget"
