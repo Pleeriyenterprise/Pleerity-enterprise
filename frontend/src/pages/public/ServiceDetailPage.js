@@ -137,7 +137,7 @@ function NotFoundState() {
       <section className="py-32 text-center">
         <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
         <h1 className="text-3xl font-bold text-midnight-blue mb-4">Service Not Found</h1>
-        <p className="text-gray-600 mb-8">The service you&apos;re looking for doesn&apos;t exist.</p>
+        <p className="text-gray-600 mb-8">The service you are looking for does not exist.</p>
         <Button asChild className="bg-electric-teal hover:bg-electric-teal/90">
           <Link to="/services/catalogue">View All Services</Link>
         </Button>

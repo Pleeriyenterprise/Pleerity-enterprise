@@ -93,11 +93,11 @@ function QuickActionsPanel({ onAction, loading }) {
 }
 
 // Handoff options component
-function HandoffOptions({ options, onSelect, conversationId }) {
+function HandoffOptions({ options, onSelect, conversationId, onWhatsAppClick }) {
   return (
     <div className="bg-blue-50 rounded-lg p-4 mb-3">
       <p className="text-sm font-medium text-blue-800 mb-3">
-        Choose how you'd like to continue:
+        Choose how you&apos;d like to continue:
       </p>
       <div className="space-y-2">
         <Button
@@ -123,16 +123,15 @@ function HandoffOptions({ options, onSelect, conversationId }) {
         </Button>
         
         {options?.whatsapp?.link && (
-          <a
-            href={options.whatsapp.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 w-full px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm"
+          <button
+            onClick={() => onWhatsAppClick(options.whatsapp.link)}
+            className="flex items-center gap-2 w-full px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm text-left"
+            data-testid="whatsapp-handoff-btn"
           >
             <Phone className="w-4 h-4 text-green-500" />
             <span>Continue on WhatsApp</span>
             <ExternalLink className="w-3 h-3 ml-auto text-gray-400" />
-          </a>
+          </button>
         )}
       </div>
       <p className="text-xs text-gray-500 mt-3">
