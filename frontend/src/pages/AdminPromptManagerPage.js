@@ -92,6 +92,12 @@ export default function AdminPromptManagerPage() {
   const [serviceCodes, setServiceCodes] = useState([]);
   const [docTypes, setDocTypes] = useState([]);
   
+  // Analytics state
+  const [analytics, setAnalytics] = useState(null);
+  const [topPrompts, setTopPrompts] = useState([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsDays, setAnalyticsDays] = useState(30);
+  
   // Filters
   const [filters, setFilters] = useState({
     service_code: '',
