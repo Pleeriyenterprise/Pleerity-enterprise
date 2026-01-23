@@ -164,19 +164,46 @@ export default function AdminAnalyticsDashboard() {
         funnel: funnelRes.data,
         addons: addonsRes.data,
       });
+      
+      // Also fetch advanced data
+      await fetchAdvancedData();
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
       toast.error('Failed to load analytics data');
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, fetchAdvancedData]);
   
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
   
+  // Refresh advanced data when compare or breakdown changes
+  useEffect(() => {
+    if (!loading) {
+      fetchAdvancedData();
+    }
+  }, [compareEnabled, breakdownDimension, customDateRange]);
+  
   const { summary, services, sla, customers, funnel, addons } = data;
+  
+  // Handle custom date range apply
+  const applyCustomRange = () => {
+    if (customDateRange.start && customDateRange.end) {
+      setShowCustomRange(true);
+      fetchAllData();
+    } else {
+      toast.error('Please select both start and end dates');
+    }
+  };
+  
+  // Clear custom range
+  const clearCustomRange = () => {
+    setShowCustomRange(false);
+    setCustomDateRange({ start: '', end: '' });
+    fetchAllData();
+  };
   
   return (
     <UnifiedAdminLayout>
