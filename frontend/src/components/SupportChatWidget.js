@@ -225,9 +225,139 @@ function EmailTicketForm({ conversationId, onSubmit, onCancel }) {
   );
 }
 
+// FAQ Tab Component - Shows top questions before chatting
+function FAQTab({ onStartChat, onSelectArticle }) {
+  const [faqArticles, setFaqArticles] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const response = await client.get('/kb/featured');
+        setFaqArticles(response.data.popular?.slice(0, 5) || []);
+      } catch (err) {
+        console.error('Failed to fetch FAQ articles:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFeatured();
+  }, []);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setSearching(true);
+    try {
+      const response = await client.get(`/kb/articles?search=${encodeURIComponent(searchQuery)}&limit=5`);
+      setSearchResults(response.data.articles || []);
+    } catch (err) {
+      console.error('Search failed:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const displayArticles = searchResults.length > 0 ? searchResults : faqArticles;
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search for answers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="pl-10 pr-16"
+            data-testid="faq-search-input"
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7"
+            onClick={handleSearch}
+            disabled={searching}
+          >
+            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Articles */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 mb-2">
+          {searchResults.length > 0 ? 'Search Results' : 'Top Questions'}
+        </p>
+        
+        {loading ? (
+          <div className="text-center py-4 text-gray-400">
+            <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+          </div>
+        ) : displayArticles.length > 0 ? (
+          displayArticles.map(article => (
+            <button
+              key={article.article_id}
+              onClick={() => onSelectArticle(article)}
+              className="w-full text-left p-3 rounded-lg border bg-white hover:bg-gray-50 transition-colors"
+              data-testid={`faq-article-${article.article_id}`}
+            >
+              <p className="text-sm font-medium text-gray-800 line-clamp-1">{article.title}</p>
+              <p className="text-xs text-gray-500 line-clamp-1 mt-1">{article.excerpt}</p>
+            </button>
+          ))
+        ) : searchQuery ? (
+          <div className="text-center py-4">
+            <p className="text-sm text-gray-500 mb-3">No articles found</p>
+            <Button
+              size="sm"
+              onClick={onStartChat}
+              className="bg-teal-600 hover:bg-teal-700"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Chat with Us
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      {/* View All + Chat CTA */}
+      <div className="mt-6 space-y-3">
+        <Link
+          to="/support/knowledge-base"
+          className="flex items-center justify-center gap-2 text-sm text-teal-600 hover:text-teal-700"
+          data-testid="view-all-kb-link"
+        >
+          <Book className="h-4 w-4" />
+          View All Articles
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+        
+        <div className="border-t pt-3">
+          <p className="text-xs text-gray-500 text-center mb-2">Can not find what you need?</p>
+          <Button
+            onClick={onStartChat}
+            className="w-full bg-teal-600 hover:bg-teal-700"
+            data-testid="start-chat-from-faq-btn"
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Start a Conversation
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SupportChatWidget({ isAuthenticated = false, clientContext = null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [activeTab, setActiveTab] = useState('faq'); // 'faq' or 'chat'
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -238,6 +368,17 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   const [showTicketForm, setShowTicketForm] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Expose open function globally for external triggers
+  useEffect(() => {
+    window.openSupportChat = () => {
+      setIsOpen(true);
+      setActiveTab('chat');
+    };
+    return () => {
+      delete window.openSupportChat;
+    };
+  }, []);
+
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -247,9 +388,9 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Add initial greeting when chat opens
+  // Add initial greeting when chat tab opens
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && activeTab === 'chat' && messages.length === 0) {
       const greeting = isAuthenticated
         ? `Hello! 👋 I'm Pleerity Support. I can see you're logged in - I can help with your account, orders, or any questions about our services.\n\nUse the quick actions below or type your question!`
         : `Hello! 👋 I'm Pleerity Support, your AI assistant.\n\nUse the **quick actions** below for instant help, or type your question!`;
@@ -261,7 +402,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         timestamp: new Date().toISOString(),
       }]);
     }
-  }, [isOpen, messages.length, isAuthenticated]);
+  }, [isOpen, activeTab, messages.length, isAuthenticated]);
 
   // Handle WhatsApp click with proper window.open and audit logging
   const handleWhatsAppClick = async (whatsappLink) => {
