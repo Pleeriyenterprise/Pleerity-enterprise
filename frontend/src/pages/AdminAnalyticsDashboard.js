@@ -100,6 +100,13 @@ export default function AdminAnalyticsDashboard() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState('30d');
   const [loading, setLoading] = useState(true);
+  const [compareEnabled, setCompareEnabled] = useState(true);
+  const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
+  const [showCustomRange, setShowCustomRange] = useState(false);
+  const [advancedSummary, setAdvancedSummary] = useState(null);
+  const [trendData, setTrendData] = useState(null);
+  const [breakdownData, setBreakdownData] = useState(null);
+  const [breakdownDimension, setBreakdownDimension] = useState('service');
   const [data, setData] = useState({
     summary: null,
     services: null,
@@ -109,6 +116,32 @@ export default function AdminAnalyticsDashboard() {
     addons: null,
     dailyRevenue: null,
   });
+  
+  // Build query params for API calls
+  const getQueryParams = useCallback(() => {
+    if (showCustomRange && customDateRange.start && customDateRange.end) {
+      return `start_date=${customDateRange.start}&end_date=${customDateRange.end}&compare=${compareEnabled}`;
+    }
+    return `period=${period}&compare=${compareEnabled}`;
+  }, [period, showCustomRange, customDateRange, compareEnabled]);
+  
+  // Fetch advanced analytics (v2 endpoints)
+  const fetchAdvancedData = useCallback(async () => {
+    try {
+      const params = getQueryParams();
+      const [summaryRes, trendRes, breakdownRes] = await Promise.all([
+        client.get(`/admin/analytics/v2/summary?${params}`),
+        client.get(`/admin/analytics/v2/trends?${params}&granularity=day&metrics=revenue,orders`),
+        client.get(`/admin/analytics/v2/breakdown?${params}&dimension=${breakdownDimension}`),
+      ]);
+      
+      setAdvancedSummary(summaryRes.data);
+      setTrendData(trendRes.data);
+      setBreakdownData(breakdownRes.data);
+    } catch (error) {
+      console.error('Failed to fetch advanced analytics:', error);
+    }
+  }, [getQueryParams, breakdownDimension]);
   
   const fetchAllData = useCallback(async () => {
     try {
