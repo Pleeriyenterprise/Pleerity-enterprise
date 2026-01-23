@@ -835,6 +835,32 @@ async def verify_document(request: Request, document_id: str):
             after_state={"status": DocumentStatus.VERIFIED.value}
         )
         
+        # Enablement event
+        try:
+            from services.enablement_service import emit_enablement_event
+            from models.enablement import EnablementEventType
+            
+            # Get property address for context
+            property_doc = await db.properties.find_one(
+                {"property_id": document["property_id"]},
+                {"_id": 0, "address": 1}
+            )
+            property_address = property_doc.get("address", {}).get("line1", "") if property_doc else ""
+            
+            await emit_enablement_event(
+                event_type=EnablementEventType.DOCUMENT_VERIFIED,
+                client_id=document["client_id"],
+                document_id=document_id,
+                property_id=document["property_id"],
+                context_payload={
+                    "document_name": document.get("document_name", document.get("requirement_name", "Document")),
+                    "property_address": property_address,
+                    "expiry_date": document.get("expiry_date", "N/A")
+                }
+            )
+        except Exception as enable_err:
+            logger.warning(f"Failed to emit enablement event: {enable_err}")
+        
         return {"message": "Document verified"}
     
     except HTTPException:
