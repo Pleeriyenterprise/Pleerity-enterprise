@@ -1028,7 +1028,7 @@ Provide workflow recommendations in JSON format.`}
                 Prompt Playground
               </DialogTitle>
               <DialogDescription>
-                Test "{selectedTemplate?.name}" with sample input data
+                Test &quot;{selectedTemplate?.name}&quot; with sample input data
               </DialogDescription>
             </DialogHeader>
             
