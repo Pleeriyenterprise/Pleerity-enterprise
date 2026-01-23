@@ -218,6 +218,68 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 }
 ```
 
+### cms_pages
+```javascript
+{
+  page_id: "PG-XXXXXXXXXXXX",
+  slug: "about-us",  // Unique, lowercase, hyphens only
+  title: "About Us",
+  description: "Company information",
+  status: "DRAFT|PUBLISHED|ARCHIVED",
+  blocks: [
+    {
+      block_id: "BLK-XXXXXXXX",
+      block_type: "HERO|TEXT_BLOCK|CTA|FAQ|...",
+      content: { ... },  // Schema-validated
+      visible: true,
+      order: 0
+    }
+  ],
+  seo: {
+    meta_title: "...",
+    meta_description: "...",
+    og_title: "...",
+    og_image_id: "..."
+  },
+  current_version: 1,
+  created_at: "...",
+  updated_at: "...",
+  published_at: "...",
+  created_by: "admin-001",
+  updated_by: "admin-001"
+}
+```
+
+### cms_revisions
+```javascript
+{
+  revision_id: "REV-XXXXXXXXXXXX",
+  page_id: "PG-XXXXXXXXXXXX",
+  version: 1,
+  title: "...",
+  blocks: [...],
+  seo: {...},
+  published_at: "...",
+  published_by: "admin-001",
+  notes: "Initial publish"
+}
+```
+
+### cms_media
+```javascript
+{
+  media_id: "MED-XXXXXXXXXXXX",
+  media_type: "IMAGE|VIDEO_EMBED",
+  file_name: "hero-banner.jpg",
+  file_url: "/api/cms/media/file/{file_id}",
+  file_size: 102400,
+  alt_text: "Hero banner image",
+  tags: ["hero", "banner"],
+  uploaded_at: "...",
+  uploaded_by: "admin-001"
+}
+```
+
 ---
 
 ## Credentials
