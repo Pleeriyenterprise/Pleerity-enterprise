@@ -14,11 +14,28 @@ from models.cms import (
     CMSPageResponse, CMSRevisionResponse, CMSMediaResponse,
     MediaType, BLOCK_CONTENT_SCHEMAS
 )
-from utils.audit import log_audit
+from utils.audit import create_audit_log
+from models.core import AuditAction, UserRole
 
 
 def get_db():
     return database.get_db()
+
+
+async def log_audit(action: str, entity_type: str, entity_id: str, user_id: str, user_email: str, changes: dict):
+    """Simple audit logging wrapper for CMS operations"""
+    await create_audit_log(
+        action=AuditAction.GENERIC,  # Use generic for CMS actions
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=user_id,
+        resource_type=entity_type,
+        resource_id=entity_id,
+        metadata={
+            "cms_action": action,
+            "actor_email": user_email,
+            "changes": changes
+        }
+    )
 
 
 # ============================================
