@@ -76,6 +76,7 @@ export default function AdminReportingPage() {
   const [executions, setExecutions] = useState([]);
   const [history, setHistory] = useState([]);
   const [previewData, setPreviewData] = useState(null);
+  const [shares, setShares] = useState([]);
   
   // Form state
   const [selectedType, setSelectedType] = useState('leads');
@@ -94,6 +95,17 @@ export default function AdminReportingPage() {
     format: 'csv',
     enabled: true,
   });
+  
+  // Share dialog
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareForm, setShareForm] = useState({
+    report_type: 'leads',
+    format: 'pdf',
+    period: '30d',
+    expires_in_days: 7,
+    name: ''
+  });
+  const [createdShareUrl, setCreatedShareUrl] = useState('');
   
   // Fetch report configuration
   const fetchConfig = useCallback(async () => {
@@ -125,6 +137,16 @@ export default function AdminReportingPage() {
       setExecutions(data.executions || []);
     } catch (error) {
       console.error('Failed to fetch executions:', error);
+    }
+  }, []);
+  
+  // Fetch shares
+  const fetchShares = useCallback(async () => {
+    try {
+      const { data } = await client.get('/admin/reports/shares');
+      setShares(data.shares || []);
+    } catch (error) {
+      console.error('Failed to fetch shares:', error);
     }
   }, []);
   
