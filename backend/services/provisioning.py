@@ -191,6 +191,19 @@ class ProvisioningService:
                 metadata={"portal_user_id": user_id}
             )
             
+            # ENABLEMENT: Emit provisioning completed event
+            try:
+                from services.enablement_service import emit_enablement_event
+                from models.enablement import EnablementEventType
+                await emit_enablement_event(
+                    event_type=EnablementEventType.PROVISIONING_COMPLETED,
+                    client_id=client_id,
+                    plan_code=client.get("plan_code"),
+                    context_payload={"portal_user_id": user_id}
+                )
+            except Exception as enable_err:
+                logger.warning(f"Failed to emit enablement event: {enable_err}")
+            
             # STEP 7: Generate and send password setup token
             await self._send_password_setup_link(client_id, user_id, client["email"], client["full_name"])
             
