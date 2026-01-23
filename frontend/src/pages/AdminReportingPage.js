@@ -745,6 +745,90 @@ export default function AdminReportingPage() {
             )}
           </TabsContent>
           
+          {/* Shares Tab */}
+          <TabsContent value="shares" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Share Links</CardTitle>
+                  <CardDescription>Public links for sharing reports with stakeholders</CardDescription>
+                </div>
+                <Button onClick={() => { setShowShareDialog(true); setCreatedShareUrl(''); }} data-testid="create-share-btn">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Share Link
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {shares.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Report Type</TableHead>
+                        <TableHead>Format</TableHead>
+                        <TableHead>Expires</TableHead>
+                        <TableHead>Views</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {shares.map(share => {
+                        const isExpired = new Date(share.expires_at) < new Date();
+                        return (
+                          <TableRow key={share.share_id} data-testid={`share-row-${share.share_id}`}>
+                            <TableCell className="font-medium">{share.name}</TableCell>
+                            <TableCell className="capitalize">{share.report_type}</TableCell>
+                            <TableCell className="uppercase text-xs">{share.format}</TableCell>
+                            <TableCell>
+                              <Badge variant={isExpired ? 'destructive' : 'outline'}>
+                                {isExpired ? 'Expired' : new Date(share.expires_at).toLocaleDateString()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{share.access_count || 0}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(`${window.location.origin}/shared/report/${share.share_id}`)}
+                                  title="Copy Link"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(`/shared/report/${share.share_id}`, '_blank')}
+                                  title="Open Link"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRevokeShare(share.share_id)}
+                                  title="Revoke"
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <Link className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No share links created yet</p>
+                    <p className="text-sm mt-2">Create shareable links for stakeholders without admin access</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
           {/* History Tab */}
           <TabsContent value="history" className="mt-6">
             <Card>
