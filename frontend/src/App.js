@@ -144,6 +144,9 @@ function App() {
               {/* Knowledge Base (Public) */}
               <Route path="/support/knowledge-base" element={<PublicKnowledgeBasePage />} />
               <Route path="/support/knowledge-base/:slug" element={<PublicKnowledgeBasePage />} />
+              
+              {/* Shared Reports (Public) */}
+              <Route path="/shared/report/:shareId" element={<SharedReportPage />} />
 
               {/* ========================================
                   AUTH & ONBOARDING ROUTES
