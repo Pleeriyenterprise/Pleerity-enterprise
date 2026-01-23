@@ -209,44 +209,103 @@ export default function AdminAnalyticsDashboard() {
     <UnifiedAdminLayout>
     <div className="space-y-6" data-testid="admin-analytics-dashboard">
         {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-blue-600" />
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <BarChart3 className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
+                  <p className="text-gray-500">
+                    Business intelligence and performance metrics
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-                <p className="text-gray-500">
-                  Business intelligence and performance metrics
-                </p>
+              
+              <div className="flex items-center gap-3">
+                {/* Period Selector */}
+                {!showCustomRange && (
+                  <Select value={period} onValueChange={(v) => { setPeriod(v); setShowCustomRange(false); }}>
+                    <SelectTrigger className="w-40" data-testid="period-selector">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="7d">Last 7 Days</SelectItem>
+                      <SelectItem value="30d">Last 30 Days</SelectItem>
+                      <SelectItem value="90d">Last 90 Days</SelectItem>
+                      <SelectItem value="ytd">Year to Date</SelectItem>
+                      <SelectItem value="all">All Time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {/* Custom Date Range */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={customDateRange.start}
+                    onChange={(e) => setCustomDateRange({ ...customDateRange, start: e.target.value })}
+                    className="px-3 py-2 border rounded-md text-sm"
+                    data-testid="custom-start-date"
+                  />
+                  <span className="text-gray-400">to</span>
+                  <input
+                    type="date"
+                    value={customDateRange.end}
+                    onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
+                    className="px-3 py-2 border rounded-md text-sm"
+                    data-testid="custom-end-date"
+                  />
+                  {!showCustomRange ? (
+                    <Button size="sm" onClick={applyCustomRange} data-testid="apply-custom-range">
+                      Apply
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={clearCustomRange}>
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Compare Toggle */}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={compareEnabled}
+                    onChange={(e) => setCompareEnabled(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm text-gray-600">Compare</span>
+                </label>
+                
+                <Button 
+                  variant="outline" 
+                  onClick={fetchAllData}
+                  disabled={loading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
-              <Select value={period} onValueChange={setPeriod}>
-                <SelectTrigger className="w-40" data-testid="period-selector">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="7d">Last 7 Days</SelectItem>
-                  <SelectItem value="30d">Last 30 Days</SelectItem>
-                  <SelectItem value="90d">Last 90 Days</SelectItem>
-                  <SelectItem value="ytd">Year to Date</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Button 
-                variant="outline" 
-                onClick={fetchAllData}
-                disabled={loading}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </div>
+            {/* Period Info Bar */}
+            {advancedSummary?.period && (
+              <div className="flex items-center gap-4 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-lg">
+                <span>
+                  <strong>Current:</strong> {new Date(advancedSummary.period.current.start).toLocaleDateString()} - {new Date(advancedSummary.period.current.end).toLocaleDateString()}
+                  ({advancedSummary.period.current.days} days)
+                </span>
+                {advancedSummary.period.comparison && (
+                  <span className="text-gray-400">
+                    <strong>vs Previous:</strong> {new Date(advancedSummary.period.comparison.start).toLocaleDateString()} - {new Date(advancedSummary.period.comparison.end).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         
         {loading && !summary ? (
