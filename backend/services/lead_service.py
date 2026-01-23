@@ -979,45 +979,77 @@ class AbandonedIntakeService:
         
         # Find drafts that:
         # 1. Were updated more than X hours ago
-        # 2. Have not been converted to orders
+        # 2. Have DRAFT or in_progress status (not completed)
         # 3. Have not already been converted to leads
-        # 4. Have some meaningful data (plan selected or property added)
+        # 4. Have some meaningful data (client_identity with email, or selected service)
         
         abandoned_drafts = await db["intake_drafts"].find({
             "updated_at": {"$lt": cutoff},
-            "status": {"$in": ["draft", "in_progress"]},
+            "status": {"$in": ["DRAFT", "draft", "in_progress", "PENDING"]},
             "lead_created": {"$ne": True},
             "$or": [
-                {"intake_payload.selected_plan": {"$exists": True}},
-                {"intake_payload.properties": {"$exists": True, "$ne": []}},
+                {"client_identity.email": {"$exists": True, "$ne": None, "$ne": ""}},
+                {"intake_payload.email": {"$exists": True, "$ne": None, "$ne": ""}},
             ],
         }, {"_id": 0}).to_list(length=100)
         
         created_leads = []
         
         for draft in abandoned_drafts:
-            # Extract info from draft
-            payload = draft.get("intake_payload", {})
-            contact_email = payload.get("email")
-            contact_name = payload.get("name") or payload.get("company_name")
-            selected_plan = payload.get("selected_plan")
-            properties = payload.get("properties", [])
+            # Extract info from draft - handle both structures
+            client_identity = draft.get("client_identity", {})
+            intake_payload = draft.get("intake_payload", {})
+            
+            # Try client_identity first, then intake_payload
+            contact_email = client_identity.get("email") or intake_payload.get("email")
+            contact_name = (
+                client_identity.get("full_name") or 
+                client_identity.get("name") or
+                intake_payload.get("name") or 
+                intake_payload.get("company_name")
+            )
+            contact_phone = client_identity.get("phone") or intake_payload.get("phone")
+            company_name = client_identity.get("company_name") or intake_payload.get("company_name")
+            
+            # Get service info
+            service_code = draft.get("service_code", "UNKNOWN")
+            selected_plan = intake_payload.get("selected_plan")
+            properties = intake_payload.get("properties", [])
             property_count = len(properties)
             
             if not contact_email:
+                logger.debug(f"Skipping draft {draft.get('draft_id')}: no email found")
                 continue  # Cannot create lead without email
+            
+            # Map service interest
+            service_interest = LeadServiceInterest.UNKNOWN
+            if "CVP" in service_code or "VAULT" in service_code:
+                service_interest = LeadServiceInterest.CVP
+            elif "DOC" in service_code or "PACK" in service_code:
+                service_interest = LeadServiceInterest.DOCUMENT_PACKS
+            elif "AI" in service_code or "AUTOMATION" in service_code:
+                service_interest = LeadServiceInterest.AUTOMATION
+            
+            # Build message summary
+            message_parts = [f"Abandoned intake for {service_code}"]
+            if selected_plan:
+                message_parts.append(f"Plan: {selected_plan}")
+            if property_count > 0:
+                message_parts.append(f"Properties: {property_count}")
+            message_summary = ". ".join(message_parts)
             
             # Create lead
             request = LeadCreateRequest(
                 source_platform=LeadSourcePlatform.INTAKE_ABANDONED,
-                service_interest=LeadServiceInterest.CVP,
+                service_interest=service_interest,
                 name=contact_name,
                 email=contact_email,
-                phone=payload.get("phone"),
-                company_name=payload.get("company_name"),
+                phone=contact_phone,
+                company_name=company_name,
                 intake_draft_id=draft.get("draft_id"),
-                message_summary=f"Abandoned intake: Plan={selected_plan}, Properties={property_count}",
-                marketing_consent=payload.get("marketing_consent", False),
+                message_summary=message_summary,
+                marketing_consent=intake_payload.get("marketing_consent", False) or 
+                                  client_identity.get("marketing_consent", False),
             )
             
             lead = await LeadService.create_lead(
@@ -1034,6 +1066,12 @@ class AbandonedIntakeService:
                     {"draft_id": draft["draft_id"]},
                     {"$set": {"lead_created": True, "lead_id": lead["lead_id"]}}
                 )
+                
+                logger.info(f"Created lead {lead['lead_id']} from abandoned intake {draft['draft_id']}")
+            else:
+                logger.debug(f"Duplicate lead found for abandoned intake {draft['draft_id']}")
         
-        logger.info(f"Created {len(created_leads)} leads from abandoned intakes")
+        if created_leads:
+            logger.info(f"Created {len(created_leads)} leads from abandoned intakes")
+        
         return created_leads
