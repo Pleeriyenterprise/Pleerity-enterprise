@@ -99,7 +99,18 @@ const AdminPostalTrackingPage = () => {
       const response = await api.get('/admin/orders/postal/pending');
       const data = response.data;
       
-      setOrders(data.orders || []);
+      // Flatten orders object into array
+      const ordersObj = data.orders || {};
+      const allOrders = [];
+      Object.entries(ordersObj).forEach(([status, statusOrders]) => {
+        if (Array.isArray(statusOrders)) {
+          statusOrders.forEach(order => {
+            allOrders.push({ ...order, postal_status: status });
+          });
+        }
+      });
+      
+      setOrders(allOrders);
       setStats({
         pending_print: data.pending_print || 0,
         printed: data.printed || 0,
