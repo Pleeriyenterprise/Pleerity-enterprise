@@ -165,7 +165,43 @@ export default function AdminReportingPage() {
     fetchSchedules();
     fetchExecutions();
     fetchHistory();
-  }, [fetchConfig, fetchSchedules, fetchExecutions, fetchHistory]);
+    fetchShares();
+  }, [fetchConfig, fetchSchedules, fetchExecutions, fetchHistory, fetchShares]);
+  
+  // Create share link
+  const handleCreateShare = async () => {
+    setLoading(true);
+    try {
+      const { data } = await client.post('/admin/reports/share', shareForm);
+      setCreatedShareUrl(data.share_url || `${window.location.origin}/shared/report/${data.share_id}`);
+      toast.success('Share link created');
+      fetchShares();
+    } catch (error) {
+      console.error('Failed to create share:', error);
+      toast.error(error.response?.data?.detail || 'Failed to create share link');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Revoke share link
+  const handleRevokeShare = async (shareId) => {
+    if (!window.confirm('Are you sure you want to revoke this share link?')) return;
+    try {
+      await client.delete(`/admin/reports/shares/${shareId}`);
+      toast.success('Share link revoked');
+      fetchShares();
+    } catch (error) {
+      console.error('Failed to revoke share:', error);
+      toast.error('Failed to revoke share link');
+    }
+  };
+  
+  // Copy share URL
+  const copyToClipboard = (url) => {
+    navigator.clipboard.writeText(url);
+    toast.success('Link copied to clipboard');
+  };
   
   // Preview report
   const handlePreview = async () => {
