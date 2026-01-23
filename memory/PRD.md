@@ -188,6 +188,25 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 | `/api/public/cms/pages/{slug}` | GET | Get published page content |
 | `/api/cms/media/file/{file_id}` | GET | Serve media file |
 
+### Customer Enablement Engine (Admin - ROLE_ADMIN only)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/enablement/overview` | GET | System overview (templates, suppressions, recent) |
+| `/api/admin/enablement/stats` | GET | Statistics with period filter |
+| `/api/admin/enablement/templates` | GET | List all templates |
+| `/api/admin/enablement/templates/{code}/toggle` | PUT | Toggle template active status |
+| `/api/admin/enablement/templates/seed` | POST | Reseed default templates |
+| `/api/admin/enablement/suppressions` | GET | List suppression rules |
+| `/api/admin/enablement/suppressions` | POST | Create suppression rule |
+| `/api/admin/enablement/suppressions/{id}` | DELETE | Deactivate suppression |
+| `/api/admin/enablement/clients/{id}/timeline` | GET | Client enablement timeline |
+| `/api/admin/enablement/clients/{id}/preferences` | GET | Get client preferences |
+| `/api/admin/enablement/clients/{id}/preferences` | PUT | Update client preferences |
+| `/api/admin/enablement/trigger` | POST | Manual event trigger |
+| `/api/admin/enablement/actions` | GET | Query actions with filters |
+| `/api/admin/enablement/events` | GET | Query events |
+| `/api/admin/enablement/event-types` | GET | Get all enum types |
+
 ### Cookie Consent (Public)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
