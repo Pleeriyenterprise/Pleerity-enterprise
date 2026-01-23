@@ -101,6 +101,7 @@ import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
 import AdminPostalTrackingPage from './pages/AdminPostalTrackingPage';
 import AdminConsentDashboard from './pages/AdminConsentDashboard';
+import AdminSiteBuilderPage from './pages/AdminSiteBuilderPage';
 import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
 import CookieBanner from './components/CookieBanner';
 
