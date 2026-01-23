@@ -210,6 +210,86 @@ async def chat_endpoint(
         raise HTTPException(status_code=500, detail="Failed to process message")
 
 
+@public_router.get("/quick-actions")
+async def get_quick_actions():
+    """Get available quick action buttons for the chat widget."""
+    return {
+        "quick_actions": get_all_quick_actions()
+    }
+
+
+@public_router.post("/quick-action/{action_id}")
+async def trigger_quick_action(
+    request: Request,
+    action_id: str,
+    conversation_id: Optional[str] = None
+):
+    """
+    Trigger a quick action and get the canned response.
+    Optionally creates/uses a conversation.
+    """
+    canned = get_canned_response(action_id)
+    
+    if not canned:
+        raise HTTPException(status_code=404, detail=f"Quick action not found: {action_id}")
+    
+    # Create conversation if needed
+    if not conversation_id:
+        conv_data = ConversationCreate(
+            channel=ConversationChannel.WEB,
+            user_identity_type=UserIdentityType.ANONYMOUS
+        )
+        conversation = await ConversationService.create_conversation(conv_data)
+        conversation_id = conversation["conversation_id"]
+    else:
+        conversation = await ConversationService.get_conversation(conversation_id)
+        if not conversation:
+            conv_data = ConversationCreate(
+                channel=ConversationChannel.WEB,
+                user_identity_type=UserIdentityType.ANONYMOUS
+            )
+            conversation = await ConversationService.create_conversation(conv_data)
+            conversation_id = conversation["conversation_id"]
+    
+    # Save the quick action as a user message
+    user_msg = MessageCreate(
+        message_text=f"[Quick Action: {action_id}]",
+        sender=MessageSender.USER,
+        metadata={"quick_action": action_id}
+    )
+    await MessageService.add_message(conversation_id, user_msg)
+    
+    # Save the canned response as bot message
+    bot_msg = MessageCreate(
+        message_text=canned["response"],
+        sender=MessageSender.BOT,
+        metadata=canned.get("metadata", {})
+    )
+    await MessageService.add_message(conversation_id, bot_msg)
+    
+    # Build response
+    response_data = {
+        "conversation_id": conversation_id,
+        "response": canned["response"],
+        "action": canned.get("action", "respond"),
+        "metadata": canned.get("metadata", {})
+    }
+    
+    # Add handoff options if this is a handoff action
+    if canned.get("action") == "handoff":
+        response_data["handoff_options"] = {
+            "live_chat": {"available": True, "provider": "tawk.to"},
+            "email_ticket": {"available": True},
+            "whatsapp": {
+                "available": True,
+                "link": generate_whatsapp_link(conversation_id, None, action_id),
+            },
+            "conversation_id": conversation_id,
+        }
+    
+    return response_data
+
+
 @public_router.post("/lookup")
 async def public_lookup(
     request: Request,
