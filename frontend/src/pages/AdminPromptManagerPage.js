@@ -245,10 +245,10 @@ export default function AdminPromptManagerPage() {
       };
       
       if (editingTemplate) {
-        await client.put(`/api/admin/prompts/${editingTemplate.template_id}`, payload);
+        await client.put(`/admin/prompts/${editingTemplate.template_id}`, payload);
         toast.success('Template updated');
       } else {
-        await client.post('/api/admin/prompts', payload);
+        await client.post('/admin/prompts', payload);
         toast.success('Template created');
       }
       
