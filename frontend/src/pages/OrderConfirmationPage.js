@@ -49,21 +49,56 @@ export default function OrderConfirmationPage() {
     }
   }, [draftId, pollCount]);
 
-  // Initial check
+  // Initial check and polling combined
   useEffect(() => {
-    checkStatus();
-  }, []);
-
-  // Polling
-  useEffect(() => {
-    if (status !== 'loading') return;
+    let interval;
     
-    const interval = setInterval(() => {
-      checkStatus();
-    }, 2000);
+    const doCheck = async () => {
+      if (!draftId) {
+        setStatus('error');
+        return;
+      }
 
-    return () => clearInterval(interval);
-  }, [status, checkStatus]);
+      try {
+        const res = await client.get(`/api/intake/draft/${draftId}/confirmation`);
+        const data = res.data;
+        
+        setDraftRef(data.draft_ref);
+        
+        if (data.converted) {
+          setOrderData(data.order);
+          setStatus('converted');
+        } else {
+          setPollCount(prev => {
+            if (prev >= maxPolls) {
+              setStatus('pending');
+            }
+            return prev + 1;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to check status:', err);
+        setStatus('error');
+      }
+    };
+    
+    // Initial check
+    doCheck();
+    
+    // Start polling
+    interval = setInterval(doCheck, 2000);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [draftId]);
+
+  // Stop polling when status changes
+  useEffect(() => {
+    if (status !== 'loading') {
+      // Status changed, no need to poll anymore
+    }
+  }, [status]);
 
   // Loading state
   if (status === 'loading') {
@@ -89,13 +124,13 @@ export default function OrderConfirmationPage() {
               <Clock className="h-16 w-16 mx-auto text-yellow-500" />
               <h2 className="mt-4 text-xl font-semibold text-gray-900">Payment Received</h2>
               <p className="mt-2 text-gray-600">
-                Your payment was successful! We're processing your order now.
+                Your payment was successful! We are processing your order now.
               </p>
               <p className="mt-4 text-sm text-gray-500">
                 Reference: <span className="font-mono">{draftRef}</span>
               </p>
               <p className="mt-4 text-sm text-gray-600">
-                You'll receive an email confirmation shortly with your order details.
+                You will receive an email confirmation shortly with your order details.
               </p>
               <Button
                 className="mt-6 bg-teal-600 hover:bg-teal-700"
