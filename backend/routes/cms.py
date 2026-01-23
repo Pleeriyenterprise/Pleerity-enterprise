@@ -428,3 +428,27 @@ async def get_public_page(slug: str):
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
     return page
+
+
+# ============================================
+# Media File Serving (Public - for rendered pages)
+# ============================================
+
+from fastapi.responses import StreamingResponse
+from services.storage_adapter import cms_storage_adapter
+
+@router.get("/media/file/{file_id}")
+async def serve_media_file(file_id: str):
+    """Serve media file content (Public - for rendered pages)"""
+    try:
+        content, metadata = await cms_storage_adapter.download_file(file_id)
+        return StreamingResponse(
+            iter([content]),
+            media_type=metadata.content_type,
+            headers={
+                "Content-Disposition": f"inline; filename={metadata.filename}",
+                "Cache-Control": "public, max-age=86400",  # Cache for 24 hours
+            }
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="Media file not found")
