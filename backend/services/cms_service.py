@@ -94,7 +94,7 @@ async def create_page(
     """Create a new CMS page"""
     
     # Check slug uniqueness
-    existing = await db.cms_pages.find_one({"slug": slug})
+    existing = await get_db().cms_pages.find_one({"slug": slug})
     if existing:
         raise ValueError(f"Page with slug '{slug}' already exists")
     
@@ -121,7 +121,7 @@ async def create_page(
         "updated_by": admin_id,
     }
     
-    await db.cms_pages.insert_one(page_doc)
+    await get_db().cms_pages.insert_one(page_doc)
     
     # Audit log
     await log_audit(
@@ -152,7 +152,7 @@ async def create_page(
 
 async def get_page(page_id: str) -> Optional[CMSPageResponse]:
     """Get a page by ID"""
-    doc = await db.cms_pages.find_one({"page_id": page_id})
+    doc = await get_db().cms_pages.find_one({"page_id": page_id})
     if not doc:
         return None
     return _doc_to_page_response(doc)
@@ -160,7 +160,7 @@ async def get_page(page_id: str) -> Optional[CMSPageResponse]:
 
 async def get_page_by_slug(slug: str) -> Optional[CMSPageResponse]:
     """Get a page by slug"""
-    doc = await db.cms_pages.find_one({"slug": slug})
+    doc = await get_db().cms_pages.find_one({"slug": slug})
     if not doc:
         return None
     return _doc_to_page_response(doc)
@@ -176,8 +176,8 @@ async def list_pages(
     if status:
         query["status"] = status.value
     
-    total = await db.cms_pages.count_documents(query)
-    cursor = db.cms_pages.find(query).sort("updated_at", -1).skip(offset).limit(limit)
+    total = await get_db().cms_pages.count_documents(query)
+    cursor = get_db().cms_pages.find(query).sort("updated_at", -1).skip(offset).limit(limit)
     
     pages = []
     async for doc in cursor:
@@ -197,7 +197,7 @@ async def update_page(
 ) -> CMSPageResponse:
     """Update page content (creates draft state)"""
     
-    page = await db.cms_pages.find_one({"page_id": page_id})
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
     if not page:
         raise ValueError(f"Page {page_id} not found")
     
@@ -243,7 +243,7 @@ async def update_page(
         update_fields["status"] = PageStatus.DRAFT.value
         changes["status"] = "DRAFT (modified)"
     
-    await db.cms_pages.update_one(
+    await get_db().cms_pages.update_one(
         {"page_id": page_id},
         {"$set": update_fields}
     )
@@ -263,11 +263,11 @@ async def update_page(
 
 async def delete_page(page_id: str, admin_id: str, admin_email: str) -> bool:
     """Delete (archive) a page"""
-    page = await db.cms_pages.find_one({"page_id": page_id})
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
     if not page:
         return False
     
-    await db.cms_pages.update_one(
+    await get_db().cms_pages.update_one(
         {"page_id": page_id},
         {"$set": {
             "status": PageStatus.ARCHIVED.value,
@@ -314,7 +314,7 @@ async def add_block(
         if not is_valid:
             raise ValueError(error)
     
-    page = await db.cms_pages.find_one({"page_id": page_id})
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
     if not page:
         raise ValueError(f"Page {page_id} not found")
     
@@ -343,7 +343,7 @@ async def add_block(
     blocks.sort(key=lambda x: x["order"])
     
     # Update page
-    await db.cms_pages.update_one(
+    await get_db().cms_pages.update_one(
         {"page_id": page_id},
         {"$set": {
             "blocks": blocks,
@@ -375,7 +375,7 @@ async def update_block(
 ) -> ContentBlock:
     """Update a block's content or visibility"""
     
-    page = await db.cms_pages.find_one({"page_id": page_id})
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
     if not page:
         raise ValueError(f"Page {page_id} not found")
     
@@ -409,7 +409,7 @@ async def update_block(
     
     blocks[block_index] = block
     
-    await db.cms_pages.update_one(
+    await get_db().cms_pages.update_one(
         {"page_id": page_id},
         {"$set": {
             "blocks": blocks,
@@ -439,7 +439,7 @@ async def delete_block(
 ) -> bool:
     """Delete a block from a page"""
     
-    page = await db.cms_pages.find_one({"page_id": page_id})
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
     if not page:
         raise ValueError(f"Page {page_id} not found")
     
@@ -453,7 +453,7 @@ async def delete_block(
     for i, b in enumerate(new_blocks):
         b["order"] = i
     
-    await db.cms_pages.update_one(
+    await get_db().cms_pages.update_one(
         {"page_id": page_id},
         {"$set": {
             "blocks": new_blocks,
@@ -483,7 +483,7 @@ async def reorder_blocks(
 ) -> List[ContentBlock]:
     """Reorder blocks on a page"""
     
-    page = await db.cms_pages.find_one({"page_id": page_id})
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
     if not page:
         raise ValueError(f"Page {page_id} not found")
     
@@ -508,7 +508,7 @@ async def reorder_blocks(
         b["order"] = len(new_blocks)
         new_blocks.append(b)
     
-    await db.cms_pages.update_one(
+    await get_db().cms_pages.update_one(
         {"page_id": page_id},
         {"$set": {
             "blocks": new_blocks,
@@ -542,7 +542,7 @@ async def publish_page(
 ) -> CMSPageResponse:
     """Publish page and create revision snapshot"""
     
-    page = await db.cms_pages.find_one({"page_id": page_id})
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
     if not page:
         raise ValueError(f"Page {page_id} not found")
     
@@ -564,10 +564,10 @@ async def publish_page(
         "notes": notes,
     }
     
-    await db.cms_revisions.insert_one(revision_doc)
+    await get_db().cms_revisions.insert_one(revision_doc)
     
     # Update page status
-    await db.cms_pages.update_one(
+    await get_db().cms_pages.update_one(
         {"page_id": page_id},
         {"$set": {
             "status": PageStatus.PUBLISHED.value,
@@ -592,7 +592,7 @@ async def publish_page(
 
 async def get_revisions(page_id: str, limit: int = 20) -> List[CMSRevisionResponse]:
     """Get revision history for a page"""
-    cursor = db.cms_revisions.find({"page_id": page_id}).sort("version", -1).limit(limit)
+    cursor = get_db().cms_revisions.find({"page_id": page_id}).sort("version", -1).limit(limit)
     
     revisions = []
     async for doc in cursor:
@@ -603,7 +603,7 @@ async def get_revisions(page_id: str, limit: int = 20) -> List[CMSRevisionRespon
 
 async def get_revision(revision_id: str) -> Optional[CMSRevisionResponse]:
     """Get a specific revision"""
-    doc = await db.cms_revisions.find_one({"revision_id": revision_id})
+    doc = await get_db().cms_revisions.find_one({"revision_id": revision_id})
     if not doc:
         return None
     return _doc_to_revision_response(doc)
@@ -618,16 +618,16 @@ async def rollback_page(
 ) -> CMSPageResponse:
     """Rollback page to a previous revision"""
     
-    page = await db.cms_pages.find_one({"page_id": page_id})
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
     if not page:
         raise ValueError(f"Page {page_id} not found")
     
-    revision = await db.cms_revisions.find_one({"revision_id": revision_id, "page_id": page_id})
+    revision = await get_db().cms_revisions.find_one({"revision_id": revision_id, "page_id": page_id})
     if not revision:
         raise ValueError(f"Revision {revision_id} not found for page {page_id}")
     
     # Restore content from revision
-    await db.cms_pages.update_one(
+    await get_db().cms_pages.update_one(
         {"page_id": page_id},
         {"$set": {
             "title": revision["title"],
@@ -691,7 +691,7 @@ async def upload_media(
         "uploaded_by": admin_id,
     }
     
-    await db.cms_media.insert_one(media_doc)
+    await get_db().cms_media.insert_one(media_doc)
     
     await log_audit(
         action="cms_media_upload",
@@ -733,8 +733,8 @@ async def list_media(
             {"tags": {"$in": [search.lower()]}},
         ]
     
-    total = await db.cms_media.count_documents(query)
-    cursor = db.cms_media.find(query).sort("uploaded_at", -1).skip(offset).limit(limit)
+    total = await get_db().cms_media.count_documents(query)
+    cursor = get_db().cms_media.find(query).sort("uploaded_at", -1).skip(offset).limit(limit)
     
     media_items = []
     async for doc in cursor:
@@ -745,7 +745,7 @@ async def list_media(
 
 async def get_media(media_id: str) -> Optional[CMSMediaResponse]:
     """Get a media item by ID"""
-    doc = await db.cms_media.find_one({"media_id": media_id})
+    doc = await get_db().cms_media.find_one({"media_id": media_id})
     if not doc:
         return None
     return _doc_to_media_response(doc)
@@ -753,7 +753,7 @@ async def get_media(media_id: str) -> Optional[CMSMediaResponse]:
 
 async def delete_media(media_id: str, admin_id: str, admin_email: str) -> bool:
     """Delete a media item"""
-    result = await db.cms_media.delete_one({"media_id": media_id})
+    result = await get_db().cms_media.delete_one({"media_id": media_id})
     
     if result.deleted_count > 0:
         await log_audit(
@@ -774,7 +774,7 @@ async def delete_media(media_id: str, admin_id: str, admin_email: str) -> bool:
 
 async def get_published_page(slug: str) -> Optional[Dict[str, Any]]:
     """Get published page content for public rendering"""
-    page = await db.cms_pages.find_one({
+    page = await get_db().cms_pages.find_one({
         "slug": slug,
         "status": PageStatus.PUBLISHED.value
     })
