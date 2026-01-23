@@ -15,7 +15,6 @@ import {
   Package,
   FileText,
   Users,
-  UserPlus,
   BookOpen,
   MessageSquare,
   Settings,
@@ -27,7 +26,6 @@ import {
   Shield,
   History,
   Menu,
-  X,
   Bell,
   Search,
   HelpCircle,
@@ -38,12 +36,6 @@ import { cn } from '../../lib/utils';
 
 /**
  * UnifiedAdminLayout - Enterprise-grade admin console with consolidated navigation
- * 
- * Features:
- * - Collapsible sidebar with grouped navigation
- * - Real-time notification badges
- * - Mobile responsive design
- * - Keyboard navigation support
  */
 
 const navSections = [
@@ -109,6 +101,143 @@ const navSections = [
   },
 ];
 
+// Sidebar content component - defined outside to avoid re-creation
+const SidebarContent = ({ 
+  sidebarOpen, 
+  expandedSections, 
+  toggleSection, 
+  handleNavClick, 
+  isActive, 
+  badges, 
+  navigate, 
+  user, 
+  handleLogout 
+}) => (
+  <div className="flex flex-col h-full">
+    {/* Logo */}
+    <div className="p-4 border-b border-gray-200">
+      <Link to="/admin/dashboard" className="flex items-center space-x-2">
+        <div className="w-9 h-9 bg-gradient-to-br from-electric-teal to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+          <span className="text-white font-bold text-lg">P</span>
+        </div>
+        {sidebarOpen && (
+          <div className="flex flex-col">
+            <span className="text-lg font-bold text-midnight-blue">Pleerity</span>
+            <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Admin Console</span>
+          </div>
+        )}
+      </Link>
+    </div>
+
+    {/* Navigation */}
+    <nav className="flex-1 overflow-y-auto py-4 px-3">
+      {navSections.map((section) => (
+        <div key={section.id} className="mb-2">
+          {/* Section Header */}
+          <button
+            onClick={() => toggleSection(section.id)}
+            className={cn(
+              "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              expandedSections.includes(section.id)
+                ? "bg-gray-100 text-midnight-blue"
+                : "text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <section.icon className="w-4 h-4" />
+              {sidebarOpen && <span>{section.label}</span>}
+            </div>
+            {sidebarOpen && (
+              expandedSections.includes(section.id) 
+                ? <ChevronDown className="w-4 h-4" />
+                : <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+
+          {/* Section Items */}
+          {expandedSections.includes(section.id) && sidebarOpen && (
+            <div className="mt-1 ml-4 space-y-1">
+              {section.items.map((item) => (
+                <button
+                  key={item.href + (item.tabTarget || '')}
+                  onClick={() => handleNavClick(item)}
+                  data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors",
+                    isActive(item.href, item.tabTarget)
+                      ? "bg-electric-teal text-white"
+                      : "text-gray-600 hover:bg-gray-100"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && badges[item.badge] > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 text-xs font-bold rounded-full",
+                      isActive(item.href, item.tabTarget)
+                        ? "bg-white/20 text-white"
+                        : "bg-red-500 text-white"
+                    )}>
+                      {badges[item.badge]}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </nav>
+
+    {/* AI Assistant Quick Access */}
+    <div className="p-4 border-t border-gray-200">
+      <button
+        onClick={() => navigate('/admin/assistant')}
+        className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all shadow-lg"
+      >
+        <Sparkles className="w-5 h-5" />
+        {sidebarOpen && (
+          <div className="text-left">
+            <span className="font-medium block">AI Assistant</span>
+            <span className="text-xs opacity-80">Ask anything</span>
+          </div>
+        )}
+      </button>
+    </div>
+
+    {/* User Info */}
+    {sidebarOpen && (
+      <div className="p-4 border-t border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+              <span className="text-sm font-medium text-gray-600">
+                {user?.email?.[0]?.toUpperCase() || 'A'}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user?.full_name || 'Admin'}
+              </p>
+              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="text-gray-500 hover:text-red-600"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
 const UnifiedAdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -135,7 +264,7 @@ const UnifiedAdminLayout = ({ children }) => {
       }
     };
     fetchBadges();
-    const interval = setInterval(fetchBadges, 60000); // Refresh every minute
+    const interval = setInterval(fetchBadges, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -168,131 +297,17 @@ const UnifiedAdminLayout = ({ children }) => {
     setMobileMenuOpen(false);
   };
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="p-4 border-b border-gray-200">
-        <Link to="/admin/dashboard" className="flex items-center space-x-2">
-          <div className="w-9 h-9 bg-gradient-to-br from-electric-teal to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-lg">P</span>
-          </div>
-          {sidebarOpen && (
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-midnight-blue">Pleerity</span>
-              <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Admin Console</span>
-            </div>
-          )}
-        </Link>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {navSections.map((section) => (
-          <div key={section.id} className="mb-2">
-            {/* Section Header */}
-            <button
-              onClick={() => toggleSection(section.id)}
-              className={cn(
-                "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                expandedSections.includes(section.id)
-                  ? "bg-gray-100 text-midnight-blue"
-                  : "text-gray-600 hover:bg-gray-50"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <section.icon className="w-4 h-4" />
-                {sidebarOpen && <span>{section.label}</span>}
-              </div>
-              {sidebarOpen && (
-                expandedSections.includes(section.id) 
-                  ? <ChevronDown className="w-4 h-4" />
-                  : <ChevronRight className="w-4 h-4" />
-              )}
-            </button>
-
-            {/* Section Items */}
-            {expandedSections.includes(section.id) && sidebarOpen && (
-              <div className="mt-1 ml-4 space-y-1">
-                {section.items.map((item) => (
-                  <button
-                    key={item.href + (item.tabTarget || '')}
-                    onClick={() => handleNavClick(item)}
-                    data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                    className={cn(
-                      "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors",
-                      isActive(item.href, item.tabTarget)
-                        ? "bg-electric-teal text-white"
-                        : "text-gray-600 hover:bg-gray-100"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge && badges[item.badge] > 0 && (
-                      <span className={cn(
-                        "px-2 py-0.5 text-xs font-bold rounded-full",
-                        isActive(item.href, item.tabTarget)
-                          ? "bg-white/20 text-white"
-                          : "bg-red-500 text-white"
-                      )}>
-                        {badges[item.badge]}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </nav>
-
-      {/* AI Assistant Quick Access */}
-      <div className="p-4 border-t border-gray-200">
-        <button
-          onClick={() => navigate('/admin/assistant')}
-          className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all shadow-lg"
-        >
-          <Sparkles className="w-5 h-5" />
-          {sidebarOpen && (
-            <div className="text-left">
-              <span className="font-medium block">AI Assistant</span>
-              <span className="text-xs opacity-80">Ask anything</span>
-            </div>
-          )}
-        </button>
-      </div>
-
-      {/* User Info */}
-      {sidebarOpen && (
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-600">
-                  {user?.email?.[0]?.toUpperCase() || 'A'}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.full_name || 'Admin'}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-gray-500 hover:text-red-600"
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const sidebarProps = {
+    sidebarOpen,
+    expandedSections,
+    toggleSection,
+    handleNavClick,
+    isActive,
+    badges,
+    navigate,
+    user,
+    handleLogout,
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -303,7 +318,7 @@ const UnifiedAdminLayout = ({ children }) => {
           sidebarOpen ? "w-64" : "w-20"
         )}
       >
-        <SidebarContent />
+        <SidebarContent {...sidebarProps} />
       </aside>
 
       {/* Mobile Sidebar Overlay */}
@@ -311,7 +326,7 @@ const UnifiedAdminLayout = ({ children }) => {
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
           <aside className="fixed left-0 top-0 bottom-0 w-72 bg-white shadow-xl">
-            <SidebarContent />
+            <SidebarContent {...sidebarProps} />
           </aside>
         </div>
       )}
@@ -321,7 +336,7 @@ const UnifiedAdminLayout = ({ children }) => {
         {/* Top Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
           <div className="flex items-center justify-between h-16 px-4 lg:px-6">
-            {/* Left: Menu Toggle & Breadcrumb */}
+            {/* Left: Menu Toggle & Search */}
             <div className="flex items-center gap-4">
               <button
                 onClick={() => {
