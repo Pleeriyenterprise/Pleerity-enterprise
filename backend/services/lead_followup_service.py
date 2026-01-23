@@ -310,8 +310,8 @@ This is an automated confirmation. Your enquiry reference is {lead_id}.
             html_body = LeadFollowUpService.markdown_to_html(body)
             
             # Send via Postmark
-            client = PostmarkClient(server_token=POSTMARK_SERVER_TOKEN)
-            response = client.emails.send(
+            postmark_client = PostmarkClient(server_token=POSTMARK_SERVER_TOKEN)
+            postmark_client.emails.send(
                 From=SUPPORT_EMAIL,
                 To=lead["email"],
                 Subject=subject,
