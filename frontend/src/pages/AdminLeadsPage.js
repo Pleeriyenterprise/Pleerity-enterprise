@@ -293,7 +293,8 @@ export default function AdminLeadsPage() {
   const SourceIcon = (source) => sourceIcons[source] || Users;
 
   return (
-    <div className="p-6 space-y-6" data-testid="admin-leads-page">
+    <UnifiedAdminLayout>
+    <div className="space-y-6" data-testid="admin-leads-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
