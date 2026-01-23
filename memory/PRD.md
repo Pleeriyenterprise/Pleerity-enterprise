@@ -1880,6 +1880,86 @@
   - URL pre-selection working
   - Draft creation and step navigation verified
 
+### January 23, 2026 (Session 2) - Four Feature Implementation ✅
+
+**1. Admin Analytics Dashboard (`/admin/analytics`) ✅**
+  - Comprehensive business intelligence dashboard
+  - **6 API Endpoints:**
+    - `GET /api/admin/analytics/summary` - Revenue, orders, AOV, completion rate
+    - `GET /api/admin/analytics/services` - Service breakdown by revenue
+    - `GET /api/admin/analytics/sla-performance` - On-time, warnings, breached, health score
+    - `GET /api/admin/analytics/customers` - Total, repeat rate, top customers
+    - `GET /api/admin/analytics/conversion-funnel` - Draft → Payment → Order → Completion
+    - `GET /api/admin/analytics/addons` - Fast Track and Printed Copy analytics
+  - **UI Components:**
+    - 4 stat cards with trend indicators (up/down/flat)
+    - Period selector: Today, 7d, 30d, 90d, YTD, All
+    - Service Performance bar chart
+    - Conversion Funnel visualization
+    - SLA Performance with health score
+    - Add-on Performance (Fast Track, Printed Copy)
+    - Customer Insights with top customers
+
+**2. Admin Intake Schema Manager (`/admin/intake-schema`) ✅**
+  - Allows admins to customize wizard forms without code changes
+  - **2 API Endpoints:**
+    - `GET /api/admin/intake-schema/services` - Lists 11 services with field counts
+    - `GET /api/admin/intake-schema/{service_code}` - Returns schema with fields
+    - `PUT /api/admin/intake-schema/{service_code}` - Save field overrides
+    - `POST /api/admin/intake-schema/{service_code}/reset` - Reset to defaults
+  - **Field Customization:**
+    - Edit labels, helper text, placeholders
+    - Toggle required status
+    - Reorder fields
+    - Hide/show fields
+    - Modify validation rules
+    - Edit dropdown options
+  - **UI Features:**
+    - Left sidebar: Service list with field counts and customization status
+    - Right panel: Field editor grouped by category
+    - Accordion-based field groups
+    - Type badges (Text Input, Email, Phone, Dropdown, etc.)
+    - Required badges
+    - Eye icon for hide/show toggle
+
+**3. Dynamic Service Detail Pages (V2 API) ✅**
+  - `/services/{slug}` now fetches from Service Catalogue V2 API
+  - Falls back to static data for legacy slugs
+  - **Dynamic Data:**
+    - Title, description, long description from API
+    - Pricing calculated from base_price (pence to pounds)
+    - Turnaround hours from sla_hours or standard_turnaround_hours
+    - Fast Track and Printed Copy badges when available
+  - **Order Now Button:** Links to `/order/intake?service={CODE}`
+  - Slug-to-code mapping for backward compatibility
+
+**4. Toast Error Fix ✅**
+  - Fixed transient toast errors on `ClientOrdersPage.js`
+  - Fixed transient toast errors on `AdminNotificationPreferencesPage.js`
+  - **Root Cause:** API calls firing before auth, showing error toast then redirecting
+  - **Fix:** Check for 401 status before showing error toast
+  - Also fixed API paths (removed duplicate `/api` prefix)
+
+**Files Created:**
+  - `/app/backend/routes/analytics.py` - Analytics API endpoints
+  - `/app/backend/routes/admin_intake_schema.py` - Schema management APIs
+  - `/app/frontend/src/pages/AdminAnalyticsDashboard.js` - Analytics dashboard UI
+  - `/app/frontend/src/pages/AdminIntakeSchemaPage.js` - Schema manager UI
+
+**Files Modified:**
+  - `/app/frontend/src/pages/public/ServiceDetailPage.js` - V2 API integration
+  - `/app/frontend/src/pages/ClientOrdersPage.js` - Toast error fix
+  - `/app/frontend/src/pages/AdminNotificationPreferencesPage.js` - Toast error fix
+  - `/app/frontend/src/App.js` - Added new admin routes
+  - `/app/backend/server.py` - Registered new routers
+
+- **TEST REPORT:** `/app/test_reports/iteration_47.json` (31/31 backend + 100% frontend)
+  - All analytics API endpoints verified
+  - All intake schema API endpoints verified
+  - Service Detail V2 API integration verified
+  - Toast error fix verified
+  - All UI components working
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
