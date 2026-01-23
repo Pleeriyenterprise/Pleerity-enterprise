@@ -211,7 +211,6 @@ async def list_document_packs():
     addons = get_all_addons()
     
     # Enrich with document lists
-    from services.pack_registry import get_pack_contents
     
     for pack in packs:
         contents = get_pack_contents(pack["pack_type"])
