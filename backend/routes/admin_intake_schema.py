@@ -287,6 +287,7 @@ async def reset_schema(
     if service_code not in SERVICE_INTAKE_SCHEMAS:
         raise HTTPException(status_code=404, detail=f"Service not found: {service_code}")
     
+    db = database.get_db()
     result = await db[COLLECTION].delete_one({"service_code": service_code})
     
     if result.deleted_count > 0:
