@@ -458,7 +458,6 @@ export default function AdminSupportPage() {
               Refresh
             </Button>
           </div>
-        </div>
 
         {/* Stats */}
         {stats && (
