@@ -100,7 +100,9 @@ import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
 import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
 import AdminPostalTrackingPage from './pages/AdminPostalTrackingPage';
+import AdminConsentDashboard from './pages/AdminConsentDashboard';
 import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
+import CookieBanner from './components/CookieBanner';
 
 function App() {
   return (
