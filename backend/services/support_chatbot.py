@@ -8,6 +8,7 @@ Features:
 - Structured + free-text intake
 - Human handoff triggers
 - CRN-based account lookup
+- Canned responses for common queries
 """
 import os
 import re
@@ -19,6 +20,10 @@ from database import database
 
 logger = logging.getLogger(__name__)
 
+# Get configurable values from environment
+SUPPORT_WHATSAPP = os.environ.get("SUPPORT_WHATSAPP_NUMBER", "+447440645017")
+SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
+
 # ============================================================================
 # KNOWLEDGE BASE - Pleerity Services Information
 # ============================================================================
@@ -27,9 +32,9 @@ KNOWLEDGE_BASE = {
     "company": {
         "name": "Pleerity Enterprise Ltd",
         "tagline": "Property compliance and business services for landlords and property managers",
-        "support_email": "support@pleerity.com",
+        "support_email": SUPPORT_EMAIL,
         "support_hours": "24/7 via chatbot, Live agents Mon-Fri 9am-6pm GMT",
-        "whatsapp": "+44 7XXX XXXXXX",  # Placeholder
+        "whatsapp": SUPPORT_WHATSAPP,
     },
     
     "services": {
