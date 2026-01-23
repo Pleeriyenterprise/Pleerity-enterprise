@@ -993,6 +993,148 @@ export default function AdminReportingPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        
+        {/* Create Share Link Dialog */}
+        <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create Shareable Link</DialogTitle>
+              <DialogDescription>
+                Generate a time-limited public URL for this report
+              </DialogDescription>
+            </DialogHeader>
+            
+            {createdShareUrl ? (
+              <div className="space-y-4 py-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-green-700 mb-2">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-medium">Share Link Created</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Input
+                      value={createdShareUrl}
+                      readOnly
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => copyToClipboard(createdShareUrl)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-green-600 mt-2">
+                    This link will expire in {shareForm.expires_in_days} days
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => setShowShareDialog(false)} className="w-full">
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>Link Name (optional)</Label>
+                    <Input
+                      placeholder="e.g., Q4 Board Report"
+                      value={shareForm.name}
+                      onChange={e => setShareForm({ ...shareForm, name: e.target.value })}
+                      data-testid="share-name-input"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Report Type</Label>
+                    <Select
+                      value={shareForm.report_type}
+                      onValueChange={v => setShareForm({ ...shareForm, report_type: v })}
+                    >
+                      <SelectTrigger data-testid="share-type-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {reportTypes.map(type => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label>Format</Label>
+                    <Select
+                      value={shareForm.format}
+                      onValueChange={v => setShareForm({ ...shareForm, format: v })}
+                    >
+                      <SelectTrigger data-testid="share-format-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formats.map(format => (
+                          <SelectItem key={format.value} value={format.value}>
+                            {format.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label>Period</Label>
+                    <Select
+                      value={shareForm.period}
+                      onValueChange={v => setShareForm({ ...shareForm, period: v })}
+                    >
+                      <SelectTrigger data-testid="share-period-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {periods.filter(p => p.value !== 'custom').map(period => (
+                          <SelectItem key={period.value} value={period.value}>
+                            {period.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label>Expires In (days)</Label>
+                    <Select
+                      value={String(shareForm.expires_in_days)}
+                      onValueChange={v => setShareForm({ ...shareForm, expires_in_days: parseInt(v) })}
+                    >
+                      <SelectTrigger data-testid="share-expiry-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 day</SelectItem>
+                        <SelectItem value="3">3 days</SelectItem>
+                        <SelectItem value="7">7 days</SelectItem>
+                        <SelectItem value="14">14 days</SelectItem>
+                        <SelectItem value="30">30 days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowShareDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateShare} disabled={loading} data-testid="create-share-link-btn">
+                    {loading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Link className="h-4 w-4 mr-2" />}
+                    Create Link
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </UnifiedAdminLayout>
   );
