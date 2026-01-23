@@ -322,7 +322,7 @@ export default function AdminPromptManagerPage() {
     }
     
     try {
-      await client.post(`/api/admin/prompts/${template.template_id}/mark-tested`);
+      await client.post(`/admin/prompts/${template.template_id}/mark-tested`);
       toast.success('Template marked as TESTED');
       loadData();
     } catch (error) {
