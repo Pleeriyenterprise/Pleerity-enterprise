@@ -407,6 +407,137 @@ async def get_block_types(admin: dict = Depends(admin_route_guard)):
 
 
 # ============================================
+# Page Templates
+# ============================================
+
+from services.cms_templates import get_all_templates, get_template, CMS_TEMPLATES
+
+
+@router.get("/templates")
+async def list_templates(admin: dict = Depends(admin_route_guard)):
+    """List all available page templates"""
+    return {"templates": get_all_templates()}
+
+
+@router.get("/templates/{template_id}")
+async def get_template_detail(template_id: str, admin: dict = Depends(admin_route_guard)):
+    """Get a specific template with full block definitions"""
+    template = get_template(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {
+        "template_id": template_id,
+        **template
+    }
+
+
+@router.get("/templates/{template_id}/preview")
+async def preview_template(template_id: str, admin: dict = Depends(admin_route_guard)):
+    """Get template preview data for rendering in UI"""
+    template = get_template(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Return blocks formatted for preview
+    preview_blocks = []
+    for idx, block in enumerate(template["blocks"]):
+        preview_blocks.append({
+            "block_id": f"preview-{idx}",
+            "block_type": block["block_type"],
+            "content": block["content"],
+            "visible": block.get("visible", True),
+            "order": idx
+        })
+    
+    return {
+        "template_id": template_id,
+        "name": template["name"],
+        "description": template["description"],
+        "blocks": preview_blocks
+    }
+
+
+class ApplyTemplateRequest(BaseModel):
+    template_id: str
+    page_title: str
+    page_slug: str
+    replace_existing: bool = False
+
+
+@router.post("/templates/apply")
+async def apply_template(
+    request: ApplyTemplateRequest,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Apply a template to create a new page or update existing"""
+    template = get_template(request.template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Check if page exists
+    existing_page = await cms_service.get_page_by_slug(request.page_slug)
+    
+    if existing_page and not request.replace_existing:
+        raise HTTPException(
+            status_code=400, 
+            detail="Page with this slug already exists. Set replace_existing=true to overwrite."
+        )
+    
+    if existing_page and request.replace_existing:
+        # Update existing page with template blocks
+        page_id = existing_page["page_id"]
+        
+        # Clear existing blocks
+        await cms_service.clear_page_blocks(page_id, admin["portal_user_id"], admin["email"])
+        
+        # Add template blocks
+        for idx, block in enumerate(template["blocks"]):
+            await cms_service.add_block(
+                page_id=page_id,
+                block_type=block["block_type"],
+                content=block["content"],
+                admin_id=admin["portal_user_id"],
+                admin_email=admin["email"]
+            )
+        
+        # Update page title
+        await cms_service.update_page(
+            page_id=page_id,
+            title=request.page_title,
+            admin_id=admin["portal_user_id"],
+            admin_email=admin["email"]
+        )
+        
+        return {"success": True, "page_id": page_id, "action": "updated"}
+    
+    else:
+        # Create new page with template
+        try:
+            page = await cms_service.create_page(
+                slug=request.page_slug,
+                title=request.page_title,
+                description=template.get("description", ""),
+                admin_id=admin["portal_user_id"],
+                admin_email=admin["email"]
+            )
+            
+            # Add template blocks
+            for idx, block in enumerate(template["blocks"]):
+                await cms_service.add_block(
+                    page_id=page["page_id"],
+                    block_type=block["block_type"],
+                    content=block["content"],
+                    admin_id=admin["portal_user_id"],
+                    admin_email=admin["email"]
+                )
+            
+            return {"success": True, "page_id": page["page_id"], "action": "created"}
+        
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================
 # Public Page Rendering Route (No Auth)
 # ============================================
 
