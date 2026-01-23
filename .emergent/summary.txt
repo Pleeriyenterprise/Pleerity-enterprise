@@ -1,89 +1,62 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to build an enterprise SaaS platform, starting with a public website and an intake wizard. This evolved into building a 24/7 Support Assistant System and a comprehensive Lead Management System.
+The user's initial goals were to build a no-code Admin Site Builder CMS and a Customer Enablement Automation Engine. This was followed by a prioritized list of features: P1: Advanced Analytics, P2: Full Reporting, P3: Team Permissions, and P4: CMS Templates, all of which have now been completed.
 
-Most recently, the user requested and the agent completed a full-featured **Unified Admin Console** to consolidate all admin pages and a **GDPR/UK-compliant Cookie Consent System**.
-
-The current and most critical task is to build a **no-code Admin Site Builder CMS**. This system must allow admins to edit public-facing pages using a safe, schema-driven block system, with changes reflecting instantly upon publishing.
-
-**PRODUCT REQUIREMENTS (Admin Site Builder CMS):**
-- **Scope:** Manage public pages only (, , , etc.).  and  are out of scope.
-- **RBAC:** Strictly  for all access, enforced server-side.
-- **Data Models:**
-    - : Stores page slug, title, status, SEO metadata, and an ordered array of content blocks.
-    - : Snapshots every published version for rollback.
-    - : A media library for images and safe video embeds (YouTube/Vimeo).
-- **Safe Block System:** A schema-driven editor using predefined block types (e.g., HERO, FAQ, CTA, PRICING_TABLE) to prevent layout breakage. No arbitrary HTML.
-- **Admin UI ():**
-    - A list of editable pages.
-    - An editor to reorder blocks, edit content, manage SEO, and toggle block visibility.
-    - Features for draft preview, publishing, and rolling back to previous revisions.
-- **Public Rendering:** Public routes must query the CMS to render only  content.
-- **Auditing:** Every CMS mutation (save, publish, rollback, media upload) must be logged in the .
+The most recent and current objective is to build a comprehensive, enterprise-grade **Prompt Manager**. This system is intended to give administrators safe, version-controlled power to manage, test, and activate prompts used by the application's AI document generation engine. The user has provided a detailed list of non-negotiable requirements, including prompt versioning, a Draft - - Playground for testing, and strict schema validation.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack SaaS platform (React + FastAPI + MongoDB). Key completed features include a V2 service catalogue, a Unified Intake Wizard, a 24/7 Support System (AI chat, live chat, email/WhatsApp), a complete Lead Management System, and a GDPR/UK-compliant Cookie Consent system.
-
-Crucially, the fragmented admin pages have been consolidated into a **Unified Admin Console** with a comprehensive, collapsible sidebar, providing access to all administrative functions from one place. A dedicated Postal Tracking UI has also been added.
+A mature full-stack SaaS application (React + FastAPI + MongoDB). It features a unified admin console with lead management, a GDPR-compliant cookie system, a postal tracking UI, a complete Admin Site Builder CMS (with templating), a Customer Enablement Automation Engine, an Advanced Analytics dashboard, a full-featured Reporting system (CSV/XLSX/PDF export, scheduling, public sharing), and a Team Permissions UI with custom role management.
 
 **Last working item**:
-    - Last item agent was working: The user reported that after the Unified Admin Console was implemented, logging in still directs them to the old, fragmented dashboard view, not the new unified one. The agent acknowledged this critical issue and was about to investigate it before starting the new Admin Site Builder CMS task.
+    - Last item agent was working: The agent was in the initial exploration phase for the new **Enterprise Prompt Manager** feature. It analyzed the user's detailed requirements and began exploring the existing codebase, specifically the document generation and orchestration services (, ), to understand the integration points before starting implementation.
     - Status: NOT STARTED
     - Agent Testing Done: N
-    - Which testing method agent to use? Frontend testing agent. The agent needs to debug the React application's routing and authentication flow post-login. Check , the login page component, and any components responsible for redirecting after authentication to ensure they direct the user to a page that uses the new . A screenshot of the page right after login would be the first step.
-    - User Testing Done: Y (User reported the issue)
+    - Which testing method agent to use? both. The backend requires the backend testing agent to validate the complex logic of prompt versioning, the state machine (Draft -> Tested -> Active), API endpoints, and LLM integration. The frontend needs the frontend testing agent to verify the new Prompt Manager UI, including the editor, test playground, and version history.
+    - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: **[P0 BLOCKER]** The new Unified Admin Console is not displayed after login.
-
-  Issues Detail:
-  - Issue 1: 
-     - Attempted fixes: None. The agent was about to start debugging when the session ended.
-     - Next debug checklist:
-        1.  Verify the default admin route in . Does  or the post-login redirect point to a page wrapped with ?
-        2.  Examine the  component to see where it redirects after a successful login. It might be hardcoded to an old dashboard page.
-        3.  Check if there's conditional logic in  or a layout component that might be incorrectly rendering the old layout based on user state or role.
-        4.  Use  to search for  or similar old navigation paths within the frontend code.
-     - Why fix this issue and what will be achieved with the fix?: This is a major blocker preventing the user from accessing and using all the newly integrated admin features (Leads, KB, Support, Consent, etc.). Fixing it will make the entire admin backend usable as intended.
-     - Status:  NOT STARTED
-     - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? frontend
-     - Blocked on other issue: None. This is the top priority.
+  - There are no pending issues or blockers.
 
 **In progress Task List**:
-  - None.
+  - Task 1:  **[P0] Implement Enterprise Prompt Manager** (Priority: P0)
+
+ Task Detail:
+  - Task 1: 
+     - Where to resume: The agent has finished exploring the relevant files. The next logical step is to begin the backend implementation by creating the new database models and Pydantic schemas for the prompt management system in a new file, such as , based on the user's detailed specification.
+     - What will be achieved with this?: This feature will decouple prompt engineering from the codebase, allowing admins to safely create, test, and deploy new AI document generation prompts without requiring new code deployments. It provides versioning, audit trails, and a testing harness to ensure stability and quality.
+     - Status:  NOT STARTED
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on something: None
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - **P0: Implement Admin Site Builder CMS:** Build the complete CMS as per the detailed user requirements. This includes the backend models, services, APIs, and the frontend admin UI for editing public pages.
-    - **P1:  Integration**: Implement address autocomplete in the intake wizard.
+    - **[P0] Implement Enterprise Prompt Manager**: This is the current and only high-priority task. It encompasses creating backend models, services, and APIs, as well as a full-featured frontend UI for admins.
 
     Future Tasks:
-    - **P2: Deprecate Legacy V1 Files**: Schedule the removal of obsolete V1 files.
-    - **P3: Advanced Analytics - Period Comparison**: Enhance the analytics dashboard.
-    - **P4: Full-featured Reporting**: Add capabilities for exporting and scheduling reports.
-    - **P5: Team Management Roles/Permissions UI**: Expand the basic team management with a dedicated UI.
+    - ** Integration**: Implement address autocomplete in the intake wizard.
+    - **Deprecate Legacy V1 Files**: Schedule the removal of obsolete V1 files.
 
 **Completed work in this session**
-- **Lead Management System (Completion & Enhancements)**:
-  - Fixed the broken lead listing API ().
-  - Implemented real-time email notifications for HIGH intent leads.
-  - Implemented and tested scheduled jobs for abandoned intake detection and SLA breach flagging.
-  - Ran a full backend test suite (41/41 tests passed) using the testing agent.
-- **Unified Admin Console (Major Refactor)**:
-  - Addressed user feedback about fragmented admin UIs by creating a single, consolidated .
-  - Refactored all key admin pages (, , , , , ) to use the new unified layout, making all features accessible from one navigation sidebar.
-- **Postal Tracking UI**:
-  - Created a new, dedicated frontend page at  to manage postal orders, powered by existing backend endpoints.
-- **GDPR/UK Cookie Consent System (Full Implementation)**:
-  - Built a server-authoritative cookie consent system from scratch.
-  - Backend: Created  and  MongoDB collections, services, and API endpoints.
-  - Frontend: Implemented a  for public-facing pages and a full-featured  at  for analytics and logs.
-  - Integrated consent checks into lead follow-up automation.
+- **P2: Full Reporting System**:
+  - Backend: Implemented XLSX and PDF exports, scheduled report delivery via email.
+  - Frontend: Built the  page for report generation, scheduling, and history viewing.
+  - Testing: Verified by  ().
+
+- **P3: Team Permissions UI**:
+  - Backend: Implemented models and APIs for creating custom roles and assigning granular permissions.
+  - Frontend: Built the  page for user and role management.
+
+- **P4: CMS Templates**:
+  - Backend: Added services and API endpoints to apply pre-built page templates (e.g., Landing Page, About Us) to the CMS.
+
+- **Report Sharing via Public Links**:
+  - Backend: Implemented functionality to generate secure, expiring public links for generated reports.
+  - Frontend: Added a Shares tab and management UI to the reporting page, plus a public page to view shared reports.
+- *Note: P3, P4, and Report Sharing were developed concurrently and verified together by  ().*
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1: User still sees the old admin dashboard after login, not the new unified one. (This is now the primary P0 blocker).
+   - None.
 
 **Known issue recurrence from previous fork**
   - None.
@@ -92,66 +65,68 @@ Crucially, the fragmented admin pages have been consolidated into a **Unified Ad
 
 
 **Key Technical Concepts**
-- **Unified Admin Shell/Layout:** Refactoring multiple, disparate admin pages to use a single, consistent layout component () that provides a global navigation sidebar and header. This improves UX and maintainability.
-- **Server-Authoritative Cookie Consent:** A GDPR-compliant system where consent state is managed and verified on the server, not just the client. It uses an append-only event log () for auditability and a materialized view () for fast lookups.
-- **Schema-Driven CMS:** The concept for the upcoming Site Builder, where content is managed through structured blocks with predefined fields, ensuring stability and preventing admins from breaking the site layout.
+- **Multi-format Report Generation**: Using  for XLSX and  for PDF generation.
+- **Custom Role-Based Access Control (RBAC)**: A backend system for defining roles with specific permission sets and assigning them to admin users.
+- **Secure Public Resource Sharing**: Generating short-lived, token-based URLs to grant public access to specific reports.
+- **Enterprise Prompt Management**: The upcoming feature. A system for versioning, testing (in a Playground), and safely activating LLM prompts, using a single  block for runtime data injection to ensure stability and security.
 
 **key DB schema**
-  - **consent_events**:  (Append-only log)
-  - **consent_state**:  (Materialized current state)
-  - **leads**: 
+  - **roles**: 
+  - **report_shares**: 
+  - **(Upcoming) prompt_templates**: 
 
 **changes in tech stack**
-  - None.
+  -  was added to  to support Excel (XLSX) file generation.
 
 **All files of reference**
-- **Newly Created:**
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-- **Key Modified:**
-  - All admin pages (e.g., , ) were refactored to use .
-  -  (to register new routes and integrate the new layout structure).
-  -  (to register new API routers and DB indexes).
-  -  (fixed route ordering, added notification endpoints).
+- **/app/backend/services/document_generator.py**: Key integration point for the new Prompt Manager.
+- **/app/backend/routes/orchestration.py**: Key integration point for the new Prompt Manager.
+- **/app/backend/routes/team.py**: New API for team and role management.
+- **/app/backend/routes/reporting.py**: Enhanced with new export formats and sharing capabilities.
+- **/app/frontend/src/pages/AdminTeamPage.js**: New frontend for team management.
+- **/app/frontend/src/pages/AdminReportingPage.js**: New, comprehensive frontend for all reporting functions.
+- **/app/memory/PRD.md**: Updated to reflect all completed work.
 
 **Areas that need refactoring**:
-- The main architectural debt around the fragmented admin UI has now been addressed by the creation of . The next agent should ensure all new admin pages, like the Site Builder, use this unified layout.
+- None.
 
 **key api endpoints**
-- : Public endpoint to record a user's cookie consent.
-- : (Admin) Returns statistics for the consent dashboard.
-- : (Admin) Returns paginated consent log records.
-- : (Admin) Returns alerts for HIGH intent leads.
+- **Team Management**:
+  - , 
+  - , 
+  - 
+- **Report Sharing**:
+  - , 
+  - 
+- **CMS Templates**:
+  - 
+  - 
 
 **Critical Info for New Agent**
-- **Your first task is to fix the admin login flow.** The user cannot see the new Unified Admin Console. Investigate the frontend routing after login to ensure it directs to a page using the new . This is a P0 blocker.
-- **Your main task is to build the Admin Site Builder CMS.** The user has provided very specific, non-negotiable requirements. Follow the schema-driven Safe Block System approach precisely. Do not implement a freeform drag-and-drop editor.
-- All new admin UIs must be wrapped in the  component to maintain a consistent user experience.
+- Your sole priority is to implement the **Enterprise Prompt Manager**. Do not work on any other feature.
+- You must adhere strictly to the user's detailed, non-negotiable requirements, which include versioning, a Draft -> Tested -> Active lifecycle, a Prompt Playground test harness, and mandatory schema validation.
+- The required data injection pattern is to use a single  block in the prompt template. Do not use scattered placeholders.
+- Begin with the backend implementation, starting with the database models, then services, and finally the API routes. Once the backend is complete and tested, build the frontend administrative interface.
 
 **documents and test reports created in this job**
-- 
--  (updated with Unified Admin, Postal Tracking, and Cookie Consent details)
+  - 
+  - 
+  - 
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - **10. User:** Provided detailed, locked-in requirements for an Admin Site Builder CMS. Also reported a critical bug: upon login to the admin dashboard after the recent update i am still accessing the old version not the unified one. (PENDING: CMS IMPLEMENTATION, BUG FIX)
- - **9. Agent:** Finished the Unified Admin Console and Postal Tracking UI, updated the PRD, and proposed a final enhancement. (COMPLETED)
- - **8. User:** Instructed the agent to proceed with implementing both the unified admin console and the postal tracking UI. (COMPLETED)
- - **7. Agent:** Analyzed the fragmented admin architecture, answered user's questions about existing features, and proposed a fix: a Unified Admin Console and a dedicated Postal Tracking UI. (COMPLETED)
- - **6. User:** Asked several questions about the admin dashboards, their fragmentation, the location of Printed Copy Postal Tracking, and the completeness of the business suite. (COMPLETED)
- - **5. Agent:** Finished the full Lead Management system implementation and testing, updated the PRD, and suggested an enhancement. (COMPLETED)
- - **4. User:** Instructed the agent to proceed with Abandoned Intake Detection. (COMPLETED)
- - **3. Agent:** Resolved the P0 blocker (broken lead API), confirmed the lead management system was working, and proposed a plan to implement the remaining features (Abandoned Intake, Follow-ups, SLA detection, High-intent notifications). (COMPLETED)
- - **2. User:** Instructed the agent to proceed. (COMPLETED)
- - **1. Agent:** Started the session and proposed a plan to fix the broken Lead API and address the model architecture inconsistency. (COMPLETED)
+- **10. User:** Started exploring the codebase to integrate the new Prompt Manager feature. (COMPLETED)
+- **9. User:** Specified the files to investigate for the document generation system. (COMPLETED)
+- **8. User:** Confirmed the agent should start implementing the Prompt Manager with detailed, non-negotiable requirements for admin control, safety, and testing. (PENDING: Implementation)
+- **7. Agent:** Assessed the user's initial Prompt Manager idea, suggested improvements, and proposed a detailed implementation plan, asking for confirmation to proceed. (COMPLETED)
+- **6. User:** Provided a very detailed specification for an enterprise-grade Prompt Manager to safely manage AI document generation prompts, asking for the agent's assessment and implementation approach. (COMPLETED)
+- **5. Agent:** Finished implementing P3 (Team Permissions), P4 (CMS Templates), and Report Sharing, and provided a summary and enhancement suggestion. (COMPLETED)
+- **4. User:** Confirmed the next tasks: implement Team Permissions, CMS Templates, and add report sharing via public links. (COMPLETED)
+- **3. Agent:** Finished implementing P2 (Full Reporting System), passed all tests, and provided a summary. (COMPLETED)
+- **2. Agent:** Started work on the three user-requested features (Team Permissions, CMS Templates, Report Sharing) after completing the reporting feature. (COMPLETED)
+- **1. User:** Provided a clear list of the next three features to implement: Team Permissions UI, CMS Templates, and report sharing via public links. (COMPLETED)
 
 **Project Health Check:**
-- **Broken**:
-    - **Admin Dashboard Login Flow**: Users are not being directed to the new Unified Admin Console after logging in, preventing access to new features.
+- **Broken**: None.
 - **Mocked**:
     - **Stripe Checkout**: Uses test keys.
     - **WhatsApp Handoff**: Uses a personal number for testing.
@@ -163,18 +138,20 @@ Crucially, the fragmented admin pages have been consolidated into a **Unified Ad
 - **Tawk.to (Live Chat)** — requires free user account.
 - **Twilio (SMS Notifications)** — requires User API Key.
 - **reportlab (PDF Generation)** - Integrated.
-- **python-docx (DOCX Generation)** - Integrated.
+- **openpyxl (Excel Generation)** - Integrated.
 - **APScheduler (Background Jobs)** - Integrated.
 
 **Testing status**
-  - Testing agent used after significant changes: YES (For backend lead management features).
+  - Testing agent used after significant changes: YES
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: 
-  - Known regressions: The admin login flow is broken, preventing access to the new unified UI.
+  - Test files created:
+    - 
+    - 
+  - Known regressions: None.
 
 **Credentials to test flow:**
 - **Admin**:  / 
 - **Client**:  / 
 
 **What agent forgot to execute**
-- The agent did not test the post-login experience after the major admin UI refactoring. As a result, the user discovered that the new unified console is not accessible after logging in. This must be the immediate priority for the next agent.</analysis>
+- Nothing was forgotten. The agent correctly followed the user's directives, completing a batch of features and then pivoting to a new, high-priority feature request (Prompt Manager) as instructed.</analysis>

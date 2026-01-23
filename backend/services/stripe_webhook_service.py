@@ -386,7 +386,7 @@ class StripeWebhookService:
                 
                 plan_def = plan_registry.get_plan(plan_code)
                 amount = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
-                frontend_url = os.getenv("FRONTEND_URL", "https://reportico.preview.emergentagent.com")
+                frontend_url = os.getenv("FRONTEND_URL", "https://promptverse-20.preview.emergentagent.com")
                 
                 await email_service.send_payment_received_email(
                     recipient=client.get("contact_email") if client else metadata.get("email", ""),
@@ -635,7 +635,7 @@ class StripeWebhookService:
             )
             
             if client and client.get("contact_email"):
-                frontend_url = os.getenv("FRONTEND_URL", "https://reportico.preview.emergentagent.com")
+                frontend_url = os.getenv("FRONTEND_URL", "https://promptverse-20.preview.emergentagent.com")
                 
                 # Access ends immediately for deleted subscription
                 access_end_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
@@ -821,7 +821,7 @@ class StripeWebhookService:
             )
             
             if client and client.get("contact_email"):
-                frontend_url = os.getenv("FRONTEND_URL", "https://reportico.preview.emergentagent.com")
+                frontend_url = os.getenv("FRONTEND_URL", "https://promptverse-20.preview.emergentagent.com")
                 
                 # Get next retry date if available
                 retry_date = None
