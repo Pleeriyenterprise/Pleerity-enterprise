@@ -99,6 +99,7 @@ import AdminSupportPage from './pages/AdminSupportPage';
 import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
 import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
+import AdminPostalTrackingPage from './pages/AdminPostalTrackingPage';
 import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
 
 function App() {
