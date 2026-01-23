@@ -413,6 +413,7 @@ class DocumentOrchestrator:
         
         # ================================================================
         # STEP 8: Store execution record with full audit trail
+        # NEW: Include prompt_version_used for compliance
         # ================================================================
         data_gaps = structured_output.get("data_gaps_flagged", [])
         execution_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
@@ -423,6 +424,8 @@ class DocumentOrchestrator:
             "prompt_id": prompt_def.prompt_id,
             "version": render_result.version,
             "status": OrchestrationStatus.REVIEW_PENDING.value,
+            # CRITICAL: Prompt version tracking for audit compliance
+            "prompt_version_used": prompt_version_used,
             # Immutable snapshots
             "intake_snapshot": intake_snapshot,
             "intake_snapshot_hash": intake_hash,
@@ -457,6 +460,18 @@ class DocumentOrchestrator:
         }
         
         await db[self.COLLECTION].insert_one(execution_record)
+        
+        # Record execution metrics for Prompt Performance Analytics
+        if prompt_info:
+            await prompt_manager_bridge.record_execution_metrics(
+                prompt_info=prompt_info,
+                order_id=order_id,
+                execution_time_ms=execution_time,
+                prompt_tokens=tokens.get("prompt_tokens", 0),
+                completion_tokens=tokens.get("completion_tokens", 0),
+                success=True,
+            )
+        
         
         # ================================================================
         # STEP 9: Update order status - Ready for Human Review
