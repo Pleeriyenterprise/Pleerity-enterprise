@@ -430,6 +430,14 @@ function App() {
               } 
             />
             <Route 
+              path="/admin/team" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminTeamPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/admin/support" 
               element={
                 <ProtectedRoute requireAdmin>
