@@ -338,6 +338,9 @@ app.include_router(orchestration.router)
 app.include_router(intake_wizard.router)
 app.include_router(admin_intake_schema.router)
 app.include_router(analytics.router)
+app.include_router(support.public_router)
+app.include_router(support.client_router)
+app.include_router(support.admin_router)
 
 # Root endpoint
 @app.get("/api")
