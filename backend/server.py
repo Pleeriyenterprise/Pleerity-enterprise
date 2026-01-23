@@ -254,6 +254,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to seed service catalogue V2: {e}")
     
+    # Create Prompt Manager indexes
+    try:
+        db = database.get_db()
+        await db.prompt_templates.create_index("template_id", unique=True)
+        await db.prompt_templates.create_index([("service_code", 1), ("doc_type", 1), ("status", 1)])
+        await db.prompt_templates.create_index([("service_code", 1), ("doc_type", 1), ("version", -1)])
+        await db.prompt_templates.create_index("status")
+        await db.prompt_templates.create_index("tags")
+        await db.prompt_test_results.create_index("test_id", unique=True)
+        await db.prompt_test_results.create_index([("template_id", 1), ("executed_at", -1)])
+        await db.prompt_audit_log.create_index("audit_id", unique=True)
+        await db.prompt_audit_log.create_index([("template_id", 1), ("performed_at", -1)])
+        await db.prompt_audit_log.create_index("performed_at")
+        logger.info("Prompt Manager indexes created")
+    except Exception as e:
+        logger.error(f"Failed to create Prompt Manager indexes: {e}")
+    
     # Configure scheduled jobs
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
