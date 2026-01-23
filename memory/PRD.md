@@ -241,6 +241,48 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - View report info
   - Download report
 
+### Phase 14: Enterprise Prompt Manager (Complete - Jan 23, 2026)
+- [x] **Prompt Template Management**
+  - Create, read, update, archive prompt templates
+  - Single `{{INPUT_DATA_JSON}}` injection pattern (no scattered placeholders)
+  - Service code + doc type categorization
+  - Tags for organization
+- [x] **Prompt Versioning & Lifecycle**
+  - Draft → Tested → Active workflow (never overwrite active)
+  - DRAFT: Editable, not used in production
+  - TESTED: Passed schema validation, ready for activation
+  - ACTIVE: Currently in use for document generation
+  - DEPRECATED: Replaced by newer version, preserved for audit
+  - ARCHIVED: Soft-deleted, hidden from normal views
+- [x] **Output Schema Validation**
+  - Define expected output fields (name, type, required)
+  - Schema validation REQUIRED before marking as TESTED
+  - Schema validation REQUIRED before activation
+  - Supports: string, number, boolean, array, object types
+- [x] **Prompt Playground**
+  - Test prompts with sample input data
+  - Real LLM execution (Gemini via Emergent LLM Key)
+  - View raw and parsed output
+  - Schema validation results with error details
+  - Execution time and token tracking
+- [x] **Audit Trail**
+  - Full audit log: who, what, when, evidence
+  - Actions logged: CREATED, UPDATED, TESTED, TEST_PASSED, TEST_FAILED, ACTIVATED, DEPRECATED, ARCHIVED
+  - Test result snapshots stored
+  - Activation reasons recorded
+- [x] **Super Admin Only Access**
+  - All endpoints require ROLE_ADMIN
+  - Least privilege enforcement
+- [x] **Provider-Agnostic LLM Interface**
+  - Gemini default via emergentintegrations
+  - Designed for easy provider swap
+- [x] **Admin Dashboard** (`/admin/prompts`)
+  - Templates tab with filters (service, status, search)
+  - Test Playground dialog with live LLM execution
+  - Activation dialog with reason requirement
+  - Audit Log tab with action timeline
+  - Guide tab with documentation
+
 ---
 
 ## API Endpoints Summary
