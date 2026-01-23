@@ -317,27 +317,53 @@ export default function AdminAnalyticsDashboard() {
           </div>
         ) : (
           <>
-            {/* Summary Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {/* Summary Stats with Comparison */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
               <StatCard
                 title="Total Revenue"
-                value={summary?.revenue?.total_formatted || '£0.00'}
-                change={summary?.revenue?.change_percent}
-                trend={summary?.revenue?.trend}
+                value={advancedSummary?.metrics?.revenue?.formatted || summary?.revenue?.total_formatted || '£0.00'}
+                change={advancedSummary?.metrics?.revenue?.change_percent || summary?.revenue?.change_percent}
+                trend={advancedSummary?.metrics?.revenue?.trend || summary?.revenue?.trend}
                 icon={DollarSign}
                 color="green"
+                previousValue={advancedSummary?.metrics?.revenue?.previous ? `£${(advancedSummary.metrics.revenue.previous / 100).toFixed(2)}` : null}
               />
               <StatCard
                 title="Paid Orders"
-                value={summary?.orders?.paid || 0}
-                change={summary?.orders?.change_percent}
-                trend={summary?.orders?.trend}
+                value={advancedSummary?.metrics?.orders?.current || summary?.orders?.paid || 0}
+                change={advancedSummary?.metrics?.orders?.change_percent || summary?.orders?.change_percent}
+                trend={advancedSummary?.metrics?.orders?.trend || summary?.orders?.trend}
                 icon={Package}
                 color="blue"
+                previousValue={advancedSummary?.metrics?.orders?.previous}
               />
               <StatCard
                 title="Avg Order Value"
-                value={summary?.average_order_value?.formatted || '£0.00'}
+                value={advancedSummary?.metrics?.average_order_value?.formatted || summary?.average_order_value?.formatted || '£0.00'}
+                change={advancedSummary?.metrics?.average_order_value?.change_percent}
+                trend={advancedSummary?.metrics?.average_order_value?.trend}
+                icon={TrendingUp}
+                color="purple"
+                previousValue={advancedSummary?.metrics?.average_order_value?.previous ? `£${(advancedSummary.metrics.average_order_value.previous / 100).toFixed(2)}` : null}
+              />
+              <StatCard
+                title="New Clients"
+                value={advancedSummary?.metrics?.new_clients?.current || summary?.new_clients || 0}
+                change={advancedSummary?.metrics?.new_clients?.change_percent}
+                trend={advancedSummary?.metrics?.new_clients?.trend}
+                icon={Users}
+                color="indigo"
+                previousValue={advancedSummary?.metrics?.new_clients?.previous}
+              />
+              <StatCard
+                title="Leads"
+                value={advancedSummary?.metrics?.leads?.current || 0}
+                change={advancedSummary?.metrics?.leads?.change_percent}
+                trend={advancedSummary?.metrics?.leads?.trend}
+                icon={Target}
+                color="orange"
+                previousValue={advancedSummary?.metrics?.leads?.previous}
+              />
                 change={summary?.average_order_value?.change_percent}
                 trend={summary?.average_order_value?.change_percent > 0 ? 'up' : 'down'}
                 icon={TrendingUp}
