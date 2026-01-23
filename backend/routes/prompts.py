@@ -375,13 +375,13 @@ async def get_service_codes(
     """
     Get available service codes from the service catalogue.
     
-    AUTHORITATIVE SOURCE: services_v2 collection
+    AUTHORITATIVE SOURCE: service_catalogue_v2 collection
     Only services from the catalogue can be used in prompts.
     """
     db = database.get_db()
     
-    # Get service codes from services_v2 (AUTHORITATIVE)
-    cursor = db.services_v2.find(
+    # Get service codes from service_catalogue_v2 (AUTHORITATIVE)
+    cursor = db.service_catalogue_v2.find(
         {"active": True},
         {"service_code": 1, "service_name": 1, "category": 1, "_id": 0}
     ).sort("service_code", 1)
