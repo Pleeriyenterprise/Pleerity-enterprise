@@ -611,8 +611,107 @@ class LeadSLAService:
                     "created_at": lead["created_at"],
                 },
             )
+            
+            # Send SLA breach notification to admins
+            await LeadSLAService.notify_sla_breach(lead)
         
         if breached_leads:
             logger.warning(f"SLA breach detected for {len(breached_leads)} leads")
         
         return len(breached_leads)
+    
+    @staticmethod
+    async def notify_sla_breach(lead: Dict[str, Any]):
+        """Send SLA breach notification to admins."""
+        import os
+        
+        POSTMARK_SERVER_TOKEN = os.environ.get("POSTMARK_SERVER_TOKEN")
+        ADMIN_NOTIFICATION_EMAILS = os.environ.get(
+            "ADMIN_NOTIFICATION_EMAILS", 
+            "admin@pleerity.com"
+        ).split(",")
+        SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
+        ADMIN_DASHBOARD_URL = os.environ.get(
+            "ADMIN_DASHBOARD_URL",
+            "https://leadsquared.preview.emergentagent.com/admin/leads"
+        )
+        
+        if not POSTMARK_SERVER_TOKEN or POSTMARK_SERVER_TOKEN == "leadsquared":
+            logger.warning("Postmark not properly configured, skipping SLA breach notification")
+            return
+        
+        try:
+            from postmarker.core import PostmarkClient
+            
+            lead_id = lead.get("lead_id")
+            name = lead.get("name") or "Unknown"
+            email = lead.get("email") or "No email"
+            created_at = lead.get("created_at", "Unknown")
+            
+            subject = f"⚠️ SLA BREACH: Lead {lead_id} not contacted within 24 hours"
+            
+            html_body = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #DC2626; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0; font-size: 24px;">⚠️ SLA Breach Alert</h1>
+                        <p style="margin: 5px 0 0 0; opacity: 0.9;">Lead not contacted within SLA</p>
+                    </div>
+                    
+                    <div style="background: #fef2f2; padding: 20px; border: 1px solid #fecaca; border-top: none;">
+                        <p style="color: #991B1B; font-weight: bold;">
+                            This lead has not been contacted within the required 24-hour SLA window.
+                        </p>
+                        
+                        <h2 style="color: #1f2937; margin-top: 20px;">Lead Details</h2>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold;">Lead ID:</td>
+                                <td style="padding: 8px 0;">{lead_id}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold;">Name:</td>
+                                <td style="padding: 8px 0;">{name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold;">Email:</td>
+                                <td style="padding: 8px 0;"><a href="mailto:{email}">{email}</a></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold;">Created:</td>
+                                <td style="padding: 8px 0;">{created_at}</td>
+                            </tr>
+                        </table>
+                        
+                        <div style="margin-top: 20px; text-align: center;">
+                            <a href="{ADMIN_DASHBOARD_URL}" style="display: inline-block; background: #DC2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                                Contact Lead Now →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            postmark_client = PostmarkClient(server_token=POSTMARK_SERVER_TOKEN)
+            
+            for admin_email in ADMIN_NOTIFICATION_EMAILS:
+                admin_email = admin_email.strip()
+                if admin_email:
+                    try:
+                        postmark_client.emails.send(
+                            From=SUPPORT_EMAIL,
+                            To=admin_email,
+                            Subject=subject,
+                            HtmlBody=html_body,
+                            Tag="sla_breach_notification",
+                            Metadata={"lead_id": lead_id},
+                        )
+                        logger.info(f"SLA breach notification sent to {admin_email} for lead {lead_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to send SLA breach notification: {e}")
+                        
+        except Exception as e:
+            logger.error(f"Failed to send SLA breach notification: {e}")
