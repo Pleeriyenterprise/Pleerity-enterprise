@@ -230,7 +230,7 @@ export default function AdminReportingPage() {
         return;
       }
       
-      await client.post('/api/admin/reports/schedules', {
+      await client.post('/admin/reports/schedules', {
         ...scheduleForm,
         recipients
       });
@@ -255,7 +255,7 @@ export default function AdminReportingPage() {
   // Toggle schedule
   const handleToggleSchedule = async (scheduleId) => {
     try {
-      await client.put(`/api/admin/reports/schedules/${scheduleId}/toggle`);
+      await client.put(`/admin/reports/schedules/${scheduleId}/toggle`);
       toast.success('Schedule updated');
       fetchSchedules();
     } catch (error) {
@@ -268,7 +268,7 @@ export default function AdminReportingPage() {
   const handleRunNow = async (scheduleId) => {
     setLoading(true);
     try {
-      const { data } = await client.post(`/api/admin/reports/schedules/${scheduleId}/run`);
+      const { data } = await client.post(`/admin/reports/schedules/${scheduleId}/run`);
       toast.success(`Report sent to ${data.recipients.join(', ')}`);
       fetchExecutions();
     } catch (error) {
@@ -284,7 +284,7 @@ export default function AdminReportingPage() {
     if (!window.confirm('Are you sure you want to delete this schedule?')) return;
     
     try {
-      await client.delete(`/api/admin/reports/schedules/${scheduleId}`);
+      await client.delete(`/admin/reports/schedules/${scheduleId}`);
       toast.success('Schedule deleted');
       fetchSchedules();
     } catch (error) {
