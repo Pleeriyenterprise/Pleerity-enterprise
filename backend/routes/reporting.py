@@ -6,6 +6,7 @@ import io
 import csv
 import json
 import uuid
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Literal
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
@@ -17,6 +18,18 @@ from database import database
 from models.core import AuditAction, UserRole
 from utils.audit import create_audit_log
 import logging
+
+# Excel support
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+
+# PDF support
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.units import inch
 
 logger = logging.getLogger(__name__)
 
