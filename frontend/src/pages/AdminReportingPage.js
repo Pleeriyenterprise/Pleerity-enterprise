@@ -98,7 +98,7 @@ export default function AdminReportingPage() {
   // Fetch report configuration
   const fetchConfig = useCallback(async () => {
     try {
-      const { data } = await client.get('/api/admin/reports/types');
+      const { data } = await client.get('/admin/reports/types');
       setReportTypes(data.types || []);
       setFormats(data.formats || []);
       setPeriods(data.periods || []);
@@ -111,7 +111,7 @@ export default function AdminReportingPage() {
   // Fetch schedules
   const fetchSchedules = useCallback(async () => {
     try {
-      const { data } = await client.get('/api/admin/reports/schedules');
+      const { data } = await client.get('/admin/reports/schedules');
       setSchedules(data.schedules || []);
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
@@ -121,7 +121,7 @@ export default function AdminReportingPage() {
   // Fetch executions
   const fetchExecutions = useCallback(async () => {
     try {
-      const { data } = await client.get('/api/admin/reports/executions');
+      const { data } = await client.get('/admin/reports/executions');
       setExecutions(data.executions || []);
     } catch (error) {
       console.error('Failed to fetch executions:', error);
@@ -131,7 +131,7 @@ export default function AdminReportingPage() {
   // Fetch history
   const fetchHistory = useCallback(async () => {
     try {
-      const { data } = await client.get('/api/admin/reports/history');
+      const { data } = await client.get('/admin/reports/history');
       setHistory(data.history || []);
     } catch (error) {
       console.error('Failed to fetch history:', error);
