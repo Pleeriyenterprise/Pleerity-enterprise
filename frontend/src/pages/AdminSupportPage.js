@@ -684,7 +684,7 @@ export default function AdminSupportPage() {
             </div>
           </div>
         </div>
-      </div>
     </div>
+    </UnifiedAdminLayout>
   );
 }
