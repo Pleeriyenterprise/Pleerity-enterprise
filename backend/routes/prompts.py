@@ -473,3 +473,170 @@ async def get_prompt_stats(
         "tests_last_24h": recent_tests,
         "audit_entries_last_24h": recent_audits,
     }
+
+
+# ============================================
+# Prompt Performance Analytics
+# ============================================
+
+@router.get("/analytics/performance")
+async def get_prompt_performance_analytics(
+    template_id: Optional[str] = Query(None, description="Filter by template ID"),
+    service_code: Optional[str] = Query(None, description="Filter by service code"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: dict = Depends(require_super_admin),
+):
+    """
+    Get prompt performance analytics.
+    
+    Returns:
+    - Total executions
+    - Success rate
+    - Average execution time
+    - Token usage
+    - Performance by prompt
+    """
+    from services.prompt_manager_bridge import prompt_manager_bridge
+    
+    analytics = await prompt_manager_bridge.get_prompt_analytics(
+        template_id=template_id,
+        service_code=service_code,
+        days=days,
+    )
+    
+    return analytics
+
+
+@router.get("/analytics/execution-timeline")
+async def get_execution_timeline(
+    days: int = Query(7, ge=1, le=90, description="Number of days"),
+    current_user: dict = Depends(require_super_admin),
+):
+    """
+    Get execution timeline data for charts.
+    
+    Returns daily execution counts and success rates.
+    """
+    db = database.get_db()
+    
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    
+    pipeline = [
+        {"$match": {"executed_at": {"$gte": cutoff}}},
+        {
+            "$group": {
+                "_id": {
+                    "$dateToString": {
+                        "format": "%Y-%m-%d",
+                        "date": "$executed_at"
+                    }
+                },
+                "total": {"$sum": 1},
+                "successful": {"$sum": {"$cond": ["$success", 1, 0]}},
+                "total_tokens": {"$sum": "$total_tokens"},
+                "avg_time_ms": {"$avg": "$execution_time_ms"},
+            }
+        },
+        {"$sort": {"_id": 1}},
+    ]
+    
+    cursor = db.prompt_execution_metrics.aggregate(pipeline)
+    results = await cursor.to_list(length=90)
+    
+    return {
+        "period_days": days,
+        "timeline": [
+            {
+                "date": r["_id"],
+                "total_executions": r["total"],
+                "successful_executions": r["successful"],
+                "success_rate": round(r["successful"] / r["total"] * 100, 1) if r["total"] > 0 else 0,
+                "total_tokens": r["total_tokens"],
+                "avg_execution_time_ms": round(r["avg_time_ms"], 0) if r["avg_time_ms"] else 0,
+            }
+            for r in results
+        ],
+    }
+
+
+@router.get("/analytics/top-prompts")
+async def get_top_prompts(
+    limit: int = Query(10, ge=1, le=50, description="Number of top prompts to return"),
+    sort_by: str = Query("executions", description="Sort by: executions, success_rate, tokens"),
+    current_user: dict = Depends(require_super_admin),
+):
+    """
+    Get top performing prompts by various metrics.
+    """
+    db = database.get_db()
+    
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    
+    # Sort field mapping
+    sort_fields = {
+        "executions": "total_executions",
+        "success_rate": "success_rate",
+        "tokens": "total_tokens",
+    }
+    sort_field = sort_fields.get(sort_by, "total_executions")
+    
+    pipeline = [
+        {"$match": {"executed_at": {"$gte": cutoff}}},
+        {
+            "$group": {
+                "_id": {
+                    "template_id": "$template_id",
+                    "version": "$version",
+                },
+                "service_code": {"$first": "$service_code"},
+                "source": {"$first": "$source"},
+                "total_executions": {"$sum": 1},
+                "successful": {"$sum": {"$cond": ["$success", 1, 0]}},
+                "total_tokens": {"$sum": "$total_tokens"},
+                "avg_time_ms": {"$avg": "$execution_time_ms"},
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "template_id": "$_id.template_id",
+                "version": "$_id.version",
+                "service_code": 1,
+                "source": 1,
+                "total_executions": 1,
+                "successful_executions": "$successful",
+                "success_rate": {
+                    "$round": [
+                        {"$multiply": [{"$divide": ["$successful", "$total_executions"]}, 100]},
+                        1
+                    ]
+                },
+                "total_tokens": 1,
+                "avg_execution_time_ms": {"$round": ["$avg_time_ms", 0]},
+            }
+        },
+        {"$sort": {sort_field: -1}},
+        {"$limit": limit},
+    ]
+    
+    cursor = db.prompt_execution_metrics.aggregate(pipeline)
+    results = await cursor.to_list(length=limit)
+    
+    # Enrich with template names
+    for r in results:
+        if r["template_id"].startswith("PT-"):
+            template = await db.prompt_templates.find_one(
+                {"template_id": r["template_id"]},
+                {"name": 1}
+            )
+            r["name"] = template["name"] if template else r["template_id"]
+        else:
+            r["name"] = r["template_id"].replace("LEGACY_", "")
+    
+    return {
+        "sort_by": sort_by,
+        "limit": limit,
+        "prompts": results,
+    }
