@@ -381,7 +381,8 @@ async def create_admin_user(
         metadata={"action": "create", "email": request.email, "role_id": request.role_id}
     )
     
-    del user["_id"] if "_id" in user else None
+    if "_id" in user:
+        del user["_id"]
     del user["password_hash"]
     return user
 
