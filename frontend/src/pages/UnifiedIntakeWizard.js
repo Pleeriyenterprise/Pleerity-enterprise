@@ -894,24 +894,24 @@ export default function UnifiedIntakeWizard() {
       if (currentStep === 1) {
         // Save addons if doc pack
         if (selectedService?.service_code.startsWith('DOC_PACK')) {
-          await client.put(`/api/intake/draft/${draft.draft_id}/addons`, {
+          await client.put(`/intake/draft/${draft.draft_id}/addons`, {
             addons: selectedAddons,
             postal_address: selectedAddons.includes('PRINTED_COPY') ? postalAddress : null,
           });
         }
       } else if (currentStep === 2) {
-        await client.put(`/api/intake/draft/${draft.draft_id}/client-identity`, clientData);
+        await client.put(`/intake/draft/${draft.draft_id}/client-identity`, clientData);
       } else if (currentStep === 3) {
-        await client.put(`/api/intake/draft/${draft.draft_id}/intake`, {
+        await client.put(`/intake/draft/${draft.draft_id}/intake`, {
           intake_data: intakeData,
           merge: true,
         });
       } else if (currentStep === 4) {
-        await client.put(`/api/intake/draft/${draft.draft_id}/delivery-consent`, consent);
+        await client.put(`/intake/draft/${draft.draft_id}/delivery-consent`, consent);
       }
       
       // Refresh pricing
-      const priceRes = await client.post('/api/intake/calculate-price', {
+      const priceRes = await client.post('/intake/calculate-price', {
         service_code: selectedService.service_code,
         addons: selectedAddons,
       });
@@ -955,10 +955,10 @@ export default function UnifiedIntakeWizard() {
       setLoading(true);
       
       // Save consent
-      await client.put(`/api/intake/draft/${draft.draft_id}/delivery-consent`, consent);
+      await client.put(`/intake/draft/${draft.draft_id}/delivery-consent`, consent);
       
       // Create checkout session
-      const res = await client.post(`/api/intake/draft/${draft.draft_id}/checkout`, {});
+      const res = await client.post(`/intake/draft/${draft.draft_id}/checkout`, {});
       
       // Redirect to Stripe
       window.location.href = res.data.checkout_url;
