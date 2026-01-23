@@ -463,6 +463,7 @@ app.include_router(enablement.router)  # Customer Enablement Automation Engine
 app.include_router(reporting.router)  # Full Reporting System - Export & Scheduling
 app.include_router(reporting.public_router)  # Public Report Sharing
 app.include_router(team.router)  # Team Permissions & Role Management
+app.include_router(prompts.router)  # Enterprise Prompt Manager
 
 # Root endpoint
 @app.get("/api")
