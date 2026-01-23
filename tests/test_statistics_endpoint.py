@@ -7,7 +7,7 @@ import requests
 import os
 
 # Get base URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://workmaster-app.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://forms-pleerity.preview.emergentagent.com').rstrip('/')
 
 # Admin credentials
 ADMIN_EMAIL = "admin@pleerity.com"

@@ -203,7 +203,7 @@ ENVIRONMENT=development
 
 **Frontend (`.env`):**
 ```bash
-REACT_APP_BACKEND_URL=https://workmaster-app.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://forms-pleerity.preview.emergentagent.com
 ```
 
 ### Quick Start
@@ -229,7 +229,7 @@ Password: Admin123!
 
 ### API Health Check
 ```bash
-curl https://workmaster-app.preview.emergentagent.com/api/health
+curl https://forms-pleerity.preview.emergentagent.com/api/health
 ```
 
 ---
@@ -327,10 +327,10 @@ curl https://workmaster-app.preview.emergentagent.com/api/health
 
 ```bash
 # Health check
-curl https://workmaster-app.preview.emergentagent.com/api/health
+curl https://forms-pleerity.preview.emergentagent.com/api/health
 
 # Submit intake
-curl -X POST https://workmaster-app.preview.emergentagent.com/api/intake/submit \
+curl -X POST https://forms-pleerity.preview.emergentagent.com/api/intake/submit \
   -H "Content-Type: application/json" \
   -d '{
     "full_name": "Test User",
@@ -344,7 +344,7 @@ curl -X POST https://workmaster-app.preview.emergentagent.com/api/intake/submit 
   }'
 
 # Login
-curl -X POST https://workmaster-app.preview.emergentagent.com/api/auth/login \
+curl -X POST https://forms-pleerity.preview.emergentagent.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "password": "Password123"}'
 ```
