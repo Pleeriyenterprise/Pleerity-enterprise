@@ -149,9 +149,9 @@ export default function AdminReportingPage() {
   const handlePreview = async () => {
     setLoading(true);
     try {
-      let url = `/api/admin/reports/preview/${selectedType}?period=${selectedPeriod}&limit=20`;
+      let url = `/admin/reports/preview/${selectedType}?period=${selectedPeriod}&limit=20`;
       if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
-        url = `/api/admin/reports/preview/${selectedType}?start_date=${customStartDate}&end_date=${customEndDate}&limit=20`;
+        url = `/admin/reports/preview/${selectedType}?start_date=${customStartDate}&end_date=${customEndDate}&limit=20`;
       }
       
       const { data } = await client.get(url);
