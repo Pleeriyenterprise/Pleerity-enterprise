@@ -1,0 +1,352 @@
+"""
+CMS Models for Admin Site Builder
+Safe Block System with predefined block types
+"""
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any, Literal
+from datetime import datetime
+from enum import Enum
+
+
+# ============================================
+# Block Type Definitions (Safe Block System)
+# ============================================
+
+class BlockType(str, Enum):
+    """Predefined safe block types - NO arbitrary HTML allowed"""
+    HERO = "HERO"
+    TEXT_BLOCK = "TEXT_BLOCK"
+    CTA = "CTA"
+    FAQ = "FAQ"
+    PRICING_TABLE = "PRICING_TABLE"
+    FEATURES_GRID = "FEATURES_GRID"
+    TESTIMONIALS = "TESTIMONIALS"
+    IMAGE_GALLERY = "IMAGE_GALLERY"
+    VIDEO_EMBED = "VIDEO_EMBED"
+    CONTACT_FORM = "CONTACT_FORM"
+    STATS_BAR = "STATS_BAR"
+    LOGO_CLOUD = "LOGO_CLOUD"
+    TEAM_SECTION = "TEAM_SECTION"
+    SPACER = "SPACER"
+
+
+# Individual Block Content Schemas
+class HeroBlockContent(BaseModel):
+    headline: str = Field(..., max_length=200)
+    subheadline: Optional[str] = Field(None, max_length=500)
+    cta_text: Optional[str] = Field(None, max_length=50)
+    cta_link: Optional[str] = None
+    secondary_cta_text: Optional[str] = Field(None, max_length=50)
+    secondary_cta_link: Optional[str] = None
+    background_image_id: Optional[str] = None
+    background_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
+    alignment: Literal["left", "center", "right"] = "center"
+
+
+class TextBlockContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    body: str = Field(..., max_length=5000)
+    alignment: Literal["left", "center", "right"] = "left"
+
+
+class CTABlockContent(BaseModel):
+    headline: str = Field(..., max_length=150)
+    description: Optional[str] = Field(None, max_length=500)
+    button_text: str = Field(..., max_length=50)
+    button_link: str
+    style: Literal["primary", "secondary", "outline"] = "primary"
+
+
+class FAQItem(BaseModel):
+    question: str = Field(..., max_length=300)
+    answer: str = Field(..., max_length=2000)
+
+
+class FAQBlockContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    items: List[FAQItem] = Field(..., min_length=1, max_length=20)
+
+
+class PricingTier(BaseModel):
+    name: str = Field(..., max_length=50)
+    price: str = Field(..., max_length=50)  # e.g., "£29/mo"
+    description: Optional[str] = Field(None, max_length=200)
+    features: List[str] = Field(..., max_length=10)
+    cta_text: str = Field(default="Get Started", max_length=50)
+    cta_link: str
+    is_highlighted: bool = False
+
+
+class PricingTableContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    subtitle: Optional[str] = Field(None, max_length=300)
+    tiers: List[PricingTier] = Field(..., min_length=1, max_length=5)
+
+
+class FeatureItem(BaseModel):
+    icon: Optional[str] = Field(None, max_length=50)  # Icon name from allowed set
+    title: str = Field(..., max_length=100)
+    description: str = Field(..., max_length=500)
+
+
+class FeaturesGridContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    subtitle: Optional[str] = Field(None, max_length=300)
+    features: List[FeatureItem] = Field(..., min_length=1, max_length=12)
+    columns: Literal[2, 3, 4] = 3
+
+
+class TestimonialItem(BaseModel):
+    quote: str = Field(..., max_length=1000)
+    author_name: str = Field(..., max_length=100)
+    author_title: Optional[str] = Field(None, max_length=100)
+    author_company: Optional[str] = Field(None, max_length=100)
+    author_image_id: Optional[str] = None
+    rating: Optional[int] = Field(None, ge=1, le=5)
+
+
+class TestimonialsContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    testimonials: List[TestimonialItem] = Field(..., min_length=1, max_length=10)
+    style: Literal["cards", "carousel", "quote"] = "cards"
+
+
+class ImageGalleryItem(BaseModel):
+    image_id: str
+    alt_text: str = Field(..., max_length=200)
+    caption: Optional[str] = Field(None, max_length=300)
+
+
+class ImageGalleryContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    images: List[ImageGalleryItem] = Field(..., min_length=1, max_length=20)
+    layout: Literal["grid", "masonry", "slider"] = "grid"
+
+
+class VideoEmbedContent(BaseModel):
+    """Only YouTube and Vimeo allowed for safety"""
+    title: Optional[str] = Field(None, max_length=200)
+    video_url: str  # Validated to be YouTube or Vimeo
+    caption: Optional[str] = Field(None, max_length=300)
+    autoplay: bool = False
+
+
+class ContactFormContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    subtitle: Optional[str] = Field(None, max_length=300)
+    form_type: Literal["contact", "quote", "callback"] = "contact"
+    success_message: str = Field(default="Thank you! We'll be in touch soon.", max_length=200)
+
+
+class StatItem(BaseModel):
+    value: str = Field(..., max_length=50)  # e.g., "500+", "98%"
+    label: str = Field(..., max_length=100)
+
+
+class StatsBarContent(BaseModel):
+    stats: List[StatItem] = Field(..., min_length=1, max_length=6)
+    background_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
+
+
+class LogoItem(BaseModel):
+    image_id: str
+    alt_text: str = Field(..., max_length=100)
+    link: Optional[str] = None
+
+
+class LogoCloudContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    logos: List[LogoItem] = Field(..., min_length=1, max_length=20)
+
+
+class TeamMember(BaseModel):
+    name: str = Field(..., max_length=100)
+    role: str = Field(..., max_length=100)
+    bio: Optional[str] = Field(None, max_length=500)
+    image_id: Optional[str] = None
+    linkedin: Optional[str] = None
+
+
+class TeamSectionContent(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    subtitle: Optional[str] = Field(None, max_length=300)
+    members: List[TeamMember] = Field(..., min_length=1, max_length=20)
+
+
+class SpacerContent(BaseModel):
+    height: Literal["sm", "md", "lg", "xl"] = "md"
+
+
+# ============================================
+# Content Block Model
+# ============================================
+
+class ContentBlock(BaseModel):
+    """Individual content block within a page"""
+    block_id: str
+    block_type: BlockType
+    content: Dict[str, Any]  # Schema-validated based on block_type
+    visible: bool = True
+    order: int
+
+
+# ============================================
+# SEO Metadata
+# ============================================
+
+class SEOMetadata(BaseModel):
+    meta_title: Optional[str] = Field(None, max_length=70)
+    meta_description: Optional[str] = Field(None, max_length=160)
+    og_title: Optional[str] = Field(None, max_length=70)
+    og_description: Optional[str] = Field(None, max_length=200)
+    og_image_id: Optional[str] = None
+    canonical_url: Optional[str] = None
+    robots: Literal["index,follow", "noindex,follow", "index,nofollow", "noindex,nofollow"] = "index,follow"
+
+
+# ============================================
+# CMS Page Models
+# ============================================
+
+class PageStatus(str, Enum):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
+class CMSPageCreate(BaseModel):
+    """Create a new CMS page"""
+    slug: str = Field(..., pattern=r'^[a-z0-9-]+$', max_length=100)
+    title: str = Field(..., max_length=200)
+    description: Optional[str] = Field(None, max_length=500)
+
+
+class CMSPageUpdate(BaseModel):
+    """Update CMS page content (creates draft)"""
+    title: Optional[str] = Field(None, max_length=200)
+    description: Optional[str] = Field(None, max_length=500)
+    blocks: Optional[List[ContentBlock]] = None
+    seo: Optional[SEOMetadata] = None
+
+
+class CMSPageResponse(BaseModel):
+    """CMS page response"""
+    page_id: str
+    slug: str
+    title: str
+    description: Optional[str] = None
+    status: PageStatus
+    blocks: List[ContentBlock] = []
+    seo: Optional[SEOMetadata] = None
+    current_version: int
+    created_at: datetime
+    updated_at: datetime
+    published_at: Optional[datetime] = None
+    created_by: str
+    updated_by: str
+
+
+# ============================================
+# CMS Revision Models
+# ============================================
+
+class CMSRevisionResponse(BaseModel):
+    """Revision snapshot for rollback"""
+    revision_id: str
+    page_id: str
+    version: int
+    title: str
+    blocks: List[ContentBlock]
+    seo: Optional[SEOMetadata]
+    published_at: datetime
+    published_by: str
+    notes: Optional[str] = None
+
+
+# ============================================
+# CMS Media Models
+# ============================================
+
+class MediaType(str, Enum):
+    IMAGE = "IMAGE"
+    VIDEO_EMBED = "VIDEO_EMBED"
+
+
+class CMSMediaCreate(BaseModel):
+    """Create media entry"""
+    file_name: str = Field(..., max_length=255)
+    file_type: str  # MIME type
+    alt_text: Optional[str] = Field(None, max_length=200)
+    tags: List[str] = []
+
+
+class CMSMediaResponse(BaseModel):
+    """Media library entry"""
+    media_id: str
+    media_type: MediaType
+    file_name: str
+    file_url: str
+    file_size: Optional[int] = None
+    alt_text: Optional[str] = None
+    tags: List[str] = []
+    uploaded_at: datetime
+    uploaded_by: str
+
+
+# ============================================
+# Request/Response Models
+# ============================================
+
+class BlockCreateRequest(BaseModel):
+    """Add a block to a page"""
+    block_type: BlockType
+    content: Dict[str, Any]
+    position: Optional[int] = None  # Insert at position, or append if None
+
+
+class BlockUpdateRequest(BaseModel):
+    """Update block content"""
+    content: Optional[Dict[str, Any]] = None
+    visible: Optional[bool] = None
+    order: Optional[int] = None
+
+
+class ReorderBlocksRequest(BaseModel):
+    """Reorder blocks"""
+    block_order: List[str]  # List of block_ids in new order
+
+
+class PublishPageRequest(BaseModel):
+    """Publish page with notes"""
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class RollbackRequest(BaseModel):
+    """Rollback to a specific revision"""
+    revision_id: str
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class VideoEmbedRequest(BaseModel):
+    """Safe video embed request - YouTube/Vimeo only"""
+    video_url: str
+    title: Optional[str] = None
+
+
+# Block type to content schema mapping
+BLOCK_CONTENT_SCHEMAS = {
+    BlockType.HERO: HeroBlockContent,
+    BlockType.TEXT_BLOCK: TextBlockContent,
+    BlockType.CTA: CTABlockContent,
+    BlockType.FAQ: FAQBlockContent,
+    BlockType.PRICING_TABLE: PricingTableContent,
+    BlockType.FEATURES_GRID: FeaturesGridContent,
+    BlockType.TESTIMONIALS: TestimonialsContent,
+    BlockType.IMAGE_GALLERY: ImageGalleryContent,
+    BlockType.VIDEO_EMBED: VideoEmbedContent,
+    BlockType.CONTACT_FORM: ContactFormContent,
+    BlockType.STATS_BAR: StatsBarContent,
+    BlockType.LOGO_CLOUD: LogoCloudContent,
+    BlockType.TEAM_SECTION: TeamSectionContent,
+    BlockType.SPACER: SpacerContent,
+}
