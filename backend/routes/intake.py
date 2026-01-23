@@ -897,6 +897,23 @@ async def submit_intake(request: Request, data: IntakeFormData):
             }
         )
         
+        # =========== ENABLEMENT EVENT ===========
+        try:
+            from services.enablement_service import emit_enablement_event
+            from models.enablement import EnablementEventType
+            await emit_enablement_event(
+                event_type=EnablementEventType.CLIENT_INTAKE_COMPLETED,
+                client_id=client.client_id,
+                plan_code=data.billing_plan.value,
+                context_payload={
+                    "email": data.email,
+                    "customer_reference": customer_reference,
+                    "properties_count": len(data.properties)
+                }
+            )
+        except Exception as enable_err:
+            logger.warning(f"Failed to emit enablement event: {enable_err}")
+        
         logger.info(f"Intake submitted for {data.email}, ref: {customer_reference}")
         
         return {
