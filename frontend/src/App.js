@@ -92,6 +92,8 @@ import AdminBillingPage from './pages/AdminBillingPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminServiceCataloguePage from './pages/AdminServiceCataloguePage';
 import AdminNotificationPreferencesPage from './pages/AdminNotificationPreferencesPage';
+import AdminIntakeSchemaPage from './pages/AdminIntakeSchemaPage';
+import AdminAnalyticsDashboard from './pages/AdminAnalyticsDashboard';
 
 function App() {
   return (
@@ -374,6 +376,30 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminNotificationPreferencesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/intake-schema" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminIntakeSchemaPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/intake-schema/:serviceCode" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminIntakeSchemaPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/analytics" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminAnalyticsDashboard />
                 </ProtectedRoute>
               } 
             />
