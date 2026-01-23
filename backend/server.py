@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from database import database
-from routes import auth, intake, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard
+from routes import auth, intake, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, analytics
 import os
 import logging
 from pathlib import Path
@@ -336,6 +336,8 @@ app.include_router(admin_services_v2.router)
 app.include_router(public_services_v2.router)
 app.include_router(orchestration.router)
 app.include_router(intake_wizard.router)
+app.include_router(admin_intake_schema.router)
+app.include_router(analytics.router)
 
 # Root endpoint
 @app.get("/api")
