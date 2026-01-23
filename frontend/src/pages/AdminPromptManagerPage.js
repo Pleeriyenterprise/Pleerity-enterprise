@@ -370,7 +370,7 @@ export default function AdminPromptManagerPage() {
     }
     
     try {
-      await client.delete(`/api/admin/prompts/${template.template_id}`);
+      await client.delete(`/admin/prompts/${template.template_id}`);
       toast.success('Template archived');
       loadData();
     } catch (error) {
