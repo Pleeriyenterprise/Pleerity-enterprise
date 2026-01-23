@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminKnowledgeBasePage() {
-  const { user } = useAuth();
+  useAuth(); // Ensure user is authenticated
   const [activeTab, setActiveTab] = useState('articles');
   
   // Articles state
