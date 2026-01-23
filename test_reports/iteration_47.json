@@ -1,0 +1,105 @@
+{
+  "summary": "Completed testing of 4 new features: Analytics Dashboard, Intake Schema Manager, Dynamic Service Detail Page V2, and Toast Error Fix. All 31 backend API tests passed (100%). Frontend UI verified - all features working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Service Detail Page",
+        "issues": ["Minor: 'Standard delivery' text also visible alongside '48 hours' badge - may need cleanup"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_analytics_schema_features.py",
+    "/app/test_reports/pytest/pytest_results_iter47.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Analytics Dashboard: All 6 API endpoints working (summary, services, sla-performance, customers, conversion-funnel, addons)",
+    "Analytics Dashboard: 4 stat cards displayed (Total Revenue, Paid Orders, Avg Order Value, Completion Rate)",
+    "Analytics Dashboard: Period selector works with 6 options (Today, 7d, 30d, 90d, YTD, All)",
+    "Analytics Dashboard: All sections visible (Service Performance, Conversion Funnel, SLA Performance, Add-on Performance, Customer Insights)",
+    "Intake Schema Manager: Lists all 11 services with field counts",
+    "Intake Schema Manager: Field editor shows field groups, type badges, Required badges, eye icon for hide",
+    "Service Detail Page V2: Loads service data from V2 API correctly",
+    "Service Detail Page V2: Shows title, description, turnaround hours (48 hours), Fast Track badge",
+    "Service Detail Page V2: Order Now button correctly links to /order/intake?service=CODE",
+    "Toast Error Fix: ClientOrdersPage - no transient toast error on initial load (401 errors suppressed)",
+    "Toast Error Fix: AdminNotificationPreferencesPage - no transient toast error on initial load (401 errors suppressed)",
+    "Fixed minor bug: ServiceDetailPage was checking wrong field name for turnaround hours (standard_turnaround_hours instead of turnaround_hours)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_analytics_schema_features.py",
+    "/app/frontend/src/pages/public/ServiceDetailPage.js"
+  ],
+  "success_rate": {
+    "backend": "100% (31/31 tests passed)",
+    "frontend": "100% (all features verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@pleerity.com / Admin123!",
+    "client": "test@pleerity.com / TestClient123!"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 47 tested 4 new features: 1) Analytics Dashboard at /admin/analytics with 6 API endpoints and comprehensive UI, 2) Intake Schema Manager at /admin/intake-schema with 11 services and field editor, 3) Dynamic Service Detail Page using V2 API with proper turnaround hours display, 4) Toast error fix for ClientOrdersPage and AdminNotificationPreferencesPage. All backend tests passed. Minor fix applied to ServiceDetailPage.js to use correct turnaround_hours field from API.",
+  "verified_features": {
+    "analytics_dashboard": {
+      "api_endpoints": {
+        "GET_summary": "PASS - Returns revenue, orders, AOV, completion rate",
+        "GET_services": "PASS - Returns service breakdown",
+        "GET_sla_performance": "PASS - Returns on_time, warnings, breached, health_score",
+        "GET_customers": "PASS - Returns total_customers, repeat_rate, top_customers",
+        "GET_conversion_funnel": "PASS - Returns funnel stages and overall_conversion",
+        "GET_addons": "PASS - Returns fast_track and printed_copy analytics"
+      },
+      "ui_components": {
+        "stat_cards": "PASS - 4 cards visible (Revenue, Orders, AOV, Completion Rate)",
+        "period_selector": "PASS - 6 options available",
+        "service_performance": "PASS - Section visible",
+        "conversion_funnel": "PASS - Section visible with stages",
+        "sla_performance": "PASS - Section visible with health score",
+        "addon_performance": "PASS - Section visible",
+        "customer_insights": "PASS - Section visible"
+      }
+    },
+    "intake_schema_manager": {
+      "api_endpoints": {
+        "GET_services": "PASS - Returns 11 services with field counts",
+        "GET_schema": "PASS - Returns schema with fields for DOC_PACK_ESSENTIAL"
+      },
+      "ui_components": {
+        "services_list": "PASS - 11 services displayed",
+        "field_editor": "PASS - Shows field groups and fields",
+        "field_type_badges": "PASS - Text Input, Email, Phone, Dropdown visible",
+        "required_badges": "PASS - Required badges visible",
+        "hide_toggle": "PASS - Eye icon visible"
+      }
+    },
+    "service_detail_v2": {
+      "api_endpoint": "PASS - GET /api/public/v2/services/{code} returns service data",
+      "ui_components": {
+        "title": "PASS - Workflow Automation Blueprint",
+        "description": "PASS - Long description visible",
+        "turnaround_hours": "PASS - 48 hours badge visible (after fix)",
+        "fast_track_badge": "PASS - Fast Track Available badge visible",
+        "order_now_button": "PASS - Links to /order/intake?service=AI_WF_BLUEPRINT"
+      }
+    },
+    "toast_error_fix": {
+      "client_orders_page": "PASS - No transient toast error on redirect to login",
+      "admin_notification_prefs": "PASS - No transient toast error on redirect to login"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["Stripe checkout session creation uses test key sk_test_emergent"],
+    "note": "Stripe integration uses test keys for checkout"
+  }
+}
