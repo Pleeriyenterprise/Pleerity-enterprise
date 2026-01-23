@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 import sys
 
-API_URL = "https://assistify-hub.preview.emergentagent.com/api"
+API_URL = "https://leadsquared.preview.emergentagent.com/api"
 
 class E2ETestSuite:
     def __init__(self):

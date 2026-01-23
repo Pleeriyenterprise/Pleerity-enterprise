@@ -24,8 +24,8 @@ from models import EmailTemplateAlias
 logger = logging.getLogger(__name__)
 
 # Frontend URL for portal links
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://assistify-hub.preview.emergentagent.com")
-BACKEND_URL = os.getenv("REACT_APP_BACKEND_URL", "https://assistify-hub.preview.emergentagent.com")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://leadsquared.preview.emergentagent.com")
+BACKEND_URL = os.getenv("REACT_APP_BACKEND_URL", "https://leadsquared.preview.emergentagent.com")
 
 
 class OrderDeliveryService:
