@@ -105,6 +105,7 @@ import AdminSiteBuilderPage from './pages/AdminSiteBuilderPage';
 import AdminEnablementDashboard from './pages/AdminEnablementDashboard';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminTeamPage from './pages/AdminTeamPage';
+import AdminPromptManagerPage from './pages/AdminPromptManagerPage';
 import SharedReportPage from './pages/SharedReportPage';
 import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
 import CookieBanner from './components/CookieBanner';
