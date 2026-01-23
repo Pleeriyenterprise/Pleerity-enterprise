@@ -1002,5 +1002,6 @@ export default function AdminLeadsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </UnifiedAdminLayout>
   );
 }
