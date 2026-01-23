@@ -734,26 +734,26 @@ async def get_lead_notifications(
     
     return {
         "high_intent_alerts": [{
-            "lead_id": l["lead_id"],
-            "name": l.get("name") or l.get("email"),
-            "service": l.get("service_interest"),
-            "created_at": l["created_at"],
+            "lead_id": lead["lead_id"],
+            "name": lead.get("name") or lead.get("email"),
+            "service": lead.get("service_interest"),
+            "created_at": lead["created_at"],
             "type": "high_intent",
-        } for l in high_intent_leads],
+        } for lead in high_intent_leads],
         "sla_breach_alerts": [{
-            "lead_id": l["lead_id"],
-            "name": l.get("name") or l.get("email"),
-            "created_at": l["created_at"],
-            "sla_breach_at": l.get("sla_breach_at"),
+            "lead_id": lead["lead_id"],
+            "name": lead.get("name") or lead.get("email"),
+            "created_at": lead["created_at"],
+            "sla_breach_at": lead.get("sla_breach_at"),
             "type": "sla_breach",
-        } for l in sla_breaches],
+        } for lead in sla_breaches],
         "recent_leads": [{
-            "lead_id": l["lead_id"],
-            "name": l.get("name") or l.get("email"),
-            "intent_score": l.get("intent_score"),
-            "created_at": l["created_at"],
+            "lead_id": lead["lead_id"],
+            "name": lead.get("name") or lead.get("email"),
+            "intent_score": lead.get("intent_score"),
+            "created_at": lead["created_at"],
             "type": "new_lead",
-        } for l in recent_leads],
+        } for lead in recent_leads],
         "total_alerts": len(high_intent_leads) + len(sla_breaches),
     }
 

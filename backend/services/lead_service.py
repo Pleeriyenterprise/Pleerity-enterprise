@@ -988,8 +988,8 @@ class AbandonedIntakeService:
             "status": {"$in": ["DRAFT", "draft", "in_progress", "PENDING"]},
             "lead_created": {"$ne": True},
             "$or": [
-                {"client_identity.email": {"$exists": True, "$ne": None, "$ne": ""}},
-                {"intake_payload.email": {"$exists": True, "$ne": None, "$ne": ""}},
+                {"client_identity.email": {"$exists": True, "$nin": [None, ""]}},
+                {"intake_payload.email": {"$exists": True, "$nin": [None, ""]}},
             ],
         }, {"_id": 0}).to_list(length=100)
         
