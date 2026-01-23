@@ -94,9 +94,10 @@ const navSections = [
     label: 'Settings & System',
     icon: Settings,
     items: [
+      { href: '/admin/enablement', label: 'Enablement Engine', icon: Zap },
       { href: '/admin/privacy/consent', label: 'Privacy & Consent', icon: Cookie },
       { href: '/admin/dashboard', label: 'Team Management', icon: Shield, tabTarget: 'admins' },
-      { href: '/admin/dashboard', label: 'Automation Rules', icon: Zap, tabTarget: 'rules' },
+      { href: '/admin/dashboard', label: 'Automation Rules', icon: Settings, tabTarget: 'rules' },
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
       { href: '/admin/dashboard', label: 'Audit Logs', icon: History, tabTarget: 'audit' },
       { href: '/admin/notifications/preferences', label: 'Notifications', icon: Bell },
