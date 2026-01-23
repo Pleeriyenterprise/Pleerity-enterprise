@@ -382,3 +382,28 @@ async def get_file_content(file_id: str) -> io.BytesIO:
     except Exception as e:
         logger.error(f"Failed to get file content for {file_id}: {e}")
         raise FileNotFoundError(f"File not found: {file_id}")
+
+
+# CMS Media storage - uses dedicated bucket
+cms_storage_adapter = GridFSStorageAdapter(bucket_name="cms_media")
+
+
+async def upload_file_to_storage(
+    file_data: bytes,
+    filename: str,
+    content_type: str,
+    uploaded_by: Optional[str] = None
+) -> str:
+    """
+    Upload a file to CMS storage and return URL.
+    Returns a relative URL that can be used in the frontend.
+    """
+    file_meta = await cms_storage_adapter.upload_file(
+        file_data=io.BytesIO(file_data),
+        filename=filename,
+        content_type=content_type,
+        uploaded_by=uploaded_by,
+        access_level="public",  # CMS media is public
+    )
+    # Return a URL that the frontend can use
+    return f"/api/cms/media/file/{file_meta.file_id}"
