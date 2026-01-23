@@ -8,6 +8,7 @@
  * - Prompt Playground for testing
  * - Version history and audit log
  * - Schema validation
+ * - Performance Analytics dashboard
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
@@ -15,7 +16,7 @@ import {
   FileCode, Play, CheckCircle, XCircle, RefreshCw, Plus, Edit, Trash2,
   AlertTriangle, History, Activity, Rocket, Eye, Save, Code, Sparkles,
   TestTube, ArchiveIcon, Clock, User, ChevronRight, Search, Filter,
-  Copy, Check
+  Copy, Check, BarChart3, TrendingUp, Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
