@@ -217,12 +217,31 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 | `/api/admin/cms/media/upload` | POST | Upload media file |
 | `/api/admin/cms/media/{id}` | DELETE | Delete media |
 | `/api/admin/cms/block-types` | GET | Get available block types |
+| `/api/admin/cms/templates` | GET | List 4 pre-built templates |
+| `/api/admin/cms/templates/{id}` | GET | Get template with blocks |
+| `/api/admin/cms/templates/{id}/preview` | GET | Preview template |
+| `/api/admin/cms/templates/apply` | POST | Apply template to new/existing page |
 
 ### CMS Public (No Auth)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/public/cms/pages/{slug}` | GET | Get published page content |
 | `/api/cms/media/file/{file_id}` | GET | Serve media file |
+
+### Team Permissions (Admin - ROLE_ADMIN only)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/team/permissions` | GET | List 13 permission categories with actions |
+| `/api/admin/team/roles` | GET | List all roles (5 built-in + custom) |
+| `/api/admin/team/roles/{id}` | GET | Get role details with permissions |
+| `/api/admin/team/roles` | POST | Create custom role |
+| `/api/admin/team/roles/{id}` | PUT | Update custom role |
+| `/api/admin/team/roles/{id}` | DELETE | Delete custom role |
+| `/api/admin/team/users` | GET | List admin users |
+| `/api/admin/team/users` | POST | Create admin user with role |
+| `/api/admin/team/users/{id}` | PUT | Update admin user |
+| `/api/admin/team/users/{id}` | DELETE | Deactivate admin user |
+| `/api/admin/team/me/permissions` | GET | Get current user's permissions |
 
 ### Customer Enablement Engine (Admin - ROLE_ADMIN only)
 | Endpoint | Method | Description |
@@ -256,6 +275,15 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 | `/api/admin/reports/schedules/{id}` | DELETE | Delete scheduled report |
 | `/api/admin/reports/history` | GET | Get report download history |
 | `/api/admin/reports/executions` | GET | Get scheduled report execution history |
+| `/api/admin/reports/share` | POST | Create shareable report link |
+| `/api/admin/reports/shares` | GET | List share links |
+| `/api/admin/reports/shares/{id}` | DELETE | Revoke share link |
+
+### Public Report Sharing (No Auth)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/public/reports/shared/{id}` | GET | Get shared report info |
+| `/api/public/reports/shared/{id}/download` | GET | Download shared report |
 
 ### Cookie Consent (Public)
 | Endpoint | Method | Description |
