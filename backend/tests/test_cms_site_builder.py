@@ -575,8 +575,10 @@ class TestCMSPublishingWorkflow:
             f"{BASE_URL}/api/admin/cms/pages/{page_id}/revisions",
             headers=admin_headers
         )
-        revisions = revisions_response.json()
-        assert len(revisions) >= 2
+        data = revisions_response.json()
+        # Response is wrapped in {"revisions": [...]}
+        revisions = data.get("revisions", data) if isinstance(data, dict) else data
+        assert len(revisions) >= 2, f"Expected at least 2 revisions, got {len(revisions)}"
         
         # Rollback to version 1
         v1_revision = next((r for r in revisions if r["version"] == 1), None)
