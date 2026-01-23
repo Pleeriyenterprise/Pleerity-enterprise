@@ -290,7 +290,7 @@ export default function AdminPromptManagerPage() {
     setTestResult(null);
     
     try {
-      const res = await client.post('/api/admin/prompts/test', {
+      const res = await client.post('/admin/prompts/test', {
         template_id: selectedTemplate.template_id,
         test_input_data: parsedInput,
         temperature_override: testForm.temperature_override,
