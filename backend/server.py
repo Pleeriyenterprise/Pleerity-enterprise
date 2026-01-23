@@ -267,6 +267,10 @@ async def lifespan(app: FastAPI):
         await db.prompt_audit_log.create_index("audit_id", unique=True)
         await db.prompt_audit_log.create_index([("template_id", 1), ("performed_at", -1)])
         await db.prompt_audit_log.create_index("performed_at")
+        # Prompt execution metrics indexes for analytics
+        await db.prompt_execution_metrics.create_index([("template_id", 1), ("executed_at", -1)])
+        await db.prompt_execution_metrics.create_index([("service_code", 1), ("executed_at", -1)])
+        await db.prompt_execution_metrics.create_index("executed_at")
         logger.info("Prompt Manager indexes created")
     except Exception as e:
         logger.error(f"Failed to create Prompt Manager indexes: {e}")
