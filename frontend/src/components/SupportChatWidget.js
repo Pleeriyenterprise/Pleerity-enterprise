@@ -608,33 +608,75 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
       {!isMinimized && (
         <>
-          {/* Quick Actions Panel - Collapsible */}
-          {showQuickActions && messages.length <= 1 && (
-            <QuickActionsPanel onAction={handleQuickAction} loading={loading} />
-          )}
-          
-          {/* Toggle Quick Actions button */}
-          {messages.length > 1 && !showQuickActions && (
+          {/* Tabs */}
+          <div className="flex border-b">
             <button
-              onClick={() => setShowQuickActions(true)}
-              className="w-full px-3 py-2 bg-gray-50 text-xs text-gray-600 hover:bg-gray-100 flex items-center justify-center gap-1 border-b"
+              onClick={() => setActiveTab('faq')}
+              className={`flex-1 py-2 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                activeTab === 'faq'
+                  ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+              data-testid="faq-tab"
             >
-              <ChevronDown className="w-3 h-3" />
-              Show Quick Actions
+              <Book className="h-4 w-4" />
+              FAQ
             </button>
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`flex-1 py-2 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                activeTab === 'chat'
+                  ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+              data-testid="chat-tab"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Chat
+            </button>
+          </div>
+
+          {/* FAQ Tab Content */}
+          {activeTab === 'faq' && (
+            <FAQTab
+              onStartChat={() => setActiveTab('chat')}
+              onSelectArticle={(article) => {
+                // Open article in new tab or navigate
+                window.open(`/support/knowledge-base/${article.slug}`, '_blank');
+              }}
+            />
           )}
-          
-          {showQuickActions && messages.length > 1 && (
+
+          {/* Chat Tab Content */}
+          {activeTab === 'chat' && (
             <>
-              <QuickActionsPanel onAction={handleQuickAction} loading={loading} />
-              <button
-                onClick={() => setShowQuickActions(false)}
-                className="w-full px-3 py-1 bg-gray-100 text-xs text-gray-500 hover:bg-gray-200"
-              >
-                Hide Quick Actions
-              </button>
-            </>
-          )}
+              {/* Quick Actions Panel - Collapsible */}
+              {showQuickActions && messages.length <= 1 && (
+                <QuickActionsPanel onAction={handleQuickAction} loading={loading} />
+              )}
+              
+              {/* Toggle Quick Actions button */}
+              {messages.length > 1 && !showQuickActions && (
+                <button
+                  onClick={() => setShowQuickActions(true)}
+                  className="w-full px-3 py-2 bg-gray-50 text-xs text-gray-600 hover:bg-gray-100 flex items-center justify-center gap-1 border-b"
+                >
+                  <ChevronDown className="w-3 h-3" />
+                  Show Quick Actions
+                </button>
+              )}
+              
+              {showQuickActions && messages.length > 1 && (
+                <>
+                  <QuickActionsPanel onAction={handleQuickAction} loading={loading} />
+                  <button
+                    onClick={() => setShowQuickActions(false)}
+                    className="w-full px-3 py-1 bg-gray-100 text-xs text-gray-500 hover:bg-gray-200"
+                  >
+                    Hide Quick Actions
+                  </button>
+                </>
+              )}
 
           {/* Messages */}
           <div className={`overflow-y-auto p-4 ${showQuickActions && messages.length <= 1 ? 'h-[280px]' : 'h-[360px]'}`}>
