@@ -292,7 +292,7 @@ async def unsubscribe_lead(lead_id: str):
         raise HTTPException(status_code=404, detail="Lead not found")
     
     await LeadService.log_audit(
-        event="MARKETING_CONSENT_UPDATED",
+        event=LeadAuditEvent.MARKETING_CONSENT_UPDATED,
         lead_id=lead_id,
         actor_id="self",
         actor_type="lead",
