@@ -7,7 +7,7 @@ import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   FileText, Download, Calendar, Clock, Mail, Play, Trash2,
   Plus, RefreshCw, CheckCircle, XCircle, AlertCircle, Eye,
-  FileSpreadsheet, FileJson, FilePdf, Filter, Search
+  FileSpreadsheet, FileJson, File, Filter, Search
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
