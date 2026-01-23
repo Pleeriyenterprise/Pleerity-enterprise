@@ -362,6 +362,8 @@ async def get_conversion_funnel(
     """Get conversion funnel metrics (drafts to orders to completion)."""
     start_date, end_date = get_date_range(period)
     
+    db = database.get_db()
+    
     # Get intake drafts
     drafts_cursor = db["intake_drafts"].find(
         {"created_at": {"$gte": start_date, "$lte": end_date}},
