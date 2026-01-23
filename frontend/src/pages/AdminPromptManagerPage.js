@@ -177,9 +177,35 @@ export default function AdminPromptManagerPage() {
     }
   }, [filters]);
   
+  // Load analytics data
+  const loadAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      const [analyticsRes, topPromptsRes] = await Promise.all([
+        client.get('/admin/prompts/analytics/performance', { params: { days: analyticsDays } }),
+        client.get('/admin/prompts/analytics/top-prompts', { params: { limit: 10, sort_by: 'executions' } }),
+      ]);
+      
+      setAnalytics(analyticsRes.data);
+      setTopPrompts(topPromptsRes.data.prompts || []);
+    } catch (error) {
+      console.error('Analytics load error:', error);
+      // Don't show error toast - analytics might not have data yet
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [analyticsDays]);
+  
   useEffect(() => {
     loadData();
   }, [loadData]);
+  
+  // Load analytics when switching to analytics tab
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      loadAnalytics();
+    }
+  }, [activeTab, loadAnalytics]);
   
   // Reset template form
   const resetTemplateForm = () => {
