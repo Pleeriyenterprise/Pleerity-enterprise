@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   ArrowLeft, Save, RotateCcw, Eye, EyeOff, GripVertical,
   Settings2, CheckCircle, AlertCircle, Info, ChevronDown, ChevronRight
@@ -399,19 +400,9 @@ export default function AdminIntakeSchemaPage() {
   }, {}) || {};
   
   return (
-    <div className="min-h-screen bg-gray-50 py-8" data-testid="admin-intake-schema-page">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <UnifiedAdminLayout>
+    <div className="space-y-6" data-testid="admin-intake-schema-page">
         {/* Header */}
-        <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            className="mb-4"
-            onClick={() => navigate('/admin/dashboard')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
-          
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
