@@ -110,6 +110,34 @@ async def login(request: Request, credentials: LoginRequest):
             client_id=portal_user["client_id"]
         )
         
+        # Check if this is first login and emit enablement event
+        try:
+            login_count = portal_user.get("login_count", 0)
+            if login_count == 0:
+                from services.enablement_service import emit_enablement_event
+                from models.enablement import EnablementEventType
+                
+                # Get client info
+                client = await db.clients.find_one(
+                    {"client_id": portal_user["client_id"]},
+                    {"_id": 0, "plan_code": 1}
+                )
+                
+                await emit_enablement_event(
+                    event_type=EnablementEventType.FIRST_LOGIN,
+                    client_id=portal_user["client_id"],
+                    plan_code=client.get("plan_code") if client else None,
+                    context_payload={"email": portal_user["auth_email"]}
+                )
+                
+            # Increment login count
+            await db.portal_users.update_one(
+                {"portal_user_id": portal_user["portal_user_id"]},
+                {"$inc": {"login_count": 1}}
+            )
+        except Exception as enable_err:
+            logger.warning(f"Failed to emit first login event: {enable_err}")
+        
         return TokenResponse(
             access_token=access_token,
             user={
