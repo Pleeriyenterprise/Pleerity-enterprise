@@ -388,11 +388,24 @@ async def get_service_codes(
     cursor = db.services_v2.aggregate(pipeline)
     results = await cursor.to_list(length=100)
     
-    return {
-        "service_codes": [
-            {"code": r["_id"], "name": r.get("name", r["_id"])}
-            for r in results
+    service_codes = [
+        {"code": r["_id"], "name": r.get("name", r["_id"])}
+        for r in results if r["_id"]
+    ]
+    
+    # If no services in DB, provide common defaults for prompt templates
+    if not service_codes:
+        service_codes = [
+            {"code": "AI_WF_BLUEPRINT", "name": "AI Workflow Blueprint"},
+            {"code": "COMPLIANCE_AUDIT", "name": "Compliance Audit"},
+            {"code": "DOCUMENT_ANALYSIS", "name": "Document Analysis"},
+            {"code": "RISK_ASSESSMENT", "name": "Risk Assessment"},
+            {"code": "REPORT_GENERATION", "name": "Report Generation"},
+            {"code": "DATA_EXTRACTION", "name": "Data Extraction"},
         ]
+    
+    return {
+        "service_codes": service_codes
     }
 
 
