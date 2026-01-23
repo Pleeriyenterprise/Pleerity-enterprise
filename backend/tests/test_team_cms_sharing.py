@@ -196,11 +196,11 @@ class TestTeamPermissions(TestSetup):
         assert "users" in data
         assert "total" in data
         
-        # Verify user structure
+        # Verify user structure - note: uses auth_email not email
         if data["users"]:
             user = data["users"][0]
             assert "portal_user_id" in user
-            assert "email" in user
+            assert "auth_email" in user or "email" in user
             assert "role_id" in user or "role_name" in user
         
         print(f"✓ Found {data['total']} admin users")
