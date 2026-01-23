@@ -29,7 +29,7 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 - [x] SLA monitoring and breach detection
 - [x] Order delivery automation
 
-### Phase 3: 24/7 Support System (Complete - Jan 2026)
+### Phase 3: 24/7 Support System (Complete)
 - [x] AI chatbot with Gemini integration
 - [x] Tawk.to live chat widget
 - [x] Email ticket creation via Postmark
@@ -37,133 +37,128 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 - [x] Knowledge Base (public & admin)
 - [x] Admin canned responses management
 
-### Phase 4: Lead Management System (Complete - Jan 23, 2026)
-- [x] Lead entity model (separate from Client)
+### Phase 4: Lead Management System (Complete)
 - [x] Lead capture endpoints (chatbot, contact form, document services, WhatsApp, intake abandoned)
 - [x] Lead listing API with filters and pagination
-- [x] Admin Lead Dashboard UI at `/admin/leads`
-- [x] Lead stats and conversion tracking
-- [x] Manual lead creation and actions (assign, contact, convert, mark lost)
-- [x] Follow-up email templates
-- [x] SLA tracking for leads (24-hour default)
-- [x] **HIGH Intent Lead Notifications** - Admins receive email alerts
-- [x] **SLA Breach Notifications** - Email alerts for overdue leads
-- [x] Abandoned intake detection (scheduled job)
-- [x] Follow-up queue processing
-- [x] Lead notifications API
+- [x] Admin Lead Dashboard UI
+- [x] HIGH Intent Lead Notifications
+- [x] SLA Breach Notifications
+- [x] Follow-up email automation with consent checks
 
-### Phase 5: Admin Intake Schema Manager (Complete - Jan 23, 2026)
+### Phase 5: Admin Intake Schema Manager (Complete)
 - [x] Schema versioning with version history
 - [x] Draft/Publish workflow
 - [x] Rollback to previous versions
-- [x] Discard draft functionality
-- [x] Reset to defaults
-- [x] Full audit logging
 
-### Phase 6: Unified Admin Console (Complete - Jan 23, 2026)
-- [x] **Consolidated navigation** - All 12+ admin pages accessible from single sidebar
-- [x] **Grouped navigation sections**:
-  - Dashboard (Overview, Analytics)
-  - Customers (Lead Management, Clients, Orders Pipeline)
-  - Products & Services (Service Catalogue, Intake Schema, Pricing)
-  - Content Management (Knowledge Base, Blog, Canned Responses)
-  - Support (Support Dashboard, Postal Tracking)
-  - Settings & System (Team, Rules, Templates, Audit Logs)
-- [x] **Real-time badge notifications** for leads and postal orders
-- [x] **Quick search** in header
-- [x] **AI Assistant** quick access button
-- [x] **Mobile responsive** design
-- [x] **Collapsible sidebar**
+### Phase 6: Unified Admin Console (Complete)
+- [x] Consolidated sidebar navigation
+- [x] All 12+ admin pages accessible from single location
+- [x] Real-time badge notifications
+- [x] Mobile responsive design
 
-### Phase 7: Postal Tracking UI (Complete - Jan 23, 2026)
+### Phase 7: Postal Tracking UI (Complete)
 - [x] Dedicated `/admin/postal-tracking` page
-- [x] Stats cards (Pending Print, Printed, In Transit, Delivered)
-- [x] Order list with search and filter
-- [x] Update status modal with carrier and tracking number
-- [x] Set delivery address modal
-- [x] Empty state handling
+- [x] Stats cards and order management
+
+### Phase 8: Cookie Consent & Compliance System (Complete - Jan 23, 2026)
+- [x] **Server-Side Consent Store** (GDPR-compliant)
+  - `consent_events` collection (append-only audit trail)
+  - `consent_state` collection (materialized current state)
+  - No raw IP storage (hashed only)
+- [x] **Cookie Categories**:
+  - Necessary (always enabled)
+  - Functional (consent required)
+  - Analytics (consent required)
+  - Marketing (consent required)
+- [x] **Frontend Cookie Banner**
+  - Shows on first visit
+  - Accept All / Reject Non-Essential / Manage Preferences
+  - No scripts load before consent
+- [x] **Preferences Panel**
+  - Granular control per category
+  - Accessible via Manage Preferences button
+  - Changes apply immediately
+- [x] **Admin Consent Dashboard** (`/admin/privacy/consent`)
+  - KPI cards (Total Visitors, Accept All, Reject, Custom)
+  - Category breakdown (Analytics, Marketing, Functional allowed)
+  - Consent trend mini chart
+  - Filterable consent log table
+  - Detail drawer with timeline
+  - CSV and PDF export
+  - 24-month retention
+- [x] **Enforcement Integration**
+  - Lead follow-up automation respects marketing consent
+  - Outreach eligibility derived from consent state
+  - Audit logging for consent changes
 
 ---
 
-## Admin Pages & Navigation
+## API Endpoints Summary
 
-| Page | Path | Section |
-|------|------|---------|
-| Dashboard Overview | `/admin/dashboard` | Dashboard |
-| Analytics | `/admin/analytics` | Dashboard |
-| Lead Management | `/admin/leads` | Customers |
-| Clients | `/admin/dashboard?tab=clients` | Customers |
-| Orders Pipeline | `/admin/orders` | Customers |
-| Service Catalogue | `/admin/services` | Products |
-| Intake Schema | `/admin/intake-schema` | Products |
-| Billing | `/admin/billing` | Products |
-| Knowledge Base | `/admin/knowledge-base` | Content |
-| Blog | `/admin/blog` | Content |
-| Canned Responses | `/admin/support/responses` | Content |
-| Support Dashboard | `/admin/support` | Support |
-| Postal Tracking | `/admin/postal-tracking` | Support |
-| Team Management | `/admin/dashboard?tab=admins` | Settings |
-| Automation Rules | `/admin/dashboard?tab=rules` | Settings |
-| Email Templates | `/admin/dashboard?tab=templates` | Settings |
-| Audit Logs | `/admin/dashboard?tab=audit` | Settings |
-| AI Assistant | `/admin/assistant` | Quick Access |
+### Cookie Consent (Public)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/consent/capture` | POST | Capture consent from cookie banner |
+| `/api/consent/state/{session_id}` | GET | Get consent state for session |
+| `/api/consent/withdraw` | POST | Withdraw consent for categories |
+
+### Cookie Consent (Admin - ROLE_ADMIN only)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/consent/stats` | GET | Dashboard KPIs and trend |
+| `/api/admin/consent/logs` | GET | Paginated consent log |
+| `/api/admin/consent/logs/{id}` | GET | Single record detail |
+| `/api/admin/consent/export.csv` | GET | Export filtered logs as CSV |
+| `/api/admin/consent/export.pdf` | GET | Export summary as PDF |
+| `/api/admin/consent/client/{id}` | GET | Consent for specific client |
+| `/api/admin/consent/lead/{id}` | GET | Consent for specific lead |
 
 ---
 
-## Key Components
+## Data Models
 
-### UnifiedAdminLayout
-- Location: `/app/frontend/src/components/admin/UnifiedAdminLayout.js`
-- Features: Collapsible sidebar, grouped navigation, badge notifications, mobile responsive
+### consent_events (Append-only)
+```javascript
+{
+  event_id: "CE-20260123-XXXXXXXX",
+  created_at: "2026-01-23T18:22:46+00:00",
+  event_type: "ACCEPT_ALL|REJECT_NON_ESSENTIAL|CUSTOM|WITHDRAW|UPDATE",
+  consent_version: "v1",
+  banner_text_hash: "abc123...",
+  session_id: "sess_1234567890",
+  user_id: null,
+  portal_user_id: null,
+  client_id: null,
+  crn: null,
+  email_masked: "jo***@example.com",
+  country: "GB",
+  ip_hash: "abc123...",  // Never store raw IP
+  user_agent: "...",
+  page_path: "/",
+  referrer: null,
+  utm: { source, medium, campaign, term, content },
+  preferences: {
+    necessary: true,
+    analytics: true,
+    marketing: true,
+    functional: true
+  }
+}
+```
 
-### AdminPostalTrackingPage
-- Location: `/app/frontend/src/pages/AdminPostalTrackingPage.js`
-- Features: Stats cards, order list, status updates, address management
-
----
-
-## Upcoming Features
-
-### P1: Enhanced Email Delivery
-- Configure real Postmark credentials for production
-- Test HIGH intent and SLA breach email notifications
-
-### P2: Address Autocomplete
-- getaddress.io integration
-- Postcode lookup in intake wizard
-
-### P3: Technical Debt
-- Move lead_models.py from services/ to models/
-- Deprecate legacy V1 service files
-
----
-
-## Technical Architecture
-
-### Backend
-- FastAPI with async/await
-- MongoDB for data storage
-- APScheduler for background jobs
-- Postmark for transactional emails
-- Stripe for payments
-- Gemini for AI features
-
-### Frontend
-- React with React Router
-- Shadcn/UI components
-- Tailwind CSS
-- Axios for API calls
-
-### Key Collections
-- `clients` - Paying customers
-- `leads` - Pre-sale prospects
-- `lead_audit_logs` - Lead activity tracking
-- `orders` - Service orders
-- `service_catalogue_v2` - Service definitions
-- `intake_schema_customizations` - Schema overrides
-- `intake_schema_versions` - Version history
-- `kb_articles`, `kb_categories` - Knowledge base
-- `canned_responses` - Support response templates
+### consent_state (Materialized)
+```javascript
+{
+  state_id: "CS-XXXXXXXXXXXX",
+  session_id: "sess_1234567890",
+  updated_at: "2026-01-23T18:22:46+00:00",
+  action_taken: "ACCEPT_ALL",
+  consent_version: "v1",
+  preferences: { ... },
+  is_logged_in: false,
+  outreach_eligible: true  // Derived from marketing consent
+}
+```
 
 ---
 
@@ -176,10 +171,8 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 - Frontend: React on port 3000
 - Database: MongoDB (compliance_vault_pro)
 
-## Mocked/Test Configurations
-- **Postmark**: Token `leadsquared` is a placeholder
-- **Stripe**: Uses test keys
-- **WhatsApp**: Uses test number for handoff
+## Configuration
+- `CONSENT_RETENTION_MONTHS`: 24 (default)
 
 ---
 
