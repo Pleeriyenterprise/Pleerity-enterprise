@@ -312,7 +312,7 @@ async def deliver_email(
         
         if email_service.client:
             # Send via Postmark
-            response = email_service.client.emails.send(
+            email_service.client.emails.send(
                 From="info@pleerityenterprise.co.uk",
                 To=client["email"],
                 Subject=subject,
@@ -323,7 +323,7 @@ async def deliver_email(
             logger.info(f"Email delivered to {client['email']} for client {client_id}")
             return True
         else:
-            logger.warning(f"Email service not configured - logging only")
+            logger.warning("Email service not configured - logging only")
             return True  # Consider success if no Postmark configured
             
     except Exception as e:
