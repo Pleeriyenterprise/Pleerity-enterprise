@@ -457,3 +457,363 @@ async def get_addon_analytics(
             "formatted": f"£{(fast_track_revenue + printed_copy_revenue) / 100:,.2f}"
         }
     }
+
+
+# ============================================================================
+# ADVANCED ANALYTICS - CUSTOM DATE RANGES & PERIOD COMPARISON
+# ============================================================================
+
+def parse_custom_date(date_str: str) -> datetime:
+    """Parse custom date string to datetime."""
+    try:
+        return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+    except:
+        return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+
+
+def get_comparison_period(start: datetime, end: datetime) -> tuple:
+    """Calculate the comparison period (same duration, immediately before)."""
+    duration = end - start
+    comp_end = start
+    comp_start = start - duration
+    return comp_start, comp_end
+
+
+@router.get("/v2/summary")
+async def get_advanced_summary(
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD or ISO)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD or ISO)"),
+    period: str = Query("30d", description="Preset period if custom dates not provided"),
+    compare: bool = Query(True, description="Include comparison with previous period"),
+    current_user: dict = Depends(admin_route_guard)
+):
+    """
+    Advanced analytics summary with custom date ranges and period comparison.
+    Supports both preset periods and custom date ranges.
+    """
+    db = database.get_db()
+    
+    # Determine date range
+    if start_date and end_date:
+        current_start = parse_custom_date(start_date)
+        current_end = parse_custom_date(end_date)
+    else:
+        start_iso, end_iso = get_date_range(period)
+        current_start = parse_custom_date(start_iso)
+        current_end = parse_custom_date(end_iso)
+    
+    # Get comparison period
+    comp_start, comp_end = get_comparison_period(current_start, current_end)
+    
+    # Fetch current period data
+    current_orders = await get_orders_in_range(
+        current_start.isoformat(), 
+        current_end.isoformat()
+    )
+    current_paid = [o for o in current_orders if o.get("stripe_payment_status") == "paid"]
+    
+    # Fetch comparison period data
+    comp_orders = []
+    comp_paid = []
+    if compare:
+        comp_orders = await get_orders_in_range(
+            comp_start.isoformat(),
+            comp_end.isoformat()
+        )
+        comp_paid = [o for o in comp_orders if o.get("stripe_payment_status") == "paid"]
+    
+    # Calculate metrics
+    current_revenue = sum((o.get("pricing", {}).get("total_pence", 0) or 0) for o in current_paid)
+    comp_revenue = sum((o.get("pricing", {}).get("total_pence", 0) or 0) for o in comp_paid)
+    
+    # Get clients in period
+    current_clients_cursor = db.clients.find({
+        "created_at": {"$gte": current_start.isoformat(), "$lte": current_end.isoformat()}
+    }, {"_id": 0})
+    current_clients = await current_clients_cursor.to_list(10000)
+    
+    comp_clients_cursor = db.clients.find({
+        "created_at": {"$gte": comp_start.isoformat(), "$lte": comp_end.isoformat()}
+    }, {"_id": 0}) if compare else None
+    comp_clients = await comp_clients_cursor.to_list(10000) if comp_clients_cursor else []
+    
+    # Get leads in period
+    current_leads_cursor = db.leads.find({
+        "created_at": {"$gte": current_start.isoformat(), "$lte": current_end.isoformat()}
+    }, {"_id": 0})
+    current_leads = await current_leads_cursor.to_list(10000)
+    
+    comp_leads_cursor = db.leads.find({
+        "created_at": {"$gte": comp_start.isoformat(), "$lte": comp_end.isoformat()}
+    }, {"_id": 0}) if compare else None
+    comp_leads = await comp_leads_cursor.to_list(10000) if comp_leads_cursor else []
+    
+    # Calculate changes
+    def calc_change(current, previous):
+        if previous == 0:
+            return 100 if current > 0 else 0
+        return round((current - previous) / previous * 100, 1)
+    
+    def get_trend(change):
+        if change > 0:
+            return "up"
+        elif change < 0:
+            return "down"
+        return "flat"
+    
+    revenue_change = calc_change(current_revenue, comp_revenue) if compare else 0
+    orders_change = calc_change(len(current_paid), len(comp_paid)) if compare else 0
+    clients_change = calc_change(len(current_clients), len(comp_clients)) if compare else 0
+    leads_change = calc_change(len(current_leads), len(comp_leads)) if compare else 0
+    
+    # AOV calculation
+    current_aov = current_revenue / len(current_paid) if current_paid else 0
+    comp_aov = comp_revenue / len(comp_paid) if comp_paid else 0
+    aov_change = calc_change(current_aov, comp_aov) if compare else 0
+    
+    # Completion rate
+    completed = len([o for o in current_orders if o.get("status") == "COMPLETED"])
+    completion_rate = (completed / len(current_orders) * 100) if current_orders else 0
+    
+    return {
+        "period": {
+            "type": "custom" if start_date and end_date else period,
+            "current": {
+                "start": current_start.isoformat(),
+                "end": current_end.isoformat(),
+                "days": (current_end - current_start).days
+            },
+            "comparison": {
+                "start": comp_start.isoformat(),
+                "end": comp_end.isoformat(),
+                "days": (comp_end - comp_start).days
+            } if compare else None
+        },
+        "metrics": {
+            "revenue": {
+                "current": current_revenue,
+                "previous": comp_revenue if compare else None,
+                "formatted": f"£{current_revenue / 100:,.2f}",
+                "change_percent": revenue_change,
+                "trend": get_trend(revenue_change)
+            },
+            "orders": {
+                "current": len(current_paid),
+                "previous": len(comp_paid) if compare else None,
+                "change_percent": orders_change,
+                "trend": get_trend(orders_change)
+            },
+            "average_order_value": {
+                "current": int(current_aov),
+                "previous": int(comp_aov) if compare else None,
+                "formatted": f"£{current_aov / 100:,.2f}",
+                "change_percent": aov_change,
+                "trend": get_trend(aov_change)
+            },
+            "new_clients": {
+                "current": len(current_clients),
+                "previous": len(comp_clients) if compare else None,
+                "change_percent": clients_change,
+                "trend": get_trend(clients_change)
+            },
+            "leads": {
+                "current": len(current_leads),
+                "previous": len(comp_leads) if compare else None,
+                "change_percent": leads_change,
+                "trend": get_trend(leads_change)
+            },
+            "completion_rate": {
+                "percent": round(completion_rate, 1),
+                "completed": completed,
+                "total": len(current_orders)
+            }
+        }
+    }
+
+
+@router.get("/v2/trends")
+async def get_trend_data(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    period: str = Query("30d"),
+    granularity: str = Query("day", description="Granularity: day, week, month"),
+    metrics: str = Query("revenue,orders", description="Comma-separated metrics"),
+    compare: bool = Query(True),
+    current_user: dict = Depends(admin_route_guard)
+):
+    """
+    Get trend data for charts with comparison overlay.
+    Returns time-series data for visualization.
+    """
+    # Parse dates
+    if start_date and end_date:
+        current_start = parse_custom_date(start_date)
+        current_end = parse_custom_date(end_date)
+    else:
+        start_iso, end_iso = get_date_range(period)
+        current_start = parse_custom_date(start_iso)
+        current_end = parse_custom_date(end_iso)
+    
+    comp_start, comp_end = get_comparison_period(current_start, current_end)
+    
+    # Fetch orders
+    current_orders = await get_orders_in_range(current_start.isoformat(), current_end.isoformat())
+    comp_orders = await get_orders_in_range(comp_start.isoformat(), comp_end.isoformat()) if compare else []
+    
+    # Parse metrics
+    metric_list = [m.strip() for m in metrics.split(",")]
+    
+    # Group by granularity
+    def get_period_key(date_str: str, gran: str) -> str:
+        if not date_str:
+            return ""
+        date_part = date_str[:10]  # YYYY-MM-DD
+        if gran == "day":
+            return date_part
+        elif gran == "week":
+            dt = datetime.strptime(date_part, "%Y-%m-%d")
+            week_start = dt - timedelta(days=dt.weekday())
+            return week_start.strftime("%Y-%m-%d")
+        elif gran == "month":
+            return date_part[:7]  # YYYY-MM
+        return date_part
+    
+    def aggregate_orders(orders, gran):
+        data = {}
+        for order in orders:
+            key = get_period_key(order.get("created_at", ""), gran)
+            if not key:
+                continue
+            if key not in data:
+                data[key] = {"revenue": 0, "orders": 0, "clients": set()}
+            
+            if order.get("stripe_payment_status") == "paid":
+                data[key]["revenue"] += order.get("pricing", {}).get("total_pence", 0) or 0
+                data[key]["orders"] += 1
+            
+            client_id = order.get("client_id")
+            if client_id:
+                data[key]["clients"].add(client_id)
+        
+        # Convert sets to counts
+        for key in data:
+            data[key]["unique_clients"] = len(data[key]["clients"])
+            del data[key]["clients"]
+        
+        return data
+    
+    current_data = aggregate_orders(current_orders, granularity)
+    comp_data = aggregate_orders(comp_orders, granularity) if compare else {}
+    
+    # Build response
+    all_keys = sorted(set(current_data.keys()))
+    
+    series = []
+    for metric in metric_list:
+        current_values = []
+        comp_values = []
+        
+        for i, key in enumerate(all_keys):
+            current_values.append({
+                "period": key,
+                "value": current_data.get(key, {}).get(metric, 0),
+                "index": i
+            })
+            
+            if compare and i < len(comp_data):
+                comp_keys = sorted(comp_data.keys())
+                if i < len(comp_keys):
+                    comp_values.append({
+                        "period": comp_keys[i],
+                        "value": comp_data.get(comp_keys[i], {}).get(metric, 0),
+                        "index": i
+                    })
+        
+        series.append({
+            "metric": metric,
+            "current": current_values,
+            "comparison": comp_values if compare else None
+        })
+    
+    return {
+        "granularity": granularity,
+        "periods": all_keys,
+        "series": series,
+        "compare_enabled": compare
+    }
+
+
+@router.get("/v2/breakdown")
+async def get_breakdown(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    period: str = Query("30d"),
+    dimension: str = Query("service", description="Breakdown by: service, status, day_of_week, hour"),
+    current_user: dict = Depends(admin_route_guard)
+):
+    """
+    Get breakdown analytics by different dimensions.
+    """
+    if start_date and end_date:
+        current_start = parse_custom_date(start_date)
+        current_end = parse_custom_date(end_date)
+    else:
+        start_iso, end_iso = get_date_range(period)
+        current_start = parse_custom_date(start_iso)
+        current_end = parse_custom_date(end_iso)
+    
+    orders = await get_orders_in_range(current_start.isoformat(), current_end.isoformat())
+    paid_orders = [o for o in orders if o.get("stripe_payment_status") == "paid"]
+    
+    breakdown = {}
+    
+    for order in paid_orders:
+        if dimension == "service":
+            key = order.get("service_code", "OTHER")
+            label = order.get("service_name", key)
+        elif dimension == "status":
+            key = order.get("status", "UNKNOWN")
+            label = key
+        elif dimension == "day_of_week":
+            created = order.get("created_at", "")
+            if created:
+                dt = parse_custom_date(created)
+                key = str(dt.weekday())
+                label = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.weekday()]
+            else:
+                continue
+        elif dimension == "hour":
+            created = order.get("created_at", "")
+            if created:
+                dt = parse_custom_date(created)
+                key = str(dt.hour)
+                label = f"{dt.hour:02d}:00"
+            else:
+                continue
+        else:
+            continue
+        
+        if key not in breakdown:
+            breakdown[key] = {"key": key, "label": label, "count": 0, "revenue": 0}
+        
+        breakdown[key]["count"] += 1
+        breakdown[key]["revenue"] += order.get("pricing", {}).get("total_pence", 0) or 0
+    
+    # Sort and format
+    items = sorted(breakdown.values(), key=lambda x: x["revenue"], reverse=True)
+    total_revenue = sum(i["revenue"] for i in items)
+    
+    for item in items:
+        item["revenue_formatted"] = f"£{item['revenue'] / 100:,.2f}"
+        item["percentage"] = round(item["revenue"] / total_revenue * 100, 1) if total_revenue > 0 else 0
+    
+    return {
+        "dimension": dimension,
+        "period": {
+            "start": current_start.isoformat(),
+            "end": current_end.isoformat()
+        },
+        "items": items,
+        "total_revenue": total_revenue,
+        "total_revenue_formatted": f"£{total_revenue / 100:,.2f}"
+    }
