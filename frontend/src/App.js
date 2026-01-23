@@ -82,6 +82,8 @@ import BrandingSettingsPage from './pages/BrandingSettingsPage';
 import BillingPage from './pages/BillingPage';
 import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
 import ClientOrdersPage from './pages/ClientOrdersPage';
+import UnifiedIntakeWizard from './pages/UnifiedIntakeWizard';
+import OrderConfirmationPage from './pages/OrderConfirmationPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
