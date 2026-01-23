@@ -68,19 +68,17 @@ class LLMProviderInterface(ABC):
 
 
 class GeminiProvider(LLMProviderInterface):
-    """Gemini LLM provider using emergentintegrations."""
+    """Gemini LLM provider using emergentintegrations LlmChat."""
     
     def __init__(self):
-        self._client = None
+        self._api_key = None
     
-    async def _get_client(self):
-        if self._client is None:
-            from emergentintegrations.llm.gemini import GeminiClient
-            api_key = os.environ.get("EMERGENT_LLM_KEY")
-            if not api_key:
+    def _get_api_key(self):
+        if self._api_key is None:
+            self._api_key = os.environ.get("EMERGENT_LLM_KEY")
+            if not self._api_key:
                 raise ValueError("EMERGENT_LLM_KEY not found in environment")
-            self._client = GeminiClient(api_key=api_key)
-        return self._client
+        return self._api_key
     
     @property
     def provider_name(self) -> str:
@@ -93,19 +91,31 @@ class GeminiProvider(LLMProviderInterface):
         temperature: float,
         max_tokens: int,
     ) -> Tuple[str, Dict[str, int]]:
-        client = await self._get_client()
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        import uuid
         
-        response = await client.generate(
-            user_prompt=user_prompt,
-            system_prompt=system_prompt,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        api_key = self._get_api_key()
         
-        response_text = response.text if hasattr(response, 'text') else str(response)
+        # Create a unique session ID for this test run
+        session_id = f"prompt-test-{uuid.uuid4().hex[:8]}"
+        
+        # Initialize chat with Gemini model
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=session_id,
+            system_message=system_prompt,
+        ).with_model("gemini", "gemini-2.5-flash")
+        
+        # Create user message
+        user_message = UserMessage(text=user_prompt)
+        
+        # Send message and get response
+        response_text = await chat.send_message(user_message)
+        
+        # Token counts are not directly available, estimate
         tokens = {
-            "prompt_tokens": getattr(response, 'prompt_tokens', 0) or 0,
-            "completion_tokens": getattr(response, 'completion_tokens', 0) or 0,
+            "prompt_tokens": len(system_prompt.split()) + len(user_prompt.split()),
+            "completion_tokens": len(response_text.split()) if response_text else 0,
         }
         
         return response_text, tokens
