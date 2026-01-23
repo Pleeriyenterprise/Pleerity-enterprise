@@ -211,7 +211,7 @@ export default function ClientOrdersPage() {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await client.get('/api/client/orders/');
+      const response = await client.get('/client/orders/');
       setOrders(response.data.orders || []);
       setStats({
         total: response.data.total || 0,
@@ -219,7 +219,10 @@ export default function ClientOrdersPage() {
       });
     } catch (error) {
       console.error('Failed to fetch orders:', error);
-      toast.error('Failed to load orders');
+      // Only show toast if it's not an auth error (which will redirect)
+      if (error.response?.status !== 401) {
+        toast.error('Failed to load orders');
+      }
     } finally {
       setLoading(false);
     }
@@ -231,7 +234,7 @@ export default function ClientOrdersPage() {
 
   const handleViewDocuments = async (order) => {
     try {
-      const response = await client.get(`/api/client/orders/${order.order_id}/documents`);
+      const response = await client.get(`/client/orders/${order.order_id}/documents`);
       setDocuments(response.data.documents || []);
       setSelectedOrder(order);
     } catch (error) {
@@ -243,7 +246,7 @@ export default function ClientOrdersPage() {
   const handleDownload = async (orderId, version, format) => {
     try {
       const response = await client.get(
-        `/api/client/orders/${orderId}/documents/${version}/download?format=${format}`,
+        `/client/orders/${orderId}/documents/${version}/download?format=${format}`,
         { responseType: 'blob' }
       );
       
