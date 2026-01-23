@@ -553,5 +553,6 @@ export default function AdminCannedResponsesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </UnifiedAdminLayout>
   );
 }
