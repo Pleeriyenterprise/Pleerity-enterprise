@@ -520,14 +520,14 @@ export default function AdminSupportPage() {
                 {/* Filters */}
                 <div className="flex gap-2 mt-3">
                   <Select
-                    value={filters.status}
-                    onValueChange={(v) => setFilters(f => ({ ...f, status: v }))}
+                    value={filters.status || "all"}
+                    onValueChange={(v) => setFilters(f => ({ ...f, status: v === "all" ? "" : v }))}
                   >
                     <SelectTrigger className="w-32 text-xs">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Status</SelectItem>
+                      <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="new">New</SelectItem>
                       <SelectItem value="open">Open</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
@@ -538,14 +538,14 @@ export default function AdminSupportPage() {
                   
                   {activeTab === 'tickets' && (
                     <Select
-                      value={filters.priority}
-                      onValueChange={(v) => setFilters(f => ({ ...f, priority: v }))}
+                      value={filters.priority || "all"}
+                      onValueChange={(v) => setFilters(f => ({ ...f, priority: v === "all" ? "" : v }))}
                     >
                       <SelectTrigger className="w-32 text-xs">
                         <SelectValue placeholder="Priority" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Priority</SelectItem>
+                        <SelectItem value="all">All Priority</SelectItem>
                         <SelectItem value="urgent">Urgent</SelectItem>
                         <SelectItem value="high">High</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
