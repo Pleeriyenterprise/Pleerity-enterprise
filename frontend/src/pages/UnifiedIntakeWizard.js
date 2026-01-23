@@ -762,8 +762,8 @@ export default function UnifiedIntakeWizard() {
     const loadServices = async () => {
       try {
         const [servicesRes, packsRes] = await Promise.all([
-          client.get('/api/intake/services'),
-          client.get('/api/intake/packs'),
+          client.get('/intake/services'),
+          client.get('/intake/packs'),
         ]);
         setServices(servicesRes.data.services || []);
         setPacks(packsRes.data.packs || []);
@@ -784,7 +784,7 @@ export default function UnifiedIntakeWizard() {
     
     // Load schema for this service
     try {
-      const schemaRes = await client.get(`/api/intake/schema/${service.service_code}`);
+      const schemaRes = await client.get(`/intake/schema/${service.service_code}`);
       setSchema(schemaRes.data);
     } catch (err) {
       console.error('Failed to load schema:', err);
@@ -816,14 +816,14 @@ export default function UnifiedIntakeWizard() {
   const createDraft = async () => {
     try {
       setLoading(true);
-      const res = await client.post('/api/intake/draft', {
+      const res = await client.post('/intake/draft', {
         service_code: selectedService.service_code,
         category: selectedService.category,
       });
       setDraft(res.data);
       
       // Calculate initial pricing
-      const priceRes = await client.post('/api/intake/calculate-price', {
+      const priceRes = await client.post('/intake/calculate-price', {
         service_code: selectedService.service_code,
         addons: selectedAddons,
       });
