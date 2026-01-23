@@ -138,6 +138,26 @@ async def add_block(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# NOTE: Reorder route MUST be defined BEFORE {block_id} routes to avoid path conflict
+@router.put("/pages/{page_id}/blocks/reorder", response_model=List[ContentBlock])
+async def reorder_blocks(
+    page_id: str,
+    data: ReorderBlocksRequest,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Reorder blocks on a page (Admin only)"""
+    try:
+        blocks = await cms_service.reorder_blocks(
+            page_id=page_id,
+            block_order=data.block_order,
+            admin_id=admin["portal_user_id"],
+            admin_email=admin["email"]
+        )
+        return blocks
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.put("/pages/{page_id}/blocks/{block_id}", response_model=ContentBlock)
 async def update_block(
     page_id: str,
