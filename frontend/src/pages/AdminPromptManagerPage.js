@@ -528,10 +528,14 @@ export default function AdminPromptManagerPage() {
         
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsList className="grid w-full grid-cols-4 max-w-lg">
             <TabsTrigger value="templates" data-testid="templates-tab">
               <FileCode className="h-4 w-4 mr-2" />
               Templates
+            </TabsTrigger>
+            <TabsTrigger value="analytics" data-testid="analytics-tab">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
             </TabsTrigger>
             <TabsTrigger value="audit" data-testid="audit-tab">
               <History className="h-4 w-4 mr-2" />
