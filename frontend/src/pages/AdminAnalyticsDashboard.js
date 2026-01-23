@@ -372,8 +372,6 @@ export default function AdminAnalyticsDashboard() {
                 color="orange"
                 previousValue={advancedSummary?.metrics?.leads?.previous}
               />
-                previousValue={advancedSummary?.metrics?.leads?.previous}
-              />
             </div>
             
             {/* Breakdown Section */}
