@@ -3236,9 +3236,20 @@ const DashboardOverview = ({ onShowDrilldown }) => {
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams] = useSearchParams();
+  
+  // Support URL query param for tab (used by UnifiedAdminLayout sidebar links)
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'overview');
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [drilldownType, setDrilldownType] = useState(null);
+
+  // Sync tab with URL param when it changes
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   const handleLogout = () => {
     logout();
