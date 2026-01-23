@@ -420,6 +420,22 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/admin/knowledge-base" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminKnowledgeBasePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/support/responses" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminCannedResponsesPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
