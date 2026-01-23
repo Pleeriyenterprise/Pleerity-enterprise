@@ -1,7 +1,9 @@
 /**
  * Pleerity Support Chat Widget
  * 
- * AI-powered chatbot with human handoff options:
+ * AI-powered chatbot with:
+ * - Quick Actions panel for common requests
+ * - Canned responses for instant answers
  * - Live chat via Tawk.to
  * - WhatsApp continuation
  * - Email ticket creation
@@ -9,22 +11,24 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   MessageCircle, X, Send, Loader2, User, Bot, Phone,
-  Mail, MessageSquare, ExternalLink, Minimize2, Maximize2
+  Mail, MessageSquare, ExternalLink, Minimize2, Maximize2,
+  Package, Key, FileText, CreditCard, Home, Users, ChevronDown
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
 import client from '../api/client';
+import { TawkToAPI } from './TawkToWidget';
 
-// Service area icons
-const SERVICE_ICONS = {
-  cvp: '🏠',
-  document_services: '📄',
-  ai_automation: '🤖',
-  market_research: '📊',
-  billing: '💳',
-  other: '💬',
+// Quick action icons mapping
+const QUICK_ACTION_ICONS = {
+  check_order_status: Package,
+  reset_password: Key,
+  document_packs_info: FileText,
+  billing_help: CreditCard,
+  cvp_info: Home,
+  speak_to_human: Users,
 };
 
 // Message bubble component
@@ -51,6 +55,38 @@ function MessageBubble({ message, isUser }) {
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Quick Actions Panel
+function QuickActionsPanel({ onAction, loading }) {
+  const actions = [
+    { id: 'check_order_status', label: 'Check Order Status', icon: '📦', color: 'bg-blue-50 hover:bg-blue-100 border-blue-200' },
+    { id: 'reset_password', label: 'Reset Password', icon: '🔑', color: 'bg-amber-50 hover:bg-amber-100 border-amber-200' },
+    { id: 'document_packs_info', label: 'Document Packs', icon: '📄', color: 'bg-green-50 hover:bg-green-100 border-green-200' },
+    { id: 'billing_help', label: 'Billing Help', icon: '💳', color: 'bg-purple-50 hover:bg-purple-100 border-purple-200' },
+    { id: 'cvp_info', label: 'CVP Info', icon: '🏠', color: 'bg-cyan-50 hover:bg-cyan-100 border-cyan-200' },
+    { id: 'speak_to_human', label: 'Speak to Human', icon: '👤', color: 'bg-rose-50 hover:bg-rose-100 border-rose-200' },
+  ];
+
+  return (
+    <div className="p-3 bg-gray-50 border-b">
+      <p className="text-xs text-gray-500 mb-2 font-medium">Quick Actions</p>
+      <div className="grid grid-cols-3 gap-2">
+        {actions.map((action) => (
+          <button
+            key={action.id}
+            onClick={() => onAction(action.id)}
+            disabled={loading}
+            className={`flex flex-col items-center p-2 rounded-lg border transition-colors text-center ${action.color} disabled:opacity-50`}
+            data-testid={`quick-action-${action.id}`}
+          >
+            <span className="text-lg mb-1">{action.icon}</span>
+            <span className="text-xs text-gray-700 leading-tight">{action.label}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -190,6 +226,7 @@ function EmailTicketForm({ conversationId, onSubmit, onCancel }) {
 export default function SupportChatWidget({ isAuthenticated = false, clientContext = null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(true);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -212,8 +249,8 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const greeting = isAuthenticated
-        ? `Hello! 👋 I'm Pleerity Support. I can see you're logged in - I can help with your account, orders, or any questions about our services.\n\nWhat can I help you with today?`
-        : `Hello! 👋 I'm Pleerity Support, your AI assistant. I can help with:\n\n• Compliance Vault Pro\n• Document Packs\n• AI Automation Services\n• Market Research\n• Account & Billing\n\nHow can I assist you today?`;
+        ? `Hello! 👋 I'm Pleerity Support. I can see you're logged in - I can help with your account, orders, or any questions about our services.\n\nUse the quick actions below or type your question!`
+        : `Hello! 👋 I'm Pleerity Support, your AI assistant.\n\nUse the **quick actions** below for instant help, or type your question!`;
 
       setMessages([{
         id: 'greeting',
@@ -223,6 +260,57 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       }]);
     }
   }, [isOpen, messages.length, isAuthenticated]);
+
+  // Handle quick action
+  const handleQuickAction = async (actionId) => {
+    setLoading(true);
+    setShowHandoff(false);
+    setShowQuickActions(false);
+
+    try {
+      const response = await client.post(`/support/quick-action/${actionId}`, null, {
+        params: { conversation_id: conversationId }
+      });
+
+      setConversationId(response.data.conversation_id);
+
+      // Add user action as message
+      const actionLabels = {
+        check_order_status: '📦 Check Order Status',
+        reset_password: '🔑 Reset Password',
+        document_packs_info: '📄 Document Packs Info',
+        billing_help: '💳 Billing Help',
+        cvp_info: '🏠 CVP Info',
+        speak_to_human: '👤 Speak to Human',
+      };
+
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        text: actionLabels[actionId] || actionId,
+        sender: 'user',
+        timestamp: new Date().toISOString(),
+      }]);
+
+      // Add bot response
+      setMessages(prev => [...prev, {
+        id: Date.now().toString() + '-bot',
+        text: response.data.response,
+        sender: 'bot',
+        timestamp: new Date().toISOString(),
+      }]);
+
+      // Handle handoff if needed
+      if (response.data.action === 'handoff') {
+        setShowHandoff(true);
+        setHandoffOptions(response.data.handoff_options);
+      }
+    } catch (err) {
+      console.error('Quick action error:', err);
+      toast.error('Failed to process. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Send message
   const sendMessage = async () => {
@@ -239,6 +327,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     setInput('');
     setLoading(true);
     setShowHandoff(false);
+    setShowQuickActions(false);
 
     try {
       const response = await client.post('/support/chat', {
@@ -274,17 +363,12 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   // Handle handoff selection
   const handleHandoffSelect = (option) => {
     if (option === 'livechat') {
-      // Open Tawk.to widget if available
-      if (window.Tawk_API) {
-        window.Tawk_API.maximize();
-        // Pass context to Tawk.to
-        window.Tawk_API.setAttributes({
-          'conversation_id': conversationId,
-          'source': 'pleerity_chatbot',
-        }, function(error) {});
-      } else {
-        toast.info('Live chat is loading. Please wait a moment and try again.');
-      }
+      // Open Tawk.to widget with context
+      TawkToAPI.openWithContext({
+        conversationId: conversationId,
+        serviceArea: 'support',
+        category: 'general',
+      });
     } else if (option === 'email') {
       setShowTicketForm(true);
       setShowHandoff(false);
@@ -313,13 +397,13 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
   return (
     <div
-      className={`fixed bottom-24 right-6 bg-white rounded-2xl shadow-2xl z-50 transition-all ${
-        isMinimized ? 'w-72 h-14' : 'w-96 h-[500px]'
+      className={`fixed bottom-24 right-6 bg-white rounded-2xl shadow-2xl z-50 transition-all overflow-hidden ${
+        isMinimized ? 'w-72 h-14' : 'w-96 h-[550px]'
       }`}
       data-testid="support-chat-widget"
     >
       {/* Header */}
-      <div className="bg-gradient-to-r from-teal-600 to-teal-500 text-white px-4 py-3 rounded-t-2xl flex items-center justify-between">
+      <div className="bg-gradient-to-r from-teal-600 to-teal-500 text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
             <MessageCircle className="w-4 h-4" />
@@ -353,8 +437,36 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
       {!isMinimized && (
         <>
+          {/* Quick Actions Panel - Collapsible */}
+          {showQuickActions && messages.length <= 1 && (
+            <QuickActionsPanel onAction={handleQuickAction} loading={loading} />
+          )}
+          
+          {/* Toggle Quick Actions button */}
+          {messages.length > 1 && !showQuickActions && (
+            <button
+              onClick={() => setShowQuickActions(true)}
+              className="w-full px-3 py-2 bg-gray-50 text-xs text-gray-600 hover:bg-gray-100 flex items-center justify-center gap-1 border-b"
+            >
+              <ChevronDown className="w-3 h-3" />
+              Show Quick Actions
+            </button>
+          )}
+          
+          {showQuickActions && messages.length > 1 && (
+            <>
+              <QuickActionsPanel onAction={handleQuickAction} loading={loading} />
+              <button
+                onClick={() => setShowQuickActions(false)}
+                className="w-full px-3 py-1 bg-gray-100 text-xs text-gray-500 hover:bg-gray-200"
+              >
+                Hide Quick Actions
+              </button>
+            </>
+          )}
+
           {/* Messages */}
-          <div className="h-[360px] overflow-y-auto p-4">
+          <div className={`overflow-y-auto p-4 ${showQuickActions && messages.length <= 1 ? 'h-[280px]' : 'h-[360px]'}`}>
             {messages.map((msg) => (
               <MessageBubble
                 key={msg.id}
