@@ -446,6 +446,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/admin/postal-tracking" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPostalTrackingPage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
