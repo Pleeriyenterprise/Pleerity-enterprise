@@ -1,13 +1,13 @@
 /**
  * Admin Reporting Dashboard
- * Export reports on-demand (CSV, Excel, PDF) and manage scheduled report delivery.
+ * Export reports on-demand (CSV, Excel, PDF), manage scheduled report delivery, and share reports via public links.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   FileText, Download, Calendar, Clock, Mail, Play, Trash2,
   Plus, RefreshCw, CheckCircle, XCircle, AlertCircle, Eye,
-  FileSpreadsheet, FileJson, File, Filter, Search
+  FileSpreadsheet, FileJson, File, Share2, Link, Copy, ExternalLink
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
