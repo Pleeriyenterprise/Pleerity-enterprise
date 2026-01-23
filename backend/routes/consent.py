@@ -27,10 +27,10 @@ import database
 logger = logging.getLogger(__name__)
 
 # Public router - no auth required
-public_router = APIRouter(prefix="/consent", tags=["Consent"])
+public_router = APIRouter(prefix="/api/consent", tags=["Consent"])
 
 # Admin router - ROLE_ADMIN required
-admin_router = APIRouter(prefix="/admin/consent", tags=["Admin Consent"])
+admin_router = APIRouter(prefix="/api/admin/consent", tags=["Admin Consent"])
 
 
 # =============================================================================
