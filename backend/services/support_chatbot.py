@@ -545,7 +545,8 @@ def generate_whatsapp_link(
 ) -> str:
     """Generate WhatsApp link with prefilled message."""
     
-    whatsapp_number = KNOWLEDGE_BASE["company"]["whatsapp"].replace(" ", "").replace("+", "")
+    # Get WhatsApp number from environment, remove spaces and +
+    whatsapp_number = SUPPORT_WHATSAPP.replace(" ", "").replace("+", "")
     
     message_parts = [
         f"Hi Pleerity, my reference is {conversation_id}"
@@ -564,3 +565,170 @@ def generate_whatsapp_link(
     encoded_message = urllib.parse.quote(message)
     
     return f"https://wa.me/{whatsapp_number}?text={encoded_message}"
+
+
+# ============================================================================
+# CANNED RESPONSES FOR QUICK ACTIONS
+# ============================================================================
+
+CANNED_RESPONSES = {
+    "check_order_status": {
+        "trigger": "check_order_status",
+        "response": """To check your order status, I need your **Order Reference Number** (e.g., PLE-CVP-2026-XXXXX).
+
+You can find this in:
+• Your confirmation email
+• Your account dashboard under "My Orders"
+
+Please share your order reference and I'll look it up for you. Or if you're logged in, visit your dashboard to see all your orders.""",
+        "action": "respond",
+        "metadata": {"canned": True, "category": "documents"}
+    },
+    
+    "reset_password": {
+        "trigger": "reset_password",
+        "response": """To reset your password:
+
+1. Go to the **Login page**
+2. Click **"Forgot Password"**
+3. Enter your registered email address
+4. Check your inbox (and spam folder) for the reset link
+5. Click the link and create a new password
+
+The reset link expires in 24 hours. If you don't receive the email within 5 minutes, try again or contact support.
+
+Need more help? I can connect you with a human agent.""",
+        "action": "respond",
+        "metadata": {"canned": True, "category": "login"}
+    },
+    
+    "document_packs_info": {
+        "trigger": "document_packs_info",
+        "response": """**📄 Document Packs Pricing:**
+
+| Pack | Documents | Price |
+|------|-----------|-------|
+| **Essential** | 5 core documents | £29 |
+| **Tenancy** | 10 docs inc. AST | £49 |
+| **Ultimate** | 15 comprehensive | £79 |
+
+**Add-ons:**
+• ⚡ Fast Track (24hr delivery): +£20
+• 📬 Printed Copy (Royal Mail): +£25
+
+**Standard delivery:** 48 hours
+
+Ready to order? Visit our **Services** page or ask me any questions!""",
+        "action": "respond",
+        "metadata": {"canned": True, "category": "documents", "service_area": "document_services"}
+    },
+    
+    "billing_help": {
+        "trigger": "billing_help",
+        "response": """**💳 Billing & Payment Help:**
+
+**Common questions:**
+
+**Q: What payment methods do you accept?**
+All major credit/debit cards via Stripe (secure & PCI-compliant).
+
+**Q: How do I get an invoice?**
+Invoices are emailed automatically. Also available in your dashboard under Billing.
+
+**Q: Can I cancel my subscription?**
+Yes! Go to Account Settings → Billing → Cancel. Access continues until period end.
+
+**Q: Refund policy?**
+Case-by-case basis. Contact support with your order reference.
+
+**Q: How do I update my payment card?**
+Dashboard → Billing → Update Payment Method.
+
+Need to discuss something specific? I can connect you with our billing team.""",
+        "action": "respond",
+        "metadata": {"canned": True, "category": "billing", "service_area": "billing"}
+    },
+    
+    "cvp_info": {
+        "trigger": "cvp_info",
+        "response": """**🏠 Compliance Vault Pro (CVP):**
+
+Your complete property compliance management platform.
+
+**Features:**
+✅ Property compliance tracking & monitoring
+✅ Certificate expiry alerts
+✅ Document storage & management
+✅ Compliance scoring & risk assessment
+✅ Multi-property portfolio view
+✅ Council licensing tracking
+
+**Pricing:** £9.99/month + £49.99 setup fee
+
+**Ideal for:** HMO landlords and portfolio managers who need to stay compliant.
+
+Would you like to start a free trial or learn more about specific features?""",
+        "action": "respond",
+        "metadata": {"canned": True, "category": "compliance", "service_area": "cvp"}
+    },
+    
+    "speak_to_human": {
+        "trigger": "speak_to_human",
+        "response": """I'll connect you with a human agent. You have three options:
+
+1. **💬 Live Chat** - Chat with an agent now (Mon-Fri 9am-6pm GMT)
+2. **📧 Email Ticket** - We'll respond within 24 hours
+3. **📱 WhatsApp** - Continue on WhatsApp with your reference
+
+Which would you prefer?""",
+        "action": "handoff",
+        "metadata": {"canned": True, "category": "other"}
+    },
+}
+
+
+def get_canned_response(trigger: str) -> Optional[Dict[str, Any]]:
+    """Get a canned response by trigger name."""
+    return CANNED_RESPONSES.get(trigger)
+
+
+def get_all_quick_actions() -> List[Dict[str, Any]]:
+    """Get list of available quick actions for the chat widget."""
+    return [
+        {
+            "id": "check_order_status",
+            "label": "Check Order Status",
+            "icon": "📦",
+            "description": "Look up your order"
+        },
+        {
+            "id": "reset_password",
+            "label": "Reset Password",
+            "icon": "🔑",
+            "description": "Password help"
+        },
+        {
+            "id": "document_packs_info",
+            "label": "Document Packs",
+            "icon": "📄",
+            "description": "Pricing & info"
+        },
+        {
+            "id": "billing_help",
+            "label": "Billing Help",
+            "icon": "💳",
+            "description": "Payment questions"
+        },
+        {
+            "id": "cvp_info",
+            "label": "Compliance Vault Pro",
+            "icon": "🏠",
+            "description": "CVP features"
+        },
+        {
+            "id": "speak_to_human",
+            "label": "Speak to Human",
+            "icon": "👤",
+            "description": "Get human help"
+        },
+    ]
