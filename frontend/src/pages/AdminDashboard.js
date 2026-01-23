@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { toast } from 'sonner';
+import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { 
   LayoutDashboard, 
   Users, 
