@@ -29,7 +29,7 @@ export default function OrderConfirmationPage() {
     }
 
     try {
-      const res = await client.get(`/api/intake/draft/${draftId}/confirmation`);
+      const res = await client.get(`/intake/draft/${draftId}/confirmation`);
       const data = res.data;
       
       setDraftRef(data.draft_ref);
@@ -60,7 +60,7 @@ export default function OrderConfirmationPage() {
       }
 
       try {
-        const res = await client.get(`/api/intake/draft/${draftId}/confirmation`);
+        const res = await client.get(`/intake/draft/${draftId}/confirmation`);
         const data = res.data;
         
         setDraftRef(data.draft_ref);
