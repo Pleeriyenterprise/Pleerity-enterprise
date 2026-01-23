@@ -542,7 +542,7 @@ const SuppressionRules = () => {
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All categories</SelectItem>
+                  <SelectItem value="ALL_CATEGORIES">All categories</SelectItem>
                   <SelectItem value="ONBOARDING_GUIDANCE">Onboarding Guidance</SelectItem>
                   <SelectItem value="VALUE_CONFIRMATION">Value Confirmation</SelectItem>
                   <SelectItem value="COMPLIANCE_AWARENESS">Compliance Awareness</SelectItem>
