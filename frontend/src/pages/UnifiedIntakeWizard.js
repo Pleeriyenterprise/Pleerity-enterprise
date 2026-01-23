@@ -765,26 +765,34 @@ export default function UnifiedIntakeWizard() {
           client.get('/intake/services'),
           client.get('/intake/packs'),
         ]);
-        const loadedServices = servicesRes.data.services || [];
-        setServices(loadedServices);
+        setServices(servicesRes.data.services || []);
         setPacks(packsRes.data.packs || []);
         setAddons(packsRes.data.addons || []);
-        
-        // Check for service pre-selection via URL parameter
-        const preSelectedService = searchParams.get('service');
-        if (preSelectedService && loadedServices.length > 0) {
-          const serviceMatch = loadedServices.find(s => s.service_code === preSelectedService);
-          if (serviceMatch) {
-            handleServiceSelect(serviceMatch);
-          }
-        }
       } catch (err) {
         console.error('Failed to load services:', err);
         toast.error('Failed to load services');
       }
     };
     loadServices();
-  }, [searchParams]);
+  }, []);
+  
+  // Handle pre-selection via URL parameter (after services load)
+  useEffect(() => {
+    const preSelectedServiceCode = searchParams.get('service');
+    if (preSelectedServiceCode && services.length > 0 && !selectedService) {
+      const serviceMatch = services.find(s => s.service_code === preSelectedServiceCode);
+      if (serviceMatch) {
+        // Manually set selected service and load schema
+        setSelectedService(serviceMatch);
+        client.get(`/intake/schema/${serviceMatch.service_code}`)
+          .then(res => setSchema(res.data))
+          .catch(err => {
+            console.error('Failed to load schema:', err);
+            toast.error('Failed to load service details');
+          });
+      }
+    }
+  }, [services, searchParams, selectedService]);
 
   // Handle service selection
   const handleServiceSelect = async (service) => {
