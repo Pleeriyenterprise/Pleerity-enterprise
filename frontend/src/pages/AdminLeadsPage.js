@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import client from '../api/client';
+import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
