@@ -96,6 +96,7 @@ const navSections = [
     icon: Settings,
     items: [
       { href: '/admin/team', label: 'Team Permissions', icon: Shield },
+      { href: '/admin/prompts', label: 'Prompt Manager', icon: Sparkles },
       { href: '/admin/enablement', label: 'Enablement Engine', icon: Zap },
       { href: '/admin/privacy/consent', label: 'Privacy & Consent', icon: Cookie },
       { href: '/admin/dashboard', label: 'Automation Rules', icon: Settings, tabTarget: 'rules' },
