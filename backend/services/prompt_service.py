@@ -298,14 +298,28 @@ class PromptService:
         """
         Create a new prompt template in DRAFT status.
         
+        VALIDATES:
+        - service_code exists in service catalogue
+        - doc_type is canonical for that service
+        
         Args:
             data: Template creation data
             created_by: Admin user ID/email
         
         Returns:
             Created template response
+            
+        Raises:
+            ValueError: If service_code or doc_type validation fails
         """
         db = database.get_db()
+        
+        # ARCHITECTURAL ENFORCEMENT: Validate service catalogue alignment
+        is_valid, error_msg = await self._validate_service_catalogue_alignment(
+            data.service_code, data.doc_type
+        )
+        if not is_valid:
+            raise ValueError(error_msg)
         
         template_id = self._generate_id("PT")
         now = datetime.now(timezone.utc)
