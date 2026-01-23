@@ -459,6 +459,79 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 }
 ```
 
+### prompt_templates
+```javascript
+{
+  template_id: "PT-YYYYMMDDHHMMSS-XXXXXXXX",
+  service_code: "AI_WF_BLUEPRINT",
+  doc_type: "GENERAL_DOCUMENT",
+  name: "Workflow Blueprint Generator",
+  description: "...",
+  version: 1,
+  status: "DRAFT|TESTED|ACTIVE|DEPRECATED|ARCHIVED",
+  system_prompt: "You are an AI assistant...",
+  user_prompt_template: "Process:\n\n{{INPUT_DATA_JSON}}\n\nProvide JSON.",
+  output_schema: {
+    schema_version: "1.0",
+    root_type: "object",
+    strict_validation: true,
+    fields: [...]
+  },
+  temperature: 0.3,
+  max_tokens: 4000,
+  tags: ["workflow", "automation"],
+  last_test_status: "PASSED|FAILED|null",
+  last_test_at: "...",
+  test_count: 5,
+  created_at: "...",
+  created_by: "admin@pleerity.com",
+  updated_at: "...",
+  activated_at: "...",
+  activated_by: "...",
+  deprecated_at: "..."
+}
+```
+
+### prompt_audit_log
+```javascript
+{
+  audit_id: "AUD-YYYYMMDDHHMMSS-XXXXXXXX",
+  template_id: "PT-...",
+  version: 1,
+  action: "CREATED|UPDATED|TESTED|TEST_PASSED|TEST_FAILED|ACTIVATED|DEPRECATED|ARCHIVED",
+  changes_summary: "Created new prompt template",
+  changes_detail: { ... },
+  test_id: "TEST-...",  // For test actions
+  test_result_snapshot: { ... },
+  activation_reason: "...",  // For activation
+  previous_active_version: 1,
+  performed_by: "admin@pleerity.com",
+  performed_at: "..."
+}
+```
+
+### prompt_test_results
+```javascript
+{
+  test_id: "TEST-YYYYMMDDHHMMSS-XXXXXXXX",
+  template_id: "PT-...",
+  template_version: 1,
+  status: "PASSED|FAILED|PENDING|RUNNING",
+  input_data: { ... },
+  rendered_user_prompt: "...",
+  raw_output: "...",
+  parsed_output: { ... },
+  schema_validation_passed: true,
+  schema_validation_errors: [],
+  execution_time_ms: 1234,
+  prompt_tokens: 150,
+  completion_tokens: 200,
+  error_message: null,
+  executed_at: "...",
+  executed_by: "admin@pleerity.com"
+}
+```
+
 ---
 
 ## Credentials
