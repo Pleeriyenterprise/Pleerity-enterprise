@@ -194,6 +194,53 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - All report generations logged
   - Schedule operations logged
 
+### Phase 12: Team Permissions & Role Management (Complete - Jan 23, 2026)
+- [x] **5 Built-in Roles**
+  - Super Admin: Full system access
+  - Manager: Operational management without billing/team access
+  - Viewer: Read-only access
+  - Support Agent: Support tickets and client info
+  - Content Manager: CMS and website content
+- [x] **13 Permission Categories**
+  - Dashboard, Clients, Leads, Orders, Reports, CMS
+  - Support, Billing, Settings, Team, Analytics, Enablement, Consent
+- [x] **Custom Role Builder**
+  - Create custom roles with granular permissions
+  - Select specific actions per category (view, create, edit, delete, export, manage)
+  - Update and delete custom roles
+- [x] **Admin User Management**
+  - Create admin users with assigned roles
+  - Update user roles
+  - Enable/disable users
+- [x] **Admin Dashboard** (`/admin/team`)
+  - Users tab with role assignment
+  - Roles tab with permissions view
+  - Custom role creation dialog
+
+### Phase 13: CMS Templates & Report Sharing (Complete - Jan 23, 2026)
+- [x] **4 Pre-built Page Templates**
+  - Landing Page: Hero, features, testimonials, CTA
+  - About Us: Company story, team, values
+  - Contact Us: Form, office info, FAQs
+  - Pricing Page: Pricing tiers, FAQs
+- [x] **Template Preview**
+  - Preview template blocks before applying
+  - See full block structure
+- [x] **One-Click Template Application**
+  - Create new page from template
+  - Replace existing page content with template
+- [x] **Report Sharing via Public Links**
+  - Create time-limited share URLs (1-30 days)
+  - Share links for leads, revenue, analytics reports
+  - Public access without authentication
+  - Revoke share links
+  - Track access count
+- [x] **Share Links Tab** in Reporting Dashboard
+  - Create, view, copy, revoke share links
+- [x] **Public Shared Report Page** (`/shared/report/:id`)
+  - View report info
+  - Download report
+
 ---
 
 ## API Endpoints Summary
