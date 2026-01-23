@@ -143,8 +143,8 @@ export default function AdminPromptManagerPage() {
     setLoading(true);
     try {
       const [statsRes, templatesRes, auditRes, serviceCodesRes, docTypesRes] = await Promise.all([
-        client.get('/api/admin/prompts/stats/overview'),
-        client.get('/api/admin/prompts', {
+        client.get('/admin/prompts/stats/overview'),
+        client.get('/admin/prompts', {
           params: {
             service_code: filters.service_code || undefined,
             status: filters.status || undefined,
@@ -152,9 +152,9 @@ export default function AdminPromptManagerPage() {
             page_size: 50,
           }
         }),
-        client.get('/api/admin/prompts/audit/log', { params: { limit: 30 } }),
-        client.get('/api/admin/prompts/reference/service-codes'),
-        client.get('/api/admin/prompts/reference/doc-types'),
+        client.get('/admin/prompts/audit/log', { params: { limit: 30 } }),
+        client.get('/admin/prompts/reference/service-codes'),
+        client.get('/admin/prompts/reference/doc-types'),
       ]);
       
       setStats(statsRes.data);
