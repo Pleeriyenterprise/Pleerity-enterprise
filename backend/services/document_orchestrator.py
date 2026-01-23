@@ -248,22 +248,14 @@ class DocumentOrchestrator:
         
         # ================================================================
         # STEP 2: Get prompt for service (Prompt Selected)
-        # NEW: Prioritize Prompt Manager ACTIVE prompts
+        # CANONICAL RULE: doc_type == service_code for service-specific documents
+        # Prioritize Prompt Manager ACTIVE prompts
         # ================================================================
-        from services.document_generator import DocumentType
+        from services.document_generator import SERVICE_TO_DOC_TYPE, DocumentType
         
-        # Determine document type
-        doc_type_map = {
-            "DOC_PACK_TENANCY": "SECTION_21_NOTICE",
-            "DOC_PACK_ESSENTIAL": "TENANCY_AGREEMENT",
-            "DOC_PACK_ULTIMATE": "TENANCY_AGREEMENT",
-            "DOC_PACK_INVENTORY": "INVENTORY_REPORT",
-            "HMO_AUDIT": "COMPLIANCE_AUDIT",
-            "FULL_AUDIT": "COMPLIANCE_AUDIT",
-            "MR_BASIC": "MARKET_RESEARCH",
-            "MR_ADV": "MARKET_RESEARCH",
-        }
-        doc_type = doc_type_map.get(service_code, "GENERAL_DOCUMENT")
+        # CANONICAL: Document type equals service code
+        # This ensures Payment → Order → Prompt → Document stay aligned
+        doc_type = service_code  # Canonical rule
         
         # Try Prompt Manager first, fall back to legacy registry
         prompt_def, prompt_info = await prompt_manager_bridge.get_prompt_for_service(
@@ -294,7 +286,7 @@ class DocumentOrchestrator:
                     error_message=f"No prompt defined for service: {service_code}",
                 )
         
-        # Store prompt version info for audit
+        # Store prompt version info for audit (includes service_code, doc_type)
         prompt_version_used = prompt_info.to_dict() if prompt_info else None
         
         logger.info(
