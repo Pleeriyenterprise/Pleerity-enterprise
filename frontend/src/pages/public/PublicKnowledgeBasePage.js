@@ -8,14 +8,14 @@
  * - Related articles
  * - CTA to chat if no answer found
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { client } from '../api/client';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { Card, CardContent } from '../components/ui/card';
-import PublicLayout from '../components/layout/PublicLayout';
+import client from '../../api/client';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Badge } from '../../components/ui/badge';
+import { Card, CardContent } from '../../components/ui/card';
+import PublicLayout from '../../components/public/PublicLayout';
 import {
   Book,
   Search,
