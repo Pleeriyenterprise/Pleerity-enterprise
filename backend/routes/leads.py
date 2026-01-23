@@ -766,7 +766,6 @@ async def test_abandoned_intake_detection(
     Manually trigger abandoned intake detection for testing.
     Uses a shorter timeout (1 minute) for testing purposes.
     """
-    from services.lead_service import AbandonedIntakeService
     
     created = await AbandonedIntakeService.detect_abandoned_intakes(timeout_hours=0.0167)  # ~1 minute
     
