@@ -496,6 +496,7 @@ async def apply_template(
                 page_id=page_id,
                 block_type=block["block_type"],
                 content=block["content"],
+                position=idx,
                 admin_id=admin["portal_user_id"],
                 admin_email=admin["email"]
             )
