@@ -6,16 +6,19 @@ import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Tuple
-from bson import ObjectId
 from pydantic import ValidationError
 
-from database import db
+from database import database
 from models.cms import (
     BlockType, ContentBlock, PageStatus, SEOMetadata,
     CMSPageResponse, CMSRevisionResponse, CMSMediaResponse,
     MediaType, BLOCK_CONTENT_SCHEMAS
 )
 from utils.audit import log_audit
+
+
+def get_db():
+    return database.get_db()
 
 
 # ============================================
