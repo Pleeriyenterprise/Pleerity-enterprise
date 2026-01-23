@@ -456,12 +456,21 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/admin/privacy/consent" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminConsentDashboard />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <Toaster />
           <TawkToWidget />
+          <CookieBanner />
         </div>
       </BrowserRouter>
     </AuthProvider>
