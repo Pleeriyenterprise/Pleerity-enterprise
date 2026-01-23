@@ -283,6 +283,31 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - Audit Log tab with action timeline
   - Guide tab with documentation
 
+### Phase 15: Prompt Manager Integration & Analytics (Complete - Jan 23, 2026)
+- [x] **Document Orchestrator Integration**
+  - PromptManagerBridge connects Prompt Manager to document generation
+  - ACTIVE prompts take priority over legacy gpt_prompt_registry
+  - Fallback to legacy registry if no managed prompt exists
+  - `{{INPUT_DATA_JSON}}` pattern used for managed prompts
+- [x] **prompt_version_used Tracking (Audit Compliance)**
+  - Stored permanently on `orchestration_executions` collection
+  - Stored permanently on `orders` collection
+  - Contains: template_id, version, service_code, doc_type, name, source
+  - Immutable - existing outputs never mutate
+- [x] **Prompt Execution Metrics**
+  - Records every document generation execution
+  - Tracks: execution_time_ms, prompt_tokens, completion_tokens, success/failure
+  - Stored in `prompt_execution_metrics` collection
+- [x] **Prompt Performance Analytics Dashboard**
+  - Total executions, success rate, tokens used
+  - Per-prompt breakdown with detailed metrics
+  - Top performing prompts table (sortable by executions, success rate, tokens)
+  - Configurable time range (7, 14, 30, 90 days)
+- [x] **Analytics API Endpoints**
+  - `GET /api/admin/prompts/analytics/performance` - Aggregated metrics
+  - `GET /api/admin/prompts/analytics/top-prompts` - Ranked prompts
+  - `GET /api/admin/prompts/analytics/execution-timeline` - Daily breakdown
+
 ---
 
 ## API Endpoints Summary
