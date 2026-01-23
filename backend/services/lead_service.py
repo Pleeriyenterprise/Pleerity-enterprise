@@ -850,9 +850,6 @@ class AbandonedIntakeService:
             if not contact_email:
                 continue  # Cannot create lead without email
             
-            # Determine intent score based on progress
-            reached_payment = draft.get("reached_payment_step", False)
-            
             # Create lead
             request = LeadCreateRequest(
                 source_platform=LeadSourcePlatform.INTAKE_ABANDONED,
