@@ -192,7 +192,8 @@ async def create_role(
         metadata={"action": "create", "name": request.name}
     )
     
-    del role["_id"] if "_id" in role else None
+    if "_id" in role:
+        del role["_id"]
     return role
 
 
