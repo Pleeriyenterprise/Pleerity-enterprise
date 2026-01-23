@@ -202,7 +202,7 @@ const ServicesCataloguePage = () => {
                 className="bg-electric-teal hover:bg-electric-teal/90 group-hover:translate-x-1 transition-transform"
                 data-testid={`btn-order-${service.service_code}`}
               >
-                <Link to={`/order/${service.service_code}`}>
+                <Link to={`/order/intake?service=${service.service_code}`}>
                   Order Now
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
