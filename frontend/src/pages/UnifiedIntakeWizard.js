@@ -765,16 +765,26 @@ export default function UnifiedIntakeWizard() {
           client.get('/intake/services'),
           client.get('/intake/packs'),
         ]);
-        setServices(servicesRes.data.services || []);
+        const loadedServices = servicesRes.data.services || [];
+        setServices(loadedServices);
         setPacks(packsRes.data.packs || []);
         setAddons(packsRes.data.addons || []);
+        
+        // Check for service pre-selection via URL parameter
+        const preSelectedService = searchParams.get('service');
+        if (preSelectedService && loadedServices.length > 0) {
+          const serviceMatch = loadedServices.find(s => s.service_code === preSelectedService);
+          if (serviceMatch) {
+            handleServiceSelect(serviceMatch);
+          }
+        }
       } catch (err) {
         console.error('Failed to load services:', err);
         toast.error('Failed to load services');
       }
     };
     loadServices();
-  }, []);
+  }, [searchParams]);
 
   // Handle service selection
   const handleServiceSelect = async (service) => {
