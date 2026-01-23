@@ -474,6 +474,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/admin/enablement" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminEnablementDashboard />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
