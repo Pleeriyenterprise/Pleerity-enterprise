@@ -43,7 +43,31 @@ class DocumentStatus(str, Enum):
 
 
 class DocumentType(str, Enum):
-    """Types of generated documents."""
+    """
+    Canonical Document Types - MUST match service catalogue service codes.
+    
+    RULE: Document Type == Service Code for service-specific documents.
+    No generic types allowed for production documents.
+    """
+    # AI Automation Services
+    AI_WF_BLUEPRINT = "AI_WF_BLUEPRINT"          # Workflow Automation Blueprint
+    AI_PROC_MAP = "AI_PROC_MAP"                  # Business Process Mapping
+    AI_TOOLS_REC = "AI_TOOLS_REC"                # AI Tool Recommendations
+    
+    # Market Research Services
+    MR_BASIC = "MR_BASIC"                        # Basic Market Research
+    MR_ADV = "MR_ADV"                            # Advanced Market Research
+    
+    # Compliance Services
+    HMO_AUDIT = "HMO_AUDIT"                      # HMO Compliance Audit
+    FULL_AUDIT = "FULL_AUDIT"                    # Full Property Audit
+    
+    # Document Pack Services
+    DOC_PACK_ESSENTIAL = "DOC_PACK_ESSENTIAL"    # Essential Pack
+    DOC_PACK_TENANCY = "DOC_PACK_TENANCY"        # Tenancy (Plus) Pack
+    DOC_PACK_ULTIMATE = "DOC_PACK_ULTIMATE"      # Ultimate (Pro) Pack
+    
+    # Legacy types (for backwards compatibility - deprecate gradually)
     SECTION_21_NOTICE = "SECTION_21_NOTICE"
     SECTION_8_NOTICE = "SECTION_8_NOTICE"
     TENANCY_AGREEMENT = "TENANCY_AGREEMENT"
@@ -51,6 +75,21 @@ class DocumentType(str, Enum):
     COMPLIANCE_AUDIT = "COMPLIANCE_AUDIT"
     MARKET_RESEARCH = "MARKET_RESEARCH"
     GENERAL_DOCUMENT = "GENERAL_DOCUMENT"
+
+
+# Service Code to Document Type mapping (canonical)
+SERVICE_TO_DOC_TYPE = {
+    "AI_WF_BLUEPRINT": DocumentType.AI_WF_BLUEPRINT,
+    "AI_PROC_MAP": DocumentType.AI_PROC_MAP,
+    "AI_TOOLS_REC": DocumentType.AI_TOOLS_REC,
+    "MR_BASIC": DocumentType.MR_BASIC,
+    "MR_ADV": DocumentType.MR_ADV,
+    "HMO_AUDIT": DocumentType.HMO_AUDIT,
+    "FULL_AUDIT": DocumentType.FULL_AUDIT,
+    "DOC_PACK_ESSENTIAL": DocumentType.DOC_PACK_ESSENTIAL,
+    "DOC_PACK_TENANCY": DocumentType.DOC_PACK_TENANCY,
+    "DOC_PACK_ULTIMATE": DocumentType.DOC_PACK_ULTIMATE,
+}
 
 
 # ============================================================================
