@@ -96,6 +96,9 @@ import AdminNotificationPreferencesPage from './pages/AdminNotificationPreferenc
 import AdminIntakeSchemaPage from './pages/AdminIntakeSchemaPage';
 import AdminAnalyticsDashboard from './pages/AdminAnalyticsDashboard';
 import AdminSupportPage from './pages/AdminSupportPage';
+import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
+import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
+import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
 
 function App() {
   return (
