@@ -94,6 +94,7 @@ import AdminServiceCataloguePage from './pages/AdminServiceCataloguePage';
 import AdminNotificationPreferencesPage from './pages/AdminNotificationPreferencesPage';
 import AdminIntakeSchemaPage from './pages/AdminIntakeSchemaPage';
 import AdminAnalyticsDashboard from './pages/AdminAnalyticsDashboard';
+import AdminSupportPage from './pages/AdminSupportPage';
 
 function App() {
   return (
