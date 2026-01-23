@@ -149,7 +149,7 @@ class TestLeadCaptureAPI(TestAuthSetup):
     
     def test_capture_duplicate_lead(self):
         """Test duplicate lead detection."""
-        unique_email = f"TEST_dup_{uuid.uuid4().hex[:8]}@example.com"
+        unique_email = f"test_dup_{uuid.uuid4().hex[:8]}@example.com"  # Use lowercase for consistent dedup
         
         # Create first lead
         response1 = requests.post(
@@ -163,7 +163,7 @@ class TestLeadCaptureAPI(TestAuthSetup):
         assert response1.status_code == 200
         first_lead_id = response1.json()["lead_id"]
         
-        # Try to create duplicate
+        # Try to create duplicate with same email
         response2 = requests.post(
             f"{BASE_URL}/api/leads/capture/chatbot",
             json={
