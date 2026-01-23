@@ -442,6 +442,7 @@ app.include_router(consent.public_router)
 app.include_router(consent.admin_router)
 app.include_router(cms.router)  # Admin CMS routes
 app.include_router(cms.public_router)  # Public CMS page rendering
+app.include_router(enablement.router)  # Customer Enablement Automation Engine
 
 # Root endpoint
 @app.get("/api")
