@@ -2,13 +2,12 @@
 CMS API Routes for Admin Site Builder
 All routes require ROLE_ADMIN
 """
-import os
 import uuid
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from pydantic import BaseModel, Field
 
-from auth import get_current_admin
+from middleware import admin_route_guard
 from models.cms import (
     BlockType, PageStatus, MediaType,
     CMSPageCreate, CMSPageUpdate, CMSPageResponse,
@@ -19,7 +18,7 @@ from models.cms import (
 from services import cms_service
 from services.storage_adapter import upload_file_to_storage
 
-router = APIRouter(prefix="/cms", tags=["CMS"])
+router = APIRouter(prefix="/api/admin/cms", tags=["CMS"])
 
 
 # ============================================
