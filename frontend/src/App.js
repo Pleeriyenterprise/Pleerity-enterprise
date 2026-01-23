@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './utils/ProtectedRoute';
 import { Toaster } from './components/ui/sonner';
+import TawkToWidget from './components/TawkToWidget';
 import './App.css';
 
 // Public Website Pages (NEW)
