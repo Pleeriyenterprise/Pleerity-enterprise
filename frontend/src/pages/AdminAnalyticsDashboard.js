@@ -43,16 +43,21 @@ function StatCard({ title, value, change, trend, icon: Icon, color = 'teal', pre
           <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
             <Icon className="h-5 w-5" />
           </div>
-          {change !== undefined && (
+          {change !== undefined && change !== null && (
             <div className={`flex items-center gap-1 ${trendColor}`}>
               <TrendIcon className="h-4 w-4" />
-              <span className="text-sm font-medium">{Math.abs(change)}%</span>
+              <span className="text-sm font-medium">{change > 0 ? '+' : ''}{change}%</span>
             </div>
           )}
         </div>
         <div className="mt-4">
           <p className="text-2xl font-bold text-gray-900">{value}</p>
           <p className="text-sm text-gray-500">{title}</p>
+          {previousValue !== null && previousValue !== undefined && (
+            <p className="text-xs text-gray-400 mt-1">
+              Previous: {previousValue}
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
