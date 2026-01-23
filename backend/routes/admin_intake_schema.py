@@ -14,12 +14,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from middleware import admin_route_guard
-from database import db
-from services.intake_schema_registry import (
-    get_service_schema,
-    SERVICE_INTAKE_SCHEMAS,
-    IntakeFieldType,
-)
+from database import database
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,6 +22,12 @@ router = APIRouter(prefix="/api/admin/intake-schema", tags=["admin-intake-schema
 
 # Collection for custom field overrides
 COLLECTION = "intake_schema_customizations"
+
+from services.intake_schema_registry import (
+    get_service_schema,
+    SERVICE_INTAKE_SCHEMAS,
+    IntakeFieldType,
+)
 
 
 # ============================================================================
