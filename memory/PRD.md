@@ -2116,6 +2116,118 @@
   - Postmark emails sent successfully (internal notifications)
   - Admin support dashboard fully functional
 
+### January 23, 2026 (Session 5) - Additional Features Complete ✅
+
+**1. WhatsApp Handoff Fix ✅**
+  - Fixed `ERR_BLOCKED_BY_RESPONSE` by using `window.open()` instead of iframe/link
+  - Audit logging: `SUPPORT_WHATSAPP_HANDOFF_CLICKED` event logged
+  - Includes: user_role, client_id, page_url, timestamp
+
+**2. Admin Intake Schema Manager Enhancements ✅**
+  - **Draft/Publish Workflow:** Changes saved as draft first, then published to live
+  - **Versioning:** `schema_version` incremented on each change
+  - **Audit Logging:** `INTAKE_SCHEMA_UPDATED`, `INTAKE_SCHEMA_PUBLISHED`, `INTAKE_SCHEMA_ROLLBACK`
+  - **Rollback:** Revert to any previous version
+  - **Endpoints:**
+    - `GET /api/admin/intake-schema/services` - List all configurable services
+    - `GET /api/admin/intake-schema/{service_code}` - Get schema for editing
+    - `PUT /api/admin/intake-schema/{service_code}` - Save draft or live
+    - `POST /api/admin/intake-schema/{service_code}/publish` - Publish draft
+    - `POST /api/admin/intake-schema/{service_code}/discard-draft` - Discard draft
+    - `POST /api/admin/intake-schema/{service_code}/rollback/{version}` - Rollback
+    - `GET /api/admin/intake-schema/{service_code}/versions` - Version history
+
+**3. Admin Canned Responses System ✅**
+  - **Data Model:** `response_id`, `label`, `category`, `channel`, `response_text`, `quick_actions`, `trigger_keywords`, `is_active`, timestamps
+  - **Channels:** WEB_CHAT, WHATSAPP, EMAIL
+  - **Categories:** orders, billing, login, documents, compliance, cvp, technical, handoff, other
+  - **Features:**
+    - Search and filter by category/channel
+    - Preview panel (how it looks in chat/WhatsApp)
+    - Soft delete (sets `is_active=false`)
+    - Reactivate deactivated responses
+    - Full audit logging: `CANNED_RESPONSE_CREATED/UPDATED/DEACTIVATED`
+  - **Endpoints:**
+    - `GET /api/admin/support/responses` - List with filters
+    - `POST /api/admin/support/responses` - Create new response
+    - `PUT /api/admin/support/responses/{id}` - Update response
+    - `DELETE /api/admin/support/responses/{id}` - Soft delete
+    - `POST /api/admin/support/responses/{id}/reactivate` - Reactivate
+    - `GET /api/admin/support/responses/{id}/preview` - Preview formatting
+  - **Admin UI:** `/admin/support/responses`
+
+**4. Knowledge Base / FAQ System ✅**
+  - **Public Features:**
+    - Standalone KB page: `/support/knowledge-base`
+    - Search articles with analytics tracking
+    - Browse by 9 pre-created categories
+    - View count tracking for articles
+    - Related articles suggestions
+  - **Chat Widget Integration:**
+    - FAQ tab (default) with search and top questions
+    - "Chat with Us" CTA if search returns no results
+    - "View All Articles" link to full KB
+  - **Admin Features:**
+    - Article CRUD with rich text (Markdown)
+    - Category management
+    - Draft/publish workflow for articles
+    - Search analytics: top searches, searches with no results
+    - Soft delete for articles and categories
+    - Full audit logging
+  - **Pre-created Categories:**
+    - Getting Started, Billing & Subscriptions, Account & Login
+    - Compliance Vault Pro (CVP), Documents & Uploads, Orders & Delivery
+    - Reports & Calendar, Integrations, Troubleshooting
+  - **Data Models:**
+    - `kb_articles`: article_id, title, slug (stable URL), category_id, content, status (draft/published), tags, view_count, is_active
+    - `kb_categories`: category_id, name, icon, order, is_active
+    - `kb_search_analytics`: query, results_count, has_results, timestamp
+  - **Endpoints (Public):**
+    - `GET /api/kb/categories` - List categories with article counts
+    - `GET /api/kb/articles` - List/search published articles
+    - `GET /api/kb/articles/{slug}` - Get article (increments view count)
+    - `GET /api/kb/featured` - Popular and recent articles
+    - `GET /api/kb/tags/popular` - Most used tags
+  - **Endpoints (Admin):**
+    - `GET /api/admin/kb/articles` - List all (including drafts)
+    - `POST /api/admin/kb/articles` - Create article
+    - `PUT /api/admin/kb/articles/{id}` - Update article
+    - `DELETE /api/admin/kb/articles/{id}` - Soft delete
+    - `POST /api/admin/kb/articles/{id}/publish` - Publish
+    - `POST /api/admin/kb/articles/{id}/unpublish` - Unpublish
+    - `GET /api/admin/kb/analytics` - Search analytics
+    - Category CRUD endpoints
+  - **Admin UIs:**
+    - `/admin/knowledge-base` - Article/Category/Analytics tabs
+    - `/admin/support/responses` - Canned responses management
+
+**5. Lint Error Fixes ✅**
+  - Fixed unescaped entities in `ServicesHubPage.js` and `ServiceDetailPage.js`
+  - Replaced apostrophes with proper text
+
+**Files Created:**
+  - `/app/backend/routes/admin_canned_responses.py`
+  - `/app/backend/routes/knowledge_base.py`
+  - `/app/frontend/src/pages/AdminKnowledgeBasePage.js`
+  - `/app/frontend/src/pages/AdminCannedResponsesPage.js`
+  - `/app/frontend/src/pages/public/PublicKnowledgeBasePage.js`
+
+**Files Modified:**
+  - `/app/backend/routes/admin_intake_schema.py` - Enhanced with draft/publish/versioning
+  - `/app/backend/routes/support.py` - Added WhatsApp audit endpoint
+  - `/app/backend/server.py` - Registered new routes
+  - `/app/frontend/src/components/SupportChatWidget.js` - Added FAQ tab, window.open() for WhatsApp
+  - `/app/frontend/src/App.js` - Registered new pages
+  - `/app/frontend/src/pages/public/ServicesHubPage.js` - Fixed lint errors
+  - `/app/frontend/src/pages/public/ServiceDetailPage.js` - Fixed lint errors
+
+**TEST REPORT:** `/app/test_reports/iteration_50.json` (27/27 backend + 100% frontend)
+  - WhatsApp handoff uses window.open() with audit logging
+  - Admin Intake Schema Manager with draft/publish/versioning
+  - Admin Canned Responses CRUD with soft delete
+  - Knowledge Base public + admin APIs
+  - Chat widget FAQ tab + Chat tab verified
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
