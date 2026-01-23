@@ -2,6 +2,7 @@
  * Admin Analytics Dashboard
  * Business intelligence and reporting for Pleerity Enterprise.
  * Shows revenue, orders, conversion funnels, SLA performance, and customer insights.
+ * Enhanced with custom date ranges and period comparison (month-over-month)
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -20,14 +21,16 @@ import {
 import { toast } from 'sonner';
 import client from '../api/client';
 
-// Stat card with trend indicator
-function StatCard({ title, value, change, trend, icon: Icon, color = 'teal' }) {
+// Enhanced Stat card with trend indicator and previous value
+function StatCard({ title, value, change, trend, icon: Icon, color = 'teal', previousValue }) {
   const colorClasses = {
     teal: 'bg-teal-100 text-teal-600',
     blue: 'bg-blue-100 text-blue-600',
     green: 'bg-green-100 text-green-600',
     purple: 'bg-purple-100 text-purple-600',
     amber: 'bg-amber-100 text-amber-600',
+    indigo: 'bg-indigo-100 text-indigo-600',
+    orange: 'bg-orange-100 text-orange-600',
   };
   
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
