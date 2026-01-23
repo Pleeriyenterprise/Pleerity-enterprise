@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from database import database
 from services.lead_service import LeadService
-from models.lead_models import LeadAuditEvent
+from services.lead_models import LeadAuditEvent
 
 logger = logging.getLogger(__name__)
 
