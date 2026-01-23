@@ -375,6 +375,198 @@ def format_json(data: List[dict]) -> io.StringIO:
     return output
 
 
+def format_xlsx(data: List[dict], report_type: str, start: datetime, end: datetime) -> io.BytesIO:
+    """Format data as Excel XLSX."""
+    output = io.BytesIO()
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"{report_type.title()} Report"
+    
+    # Define styles
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Add title row
+    ws.merge_cells('A1:F1')
+    ws['A1'] = f"{report_type.title()} Report"
+    ws['A1'].font = Font(bold=True, size=16)
+    ws['A1'].alignment = Alignment(horizontal="center")
+    
+    # Add date range row
+    ws.merge_cells('A2:F2')
+    ws['A2'] = f"Period: {start.strftime('%d %b %Y')} - {end.strftime('%d %b %Y')}"
+    ws['A2'].font = Font(italic=True, size=10)
+    ws['A2'].alignment = Alignment(horizontal="center")
+    
+    # Add generated timestamp
+    ws.merge_cells('A3:F3')
+    ws['A3'] = f"Generated: {now_utc().strftime('%d %b %Y %H:%M:%S')} UTC"
+    ws['A3'].font = Font(size=9, color="666666")
+    ws['A3'].alignment = Alignment(horizontal="center")
+    
+    if not data:
+        ws['A5'] = "No data available for this period"
+        wb.save(output)
+        output.seek(0)
+        return output
+    
+    # Write headers (row 5)
+    headers = list(data[0].keys())
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=5, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    
+    # Write data rows
+    for row_idx, row_data in enumerate(data, 6):
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=row_data.get(header, ""))
+            cell.border = thin_border
+            # Format currency cells
+            if "£" in str(header) or "Amount" in str(header):
+                cell.number_format = '£#,##0.00'
+    
+    # Auto-adjust column widths
+    for col_idx, header in enumerate(headers, 1):
+        max_length = len(str(header))
+        for row in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=col_idx, max_col=col_idx):
+            for cell in row:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 50)
+    
+    wb.save(output)
+    output.seek(0)
+    return output
+
+
+def format_pdf(data: List[dict], report_type: str, start: datetime, end: datetime) -> io.BytesIO:
+    """Format data as PDF."""
+    output = io.BytesIO()
+    
+    # Use landscape for more columns
+    doc = SimpleDocTemplate(
+        output,
+        pagesize=landscape(A4),
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=30,
+        bottomMargin=30
+    )
+    
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        spaceAfter=10,
+        alignment=1  # Center
+    )
+    elements.append(Paragraph(f"{report_type.title()} Report", title_style))
+    
+    # Date range
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=5,
+        alignment=1
+    )
+    elements.append(Paragraph(
+        f"Period: {start.strftime('%d %b %Y')} - {end.strftime('%d %b %Y')}",
+        subtitle_style
+    ))
+    elements.append(Paragraph(
+        f"Generated: {now_utc().strftime('%d %b %Y %H:%M:%S')} UTC",
+        subtitle_style
+    ))
+    elements.append(Spacer(1, 20))
+    
+    if not data:
+        elements.append(Paragraph("No data available for this period", styles['Normal']))
+        doc.build(elements)
+        output.seek(0)
+        return output
+    
+    # Prepare table data
+    headers = list(data[0].keys())
+    table_data = [headers]
+    
+    # Limit columns for PDF readability (max 8 columns)
+    if len(headers) > 8:
+        headers = headers[:8]
+        table_data = [headers]
+    
+    for row in data[:500]:  # Limit rows for PDF
+        row_values = [str(row.get(h, ""))[:30] for h in headers]  # Truncate long values
+        table_data.append(row_values)
+    
+    # Calculate column widths
+    available_width = landscape(A4)[0] - 60  # Total page width minus margins
+    col_width = available_width / len(headers)
+    
+    # Create table
+    table = Table(table_data, colWidths=[col_width] * len(headers))
+    
+    # Style the table
+    table_style = TableStyle([
+        # Header row
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A5F')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        
+        # Data rows
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        
+        # Alternating row colors
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')]),
+        
+        # Grid
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ])
+    table.setStyle(table_style)
+    elements.append(table)
+    
+    # Add row count note if truncated
+    if len(data) > 500:
+        elements.append(Spacer(1, 10))
+        note_style = ParagraphStyle(
+            'Note',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.grey
+        )
+        elements.append(Paragraph(
+            f"Note: Showing first 500 of {len(data)} rows. Export as CSV or Excel for full data.",
+            note_style
+        ))
+    
+    doc.build(elements)
+    output.seek(0)
+    return output
+
+
 # ============================================
 # API Endpoints
 # ============================================
