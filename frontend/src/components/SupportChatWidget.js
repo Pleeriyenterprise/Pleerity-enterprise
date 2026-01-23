@@ -756,6 +756,8 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
               Powered by Pleerity AI • No legal advice
             </p>
           </div>
+            </>
+          )}
         </>
       )}
     </div>
