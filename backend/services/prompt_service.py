@@ -203,11 +203,30 @@ class PromptService:
     
     Handles CRUD operations, versioning, testing, and activation
     with full audit trail.
+    
+    ARCHITECTURAL RULE:
+    - service_code MUST exist in service catalogue
+    - doc_type MUST be canonical (match service_code or be allowed for that service)
+    - Prompt cannot be activated if mismatch exists
     """
     
     COLLECTION = "prompt_templates"
     AUDIT_COLLECTION = "prompt_audit_log"
     TEST_COLLECTION = "prompt_test_results"
+    
+    # Canonical service code to document type mapping
+    SERVICE_DOC_TYPE_MAP = {
+        "AI_WF_BLUEPRINT": ["AI_WF_BLUEPRINT", "AI_WORKFLOW_BLUEPRINT"],
+        "AI_PROC_MAP": ["AI_PROC_MAP", "AI_PROCESS_MAP"],
+        "AI_TOOLS_REC": ["AI_TOOLS_REC", "AI_TOOL_RECOMMENDATIONS"],
+        "MR_BASIC": ["MR_BASIC", "MARKET_RESEARCH_BASIC"],
+        "MR_ADV": ["MR_ADV", "MARKET_RESEARCH_ADVANCED"],
+        "HMO_AUDIT": ["HMO_AUDIT", "HMO_COMPLIANCE_AUDIT"],
+        "FULL_AUDIT": ["FULL_AUDIT", "FULL_PROPERTY_AUDIT"],
+        "DOC_PACK_ESSENTIAL": ["DOC_PACK_ESSENTIAL"],
+        "DOC_PACK_TENANCY": ["DOC_PACK_TENANCY"],
+        "DOC_PACK_ULTIMATE": ["DOC_PACK_ULTIMATE"],
+    }
     
     def __init__(self, llm_provider: Optional[LLMProviderInterface] = None):
         """
@@ -229,6 +248,43 @@ class PromptService:
             f"{timestamp}{os.urandom(8).hex()}".encode()
         ).hexdigest()[:8].upper()
         return f"{prefix}-{timestamp}-{random_part}"
+    
+    async def _validate_service_catalogue_alignment(
+        self,
+        service_code: str,
+        doc_type: str,
+    ) -> Tuple[bool, str]:
+        """
+        Validate that service_code exists in catalogue and doc_type is allowed.
+        
+        ARCHITECTURAL ENFORCEMENT:
+        - service_code MUST exist in services_v2 collection
+        - doc_type MUST be canonical for that service
+        
+        Returns: (is_valid, error_message)
+        """
+        db = database.get_db()
+        
+        # Check service exists in catalogue
+        service = await db.services_v2.find_one(
+            {"service_code": service_code},
+            {"service_code": 1, "service_name": 1}
+        )
+        
+        if not service:
+            return False, f"Service code '{service_code}' not found in service catalogue. Prompt MUST use a valid catalogue service code."
+        
+        # Check doc_type is allowed for this service
+        allowed_doc_types = self.SERVICE_DOC_TYPE_MAP.get(service_code, [])
+        
+        # If no specific mapping, allow service_code as doc_type (canonical rule)
+        if not allowed_doc_types:
+            allowed_doc_types = [service_code]
+        
+        if doc_type not in allowed_doc_types:
+            return False, f"Document type '{doc_type}' not allowed for service '{service_code}'. Allowed types: {allowed_doc_types}"
+        
+        return True, ""
     
     # ========================================
     # CREATE
