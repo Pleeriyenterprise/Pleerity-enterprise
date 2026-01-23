@@ -31,6 +31,7 @@ import {
   HelpCircle,
   PenTool,
   Target,
+  Cookie,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
