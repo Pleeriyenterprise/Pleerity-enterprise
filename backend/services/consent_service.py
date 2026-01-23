@@ -78,7 +78,7 @@ class ConsentService:
         - Creates append-only event
         - Upserts materialized state
         """
-        db = database.get_db()
+        db = get_db()
         now = datetime.now(timezone.utc)
         
         # Force necessary=True
@@ -168,7 +168,7 @@ class ConsentService:
         Link consent state to authenticated user.
         Creates UPDATE event to preserve history.
         """
-        db = database.get_db()
+        db = get_db()
         now = datetime.now(timezone.utc)
         
         # Find existing state
@@ -228,7 +228,7 @@ class ConsentService:
     @staticmethod
     async def get_consent_state(session_id: str) -> Optional[Dict[str, Any]]:
         """Get current consent state for a session."""
-        db = database.get_db()
+        db = get_db()
         state = await db[CONSENT_STATE_COLLECTION].find_one(
             {"session_id": session_id},
             {"_id": 0}
@@ -268,7 +268,7 @@ class ConsentService:
         Check if a user is eligible for marketing outreach.
         Can check by session_id, crn, or client_id.
         """
-        db = database.get_db()
+        db = get_db()
         
         query = {}
         if session_id:
@@ -296,7 +296,7 @@ class ConsentService:
         Withdraw consent for specified categories.
         Creates WITHDRAW event.
         """
-        db = database.get_db()
+        db = get_db()
         now = datetime.now(timezone.utc)
         
         state = await db[CONSENT_STATE_COLLECTION].find_one(
@@ -382,7 +382,7 @@ class ConsentAdminService:
         to_date: datetime,
     ) -> Dict[str, Any]:
         """Get consent statistics for admin dashboard."""
-        db = database.get_db()
+        db = get_db()
         
         from_iso = from_date.isoformat()
         to_iso = to_date.isoformat()
@@ -499,7 +499,7 @@ class ConsentAdminService:
         filters: Dict[str, Any] = None,
     ) -> Tuple[List[Dict[str, Any]], int]:
         """Get paginated consent logs for admin dashboard."""
-        db = database.get_db()
+        db = get_db()
         
         from_iso = from_date.isoformat()
         to_iso = to_date.isoformat()
@@ -606,7 +606,7 @@ class ConsentAdminService:
     @staticmethod
     async def get_log_detail(event_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed consent record for admin drawer."""
-        db = database.get_db()
+        db = get_db()
         
         event = await db[CONSENT_EVENTS_COLLECTION].find_one(
             {"event_id": event_id},
@@ -658,7 +658,7 @@ class ConsentAdminService:
 
 async def ensure_consent_indexes():
     """Create indexes for consent collections."""
-    db = database.get_db()
+    db = get_db()
     
     # consent_events indexes
     await db[CONSENT_EVENTS_COLLECTION].create_index("created_at")
