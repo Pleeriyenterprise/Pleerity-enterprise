@@ -15,7 +15,7 @@ from database import database
 from services.lead_service import LeadService, AbandonedIntakeService
 from services.lead_followup_service import LeadFollowUpService
 from services.lead_ai_service import LeadAISummaryService
-from models.lead_models import (
+from services.lead_models import (
     LeadSourcePlatform,
     LeadServiceInterest,
     LeadIntentScore,
@@ -23,10 +23,6 @@ from models.lead_models import (
     LeadStatus,
     LeadCreateRequest,
     LeadUpdateRequest,
-    LeadAssignRequest,
-    LeadConvertRequest,
-    LeadMarkLostRequest,
-    LeadContactRequest,
 )
 import logging
 
