@@ -127,6 +127,32 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 
 ## API Endpoints Summary
 
+### CMS Site Builder (Admin - ROLE_ADMIN only)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/cms/pages` | GET | List all CMS pages |
+| `/api/admin/cms/pages` | POST | Create a new page |
+| `/api/admin/cms/pages/{id}` | GET | Get page by ID |
+| `/api/admin/cms/pages/{id}` | PUT | Update page metadata |
+| `/api/admin/cms/pages/{id}` | DELETE | Archive a page |
+| `/api/admin/cms/pages/{id}/blocks` | POST | Add a block to page |
+| `/api/admin/cms/pages/{id}/blocks/{block_id}` | PUT | Update block |
+| `/api/admin/cms/pages/{id}/blocks/{block_id}` | DELETE | Delete block |
+| `/api/admin/cms/pages/{id}/blocks/reorder` | PUT | Reorder blocks |
+| `/api/admin/cms/pages/{id}/publish` | POST | Publish page |
+| `/api/admin/cms/pages/{id}/revisions` | GET | Get revision history |
+| `/api/admin/cms/pages/{id}/rollback` | POST | Rollback to revision |
+| `/api/admin/cms/media` | GET | List media library |
+| `/api/admin/cms/media/upload` | POST | Upload media file |
+| `/api/admin/cms/media/{id}` | DELETE | Delete media |
+| `/api/admin/cms/block-types` | GET | Get available block types |
+
+### CMS Public (No Auth)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/public/cms/pages/{slug}` | GET | Get published page content |
+| `/api/cms/media/file/{file_id}` | GET | Serve media file |
+
 ### Cookie Consent (Public)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
