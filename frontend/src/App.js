@@ -131,6 +131,10 @@ function App() {
               <Route path="/partnerships" element={<PartnershipsPage />} />
               <Route path="/legal/privacy" element={<PrivacyPage />} />
               <Route path="/legal/terms" element={<TermsPage />} />
+              
+              {/* Knowledge Base (Public) */}
+              <Route path="/support/knowledge-base" element={<PublicKnowledgeBasePage />} />
+              <Route path="/support/knowledge-base/:slug" element={<PublicKnowledgeBasePage />} />
 
               {/* ========================================
                   AUTH & ONBOARDING ROUTES
