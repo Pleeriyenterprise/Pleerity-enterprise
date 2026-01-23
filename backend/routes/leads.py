@@ -23,6 +23,7 @@ from services.lead_models import (
     LeadStatus,
     LeadCreateRequest,
     LeadUpdateRequest,
+    LeadAuditEvent,
 )
 import logging
 
