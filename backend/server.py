@@ -206,6 +206,14 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Compliance Vault Pro API")
     await database.connect()
     
+    # Create consent indexes
+    try:
+        from services.consent_service import ensure_consent_indexes
+        await ensure_consent_indexes()
+        logger.info("Consent indexes created")
+    except Exception as e:
+        logger.error(f"Failed to create consent indexes: {e}")
+    
     # Seed service catalogue
     try:
         from services.service_catalogue import seed_service_catalogue
