@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   ArrowLeft, TrendingUp, TrendingDown, Minus, DollarSign,
   Package, Users, Clock, Target, Activity, BarChart3,
