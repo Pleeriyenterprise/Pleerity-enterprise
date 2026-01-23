@@ -3321,7 +3321,7 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab(tab.id)}
               data-testid={`admin-tab-${tab.id}`}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
-                activeTab === tab.id 
+                effectiveTab === tab.id 
                   ? 'bg-electric-teal text-white' 
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
