@@ -427,7 +427,6 @@ async def get_addon_analytics(
     
     for order in orders:
         addons = order.get("addons", [])
-        pricing = order.get("pricing", {})
         
         if "FAST_TRACK" in addons or order.get("fast_track"):
             fast_track_count += 1
