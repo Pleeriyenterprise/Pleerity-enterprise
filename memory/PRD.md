@@ -123,6 +123,41 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 - [x] **Audit Logging**
   - All CMS mutations logged (create, update, publish, rollback, media upload/delete)
 
+### Phase 10: Customer Enablement Automation Engine (Complete - Jan 23, 2026)
+- [x] **Event-Driven Architecture**
+  - Internal event bus for enablement triggers
+  - 16 event types (intake complete, provisioning, first login, document verified, etc.)
+  - Event emission integrated into core services
+- [x] **5 Automation Categories**
+  - ONBOARDING_GUIDANCE: Help users understand onboarding
+  - VALUE_CONFIRMATION: Explain why actions mattered
+  - COMPLIANCE_AWARENESS: Risk awareness without legal advice
+  - INACTIVITY_SUPPORT: Gentle educational nudges
+  - FEATURE_GATE_EXPLANATION: Explain gated features
+- [x] **Multi-Channel Delivery**
+  - IN_APP: In-app notifications (client_notifications collection)
+  - EMAIL: Postmark email delivery
+  - ASSISTANT: AI Assistant context enrichment
+- [x] **Template System**
+  - 16 pre-built educational templates
+  - Template versioning
+  - Template enable/disable toggle
+  - Template reseeding on startup
+- [x] **Suppression Rules**
+  - Global, per-client, per-category, per-template rules
+  - Admin-created with reason and expiry
+  - User preference overrides
+- [x] **Admin Dashboard** (`/admin/enablement`)
+  - Overview tab with KPIs (Total/Delivered/Suppressed/Failed)
+  - Templates tab with category filter and toggle
+  - Suppressions tab with CRUD
+  - Client Timeline search
+  - Manual Trigger for testing
+- [x] **Full Audit Logging**
+  - Every action logged (SUCCESS/FAILED/SUPPRESSED)
+  - Audit trail with rendered content snapshots
+  - Admin observability
+
 ---
 
 ## API Endpoints Summary
