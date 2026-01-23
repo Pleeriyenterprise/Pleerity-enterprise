@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="25" skipped="0" tests="30" time="1.785" timestamp="2026-01-23T11:41:29.372386+00:00" hostname="agent-env-f5103baf-4df6-4b2a-879f-b53bcd85890b"><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSummary" name="test_summary_returns_200" time="0.347"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:77: in test_summary_returns_200
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSummary" name="test_summary_revenue_structure" time="0.043"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:93: in test_summary_revenue_structure
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSummary" name="test_summary_orders_structure" time="0.038"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:109: in test_summary_orders_structure
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSummary" name="test_summary_aov_structure" time="0.042"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:124: in test_summary_aov_structure
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSummary" name="test_summary_completion_rate_structure" time="0.039"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:138: in test_summary_completion_rate_structure
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSummary" name="test_summary_different_periods" time="0.041"><failure message="AssertionError: Failed for period: today&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:155: in test_summary_different_periods
+    assert response.status_code == 200, f"Failed for period: {period}"
+E   AssertionError: Failed for period: today
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSummary" name="test_summary_requires_admin" time="0.041" /><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsServices" name="test_services_returns_200" time="0.035"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:174: in test_services_returns_200
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsServices" name="test_services_structure" time="0.037"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:187: in test_services_structure
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsConversionFunnel" name="test_funnel_returns_200" time="0.039"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:208: in test_funnel_returns_200
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsConversionFunnel" name="test_funnel_stages" time="0.040"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:221: in test_funnel_stages
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSLA" name="test_sla_returns_200" time="0.039"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:240: in test_sla_returns_200
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsSLA" name="test_sla_structure" time="0.035"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:254: in test_sla_structure
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsCustomers" name="test_customers_returns_200" time="0.036"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:272: in test_customers_returns_200
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsAddons" name="test_addons_returns_200" time="0.037"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:290: in test_addons_returns_200
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAnalyticsAddons" name="test_addons_structure" time="0.035"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:303: in test_addons_structure
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestIntakeSchemaServices" name="test_services_list_returns_200" time="0.035"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:326: in test_services_list_returns_200
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestIntakeSchemaServices" name="test_services_list_has_11_services" time="0.033"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:339: in test_services_list_has_11_services
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestIntakeSchemaServices" name="test_services_have_field_counts" time="0.037"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:351: in test_services_have_field_counts
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestIntakeSchemaEditor" name="test_schema_editor_returns_200" time="0.039"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:370: in test_schema_editor_returns_200
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestIntakeSchemaEditor" name="test_schema_editor_fields_structure" time="0.035"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:383: in test_schema_editor_fields_structure
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestIntakeSchemaEditor" name="test_schema_editor_404_for_invalid_service" time="0.041"><failure message="assert 401 == 404&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_analytics_schema_features.py:403: in test_schema_editor_404_for_invalid_service
+    assert response.status_code == 404
+E   assert 401 == 404
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestServiceDetailV2" name="test_service_detail_returns_200" time="0.048"><failure message="AssertionError: assert 'name' in {'base_price': 7900, 'category': 'ai_automation', 'delivery_type': 'digital', 'description': 'Structured automation plan identifying which workflows to automate, which tools to use, and expected efficiency gains.', ...}">backend/tests/test_analytics_schema_features.py:420: in test_service_detail_returns_200
+    assert "name" in data
+E   AssertionError: assert 'name' in {'base_price': 7900, 'category': 'ai_automation', 'delivery_type': 'digital', 'description': 'Structured automation plan identifying which workflows to automate, which tools to use, and expected efficiency gains.', ...}</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestServiceDetailV2" name="test_service_detail_has_pricing" time="0.044"><failure message="AssertionError: assert 'pricing' in {'base_price': 7900, 'category': 'ai_automation', 'delivery_type': 'digital', 'description': 'Structured automation plan identifying which workflows to automate, which tools to use, and expected efficiency gains.', ...}">backend/tests/test_analytics_schema_features.py:429: in test_service_detail_has_pricing
+    assert "pricing" in data
+E   AssertionError: assert 'pricing' in {'base_price': 7900, 'category': 'ai_automation', 'delivery_type': 'digital', 'description': 'Structured automation plan identifying which workflows to automate, which tools to use, and expected efficiency gains.', ...}</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestServiceDetailV2" name="test_service_detail_has_slug" time="0.039"><failure message="AssertionError: assert 'slug' in {'base_price': 7900, 'category': 'ai_automation', 'delivery_type': 'digital', 'description': 'Structured automation plan identifying which workflows to automate, which tools to use, and expected efficiency gains.', ...}">backend/tests/test_analytics_schema_features.py:439: in test_service_detail_has_slug
+    assert "slug" in data
+E   AssertionError: assert 'slug' in {'base_price': 7900, 'category': 'ai_automation', 'delivery_type': 'digital', 'description': 'Structured automation plan identifying which workflows to automate, which tools to use, and expected efficiency gains.', ...}</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestServiceDetailV2" name="test_service_detail_404_for_invalid" time="0.039" /><testcase classname="backend.tests.test_analytics_schema_features.TestServiceDetailV2" name="test_multiple_services_accessible" time="0.153"><failure message="AssertionError: Failed for service: DOC_PACK_PREMIUM&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code">backend/tests/test_analytics_schema_features.py:456: in test_multiple_services_accessible
+    assert response.status_code == 200, f"Failed for service: {code}"
+E   AssertionError: Failed for service: DOC_PACK_PREMIUM
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_analytics_schema_features.TestAuthErrorHandling" name="test_client_orders_returns_401_without_auth" time="0.037" /><testcase classname="backend.tests.test_analytics_schema_features.TestAuthErrorHandling" name="test_admin_analytics_returns_401_without_auth" time="0.034" /><testcase classname="backend.tests.test_analytics_schema_features.TestAuthErrorHandling" name="test_admin_notifications_returns_401_without_auth" time="0.032" /></testsuite></testsuites>
