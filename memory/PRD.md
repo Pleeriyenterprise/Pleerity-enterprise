@@ -374,6 +374,25 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 | `/api/public/reports/shared/{id}` | GET | Get shared report info |
 | `/api/public/reports/shared/{id}/download` | GET | Download shared report |
 
+### Enterprise Prompt Manager (Admin - ROLE_ADMIN only)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/prompts` | GET | List templates with filters (service_code, status, search) |
+| `/api/admin/prompts` | POST | Create new template (DRAFT) |
+| `/api/admin/prompts/{id}` | GET | Get template by ID |
+| `/api/admin/prompts/{id}` | PUT | Update template (DRAFT in-place, others create version) |
+| `/api/admin/prompts/{id}` | DELETE | Archive template (soft delete) |
+| `/api/admin/prompts/test` | POST | Execute test in Playground (calls Gemini LLM) |
+| `/api/admin/prompts/test/{id}/results` | GET | Get test results history |
+| `/api/admin/prompts/{id}/mark-tested` | POST | Mark DRAFT as TESTED (requires passing test) |
+| `/api/admin/prompts/{id}/activate` | POST | Activate TESTED template (deprecates previous) |
+| `/api/admin/prompts/active/{service}/{doc_type}` | GET | Get active template for service/doc_type |
+| `/api/admin/prompts/history/{service}/{doc_type}` | GET | Get version history |
+| `/api/admin/prompts/audit/log` | GET | Get audit log entries |
+| `/api/admin/prompts/stats/overview` | GET | Get stats (total, by_status, tests_last_24h) |
+| `/api/admin/prompts/reference/service-codes` | GET | Get available service codes |
+| `/api/admin/prompts/reference/doc-types` | GET | Get available document types |
+
 ### Cookie Consent (Public)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
