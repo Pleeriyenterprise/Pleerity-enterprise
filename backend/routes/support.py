@@ -422,6 +422,42 @@ async def create_ticket_endpoint(
         raise HTTPException(status_code=500, detail="Failed to create ticket")
 
 
+class WhatsAppHandoffAuditRequest(BaseModel):
+    """Request for WhatsApp handoff audit logging."""
+    conversation_id: Optional[str] = None
+    user_role: str = "anonymous"
+    client_id: Optional[str] = None
+    page_url: str
+    timestamp: str
+
+
+@public_router.post("/audit/whatsapp-handoff")
+async def audit_whatsapp_handoff(
+    request: Request,
+    body: WhatsAppHandoffAuditRequest
+):
+    """
+    Log WhatsApp handoff click for audit purposes.
+    Event: SUPPORT_WHATSAPP_HANDOFF_CLICKED
+    """
+    await SupportAuditService.log_action(
+        action="SUPPORT_WHATSAPP_HANDOFF_CLICKED",
+        actor_type=body.user_role,
+        actor_id=body.client_id,
+        resource_type="conversation",
+        resource_id=body.conversation_id or "unknown",
+        details={
+            "user_role": body.user_role,
+            "client_id": body.client_id,
+            "page_url": body.page_url,
+            "timestamp": body.timestamp,
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"success": True, "event": "SUPPORT_WHATSAPP_HANDOFF_CLICKED"}
+
+
 # ============================================================================
 # AUTHENTICATED CLIENT ENDPOINTS
 # ============================================================================
