@@ -167,6 +167,38 @@ async def run_queued_order_processing():
     except Exception as e:
         logger.error(f"Queue processing job failed: {e}")
 
+
+async def run_abandoned_intake_detection():
+    """Scheduled job: Detect abandoned intakes and create leads."""
+    try:
+        from services.lead_service import AbandonedIntakeService
+        created = await AbandonedIntakeService.detect_abandoned_intakes(timeout_hours=1.0)
+        if created:
+            logger.info(f"Created {len(created)} leads from abandoned intakes")
+    except Exception as e:
+        logger.error(f"Abandoned intake detection failed: {e}")
+
+
+async def run_lead_followup_processing():
+    """Scheduled job: Process lead follow-up email queue."""
+    try:
+        from services.lead_followup_service import LeadFollowUpService
+        await LeadFollowUpService.process_followup_queue()
+    except Exception as e:
+        logger.error(f"Lead follow-up processing failed: {e}")
+
+
+async def run_lead_sla_check():
+    """Scheduled job: Check for lead SLA breaches."""
+    try:
+        from services.lead_followup_service import LeadSLAService
+        breaches = await LeadSLAService.check_sla_breaches(sla_hours=24)
+        if breaches:
+            logger.warning(f"Detected {breaches} lead SLA breaches")
+    except Exception as e:
+        logger.error(f"Lead SLA check failed: {e}")
+
+
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
