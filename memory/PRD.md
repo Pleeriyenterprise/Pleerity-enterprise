@@ -91,6 +91,38 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - Outreach eligibility derived from consent state
   - Audit logging for consent changes
 
+### Phase 9: Admin Site Builder CMS (Complete - Jan 23, 2026)
+- [x] **Page Management**
+  - Create, edit, archive pages with unique slugs
+  - Draft/Published/Archived status workflow
+  - SEO metadata (meta title, description, OG tags)
+  - Page settings dialog
+- [x] **Safe Block System** (Schema-driven, no arbitrary HTML)
+  - 14 predefined block types: HERO, TEXT_BLOCK, CTA, FAQ, PRICING_TABLE, FEATURES_GRID, TESTIMONIALS, IMAGE_GALLERY, VIDEO_EMBED, CONTACT_FORM, STATS_BAR, LOGO_CLOUD, TEAM_SECTION, SPACER
+  - Content validation per block type
+  - VIDEO_EMBED restricted to YouTube/Vimeo only
+  - Block visibility toggle
+  - Drag-style reordering (move up/down)
+- [x] **Revision System**
+  - Version snapshots on publish
+  - Revision history with notes
+  - One-click rollback to any version
+- [x] **Media Library**
+  - Image upload with GridFS storage
+  - File type validation (images only)
+  - Alt text and tagging
+  - Search and filter
+- [x] **Admin UI** (`/admin/site-builder`)
+  - Pages tab with grid view
+  - Page editor with block management
+  - Media Library tab
+  - Real-time toast notifications
+- [x] **Public Rendering API**
+  - GET `/api/public/cms/pages/{slug}` returns published content only
+  - Visible blocks only, ordered by position
+- [x] **Audit Logging**
+  - All CMS mutations logged (create, update, publish, rollback, media upload/delete)
+
 ---
 
 ## API Endpoints Summary
