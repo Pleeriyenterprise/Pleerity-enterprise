@@ -825,5 +825,6 @@ export default function AdminKnowledgeBasePage() {
         </DialogContent>
       </Dialog>
     </div>
+    </UnifiedAdminLayout>
   );
 }
