@@ -33,7 +33,8 @@ from services.support_service import (
 from services.support_chatbot import (
     handle_chat_message, lookup_account_by_crn, get_client_snapshot,
     generate_whatsapp_link, is_legal_advice_request,
-    detect_service_area, detect_category, detect_urgency
+    detect_service_area, detect_category, detect_urgency,
+    get_canned_response, get_all_quick_actions, CANNED_RESPONSES
 )
 from database import database
 import logging
