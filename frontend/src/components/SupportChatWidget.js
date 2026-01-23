@@ -508,6 +508,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
                 options={handoffOptions}
                 onSelect={handleHandoffSelect}
                 conversationId={conversationId}
+                onWhatsAppClick={handleWhatsAppClick}
               />
             )}
             
