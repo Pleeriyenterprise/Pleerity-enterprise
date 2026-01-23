@@ -302,6 +302,22 @@ function App() {
             />
 
             {/* ========================================
+                  ORDER INTAKE WIZARD (Public)
+                  ======================================== */}
+            <Route 
+              path="/order/intake" 
+              element={<UnifiedIntakeWizard />} 
+            />
+            <Route 
+              path="/order/intake/:draftId" 
+              element={<UnifiedIntakeWizard />} 
+            />
+            <Route 
+              path="/order/confirmation" 
+              element={<OrderConfirmationPage />} 
+            />
+
+            {/* ========================================
                   ADMIN PORTAL ROUTES (Protected)
                   Existing CVP functionality - DO NOT MODIFY
                   ======================================== */}
