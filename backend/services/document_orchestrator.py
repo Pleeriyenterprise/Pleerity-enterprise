@@ -80,6 +80,8 @@ class OrchestrationResult:
     execution_time_ms: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    # NEW: Prompt version tracking for audit compliance
+    prompt_version_used: Optional[Dict[str, Any]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -96,6 +98,7 @@ class OrchestrationResult:
             "execution_time_ms": self.execution_time_ms,
             "prompt_tokens": self.prompt_tokens,
             "completion_tokens": self.completion_tokens,
+            "prompt_version_used": self.prompt_version_used,
         }
 
 
