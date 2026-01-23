@@ -89,8 +89,8 @@ export default function AdminNotificationPreferencesPage() {
       
       // Fetch both preferences and profile
       const [prefsResponse, profileResponse] = await Promise.all([
-        client.get('/api/admin/notifications/preferences'),
-        client.get('/api/admin/notifications/profile'),
+        client.get('/admin/notifications/preferences'),
+        client.get('/admin/notifications/profile'),
       ]);
       
       if (prefsResponse.data) {
@@ -111,7 +111,10 @@ export default function AdminNotificationPreferencesPage() {
       }
     } catch (error) {
       console.error('Failed to fetch preferences:', error);
-      toast.error('Failed to load notification preferences');
+      // Only show toast if it's not an auth error (which will redirect)
+      if (error.response?.status !== 401) {
+        toast.error('Failed to load notification preferences');
+      }
     } finally {
       setLoading(false);
     }
@@ -125,7 +128,7 @@ export default function AdminNotificationPreferencesPage() {
     try {
       setSaving(true);
       
-      await client.put('/api/admin/notifications/preferences', {
+      await client.put('/admin/notifications/preferences', {
         email_enabled: preferences.email_enabled,
         sms_enabled: preferences.sms_enabled,
         in_app_enabled: preferences.in_app_enabled,
