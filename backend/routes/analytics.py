@@ -466,7 +466,7 @@ def parse_custom_date(date_str: str) -> datetime:
     """Parse custom date string to datetime."""
     try:
         return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-    except:
+    except ValueError:
         return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
 
 
