@@ -492,9 +492,12 @@ async def apply_template(
         
         # Add template blocks
         for idx, block in enumerate(template["blocks"]):
+            # Convert string block_type to BlockType enum
+            block_type_str = block["block_type"]
+            block_type_enum = BlockType(block_type_str)
             await cms_service.add_block(
                 page_id=page_id,
-                block_type=block["block_type"],
+                block_type=block_type_enum,
                 content=block["content"],
                 position=idx,
                 admin_id=admin["portal_user_id"],
