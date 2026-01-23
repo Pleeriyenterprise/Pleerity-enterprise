@@ -406,6 +406,8 @@ app.include_router(knowledge_base.public_router)
 app.include_router(knowledge_base.admin_router)
 app.include_router(leads.public_router)
 app.include_router(leads.admin_router)
+app.include_router(consent.public_router)
+app.include_router(consent.admin_router)
 
 # Root endpoint
 @app.get("/api")
