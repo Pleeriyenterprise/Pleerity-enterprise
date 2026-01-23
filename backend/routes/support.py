@@ -339,6 +339,11 @@ async def create_ticket_endpoint(
     Create a support ticket.
     Sends confirmation email to customer and notification to support.
     """
+    from services.support_email_service import (
+        send_ticket_confirmation_email,
+        send_internal_ticket_notification
+    )
+    
     try:
         # Create ticket
         ticket_data = TicketCreate(
@@ -362,13 +367,30 @@ async def create_ticket_endpoint(
         if body.conversation_id:
             transcript = await MessageService.get_transcript(body.conversation_id)
         
-        # Send emails (would integrate with Postmark here)
-        # For now, just log
-        logger.info(f"Ticket created: {ticket['ticket_id']} - would send emails")
+        # Send confirmation email to customer
+        customer_email_sent = False
+        if body.email:
+            customer_email_sent = await send_ticket_confirmation_email(
+                ticket_id=ticket["ticket_id"],
+                customer_email=body.email,
+                subject=body.subject,
+                description=body.description,
+                category=ticket_data.category.value,
+                priority=ticket_data.priority.value
+            )
         
-        # TODO: Integrate Postmark for emails
-        # - Customer confirmation email
-        # - Internal support notification with transcript
+        # Send internal notification to support team
+        internal_email_sent = await send_internal_ticket_notification(
+            ticket_id=ticket["ticket_id"],
+            customer_email=body.email,
+            customer_crn=body.crn,
+            subject=body.subject,
+            description=body.description,
+            category=ticket_data.category.value,
+            priority=ticket_data.priority.value,
+            service_area=ticket_data.service_area.value,
+            transcript=transcript
+        )
         
         # Audit log
         await SupportAuditService.log_action(
