@@ -214,6 +214,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to create consent indexes: {e}")
     
+    # Create CMS indexes
+    try:
+        from database import db
+        await db.cms_pages.create_index("page_id", unique=True)
+        await db.cms_pages.create_index("slug", unique=True)
+        await db.cms_pages.create_index("status")
+        await db.cms_revisions.create_index("revision_id", unique=True)
+        await db.cms_revisions.create_index([("page_id", 1), ("version", -1)])
+        await db.cms_media.create_index("media_id", unique=True)
+        await db.cms_media.create_index("media_type")
+        await db.cms_media.create_index([("file_name", "text"), ("alt_text", "text")])
+        logger.info("CMS indexes created")
+    except Exception as e:
+        logger.error(f"Failed to create CMS indexes: {e}")
+    
     # Seed service catalogue
     try:
         from services.service_catalogue import seed_service_catalogue
