@@ -188,7 +188,6 @@ export default function AdminAnalyticsDashboard() {
               </Button>
             </div>
           </div>
-        </div>
         
         {loading && !summary ? (
           <div className="flex items-center justify-center h-64">
