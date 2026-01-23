@@ -185,7 +185,7 @@ export default function OrderConfirmationPage() {
             <CheckCircle2 className="h-10 w-10 text-green-600" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Order Confirmed!</h1>
-          <p className="mt-2 text-gray-600">Thank you for your order. We've received your payment.</p>
+          <p className="mt-2 text-gray-600">Thank you for your order. We have received your payment.</p>
         </div>
 
         {/* Order Details Card */}
