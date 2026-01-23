@@ -1814,6 +1814,72 @@
 
 - **TEST REPORT:** `/app/test_reports/iteration_45.json` (26/26 backend tests - 100%)
 
+### January 23, 2026 - Unified Intake Wizard (Non-CVP Services) Complete ✅
+- **Unified Intake Wizard Frontend Complete** (`/order/intake`)
+  - 5-step multi-step wizard for all non-CVP services:
+    1. Select Service - All 11 services across 4 categories
+    2. Your Details - Client identity (Name, Email, Phone, Role, Company)
+    3. Service Details - Dynamic form fields from backend schema
+    4. Review - Order summary with pricing and consent checkboxes
+    5. Payment - Stripe checkout redirect
+  
+  - **Features Implemented:**
+    - Schema-driven dynamic forms from backend `/api/intake/schema/{service_code}`
+    - Service pre-selection via URL param: `/order/intake?service=DOC_PACK_ESSENTIAL`
+    - Document Pack add-ons: Fast Track (£20), Printed Copy (£25)
+    - Postal address form appears when Printed Copy selected
+    - Draft reference generation (INT-YYYYMMDD-####)
+    - Pricing calculation with add-ons
+    - Form validation (client-side and server-side)
+    - Step navigation (Continue/Back buttons)
+    - Form data persistence across navigation
+  
+  - **Services Available in Wizard:**
+    - AI & Automation: Workflow Blueprint (£79), Process Mapping (£129), Tool Report (£59)
+    - Market Research: Basic (£69), Advanced (£149)
+    - Compliance: HMO Audit (£79), Full Audit (£99), Move-In/Out Checklist (£35)
+    - Document Packs: Essential (£29), Tenancy (£49), Ultimate (£79)
+  
+  - **Backend APIs (All Working):**
+    - `GET /api/intake/services` - List all 11 services
+    - `GET /api/intake/packs` - Document packs with 2 add-ons
+    - `GET /api/intake/schema/{service_code}` - Dynamic field schema
+    - `POST /api/intake/draft` - Create intake draft
+    - `PUT /api/intake/draft/{draft_id}/client-identity` - Update client data
+    - `PUT /api/intake/draft/{draft_id}/intake` - Update service fields
+    - `PUT /api/intake/draft/{draft_id}/addons` - Update add-ons and postal address
+    - `PUT /api/intake/draft/{draft_id}/delivery-consent` - Update consent
+    - `POST /api/intake/draft/{draft_id}/checkout` - Create Stripe checkout
+    - `POST /api/intake/calculate-price` - Calculate total with add-ons
+    - `GET /api/intake/draft/{draft_id}/confirmation` - Poll for order conversion
+  
+  - **Order Confirmation Page** (`/order/confirmation?draft_id=...`)
+    - Polls for draft → order conversion after payment
+    - Shows loading state, success with order reference, or error
+    - Displays "What happens next" steps
+    - Links to client orders page
+  
+  - **Routing Updated:**
+    - ServicesCataloguePage "Order Now" buttons now link to `/order/intake?service={code}`
+    - App.js routes: `/order/intake`, `/order/intake/:draftId`, `/order/confirmation`
+  
+  - **Bug Fixed:**
+    - API client had `/api` as baseURL, but wizard code also prefixed `/api/`
+    - Fixed double `/api/api/` path issue by removing prefix from wizard API calls
+
+- **Files Created/Modified:**
+  - `/app/frontend/src/pages/UnifiedIntakeWizard.js` - Full 1093-line wizard implementation
+  - `/app/frontend/src/pages/OrderConfirmationPage.js` - Post-payment confirmation page
+  - `/app/frontend/src/pages/public/ServicesCataloguePage.js` - Updated "Order Now" links
+  - `/app/frontend/src/App.js` - Added wizard routes
+  - `/app/backend/tests/test_intake_wizard.py` - 32 comprehensive API tests
+
+- **TEST REPORT:** `/app/test_reports/iteration_46.json` (32/32 backend + 100% frontend)
+  - All backend API endpoints verified
+  - All frontend wizard flows tested
+  - URL pre-selection working
+  - Draft creation and step navigation verified
+
 ### January 20, 2026 (Session 2)
 - **Admin Management UI (Frontend) ✅**
   - New "Admins" tab in Admin Dashboard sidebar
