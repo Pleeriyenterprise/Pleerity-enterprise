@@ -696,14 +696,62 @@ async def generate_documents(
 
 
 async def get_document_versions(order_id: str) -> List[DocumentVersion]:
-    """Get all document versions for an order."""
+    """
+    Get all document versions for an order.
+    
+    This reads from document_versions_v2 collection (used by template_renderer).
+    Falls back to order.document_versions for legacy data.
+    """
     db = database.get_db()
+    
+    # First try document_versions_v2 collection (new storage)
+    versions_v2 = await db.document_versions_v2.find(
+        {"order_id": order_id},
+        {"_id": 0, "intake_snapshot": 0, "structured_output": 0}
+    ).sort("version", 1).to_list(100)
+    
+    if versions_v2:
+        result = []
+        for v in versions_v2:
+            # Convert to DocumentVersion format
+            dv = DocumentVersion(
+                version=v.get("version", 1),
+                document_type=DocumentType(v.get("service_code", "GENERAL")) if v.get("service_code") in [dt.value for dt in DocumentType] else DocumentType.GENERAL,
+                status=_map_status(v.get("status", "DRAFT")),
+                file_id_docx=v.get("docx", {}).get("sha256_hash"),  # Using hash as file_id
+                file_id_pdf=v.get("pdf", {}).get("sha256_hash"),
+                filename_docx=v.get("docx", {}).get("filename"),
+                filename_pdf=v.get("pdf", {}).get("filename"),
+                generated_at=v.get("created_at"),
+                generated_by=v.get("created_by", "system"),
+                is_regeneration=v.get("is_regeneration", False),
+                regeneration_notes=v.get("regeneration_notes"),
+                content_hash=v.get("json_output_hash"),
+                input_data_hash=v.get("intake_snapshot_hash"),
+            )
+            result.append(dv)
+        return result
+    
+    # Fallback to legacy order.document_versions
     order = await db.orders.find_one({"order_id": order_id}, {"document_versions": 1})
     
     if not order or "document_versions" not in order:
         return []
     
     return [DocumentVersion.from_dict(v) for v in order["document_versions"]]
+
+
+def _map_status(status_str: str) -> DocumentStatus:
+    """Map status string to DocumentStatus enum."""
+    status_map = {
+        "DRAFT": DocumentStatus.DRAFT,
+        "REGENERATED": DocumentStatus.DRAFT,  # Treat regenerated as draft
+        "SUPERSEDED": DocumentStatus.SUPERSEDED,
+        "APPROVED": DocumentStatus.APPROVED,
+        "FINAL": DocumentStatus.FINAL,
+        "REVIEW_PENDING": DocumentStatus.DRAFT,
+    }
+    return status_map.get(status_str, DocumentStatus.DRAFT)
 
 
 async def get_current_document_version(order_id: str) -> Optional[DocumentVersion]:
