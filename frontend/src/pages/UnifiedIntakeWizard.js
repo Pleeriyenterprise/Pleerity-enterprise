@@ -10,7 +10,7 @@
  * 6. Confirmation (order ref after payment)
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Check, CreditCard, FileText,
   User, Briefcase, Building2, Mail, Phone, CheckCircle2,
@@ -732,7 +732,8 @@ function ReviewStep({ draft, clientData, intakeData, pricing, onConsentChange, c
 
 export default function UnifiedIntakeWizard() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Wizard state
   const [currentStep, setCurrentStep] = useState(1);
@@ -800,6 +801,9 @@ export default function UnifiedIntakeWizard() {
     setSelectedService(service);
     setSelectedAddons([]);
     setPostalAddress({});
+    
+    // Update URL with selected service code
+    setSearchParams({ service: service.service_code }, { replace: true });
     
     // Load schema for this service
     try {
