@@ -468,6 +468,7 @@ app.include_router(reporting.router)  # Full Reporting System - Export & Schedul
 app.include_router(reporting.public_router)  # Public Report Sharing
 app.include_router(team.router)  # Team Permissions & Role Management
 app.include_router(prompts.router)  # Enterprise Prompt Manager
+app.include_router(document_packs.router)  # Document Pack Orchestrator
 
 # Root endpoint
 @app.get("/api")
