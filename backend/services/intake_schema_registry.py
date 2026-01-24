@@ -1176,6 +1176,10 @@ def validate_intake_payload(service_code: str, payload: Dict[str, Any]) -> Dict[
     """
     Validate intake payload against service schema.
     
+    Note: This validates service-specific fields only.
+    Client identity fields (full_name, email, phone, role) and delivery consent
+    fields are validated separately in validate_draft().
+    
     Returns:
         {
             "valid": bool,
@@ -1188,8 +1192,22 @@ def validate_intake_payload(service_code: str, payload: Dict[str, Any]) -> Dict[
     errors = []
     warnings = []
     
+    # Fields validated separately in validate_draft()
+    SKIP_FIELDS = {
+        # Client identity (validated separately)
+        "full_name", "email", "phone", "role", "role_other_text", 
+        "company_name", "company_website",
+        # Delivery consent (validated separately)
+        "consent_terms_privacy", "accuracy_confirmation",
+    }
+    
     for field_def in fields:
         field_key = field_def["field_key"]
+        
+        # Skip fields that are validated elsewhere
+        if field_key in SKIP_FIELDS:
+            continue
+        
         field_type = field_def["type"]
         required = field_def.get("required", False)
         validation = field_def.get("validation") or {}
