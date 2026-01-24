@@ -309,6 +309,8 @@ class TemplateRenderer:
             "status": status.value,
             "is_regeneration": is_regeneration,
             "regeneration_notes": regeneration_notes,
+            # Prompt version tracking for audit compliance
+            "prompt_version_used": getattr(self, '_current_prompt_version', None),
             # Document files
             "docx": {
                 "filename": docx_doc.filename,
