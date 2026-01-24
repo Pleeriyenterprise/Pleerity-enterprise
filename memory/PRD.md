@@ -332,6 +332,23 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - Orchestrator uses canonical doc_type == service_code rule
   - Generated documents store service_code, doc_type, prompt_version_used
 
+### Phase 17: Service Catalogue Prompt Population (Complete - Jan 24, 2026)
+- [x] **AI Automation Services Prompts (3 Active)**
+  - AI_WF_BLUEPRINT / AI_WF_BLUEPRINT - "Workflow Automation Blueprint – Master Generator"
+  - AI_PROC_MAP / BUSINESS_PROCESS_MAPPING - "Business Process Mapping – Master Generator"
+  - AI_TOOL_RECOMMENDATION / AI_TOOL_RECOMMENDATION_REPORT - "AI Tool Recommendation – Master Generator"
+- [x] **Market Research Services Prompts (2 Active)**
+  - MR_BASIC / MARKET_RESEARCH_BASIC - "Market Research – Basic – Master Generator"
+  - MR_ADV / MARKET_RESEARCH_ADVANCED - "Market Research – Advanced – Master Generator"
+- [x] **Compliance Services Prompts (3 Active)**
+  - FULL_COMPLIANCE_AUDIT / FULL_COMPLIANCE_AUDIT_REPORT - "Full Compliance Audit Report – Master Generator"
+  - HMO_COMPLIANCE_AUDIT / HMO_COMPLIANCE_AUDIT_REPORT - "HMO Compliance Audit Report – Master Generator"
+  - MOVE_IN_OUT_CHECKLIST / MOVE_IN_MOVE_OUT_CHECKLIST - "Move-In / Move-Out Checklist – Master Generator"
+- [x] **All 8 Production Prompts**
+  - Registered, tested, and activated via Enterprise Prompt Manager
+  - Schema validation passed for all prompts
+  - Full audit trail with activation reasons
+
 ---
 
 ## API Endpoints Summary
