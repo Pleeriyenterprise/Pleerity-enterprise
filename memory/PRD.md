@@ -760,14 +760,23 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 ## Credentials
 - Admin: admin@pleerity.com / Admin123!
 - Client: test@pleerity.com / TestClient123!
+- Stripe Test Card: 4242424242424242 (Exp: 12/30, CVC: 123)
 
 ## Environment
 - Backend: FastAPI on port 8001
 - Frontend: React on port 3000
 - Database: MongoDB (compliance_vault_pro)
+- Stripe: **TEST MODE** - Real test keys configured in .env files
 
 ## Configuration
 - `CONSENT_RETENTION_MONTHS`: 24 (default)
+
+## E2E Testing Status
+- **Document Pack Purchase Flow**: PASSED (Jan 24, 2026)
+  - Backend: 28/28 tests passed (100%)
+  - Frontend: All wizard steps verified
+  - Service code naming aligned: DOC_PACK_ESSENTIAL, DOC_PACK_PLUS, DOC_PACK_PRO
+  - Checkout validation, intake draft creation, orchestrator all working
 
 ---
 
