@@ -308,6 +308,30 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - `GET /api/admin/prompts/analytics/top-prompts` - Ranked prompts
   - `GET /api/admin/prompts/analytics/execution-timeline` - Daily breakdown
 
+### Phase 16: Architectural Alignment (Complete - Jan 24, 2026)
+- [x] **Canonical Service Code → Doc Type Rule**
+  - service_code MUST equal service catalogue code
+  - doc_type MUST equal service_code (canonical rule)
+  - No generic document types for production documents
+  - Prompt selection resolves via (service_code, doc_type) pair
+- [x] **Service Catalogue Validation Enforcement**
+  - Prompts cannot be CREATED if service_code not in catalogue
+  - Prompts cannot be ACTIVATED if service_code/doc_type mismatch
+  - Backend validation: `assert prompt.service_code in service_catalogue`
+  - Backend validation: `assert prompt.doc_type in allowed_doc_types`
+- [x] **AI_WF_BLUEPRINT Canonical Prompt**
+  - Service Code: AI_WF_BLUEPRINT
+  - Document Type: AI_WF_BLUEPRINT
+  - Name: "Workflow Automation Blueprint – Master Generator"
+  - Status: ACTIVE (v1)
+  - Template ID: PT-20260124000025-8921A7DC
+  - Uses approved system/user prompts with JSON output enforcement
+- [x] **Stripe → Order → Prompt → Document Alignment**
+  - Payment metadata contains order_id
+  - Order contains service_code from checkout
+  - Orchestrator uses canonical doc_type == service_code rule
+  - Generated documents store service_code, doc_type, prompt_version_used
+
 ---
 
 ## API Endpoints Summary
