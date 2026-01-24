@@ -141,7 +141,7 @@ class PromptManagerBridge:
             prompt_info = ManagedPromptInfo(
                 template_id=managed_prompt["template_id"],
                 version=managed_prompt["version"],
-                service_code=managed_prompt["service_code"],
+                service_code=service_code,  # Store original service_code for tracking
                 doc_type=managed_prompt["doc_type"],
                 name=managed_prompt["name"],
                 source="prompt_manager",
