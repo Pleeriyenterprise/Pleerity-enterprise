@@ -745,13 +745,14 @@ def _map_status(status_str: str) -> DocumentStatus:
     """Map status string to DocumentStatus enum."""
     status_map = {
         "DRAFT": DocumentStatus.DRAFT,
-        "REGENERATED": DocumentStatus.DRAFT,  # Treat regenerated as draft
+        "REGENERATED": DocumentStatus.REGENERATED,
         "SUPERSEDED": DocumentStatus.SUPERSEDED,
-        "APPROVED": DocumentStatus.APPROVED,
+        "APPROVED": DocumentStatus.FINAL,  # Map APPROVED to FINAL
         "FINAL": DocumentStatus.FINAL,
         "REVIEW_PENDING": DocumentStatus.DRAFT,
+        "VOID": DocumentStatus.VOID,
     }
-    return status_map.get(status_str, DocumentStatus.DRAFT)
+    return status_map.get(status_str.upper() if status_str else "DRAFT", DocumentStatus.DRAFT)
 
 
 async def get_current_document_version(order_id: str) -> Optional[DocumentVersion]:
