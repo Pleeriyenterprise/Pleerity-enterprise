@@ -453,10 +453,15 @@ async def get_doc_types(
             {"code": "RENT_RECEIPT", "name": "Rent Receipt", "canonical": True},
             {"code": "GDPR_INFORMATION_NOTICE", "name": "GDPR / Data Processing Notice", "canonical": True},
         ],
-        # Document Packs - Plus & Pro (placeholder)
+        # Document Packs - Plus (5 document types)
         "DOC_PACK_PLUS": [
-            {"code": "DOC_PACK_PLUS", "name": "Tenancy Legal & Notices Pack", "canonical": True},
+            {"code": "TENANCY_AGREEMENT_AST", "name": "Assured Shorthold Tenancy (AST) Agreement", "canonical": True},
+            {"code": "TENANCY_RENEWAL", "name": "Tenancy Renewal / Extension Document", "canonical": True},
+            {"code": "NOTICE_TO_QUIT", "name": "Notice to Quit (Template)", "canonical": True},
+            {"code": "GUARANTOR_AGREEMENT", "name": "Guarantor Agreement Template", "canonical": True},
+            {"code": "RENT_INCREASE_NOTICE", "name": "Rent Increase Notice (Template)", "canonical": True},
         ],
+        # Document Packs - Pro (placeholder)
         "DOC_PACK_PRO": [
             {"code": "DOC_PACK_PRO", "name": "Ultimate Document Pack", "canonical": True},
         ],
