@@ -237,7 +237,7 @@ class PromptService:
             "DEPOSIT_REFUND_EXPLANATION_LETTER",
             "TENANT_REFERENCE_LETTER",
             "RENT_RECEIPT",
-            "GDPR_INFORMATION_NOTICE",
+            "GDPR_NOTICE",
         ],
         # Document Packs - Plus (5 document types)
         "DOC_PACK_PLUS": [
