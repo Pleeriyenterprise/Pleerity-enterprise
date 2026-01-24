@@ -29,6 +29,7 @@ import {
 import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
 import client from '../api/client';
+import { validateCheckout, isDocumentPack, getPackTierName } from '../api/checkoutApi';
 
 // ============================================================================
 // STEP COMPONENTS
