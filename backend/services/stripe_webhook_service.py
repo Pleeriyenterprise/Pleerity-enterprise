@@ -215,12 +215,15 @@ class StripeWebhookService:
         Handle one-time payment for order intake.
         
         Converts draft → order and starts workflow.
+        Integrates with Document Pack Orchestrator for pack orders.
         """
         from services.intake_draft_service import convert_draft_to_order, get_draft
+        from services.document_pack_webhook_handler import document_pack_webhook_handler
         
         metadata = session.get("metadata", {})
         draft_id = metadata.get("draft_id")
         draft_ref = metadata.get("draft_ref")
+        service_code = metadata.get("service_code")
         
         if not draft_id:
             logger.error(f"No draft_id in order payment metadata: {session.get('id')}")
@@ -255,6 +258,30 @@ class StripeWebhookService:
             )
             
             logger.info(f"Created order {order['order_ref']} from draft {draft_ref}")
+            
+            # Check if this is a Document Pack order
+            order_service_code = order.get("service_code") or service_code
+            if order_service_code in document_pack_webhook_handler.VALID_PACK_CODES:
+                # Process via Document Pack handler
+                success, message, details = await document_pack_webhook_handler.handle_checkout_completed(
+                    {**session, "metadata": {**metadata, "order_id": order["order_id"], "service_code": order_service_code}}
+                )
+                
+                if success:
+                    logger.info(f"Document Pack order {order['order_ref']} processed: {message}")
+                else:
+                    logger.error(f"Document Pack processing failed: {message}")
+                
+                return {
+                    "handled": True,
+                    "type": "document_pack_order",
+                    "draft_id": draft_id,
+                    "draft_ref": draft_ref,
+                    "order_id": order["order_id"],
+                    "order_ref": order["order_ref"],
+                    "service_code": order_service_code,
+                    "pack_processing": details,
+                }
             
             return {
                 "handled": True,
