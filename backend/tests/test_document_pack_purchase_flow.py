@@ -145,7 +145,7 @@ class TestCheckoutValidationAPI:
         assert data["price_amount"] == 4900  # £49.00 (£29 + £20 fast track)
     
     def test_validate_invalid_service_code_returns_error(self):
-        """POST /api/checkout/validate with invalid service_code returns error."""
+        """POST /api/checkout/validate with invalid service_code returns valid=false."""
         response = requests.post(
             f"{BASE_URL}/api/checkout/validate",
             json={
@@ -155,7 +155,11 @@ class TestCheckoutValidationAPI:
             }
         )
         
-        assert response.status_code in [400, 404]
+        # API returns 200 with valid=false for invalid services
+        assert response.status_code == 200
+        data = response.json()
+        assert data["valid"] == False
+        assert len(data["errors"]) > 0
     
     def test_validate_returns_checkout_metadata(self):
         """POST /api/checkout/validate returns checkout_metadata for Stripe."""
@@ -312,12 +316,12 @@ class TestIntakeDraftAPI:
         assert data["service_code"] == "DOC_PACK_ESSENTIAL"
         assert data["status"] == "DRAFT"
     
-    def test_create_draft_for_doc_pack_plus(self):
-        """POST /api/intake/draft creates draft for DOC_PACK_PLUS."""
+    def test_create_draft_for_doc_pack_tenancy(self):
+        """POST /api/intake/draft creates draft for DOC_PACK_TENANCY (intake service code)."""
         response = requests.post(
             f"{BASE_URL}/api/intake/draft",
             json={
-                "service_code": "DOC_PACK_PLUS",
+                "service_code": "DOC_PACK_TENANCY",
                 "category": "document_pack"
             }
         )
@@ -325,14 +329,14 @@ class TestIntakeDraftAPI:
         assert response.status_code in [200, 201]
         data = response.json()
         
-        assert data["service_code"] == "DOC_PACK_PLUS"
+        assert data["service_code"] == "DOC_PACK_TENANCY"
     
-    def test_create_draft_for_doc_pack_pro(self):
-        """POST /api/intake/draft creates draft for DOC_PACK_PRO."""
+    def test_create_draft_for_doc_pack_ultimate(self):
+        """POST /api/intake/draft creates draft for DOC_PACK_ULTIMATE (intake service code)."""
         response = requests.post(
             f"{BASE_URL}/api/intake/draft",
             json={
-                "service_code": "DOC_PACK_PRO",
+                "service_code": "DOC_PACK_ULTIMATE",
                 "category": "document_pack"
             }
         )
@@ -340,7 +344,7 @@ class TestIntakeDraftAPI:
         assert response.status_code in [200, 201]
         data = response.json()
         
-        assert data["service_code"] == "DOC_PACK_PRO"
+        assert data["service_code"] == "DOC_PACK_ULTIMATE"
 
 
 # ============================================================================
@@ -360,8 +364,10 @@ class TestIntakeServicesAPI:
         assert "services" in data
         service_codes = [s["service_code"] for s in data["services"]]
         
-        # Check document packs are available
-        doc_pack_codes = ["DOC_PACK_ESSENTIAL", "DOC_PACK_PLUS", "DOC_PACK_PRO"]
+        # Check document packs are available (intake uses different codes)
+        # Intake: DOC_PACK_ESSENTIAL, DOC_PACK_TENANCY, DOC_PACK_ULTIMATE
+        # Checkout: DOC_PACK_ESSENTIAL, DOC_PACK_PLUS, DOC_PACK_PRO
+        doc_pack_codes = ["DOC_PACK_ESSENTIAL", "DOC_PACK_TENANCY", "DOC_PACK_ULTIMATE"]
         for code in doc_pack_codes:
             assert code in service_codes, f"Missing {code} in intake services"
     
