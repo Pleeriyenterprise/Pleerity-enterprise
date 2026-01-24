@@ -168,7 +168,7 @@ class PromptManagerBridge:
             )
             
             logger.info(
-                f"Using legacy registry prompt for {service_code}: "
+                f"Using legacy registry prompt for {service_code} ({canonical_service_code}): "
                 f"{legacy_prompt.prompt_id}"
             )
             
