@@ -34,17 +34,24 @@ logger = logging.getLogger(__name__)
 # 
 # Pattern: "ORDER_SERVICE_CODE" -> "PROMPT_MANAGER_SERVICE_CODE"
 #
+# NOTE: For Document Packs, the orchestrator routes them through DOC_PACK_ORCHESTRATOR
+#       so individual pack prompts are looked up by doc_type within that service.
+#
 SERVICE_CODE_ALIASES = {
-    # AI Services
+    # AI Services - Map legacy codes to Prompt Manager codes
     "AI_WORKFLOW": "AI_WF_BLUEPRINT",
     "AI_TOOL_REPORT": "AI_TOOL_RECOMMENDATION",
+    "AI_PROCESS_MAP": "AI_PROC_MAP",
     
-    # Document Pack variants
-    "DOC_PACK_ESSENTIAL": "DOC_PACK_ESSENTIAL",
-    "DOC_PACK_PLUS": "DOC_PACK_PLUS", 
-    "DOC_PACK_PRO": "DOC_PACK_PRO",
+    # Identity mappings (canonical codes that match Prompt Manager)
+    "AI_WF_BLUEPRINT": "AI_WF_BLUEPRINT",
+    "AI_PROC_MAP": "AI_PROC_MAP",
+    "AI_TOOL_RECOMMENDATION": "AI_TOOL_RECOMMENDATION",
     
     # Compliance services
+    "FULL_AUDIT": "FULL_COMPLIANCE_AUDIT",
+    "HMO_AUDIT": "HMO_COMPLIANCE_AUDIT",
+    "MOVE_CHECKLIST": "MOVE_IN_OUT_CHECKLIST",
     "FULL_COMPLIANCE_AUDIT": "FULL_COMPLIANCE_AUDIT",
     "HMO_COMPLIANCE_AUDIT": "HMO_COMPLIANCE_AUDIT",
     "MOVE_IN_OUT_CHECKLIST": "MOVE_IN_OUT_CHECKLIST",
@@ -52,6 +59,11 @@ SERVICE_CODE_ALIASES = {
     # Market Research
     "MR_BASIC": "MR_BASIC",
     "MR_ADV": "MR_ADV",
+    
+    # Document Pack variants (these are routed through DOC_PACK_ORCHESTRATOR)
+    "DOC_PACK_ESSENTIAL": "DOC_PACK_ESSENTIAL",
+    "DOC_PACK_PLUS": "DOC_PACK_PLUS", 
+    "DOC_PACK_PRO": "DOC_PACK_PRO",
 }
 
 
