@@ -378,28 +378,32 @@ class WorkflowAutomationService:
                 intake_data=order.get("parameters", {}),
             )
             
-            if result.get("success"):
+            # Handle OrchestrationResult dataclass (has .success attribute, not .get())
+            is_success = result.success if hasattr(result, 'success') else result.get("success") if isinstance(result, dict) else False
+            result_version = result.version if hasattr(result, 'version') else result.get("version", 1) if isinstance(result, dict) else 1
+            result_error = result.error_message if hasattr(result, 'error_message') else result.get("error") if isinstance(result, dict) else "Unknown error"
+            
+            if is_success:
                 # Transition to DRAFT_READY
                 await transition_order_state(
                     order_id=order_id,
                     new_status=OrderStatus.DRAFT_READY,
                     triggered_by_type="system",
-                    reason=f"WF2: Document v{result.get('version', 1)} generated successfully",
+                    reason=f"WF2: Document v{result_version} generated successfully",
                     metadata={
-                        "execution_id": result.get("execution_id"),
-                        "version": result.get("version"),
+                        "version": result_version,
                     }
                 )
                 
                 logger.info(f"WF2: Order {order_id} draft generated successfully")
-                return {"success": True, "status": "DRAFT_READY", "workflow": "WF2", "version": result.get("version")}
+                return {"success": True, "status": "DRAFT_READY", "workflow": "WF2", "version": result_version}
             else:
                 # Generation failed
                 await transition_order_state(
                     order_id=order_id,
                     new_status=OrderStatus.FAILED,
                     triggered_by_type="system",
-                    reason=f"WF2: Document generation failed: {result.get('error', 'Unknown error')}",
+                    reason=f"WF2: Document generation failed: {result_error}",
                 )
                 
                 # Notify of failure
@@ -407,13 +411,13 @@ class WorkflowAutomationService:
                     notif_service = self._get_notification_service()
                     await notif_service.notify_order_failed(
                         order_id=order_id,
-                        error=result.get("error", "Document generation failed"),
+                        error=result_error,
                         order=order,
                     )
                 except Exception as e:
                     logger.warning(f"WF2: Failed to send failure notification: {e}")
                 
-                return {"success": False, "status": "FAILED", "workflow": "WF2", "error": result.get("error")}
+                return {"success": False, "status": "FAILED", "workflow": "WF2", "error": result_error}
                 
         except Exception as e:
             logger.error(f"WF2: Generation error for {order_id}: {e}")
