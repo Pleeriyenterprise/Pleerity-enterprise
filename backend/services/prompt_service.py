@@ -219,12 +219,12 @@ class PromptService:
     SERVICE_DOC_TYPE_MAP = {
         # AI Automation Services
         "AI_WF_BLUEPRINT": ["AI_WF_BLUEPRINT", "AI_WORKFLOW_BLUEPRINT"],
-        "AI_PROC_MAP": ["BUSINESS_PROCESS_MAPPING"],  # Canonical doc_type
-        "AI_TOOL_RECOMMENDATION": ["AI_TOOL_RECOMMENDATION_REPORT"],  # Canonical doc_type
+        "AI_PROC_MAP": ["BUSINESS_PROCESS_MAPPING"],
+        "AI_TOOL_RECOMMENDATION": ["AI_TOOL_RECOMMENDATION_REPORT"],
         
         # Market Research Services
-        "MR_BASIC": ["MR_BASIC", "MARKET_RESEARCH_BASIC"],
-        "MR_ADV": ["MR_ADV", "MARKET_RESEARCH_ADVANCED"],
+        "MR_BASIC": ["MARKET_RESEARCH_BASIC"],
+        "MR_ADV": ["MARKET_RESEARCH_ADVANCED"],
         
         # Compliance Services
         "COMP_HMO": ["COMP_HMO", "HMO_COMPLIANCE_AUDIT"],
