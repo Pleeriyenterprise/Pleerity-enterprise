@@ -379,6 +379,20 @@ class DocumentOrchestrator:
             )
         
         # ================================================================
+        # STEP 6b: Validate structured output is not empty
+        # Prevents rendering empty documents or raw intake as content
+        # ================================================================
+        if not structured_output or len(structured_output) == 0:
+            logger.error(f"GPT returned empty structured output for {order_id}")
+            return OrchestrationResult(
+                success=False,
+                status=OrchestrationStatus.FAILED,
+                service_code=service_code,
+                order_id=order_id,
+                error_message="GPT returned empty output - no content generated",
+            )
+        
+        # ================================================================
         # STEP 7: Render documents (DOCX + PDF)
         # ================================================================
         await db.orders.update_one(
