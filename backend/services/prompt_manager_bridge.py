@@ -26,6 +26,34 @@ from services.gpt_prompt_registry import get_prompt_for_service, PromptDefinitio
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# SERVICE CODE ALIAS MAP
+# ============================================================================
+# Maps legacy/variant service codes to the canonical service_code used in Prompt Manager.
+# This prevents silent lookup failures when orders use different naming conventions.
+# 
+# Pattern: "ORDER_SERVICE_CODE" -> "PROMPT_MANAGER_SERVICE_CODE"
+#
+SERVICE_CODE_ALIASES = {
+    # AI Services
+    "AI_WORKFLOW": "AI_WF_BLUEPRINT",
+    "AI_TOOL_REPORT": "AI_TOOL_RECOMMENDATION",
+    
+    # Document Pack variants
+    "DOC_PACK_ESSENTIAL": "DOC_PACK_ESSENTIAL",
+    "DOC_PACK_PLUS": "DOC_PACK_PLUS", 
+    "DOC_PACK_PRO": "DOC_PACK_PRO",
+    
+    # Compliance services
+    "FULL_COMPLIANCE_AUDIT": "FULL_COMPLIANCE_AUDIT",
+    "HMO_COMPLIANCE_AUDIT": "HMO_COMPLIANCE_AUDIT",
+    "MOVE_IN_OUT_CHECKLIST": "MOVE_IN_OUT_CHECKLIST",
+    
+    # Market Research
+    "MR_BASIC": "MR_BASIC",
+    "MR_ADV": "MR_ADV",
+}
+
 
 @dataclass
 class ManagedPromptInfo:
