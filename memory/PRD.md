@@ -401,6 +401,28 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - Approve/reject documents
   - Get delivery bundle
 
+### Phase 19: Stripe Integration & Checkout Validation (Complete - Jan 24, 2026)
+- [x] **Stripe Product Setup Script** (`/app/backend/scripts/setup_stripe_products.py`)
+  - Auto-creates products/prices for all services
+  - Sets metadata (service_code, pack_tier, inherits_from)
+  - Supports --dry-run, --force-update, --sync-db flags
+  - Creates standard, fast_track, printed variants
+- [x] **Document Pack Webhook Handler**
+  - Specialized handler for DOC_PACK_* orders
+  - Extracts selected_documents from intake
+  - Creates document items via orchestrator
+  - Updates order with pack_info and status
+- [x] **Checkout Validation API** (`/api/checkout/*`)
+  - POST /validate - Pre-checkout validation
+  - GET /service-info/{code} - Service details for checkout
+  - GET /document-packs - List all packs with inheritance
+  - GET /validate-stripe-alignment - Check Stripe configuration
+- [x] **Webhook Integration**
+  - checkout.session.completed routes to Document Pack handler
+  - Automatic document item creation on payment
+  - Order status: CREATED → PAID → QUEUED
+  - Pack metadata stored on order
+
 ---
 
 ## API Endpoints Summary
