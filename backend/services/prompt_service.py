@@ -215,17 +215,26 @@ class PromptService:
     TEST_COLLECTION = "prompt_test_results"
     
     # Canonical service code to document type mapping
+    # RULE: doc_type must match exactly as defined in Service Catalogue
     SERVICE_DOC_TYPE_MAP = {
+        # AI Automation Services
         "AI_WF_BLUEPRINT": ["AI_WF_BLUEPRINT", "AI_WORKFLOW_BLUEPRINT"],
-        "AI_PROC_MAP": ["AI_PROC_MAP", "AI_PROCESS_MAP"],
-        "AI_TOOLS_REC": ["AI_TOOLS_REC", "AI_TOOL_RECOMMENDATIONS"],
+        "AI_PROC_MAP": ["BUSINESS_PROCESS_MAPPING"],  # Canonical doc_type
+        "AI_TOOL_RECOMMENDATION": ["AI_TOOL_RECOMMENDATION_REPORT"],  # Canonical doc_type
+        
+        # Market Research Services
         "MR_BASIC": ["MR_BASIC", "MARKET_RESEARCH_BASIC"],
         "MR_ADV": ["MR_ADV", "MARKET_RESEARCH_ADVANCED"],
-        "HMO_AUDIT": ["HMO_AUDIT", "HMO_COMPLIANCE_AUDIT"],
-        "FULL_AUDIT": ["FULL_AUDIT", "FULL_PROPERTY_AUDIT"],
+        
+        # Compliance Services
+        "COMP_HMO": ["COMP_HMO", "HMO_COMPLIANCE_AUDIT"],
+        "COMP_FULL_AUDIT": ["COMP_FULL_AUDIT", "FULL_COMPLIANCE_AUDIT"],
+        "COMP_MOVEOUT": ["COMP_MOVEOUT", "MOVE_IN_MOVE_OUT_CHECKLIST"],
+        
+        # Document Packs
         "DOC_PACK_ESSENTIAL": ["DOC_PACK_ESSENTIAL"],
-        "DOC_PACK_TENANCY": ["DOC_PACK_TENANCY"],
-        "DOC_PACK_ULTIMATE": ["DOC_PACK_ULTIMATE"],
+        "DOC_PACK_PLUS": ["DOC_PACK_PLUS"],
+        "DOC_PACK_PRO": ["DOC_PACK_PRO"],
     }
     
     def __init__(self, llm_provider: Optional[LLMProviderInterface] = None):
