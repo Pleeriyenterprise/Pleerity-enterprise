@@ -1192,7 +1192,7 @@ def validate_intake_payload(service_code: str, payload: Dict[str, Any]) -> Dict[
         field_key = field_def["field_key"]
         field_type = field_def["type"]
         required = field_def.get("required", False)
-        validation = field_def.get("validation", {})
+        validation = field_def.get("validation") or {}
         visibility_conditions = field_def.get("visibility_conditions", [])
         
         # Check visibility conditions
