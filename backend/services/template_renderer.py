@@ -525,78 +525,193 @@ class TemplateRenderer:
             self._add_section_heading(doc, "Executive Summary")
             doc.add_paragraph(str(output["executive_summary"]))
         
-        # Current State Assessment
-        if "current_state_assessment" in output:
-            csa = output["current_state_assessment"]
-            self._add_section_heading(doc, "Current State Assessment")
+        # Current State Analysis (handle both old and new field names)
+        csa = output.get("current_state_analysis") or output.get("current_state_assessment")
+        if csa:
+            self._add_section_heading(doc, "Current State Analysis")
             
-            if "business_overview" in csa:
-                doc.add_paragraph(str(csa["business_overview"]))
-            
-            if "pain_points" in csa:
-                self._add_subsection(doc, "Pain Points")
-                for point in csa["pain_points"]:
-                    doc.add_paragraph(f"• {point}", style='List Bullet')
-        
-        # Workflow Analysis
-        if "workflow_analysis" in output:
-            self._add_section_heading(doc, "Workflow Analysis")
-            workflows = output["workflow_analysis"]
-            if workflows:
-                table = doc.add_table(rows=1, cols=4)
-                table.style = 'Table Grid'
-                hdr_cells = table.rows[0].cells
-                hdr_cells[0].text = 'Workflow'
-                hdr_cells[1].text = 'Current State'
-                hdr_cells[2].text = 'Automation Potential'
-                hdr_cells[3].text = 'Recommended Approach'
+            if isinstance(csa, dict):
+                # Handle structured analysis
+                if "pain_points" in csa:
+                    self._add_subsection(doc, "Pain Points")
+                    for point in csa["pain_points"]:
+                        if isinstance(point, dict):
+                            doc.add_paragraph(f"• {point.get('description', point)}", style='List Bullet')
+                        else:
+                            doc.add_paragraph(f"• {point}", style='List Bullet')
                 
-                for wf in workflows:
-                    row_cells = table.add_row().cells
-                    row_cells[0].text = str(wf.get("workflow_name", ""))
-                    row_cells[1].text = str(wf.get("current_state", ""))
-                    row_cells[2].text = str(wf.get("automation_potential", ""))
-                    row_cells[3].text = str(wf.get("recommended_approach", ""))
+                if "inefficiencies" in csa:
+                    self._add_subsection(doc, "Current Inefficiencies")
+                    for item in csa["inefficiencies"]:
+                        if isinstance(item, dict):
+                            doc.add_paragraph(f"• {item.get('description', item)}", style='List Bullet')
+                        else:
+                            doc.add_paragraph(f"• {item}", style='List Bullet')
+                
+                if "opportunities" in csa:
+                    self._add_subsection(doc, "Improvement Opportunities")
+                    for opp in csa["opportunities"]:
+                        if isinstance(opp, dict):
+                            doc.add_paragraph(f"• {opp.get('description', opp)}", style='List Bullet')
+                        else:
+                            doc.add_paragraph(f"• {opp}", style='List Bullet')
+                
+                if "business_overview" in csa:
+                    doc.add_paragraph(str(csa["business_overview"]))
+            else:
+                # Handle string analysis
+                doc.add_paragraph(str(csa))
+        
+        # Recommended Workflows (handle both old and new field names)
+        workflows = output.get("recommended_workflows") or output.get("workflow_analysis")
+        if workflows:
+            self._add_section_heading(doc, "Recommended Workflows")
+            
+            if isinstance(workflows, list):
+                for i, wf in enumerate(workflows, 1):
+                    if isinstance(wf, dict):
+                        wf_name = wf.get("workflow_name") or wf.get("name") or f"Workflow {i}"
+                        self._add_subsection(doc, wf_name)
+                        
+                        if wf.get("description"):
+                            doc.add_paragraph(str(wf["description"]))
+                        
+                        if wf.get("current_state"):
+                            doc.add_paragraph(f"Current State: {wf['current_state']}")
+                        
+                        if wf.get("automation_potential"):
+                            doc.add_paragraph(f"Automation Potential: {wf['automation_potential']}")
+                        
+                        if wf.get("recommended_approach"):
+                            doc.add_paragraph(f"Recommended Approach: {wf['recommended_approach']}")
+                        
+                        if wf.get("steps"):
+                            doc.add_paragraph("Implementation Steps:", style='Normal')
+                            for step in wf["steps"]:
+                                doc.add_paragraph(f"• {step}", style='List Bullet')
+                        
+                        if wf.get("tools"):
+                            doc.add_paragraph(f"Recommended Tools: {', '.join(wf['tools'])}")
+                        
+                        if wf.get("expected_savings"):
+                            doc.add_paragraph(f"Expected Savings: {wf['expected_savings']}")
+                    else:
+                        doc.add_paragraph(f"• {wf}", style='List Bullet')
         
         # Automation Opportunities
         if "automation_opportunities" in output:
             self._add_section_heading(doc, "Automation Opportunities")
             for opp in output["automation_opportunities"]:
-                priority = opp.get("priority", "")
-                opportunity = opp.get("opportunity", "")
-                effort = opp.get("implementation_effort", "")
-                doc.add_paragraph(f"[{priority}] {opportunity} (Effort: {effort})")
+                if isinstance(opp, dict):
+                    priority = opp.get("priority", "")
+                    opportunity = opp.get("opportunity", "")
+                    effort = opp.get("implementation_effort", "")
+                    doc.add_paragraph(f"[{priority}] {opportunity} (Effort: {effort})")
+                else:
+                    doc.add_paragraph(f"• {opp}", style='List Bullet')
         
         # Tool Recommendations
         if "tool_recommendations" in output:
             self._add_section_heading(doc, "Tool Recommendations")
             for tool in output["tool_recommendations"]:
-                self._add_subsection(doc, tool.get("category", "Tool"))
-                doc.add_paragraph(f"Recommended: {tool.get('recommended_tool', 'N/A')}")
-                doc.add_paragraph(f"Rationale: {tool.get('rationale', '')}")
-                if tool.get("alternatives"):
-                    doc.add_paragraph(f"Alternatives: {', '.join(tool['alternatives'])}")
+                if isinstance(tool, dict):
+                    self._add_subsection(doc, tool.get("category", "Tool"))
+                    doc.add_paragraph(f"Recommended: {tool.get('recommended_tool', 'N/A')}")
+                    doc.add_paragraph(f"Rationale: {tool.get('rationale', '')}")
+                    if tool.get("alternatives"):
+                        doc.add_paragraph(f"Alternatives: {', '.join(tool['alternatives'])}")
+                else:
+                    doc.add_paragraph(f"• {tool}", style='List Bullet')
         
         # Implementation Roadmap
-        if "implementation_roadmap" in output:
-            roadmap = output["implementation_roadmap"]
+        roadmap = output.get("implementation_roadmap")
+        if roadmap:
             self._add_section_heading(doc, "Implementation Roadmap")
             
-            for phase_name, phase_items in roadmap.items():
-                if phase_items:
-                    self._add_subsection(doc, phase_name.replace("_", " ").title())
-                    for item in phase_items:
-                        doc.add_paragraph(f"• {item}", style='List Bullet')
+            if isinstance(roadmap, dict):
+                # Handle phases
+                if "phases" in roadmap:
+                    for phase in roadmap["phases"]:
+                        if isinstance(phase, dict):
+                            phase_name = phase.get("phase_name") or phase.get("name", "Phase")
+                            self._add_subsection(doc, phase_name)
+                            if phase.get("description"):
+                                doc.add_paragraph(str(phase["description"]))
+                            if phase.get("duration"):
+                                doc.add_paragraph(f"Duration: {phase['duration']}")
+                            if phase.get("tasks"):
+                                for task in phase["tasks"]:
+                                    doc.add_paragraph(f"• {task}", style='List Bullet')
+                        else:
+                            doc.add_paragraph(f"• {phase}", style='List Bullet')
+                
+                # Handle timeline
+                if "timeline" in roadmap:
+                    self._add_subsection(doc, "Timeline")
+                    doc.add_paragraph(str(roadmap["timeline"]))
+                
+                # Handle milestones
+                if "milestones" in roadmap:
+                    self._add_subsection(doc, "Key Milestones")
+                    for milestone in roadmap["milestones"]:
+                        if isinstance(milestone, dict):
+                            doc.add_paragraph(f"• {milestone.get('name', milestone)}: {milestone.get('date', '')}", style='List Bullet')
+                        else:
+                            doc.add_paragraph(f"• {milestone}", style='List Bullet')
+                
+                # Handle legacy format (phase_name: items)
+                for phase_name, phase_items in roadmap.items():
+                    if phase_name not in ["phases", "timeline", "milestones"] and phase_items:
+                        self._add_subsection(doc, phase_name.replace("_", " ").title())
+                        if isinstance(phase_items, list):
+                            for item in phase_items:
+                                doc.add_paragraph(f"• {item}", style='List Bullet')
+                        else:
+                            doc.add_paragraph(str(phase_items))
+            else:
+                doc.add_paragraph(str(roadmap))
         
         # Expected Outcomes
-        if "expected_outcomes" in output:
-            outcomes = output["expected_outcomes"]
+        outcomes = output.get("expected_outcomes")
+        if outcomes:
             self._add_section_heading(doc, "Expected Outcomes")
             
-            if "efficiency_gains" in outcomes:
-                self._add_subsection(doc, "Efficiency Gains")
-                for gain in outcomes["efficiency_gains"]:
-                    doc.add_paragraph(f"• {gain}", style='List Bullet')
+            if isinstance(outcomes, dict):
+                if "efficiency_gains" in outcomes:
+                    self._add_subsection(doc, "Efficiency Gains")
+                    for gain in outcomes["efficiency_gains"]:
+                        doc.add_paragraph(f"• {gain}", style='List Bullet')
+                
+                if "roi_estimate" in outcomes:
+                    self._add_subsection(doc, "ROI Estimate")
+                    doc.add_paragraph(str(outcomes["roi_estimate"]))
+                
+                if "key_metrics" in outcomes:
+                    self._add_subsection(doc, "Key Metrics")
+                    for metric in outcomes["key_metrics"]:
+                        if isinstance(metric, dict):
+                            doc.add_paragraph(f"• {metric.get('name', metric)}: {metric.get('expected_improvement', '')}", style='List Bullet')
+                        else:
+                            doc.add_paragraph(f"• {metric}", style='List Bullet')
+                
+                # Handle other outcome fields
+                for key, value in outcomes.items():
+                    if key not in ["efficiency_gains", "roi_estimate", "key_metrics"] and value:
+                        self._add_subsection(doc, key.replace("_", " ").title())
+                        if isinstance(value, list):
+                            for item in value:
+                                doc.add_paragraph(f"• {item}", style='List Bullet')
+                        else:
+                            doc.add_paragraph(str(value))
+            else:
+                doc.add_paragraph(str(outcomes))
+        
+        # Assumptions (if any data gaps were flagged)
+        assumptions = output.get("assumptions") or output.get("data_gaps_flagged")
+        if assumptions:
+            self._add_section_heading(doc, "Assumptions & Data Gaps")
+            for assumption in assumptions:
+                doc.add_paragraph(f"• {assumption}", style='List Bullet')
         
         # Data Gaps
         self._add_data_gaps_section(doc, output)
