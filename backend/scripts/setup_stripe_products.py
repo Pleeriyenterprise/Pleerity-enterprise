@@ -180,7 +180,7 @@ class StripeProductSetup:
         logger.info(f"Starting Stripe product setup (dry_run={self.dry_run}, force_update={force_update})")
         
         if not stripe.api_key:
-            raise ValueError("STRIPE_SECRET_KEY not set")
+            raise ValueError("STRIPE_SECRET_KEY or STRIPE_API_KEY not set")
         
         # Test Stripe connection
         try:
