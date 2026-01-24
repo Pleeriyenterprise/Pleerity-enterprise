@@ -436,19 +436,24 @@ async def get_doc_types(
             {"code": "MR_ADV", "name": "Advanced Market Research", "canonical": True},
         ],
         # Compliance Services
-        "COMP_HMO": [
-            {"code": "COMP_HMO", "name": "HMO Compliance Audit", "canonical": True},
+        "FULL_COMPLIANCE_AUDIT": [
+            {"code": "FULL_COMPLIANCE_AUDIT_REPORT", "name": "Full Compliance Audit Report", "canonical": True},
         ],
-        "COMP_FULL_AUDIT": [
-            {"code": "COMP_FULL_AUDIT", "name": "Full Compliance Audit", "canonical": True},
+        "HMO_COMPLIANCE_AUDIT": [
+            {"code": "HMO_COMPLIANCE_AUDIT_REPORT", "name": "HMO Compliance Audit Report", "canonical": True},
         ],
-        "COMP_MOVEOUT": [
-            {"code": "COMP_MOVEOUT", "name": "Move-In / Move-Out Checklist", "canonical": True},
+        "MOVE_IN_OUT_CHECKLIST": [
+            {"code": "MOVE_IN_MOVE_OUT_CHECKLIST", "name": "Move-In / Move-Out Checklist", "canonical": True},
         ],
-        # Document Packs
+        # Document Packs - Essential (5 document types)
         "DOC_PACK_ESSENTIAL": [
-            {"code": "DOC_PACK_ESSENTIAL", "name": "Essential Document Pack", "canonical": True},
+            {"code": "RENT_ARREARS_LETTER", "name": "Rent Arrears Letter", "canonical": True},
+            {"code": "DEPOSIT_REFUND_EXPLANATION_LETTER", "name": "Deposit Refund / Explanation Letter", "canonical": True},
+            {"code": "TENANT_REFERENCE_LETTER", "name": "Tenant Reference Letter", "canonical": True},
+            {"code": "RENT_RECEIPT", "name": "Rent Receipt", "canonical": True},
+            {"code": "GDPR_INFORMATION_NOTICE", "name": "GDPR / Data Processing Notice", "canonical": True},
         ],
+        # Document Packs - Plus & Pro (placeholder)
         "DOC_PACK_PLUS": [
             {"code": "DOC_PACK_PLUS", "name": "Tenancy Legal & Notices Pack", "canonical": True},
         ],
