@@ -593,6 +593,9 @@ class DocumentOrchestrator:
         
         Uses LlmChat from emergentintegrations library.
         """
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        import uuid
+        
         # Build the full system prompt with JSON output instruction
         output_schema_str = json.dumps(prompt_def.output_schema, indent=2)
         
@@ -608,16 +611,24 @@ You MUST return your response as valid JSON matching this exact schema:
 Return ONLY the JSON object, no additional text or markdown formatting.
 """
         
+        # Get API key
+        api_key = self._get_api_key()
+        
         # Create a new LLM client for this generation
-        client = self._create_llm_client(system_prompt=full_system_prompt)
+        client = LlmChat(
+            api_key=api_key,
+            session_id=f"doc_gen_{uuid.uuid4().hex[:8]}",
+            system_message=full_system_prompt
+        )
         
-        # Use with_model to set the model
-        client = client.with_model("gemini-2.0-flash")
+        # Use with_model to set the model (provider, model)
+        client = client.with_model("gemini", "gemini-2.0-flash")
         
-        # Execute generation using LlmChat send_message
-        response = await client.send_message(user_prompt)
+        # Execute generation using LlmChat send_message with UserMessage
+        user_msg = UserMessage(text=user_prompt)
+        response = await client.send_message(user_msg)
         
-        # Parse response - LlmChat returns the message content directly
+        # Parse response - LlmChat returns the message content directly as string
         response_text = response if isinstance(response, str) else str(response)
         
         # Clean up response - remove markdown code blocks if present
