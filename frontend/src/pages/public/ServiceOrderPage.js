@@ -31,6 +31,9 @@ import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Document pack service codes
+const DOCUMENT_PACK_CODES = ['DOC_PACK_ESSENTIAL', 'DOC_PACK_PLUS', 'DOC_PACK_PRO'];
+
 const ServiceOrderPage = () => {
   const { serviceCode } = useParams();
   const navigate = useNavigate();
