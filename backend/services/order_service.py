@@ -188,6 +188,11 @@ async def transition_order_state(
         update_fields["completed_at"] = datetime.now(timezone.utc)
         update_fields["delivered_at"] = datetime.now(timezone.utc)
     
+    # Save failure reason when transitioning to FAILED status
+    if new_status == OrderStatus.FAILED and reason:
+        update_fields["failure_reason"] = reason
+        update_fields["failed_at"] = datetime.now(timezone.utc)
+    
     # Update order
     await db.orders.update_one(
         {"order_id": order_id},
