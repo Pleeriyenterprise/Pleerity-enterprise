@@ -231,8 +231,15 @@ class PromptService:
         "HMO_COMPLIANCE_AUDIT": ["HMO_COMPLIANCE_AUDIT_REPORT"],
         "MOVE_IN_OUT_CHECKLIST": ["MOVE_IN_MOVE_OUT_CHECKLIST"],
         
-        # Document Packs
-        "DOC_PACK_ESSENTIAL": ["DOC_PACK_ESSENTIAL"],
+        # Document Packs - Essential
+        "DOC_PACK_ESSENTIAL": [
+            "RENT_ARREARS_LETTER",
+            "DEPOSIT_REFUND_EXPLANATION_LETTER",
+            "TENANT_REFERENCE_LETTER",
+            "RENT_RECEIPT",
+            "GDPR_INFORMATION_NOTICE",
+        ],
+        # Document Packs - Plus & Pro (placeholder for future)
         "DOC_PACK_PLUS": ["DOC_PACK_PLUS"],
         "DOC_PACK_PRO": ["DOC_PACK_PRO"],
     }
