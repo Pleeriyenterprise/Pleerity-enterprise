@@ -178,6 +178,7 @@ class TemplateRenderer:
         intake_snapshot: Dict[str, Any],
         is_regeneration: bool = False,
         regeneration_notes: Optional[str] = None,
+        prompt_version_used: Optional[str] = None,
     ) -> RenderResult:
         """
         Render documents from orchestrator structured output.
@@ -190,6 +191,7 @@ class TemplateRenderer:
             intake_snapshot: Immutable copy of intake data (locked before GPT)
             is_regeneration: Whether this is a regeneration
             regeneration_notes: Notes for regeneration
+            prompt_version_used: Version identifier of the prompt used for generation
         
         Returns:
             RenderResult with rendered documents
@@ -210,6 +212,9 @@ class TemplateRenderer:
         
         service_code = order.get("service_code", "GENERAL")
         order_ref = order.get("order_ref", order_id)
+        
+        # Store prompt_version_used for this render
+        self._current_prompt_version = prompt_version_used
         
         # Determine version number (immutable - always increment)
         existing_versions = await self._get_version_count(order_id)
