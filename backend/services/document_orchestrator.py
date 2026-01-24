@@ -134,21 +134,30 @@ class DocumentOrchestrator:
     
     def __init__(self):
         self._llm_client = None
+        self._api_key = None
     
-    async def _get_llm_client(self):
-        """Lazy initialization of LLM client using emergentintegrations."""
-        if self._llm_client is None:
-            try:
-                from emergentintegrations.llm.chat import LlmChat
-                api_key = os.environ.get("EMERGENT_LLM_KEY")
-                if not api_key:
-                    raise ValueError("EMERGENT_LLM_KEY not found in environment")
-                # Initialize LlmChat with Gemini model
-                self._llm_client = LlmChat(api_key=api_key).with_model("gemini-2.0-flash")
-            except Exception as e:
-                logger.error(f"Failed to initialize LLM client: {e}")
-                raise
-        return self._llm_client
+    def _get_api_key(self):
+        """Get the Emergent LLM API key."""
+        if self._api_key is None:
+            self._api_key = os.environ.get("EMERGENT_LLM_KEY")
+            if not self._api_key:
+                raise ValueError("EMERGENT_LLM_KEY not found in environment")
+        return self._api_key
+    
+    def _create_llm_client(self, system_prompt: str, session_id: str = None):
+        """Create a new LLM client instance with the given system prompt."""
+        from emergentintegrations.llm.chat import LlmChat
+        import uuid
+        
+        api_key = self._get_api_key()
+        if session_id is None:
+            session_id = f"doc_gen_{uuid.uuid4().hex[:8]}"
+        
+        return LlmChat(
+            api_key=api_key,
+            session_id=session_id,
+            system_message=system_prompt
+        )
     
     async def validate_order_for_generation(
         self,
