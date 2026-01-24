@@ -350,7 +350,13 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - DOC_PACK_ESSENTIAL / TENANT_REFERENCE_LETTER - "Tenant Reference Letter – Essential Pack"
   - DOC_PACK_ESSENTIAL / RENT_RECEIPT - "Rent Receipt – Essential Pack"
   - DOC_PACK_ESSENTIAL / GDPR_INFORMATION_NOTICE - "GDPR / Data Processing Notice – Essential Pack"
-- [x] **All 13 Production Prompts**
+- [x] **Tenancy Legal & Notices Pack Prompts (5 Active)**
+  - DOC_PACK_PLUS / TENANCY_AGREEMENT_AST - "Assured Shorthold Tenancy (AST) Agreement – Plus Pack"
+  - DOC_PACK_PLUS / TENANCY_RENEWAL - "Tenancy Renewal / Extension Document – Plus Pack"
+  - DOC_PACK_PLUS / NOTICE_TO_QUIT - "Notice to Quit (Template) – Plus Pack"
+  - DOC_PACK_PLUS / GUARANTOR_AGREEMENT - "Guarantor Agreement Template – Plus Pack"
+  - DOC_PACK_PLUS / RENT_INCREASE_NOTICE - "Rent Increase Notice (Template) – Plus Pack"
+- [x] **All 18 Production Prompts**
   - Registered, tested, and activated via Enterprise Prompt Manager
   - Schema validation passed for all prompts
   - Full audit trail with activation reasons
