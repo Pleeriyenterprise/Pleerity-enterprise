@@ -582,9 +582,9 @@ class DocumentOrchestrator:
         """
         Execute GPT generation and return structured output.
         
-        Uses Gemini via emergentintegrations library.
+        Uses LlmChat from emergentintegrations library.
         """
-        client = await self._get_gemini_client()
+        client = await self._get_llm_client()
         
         # Build the full prompt with JSON output instruction
         output_schema_str = json.dumps(prompt_def.output_schema, indent=2)
@@ -601,16 +601,14 @@ You MUST return your response as valid JSON matching this exact schema:
 Return ONLY the JSON object, no additional text or markdown formatting.
 """
         
-        # Execute generation
-        response = await client.generate(
-            user_prompt=user_prompt,
-            system_prompt=full_system_prompt,
-            temperature=prompt_def.temperature,
-            max_tokens=prompt_def.max_tokens,
-        )
+        # Execute generation using LlmChat send_message
+        # Combine system prompt with user prompt for LlmChat
+        full_prompt = f"{full_system_prompt}\n\n---\n\nUser Request:\n{user_prompt}"
         
-        # Parse response
-        response_text = response.text if hasattr(response, 'text') else str(response)
+        response = await client.send_message(full_prompt)
+        
+        # Parse response - LlmChat returns the message content directly
+        response_text = response if isinstance(response, str) else str(response)
         
         # Clean up response - remove markdown code blocks if present
         response_text = response_text.strip()
