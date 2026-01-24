@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { formatPriceShort } from '../../../api/ordersApi';
+import { getServiceLabel, getCategoryLabel, getStatusLabel } from './orderLabels';
 
 // Status color mapping for badges
 const STATUS_COLORS = {
