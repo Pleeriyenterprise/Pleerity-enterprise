@@ -283,7 +283,6 @@ class PromptTestResult(BaseModel):
 
 class PromptActivationRequest(BaseModel):
     """Request to activate a tested prompt version."""
-    template_id: str = Field(..., description="Template ID to activate")
     activation_reason: str = Field(
         ..., 
         min_length=10, 
