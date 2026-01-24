@@ -413,41 +413,47 @@ async def get_doc_types(
     """
     Get available document types.
     
-    CANONICAL RULE: doc_type should equal service_code for service-specific documents.
+    CANONICAL RULE: doc_type must match exactly as defined in Service Catalogue.
     This endpoint returns allowed doc_types per service from SERVICE_DOC_TYPE_MAP.
     """
-    # Service-specific document type mapping
+    # Service-specific document type mapping (AUTHORITATIVE)
     SERVICE_DOC_TYPE_MAP = {
+        # AI Automation Services
         "AI_WF_BLUEPRINT": [
             {"code": "AI_WF_BLUEPRINT", "name": "AI Workflow Blueprint", "canonical": True},
-            {"code": "AI_WORKFLOW_BLUEPRINT", "name": "AI Workflow Blueprint (Alias)", "canonical": False},
         ],
         "AI_PROC_MAP": [
-            {"code": "AI_PROC_MAP", "name": "Business Process Map", "canonical": True},
+            {"code": "BUSINESS_PROCESS_MAPPING", "name": "Business Process Mapping", "canonical": True},
         ],
-        "AI_TOOLS_REC": [
-            {"code": "AI_TOOLS_REC", "name": "AI Tool Recommendations", "canonical": True},
+        "AI_TOOL_RECOMMENDATION": [
+            {"code": "AI_TOOL_RECOMMENDATION_REPORT", "name": "AI Tool Recommendation Report", "canonical": True},
         ],
+        # Market Research Services
         "MR_BASIC": [
             {"code": "MR_BASIC", "name": "Basic Market Research", "canonical": True},
         ],
         "MR_ADV": [
             {"code": "MR_ADV", "name": "Advanced Market Research", "canonical": True},
         ],
-        "HMO_AUDIT": [
-            {"code": "HMO_AUDIT", "name": "HMO Compliance Audit", "canonical": True},
+        # Compliance Services
+        "COMP_HMO": [
+            {"code": "COMP_HMO", "name": "HMO Compliance Audit", "canonical": True},
         ],
-        "FULL_AUDIT": [
-            {"code": "FULL_AUDIT", "name": "Full Property Audit", "canonical": True},
+        "COMP_FULL_AUDIT": [
+            {"code": "COMP_FULL_AUDIT", "name": "Full Compliance Audit", "canonical": True},
         ],
+        "COMP_MOVEOUT": [
+            {"code": "COMP_MOVEOUT", "name": "Move-In / Move-Out Checklist", "canonical": True},
+        ],
+        # Document Packs
         "DOC_PACK_ESSENTIAL": [
             {"code": "DOC_PACK_ESSENTIAL", "name": "Essential Document Pack", "canonical": True},
         ],
-        "DOC_PACK_TENANCY": [
-            {"code": "DOC_PACK_TENANCY", "name": "Tenancy Document Pack", "canonical": True},
+        "DOC_PACK_PLUS": [
+            {"code": "DOC_PACK_PLUS", "name": "Tenancy Legal & Notices Pack", "canonical": True},
         ],
-        "DOC_PACK_ULTIMATE": [
-            {"code": "DOC_PACK_ULTIMATE", "name": "Ultimate Document Pack", "canonical": True},
+        "DOC_PACK_PRO": [
+            {"code": "DOC_PACK_PRO", "name": "Ultimate Document Pack", "canonical": True},
         ],
     }
     
@@ -459,7 +465,7 @@ async def get_doc_types(
         return {
             "service_code": service_code,
             "doc_types": doc_types,
-            "note": "Use canonical doc_type (same as service_code) for new prompts."
+            "note": "Use canonical doc_type exactly as defined for this service."
         }
     
     # Return all canonical doc types
