@@ -133,6 +133,20 @@ class PromptManagerBridge:
         
         if doc_type:
             query["doc_type"] = doc_type
+        else:
+            # No doc_type provided - check if this is safe (only 1 prompt exists)
+            prompt_count = await db[self.PROMPTS_COLLECTION].count_documents(
+                {"service_code": canonical_service_code, "status": "ACTIVE"}
+            )
+            
+            if prompt_count > 1:
+                # Multiple prompts exist - doc_type is REQUIRED for deterministic selection
+                logger.error(
+                    f"Ambiguous prompt lookup: {prompt_count} ACTIVE prompts exist for "
+                    f"service_code '{canonical_service_code}', but no doc_type specified. "
+                    f"Cannot select deterministically."
+                )
+                return None, None
         
         managed_prompt = await db[self.PROMPTS_COLLECTION].find_one(
             query,
