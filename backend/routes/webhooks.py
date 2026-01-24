@@ -108,7 +108,7 @@ async def postmark_delivery_webhook(request: Request):
         return {"status": "error"}
 
 
-@router.post("/postmark/bounce")
+@router.post("/api/webhook/postmark/bounce")
 async def postmark_bounce_webhook(request: Request):
     """Handle Postmark bounce webhooks."""
     try:
