@@ -563,10 +563,11 @@ class DocumentPackOrchestrator:
             # Record execution metrics
             await bridge.record_execution_metrics(
                 prompt_info=prompt_info,
+                order_id=item.get("order_id", "unknown"),
                 execution_time_ms=int((datetime.now(timezone.utc) - now).total_seconds() * 1000),
-                success=True,
                 prompt_tokens=tokens.get("prompt_tokens", 0),
                 completion_tokens=tokens.get("completion_tokens", 0),
+                success=True,
             )
             
             logger.info(f"Generated document {item_id} ({definition.doc_type})")
