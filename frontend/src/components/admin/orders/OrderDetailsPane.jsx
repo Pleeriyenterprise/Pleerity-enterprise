@@ -118,7 +118,7 @@ const OrderInfoSection = ({ order }) => {
         {/* Category */}
         <div>
           <Label className="text-xs text-gray-500">Category</Label>
-          <p className="text-sm">{order.service_category || '-'}</p>
+          <p className="text-sm capitalize">{(order.service_category || order.category || '-').replace(/_/g, ' ')}</p>
         </div>
 
         {/* Created */}
