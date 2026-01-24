@@ -560,7 +560,7 @@ async def create_billing_portal_link(request: Request, client_id: str):
             )
         
         # Get return URL
-        frontend_url = os.getenv("FRONTEND_URL", "https://prompt-versioner-1.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://docpackhub.preview.emergentagent.com")
         
         # Create portal session
         portal_session = stripe.billing_portal.Session.create(
@@ -647,7 +647,7 @@ async def resend_password_setup(request: Request, client_id: str):
         )
         
         # Send email
-        frontend_url = os.getenv("FRONTEND_URL", "https://prompt-versioner-1.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://docpackhub.preview.emergentagent.com")
         setup_url = f"{frontend_url}/setup-password?token={setup_token}"
         
         from services.email_service import email_service
