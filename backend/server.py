@@ -275,6 +275,19 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to create Prompt Manager indexes: {e}")
     
+    # Create Document Pack Orchestrator indexes
+    try:
+        db = database.get_db()
+        await db.document_pack_items.create_index("item_id", unique=True)
+        await db.document_pack_items.create_index([("order_id", 1), ("canonical_index", 1)])
+        await db.document_pack_items.create_index("order_id")
+        await db.document_pack_items.create_index("status")
+        await db.document_pack_items.create_index("doc_type")
+        await db.document_pack_items.create_index("doc_key")
+        logger.info("Document Pack Orchestrator indexes created")
+    except Exception as e:
+        logger.error(f"Failed to create Document Pack Orchestrator indexes: {e}")
+    
     # Configure scheduled jobs
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
