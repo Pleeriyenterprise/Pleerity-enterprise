@@ -638,12 +638,6 @@ async def get_document_preview(
     except Exception as e:
         logger.error(f"Failed to download {format} for {order_id} v{version}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve document: {str(e)}")
-            media_type=content_type,
-            headers={"Content-Disposition": f'inline; filename="{filename}"'}
-        )
-    except Exception as e:
-        logger.error(f"Failed to retrieve document: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve document")
 
 
 @router.get("/{order_id}/documents/{version}/token")
