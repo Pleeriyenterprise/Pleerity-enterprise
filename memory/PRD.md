@@ -422,6 +422,11 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - Automatic document item creation on payment
   - Order status: CREATED → PAID → QUEUED
   - Pack metadata stored on order
+- [x] **Frontend Checkout Integration**
+  - checkoutApi.js utility with validation functions
+  - UnifiedIntakeWizard validates before Stripe redirect
+  - ServiceOrderPage validates document pack orders
+  - Warnings displayed via toast notifications
 
 ---
 
