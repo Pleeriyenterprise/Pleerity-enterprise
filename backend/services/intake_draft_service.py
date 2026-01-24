@@ -58,8 +58,8 @@ SERVICE_BASE_PRICES = {
     "FULL_AUDIT": 9900,          # £99
     "MOVE_CHECKLIST": 3500,      # £35
     "DOC_PACK_ESSENTIAL": 2900,  # £29
-    "DOC_PACK_TENANCY": 4900,    # £49
-    "DOC_PACK_ULTIMATE": 7900,   # £79
+    "DOC_PACK_PLUS": 4900,       # £49
+    "DOC_PACK_PRO": 7900,        # £79
 }
 
 
