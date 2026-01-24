@@ -77,7 +77,7 @@ async def stripe_webhook_alias(
     return await _handle_stripe_webhook(request, stripe_signature)
 
 
-@router.post("/postmark/delivery")
+@router.post("/api/webhook/postmark/delivery")
 async def postmark_delivery_webhook(request: Request):
     """Handle Postmark delivery webhooks."""
     try:
