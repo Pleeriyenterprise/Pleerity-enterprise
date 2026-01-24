@@ -65,6 +65,134 @@ Questions? Contact us at {SUPPORT_EMAIL}
 
 
 # ============================================================================
+# ORDER CONFIRMATION EMAIL (Sent to customer after payment)
+# ============================================================================
+
+def build_order_confirmation_email(
+    client_name: str,
+    order_reference: str,
+    service_name: str,
+    total_amount: str,
+    order_date: str,
+    estimated_delivery: str = "48 hours",
+    view_order_link: str = "",
+) -> Dict[str, str]:
+    """
+    Build 'Order Confirmation' email - sent to customer after successful payment.
+    
+    Returns dict with 'subject', 'html', 'text' keys.
+    """
+    subject = f"Order Confirmed - {order_reference}"
+    
+    cta_html = ""
+    cta_text = ""
+    if view_order_link:
+        cta_html = f"""
+            <div style="text-align: center; margin: 25px 0;">
+                <a href="{view_order_link}" style="background-color: {BRAND_COLOR_ACCENT}; color: white; 
+                          padding: 12px 30px; text-decoration: none; border-radius: 6px; 
+                          display: inline-block; font-weight: 600;">
+                    View Your Order
+                </a>
+            </div>
+        """
+        cta_text = f"\nView your order: {view_order_link}\n"
+    
+    html = f"""
+    <html>
+    <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto;">
+        {_build_email_header("Order Confirmed!", "Thank you for your order", order_reference)}
+        
+        <div style="padding: 25px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background: white;">
+            <p style="margin-bottom: 20px;">Hi {client_name},</p>
+            
+            <p style="margin-bottom: 20px;">
+                Thank you for your order! We've received your payment and your order is now being processed by our team.
+            </p>
+            
+            <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: {BRAND_COLOR_PRIMARY}; margin: 0 0 15px 0; font-size: 16px;">Order Summary</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #64748b;">Order Reference:</td>
+                        <td style="padding: 8px 0; text-align: right; font-weight: 600; font-family: monospace;">{order_reference}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #64748b;">Service:</td>
+                        <td style="padding: 8px 0; text-align: right; font-weight: 600;">{service_name}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #64748b;">Order Date:</td>
+                        <td style="padding: 8px 0; text-align: right;">{order_date}</td>
+                    </tr>
+                    <tr style="border-top: 1px solid #e2e8f0;">
+                        <td style="padding: 12px 0 8px 0; color: #64748b; font-weight: 600;">Total Paid:</td>
+                        <td style="padding: 12px 0 8px 0; text-align: right; font-weight: 700; font-size: 18px; color: {BRAND_COLOR_PRIMARY};">{total_amount}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; color: #065f46;">
+                    <strong>Estimated Delivery:</strong> Within {estimated_delivery}
+                </p>
+            </div>
+            
+            <h3 style="color: {BRAND_COLOR_PRIMARY}; margin: 25px 0 15px 0; font-size: 16px;">What Happens Next?</h3>
+            <ol style="margin: 0; padding-left: 20px; color: #475569;">
+                <li style="margin: 10px 0;">Our team will review your order and begin processing</li>
+                <li style="margin: 10px 0;">Your documents will be generated based on the information you provided</li>
+                <li style="margin: 10px 0;">You'll receive an email when your order is ready for download</li>
+            </ol>
+            
+            {cta_html}
+            
+            <p style="margin-top: 25px; color: #64748b;">
+                If you have any questions about your order, please reply to this email or contact us at 
+                <a href="mailto:{SUPPORT_EMAIL}" style="color: {BRAND_COLOR_ACCENT};">{SUPPORT_EMAIL}</a>
+            </p>
+            
+            {_build_email_footer(order_reference)}
+        </div>
+    </body>
+    </html>
+    """
+    
+    text = f"""
+Order Confirmed - {order_reference}
+
+Hi {client_name},
+
+Thank you for your order! We've received your payment and your order is now being processed.
+
+ORDER SUMMARY
+-------------
+Order Reference: {order_reference}
+Service: {service_name}
+Order Date: {order_date}
+Total Paid: {total_amount}
+
+Estimated Delivery: Within {estimated_delivery}
+
+WHAT HAPPENS NEXT?
+------------------
+1. Our team will review your order and begin processing
+2. Your documents will be generated based on the information you provided
+3. You'll receive an email when your order is ready for download
+{cta_text}
+If you have any questions, please contact us at {SUPPORT_EMAIL}
+
+{_build_text_footer(order_reference)}
+"""
+    
+    return {
+        "subject": subject,
+        "html": html,
+        "text": text,
+    }
+
+
+# ============================================================================
 # CLIENT INPUT REQUIRED EMAIL
 # ============================================================================
 
