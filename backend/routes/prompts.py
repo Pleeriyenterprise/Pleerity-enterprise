@@ -451,7 +451,7 @@ async def get_doc_types(
             {"code": "DEPOSIT_REFUND_EXPLANATION_LETTER", "name": "Deposit Refund / Explanation Letter", "canonical": True},
             {"code": "TENANT_REFERENCE_LETTER", "name": "Tenant Reference Letter", "canonical": True},
             {"code": "RENT_RECEIPT", "name": "Rent Receipt", "canonical": True},
-            {"code": "GDPR_INFORMATION_NOTICE", "name": "GDPR / Data Processing Notice", "canonical": True},
+            {"code": "GDPR_NOTICE", "name": "GDPR / Data Processing Notice", "canonical": True},
         ],
         # Document Packs - Plus (5 document types)
         "DOC_PACK_PLUS": [
