@@ -976,6 +976,34 @@ export default function UnifiedIntakeWizard() {
       // Save consent
       await client.put(`/intake/draft/${draft.draft_id}/delivery-consent`, consent);
       
+      // Pre-checkout validation for document packs
+      if (isDocumentPack(selectedService?.service_code)) {
+        const validation = await validateCheckout({
+          service_code: selectedService.service_code,
+          selected_documents: draft?.selected_documents || [],
+          variant_code: selectedAddons.includes('FAST_TRACK') ? 'fast_track' : 
+                       selectedAddons.includes('PRINTED_COPY') ? 'printed' : 'standard',
+        });
+        
+        if (!validation.valid) {
+          console.error('Checkout validation failed:', validation.errors);
+          toast.error(validation.errors?.[0] || 'Checkout validation failed');
+          return;
+        }
+        
+        // Log validation warnings
+        if (validation.warnings?.length > 0) {
+          console.warn('Checkout validation warnings:', validation.warnings);
+          validation.warnings.forEach(w => toast.warning(w, { duration: 5000 }));
+        }
+        
+        console.log('Checkout validated:', {
+          service: validation.service_code,
+          pack_tier: validation.pack_tier,
+          documents_selected: validation.documents_selected,
+        });
+      }
+      
       // Create checkout session
       const res = await client.post(`/intake/draft/${draft.draft_id}/checkout`, {});
       
