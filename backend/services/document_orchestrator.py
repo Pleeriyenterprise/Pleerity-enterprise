@@ -133,21 +133,22 @@ class DocumentOrchestrator:
     COLLECTION = "orchestration_executions"
     
     def __init__(self):
-        self._gemini_client = None
+        self._llm_client = None
     
-    async def _get_gemini_client(self):
-        """Lazy initialization of Gemini client."""
-        if self._gemini_client is None:
+    async def _get_llm_client(self):
+        """Lazy initialization of LLM client using emergentintegrations."""
+        if self._llm_client is None:
             try:
-                from emergentintegrations.llm.gemini import GeminiClient
+                from emergentintegrations.llm.chat import LlmChat
                 api_key = os.environ.get("EMERGENT_LLM_KEY")
                 if not api_key:
                     raise ValueError("EMERGENT_LLM_KEY not found in environment")
-                self._gemini_client = GeminiClient(api_key=api_key)
+                # Initialize LlmChat with Gemini model
+                self._llm_client = LlmChat(api_key=api_key).with_model("gemini-2.0-flash")
             except Exception as e:
-                logger.error(f"Failed to initialize Gemini client: {e}")
+                logger.error(f"Failed to initialize LLM client: {e}")
                 raise
-        return self._gemini_client
+        return self._llm_client
     
     async def validate_order_for_generation(
         self,
