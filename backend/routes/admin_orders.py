@@ -158,9 +158,26 @@ async def get_order_detail(
     normalized_order['total_amount'] = pricing.get('total_price_pence', pricing.get('total_amount', 0))
     normalized_order['payment_status'] = order.get('stripe_payment_status', 'paid' if order.get('paid_at') else 'pending')
     
-    # Ensure category is set
+    # Ensure category and service_name are set
+    service_code = order.get('service_code', '')
     if not normalized_order.get('category'):
-        normalized_order['category'] = _derive_category_from_service(order.get('service_code', ''))
+        normalized_order['category'] = _derive_category_from_service(service_code)
+    
+    if not normalized_order.get('service_name'):
+        # Get service name from catalogue
+        db = database.get_db()
+        service = await db.service_catalogue_v2.find_one(
+            {"service_code": service_code},
+            {"_id": 0, "service_name": 1}
+        )
+        if service:
+            normalized_order['service_name'] = service.get('service_name', service_code)
+        else:
+            normalized_order['service_name'] = _get_service_display_name(service_code)
+    
+    # Ensure service_category is set for legacy frontend compatibility
+    if not normalized_order.get('service_category'):
+        normalized_order['service_category'] = normalized_order.get('category')
     
     # Get failure reason from audit log if status is FAILED
     if order.get('status') == 'FAILED':
@@ -192,6 +209,24 @@ async def get_order_detail(
         "admin_actions": admin_actions,
         "is_terminal": current_status in [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
     }
+
+
+def _get_service_display_name(service_code: str) -> str:
+    """Get display name for a service code."""
+    display_names = {
+        'AI_WF_BLUEPRINT': 'Workflow Automation Blueprint',
+        'AI_PROC_MAP': 'Process Mapping Report',
+        'AI_TOOL_REPORT': 'AI Tool Assessment',
+        'MR_BASIC': 'Basic Market Research',
+        'MR_ADV': 'Advanced Market Research',
+        'HMO_AUDIT': 'HMO Compliance Audit',
+        'FULL_AUDIT': 'Full Compliance Audit',
+        'MOVE_CHECKLIST': 'Move-In/Out Checklist',
+        'DOC_PACK_ESSENTIAL': 'Essential Landlord Document Pack',
+        'DOC_PACK_PLUS': 'Tenancy Legal & Notices Pack',
+        'DOC_PACK_PRO': 'Ultimate Landlord Document Pack',
+    }
+    return display_names.get(service_code, service_code.replace('_', ' ').title())
 
 
 def _derive_category_from_service(service_code: str) -> str:
