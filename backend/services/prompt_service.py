@@ -239,8 +239,15 @@ class PromptService:
             "RENT_RECEIPT",
             "GDPR_INFORMATION_NOTICE",
         ],
-        # Document Packs - Plus & Pro (placeholder for future)
-        "DOC_PACK_PLUS": ["DOC_PACK_PLUS"],
+        # Document Packs - Plus (5 document types)
+        "DOC_PACK_PLUS": [
+            "TENANCY_AGREEMENT_AST",
+            "TENANCY_RENEWAL",
+            "NOTICE_TO_QUIT",
+            "GUARANTOR_AGREEMENT",
+            "RENT_INCREASE_NOTICE",
+        ],
+        # Document Packs - Pro (placeholder for future)
         "DOC_PACK_PRO": ["DOC_PACK_PRO"],
     }
     
