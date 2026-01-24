@@ -588,36 +588,56 @@ async def get_document_preview(
 ):
     """
     Get document content for preview/download.
-    Returns the actual document file.
+    Returns the actual document file from GridFS storage.
     Requires Bearer token authentication.
     """
-    from services.document_generator import get_document_versions
-    from services.storage_adapter import storage_adapter
+    from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+    from bson import ObjectId
     from fastapi.responses import Response
+    import io
     
-    versions = await get_document_versions(order_id)
-    target_version = None
-    for v in versions:
-        if v.version == version:
-            target_version = v
-            break
+    db = database.get_db()
     
-    if not target_version:
+    # Get the version record from document_versions_v2
+    version_record = await db.document_versions_v2.find_one(
+        {"order_id": order_id, "version": version},
+        {"_id": 0, "docx": 1, "pdf": 1}
+    )
+    
+    if not version_record:
         raise HTTPException(status_code=404, detail=f"Document version {version} not found")
     
-    # Get the file ID based on format
-    file_id = target_version.file_id_pdf if format == "pdf" else target_version.file_id_docx
-    if not file_id:
-        raise HTTPException(status_code=404, detail=f"No {format} file for version {version}")
+    # Get the file info based on format
+    file_info = version_record.get("pdf" if format == "pdf" else "docx", {})
+    gridfs_id = file_info.get("gridfs_id")
+    filename = file_info.get("filename", f"{order_id}_v{version}.{format}")
+    
+    if not gridfs_id:
+        raise HTTPException(status_code=404, detail=f"No {format} file stored for version {version}")
     
     try:
-        content, metadata = await storage_adapter.download_file(file_id)
+        # Download from GridFS
+        fs = AsyncIOMotorGridFSBucket(db, bucket_name="order_files")
+        
+        stream = io.BytesIO()
+        await fs.download_to_stream(ObjectId(gridfs_id), stream)
+        content = stream.getvalue()
         
         content_type = "application/pdf" if format == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        filename = f"{order_id}_v{version}.{format}"
         
         return Response(
             content=content,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f"attachment; filename=\"{filename}\"",
+                "X-Document-Version": str(version),
+                "X-Content-Hash": file_info.get("sha256_hash", ""),
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to download {format} for {order_id} v{version}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve document: {str(e)}")
             media_type=content_type,
             headers={"Content-Disposition": f'inline; filename="{filename}"'}
         )
