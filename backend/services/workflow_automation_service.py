@@ -517,16 +517,20 @@ class WorkflowAutomationService:
                 regeneration_notes=regen_notes,
             )
             
-            if result.get("success"):
+            # Handle OrchestrationResult dataclass (has .success attribute, not .get())
+            is_success = result.success if hasattr(result, 'success') else result.get("success") if isinstance(result, dict) else False
+            result_version = result.version if hasattr(result, 'version') else result.get("version", 1) if isinstance(result, dict) else 1
+            result_error = result.error_message if hasattr(result, 'error_message') else result.get("error") if isinstance(result, dict) else "Unknown error"
+            
+            if is_success:
                 # Transition back to INTERNAL_REVIEW
                 await transition_order_state(
                     order_id=order_id,
                     new_status=OrderStatus.INTERNAL_REVIEW,
                     triggered_by_type="system",
-                    reason=f"WF4: Document v{result.get('version')} regenerated successfully",
+                    reason=f"WF4: Document v{result_version} regenerated successfully",
                     metadata={
-                        "execution_id": result.get("execution_id"),
-                        "version": result.get("version"),
+                        "version": result_version,
                         "regeneration_notes": regen_notes,
                     }
                 )
@@ -539,23 +543,23 @@ class WorkflowAutomationService:
                         event_type=OrderNotificationEvent.REGENERATION_COMPLETE,
                         order_id=order_id,
                         order=order,
-                        message=f"Document v{result.get('version')} ready for review",
+                        message=f"Document v{result_version} ready for review",
                     )
                 except Exception as e:
                     logger.warning(f"WF4: Failed to send regen complete notification: {e}")
                 
                 logger.info(f"WF4: Order {order_id} regenerated successfully")
-                return {"success": True, "status": "INTERNAL_REVIEW", "workflow": "WF4", "version": result.get("version")}
+                return {"success": True, "status": "INTERNAL_REVIEW", "workflow": "WF4", "version": result_version}
             else:
                 # Regeneration failed - return to review
                 await transition_order_state(
                     order_id=order_id,
                     new_status=OrderStatus.INTERNAL_REVIEW,
                     triggered_by_type="system",
-                    reason=f"WF4: Regeneration failed: {result.get('error')}",
+                    reason=f"WF4: Regeneration failed: {result_error}",
                 )
                 
-                return {"success": False, "status": "INTERNAL_REVIEW", "workflow": "WF4", "error": result.get("error")}
+                return {"success": False, "status": "INTERNAL_REVIEW", "workflow": "WF4", "error": result_error}
                 
         except Exception as e:
             logger.error(f"WF4: Regeneration error for {order_id}: {e}")
