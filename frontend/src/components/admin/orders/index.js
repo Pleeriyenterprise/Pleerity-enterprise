@@ -32,3 +32,11 @@ export {
   CustomerInfoSection,
   IntakeDataSection,
 } from './OrderDetailsPane';
+export {
+  CATEGORY_LABELS,
+  SERVICE_LABELS,
+  STATUS_LABELS,
+  getCategoryLabel,
+  getServiceLabel,
+  getStatusLabel,
+} from './orderLabels';
