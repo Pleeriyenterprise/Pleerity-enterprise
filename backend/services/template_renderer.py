@@ -7,6 +7,7 @@ This service:
 3. Enforces deterministic filenames: {order_ref}_{service_code}_v{version}_{status}_{YYYYMMDD-HHMM}.{ext}
 4. Stores server-side SHA256 hash per file for tamper detection
 5. Implements immutable versioning (no overwrites)
+6. Stores files in GridFS for reliable persistence and retrieval
 
 IMMUTABILITY RULES:
 - Each generation creates a NEW version, never overwrites
@@ -16,7 +17,7 @@ IMMUTABILITY RULES:
 
 FLOW:
 Orchestrator JSON → Template Selection → Content Rendering → DOCX Generation → 
-PDF Generation (sealed) → Hash Computation → Version Storage → Human Review Ready
+PDF Generation (sealed) → Hash Computation → GridFS Storage → Version Storage → Human Review Ready
 """
 import io
 import json
