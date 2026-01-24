@@ -393,6 +393,7 @@ class DocumentOrchestrator:
                 intake_snapshot=intake_snapshot,
                 is_regeneration=regeneration,
                 regeneration_notes=regeneration_notes,
+                prompt_version_used=prompt_version_used,
             )
             
             if not render_result.success:
