@@ -367,6 +367,40 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - Full audit trail with activation reasons
   - Complete coverage: AI Services (3), Market Research (2), Compliance (3), Document Packs (14)
 
+### Phase 18: Document Pack Orchestrator (Complete - Jan 24, 2026)
+- [x] **Pack Inheritance Model**
+  - DOC_PACK_ESSENTIAL = Essential docs only (5 docs)
+  - DOC_PACK_PLUS = Essential + Plus docs (10 docs)
+  - DOC_PACK_PRO = Essential + Plus + Pro docs (14 docs)
+- [x] **Canonical Ordering (Server-Side Enforced)**
+  - Fixed order per pack tier, sorted by canonical_index
+  - Even partial selections maintain canonical order
+- [x] **Document Registry**
+  - 14 document types with doc_key, doc_type, pack_tier, output_keys
+  - Maps to Prompt Manager templates
+- [x] **Entitlement + Selection Filtering**
+  - Filter 1: Pack tier determines allowed documents
+  - Filter 2: Client selection determines which to generate
+  - Result: intersection(allowed_docs, selected_docs)
+- [x] **Per-Document Versioning**
+  - Each document is a separate DocumentItem with own version
+  - prompt_version_used and input_snapshot_hash stored for audit
+  - version_history preserved on regeneration
+- [x] **Regeneration Support**
+  - Per-document regeneration with required reason
+  - Previous versions never overwritten
+  - regen_reason and regen_notes stored
+- [x] **Review Workflow**
+  - PENDING → GENERATING → COMPLETED → APPROVED/REJECTED
+  - Individual approve/reject per document
+- [x] **API Endpoints**
+  - Registry, canonical order, pack info endpoints
+  - Create/get document items
+  - Generate single or all documents
+  - Regenerate with reason
+  - Approve/reject documents
+  - Get delivery bundle
+
 ---
 
 ## API Endpoints Summary
