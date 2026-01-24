@@ -6,6 +6,7 @@ Stripe webhook endpoint with:
 - Full audit logging
 
 POST /api/webhook/stripe - Main Stripe webhook endpoint
+POST /api/webhooks/stripe - Alias for Stripe webhook (for backward compatibility)
 """
 from fastapi import APIRouter, HTTPException, Request, Header, status
 from database import database
@@ -14,16 +15,12 @@ import logging
 import json
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/webhook", tags=["webhooks"])
+router = APIRouter(tags=["webhooks"])
 
 
-@router.post("/stripe")
-async def stripe_webhook(
-    request: Request, 
-    stripe_signature: str = Header(None, alias="Stripe-Signature")
-):
+async def _handle_stripe_webhook(request: Request, stripe_signature: str = None):
     """
-    Handle Stripe webhooks.
+    Core Stripe webhook handler.
     
     Security:
     - Verifies Stripe signature when STRIPE_WEBHOOK_SECRET is set
@@ -58,6 +55,26 @@ async def stripe_webhook(
         logger.error(f"Stripe webhook error: {e}")
         # Return 200 to prevent Stripe retries - we've logged the error
         return {"status": "error", "message": str(e)}
+
+
+# Primary webhook endpoint
+@router.post("/api/webhook/stripe")
+async def stripe_webhook(
+    request: Request, 
+    stripe_signature: str = Header(None, alias="Stripe-Signature")
+):
+    """Handle Stripe webhooks at /api/webhook/stripe"""
+    return await _handle_stripe_webhook(request, stripe_signature)
+
+
+# Alias endpoint for backward compatibility (Stripe may be configured with this URL)
+@router.post("/api/webhooks/stripe")
+async def stripe_webhook_alias(
+    request: Request, 
+    stripe_signature: str = Header(None, alias="Stripe-Signature")
+):
+    """Handle Stripe webhooks at /api/webhooks/stripe (alias)"""
+    return await _handle_stripe_webhook(request, stripe_signature)
 
 
 @router.post("/postmark/delivery")
