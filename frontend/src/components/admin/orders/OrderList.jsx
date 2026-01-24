@@ -145,7 +145,7 @@ const OrderCard = ({ order, onClick }) => {
             {/* Service name */}
             <p className="text-sm text-gray-600 mb-1">
               <Package className="h-3 w-3 inline mr-1" />
-              {order.service_name || order.service_code}
+              {order.service_name || getServiceLabel(order.service_code)}
             </p>
 
             {/* Customer */}
