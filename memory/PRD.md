@@ -778,6 +778,34 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - Service code naming aligned: DOC_PACK_ESSENTIAL, DOC_PACK_PLUS, DOC_PACK_PRO
   - Checkout validation, intake draft creation, orchestrator all working
 
+### Phase 20: Order Processing Pipeline Fixes (Complete - Jan 24, 2026)
+- [x] **Stripe Webhook Configuration Fix**
+  - Identified webhook URL mismatch (old preview URL vs new)
+  - Confirmed correct URL: `https://prompt-fix-6.preview.emergentagent.com/api/webhook/stripe`
+  - Signing secret verified: `whsec_jgG1IvSxCpaJM6maQQEhoOeM4YLU4R9x`
+  - Webhooks now receiving `checkout.session.completed` events successfully
+- [x] **Order Queue Processing Fix**
+  - Fixed 9 PAID orders stuck without `workflow_state`
+  - Implemented `wf1_payment_to_queue` to transition PAID → QUEUED
+  - Background job scheduler now correctly picking up queued orders
+- [x] **Failure Reason Persistence**
+  - Fixed `transition_order_state` to save `failure_reason` and `failed_at` on FAILED transition
+  - Future failed orders will have failure reason visible in Admin UI
+- [x] **Admin UI Friendly Labels**
+  - Created `orderLabels.js` utility with service/category/status mappings
+  - `getCategoryLabel()`: Converts `ai_automation` → "AI & Automation"
+  - `getServiceLabel()`: Converts `AI_WORKFLOW` → "AI Workflow Blueprint"
+  - `getStatusLabel()`: Converts `FAILED` → "Failed"
+  - Applied to OrderList.jsx and OrderDetailsPane.jsx
+- [x] **Admin UI Error Visibility**
+  - Added prominent red alert box for FAILED orders in OrderDetailsPane
+  - Shows failure reason or "No failure reason recorded" message
+  - Includes `failed_at` timestamp when available
+- [x] **Intake Wizard URL Update Fix**
+  - Service selection now updates URL query parameter
+  - URL reflects selected service: `/order/intake?service=AI_WF_BLUEPRINT`
+  - Enables sharing specific service links
+
 ---
 
 *Last updated: January 24, 2026*
