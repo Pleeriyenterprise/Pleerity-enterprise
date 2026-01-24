@@ -508,18 +508,19 @@ class DocumentPackOrchestrator:
             # For document packs, we need to map doc_type to service_code
             service_code = self._get_service_code_for_doc_type(definition.doc_type)
             
-            prompt_info = await bridge.get_prompt_for_service(
+            # get_prompt_for_service returns (PromptDefinition, ManagedPromptInfo)
+            prompt_def, prompt_info = await bridge.get_prompt_for_service(
                 service_code=service_code,
                 doc_type=definition.doc_type,
             )
             
-            if not prompt_info:
+            if not prompt_def or not prompt_info:
                 raise ValueError(f"No active prompt found for {service_code}/{definition.doc_type}")
             
             # Build the prompt with input data
             user_prompt = bridge.build_user_prompt_with_json(
-                prompt_info=prompt_info,
-                input_data=input_data,
+                template=prompt_def.user_prompt_template,
+                intake_data=input_data,
             )
             
             # Execute LLM generation
@@ -527,10 +528,10 @@ class DocumentPackOrchestrator:
             llm = await prompt_service._get_llm_provider()
             
             raw_output, tokens = await llm.generate(
-                system_prompt=prompt_info.system_prompt,
+                system_prompt=prompt_def.system_prompt,
                 user_prompt=user_prompt,
-                temperature=prompt_info.temperature,
-                max_tokens=prompt_info.max_tokens,
+                temperature=prompt_def.temperature,
+                max_tokens=prompt_def.max_tokens,
             )
             
             # Parse output
