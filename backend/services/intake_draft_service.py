@@ -731,8 +731,79 @@ async def convert_draft_to_order(
         logger.error(f"Failed to trigger WF1 for order {order_id}: {e}")
         # Don't fail the conversion - order is created
     
+    # Send order confirmation email to customer
+    try:
+        await _send_order_confirmation_email(order_doc)
+    except Exception as e:
+        logger.error(f"Failed to send confirmation email for order {order_id}: {e}")
+        # Don't fail the conversion - order is created
+    
     order_doc.pop("_id", None)
     return order_doc
+
+
+async def _send_order_confirmation_email(order: Dict[str, Any]) -> bool:
+    """Send order confirmation email to customer after successful payment."""
+    from services.email_service import email_service
+    from services.order_email_templates import build_order_confirmation_email
+    import os
+    
+    customer = order.get("customer", {})
+    customer_email = customer.get("email")
+    customer_name = customer.get("full_name", "Customer")
+    
+    if not customer_email:
+        logger.warning(f"No customer email for order {order.get('order_ref')}")
+        return False
+    
+    # Format total amount
+    pricing = order.get("pricing_snapshot", {})
+    total_pence = pricing.get("total_price_pence", 0)
+    total_amount = f"£{total_pence / 100:.2f}"
+    
+    # Format order date
+    created_at = order.get("created_at")
+    if created_at:
+        order_date = created_at.strftime("%d %B %Y")
+    else:
+        order_date = datetime.now(timezone.utc).strftime("%d %B %Y")
+    
+    # Determine estimated delivery
+    sla_hours = order.get("sla_hours", 48)
+    if sla_hours <= 24:
+        estimated_delivery = "24 hours (Fast Track)"
+    else:
+        estimated_delivery = f"{sla_hours} hours"
+    
+    # Build view order link
+    frontend_url = os.getenv("FRONTEND_URL", "https://pleerity.com")
+    view_order_link = f"{frontend_url}/app/orders"
+    
+    # Build email content
+    email_content = build_order_confirmation_email(
+        client_name=customer_name,
+        order_reference=order.get("order_ref", ""),
+        service_name=order.get("service_name", order.get("service_code", "")),
+        total_amount=total_amount,
+        order_date=order_date,
+        estimated_delivery=estimated_delivery,
+        view_order_link=view_order_link,
+    )
+    
+    # Send email
+    success = await email_service.send_email(
+        recipient=customer_email,
+        subject=email_content["subject"],
+        html_body=email_content["html"],
+        text_body=email_content["text"],
+    )
+    
+    if success:
+        logger.info(f"Order confirmation email sent to {customer_email} for order {order.get('order_ref')}")
+    else:
+        logger.warning(f"Failed to send order confirmation email to {customer_email}")
+    
+    return success
 
 
 def _get_service_name(service_code: str) -> str:
