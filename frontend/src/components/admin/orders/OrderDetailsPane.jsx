@@ -219,6 +219,26 @@ const OrderInfoSection = ({ order }) => {
           )}
         </div>
       )}
+
+      {/* Failure Reason Alert - shown prominently for failed orders */}
+      {order.status === 'FAILED' && (
+        <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <span className="font-medium text-red-800">Order Failed</span>
+              {order.failure_reason ? (
+                <p className="text-sm text-red-700 mt-1">{order.failure_reason}</p>
+              ) : (
+                <p className="text-sm text-red-600 mt-1 italic">No failure reason recorded. Check workflow logs for details.</p>
+              )}
+              {order.failed_at && (
+                <p className="text-xs text-red-500 mt-2">Failed at: {formatDate(order.failed_at)}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
