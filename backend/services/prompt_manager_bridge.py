@@ -148,7 +148,7 @@ class PromptManagerBridge:
             )
             
             logger.info(
-                f"Using Prompt Manager prompt for {service_code}: "
+                f"Using Prompt Manager prompt for {service_code} ({canonical_service_code}): "
                 f"{prompt_info.template_id} v{prompt_info.version}"
             )
             
