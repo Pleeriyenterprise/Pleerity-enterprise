@@ -119,13 +119,13 @@ const OrderInfoSection = ({ order }) => {
         {/* Service */}
         <div>
           <Label className="text-xs text-gray-500">Service</Label>
-          <p className="text-sm">{order.service_name || order.service_code}</p>
+          <p className="text-sm">{order.service_name || getServiceLabel(order.service_code)}</p>
         </div>
 
         {/* Category */}
         <div>
           <Label className="text-xs text-gray-500">Category</Label>
-          <p className="text-sm capitalize">{(order.service_category || order.category || '-').replace(/_/g, ' ')}</p>
+          <p className="text-sm capitalize">{getCategoryLabel(order.service_category || order.category)}</p>
         </div>
 
         {/* Created */}
