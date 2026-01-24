@@ -511,6 +511,23 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 | `/api/admin/prompts/reference/service-codes` | GET | Get available service codes |
 | `/api/admin/prompts/reference/doc-types` | GET | Get available document types |
 
+### Document Pack Orchestrator (Admin - ROLE_ADMIN only)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/document-packs/registry` | GET | Get full document registry (14 docs) |
+| `/api/admin/document-packs/canonical-order` | GET | Get canonical order lists per pack tier |
+| `/api/admin/document-packs/pack-info/{service_code}` | GET | Get pack info with allowed docs |
+| `/api/admin/document-packs/items` | POST | Create document items for order |
+| `/api/admin/document-packs/items/order/{order_id}` | GET | Get all items for order (canonical order) |
+| `/api/admin/document-packs/items/{item_id}` | GET | Get single document item |
+| `/api/admin/document-packs/items/{item_id}/generate` | POST | Generate single document |
+| `/api/admin/document-packs/order/{order_id}/generate-all` | POST | Generate all pending docs |
+| `/api/admin/document-packs/items/{item_id}/regenerate` | POST | Regenerate with reason |
+| `/api/admin/document-packs/items/{item_id}/approve` | POST | Approve completed document |
+| `/api/admin/document-packs/items/{item_id}/reject` | POST | Reject document |
+| `/api/admin/document-packs/order/{order_id}/bundle` | GET | Get delivery bundle |
+| `/api/admin/document-packs/stats` | GET | Get orchestration statistics |
+
 ### Cookie Consent (Public)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
