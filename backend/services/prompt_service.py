@@ -247,8 +247,13 @@ class PromptService:
             "GUARANTOR_AGREEMENT",
             "RENT_INCREASE_NOTICE",
         ],
-        # Document Packs - Pro (placeholder for future)
-        "DOC_PACK_PRO": ["DOC_PACK_PRO"],
+        # Document Packs - Pro (4 document types)
+        "DOC_PACK_PRO": [
+            "INVENTORY_CONDITION_REPORT",
+            "DEPOSIT_INFORMATION_PACK",
+            "PROPERTY_ACCESS_NOTICE",
+            "ADDITIONAL_LANDLORD_NOTICE",
+        ],
     }
     
     def __init__(self, llm_provider: Optional[LLMProviderInterface] = None):
