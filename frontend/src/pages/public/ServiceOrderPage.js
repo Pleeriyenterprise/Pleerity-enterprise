@@ -144,6 +144,38 @@ const ServiceOrderPage = () => {
     setSubmitting(true);
     
     try {
+      // Pre-checkout validation for document packs
+      if (DOCUMENT_PACK_CODES.includes(service.service_code)) {
+        const validationResponse = await fetch(`${API_URL}/api/checkout/validate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_code: service.service_code,
+            selected_documents: intakeData.selected_documents || [],
+            variant_code: 'standard',
+          }),
+        });
+        
+        const validation = await validationResponse.json();
+        
+        if (!validation.valid) {
+          console.error('Checkout validation failed:', validation.errors);
+          toast.error(validation.errors?.[0] || 'Checkout validation failed');
+          setSubmitting(false);
+          return;
+        }
+        
+        // Show warnings
+        if (validation.warnings?.length > 0) {
+          validation.warnings.forEach(w => toast.warning(w, { duration: 5000 }));
+        }
+        
+        console.log('Document pack validated:', {
+          pack_tier: validation.pack_tier,
+          documents: validation.documents_selected,
+        });
+      }
+      
       // Create order
       const orderResponse = await fetch(`${API_URL}/api/orders/create`, {
         method: 'POST',
