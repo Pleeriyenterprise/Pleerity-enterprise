@@ -1669,7 +1669,7 @@ async def get_password_setup_link(request: Request, client_id: str, generate_new
         from auth import generate_secure_token, hash_token
         from models import PasswordToken
         
-        frontend_url = os.getenv("FRONTEND_URL", "https://docpackhub.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://prompt-fix-6.preview.emergentagent.com")
         
         # Check for existing valid token (not used, not revoked, not expired)
         existing_token = None
@@ -1983,7 +1983,7 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
         import os
         from services.email_service import email_service
         
-        frontend_url = os.getenv("FRONTEND_URL", "https://docpackhub.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://prompt-fix-6.preview.emergentagent.com")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
         
         await email_service.send_admin_invite_email(
@@ -2213,7 +2213,7 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
         import os
         from services.email_service import email_service
         
-        frontend_url = os.getenv("FRONTEND_URL", "https://docpackhub.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://prompt-fix-6.preview.emergentagent.com")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
         
         admin_name = target_admin.get("full_name", target_admin.get("auth_email", "Admin"))
