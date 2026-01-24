@@ -130,7 +130,7 @@ class PromptManagerBridge:
         # If no exact match with doc_type, try without doc_type filter
         if not managed_prompt and doc_type:
             managed_prompt = await db[self.PROMPTS_COLLECTION].find_one(
-                {"service_code": service_code, "status": "ACTIVE"},
+                {"service_code": canonical_service_code, "status": "ACTIVE"},
                 {"_id": 0}
             )
         
