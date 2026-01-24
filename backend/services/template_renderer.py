@@ -336,6 +336,55 @@ class TemplateRenderer:
         
         await db[self.VERSIONS_COLLECTION].insert_one(version_record)
         
+        # Store files in GridFS for reliable retrieval
+        try:
+            from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+            
+            fs = AsyncIOMotorGridFSBucket(db, bucket_name="order_files")
+            
+            # Store DOCX
+            docx_metadata = {
+                "order_id": order_id,
+                "version": new_version,
+                "format": "docx",
+                "sha256_hash": docx_doc.sha256_hash,
+                "content_type": docx_doc.content_type,
+            }
+            docx_grid_id = await fs.upload_from_stream(
+                docx_doc.filename,
+                io.BytesIO(docx_doc.content),
+                metadata=docx_metadata,
+            )
+            
+            # Store PDF
+            pdf_metadata = {
+                "order_id": order_id,
+                "version": new_version,
+                "format": "pdf",
+                "sha256_hash": pdf_doc.sha256_hash,
+                "content_type": pdf_doc.content_type,
+            }
+            pdf_grid_id = await fs.upload_from_stream(
+                pdf_doc.filename,
+                io.BytesIO(pdf_doc.content),
+                metadata=pdf_metadata,
+            )
+            
+            # Update version record with GridFS IDs
+            await db[self.VERSIONS_COLLECTION].update_one(
+                {"order_id": order_id, "version": new_version},
+                {"$set": {
+                    "docx.gridfs_id": str(docx_grid_id),
+                    "pdf.gridfs_id": str(pdf_grid_id),
+                }}
+            )
+            
+            logger.info(f"Stored files in GridFS: DOCX={docx_grid_id}, PDF={pdf_grid_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to store files in GridFS for {order_id}: {e}")
+            # Don't fail the render - files are in the RenderResult
+        
         # Calculate render time
         render_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
         
