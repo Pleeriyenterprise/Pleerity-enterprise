@@ -72,6 +72,7 @@ import { toast } from 'sonner';
 import { formatPriceShort } from '../../../api/ordersApi';
 import { AuditTimeline } from './AuditTimeline';
 import { STATUS_COLORS, formatDate } from './OrderList';
+import { getServiceLabel, getCategoryLabel, getStatusLabel } from './orderLabels';
 
 /**
  * Order info section
