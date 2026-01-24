@@ -107,9 +107,15 @@ class PromptManagerBridge:
         """
         db = database.get_db()
         
+        # Resolve service code aliases to prevent silent lookup failures
+        canonical_service_code = SERVICE_CODE_ALIASES.get(service_code, service_code)
+        
+        if canonical_service_code != service_code:
+            logger.info(f"Resolved service code alias: {service_code} -> {canonical_service_code}")
+        
         # Try to find ACTIVE prompt in Prompt Manager
         query = {
-            "service_code": service_code,
+            "service_code": canonical_service_code,
             "status": "ACTIVE",
         }
         
