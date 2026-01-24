@@ -461,9 +461,12 @@ async def get_doc_types(
             {"code": "GUARANTOR_AGREEMENT", "name": "Guarantor Agreement Template", "canonical": True},
             {"code": "RENT_INCREASE_NOTICE", "name": "Rent Increase Notice (Template)", "canonical": True},
         ],
-        # Document Packs - Pro (placeholder)
+        # Document Packs - Pro (4 document types)
         "DOC_PACK_PRO": [
-            {"code": "DOC_PACK_PRO", "name": "Ultimate Document Pack", "canonical": True},
+            {"code": "INVENTORY_CONDITION_REPORT", "name": "Inventory & Condition Report", "canonical": True},
+            {"code": "DEPOSIT_INFORMATION_PACK", "name": "Deposit Information Pack", "canonical": True},
+            {"code": "PROPERTY_ACCESS_NOTICE", "name": "Property Access Notice", "canonical": True},
+            {"code": "ADDITIONAL_LANDLORD_NOTICE", "name": "Additional Landlord Notice", "canonical": True},
         ],
     }
     
