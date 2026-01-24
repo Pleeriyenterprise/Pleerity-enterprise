@@ -13,7 +13,7 @@ import requests
 import json
 import time
 
-API_URL = "https://promptverse-20.preview.emergentagent.com/api"
+API_URL = "https://prompt-versioner-1.preview.emergentagent.com/api"
 
 class AssistantTester:
     def __init__(self):
@@ -146,7 +146,7 @@ class AssistantTester:
         # Test frontend is accessible
         try:
             response = requests.get(
-                "https://promptverse-20.preview.emergentagent.com/app/assistant",
+                "https://prompt-versioner-1.preview.emergentagent.com/app/assistant",
                 timeout=5
             )
             # Will redirect to login if not authenticated, but route exists

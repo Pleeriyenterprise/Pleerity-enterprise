@@ -824,7 +824,7 @@ class LeadService:
         SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
         ADMIN_DASHBOARD_URL = os.environ.get(
             "ADMIN_DASHBOARD_URL",
-            "https://promptverse-20.preview.emergentagent.com/admin/leads"
+            "https://prompt-versioner-1.preview.emergentagent.com/admin/leads"
         )
         
         if not POSTMARK_SERVER_TOKEN or POSTMARK_SERVER_TOKEN == "leadsquared":
