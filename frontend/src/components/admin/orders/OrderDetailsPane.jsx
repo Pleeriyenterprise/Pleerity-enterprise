@@ -136,7 +136,7 @@ const OrderInfoSection = ({ order }) => {
         {/* Amount */}
         <div>
           <Label className="text-xs text-gray-500">Total Amount</Label>
-          <p className="text-sm font-medium">{formatPriceShort(order.total_amount)}</p>
+          <p className="text-sm font-medium">{formatPriceShort(order.total_amount || order.pricing?.total_price_pence || order.pricing_snapshot?.total_price_pence || 0)}</p>
         </div>
 
         {/* Payment Status */}
@@ -146,12 +146,12 @@ const OrderInfoSection = ({ order }) => {
             variant="outline"
             className={cn(
               'text-xs',
-              order.stripe_payment_status === 'paid'
+              (order.stripe_payment_status || order.payment_status) === 'paid'
                 ? 'border-green-500 text-green-700'
                 : 'border-gray-300'
             )}
           >
-            {order.stripe_payment_status || 'pending'}
+            {order.stripe_payment_status || order.payment_status || (order.paid_at ? 'paid' : 'pending')}
           </Badge>
         </div>
       </div>
