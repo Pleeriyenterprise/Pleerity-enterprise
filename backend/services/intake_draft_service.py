@@ -746,9 +746,9 @@ def _get_service_name(service_code: str) -> str:
         "HMO_AUDIT": "HMO Compliance Audit",
         "FULL_AUDIT": "Full Compliance Audit",
         "MOVE_CHECKLIST": "Move-In/Out Checklist",
-        "DOC_PACK_ESSENTIAL": "Essential Document Pack",
-        "DOC_PACK_TENANCY": "Tenancy Document Pack",
-        "DOC_PACK_ULTIMATE": "Ultimate Document Pack",
+        "DOC_PACK_ESSENTIAL": "Essential Landlord Document Pack",
+        "DOC_PACK_PLUS": "Tenancy Legal & Notices Pack",
+        "DOC_PACK_PRO": "Ultimate Landlord Document Pack",
     }
     return names.get(service_code, service_code)
 
