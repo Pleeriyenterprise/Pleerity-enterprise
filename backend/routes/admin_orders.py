@@ -140,6 +140,40 @@ async def get_order_detail(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
+    # Normalize order data for frontend compatibility
+    # The frontend expects certain field names that may differ from DB storage
+    normalized_order = {**order}
+    
+    # Map 'parameters' to 'intake_data' for frontend
+    if 'parameters' in order and 'intake_data' not in order:
+        normalized_order['intake_data'] = order.get('parameters', {})
+    
+    # Map 'intake_snapshot' to 'intake_data' if parameters is missing
+    if not normalized_order.get('intake_data') and order.get('intake_snapshot'):
+        snapshot = order.get('intake_snapshot', {})
+        normalized_order['intake_data'] = snapshot.get('intake_payload', snapshot.get('parameters', {}))
+    
+    # Ensure pricing fields are accessible
+    pricing = order.get('pricing', order.get('pricing_snapshot', {}))
+    normalized_order['total_amount'] = pricing.get('total_price_pence', pricing.get('total_amount', 0))
+    normalized_order['payment_status'] = order.get('stripe_payment_status', 'paid' if order.get('paid_at') else 'pending')
+    
+    # Ensure category is set
+    if not normalized_order.get('category'):
+        normalized_order['category'] = _derive_category_from_service(order.get('service_code', ''))
+    
+    # Get failure reason from audit log if status is FAILED
+    if order.get('status') == 'FAILED':
+        audit_log = order.get('audit_log', [])
+        failure_reasons = [
+            entry.get('details', {}).get('error') or entry.get('details', {}).get('reason', '')
+            for entry in audit_log
+            if entry.get('action') in ['STATUS_CHANGED', 'WORKFLOW_FAILED', 'ORDER_FAILED'] 
+            and 'FAILED' in str(entry.get('details', {}))
+        ]
+        if failure_reasons:
+            normalized_order['failure_reason'] = failure_reasons[-1]
+    
     timeline = await get_order_timeline(order_id)
     
     # Get allowed transitions for current state
@@ -152,12 +186,30 @@ async def get_order_detail(
         admin_actions = {k: v.value for k, v in get_admin_actions_for_review().items()}
     
     return {
-        "order": order,
+        "order": normalized_order,
         "timeline": timeline,
         "allowed_transitions": allowed_transitions,
         "admin_actions": admin_actions,
         "is_terminal": current_status in [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
     }
+
+
+def _derive_category_from_service(service_code: str) -> str:
+    """Derive category from service code if not stored."""
+    category_map = {
+        'AI_WF_BLUEPRINT': 'ai_automation',
+        'AI_PROC_MAP': 'ai_automation',
+        'AI_TOOL_REPORT': 'ai_automation',
+        'MR_BASIC': 'market_research',
+        'MR_ADV': 'market_research',
+        'HMO_AUDIT': 'compliance',
+        'FULL_AUDIT': 'compliance',
+        'MOVE_CHECKLIST': 'property_services',
+        'DOC_PACK_ESSENTIAL': 'document_pack',
+        'DOC_PACK_PLUS': 'document_pack',
+        'DOC_PACK_PRO': 'document_pack',
+    }
+    return category_map.get(service_code, 'other')
 
 
 @router.get("/{order_id}/timeline")
