@@ -344,7 +344,13 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - FULL_COMPLIANCE_AUDIT / FULL_COMPLIANCE_AUDIT_REPORT - "Full Compliance Audit Report – Master Generator"
   - HMO_COMPLIANCE_AUDIT / HMO_COMPLIANCE_AUDIT_REPORT - "HMO Compliance Audit Report – Master Generator"
   - MOVE_IN_OUT_CHECKLIST / MOVE_IN_MOVE_OUT_CHECKLIST - "Move-In / Move-Out Checklist – Master Generator"
-- [x] **All 8 Production Prompts**
+- [x] **Essential Landlord Document Pack Prompts (5 Active)**
+  - DOC_PACK_ESSENTIAL / RENT_ARREARS_LETTER - "Rent Arrears Letter – Essential Pack"
+  - DOC_PACK_ESSENTIAL / DEPOSIT_REFUND_EXPLANATION_LETTER - "Deposit Refund / Explanation Letter – Essential Pack"
+  - DOC_PACK_ESSENTIAL / TENANT_REFERENCE_LETTER - "Tenant Reference Letter – Essential Pack"
+  - DOC_PACK_ESSENTIAL / RENT_RECEIPT - "Rent Receipt – Essential Pack"
+  - DOC_PACK_ESSENTIAL / GDPR_INFORMATION_NOTICE - "GDPR / Data Processing Notice – Essential Pack"
+- [x] **All 13 Production Prompts**
   - Registered, tested, and activated via Enterprise Prompt Manager
   - Schema validation passed for all prompts
   - Full audit trail with activation reasons
