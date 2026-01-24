@@ -106,14 +106,8 @@ const OrderInfoSection = ({ order }) => {
         <div>
           <Label className="text-xs text-gray-500">Status</Label>
           <Badge className={cn('text-xs', STATUS_COLORS[order.status])}>
-            {order.status?.replace(/_/g, ' ')}
+            {getStatusLabel(order.status)}
           </Badge>
-          {/* Show failure reason if status is FAILED */}
-          {order.status === 'FAILED' && order.failure_reason && (
-            <p className="text-xs text-red-600 mt-1">
-              Reason: {order.failure_reason}
-            </p>
-          )}
         </div>
 
         {/* Service */}
