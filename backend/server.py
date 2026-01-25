@@ -4,6 +4,14 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing
+
+# ClearForm - Separate Product Routes
+from clearform.routes import auth as clearform_auth
+from clearform.routes import credits as clearform_credits
+from clearform.routes import documents as clearform_documents
+from clearform.routes import subscriptions as clearform_subscriptions
+from clearform.routes import webhooks as clearform_webhooks
+
 import os
 import logging
 from pathlib import Path
