@@ -17,6 +17,7 @@ from clearform.routes.workspaces import workspaces_router as clearform_workspace
 from clearform.routes.workspaces import profiles_router as clearform_profiles_router
 from clearform.routes.organizations import router as clearform_organizations_router
 from clearform.routes.audit import router as clearform_audit_router
+from clearform.routes.admin import router as clearform_admin_router
 
 import os
 import logging
