@@ -15,6 +15,8 @@ from clearform.routes.document_types import router as clearform_document_types_r
 from clearform.routes.document_types import templates_router as clearform_templates_router
 from clearform.routes.workspaces import workspaces_router as clearform_workspaces_router
 from clearform.routes.workspaces import profiles_router as clearform_profiles_router
+from clearform.routes.organizations import router as clearform_organizations_router
+from clearform.routes.audit import router as clearform_audit_router
 
 import os
 import logging
@@ -345,6 +347,26 @@ async def lifespan(app: FastAPI):
         # Smart profiles
         await db.clearform_profiles.create_index("profile_id", unique=True)
         await db.clearform_profiles.create_index([("user_id", 1), ("profile_type", 1)])
+        # Organizations
+        await db.clearform_organizations.create_index("org_id", unique=True)
+        await db.clearform_organizations.create_index("slug", unique=True)
+        await db.clearform_organizations.create_index("owner_id")
+        # Organization members
+        await db.clearform_org_members.create_index("member_id", unique=True)
+        await db.clearform_org_members.create_index([("org_id", 1), ("user_id", 1)], unique=True)
+        await db.clearform_org_members.create_index("user_id")
+        # Organization invitations
+        await db.clearform_org_invitations.create_index("invitation_id", unique=True)
+        await db.clearform_org_invitations.create_index([("org_id", 1), ("email", 1), ("status", 1)])
+        # Audit logs
+        await db.clearform_audit_logs.create_index("log_id", unique=True)
+        await db.clearform_audit_logs.create_index([("user_id", 1), ("created_at", -1)])
+        await db.clearform_audit_logs.create_index([("org_id", 1), ("created_at", -1)])
+        await db.clearform_audit_logs.create_index("action")
+        await db.clearform_audit_logs.create_index("created_at")
+        # Compliance packs
+        await db.clearform_compliance_packs.create_index("pack_id", unique=True)
+        await db.clearform_compliance_packs.create_index("code", unique=True)
         logger.info("ClearForm indexes created")
         
         # Initialize default document types
@@ -563,6 +585,8 @@ app.include_router(clearform_document_types_router)  # ClearForm Document Types 
 app.include_router(clearform_templates_router)  # ClearForm User Templates
 app.include_router(clearform_workspaces_router)  # ClearForm Workspaces
 app.include_router(clearform_profiles_router)  # ClearForm Smart Profiles
+app.include_router(clearform_organizations_router)  # ClearForm Organizations (Institutional)
+app.include_router(clearform_audit_router)  # ClearForm Audit Logs
 
 # Root endpoint
 @app.get("/api")
