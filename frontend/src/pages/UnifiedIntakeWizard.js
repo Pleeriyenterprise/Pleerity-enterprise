@@ -81,7 +81,22 @@ function StepIndicator({ currentStep }) {
 // STEP 1: SERVICE SELECTION
 // ============================================================================
 
-function ServiceSelectionStep({ services, onSelect, selectedService, packs, addons, selectedAddons, onToggleAddon, postalAddress, onPostalChange }) {
+function ServiceSelectionStep({ 
+  services, 
+  onSelect, 
+  selectedService, 
+  packs, 
+  addons, 
+  selectedAddons, 
+  onToggleAddon, 
+  postalAddress, 
+  onPostalChange,
+  packDocuments,
+  selectedDocuments,
+  onToggleDocument,
+  onSelectAllDocuments,
+  loadingPackDocs
+}) {
   const categories = [
     { code: 'ai_automation', name: 'AI & Automation', icon: Briefcase },
     { code: 'market_research', name: 'Market Research', icon: FileText },
@@ -144,6 +159,78 @@ function ServiceSelectionStep({ services, onSelect, selectedService, packs, addo
           </div>
         );
       })}
+
+      {/* Document Selection for Document Packs */}
+      {isDocPack && packDocuments.length > 0 && (
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600" />
+                Select Documents
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {selectedDocuments.length === 0 
+                  ? 'All documents will be generated. Select specific ones if you only need certain documents.'
+                  : `${selectedDocuments.length} of ${packDocuments.length} documents selected`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="text-sm text-blue-600 hover:underline"
+                onClick={() => onSelectAllDocuments(selectedDocuments.length !== packDocuments.length)}
+              >
+                {selectedDocuments.length === packDocuments.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+          </div>
+          
+          {loadingPackDocs ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600">Loading documents...</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+              {packDocuments.map((doc, idx) => {
+                const isSelected = selectedDocuments.includes(doc.code);
+                
+                return (
+                  <div
+                    key={doc.code}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      isSelected ? 'bg-blue-100 border-blue-400' : 'bg-white hover:border-blue-300'
+                    }`}
+                    onClick={() => onToggleDocument(doc.code)}
+                    data-testid={`doc-select-${doc.code}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Checkbox checked={isSelected} className="mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400">#{idx + 1}</span>
+                          <span className="font-medium text-sm truncate">{doc.name}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{doc.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          
+          <div className="mt-3 p-2 bg-blue-100 rounded text-sm text-blue-700 flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>
+              {selectedDocuments.length === 0 
+                ? 'You\'ll receive all documents in this pack.'
+                : `You\'ll receive ${selectedDocuments.length} selected document${selectedDocuments.length > 1 ? 's' : ''}.`}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Add-ons section for Document Packs */}
       {isDocPack && addons.length > 0 && (
