@@ -220,8 +220,8 @@ const PricingPage = () => {
       answer: 'You\'ll need to upgrade to a higher plan to add more properties. We\'ll notify you when you\'re approaching your limit so you can plan ahead.',
     },
     {
-      question: 'Is there a free trial?',
-      answer: 'Yes, all plans come with a 14-day free trial. No credit card required to start. You can explore all features of your chosen plan before committing.',
+      question: 'How do I get started?',
+      answer: 'Simply choose your plan and complete the signup process. You can start using the platform immediately after setup. Our team will guide you through the onboarding process.',
     },
     {
       question: 'What is the onboarding fee for?',
@@ -367,7 +367,7 @@ const PricingPage = () => {
                         asChild
                       >
                         <Link to="/intake/start">
-                          Start Free Trial
+                          Get Started
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </Link>
                       </Button>
@@ -599,7 +599,7 @@ const PricingPage = () => {
               className="bg-electric-teal hover:bg-electric-teal/90 text-white"
               asChild
             >
-              <Link to="/intake/start">Start Free Trial</Link>
+              <Link to="/intake/start">Get Started Today</Link>
             </Button>
             <Button
               size="lg"
