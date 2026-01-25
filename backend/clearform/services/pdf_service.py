@@ -56,18 +56,6 @@ class PDFService:
             textColor=HexColor('#334155'),
         ))
         
-        # Normal body text
-        styles.add(ParagraphStyle(
-            name='BodyText',
-            parent=styles['Normal'],
-            fontSize=11,
-            leading=16,
-            spaceBefore=6,
-            spaceAfter=6,
-            alignment=TA_JUSTIFY,
-            textColor=HexColor('#374151'),
-        ))
-        
         # Date/header text
         styles.add(ParagraphStyle(
             name='DateText',
