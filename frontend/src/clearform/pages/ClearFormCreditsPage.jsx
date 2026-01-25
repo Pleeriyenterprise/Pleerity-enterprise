@@ -202,10 +202,10 @@ const ClearFormCreditsPage = () => {
         <div className="mb-12">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-slate-900">Buy Credits</h2>
-            <p className="text-slate-500">Top up your balance. Credits never expire.</p>
+            <p className="text-slate-500">Top up your balance. Credits expire in 1 year.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {creditPackages.map((pkg) => (
               <Card 
                 key={pkg.id}
@@ -226,7 +226,7 @@ const ClearFormCreditsPage = () => {
                 </CardHeader>
                 <CardContent className="text-center">
                   <div className="mb-4">
-                    <span className="text-3xl font-bold text-slate-900">£{pkg.price}</span>
+                    <span className="text-3xl font-bold text-slate-900">{pkg.priceDisplay || `£${pkg.price.toFixed(2)}`}</span>
                     {pkg.savings && (
                       <Badge variant="outline" className="ml-2 text-emerald-600 border-emerald-600">
                         Save {pkg.savings}
