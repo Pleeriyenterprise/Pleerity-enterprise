@@ -126,11 +126,18 @@ function App() {
                   ======================================== */}
               <Route path="/" element={<HomePage />} />
               <Route path="/compliance-vault-pro" element={<CVPLandingPage />} />
-              <Route path="/services" element={<ServicesHubPage />} />
+              
+              {/* CMS-Driven Marketing Pages */}
+              <Route path="/services" element={<ServicesHubPageCMS />} />
+              <Route path="/services/ai-automation" element={<CategoryPageCMS />} />
+              <Route path="/services/market-research" element={<CategoryPageCMS />} />
+              <Route path="/services/compliance-audits" element={<CategoryPageCMS />} />
+              <Route path="/services/document-packs" element={<CategoryPageCMS />} />
+              <Route path="/services/:categorySlug/:serviceSlug" element={<ServicePageCMS />} />
+              
+              {/* Legacy/Fallback Service Routes */}
               <Route path="/services/catalogue" element={<ServicesCataloguePage />} />
-              <Route path="/services/:serviceSlug" element={<ServiceDetailPage />} />
-              <Route path="/services/compliance-audits/hmo" element={<ServiceDetailPage />} />
-              <Route path="/services/compliance-audits/full" element={<ServiceDetailPage />} />
+              
               <Route path="/order/:serviceCode" element={<ServiceOrderPage />} />
               <Route path="/order-success" element={<OrderSuccessPage />} />
               <Route path="/pricing" element={<PricingPage />} />
