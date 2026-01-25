@@ -114,7 +114,7 @@ LANDING_PAGE_TEMPLATE = {
             "content": {
                 "headline": "Ready to Get Started?",
                 "description": "Join thousands of businesses already transforming their operations.",
-                "button_text": "Start Free Trial",
+                "button_text": "Get Started",
                 "button_link": "/signup",
                 "style": "primary"
             },
