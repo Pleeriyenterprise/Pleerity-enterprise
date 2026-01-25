@@ -122,6 +122,127 @@ async def delete_page(
 
 
 # ============================================
+# Marketing Website Routes
+# ============================================
+
+@router.get("/marketing/pages")
+async def list_marketing_pages(
+    page_type: Optional[str] = None,
+    category_slug: Optional[str] = None,
+    status: Optional[PageStatus] = None,
+    admin: dict = Depends(admin_route_guard)
+):
+    """List marketing website pages with filters."""
+    from models.cms import CATEGORY_CONFIG
+    
+    pages = await cms_service.list_pages(status=status)
+    pages_list = pages[0] if isinstance(pages, tuple) else pages
+    
+    # Filter by page_type if specified
+    if page_type:
+        pages_list = [p for p in pages_list if p.page_type == page_type]
+    
+    # Filter by category_slug if specified
+    if category_slug:
+        pages_list = [p for p in pages_list if p.category_slug == category_slug]
+    
+    return {
+        "pages": pages_list,
+        "categories": CATEGORY_CONFIG,
+    }
+
+
+@router.get("/marketing/services")
+async def list_services_for_linking(
+    admin: dict = Depends(admin_route_guard)
+):
+    """List available services from catalogue for linking to CMS pages."""
+    from database import database
+    db = database.get_db()
+    
+    services = await db.service_catalogue_v2.find(
+        {"active": True},
+        {"_id": 0, "service_code": 1, "service_name": 1, "category": 1, "base_price": 1}
+    ).sort("category", 1).to_list(100)
+    
+    return {"services": services}
+
+
+@router.post("/marketing/pages/{page_id}/publish")
+async def publish_marketing_page(
+    page_id: str,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Publish a marketing page."""
+    success = await cms_service.publish_page(
+        page_id=page_id,
+        admin_id=admin["portal_user_id"],
+        admin_email=admin["email"]
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return {"success": True, "message": "Page published"}
+
+
+@router.post("/marketing/pages/{page_id}/unpublish")
+async def unpublish_marketing_page(
+    page_id: str,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Unpublish a marketing page (set to draft)."""
+    success = await cms_service.unpublish_page(
+        page_id=page_id,
+        admin_id=admin["portal_user_id"],
+        admin_email=admin["email"]
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return {"success": True, "message": "Page unpublished"}
+
+
+@router.put("/marketing/pages/{page_id}/visibility")
+async def toggle_page_visibility(
+    page_id: str,
+    visible: bool,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Toggle page visibility in navigation."""
+    from database import database
+    db = database.get_db()
+    
+    result = await db.cms_pages.update_one(
+        {"page_id": page_id},
+        {"$set": {"visible_in_nav": visible}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Page not found")
+    
+    return {"success": True, "visible_in_nav": visible}
+
+
+@router.put("/marketing/pages/{page_id}/order")
+async def update_page_order(
+    page_id: str,
+    display_order: int,
+    admin: dict = Depends(admin_route_guard)
+):
+    """Update page display order."""
+    from database import database
+    db = database.get_db()
+    
+    result = await db.cms_pages.update_one(
+        {"page_id": page_id},
+        {"$set": {"display_order": display_order}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Page not found")
+    
+    return {"success": True, "display_order": display_order}
+
+
+# ============================================
 # Block Management Routes
 # ============================================
 
