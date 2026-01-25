@@ -498,6 +498,16 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
+    # Stuck order detection - runs every 30 minutes
+    # Detects orders stuck in FINALISING without proper documents
+    scheduler.add_job(
+        run_stuck_order_detection,
+        CronTrigger(minute="*/30"),  # Every 30 minutes
+        id="stuck_order_detection",
+        name="Stuck Order Detection",
+        replace_existing=True
+    )
+    
     # Queued order processing - runs every 10 minutes
     # Processes queued orders through document generation
     scheduler.add_job(
