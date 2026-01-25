@@ -327,7 +327,30 @@ async def lifespan(app: FastAPI):
         # Top-ups
         await db.clearform_credit_topups.create_index("topup_id", unique=True)
         await db.clearform_credit_topups.create_index("stripe_checkout_session_id", sparse=True)
+        # Document types (admin-configurable)
+        await db.clearform_document_types.create_index("type_id", unique=True)
+        await db.clearform_document_types.create_index("code", unique=True)
+        await db.clearform_document_types.create_index("category")
+        await db.clearform_document_types.create_index("is_active")
+        # Document categories
+        await db.clearform_document_categories.create_index("category_id", unique=True)
+        await db.clearform_document_categories.create_index("code", unique=True)
+        # User templates
+        await db.clearform_templates.create_index("template_id", unique=True)
+        await db.clearform_templates.create_index([("user_id", 1), ("document_type_code", 1)])
+        await db.clearform_templates.create_index("workspace_id", sparse=True)
+        # Workspaces
+        await db.clearform_workspaces.create_index("workspace_id", unique=True)
+        await db.clearform_workspaces.create_index("owner_id")
+        # Smart profiles
+        await db.clearform_profiles.create_index("profile_id", unique=True)
+        await db.clearform_profiles.create_index([("user_id", 1), ("profile_type", 1)])
         logger.info("ClearForm indexes created")
+        
+        # Initialize default document types
+        from clearform.services.document_type_service import document_type_service
+        await document_type_service.initialize_defaults()
+        logger.info("ClearForm document types initialized")
     except Exception as e:
         logger.error(f"Failed to create ClearForm indexes: {e}")
     
