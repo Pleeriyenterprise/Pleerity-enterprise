@@ -93,7 +93,6 @@ async def handle_checkout_completed(session):
     if session_type == "credit_purchase":
         # Process credit top-up
         credits = int(metadata.get("credits", 0))
-        package_id = metadata.get("package_id")
         
         logger.info(f"Processing credit purchase: {credits} credits for user {user_id}")
         
