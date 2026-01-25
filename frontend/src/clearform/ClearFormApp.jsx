@@ -98,6 +98,24 @@ const ClearFormApp = () => {
           }
         />
         
+        {/* Payment Success Routes */}
+        <Route
+          path="credits/success"
+          element={
+            <ClearFormProtectedRoute>
+              <ClearFormPaymentSuccessPage />
+            </ClearFormProtectedRoute>
+          }
+        />
+        <Route
+          path="subscription/success"
+          element={
+            <ClearFormProtectedRoute>
+              <ClearFormPaymentSuccessPage />
+            </ClearFormProtectedRoute>
+          }
+        />
+        
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/clearform" replace />} />
       </Routes>
