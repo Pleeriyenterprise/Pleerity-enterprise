@@ -62,12 +62,12 @@ class ClearFormAuthService:
             status=ClearFormUserStatus.ACTIVE,  # Skip email verification for MVP
             email_verified=True,  # Auto-verify for MVP
             email_verified_at=datetime.now(timezone.utc),
-            credit_balance=5,  # Welcome bonus credits
+            credit_balance=0,  # Credits added via transaction below
         )
         
         await db.clearform_users.insert_one(user.model_dump())
         
-        # Record welcome credits transaction
+        # Record welcome credits transaction (this adds the credits properly)
         from clearform.services.credit_service import credit_service
         from clearform.models.credits import CreditTransactionType
         
