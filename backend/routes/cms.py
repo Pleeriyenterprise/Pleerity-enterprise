@@ -90,8 +90,13 @@ async def update_page(
             page_id=page_id,
             title=data.title,
             description=data.description,
+            slug=data.slug,
             blocks=[b.dict() for b in data.blocks] if data.blocks else None,
             seo=data.seo.dict() if data.seo else None,
+            subtitle=data.subtitle,
+            hero_image=data.hero_image,
+            display_order=data.display_order,
+            visible_in_nav=data.visible_in_nav,
             admin_id=admin["portal_user_id"],
             admin_email=admin["email"]
         )
