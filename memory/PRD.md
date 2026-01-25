@@ -1160,6 +1160,45 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 - [x] "Best Value" badge on popular package
 - [x] "Popular" badge on Professional plan
 
+### Phase 29: ClearForm Phase D - Compliance Rule Packs & Templates (Complete - Jan 25, 2026)
+
+**Backend - Rule Packs System** (`/app/backend/clearform/models/rule_packs.py`):
+- [x] `RulePack` model with validation rules, required sections, compliance standards
+- [x] 3 pre-built rule packs:
+  - UK Formal Letter Standard (RP-FORMAL-01): 7 sections, 3 validation rules
+  - Consumer Complaint Standard (RP-COMPLAINT-01): 9 sections, 4 rules, UK Consumer Rights Act
+  - Modern UK CV Standard (RP-CV-01): 5 sections, 4 rules
+- [x] Validation severity levels: ERROR, WARNING, INFO
+- [x] Section types: HEADER, ADDRESS, SALUTATION, SUBJECT, BODY, BULLET_LIST, SIGNATURE, DATE, REFERENCE
+
+**Backend - Document Templates** (`/app/backend/clearform/services/template_service.py`):
+- [x] `DocumentTemplate` model with sections, placeholders, AI enhancement flags
+- [x] 2 system templates:
+  - Standard Formal Letter (TPL-FORMAL-01): Hybrid generation, 7 sections
+  - Consumer Complaint Letter (TPL-COMPLAINT-01): Hybrid generation, 8 sections
+- [x] Generation modes: AI_FULL, TEMPLATE_ONLY, HYBRID
+- [x] Placeholder system with Smart Profile mapping
+- [x] Template-based generation with AI enhancement for body sections
+
+**Backend - Template API Routes** (`/app/backend/clearform/routes/document_types.py`):
+- [x] `GET /api/clearform/templates/system` - List system templates
+- [x] `GET /api/clearform/templates/system/{id}` - Get template details
+- [x] `POST /api/clearform/templates/system/generate` - Generate from template
+- [x] `POST /api/clearform/templates/system/prefill` - Get pre-filled values from Smart Profile
+- [x] `GET /api/clearform/templates/rule-packs` - List rule packs
+- [x] `GET /api/clearform/templates/rule-packs/{id}` - Get rule pack details
+- [x] `GET /api/clearform/templates/profiles` - Get Smart Profiles for auto-fill
+
+**Frontend - Templates API** (`/app/frontend/src/clearform/api/clearformApi.js`):
+- [x] `templatesApi` object with all template/rule pack endpoints
+- [x] Support for pre-filled template data from Smart Profiles
+- [x] Ready for UI integration
+
+**Profile Pre-fill Feature**:
+- [x] Smart Profile fields mapped to template placeholders
+- [x] Auto-fill sender details (name, address, email, phone)
+- [x] Default profile auto-selection
+
 ---
 
 ## Credentials
