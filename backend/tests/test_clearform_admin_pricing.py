@@ -239,8 +239,9 @@ class TestPricingDataValidation:
         # Verify packages have required fields
         for pkg in packages:
             assert "credits" in pkg, "Package missing credits field"
-            assert "price" in pkg, "Package missing price field"
+            assert "price_gbp" in pkg, "Package missing price_gbp field"
             assert "package_id" in pkg, "Package missing package_id field"
+            assert "price_display" in pkg, "Package missing price_display field"
         
         # Verify expected credit amounts exist
         credit_amounts = [p.get("credits") for p in packages]
