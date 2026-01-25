@@ -174,14 +174,16 @@ async def publish_marketing_page(
     admin: dict = Depends(admin_route_guard)
 ):
     """Publish a marketing page."""
-    success = await cms_service.publish_page(
-        page_id=page_id,
-        admin_id=admin["portal_user_id"],
-        admin_email=admin["email"]
-    )
-    if not success:
-        raise HTTPException(status_code=404, detail="Page not found")
-    return {"success": True, "message": "Page published"}
+    try:
+        await cms_service.publish_page(
+            page_id=page_id,
+            notes=None,
+            admin_id=admin["portal_user_id"],
+            admin_email=admin["email"]
+        )
+        return {"success": True, "message": "Page published"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/marketing/pages/{page_id}/unpublish")
