@@ -10,3 +10,4 @@ export { default as ClearFormDocumentPage } from './ClearFormDocumentPage';
 export { default as ClearFormVaultPage } from './ClearFormVaultPage';
 export { default as ClearFormCreditsPage } from './ClearFormCreditsPage';
 export { default as ClearFormOrganizationsPage } from './ClearFormOrganizationsPage';
+export { default as ClearFormWorkspacesPage } from './ClearFormWorkspacesPage';
