@@ -1,9 +1,3 @@
-/**
- * ClearForm App Layout
- * 
- * Wraps all ClearForm routes with the auth provider.
- */
-
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ClearFormAuthProvider } from './contexts/ClearFormAuthContext';
@@ -14,6 +8,8 @@ import {
   ClearFormDashboard,
   ClearFormCreatePage,
   ClearFormDocumentPage,
+  ClearFormVaultPage,
+  ClearFormCreditsPage,
 } from './pages';
 
 const ClearFormApp = () => {
@@ -54,7 +50,7 @@ const ClearFormApp = () => {
           path="vault"
           element={
             <ClearFormProtectedRoute>
-              <ClearFormDashboard />
+              <ClearFormVaultPage />
             </ClearFormProtectedRoute>
           }
         />
@@ -62,7 +58,7 @@ const ClearFormApp = () => {
           path="credits"
           element={
             <ClearFormProtectedRoute>
-              <ClearFormDashboard />
+              <ClearFormCreditsPage />
             </ClearFormProtectedRoute>
           }
         />
