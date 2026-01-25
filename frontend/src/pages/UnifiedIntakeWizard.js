@@ -1249,6 +1249,11 @@ export default function UnifiedIntakeWizard() {
             onSelect={handleServiceSelect}
             onToggleAddon={handleToggleAddon}
             onPostalChange={handlePostalChange}
+            packDocuments={packDocuments}
+            selectedDocuments={selectedDocuments}
+            onToggleDocument={handleToggleDocument}
+            onSelectAllDocuments={handleSelectAllDocuments}
+            loadingPackDocs={loadingPackDocs}
           />
         );
       case 2:
