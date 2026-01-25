@@ -12,6 +12,7 @@ import {
   ClearFormCreditsPage,
   ClearFormOrganizationsPage,
   ClearFormWorkspacesPage,
+  ClearFormPaymentSuccessPage,
 } from './pages';
 
 const ClearFormApp = () => {
