@@ -11,7 +11,7 @@ const PublicFooter = () => {
   ];
 
   const serviceLinks = [
-    { href: '/services/ai-workflow-automation', label: 'AI Workflows' },
+    { href: '/services/ai-automation', label: 'AI & Automation' },
     { href: '/services/market-research', label: 'Market Research' },
     { href: '/services/document-packs', label: 'Document Packs' },
     { href: '/services/compliance-audits', label: 'Compliance Audits' },
