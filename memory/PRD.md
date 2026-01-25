@@ -806,6 +806,44 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
   - URL reflects selected service: `/order/intake?service=AI_WF_BLUEPRINT`
   - Enables sharing specific service links
 
+### Phase 21: Marketing Website CMS (Complete - Jan 25, 2026)
+
+**Phase 1 + 2: CMS Backend + Public Pages**
+- [x] Extended `cms_models.py` with PageType (HUB, CATEGORY, SERVICE), CATEGORY_CONFIG, PurchaseMode
+- [x] Extended `cms_service.py` with marketing functions:
+  - `get_services_hub()`, `get_category_page()`, `get_service_page()`
+  - `build_cta_config()` - Dynamic CTA based on purchase mode
+  - `check_redirect()`, `create_redirect()` - URL redirect support
+  - `unpublish_page()` - Set pages back to draft
+- [x] Created `/api/marketing/*` routes for public website
+- [x] Created CMS seeding script with 16 pages:
+  - 1 Hub page (`/services`)
+  - 4 Category pages (`/services/ai-automation`, etc.)
+  - 11 Service pages linked to Service Catalogue
+- [x] Frontend components: `ServicesHubPageCMS.js`, `CategoryPageCMS.js`, `ServicePageCMS.js`
+- [x] Preview environment banner for non-production
+- [x] CTA routing to `/order/intake?service={service_code}`
+
+**Phase 3: Admin CMS UI**
+- [x] Added "Marketing Website" tab to Admin Site Builder
+- [x] Marketing pages list with page type grouping (Hub, Categories, Services)
+- [x] Summary stats (Total pages, Published, Drafts, Categories)
+- [x] Category expansion/collapse with nested services
+- [x] Publish/Unpublish actions per page
+- [x] Visibility toggle (show/hide in nav)
+- [x] Edit button integration with existing page editor
+- [x] External link preview buttons
+
+**API Endpoints**:
+- `GET /api/marketing/services` - Services hub data
+- `GET /api/marketing/services/categories` - List categories
+- `GET /api/marketing/services/category/{slug}` - Category with services
+- `GET /api/marketing/services/{category}/{service}` - Service detail
+- `GET /api/admin/cms/marketing/pages` - Admin page list
+- `POST /api/admin/cms/marketing/pages/{id}/publish` - Publish page
+- `POST /api/admin/cms/marketing/pages/{id}/unpublish` - Unpublish page
+- `PUT /api/admin/cms/marketing/pages/{id}/visibility` - Toggle nav visibility
+
 ---
 
-*Last updated: January 24, 2026*
+*Last updated: January 25, 2026*
