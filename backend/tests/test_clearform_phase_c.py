@@ -385,9 +385,12 @@ class TestDocumentGeneration:
         
         assert response.status_code == 200, f"Failed: {response.text}"
         data = response.json()
-        assert "document_types" in data
-        assert isinstance(data["document_types"], list)
-        assert len(data["document_types"]) > 0
+        # Response is a list of document types directly
+        assert isinstance(data, list)
+        assert len(data) > 0
+        # Check structure of first item
+        assert "credit_cost" in data[0]
+        assert "description" in data[0]
     
     def test_get_user_vault(self, auth_token_doctest):
         """GET /api/clearform/documents/vault - Get user's document vault"""
@@ -396,8 +399,11 @@ class TestDocumentGeneration:
         
         assert response.status_code == 200, f"Failed: {response.text}"
         data = response.json()
-        assert "documents" in data
-        assert isinstance(data["documents"], list)
+        # Response uses 'items' key for paginated results
+        assert "items" in data
+        assert isinstance(data["items"], list)
+        assert "page" in data
+        assert "total" in data
 
 
 class TestCreditSystem:
@@ -418,8 +424,10 @@ class TestCreditSystem:
         
         assert response.status_code == 200, f"Failed: {response.text}"
         data = response.json()
-        assert "balance" in data
+        # Wallet uses 'total_balance' key
+        assert "total_balance" in data
         assert "lifetime_purchased" in data
+        assert "credits_used_this_month" in data
     
     def test_get_credit_packages(self, auth_token_doctest):
         """GET /api/clearform/credits/packages - Get available credit packages"""
@@ -428,8 +436,12 @@ class TestCreditSystem:
         
         assert response.status_code == 200, f"Failed: {response.text}"
         data = response.json()
-        assert "packages" in data
-        assert isinstance(data["packages"], list)
+        # Response is a list of packages directly
+        assert isinstance(data, list)
+        assert len(data) > 0
+        # Check structure
+        assert "credits" in data[0]
+        assert "package_id" in data[0]
 
 
 if __name__ == "__main__":
