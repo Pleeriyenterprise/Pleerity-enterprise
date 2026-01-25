@@ -1,11 +1,14 @@
 /**
  * ClearForm Document View Page
  * 
- * Displays generated document with download options.
+ * Displays generated document with download options and PDF preview.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
 import { 
   FileText, 
   ArrowLeft, 
@@ -16,12 +19,23 @@ import {
   Clock,
   RefreshCw,
   Copy,
-  Trash2
+  Trash2,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  FileCode,
+  X
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { documentsApi } from '../api/clearformApi';
 import { toast } from 'sonner';
+
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const ClearFormDocumentPage = () => {
   const navigate = useNavigate();
@@ -29,6 +43,15 @@ const ClearFormDocumentPage = () => {
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
+  const [activeTab, setActiveTab] = useState('preview');
+  
+  // PDF viewer state
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [scale, setScale] = useState(1.0);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
 
   useEffect(() => {
     loadDocument();
@@ -54,6 +77,13 @@ const ClearFormDocumentPage = () => {
     }
   }, [document?.status, documentId]);
 
+  // Load PDF when document is completed
+  useEffect(() => {
+    if (document?.status === 'COMPLETED') {
+      loadPdf();
+    }
+  }, [document?.status, document?.document_id]);
+
   const loadDocument = async () => {
     try {
       const doc = await documentsApi.getDocument(documentId);
@@ -64,6 +94,38 @@ const ClearFormDocumentPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadPdf = async () => {
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const API_BASE = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem('clearform_token');
+      const response = await fetch(
+        `${API_BASE}/api/clearform/documents/${document.document_id}/download?format=pdf`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Failed to load PDF');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setPdfUrl(url);
+    } catch (error) {
+      console.error('PDF load error:', error);
+      setPdfError('Could not load PDF preview');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+    setPageNumber(1);
+  };
+
+  const onDocumentLoadError = (error) => {
+    console.error('PDF load error:', error);
+    setPdfError('Could not load PDF preview');
   };
 
   const handleCopy = () => {
@@ -168,6 +230,12 @@ const ClearFormDocumentPage = () => {
     }
   };
 
+  // PDF navigation handlers
+  const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
+  const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages || 1));
+  const zoomIn = () => setScale(prev => Math.min(prev + 0.25, 2.5));
+  const zoomOut = () => setScale(prev => Math.max(prev - 0.25, 0.5));
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -199,7 +267,7 @@ const ClearFormDocumentPage = () => {
       </header>
 
       {/* Main */}
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="container mx-auto px-4 py-8 max-w-5xl">
         <Button variant="ghost" className="mb-6" onClick={() => navigate('/clearform/dashboard')}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
         </Button>
@@ -207,10 +275,10 @@ const ClearFormDocumentPage = () => {
         {/* Document Header */}
         <Card className="mb-6">
           <CardHeader>
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between flex-wrap gap-4">
               <div>
                 <CardTitle className="text-xl">{document?.title}</CardTitle>
-                <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                <div className="flex items-center gap-4 mt-2 text-sm text-slate-500 flex-wrap">
                   <span className="capitalize">{document?.document_type?.replace('_', ' ')}</span>
                   <span>•</span>
                   <span>{new Date(document?.created_at).toLocaleDateString()}</span>
@@ -268,14 +336,125 @@ const ClearFormDocumentPage = () => {
             )}
 
             {document?.status === 'COMPLETED' && document?.content_markdown && (
-              <div 
-                className="prose prose-slate max-w-none"
-                data-testid="document-content"
-              >
-                <pre className="whitespace-pre-wrap font-sans text-slate-800 bg-slate-50 p-6 rounded-lg">
-                  {cleanMarkdown(document.content_markdown)}
-                </pre>
-              </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="preview" className="flex items-center gap-2" data-testid="tab-preview">
+                    <Eye className="w-4 h-4" /> PDF Preview
+                  </TabsTrigger>
+                  <TabsTrigger value="text" className="flex items-center gap-2" data-testid="tab-text">
+                    <FileCode className="w-4 h-4" /> Text View
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* PDF Preview Tab */}
+                <TabsContent value="preview" className="mt-0">
+                  <div className="bg-slate-100 rounded-lg p-4">
+                    {pdfLoading && (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                        <span className="ml-2 text-slate-600">Loading PDF...</span>
+                      </div>
+                    )}
+
+                    {pdfError && (
+                      <div className="text-center py-12">
+                        <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                        <p className="text-slate-600">{pdfError}</p>
+                        <Button variant="outline" size="sm" className="mt-4" onClick={loadPdf}>
+                          <RefreshCw className="w-4 h-4 mr-2" /> Retry
+                        </Button>
+                      </div>
+                    )}
+
+                    {pdfUrl && !pdfLoading && !pdfError && (
+                      <div className="flex flex-col items-center">
+                        {/* PDF Controls */}
+                        <div className="flex items-center gap-4 mb-4 p-2 bg-white rounded-lg shadow-sm">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToPrevPage}
+                            disabled={pageNumber <= 1}
+                            data-testid="pdf-prev-page"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <span className="text-sm text-slate-600 min-w-[100px] text-center">
+                            Page {pageNumber} of {numPages || '?'}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToNextPage}
+                            disabled={pageNumber >= (numPages || 1)}
+                            data-testid="pdf-next-page"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                          <div className="w-px h-6 bg-slate-200" />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={zoomOut}
+                            disabled={scale <= 0.5}
+                            data-testid="pdf-zoom-out"
+                          >
+                            <ZoomOut className="w-4 h-4" />
+                          </Button>
+                          <span className="text-sm text-slate-600 min-w-[60px] text-center">
+                            {Math.round(scale * 100)}%
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={zoomIn}
+                            disabled={scale >= 2.5}
+                            data-testid="pdf-zoom-in"
+                          >
+                            <ZoomIn className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        {/* PDF Document */}
+                        <div 
+                          className="bg-white shadow-lg rounded overflow-auto max-h-[70vh]"
+                          data-testid="pdf-container"
+                        >
+                          <Document
+                            file={pdfUrl}
+                            onLoadSuccess={onDocumentLoadSuccess}
+                            onLoadError={onDocumentLoadError}
+                            loading={
+                              <div className="flex items-center justify-center p-8">
+                                <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                              </div>
+                            }
+                          >
+                            <Page
+                              pageNumber={pageNumber}
+                              scale={scale}
+                              renderTextLayer={true}
+                              renderAnnotationLayer={true}
+                            />
+                          </Document>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* Text View Tab */}
+                <TabsContent value="text" className="mt-0">
+                  <div 
+                    className="prose prose-slate max-w-none"
+                    data-testid="document-content"
+                  >
+                    <pre className="whitespace-pre-wrap font-sans text-slate-800 bg-slate-50 p-6 rounded-lg">
+                      {cleanMarkdown(document.content_markdown)}
+                    </pre>
+                  </div>
+                </TabsContent>
+              </Tabs>
             )}
           </CardContent>
         </Card>
