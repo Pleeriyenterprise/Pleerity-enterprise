@@ -1,0 +1,97 @@
+{
+  "summary": "ClearForm P0 Features testing complete. All 15 backend API tests passed. Frontend UI functional with PDF viewer, credits page, and Stripe checkout. However, found significant frontend/backend data mismatches in credit packages and subscription plans.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Credit Packages",
+        "issue": "Frontend hardcoded packages (10/25/75 credits at £5/£10/£25) don't match backend packages (10/25/50/100 credits at £9.99/£19.99/£34.99/£59.99). Frontend displays wrong prices but Stripe charges correct backend prices.",
+        "affected_selectors": ["[data-testid^='credit-package-']"],
+        "priority": "HIGH"
+      },
+      {
+        "flow": "Subscription Plans",
+        "issue": "Frontend uses plan IDs 'personal' and 'power_user' but backend expects 'starter', 'professional', 'unlimited'. Subscribe buttons will fail with 'Invalid plan' error.",
+        "affected_selectors": ["[data-testid^='subscription-plan-']"],
+        "priority": "HIGH"
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_clearform_p0_features.py",
+    "/app/test_reports/pytest/pytest_results_iter63.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Update ClearFormCreditsPage.jsx creditPackages array to match backend packages (credits_10, credits_25, credits_50, credits_100) with correct prices (£9.99, £19.99, £34.99, £59.99)",
+    "CRITICAL: Update ClearFormCreditsPage.jsx subscriptionPlans array to use correct plan IDs ('starter', 'professional', 'unlimited') instead of ('personal', 'power_user')",
+    "Consider fetching credit packages and subscription plans from backend API instead of hardcoding in frontend"
+  ],
+  "critical_code_review_comments": [
+    "ClearFormCreditsPage.jsx has hardcoded credit packages that don't match backend - should fetch from /api/clearform/credits/packages",
+    "ClearFormCreditsPage.jsx has hardcoded subscription plans that don't match backend - should fetch from /api/clearform/subscriptions/plans",
+    "Frontend displays £5 for 10 credits but Stripe charges £9.99 - misleading to users"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_clearform_p0_features.py"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "80% (core features work but data mismatches exist)"
+  },
+  "test_credentials": {
+    "clearform_user": "demo2@clearform.com / DemoPass123!",
+    "admin": "admin@pleerity.com / Admin123!"
+  },
+  "seed_data_creation": "Used existing test user demo2@clearform.com",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "ClearForm P0 features (service catalogue, PDF viewer, Stripe checkout) are functional. Main issues are frontend/backend data mismatches in credit packages and subscription plans. Backend APIs all working correctly. Frontend displays incorrect prices for credit packages.",
+  "features_tested": {
+    "backend_api": {
+      "GET /api/public/v2/services?category=clearform": "PASS - CLEARFORM service exists",
+      "GET /api/public/v2/services/CLEARFORM": "PASS - Service details correct",
+      "POST /api/clearform/auth/login": "PASS - Authentication working",
+      "GET /api/clearform/credits/wallet": "PASS - Wallet balance returned",
+      "POST /api/clearform/credits/purchase": "PASS - Stripe checkout created for credits_10, credits_25, credits_50, credits_100",
+      "GET /api/clearform/subscriptions/plans": "PASS - Returns 4 plans (free, starter, professional, unlimited)",
+      "GET /api/clearform/subscriptions/current": "PASS - Returns subscription status",
+      "GET /api/clearform/documents/types": "PASS - Document types returned",
+      "GET /api/clearform/documents/vault": "PASS - Document vault returned",
+      "GET /api/clearform/documents/{id}": "PASS - Document details returned",
+      "GET /api/clearform/documents/{id}/download?format=pdf": "PASS - PDF download working"
+    },
+    "frontend_ui": {
+      "login_page": "PASS - Login form works",
+      "dashboard": "PASS - Shows credit balance, recent documents",
+      "credits_page": "PARTIAL - UI displays but with wrong prices/packages",
+      "buy_now_button": "PASS - Redirects to Stripe checkout",
+      "document_page": "PASS - PDF Preview and Text View tabs work",
+      "pdf_viewer_controls": "PASS - Zoom in/out, page navigation visible",
+      "subscribe_buttons": "FAIL - Will fail due to wrong plan IDs"
+    }
+  },
+  "data_mismatches": {
+    "credit_packages": {
+      "frontend": [
+        {"id": "credits_10", "credits": 10, "price": "£5"},
+        {"id": "credits_25", "credits": 25, "price": "£10"},
+        {"id": "credits_75", "credits": 75, "price": "£25"}
+      ],
+      "backend": [
+        {"id": "credits_10", "credits": 10, "price": "£9.99"},
+        {"id": "credits_25", "credits": 25, "price": "£19.99"},
+        {"id": "credits_50", "credits": 50, "price": "£34.99"},
+        {"id": "credits_100", "credits": 100, "price": "£59.99"}
+      ]
+    },
+    "subscription_plans": {
+      "frontend": ["free", "personal", "power_user"],
+      "backend": ["free", "starter", "professional", "unlimited"]
+    }
+  }
+}
