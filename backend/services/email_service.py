@@ -671,6 +671,34 @@ Your documents are also available in your portal dashboard:
 Need help? Contact us at info@pleerityenterprise.co.uk
 {footer}
             """
+        elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
+            return f"""
+WELCOME TO CLEARFORM BY PLEERITY
+================================
+
+Hello {model.get('full_name', 'there')},
+
+Welcome to ClearForm. Your account is ready, and we've added some starter credits 
+to help you get going.
+
+ClearForm helps you create professional paperwork without stress or mistakes. 
+Just tell us what you need in plain English, and we'll generate a properly 
+formatted document for you.
+
+YOUR CREDIT BALANCE: {model.get('credit_balance', 5)} credits
+
+Each document costs 1 credit. You can always add more credits later if you need them.
+
+Create Your First Document: {model.get('dashboard_link', '#')}
+
+---
+Important: ClearForm is an assistive tool to help you draft documents. 
+Always review the output and seek professional advice for legal matters.
+
+--
+{model.get('company_name', 'Pleerity Enterprise Ltd')}
+{model.get('tagline', 'AI-Driven Solutions & Compliance')}
+            """
         else:
             return f"""
 Compliance Vault Pro
