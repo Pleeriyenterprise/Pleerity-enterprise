@@ -49,13 +49,24 @@ async def register(data: ClearFormUserCreate):
     """Register a new ClearForm user.
     
     Returns auth token and user info. New users get 5 welcome credits.
+    Sends branded welcome email.
     """
     try:
-        await clearform_auth_service.register(data)
+        user = await clearform_auth_service.register(data)
         
         # Auto-login after registration
         login_response = await clearform_auth_service.login(
             ClearFormUserLogin(email=data.email, password=data.password)
+        )
+        
+        # Send welcome email (fire-and-forget, don't block response)
+        asyncio.create_task(
+            email_service.send_clearform_welcome_email(
+                recipient=user.email,
+                full_name=user.full_name,
+                user_id=user.user_id,
+                credit_balance=user.credit_balance,
+            )
         )
         
         return login_response
