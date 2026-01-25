@@ -18,7 +18,7 @@ import requests
 import os
 from datetime import datetime, timezone, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://clearform-app.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://paperwork-assist-1.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 CLIENT_EMAIL = "test@pleerity.com"
