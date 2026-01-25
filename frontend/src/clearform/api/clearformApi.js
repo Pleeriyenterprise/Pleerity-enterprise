@@ -204,6 +204,85 @@ export const subscriptionsApi = {
 };
 
 // ============================================================================
+// System Templates API (Phase D)
+// ============================================================================
+
+export const templatesApi = {
+  // Get system templates
+  getSystemTemplates: async (documentType = null) => {
+    const params = documentType ? `?document_type=${documentType}` : '';
+    const res = await fetch(`${API_BASE}/api/clearform/templates/system${params}`, { headers: headers() });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get templates');
+    return json;
+  },
+
+  // Get template details
+  getTemplateDetails: async (templateId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/templates/system/${templateId}`, { headers: headers() });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get template');
+    return json;
+  },
+
+  // Generate document from template
+  generateFromTemplate: async (templateId, data, profileId = null) => {
+    const res = await fetch(`${API_BASE}/api/clearform/templates/system/generate`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({
+        template_id: templateId,
+        data,
+        profile_id: profileId,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to generate document');
+    return json;
+  },
+
+  // Get pre-filled template data
+  getPrefilledTemplate: async (templateId, profileId = null) => {
+    const res = await fetch(`${API_BASE}/api/clearform/templates/system/prefill`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({
+        template_id: templateId,
+        profile_id: profileId,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get prefilled template');
+    return json;
+  },
+
+  // Get rule packs
+  getRulePacks: async (documentType = null) => {
+    const params = documentType ? `?document_type=${documentType}` : '';
+    const res = await fetch(`${API_BASE}/api/clearform/templates/rule-packs${params}`, { headers: headers() });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get rule packs');
+    return json;
+  },
+
+  // Get rule pack details
+  getRulePackDetails: async (packId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/templates/rule-packs/${packId}`, { headers: headers() });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get rule pack');
+    return json;
+  },
+
+  // Get smart profiles for auto-fill
+  getProfiles: async () => {
+    const res = await fetch(`${API_BASE}/api/clearform/templates/profiles`, { headers: headers() });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get profiles');
+    return json;
+  },
+};
+
+// ============================================================================
 // Organizations API
 // ============================================================================
 
