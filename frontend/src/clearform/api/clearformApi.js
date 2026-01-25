@@ -323,3 +323,136 @@ export const organizationsApi = {
     return json;
   },
 };
+
+// ============================================================================
+// Workspaces API
+// ============================================================================
+
+export const workspacesApi = {
+  getWorkspaces: async (includeArchived = false) => {
+    const res = await fetch(
+      `${API_BASE}/api/clearform/workspaces?include_archived=${includeArchived}`,
+      { headers: headers() }
+    );
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get workspaces');
+    return json;
+  },
+
+  getWorkspace: async (workspaceId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/workspaces/${workspaceId}`, {
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get workspace');
+    return json;
+  },
+
+  createWorkspace: async (data) => {
+    const res = await fetch(`${API_BASE}/api/clearform/workspaces`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to create workspace');
+    return json;
+  },
+
+  updateWorkspace: async (workspaceId, data) => {
+    const res = await fetch(`${API_BASE}/api/clearform/workspaces/${workspaceId}`, {
+      method: 'PATCH',
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to update workspace');
+    return json;
+  },
+
+  archiveWorkspace: async (workspaceId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/workspaces/${workspaceId}/archive`, {
+      method: 'POST',
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to archive workspace');
+    return json;
+  },
+
+  setDefaultWorkspace: async (workspaceId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/workspaces/${workspaceId}/set-default`, {
+      method: 'POST',
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to set default workspace');
+    return json;
+  },
+};
+
+// ============================================================================
+// Profiles API
+// ============================================================================
+
+export const profilesApi = {
+  getProfiles: async (profileType = null) => {
+    const url = profileType 
+      ? `${API_BASE}/api/clearform/profiles?profile_type=${profileType}`
+      : `${API_BASE}/api/clearform/profiles`;
+    const res = await fetch(url, { headers: headers() });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get profiles');
+    return json;
+  },
+
+  getProfile: async (profileId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/profiles/${profileId}`, {
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get profile');
+    return json;
+  },
+
+  createProfile: async (data) => {
+    const res = await fetch(`${API_BASE}/api/clearform/profiles`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to create profile');
+    return json;
+  },
+
+  updateProfile: async (profileId, data) => {
+    const res = await fetch(`${API_BASE}/api/clearform/profiles/${profileId}`, {
+      method: 'PATCH',
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to update profile');
+    return json;
+  },
+
+  deleteProfile: async (profileId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/profiles/${profileId}`, {
+      method: 'DELETE',
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to delete profile');
+    return json;
+  },
+
+  getFavorites: async () => {
+    const res = await fetch(`${API_BASE}/api/clearform/profiles/favorites`, {
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get favorites');
+    return json;
+  },
+};
