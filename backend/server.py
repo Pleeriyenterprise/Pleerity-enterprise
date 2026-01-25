@@ -536,6 +536,10 @@ app.include_router(clearform_credits.router)  # ClearForm Credits
 app.include_router(clearform_documents.router)  # ClearForm Documents
 app.include_router(clearform_subscriptions.router)  # ClearForm Subscriptions
 app.include_router(clearform_webhooks.router)  # ClearForm Stripe Webhooks
+app.include_router(clearform_document_types_router)  # ClearForm Document Types (Admin-configurable)
+app.include_router(clearform_templates_router)  # ClearForm User Templates
+app.include_router(clearform_workspaces_router)  # ClearForm Workspaces
+app.include_router(clearform_profiles_router)  # ClearForm Smart Profiles
 
 # Root endpoint
 @app.get("/api")
