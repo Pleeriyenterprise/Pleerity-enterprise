@@ -16,9 +16,9 @@ import {
 const ServicesHubPage = () => {
   const services = [
     {
-      href: '/services/ai-workflow-automation',
+      href: '/services/ai-automation',
       icon: Sparkles,
-      title: 'AI Workflow Automation',
+      title: 'AI & Automation',
       description: 'Automate repetitive property management tasks with intelligent AI-powered workflows. Save time and reduce errors.',
       features: ['Document Processing', 'Email Automation', 'Report Generation'],
       color: 'bg-purple-500',
