@@ -19,7 +19,7 @@ from typing import Optional, Dict, Any, List
 from services import cms_service
 from models.cms import CATEGORY_CONFIG, PageStatus
 
-router = APIRouter(prefix="/marketing", tags=["Marketing Website"])
+router = APIRouter(prefix="/api/marketing", tags=["Marketing Website"])
 
 # Environment check for preview banner
 IS_PRODUCTION = os.environ.get("ENVIRONMENT", "preview") == "production"
