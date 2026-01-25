@@ -846,4 +846,90 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 
 ---
 
-*Last updated: January 25, 2026*
+### Phase 22: ClearForm Product - Phase 1 MVP (Complete - Jan 25, 2026)
+
+**Product Overview**:
+ClearForm is a standalone SaaS product - an intent-driven paperwork assistant with a credit-based economy. It shares backend infrastructure with Pleerity but operates as a completely separate product with its own:
+- UX and frontend (`/clearform/*` routes)
+- MongoDB collections (`clearform_users`, `clearform_documents`, etc.)
+- Stripe products (same account, separate products)
+- User identity (ClearForm user ≠ Pleerity client)
+
+**Architecture**: Shared Backend, Separate Frontend
+
+**Phase 1 Features Implemented**:
+
+**Credit System**:
+- [x] Credit wallet with FIFO expiry tracking
+- [x] Credit deduction on document generation
+- [x] Manual top-ups via Stripe checkout
+- [x] Subscription plans with monthly credit grants
+- [x] Credit expiry logic (365 days default)
+- [x] Transaction history with audit trail
+- [x] 5 welcome bonus credits for new users
+
+**Document Types** (3 types for Phase 1):
+- [x] Formal Letter (1 credit) - Professional correspondence
+- [x] Complaint Letter (1 credit) - Issue resolution letters
+- [x] CV/Resume (2 credits) - Professional CV generation
+
+**Document Generation**:
+- [x] Intent-based generation flow (user describes, AI creates)
+- [x] AI generation via Gemini (emergentintegrations)
+- [x] Async generation with status polling
+- [x] Auto-refund on failed generation
+- [x] Markdown & plain text output
+
+**Document Vault**:
+- [x] Document listing with pagination
+- [x] Filter by type and status
+- [x] Search functionality
+- [x] Archive (soft delete)
+- [x] Download (TXT, MD)
+- [x] Copy to clipboard
+
+**Subscriptions**:
+- [x] 4 plans: Free, Starter (£4.99), Professional (£9.99), Unlimited (£24.99)
+- [x] Monthly credit grants
+- [x] Credit rollover limits by plan
+- [x] Stripe subscription checkout
+- [x] Cancel at period end
+
+**API Endpoints** (`/api/clearform/*`):
+- Auth: `/auth/register`, `/auth/login`, `/auth/me`
+- Credits: `/credits/wallet`, `/credits/balance`, `/credits/history`, `/credits/packages`, `/credits/purchase`
+- Documents: `/documents/types`, `/documents/generate`, `/documents/vault`, `/documents/{id}`, `/documents/{id}/download`
+- Subscriptions: `/subscriptions/plans`, `/subscriptions/current`, `/subscriptions/subscribe`, `/subscriptions/cancel`, `/subscriptions/portal`
+- Webhooks: `/webhook/stripe`
+
+**Frontend Pages**:
+- [x] Landing Page (`/clearform`) - Hero, features, document types, pricing
+- [x] Auth Pages (`/clearform/login`, `/clearform/register`)
+- [x] Dashboard (`/clearform/dashboard`) - Credit balance, recent docs, quick actions
+- [x] Create Wizard (`/clearform/create`) - Type selection, intent form, generation
+- [x] Document View (`/clearform/document/:id`) - View, download, copy
+
+**MongoDB Collections**:
+- `clearform_users` - User accounts with embedded wallet
+- `clearform_documents` - Generated documents
+- `clearform_credit_transactions` - Credit audit trail
+- `clearform_credit_expiry` - Expiry batch tracking
+- `clearform_subscriptions` - Subscription records
+- `clearform_credit_topups` - Top-up purchase records
+
+**Test Credentials**:
+- ClearForm: demo2@clearform.com / DemoPass123!
+- ClearForm: fixtest@clearform.com / TestPass123!
+
+**Product Boundary Rules** (IMPORTANT):
+- ClearForm does NOT use: Service Catalogue, Orders, CVP subscriptions, Document Pack Orchestrator
+- ClearForm uses: Intent-based flow, Credit economy, Document vault
+- No shared checkout logic with Pleerity services
+
+---
+
+## Credentials
+- Admin: admin@pleerity.com / Admin123!
+- Client: test@pleerity.com / TestClient123!
+- ClearForm: demo2@clearform.com / DemoPass123!
+- Stripe Test Card: 4242424242424242 (Exp: 12/30, CVC: 123)
