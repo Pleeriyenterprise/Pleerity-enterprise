@@ -966,14 +966,30 @@ def _doc_to_page_response(doc: Dict) -> CMSPageResponse:
     blocks = [ContentBlock(**b) for b in doc.get("blocks", [])]
     seo = SEOMetadata(**doc["seo"]) if doc.get("seo") else None
     
+    # Handle page_type - default to GENERIC for legacy pages
+    page_type_str = doc.get("page_type", "GENERIC")
+    try:
+        from models.cms import PageType
+        page_type = PageType(page_type_str) if page_type_str else PageType.GENERIC
+    except (ValueError, KeyError):
+        page_type = PageType.GENERIC
+    
     return CMSPageResponse(
         page_id=doc["page_id"],
         slug=doc["slug"],
         title=doc["title"],
         description=doc.get("description"),
         status=PageStatus(doc["status"]),
+        page_type=page_type,
+        category_slug=doc.get("category_slug"),
+        service_code=doc.get("service_code"),
+        full_path=doc.get("full_path"),
+        subtitle=doc.get("subtitle"),
+        hero_image=doc.get("hero_image"),
         blocks=blocks,
         seo=seo,
+        display_order=doc.get("display_order", 0),
+        visible_in_nav=doc.get("visible_in_nav", True),
         current_version=doc.get("current_version", 0),
         created_at=doc["created_at"],
         updated_at=doc["updated_at"],
