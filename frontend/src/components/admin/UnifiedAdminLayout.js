@@ -72,6 +72,18 @@ const navSections = [
     ],
   },
   {
+    id: 'clearform',
+    label: 'ClearForm',
+    icon: FileSignature,
+    items: [
+      { href: '/admin/clearform/users', label: 'ClearForm Users', icon: Users },
+      { href: '/admin/clearform/documents', label: 'Document Management', icon: FileText },
+      { href: '/admin/clearform/organizations', label: 'Organizations', icon: Package },
+      { href: '/admin/clearform/document-types', label: 'Document Types', icon: PenTool },
+      { href: '/admin/clearform/audit', label: 'Audit Logs', icon: History },
+    ],
+  },
+  {
     id: 'content',
     label: 'Content Management',
     icon: FileText,
