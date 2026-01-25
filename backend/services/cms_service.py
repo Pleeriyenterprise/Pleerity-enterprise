@@ -117,23 +117,57 @@ def validate_video_url(url: str) -> Tuple[bool, Optional[str]]:
 # Page Management
 # ============================================
 
+def build_full_path(page_type: str, slug: str, category_slug: Optional[str] = None) -> str:
+    """Build the full URL path for a page based on its type."""
+    if page_type == "HUB":
+        return "/services"
+    elif page_type == "CATEGORY":
+        return f"/services/{slug}"
+    elif page_type == "SERVICE":
+        if not category_slug:
+            raise ValueError("SERVICE pages require a category_slug")
+        return f"/services/{category_slug}/{slug}"
+    elif page_type == "LEGAL":
+        return f"/legal/{slug}"
+    else:
+        return f"/{slug}"
+
+
 async def create_page(
     slug: str,
     title: str,
     description: Optional[str],
     admin_id: str,
-    admin_email: str
+    admin_email: str,
+    page_type: str = "GENERIC",
+    category_slug: Optional[str] = None,
+    service_code: Optional[str] = None,
+    subtitle: Optional[str] = None,
+    display_order: int = 0
 ) -> CMSPageResponse:
-    """Create a new CMS page"""
+    """Create a new CMS page with support for marketing website page types."""
     
-    # Check slug uniqueness
-    existing = await get_db().cms_pages.find_one({"slug": slug})
+    # Check slug uniqueness within category
+    query = {"slug": slug}
+    if category_slug:
+        query["category_slug"] = category_slug
+    
+    existing = await get_db().cms_pages.find_one(query)
     if existing:
-        raise ValueError(f"Page with slug '{slug}' already exists")
+        return False, f"Page with slug '{slug}' already exists in this category", None
     
     # Validate slug format
     if not re.match(r'^[a-z0-9-]+$', slug):
         raise ValueError("Slug must contain only lowercase letters, numbers, and hyphens")
+    
+    # Validate service code exists (for SERVICE pages)
+    if page_type == "SERVICE" and service_code:
+        service = await get_db().service_catalogue_v2.find_one({"service_code": service_code})
+        if not service:
+            raise ValueError(f"Service code '{service_code}' not found in catalogue")
+    
+    # Build full path
+    full_path = build_full_path(page_type, slug, category_slug)
     
     page_id = generate_page_id()
     now = now_utc()
@@ -143,9 +177,17 @@ async def create_page(
         "slug": slug,
         "title": title,
         "description": description,
+        "page_type": page_type,
+        "category_slug": category_slug,
+        "service_code": service_code,
+        "full_path": full_path,
+        "subtitle": subtitle,
+        "hero_image": None,
         "status": PageStatus.DRAFT.value,
         "blocks": [],
         "seo": None,
+        "display_order": display_order,
+        "visible_in_nav": True,
         "current_version": 0,
         "created_at": now,
         "updated_at": now,
@@ -163,7 +205,7 @@ async def create_page(
         entity_id=page_id,
         user_id=admin_id,
         user_email=admin_email,
-        changes={"slug": slug, "title": title}
+        changes={"slug": slug, "title": title, "page_type": page_type, "full_path": full_path}
     )
     
     return CMSPageResponse(
@@ -171,9 +213,16 @@ async def create_page(
         slug=slug,
         title=title,
         description=description,
+        page_type=page_type,
+        category_slug=category_slug,
+        service_code=service_code,
+        full_path=full_path,
+        subtitle=subtitle,
         status=PageStatus.DRAFT,
         blocks=[],
         seo=None,
+        display_order=display_order,
+        visible_in_nav=True,
         current_version=0,
         created_at=now,
         updated_at=now,
