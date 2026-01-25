@@ -62,29 +62,44 @@ const PublicHeader = () => {
           <nav className="hidden lg:flex items-center space-x-1">
             <NavigationMenu>
               <NavigationMenuList>
-                {/* Platform Dropdown */}
+                {/* Products Dropdown */}
                 <NavigationMenuItem>
                   <NavigationMenuTrigger className="text-gray-700 hover:text-midnight-blue">
-                    Platform
+                    Products
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-3 p-4">
-                      {platformLinks.map((link) => (
-                        <li key={link.href}>
-                          <NavigationMenuLink asChild>
-                            <Link
-                              to={link.href}
-                              className={cn(
-                                "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100",
-                                isActive(link.href) && "bg-gray-100"
-                              )}
-                            >
-                              <div className="text-sm font-medium text-midnight-blue">{link.label}</div>
-                              <p className="line-clamp-2 text-sm text-gray-500">{link.description}</p>
-                            </Link>
-                          </NavigationMenuLink>
-                        </li>
-                      ))}
+                    <ul className="grid w-[450px] gap-3 p-4">
+                      {productLinks.map((link) => {
+                        const Icon = link.icon;
+                        return (
+                          <li key={link.href}>
+                            <NavigationMenuLink asChild>
+                              <Link
+                                to={link.href}
+                                className={cn(
+                                  "flex items-start gap-3 select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100",
+                                  isActive(link.href) && "bg-gray-100"
+                                )}
+                              >
+                                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                  <Icon className="w-5 h-5 text-emerald-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-midnight-blue">{link.label}</span>
+                                    {link.badge && (
+                                      <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                                        {link.badge}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-500 mt-1">{link.description}</p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </NavigationMenuContent>
                 </NavigationMenuItem>
