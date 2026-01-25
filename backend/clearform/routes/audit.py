@@ -24,7 +24,7 @@ async def get_my_audit_logs(
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     action: Optional[str] = None,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get audit logs for the current user."""
     action_filter = None
@@ -38,7 +38,7 @@ async def get_my_audit_logs(
             )
     
     logs = await audit_service.get_user_audit_logs(
-        user_id=current_user["user_id"],
+        user_id=current_user.user_id,
         limit=limit,
         offset=offset,
         action=action_filter,
@@ -54,11 +54,11 @@ async def get_my_audit_logs(
 @router.get("/me/activity")
 async def get_my_recent_activity(
     limit: int = Query(20, le=50),
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get recent activity for dashboard."""
     activity = await audit_service.get_recent_activity(
-        user_id=current_user["user_id"],
+        user_id=current_user.user_id,
         limit=limit,
     )
     
@@ -70,11 +70,11 @@ async def get_my_recent_activity(
 
 @router.get("/me/stats")
 async def get_my_audit_stats(
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get audit statistics for the current user."""
     counts = await audit_service.count_by_action(
-        user_id=current_user["user_id"],
+        user_id=current_user.user_id,
     )
     
     return {
@@ -95,11 +95,11 @@ async def get_org_audit_logs(
     action: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get audit logs for an organization. Requires admin/owner access."""
     # Verify admin/owner access
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member or member.get("role") not in ["OWNER", "ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -136,11 +136,11 @@ async def get_org_audit_logs(
 async def get_org_recent_activity(
     org_id: str,
     limit: int = Query(50, le=100),
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get recent activity for organization dashboard."""
     # Verify membership
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -163,11 +163,11 @@ async def get_org_audit_stats(
     org_id: str,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get audit statistics for an organization."""
     # Verify admin/owner access
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member or member.get("role") not in ["OWNER", "ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -194,7 +194,7 @@ async def get_org_audit_stats(
 async def get_document_audit_trail(
     document_id: str,
     limit: int = Query(50, le=100),
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get audit trail for a specific document."""
     # TODO: Verify document ownership/access
@@ -216,7 +216,7 @@ async def get_document_audit_trail(
 
 @router.get("/actions")
 async def list_audit_actions(
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get list of all audit action types."""
     actions = [
@@ -235,7 +235,7 @@ async def list_audit_actions(
 
 @router.get("/severities")
 async def list_audit_severities(
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get list of all audit severity levels."""
     severities = [severity.value for severity in AuditSeverity]

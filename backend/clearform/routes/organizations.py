@@ -51,12 +51,12 @@ class UpdateMemberRoleRequest(BaseModel):
 @router.post("")
 async def create_organization(
     request: CreateOrganizationRequest,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Create a new organization."""
     try:
         # Check if user already owns an org
-        existing_orgs = await organization_service.get_user_organizations(current_user["user_id"])
+        existing_orgs = await organization_service.get_user_organizations(current_user.user_id)
         owned = [o for o in existing_orgs if o.get("user_role") == "OWNER"]
         if owned:
             raise HTTPException(
@@ -65,7 +65,7 @@ async def create_organization(
             )
         
         org = await organization_service.create_organization(
-            owner_id=current_user["user_id"],
+            owner_id=current_user.user_id,
             name=request.name,
             description=request.description,
             org_type=request.org_type,
@@ -84,10 +84,10 @@ async def create_organization(
 
 @router.get("")
 async def get_user_organizations(
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get all organizations the current user belongs to."""
-    orgs = await organization_service.get_user_organizations(current_user["user_id"])
+    orgs = await organization_service.get_user_organizations(current_user.user_id)
     return {
         "success": True,
         "organizations": orgs,
@@ -97,11 +97,11 @@ async def get_user_organizations(
 @router.get("/{org_id}")
 async def get_organization(
     org_id: str,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get organization details."""
     # Verify membership
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -126,11 +126,11 @@ async def get_organization(
 async def update_organization(
     org_id: str,
     request: UpdateOrganizationRequest,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Update organization settings."""
     # Verify admin/owner
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member or member.get("role") not in ["OWNER", "ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -147,7 +147,7 @@ async def update_organization(
     org = await organization_service.update_organization(
         org_id=org_id,
         updates=updates,
-        actor_id=current_user["user_id"],
+        actor_id=current_user.user_id,
     )
     
     if not org:
@@ -170,11 +170,11 @@ async def update_organization(
 async def get_members(
     org_id: str,
     include_inactive: bool = False,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get organization members."""
     # Verify membership
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -192,11 +192,11 @@ async def get_members(
 async def invite_member(
     org_id: str,
     request: InviteMemberRequest,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Invite a user to join the organization."""
     # Verify admin/owner/manager
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member or member.get("role") not in ["OWNER", "ADMIN", "MANAGER"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -224,7 +224,7 @@ async def invite_member(
             org_id=org_id,
             email=request.email,
             role=role,
-            inviter_id=current_user["user_id"],
+            inviter_id=current_user.user_id,
             message=request.message,
         )
         
@@ -242,11 +242,11 @@ async def invite_member(
 @router.get("/{org_id}/invitations")
 async def get_pending_invitations(
     org_id: str,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get pending invitations for the organization."""
     # Verify admin/owner/manager
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member or member.get("role") not in ["OWNER", "ADMIN", "MANAGER"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -265,11 +265,11 @@ async def update_member_role(
     org_id: str,
     user_id: str,
     request: UpdateMemberRoleRequest,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Update a member's role."""
     # Verify admin/owner
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member or member.get("role") not in ["OWNER", "ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -289,7 +289,7 @@ async def update_member_role(
             org_id=org_id,
             user_id=user_id,
             new_role=new_role,
-            actor_id=current_user["user_id"],
+            actor_id=current_user.user_id,
         )
         
         if not success:
@@ -310,11 +310,11 @@ async def update_member_role(
 async def remove_member(
     org_id: str,
     user_id: str,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Remove a member from the organization."""
     # Verify admin/owner
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member or member.get("role") not in ["OWNER", "ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -322,7 +322,7 @@ async def remove_member(
         )
     
     # Can't remove self (use leave endpoint)
-    if user_id == current_user["user_id"]:
+    if user_id == current_user.user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Use leave endpoint to leave organization"
@@ -332,7 +332,7 @@ async def remove_member(
         success = await organization_service.remove_member(
             org_id=org_id,
             user_id=user_id,
-            actor_id=current_user["user_id"],
+            actor_id=current_user.user_id,
         )
         
         if not success:
@@ -355,10 +355,10 @@ async def remove_member(
 
 @router.get("/invitations/pending")
 async def get_my_invitations(
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get pending invitations for the current user."""
-    invitations = await organization_service.get_user_invitations(current_user["email"])
+    invitations = await organization_service.get_user_invitations(current_user.email)
     return {
         "success": True,
         "invitations": invitations,
@@ -368,13 +368,13 @@ async def get_my_invitations(
 @router.post("/invitations/{invitation_id}/accept")
 async def accept_invitation(
     invitation_id: str,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Accept an invitation to join an organization."""
     try:
         member = await organization_service.accept_invitation(
             invitation_id=invitation_id,
-            user_id=current_user["user_id"],
+            user_id=current_user.user_id,
         )
         
         return {
@@ -395,11 +395,11 @@ async def accept_invitation(
 @router.get("/{org_id}/credits")
 async def get_org_credits(
     org_id: str,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get organization credit balance and stats."""
     # Verify membership
-    member = await organization_service.get_member(org_id, current_user["user_id"])
+    member = await organization_service.get_member(org_id, current_user.user_id)
     if not member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -428,7 +428,7 @@ async def get_org_credits(
 
 @router.get("/compliance-packs/list")
 async def list_compliance_packs(
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get available compliance packs."""
     packs = await organization_service.get_compliance_packs()
@@ -441,7 +441,7 @@ async def list_compliance_packs(
 @router.get("/compliance-packs/{pack_id}")
 async def get_compliance_pack(
     pack_id: str,
-    current_user: dict = Depends(get_current_clearform_user),
+    current_user = Depends(get_current_clearform_user),
 ):
     """Get compliance pack details."""
     pack = await organization_service.get_compliance_pack(pack_id)
