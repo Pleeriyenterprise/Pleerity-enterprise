@@ -137,17 +137,18 @@ class DocumentService:
             # Build prompt based on document type
             prompt = self._build_generation_prompt(document)
             
-            # Call LLM
+            # Call LLM using emergentintegrations
             import os
-            from emergentintegrations.llm.gemini import GeminiClient
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
             
-            client = GeminiClient(api_key=os.environ.get("EMERGENT_LLM_KEY"))
+            chat = LlmChat(
+                api_key=os.environ.get("EMERGENT_LLM_KEY"),
+                session_id=f"clearform-{document.document_id}",
+                system_message=self._get_system_prompt(document.document_type),
+            ).with_model("gemini", "gemini-2.0-flash")
             
-            response = await client.chat(
-                user_message=prompt,
-                system_prompt=self._get_system_prompt(document.document_type),
-                model="gemini-2.0-flash",
-                temperature=0.7,
+            user_message = UserMessage(text=prompt)
+            response = await chat.send_message(user_message)
             )
             
             # Parse response
