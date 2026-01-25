@@ -49,7 +49,7 @@ async def register(data: ClearFormUserCreate):
     Returns auth token and user info. New users get 5 welcome credits.
     """
     try:
-        user = await clearform_auth_service.register(data)
+        await clearform_auth_service.register(data)
         
         # Auto-login after registration
         login_response = await clearform_auth_service.login(
