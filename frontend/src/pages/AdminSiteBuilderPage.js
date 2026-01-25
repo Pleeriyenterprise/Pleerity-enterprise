@@ -58,6 +58,15 @@ import {
   ExternalLink,
   Copy,
   Globe,
+  Cpu,
+  BarChart2,
+  ShieldCheck,
+  Home,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Check,
+  X,
 } from 'lucide-react';
 
 // Block type icons mapping
