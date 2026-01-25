@@ -32,6 +32,7 @@ import {
   PenTool,
   Target,
   Cookie,
+  FileSignature,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
