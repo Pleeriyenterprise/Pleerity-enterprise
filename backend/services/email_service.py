@@ -502,6 +502,9 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
+            # Use the dedicated ClearForm method
+            return self._build_clearform_welcome_html(model)
         else:
             # Generic template
             footer = self._build_email_footer(model)
