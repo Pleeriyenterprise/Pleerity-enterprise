@@ -758,6 +758,84 @@ export default function UnifiedIntakeWizard() {
   const [consent, setConsent] = useState({});
   const [pricing, setPricing] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
+  
+  // =========================================================================
+  // AUTO-SAVE: Persist wizard state to localStorage
+  // =========================================================================
+  const STORAGE_KEY = 'pleerity_intake_wizard_state';
+  
+  // Load saved state on mount
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        // Only restore if saved within last 24 hours
+        const savedTime = parsed.savedAt || 0;
+        const isRecent = (Date.now() - savedTime) < 24 * 60 * 60 * 1000;
+        
+        if (isRecent && parsed.currentStep) {
+          // Show recovery prompt
+          const shouldRestore = window.confirm(
+            'You have an unfinished order. Would you like to continue where you left off?'
+          );
+          
+          if (shouldRestore) {
+            setCurrentStep(parsed.currentStep);
+            setClientData(parsed.clientData || {});
+            setIntakeData(parsed.intakeData || {});
+            setConsent(parsed.consent || {});
+            setSelectedAddons(parsed.selectedAddons || []);
+            setPostalAddress(parsed.postalAddress || {});
+            setDraftId(parsed.draftId || null);
+            
+            // Service will be restored via URL param or saved service code
+            if (parsed.selectedServiceCode) {
+              setSearchParams({ service: parsed.selectedServiceCode }, { replace: true });
+            }
+            
+            toast.success('Progress restored! You can continue where you left off.');
+          } else {
+            // User chose not to restore - clear saved state
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to restore wizard state:', err);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+  
+  // Save state whenever key fields change
+  useEffect(() => {
+    // Don't save if on step 1 with no selection, or on payment/confirmation steps
+    if (currentStep <= 1 && !selectedService) return;
+    if (currentStep >= 5) return; // Don't save during payment/after completion
+    
+    const stateToSave = {
+      currentStep,
+      selectedServiceCode: selectedService?.service_code,
+      selectedAddons,
+      clientData,
+      intakeData,
+      consent,
+      postalAddress,
+      draftId,
+      savedAt: Date.now(),
+    };
+    
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (err) {
+      console.error('Failed to save wizard state:', err);
+    }
+  }, [currentStep, selectedService, selectedAddons, clientData, intakeData, consent, postalAddress, draftId]);
+  
+  // Clear saved state after successful order
+  const clearSavedState = () => {
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   // Load services on mount
   useEffect(() => {
