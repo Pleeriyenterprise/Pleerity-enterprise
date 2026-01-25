@@ -322,10 +322,14 @@ class TestPricingPageContent:
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
-        assert "packages" in data
-        assert isinstance(data["packages"], list)
-        assert len(data["packages"]) > 0
-        print(f"✓ Found {len(data['packages'])} credit packages")
+        # API returns list directly
+        assert isinstance(data, list), f"Expected list, got {type(data)}"
+        assert len(data) > 0
+        # Verify package structure
+        pkg = data[0]
+        assert "package_id" in pkg
+        assert "credits" in pkg
+        print(f"✓ Found {len(data)} credit packages")
     
     def test_clearform_subscription_plans_api(self):
         """Test GET /api/clearform/subscriptions/plans - Get subscription plans"""
@@ -333,9 +337,13 @@ class TestPricingPageContent:
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
-        assert "plans" in data
-        assert isinstance(data["plans"], list)
-        print(f"✓ Found {len(data['plans'])} subscription plans")
+        # API returns list directly
+        assert isinstance(data, list), f"Expected list, got {type(data)}"
+        # Verify plan structure
+        if len(data) > 0:
+            plan = data[0]
+            assert "monthly_credits" in plan
+        print(f"✓ Found {len(data)} subscription plans")
 
 
 class TestClearFormDashboardTeamCard:
