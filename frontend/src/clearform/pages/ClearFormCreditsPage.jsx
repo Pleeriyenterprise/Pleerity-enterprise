@@ -23,7 +23,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { useClearFormAuth } from '../contexts/ClearFormAuthContext';
-import { creditsApi } from '../api/clearformApi';
+import { creditsApi, subscriptionsApi } from '../api/clearformApi';
 import { toast } from 'sonner';
 
 const ClearFormCreditsPage = () => {
