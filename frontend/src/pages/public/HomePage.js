@@ -273,7 +273,7 @@ const HomePage = () => {
               className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
               asChild
             >
-              <Link to="/intake/start">Start Free Trial</Link>
+              <Link to="/intake/start">Get Started</Link>
             </Button>
             <Button
               size="lg"
