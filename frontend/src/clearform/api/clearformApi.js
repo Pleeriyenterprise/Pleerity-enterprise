@@ -202,3 +202,124 @@ export const subscriptionsApi = {
     return json;
   },
 };
+
+// ============================================================================
+// Organizations API
+// ============================================================================
+
+export const organizationsApi = {
+  getUserOrganizations: async () => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations`, { headers: headers() });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get organizations');
+    return json;
+  },
+
+  getOrganization: async (orgId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/${orgId}`, { headers: headers() });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get organization');
+    return json;
+  },
+
+  createOrganization: async (data) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to create organization');
+    return json;
+  },
+
+  updateOrganization: async (orgId, data) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/${orgId}`, {
+      method: 'PATCH',
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to update organization');
+    return json;
+  },
+
+  getMembers: async (orgId, includeInactive = false) => {
+    const res = await fetch(
+      `${API_BASE}/api/clearform/organizations/${orgId}/members?include_inactive=${includeInactive}`,
+      { headers: headers() }
+    );
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get members');
+    return json;
+  },
+
+  inviteMember: async (orgId, data) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/${orgId}/invitations`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to invite member');
+    return json;
+  },
+
+  getPendingInvitations: async (orgId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/${orgId}/invitations`, {
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get invitations');
+    return json;
+  },
+
+  updateMemberRole: async (orgId, userId, role) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/${orgId}/members/${userId}/role`, {
+      method: 'PATCH',
+      headers: headers(),
+      body: JSON.stringify({ role }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to update member role');
+    return json;
+  },
+
+  removeMember: async (orgId, userId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/${orgId}/members/${userId}`, {
+      method: 'DELETE',
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to remove member');
+    return json;
+  },
+
+  getOrgCredits: async (orgId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/${orgId}/credits`, {
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get organization credits');
+    return json;
+  },
+
+  getMyInvitations: async () => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/invitations/pending`, {
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to get invitations');
+    return json;
+  },
+
+  acceptInvitation: async (invitationId) => {
+    const res = await fetch(`${API_BASE}/api/clearform/organizations/invitations/${invitationId}/accept`, {
+      method: 'POST',
+      headers: headers(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || 'Failed to accept invitation');
+    return json;
+  },
+};
