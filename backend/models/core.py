@@ -187,6 +187,8 @@ class EmailTemplateAlias(str, Enum):
     # Order system emails
     ORDER_DELIVERED = "order-delivered"  # Documents ready for download
     ORDER_CLIENT_INFO_REQUEST = "order-client-info-request"  # Request for client input
+    # ClearForm emails
+    CLEARFORM_WELCOME = "clearform-welcome"  # ClearForm account creation
 
 
 class ReportScheduleFrequency(str, Enum):
