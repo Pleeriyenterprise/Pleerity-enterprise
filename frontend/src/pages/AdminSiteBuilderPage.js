@@ -905,6 +905,261 @@ const AdminSiteBuilderPage = () => {
 };
 
 // ============================================
+// Marketing Pages Component
+// ============================================
+
+const CATEGORY_ICONS = {
+  'ai-automation': Cpu,
+  'market-research': BarChart2,
+  'compliance-audits': ShieldCheck,
+  'document-packs': FileText,
+};
+
+const MarketingPages = ({ onSelectPage }) => {
+  const [pages, setPages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState({});
+  const [filter, setFilter] = useState('all');
+  const [expandedCategories, setExpandedCategories] = useState({});
+
+  const fetchPages = async () => {
+    setLoading(true);
+    try {
+      const res = await client.get('/admin/cms/marketing/pages');
+      setPages(res.data.pages || []);
+      setCategories(res.data.categories || {});
+    } catch (err) {
+      toast.error('Failed to load marketing pages');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPages();
+  }, []);
+
+  const toggleCategory = (slug) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [slug]: !prev[slug]
+    }));
+  };
+
+  const handlePublish = async (pageId) => {
+    try {
+      await client.post(`/admin/cms/marketing/pages/${pageId}/publish`);
+      toast.success('Page published');
+      fetchPages();
+    } catch (err) {
+      toast.error('Failed to publish page');
+    }
+  };
+
+  const handleUnpublish = async (pageId) => {
+    try {
+      await client.post(`/admin/cms/marketing/pages/${pageId}/unpublish`);
+      toast.success('Page unpublished');
+      fetchPages();
+    } catch (err) {
+      toast.error('Failed to unpublish page');
+    }
+  };
+
+  const handleToggleVisibility = async (pageId, currentValue) => {
+    try {
+      await client.put(`/admin/cms/marketing/pages/${pageId}/visibility?visible=${!currentValue}`);
+      toast.success('Visibility updated');
+      fetchPages();
+    } catch (err) {
+      toast.error('Failed to update visibility');
+    }
+  };
+
+  // Group pages by type
+  const hubPage = pages.find(p => p.page_type === 'HUB');
+  const categoryPages = pages.filter(p => p.page_type === 'CATEGORY');
+  const servicePages = pages.filter(p => p.page_type === 'SERVICE');
+
+  // Group services by category
+  const servicesByCategory = servicePages.reduce((acc, page) => {
+    const cat = page.category_slug || 'uncategorized';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(page);
+    return acc;
+  }, {});
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold">{pages.length}</div>
+            <div className="text-sm text-gray-500">Total Pages</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold text-green-600">
+              {pages.filter(p => p.status === 'PUBLISHED').length}
+            </div>
+            <div className="text-sm text-gray-500">Published</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold text-amber-600">
+              {pages.filter(p => p.status === 'DRAFT').length}
+            </div>
+            <div className="text-sm text-gray-500">Drafts</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold">{Object.keys(categories).length}</div>
+            <div className="text-sm text-gray-500">Categories</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Hub Page */}
+      {hubPage && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center">
+                <Home className="w-5 h-5 mr-2" />
+                Services Hub
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Badge variant={hubPage.status === 'PUBLISHED' ? 'default' : 'secondary'}>
+                  {hubPage.status}
+                </Badge>
+                <Button size="sm" variant="outline" onClick={() => onSelectPage(hubPage)}>
+                  <Pencil className="w-4 h-4 mr-1" /> Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open('/services', '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">{hubPage.subtitle || 'Main services landing page'}</p>
+            <p className="text-xs text-gray-400 mt-2">Path: {hubPage.full_path}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Categories & Services */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Categories & Services</h3>
+        
+        {categoryPages.map(catPage => {
+          const catSlug = catPage.slug;
+          const catConfig = categories[catSlug];
+          const Icon = CATEGORY_ICONS[catSlug] || FileText;
+          const services = servicesByCategory[catSlug] || [];
+          const isExpanded = expandedCategories[catSlug] !== false;
+
+          return (
+            <Card key={catPage.page_id}>
+              <CardHeader className="cursor-pointer" onClick={() => toggleCategory(catSlug)}>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center text-base">
+                    <Icon className="w-5 h-5 mr-2 text-electric-teal" />
+                    {catPage.title}
+                    <Badge variant="outline" className="ml-2">{services.length} services</Badge>
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={catPage.status === 'PUBLISHED' ? 'default' : 'secondary'}>
+                      {catPage.status}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => { e.stopPropagation(); onSelectPage(catPage); }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+              </CardHeader>
+              
+              {isExpanded && services.length > 0 && (
+                <CardContent className="pt-0">
+                  <div className="border-t pt-4 space-y-2">
+                    {services.map(service => (
+                      <div
+                        key={service.page_id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${service.status === 'PUBLISHED' ? 'bg-green-500' : 'bg-amber-500'}`} />
+                          <div>
+                            <p className="font-medium text-sm">{service.title}</p>
+                            <p className="text-xs text-gray-500">{service.full_path}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleToggleVisibility(service.page_id, service.visible_in_nav)}
+                            title={service.visible_in_nav ? 'Hide from nav' : 'Show in nav'}
+                          >
+                            {service.visible_in_nav ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                          </Button>
+                          {service.status === 'DRAFT' ? (
+                            <Button size="sm" variant="ghost" onClick={() => handlePublish(service.page_id)}>
+                              <Check className="w-4 h-4 text-green-600" />
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="ghost" onClick={() => handleUnpublish(service.page_id)}>
+                              <X className="w-4 h-4 text-amber-600" />
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" onClick={() => onSelectPage(service)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => window.open(service.full_path, '_blank')}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ============================================
 // Media Library Component
 // ============================================
 
