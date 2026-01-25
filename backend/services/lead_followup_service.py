@@ -52,7 +52,7 @@ Our team is ready to help you get started. If you have any questions, simply rep
 **Quick links:**
 - [View our services](https://clearform-app.preview.emergentagent.com/services)
 - [Book a consultation](https://clearform-app.preview.emergentagent.com/contact)
-- [Start your free trial](https://clearform-app.preview.emergentagent.com/intake)
+- [Get started](https://clearform-app.preview.emergentagent.com/intake)
 
 Best regards,
 The Pleerity Team
