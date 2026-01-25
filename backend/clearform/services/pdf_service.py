@@ -179,10 +179,10 @@ class PDFService:
             if stripped.startswith('#'):
                 if current_paragraph:
                     text = ' '.join(current_paragraph)
-                    elements.append(Paragraph(self._escape_html(text), self.styles['BodyText']))
+                    elements.append(Paragraph(self._escape_html(text), styles['BodyText']))
                     current_paragraph = []
                 header_text = stripped.lstrip('#').strip()
-                elements.append(Paragraph(self._escape_html(header_text), self.styles['DocTitle']))
+                elements.append(Paragraph(self._escape_html(header_text), styles['DocTitle']))
                 continue
             
             # Bold markers **text** -> <b>text</b>
@@ -197,10 +197,10 @@ class PDFService:
             if stripped.startswith('- ') or stripped.startswith('* '):
                 if current_paragraph:
                     text = ' '.join(current_paragraph)
-                    elements.append(Paragraph(self._escape_html(text), self.styles['BodyText']))
+                    elements.append(Paragraph(self._escape_html(text), styles['BodyText']))
                     current_paragraph = []
                 bullet_text = '• ' + stripped[2:]
-                elements.append(Paragraph(bullet_text, self.styles['BodyText']))
+                elements.append(Paragraph(bullet_text, styles['BodyText']))
                 continue
             
             # Date patterns at start of document
@@ -208,9 +208,9 @@ class PDFService:
                re.match(r'^\w+\s+\d{1,2},?\s+\d{4}', stripped):
                 if current_paragraph:
                     text = ' '.join(current_paragraph)
-                    elements.append(Paragraph(self._escape_html(text), self.styles['BodyText']))
+                    elements.append(Paragraph(self._escape_html(text), styles['BodyText']))
                     current_paragraph = []
-                elements.append(Paragraph(self._escape_html(stripped), self.styles['DateText']))
+                elements.append(Paragraph(self._escape_html(stripped), styles['DateText']))
                 continue
             
             # Regular text - accumulate
