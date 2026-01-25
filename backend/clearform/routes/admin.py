@@ -26,7 +26,7 @@ async def get_clearform_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, le=200),
     search: Optional[str] = None,
-    admin = Depends(verify_admin),
+    
 ):
     """Get all ClearForm users with stats."""
     db = database.get_db()
@@ -81,7 +81,7 @@ async def get_clearform_users(
 
 
 @router.get("/stats")
-async def get_clearform_stats(admin = Depends(verify_admin)):
+async def get_clearform_stats():
     """Get overall ClearForm statistics."""
     db = database.get_db()
     
@@ -110,7 +110,7 @@ async def get_clearform_stats(admin = Depends(verify_admin)):
 @router.get("/users/{user_id}")
 async def get_clearform_user(
     user_id: str,
-    admin = Depends(verify_admin),
+    
 ):
     """Get detailed info for a specific ClearForm user."""
     db = database.get_db()
@@ -155,7 +155,7 @@ async def get_clearform_documents(
     page_size: int = Query(50, le=200),
     search: Optional[str] = None,
     status_filter: Optional[str] = None,
-    admin = Depends(verify_admin),
+    
 ):
     """Get all ClearForm documents."""
     db = database.get_db()
@@ -212,7 +212,7 @@ async def get_clearform_documents(
 
 
 @router.get("/documents/stats")
-async def get_clearform_documents_stats(admin = Depends(verify_admin)):
+async def get_clearform_documents_stats():
     """Get document statistics."""
     db = database.get_db()
     
@@ -234,7 +234,7 @@ async def get_clearform_documents_stats(admin = Depends(verify_admin)):
 @router.get("/documents/{document_id}")
 async def get_clearform_document(
     document_id: str,
-    admin = Depends(verify_admin),
+    
 ):
     """Get detailed info for a specific document."""
     db = database.get_db()
@@ -270,7 +270,7 @@ async def get_clearform_document(
 async def get_clearform_organizations(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, le=200),
-    admin = Depends(verify_admin),
+    
 ):
     """Get all ClearForm organizations."""
     db = database.get_db()
@@ -300,7 +300,7 @@ async def get_clearform_audit_logs(
     page_size: int = Query(100, le=500),
     action: Optional[str] = None,
     user_id: Optional[str] = None,
-    admin = Depends(verify_admin),
+    
 ):
     """Get ClearForm audit logs."""
     db = database.get_db()
@@ -331,7 +331,7 @@ async def get_clearform_audit_logs(
 # ============================================================================
 
 @router.get("/document-types")
-async def get_clearform_document_types(admin = Depends(verify_admin)):
+async def get_clearform_document_types():
     """Get all document types."""
     db = database.get_db()
     
