@@ -196,7 +196,7 @@ class ContentBlock(BaseModel):
 
 class SEOMetadata(BaseModel):
     meta_title: Optional[str] = Field(None, max_length=70)
-    meta_description: Optional[str] = Field(None, max_length=160)
+    meta_description: Optional[str] = Field(None, max_length=500)
     og_title: Optional[str] = Field(None, max_length=70)
     og_description: Optional[str] = Field(None, max_length=200)
     og_image_id: Optional[str] = None
