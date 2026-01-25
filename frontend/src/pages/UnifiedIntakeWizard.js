@@ -1089,6 +1089,9 @@ export default function UnifiedIntakeWizard() {
       // Create checkout session
       const res = await client.post(`/intake/draft/${draft.draft_id}/checkout`, {});
       
+      // Clear saved state before redirecting to payment
+      clearSavedState();
+      
       // Redirect to Stripe
       window.location.href = res.data.checkout_url;
       
