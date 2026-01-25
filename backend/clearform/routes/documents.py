@@ -177,6 +177,8 @@ async def download_document(
     user = Depends(get_current_clearform_user),
 ):
     """Download document in specified format."""
+    from fastapi.responses import Response
+    
     try:
         document = await document_service.get_document(user.user_id, document_id)
         
@@ -186,12 +188,15 @@ async def download_document(
         if document.status != ClearFormDocumentStatus.COMPLETED:
             raise HTTPException(status_code=400, detail="Document not ready for download")
         
+        # Clean filename
+        safe_title = "".join(c for c in document.title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        
         if format == "markdown":
             return PlainTextResponse(
                 content=document.content_markdown or "",
                 media_type="text/markdown",
                 headers={
-                    "Content-Disposition": f'attachment; filename="{document.title}.md"'
+                    "Content-Disposition": f'attachment; filename="{safe_title}.md"'
                 }
             )
         elif format == "plain":
@@ -199,15 +204,24 @@ async def download_document(
                 content=document.content_plain or "",
                 media_type="text/plain",
                 headers={
-                    "Content-Disposition": f'attachment; filename="{document.title}.txt"'
+                    "Content-Disposition": f'attachment; filename="{safe_title}.txt"'
                 }
             )
         elif format == "pdf":
-            # PDF generation would require additional library (reportlab)
-            # For MVP, return markdown with note
-            raise HTTPException(
-                status_code=501, 
-                detail="PDF export coming soon. Please use markdown or plain text format."
+            from clearform.services.pdf_service import pdf_service
+            
+            pdf_bytes = pdf_service.generate_pdf(
+                title=document.title,
+                content=document.content_markdown or document.content_plain or "",
+                document_type=document.document_type.value,
+            )
+            
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{safe_title}.pdf"'
+                }
             )
         
     except HTTPException:
