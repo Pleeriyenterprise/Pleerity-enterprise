@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Postmark configuration
 POSTMARK_SERVER_TOKEN = os.environ.get("POSTMARK_SERVER_TOKEN")
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
-UNSUBSCRIBE_URL = os.environ.get("UNSUBSCRIBE_URL", "https://promptmgr.preview.emergentagent.com/unsubscribe")
+UNSUBSCRIBE_URL = os.environ.get("UNSUBSCRIBE_URL", "https://clearform-app.preview.emergentagent.com/unsubscribe")
 
 LEADS_COLLECTION = "leads"
 
@@ -50,9 +50,9 @@ Thank you for reaching out to Pleerity. We received your enquiry about {service_
 Our team is ready to help you get started. If you have any questions, simply reply to this email or call us at +44 7440 645017.
 
 **Quick links:**
-- [View our services](https://promptmgr.preview.emergentagent.com/services)
-- [Book a consultation](https://promptmgr.preview.emergentagent.com/contact)
-- [Start your free trial](https://promptmgr.preview.emergentagent.com/intake)
+- [View our services](https://clearform-app.preview.emergentagent.com/services)
+- [Book a consultation](https://clearform-app.preview.emergentagent.com/contact)
+- [Start your free trial](https://clearform-app.preview.emergentagent.com/intake)
 
 Best regards,
 The Pleerity Team
@@ -77,7 +77,7 @@ We noticed you were interested in {service_interest} but haven't completed your 
 
 Most landlords complete their setup in under 5 minutes. Ready to get started?
 
-[Complete your setup now](https://promptmgr.preview.emergentagent.com/intake)
+[Complete your setup now](https://clearform-app.preview.emergentagent.com/intake)
 
 If you have questions or need help, just reply to this email.
 
@@ -98,9 +98,9 @@ This is our final follow-up about your {service_interest} enquiry.
 
 We understand choosing the right compliance solution is an important decision. If you're still evaluating your options, here are some resources that might help:
 
-📋 [Compare our plans](https://promptmgr.preview.emergentagent.com/pricing)
-💬 [Chat with our team](https://promptmgr.preview.emergentagent.com/) (available 24/7)
-📞 [Book a call](https://promptmgr.preview.emergentagent.com/contact)
+📋 [Compare our plans](https://clearform-app.preview.emergentagent.com/pricing)
+💬 [Chat with our team](https://clearform-app.preview.emergentagent.com/) (available 24/7)
+📞 [Book a call](https://clearform-app.preview.emergentagent.com/contact)
 
 If you've already found a solution or are no longer interested, no worries—we won't send any more follow-ups.
 
@@ -125,10 +125,10 @@ We noticed you started setting up Compliance Vault Pro but didn't complete the p
 
 **Need help?** Our team is here to assist:
 - Reply to this email with any questions
-- Chat with us anytime at [pleerity.com](https://promptmgr.preview.emergentagent.com)
+- Chat with us anytime at [pleerity.com](https://clearform-app.preview.emergentagent.com)
 - Call us at +44 7440 645017
 
-[Continue your setup →](https://promptmgr.preview.emergentagent.com/intake?resume={draft_id})
+[Continue your setup →](https://clearform-app.preview.emergentagent.com/intake?resume={draft_id})
 
 Your progress has been saved—just pick up where you left off.
 
@@ -153,7 +153,7 @@ Quick reminder: your Compliance Vault Pro setup is almost complete!
 ✅ Professional document generation
 ✅ Peace of mind for your properties
 
-[Complete your setup now →](https://promptmgr.preview.emergentagent.com/intake?resume={draft_id})
+[Complete your setup now →](https://clearform-app.preview.emergentagent.com/intake?resume={draft_id})
 
 Questions? Just reply to this email.
 
@@ -182,7 +182,7 @@ This is our final reminder about your Compliance Vault Pro setup.
 
 Ready to simplify your compliance?
 
-[Complete your setup →](https://promptmgr.preview.emergentagent.com/intake?resume={draft_id})
+[Complete your setup →](https://clearform-app.preview.emergentagent.com/intake?resume={draft_id})
 
 If you've decided not to proceed, no problem—we won't send further reminders.
 
@@ -206,9 +206,9 @@ Thank you for contacting Pleerity. We've received your enquiry and a member of o
 **Your reference number:** {lead_id}
 
 In the meantime, you can:
-- [Browse our services](https://promptmgr.preview.emergentagent.com/services)
-- [Check our Knowledge Base](https://promptmgr.preview.emergentagent.com/support/knowledge-base)
-- [Start a chat](https://promptmgr.preview.emergentagent.com) (24/7 support)
+- [Browse our services](https://clearform-app.preview.emergentagent.com/services)
+- [Check our Knowledge Base](https://clearform-app.preview.emergentagent.com/support/knowledge-base)
+- [Start a chat](https://clearform-app.preview.emergentagent.com) (24/7 support)
 
 Best regards,
 The Pleerity Team
@@ -658,7 +658,7 @@ class LeadSLAService:
         SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
         ADMIN_DASHBOARD_URL = os.environ.get(
             "ADMIN_DASHBOARD_URL",
-            "https://promptmgr.preview.emergentagent.com/admin/leads"
+            "https://clearform-app.preview.emergentagent.com/admin/leads"
         )
         
         if not POSTMARK_SERVER_TOKEN or POSTMARK_SERVER_TOKEN == "leadsquared":
