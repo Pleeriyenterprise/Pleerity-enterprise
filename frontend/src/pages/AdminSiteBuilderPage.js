@@ -57,6 +57,7 @@ import {
   GripVertical,
   ExternalLink,
   Copy,
+  Globe,
 } from 'lucide-react';
 
 // Block type icons mapping
