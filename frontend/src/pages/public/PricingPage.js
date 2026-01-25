@@ -68,6 +68,7 @@ const PricingPage = () => {
   ];
 
   // CVP Plans (existing)
+  const cvpPlans = [
     {
       name: 'Solo Landlord',
       code: 'PLAN_1_SOLO',
