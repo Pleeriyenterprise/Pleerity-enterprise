@@ -141,11 +141,15 @@ const SidebarContent = ({
           alt="Pleerity" 
           className={cn(
             "transition-all duration-300",
-            sidebarOpen ? "h-9 w-auto" : "h-8 w-8 object-cover rounded-lg"
+            sidebarOpen ? "h-10 w-auto" : "h-9 w-9 object-contain"
           )}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.style.display = 'none';
+          }}
         />
         {sidebarOpen && (
-          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Admin Console</span>
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Admin Console</span>
         )}
       </Link>
     </div>
