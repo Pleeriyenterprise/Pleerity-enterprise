@@ -73,10 +73,20 @@ const ClearFormDocumentPage = () => {
     }
   };
 
+  // Clean markdown content (remove code fences)
+  const cleanMarkdown = (content) => {
+    if (!content) return '';
+    // Remove ```markdown or ``` at start and ``` at end
+    return content
+      .replace(/^```(?:markdown)?\s*\n?/i, '')
+      .replace(/\n?```\s*$/i, '')
+      .trim();
+  };
+
   const handleDownload = async (format) => {
     try {
       // For MVP, we'll create a simple download
-      const content = format === 'markdown' ? document.content_markdown : document.content_plain;
+      const content = format === 'markdown' ? cleanMarkdown(document.content_markdown) : document.content_plain;
       const blob = new Blob([content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = window.document.createElement('a');
