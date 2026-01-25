@@ -164,6 +164,50 @@ async def run_sla_monitoring():
         logger.error(f"SLA monitoring job failed: {e}")
 
 
+async def run_stuck_order_detection():
+    """Scheduled job: Detect orders stuck in FINALISING without proper documents."""
+    try:
+        from services.order_workflow import OrderStatus
+        from database import database
+        from datetime import timedelta
+        
+        db = database.get_db()
+        
+        # Find FINALISING orders that have been there for more than 1 hour
+        # and don't have proper approval fields
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        
+        stuck_orders = await db.orders.find({
+            "status": OrderStatus.FINALISING.value,
+            "updated_at": {"$lt": one_hour_ago},
+            "$or": [
+                {"document_versions": {"$size": 0}},
+                {"version_locked": {"$ne": True}},
+                {"approved_document_version": {"$exists": False}},
+                {"approved_document_version": None}
+            ]
+        }, {"_id": 0, "order_id": 1, "service_code": 1, "customer_email": 1}).to_list(100)
+        
+        if stuck_orders:
+            logger.warning(
+                f"🚨 STUCK ORDER ALERT: Found {len(stuck_orders)} orders in FINALISING "
+                f"without proper documents/approval for >1 hour"
+            )
+            for order in stuck_orders:
+                logger.warning(
+                    f"  - Order {order.get('order_id')} ({order.get('service_code')}) "
+                    f"needs manual intervention"
+                )
+            
+            # TODO: Send notification to admin
+            # For now, just log
+        else:
+            logger.debug("Stuck order detection: No stuck orders found")
+            
+    except Exception as e:
+        logger.error(f"Stuck order detection job failed: {e}")
+
+
 async def run_queued_order_processing():
     """Scheduled job: Process queued orders through document generation."""
     try:
