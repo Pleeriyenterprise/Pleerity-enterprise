@@ -885,6 +885,8 @@ export default function UnifiedIntakeWizard() {
     setSelectedService(service);
     setSelectedAddons([]);
     setPostalAddress({});
+    setPackDocuments([]);
+    setSelectedDocuments([]);
     
     // Update URL with selected service code
     setSearchParams({ service: service.service_code }, { replace: true });
@@ -893,9 +895,42 @@ export default function UnifiedIntakeWizard() {
     try {
       const schemaRes = await client.get(`/intake/schema/${service.service_code}`);
       setSchema(schemaRes.data);
+      
+      // If this is a document pack, load the documents for selection
+      if (service.service_code.startsWith('DOC_PACK')) {
+        setLoadingPackDocs(true);
+        try {
+          const docsRes = await client.get(`/intake/pack-documents/${service.service_code}`);
+          setPackDocuments(docsRes.data.documents || []);
+        } catch (err) {
+          console.error('Failed to load pack documents:', err);
+        } finally {
+          setLoadingPackDocs(false);
+        }
+      }
     } catch (err) {
       console.error('Failed to load schema:', err);
       toast.error('Failed to load service details');
+    }
+  };
+
+  // Toggle document selection in pack
+  const handleToggleDocument = (docCode) => {
+    setSelectedDocuments(prev => {
+      if (prev.includes(docCode)) {
+        return prev.filter(d => d !== docCode);
+      } else {
+        return [...prev, docCode];
+      }
+    });
+  };
+
+  // Select/deselect all documents
+  const handleSelectAllDocuments = (selectAll) => {
+    if (selectAll) {
+      setSelectedDocuments(packDocuments.map(d => d.code));
+    } else {
+      setSelectedDocuments([]);
     }
   };
 
