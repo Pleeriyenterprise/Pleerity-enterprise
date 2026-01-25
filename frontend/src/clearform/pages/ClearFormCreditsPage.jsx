@@ -32,100 +32,58 @@ const ClearFormCreditsPage = () => {
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
+  const [creditPackages, setCreditPackages] = useState([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState([]);
 
   useEffect(() => {
-    loadWallet();
+    loadData();
   }, []);
 
-  const loadWallet = async () => {
+  const loadData = async () => {
     try {
-      const data = await creditsApi.getWallet();
-      setWallet(data);
+      // Load wallet, packages, and plans in parallel
+      const [walletData, packagesData, plansData] = await Promise.all([
+        creditsApi.getWallet(),
+        creditsApi.getPackages(),
+        subscriptionsApi.getPlans(),
+      ]);
+      
+      setWallet(walletData);
+      
+      // Transform packages for display
+      const formattedPackages = packagesData.map(pkg => ({
+        id: pkg.package_id,
+        credits: pkg.credits,
+        price: pkg.price_gbp / 100, // Convert pence to pounds
+        priceDisplay: pkg.price_display,
+        pricePerCredit: pkg.per_credit_price,
+        popular: pkg.popular,
+        savings: pkg.credits >= 50 ? `${Math.round((1 - pkg.per_credit_price / packagesData[0].per_credit_price) * 100)}%` : null,
+      }));
+      setCreditPackages(formattedPackages);
+      
+      // Transform plans for display
+      const formattedPlans = plansData.map(plan => ({
+        id: plan.plan,
+        name: plan.name,
+        price: plan.monthly_price_gbp / 100,
+        priceDisplay: plan.monthly_price_display,
+        credits: plan.monthly_credits,
+        creditsNote: plan.plan === 'free' ? 'pay-as-you-go' : 'per month',
+        features: plan.features,
+        popular: plan.popular,
+        cta: plan.plan === 'free' ? 'Current Plan' : 'Subscribe',
+        disabled: plan.plan === 'free',
+      }));
+      setSubscriptionPlans(formattedPlans);
+      
     } catch (error) {
-      console.error('Failed to load wallet:', error);
+      console.error('Failed to load data:', error);
+      toast.error('Failed to load pricing data');
     } finally {
       setLoading(false);
     }
   };
-
-  // Credit top-up packages
-  const creditPackages = [
-    {
-      id: 'credits_10',
-      credits: 10,
-      price: 5,
-      pricePerCredit: 0.50,
-      popular: false,
-    },
-    {
-      id: 'credits_25',
-      credits: 25,
-      price: 10,
-      pricePerCredit: 0.40,
-      popular: true,
-      savings: '20%',
-    },
-    {
-      id: 'credits_75',
-      credits: 75,
-      price: 25,
-      pricePerCredit: 0.33,
-      popular: false,
-      savings: '33%',
-    },
-  ];
-
-  // Subscription plans
-  const subscriptionPlans = [
-    {
-      id: 'free',
-      name: 'Free',
-      price: 0,
-      credits: 3,
-      creditsNote: 'one-time',
-      features: [
-        '3 credits (one-time)',
-        'Watermarked documents',
-        'All document types',
-      ],
-      limitations: ['Watermarked output'],
-      cta: 'Current Plan',
-      disabled: true,
-    },
-    {
-      id: 'personal',
-      name: 'Personal',
-      price: 9.99,
-      credits: 20,
-      creditsNote: 'per month',
-      features: [
-        '20 credits per month',
-        'No watermark',
-        'All document types',
-        'Priority support',
-      ],
-      limitations: ['Credits don\'t roll over'],
-      popular: true,
-      cta: 'Subscribe',
-    },
-    {
-      id: 'power_user',
-      name: 'Power User',
-      price: 24.99,
-      credits: 75,
-      creditsNote: 'per month',
-      features: [
-        '75 credits per month',
-        'No watermark',
-        'Priority generation',
-        'Early access to new types',
-        'Dedicated support',
-      ],
-      limitations: ['Credits don\'t roll over'],
-      cta: 'Subscribe',
-      icon: Crown,
-    },
-  ];
 
   const handlePurchaseCredits = async (packageId) => {
     setPurchasing(packageId);
