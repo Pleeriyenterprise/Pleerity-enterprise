@@ -27,14 +27,20 @@ from datetime import datetime, timezone
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Load .env file before using environment variables
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
+
 import stripe
 from motor.motor_asyncio import AsyncIOMotorClient
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize Stripe
+# Initialize Stripe (STRIPE_SECRET_KEY takes precedence, fallback to STRIPE_API_KEY)
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY")
+if not stripe.api_key or stripe.api_key == "sk_test_emergent":
+    logger.warning("STRIPE_API_KEY appears to be a placeholder. Please set a valid Stripe key in .env")
 
 # Service definitions with Stripe-specific metadata
 SERVICE_STRIPE_CONFIG = {
