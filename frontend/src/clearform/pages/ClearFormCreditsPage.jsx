@@ -264,9 +264,9 @@ const ClearFormCreditsPage = () => {
             <p className="text-slate-500">Get monthly credits at a discount. Subscriptions renew automatically.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {subscriptionPlans.map((plan) => {
-              const Icon = plan.icon || Star;
+              const Icon = plan.id === 'unlimited' ? Crown : Star;
               return (
                 <Card 
                   key={plan.id}
@@ -280,9 +280,9 @@ const ClearFormCreditsPage = () => {
                   )}
                   <CardHeader className="text-center pb-2">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
-                      plan.id === 'power_user' ? 'bg-amber-100' : 'bg-slate-100'
+                      plan.id === 'unlimited' ? 'bg-amber-100' : 'bg-slate-100'
                     }`}>
-                      <Icon className={`w-6 h-6 ${plan.id === 'power_user' ? 'text-amber-600' : 'text-slate-600'}`} />
+                      <Icon className={`w-6 h-6 ${plan.id === 'unlimited' ? 'text-amber-600' : 'text-slate-600'}`} />
                     </div>
                     <CardTitle>{plan.name}</CardTitle>
                   </CardHeader>
@@ -290,14 +290,14 @@ const ClearFormCreditsPage = () => {
                     <div className="text-center mb-4">
                       <div className="flex items-baseline justify-center">
                         <span className="text-3xl font-bold text-slate-900">
-                          {plan.price === 0 ? 'Free' : `£${plan.price}`}
+                          {plan.price === 0 ? 'Free' : `£${plan.price.toFixed(2)}`}
                         </span>
                         {plan.price > 0 && (
                           <span className="text-slate-500 ml-1">/month</span>
                         )}
                       </div>
                       <p className="text-sm text-emerald-600 font-medium mt-1">
-                        {plan.credits} credits {plan.creditsNote}
+                        {plan.credits > 0 ? `${plan.credits} credits ${plan.creditsNote}` : plan.creditsNote}
                       </p>
                     </div>
 
