@@ -963,5 +963,120 @@ Hello {model.get('client_name', 'there')},
         )
         
         logger.info(f"Subscription canceled email sent to {recipient} for client {client_id}")
+    
+    # ================================================================================
+    # CLEARFORM EMAIL METHODS
+    # ================================================================================
+    
+    async def send_clearform_welcome_email(
+        self,
+        recipient: str,
+        full_name: str,
+        user_id: str,
+        credit_balance: int = 5,
+        dashboard_link: str = None
+    ):
+        """
+        Send ClearForm welcome email after account creation.
+        
+        Brand: ClearForm by Pleerity
+        Tone: Calm, reassuring, plain English
+        """
+        if dashboard_link is None:
+            frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+            dashboard_link = f"{frontend_url}/clearform/dashboard"
+        
+        await self.send_email(
+            recipient=recipient,
+            template_alias=EmailTemplateAlias.CLEARFORM_WELCOME,
+            template_model={
+                "full_name": full_name,
+                "credit_balance": credit_balance,
+                "dashboard_link": dashboard_link,
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance"
+            },
+            client_id=None,  # ClearForm uses user_id, not client_id
+            subject="Welcome to ClearForm by Pleerity"
+        )
+        
+        logger.info(f"ClearForm welcome email sent to {recipient} for user {user_id}")
+    
+    def _build_clearform_welcome_html(self, model: dict) -> str:
+        """Build ClearForm welcome email HTML."""
+        return f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f8fafc;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <!-- Header -->
+        <div style="background-color: #0B1D3A; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+            <h1 style="color: #00B8A9; margin: 0; font-size: 24px; font-weight: 700;">
+                ClearForm <span style="color: #ffffff; font-weight: 400;">by Pleerity</span>
+            </h1>
+            <p style="color: #94a3b8; margin: 10px 0 0 0; font-size: 14px;">
+                Professional paperwork, without the stress
+            </p>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none;">
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                Hello {model.get('full_name', 'there')},
+            </p>
+            
+            <p style="color: #475569; font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">
+                Welcome to ClearForm. Your account is ready, and we've added some starter credits to help you get going.
+            </p>
+            
+            <p style="color: #475569; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+                ClearForm helps you create professional paperwork without stress or mistakes. Just tell us what you need in plain English, and we'll generate a properly formatted document for you.
+            </p>
+            
+            <!-- Credit Balance Box -->
+            <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 25px;">
+                <p style="color: #166534; font-size: 14px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Your Credit Balance
+                </p>
+                <p style="color: #15803d; font-size: 36px; font-weight: 700; margin: 0;">
+                    {model.get('credit_balance', 5)} credits
+                </p>
+            </div>
+            
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{model.get('dashboard_link', '#')}" 
+                   style="display: inline-block; background-color: #10b981; color: #ffffff; 
+                          padding: 14px 32px; text-decoration: none; border-radius: 8px; 
+                          font-weight: 600; font-size: 15px;">
+                    Create Your First Document
+                </a>
+            </div>
+            
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 25px 0 0 0;">
+                Each document costs 1 credit. You can always add more credits later if you need them.
+            </p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #f8fafc; padding: 20px 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+            <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 10px 0; text-align: center;">
+                <strong style="color: #64748b;">Important:</strong> ClearForm is an assistive tool to help you draft documents. 
+                Always review the output and seek professional advice for legal matters.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;">
+            <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+                {model.get('company_name', 'Pleerity Enterprise Ltd')}<br>
+                {model.get('tagline', 'AI-Driven Solutions & Compliance')}
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+        """
 
 email_service = EmailService()
