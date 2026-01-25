@@ -989,8 +989,13 @@ class WorkflowAutomationService:
     
     async def process_queued_orders(self, limit: int = 10) -> Dict[str, Any]:
         """
-        Process queued orders in priority order.
-        Called by background job.
+        Process orders needing automated workflow advancement.
+        Called by background job every 10 minutes.
+        
+        Handles:
+        - QUEUED → document generation (WF2 + WF3)
+        - DRAFT_READY → move to review (WF3)
+        - REGEN_REQUESTED → regenerate documents (WF4)
         
         Priority ordering:
         1. queue_priority (higher = first) - Fast-track=5, Priority=10
@@ -1000,9 +1005,15 @@ class WorkflowAutomationService:
         """
         db = database.get_db()
         
-        # Get QUEUED orders, sorted by priority
-        queued_orders = await db.orders.find({
-            "status": OrderStatus.QUEUED.value,
+        # Get orders needing processing (QUEUED, DRAFT_READY, REGEN_REQUESTED)
+        # Only process PAID orders (skip test orders without payment)
+        orders_to_process = await db.orders.find({
+            "status": {"$in": [
+                OrderStatus.QUEUED.value,
+                OrderStatus.DRAFT_READY.value,
+                OrderStatus.REGEN_REQUESTED.value
+            ]},
+            "paid_at": {"$exists": True, "$ne": None}  # Only paid orders
         }).sort([
             ("queue_priority", -1),  # Higher priority first
             ("priority", -1),        # Then priority flag
@@ -1013,33 +1024,56 @@ class WorkflowAutomationService:
         results = {
             "processed": 0,
             "to_review": 0,
+            "regenerated": 0,
             "failed": 0,
             "fast_track_processed": 0,
         }
         
-        for order in queued_orders:
+        for order in orders_to_process:
             order_id = order["order_id"]
+            current_status = order.get("status")
             is_expedited = order.get("expedited", False) or order.get("fast_track", False)
             results["processed"] += 1
             
             try:
-                # WF2: Generate documents
-                gen_result = await self.wf2_queue_to_generation(order_id)
+                if current_status == OrderStatus.QUEUED.value:
+                    # WF2: Generate documents
+                    gen_result = await self.wf2_queue_to_generation(order_id)
+                    
+                    if gen_result.get("success"):
+                        # WF3: Move to review
+                        review_result = await self.wf3_draft_to_review(order_id)
+                        if review_result.get("success"):
+                            results["to_review"] += 1
+                            if is_expedited:
+                                results["fast_track_processed"] += 1
+                        else:
+                            results["failed"] += 1
+                    else:
+                        results["failed"] += 1
                 
-                if gen_result.get("success"):
-                    # WF3: Move to review
+                elif current_status == OrderStatus.DRAFT_READY.value:
+                    # WF3: Move draft to internal review
                     review_result = await self.wf3_draft_to_review(order_id)
                     if review_result.get("success"):
                         results["to_review"] += 1
-                        if is_expedited:
-                            results["fast_track_processed"] += 1
+                        logger.info(f"Auto-processed DRAFT_READY order {order_id} → INTERNAL_REVIEW")
                     else:
                         results["failed"] += 1
-                else:
-                    results["failed"] += 1
+                
+                elif current_status == OrderStatus.REGEN_REQUESTED.value:
+                    # WF4: Process regeneration
+                    # Get the regeneration notes from the order
+                    regen_notes = order.get("regeneration_notes", "Automated regeneration")
+                    regen_result = await self.wf4_regeneration(order_id, regen_notes)
+                    if regen_result.get("success"):
+                        results["regenerated"] += 1
+                        logger.info(f"Auto-processed REGEN_REQUESTED order {order_id} → INTERNAL_REVIEW")
+                    else:
+                        results["failed"] += 1
                     
             except Exception as e:
-                logger.error(f"Batch processing error for {order_id}: {e}")
+                logger.error(f"Batch processing error for {order_id} (status: {current_status}): {e}")
                 results["failed"] += 1
         
         return {"success": True, "results": results}

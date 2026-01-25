@@ -218,10 +218,12 @@ async def run_queued_order_processing():
         if results.get('processed', 0) > 0:
             logger.info(
                 f"Queue processing: {results['processed']} processed, "
-                f"{results['to_review']} to review, {results['failed']} failed"
+                f"{results.get('to_review', 0)} to review, "
+                f"{results.get('regenerated', 0)} regenerated, "
+                f"{results['failed']} failed"
             )
         else:
-            logger.debug("Queue processing: No orders to process")
+            logger.info("Queue processing: No paid orders needing processing (QUEUED/DRAFT_READY/REGEN_REQUESTED)")
             
     except Exception as e:
         logger.error(f"Queue processing job failed: {e}")
