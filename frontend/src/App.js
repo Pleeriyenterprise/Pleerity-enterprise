@@ -531,6 +531,48 @@ function App() {
               } 
             />
 
+            {/* ClearForm Admin Routes */}
+            <Route 
+              path="/admin/clearform/users" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminClearFormUsersPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/clearform/documents" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminClearFormDocumentsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/clearform/organizations" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminClearFormUsersPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/clearform/document-types" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminClearFormDocumentsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/clearform/audit" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminClearFormUsersPage />
+                </ProtectedRoute>
+              } 
+            />
+
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
