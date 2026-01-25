@@ -338,6 +338,29 @@ async def approve_order(
     if not version_exists:
         raise HTTPException(status_code=400, detail=f"Document version {request.version} not found")
     
+    # Additional validation: Ensure at least one document exists
+    if not versions or len(versions) == 0:
+        raise HTTPException(
+            status_code=400, 
+            detail="Cannot approve order: No documents have been generated. Please regenerate the order first."
+        )
+    
+    # Validate the requested version has actual document files
+    selected_version = next((v for v in versions if v.version == request.version), None)
+    if not selected_version:
+        raise HTTPException(status_code=400, detail=f"Document version {request.version} not found")
+    
+    # Check if the version has PDF or DOCX files
+    has_files = (
+        hasattr(selected_version, 'filename_pdf') and selected_version.filename_pdf or
+        hasattr(selected_version, 'filename_docx') and selected_version.filename_docx
+    )
+    if not has_files:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot approve version {request.version}: No document files found. Please regenerate."
+        )
+    
     try:
         # Lock the approved version
         await lock_approved_version(
