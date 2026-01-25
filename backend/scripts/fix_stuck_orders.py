@@ -105,22 +105,24 @@ async def fix_stuck_order(order_id: str, reason: str = "auto_recovery") -> dict:
         }
     )
     
-    # Transition back to QUEUED
+    # Transition back to INTERNAL_REVIEW first (allowed from FINALISING)
+    # Then can be moved to earlier states if needed
     try:
         await transition_order_state(
             order_id=order_id,
-            new_status=OrderStatus.QUEUED,
+            new_status=OrderStatus.INTERNAL_REVIEW,
             triggered_by_type="system",
-            reason=f"Auto-recovery: Order stuck in FINALISING without documents. Moved to QUEUED for retry. Reason: {reason}",
+            reason=f"Auto-recovery: Order stuck in FINALISING without documents. Moved to INTERNAL_REVIEW for admin action. Reason: {reason}",
             metadata={
                 "recovery_action": "stuck_order_fix",
                 "recovery_reason": reason,
                 "recovered_at": datetime.now(timezone.utc).isoformat(),
+                "requires_action": "regenerate_document",
             }
         )
         
-        logger.info(f"Successfully recovered order {order_id} - moved to QUEUED")
-        return {"success": True, "new_status": "QUEUED"}
+        logger.info(f"Successfully recovered order {order_id} - moved to INTERNAL_REVIEW")
+        return {"success": True, "new_status": "INTERNAL_REVIEW"}
         
     except Exception as e:
         logger.error(f"Failed to recover order {order_id}: {e}")
@@ -160,8 +162,8 @@ async def main():
     logger.info("\n" + "=" * 80)
     logger.info("Step 2: Recovery Action")
     logger.info("=" * 80)
-    logger.info(f"This script will move {len(stuck_orders)} orders back to QUEUED status")
-    logger.info("for automatic retry of document generation.")
+    logger.info(f"This script will move {len(stuck_orders)} orders back to INTERNAL_REVIEW status")
+    logger.info("so admin can regenerate documents or take other action.")
     
     # Auto-proceed in script mode
     logger.info("\nProceeding with recovery...")
@@ -195,9 +197,10 @@ async def main():
             logger.info(f"  - {error['order_id']}: {error['error']}")
     
     logger.info("\nNext Steps:")
-    logger.info("1. The automated queue processor will pick up these orders")
-    logger.info("2. They will go through document generation again")
-    logger.info("3. Monitor the workflow_executions collection for progress")
+    logger.info("1. Orders have been moved to INTERNAL_REVIEW status")
+    logger.info("2. Admin should request regeneration for these orders")
+    logger.info("3. Alternatively, if orders are invalid, mark them as FAILED")
+    logger.info("4. Monitor the workflow_executions collection for progress")
     
     await database.close()
 
