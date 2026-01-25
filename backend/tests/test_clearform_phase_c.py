@@ -426,8 +426,8 @@ class TestCreditSystem:
         data = response.json()
         # Wallet uses 'total_balance' key
         assert "total_balance" in data
-        assert "lifetime_purchased" in data
         assert "credits_used_this_month" in data
+        assert "documents_generated_this_month" in data
     
     def test_get_credit_packages(self, auth_token_doctest):
         """GET /api/clearform/credits/packages - Get available credit packages"""
