@@ -76,23 +76,32 @@ const ClearFormDocumentPage = () => {
   // Clean markdown content (remove code fences and AI preamble)
   const cleanMarkdown = (content) => {
     if (!content) return '';
-    // Remove any AI preamble before the actual content
     let cleaned = content;
-    // Find and remove ```markdown block
-    const codeBlockMatch = cleaned.match(/```(?:markdown)?\s*\n([\s\S]*?)```/i);
+    
+    // First, try to extract content from within code blocks (handles ```markdown ... ```)
+    const codeBlockMatch = cleaned.match(/```(?:markdown|md)?\s*\n([\s\S]*?)```/i);
     if (codeBlockMatch) {
       cleaned = codeBlockMatch[1];
     } else {
-      // Just remove any code fence markers
+      // No full code block found, just strip any fence markers
       cleaned = cleaned
-        .replace(/```(?:markdown)?\s*\n?/gi, '')
-        .replace(/\n?```/gi, '');
+        .replace(/```(?:markdown|md)?\s*\n?/gi, '')
+        .replace(/\n?```\s*$/gi, '');
     }
-    // Remove common AI preambles
-    cleaned = cleaned
-      .replace(/^(?:okay,?\s*)?(?:here'?s?\s+)?(?:a\s+)?(?:draft\s+)?(?:of\s+)?(?:a\s+)?(?:professional\s+)?(?:[\w\s]+)?(?:letter|document|cv|resume)(?:\s+based\s+on[\w\s,]+)?(?:formatted\s+in\s+markdown)?:?\s*/i, '')
-      .trim();
-    return cleaned;
+    
+    // Remove common AI preambles that appear before the actual content
+    const preamblePatterns = [
+      /^(?:okay,?\s*)?(?:i can help you with that\.?\s*)?/i,
+      /^(?:here'?s?\s+)?(?:a\s+)?(?:draft\s+)?(?:of\s+)?(?:a\s+)?(?:formal\s+)?(?:professional\s+)?(?:[\w\s]+)?(?:letter|document|cv|resume|template)(?:\s+you\s+can\s+use)?(?:\s+to[\w\s]+)?(?:\s+based\s+on[\w\s,]+)?(?:\s+formatted\s+in\s+markdown)?:?\s*/i,
+      /^(?:sure[,!]?\s*)?(?:here'?s?\s+)?/i,
+      /^(?:certainly[,!]?\s*)?/i,
+    ];
+    
+    for (const pattern of preamblePatterns) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+    
+    return cleaned.trim();
   };
 
   const handleDownload = async (format) => {
