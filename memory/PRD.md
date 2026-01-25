@@ -1098,6 +1098,35 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 - [x] Uses Pleerity logo and favicon
 - [x] Consistent branding across all ClearForm routes
 
+### Phase 27: ClearForm Phase B & C Frontend (Complete - Jan 25, 2026)
+
+**Organizations/Team Management UI** (Phase C):
+- [x] Organizations page with team dashboard
+- [x] Create organization dialog
+- [x] Member list with role badges (Owner, Admin, Manager, Member, Viewer)
+- [x] Invite member flow with role selection
+- [x] Pending invitations management
+- [x] Shared credit pool display
+- [x] Organization settings view
+- [x] Route: `/clearform/team` and `/clearform/organizations`
+
+**Workspaces & Smart Profiles UI** (Phase B):
+- [x] Workspaces & Profiles page with tabs
+- [x] Smart Profiles tab:
+  - Create profile dialog with type selection (Personal, Business, Property)
+  - Dynamic form fields based on profile type
+  - Profile list with favorites toggle
+  - Delete profile functionality
+- [x] Workspaces tab:
+  - Create workspace dialog
+  - Workspace list with document count
+  - Default workspace indicator
+- [x] Routes: `/clearform/workspaces` and `/clearform/profiles`
+
+**Dashboard Updates**:
+- [x] Added 4 quick action cards: Document Vault, Buy Credits, Team, Smart Profiles
+- [x] Compact card design for better fit
+
 ---
 
 ## Credentials
