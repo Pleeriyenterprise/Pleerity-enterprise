@@ -880,10 +880,15 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 - [x] Transaction history with audit trail
 - [x] 5 welcome bonus credits for new users
 
-**Document Types** (3 types for Phase 1):
+**Document Types** (8 types - Phase 1 + Phase 2):
 - [x] Formal Letter (1 credit) - Professional correspondence
 - [x] Complaint Letter (1 credit) - Issue resolution letters
 - [x] CV/Resume (2 credits) - Professional CV generation
+- [x] Complaint or Appeal Letter (1 credit) - EXPLAIN_APPEAL_REQUEST category
+- [x] Statement of Circumstances (1 credit) - EXPLAIN_APPEAL_REQUEST category
+- [x] Application Cover Letter (1 credit) - INTRODUCE_SUPPORT category
+- [x] Reference Letter (2 credits) - INTRODUCE_SUPPORT category
+- [x] Notice to Landlord (1 credit) - NOTIFY_DECLARE_AUTHORISE category
 
 **Document Generation**:
 - [x] Intent-based generation flow (user describes, AI creates)
@@ -891,14 +896,41 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 - [x] Async generation with status polling
 - [x] Auto-refund on failed generation
 - [x] Markdown & plain text output
+- [x] **PDF Export** - Professional PDF generation via reportlab
 
 **Document Vault**:
 - [x] Document listing with pagination
 - [x] Filter by type and status
 - [x] Search functionality
 - [x] Archive (soft delete)
-- [x] Download (TXT, MD)
+- [x] Download (PDF, TXT, MD)
 - [x] Copy to clipboard
+
+**Admin-Configurable Document Types**:
+- [x] Document categories (EXPLAIN_APPEAL_REQUEST, INTRODUCE_SUPPORT, NOTIFY_DECLARE_AUTHORISE)
+- [x] Admin can add/modify/disable document types without code changes
+- [x] Custom fields per document type (required + optional)
+- [x] Per-type credit costs
+- [x] Changes take effect immediately
+
+**User Templates**:
+- [x] Save document intents as reusable templates
+- [x] Template CRUD operations
+- [x] Usage tracking (count, last used)
+- [x] Favorite templates
+- [x] Workspace-scoped templates
+
+**Workspaces (Phase 2)**:
+- [x] Create/manage workspaces
+- [x] Default workspace auto-creation
+- [x] Workspace colors and icons
+- [x] Document/template organization
+
+**Smart Profiles (Phase 2)**:
+- [x] Save personal details for auto-fill
+- [x] Multiple profile types (personal, business)
+- [x] Default profile per type
+- [x] Usage tracking
 
 **Subscriptions**:
 - [x] 4 plans: Free, Starter (£4.99), Professional (£9.99), Unlimited (£24.99)
@@ -907,10 +939,19 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 - [x] Stripe subscription checkout
 - [x] Cancel at period end
 
+**Website Integration**:
+- [x] ClearForm in Products dropdown (alongside CVP)
+- [x] "New" badge on ClearForm
+- [x] Separate branding for individuals/small businesses
+
 **API Endpoints** (`/api/clearform/*`):
 - Auth: `/auth/register`, `/auth/login`, `/auth/me`
 - Credits: `/credits/wallet`, `/credits/balance`, `/credits/history`, `/credits/packages`, `/credits/purchase`
 - Documents: `/documents/types`, `/documents/generate`, `/documents/vault`, `/documents/{id}`, `/documents/{id}/download`
+- Document Types: `/document-types`, `/document-types/categories`, `/document-types/admin/*`
+- Templates: `/templates`, `/templates/{id}`, `/templates/{id}/use`, `/templates/{id}/favorite`
+- Workspaces: `/workspaces`, `/workspaces/{id}`
+- Profiles: `/profiles`, `/profiles/default`, `/profiles/{id}`
 - Subscriptions: `/subscriptions/plans`, `/subscriptions/current`, `/subscriptions/subscribe`, `/subscriptions/cancel`, `/subscriptions/portal`
 - Webhooks: `/webhook/stripe`
 
