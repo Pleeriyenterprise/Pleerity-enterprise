@@ -124,6 +124,12 @@ function App() {
           <div className="App">
             <Routes>
               {/* ========================================
+                  CLEARFORM - SEPARATE PRODUCT
+                  Completely isolated from Pleerity
+                  ======================================== */}
+              <Route path="/clearform/*" element={<ClearFormApp />} />
+
+              {/* ========================================
                   PUBLIC WEBSITE ROUTES (NEW)
                   No auth required, SEO-optimized
                   ======================================== */}
