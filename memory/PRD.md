@@ -1127,6 +1127,39 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 - [x] Added 4 quick action cards: Document Vault, Buy Credits, Team, Smart Profiles
 - [x] Compact card design for better fit
 
+### Phase 28: ClearForm Service Catalogue, PDF Viewer & Stripe Checkout (Complete - Jan 25, 2026)
+
+**Service Catalogue Entry**:
+- [x] Added CLEARFORM service to service catalogue V2
+- [x] Service code: `CLEARFORM`
+- [x] Category: `ServiceCategory.CLEARFORM` (new category)
+- [x] Pricing: credit packages (10, 25, 75 credits)
+- [x] Listed in public service catalogue API
+
+**PDF Viewer Integration**:
+- [x] In-browser PDF preview using `react-pdf` library
+- [x] PDF.js worker loaded from local `/public/pdf.worker.min.mjs`
+- [x] Tabbed interface: "PDF Preview" and "Text View"
+- [x] Page navigation controls (prev/next)
+- [x] Zoom controls (25% increments, 50%-250% range)
+- [x] PDF loads from backend `/api/clearform/documents/{id}/download?format=pdf`
+
+**Stripe Checkout Integration**:
+- [x] Credit packages fetched from `/api/clearform/credits/packages` API
+- [x] Subscription plans fetched from `/api/clearform/subscriptions/plans` API
+- [x] "Buy Now" button creates Stripe checkout session
+- [x] Redirect to Stripe hosted checkout page
+- [x] Payment success page at `/clearform/credits/success`
+- [x] Subscription success page at `/clearform/subscription/success`
+- [x] Stripe test mode active with Pleerity Enterprise Ltd merchant
+
+**Dynamic Pricing Display**:
+- [x] 4 credit packages: 10 (£9.99), 25 (£19.99), 50 (£34.99), 100 (£59.99)
+- [x] 4 subscription plans: Free, Starter (£4.99), Professional (£9.99), Unlimited (£24.99)
+- [x] Per-credit price calculation
+- [x] "Best Value" badge on popular package
+- [x] "Popular" badge on Professional plan
+
 ---
 
 ## Credentials
