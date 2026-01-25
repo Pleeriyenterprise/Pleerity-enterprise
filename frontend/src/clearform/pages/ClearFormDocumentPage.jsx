@@ -85,7 +85,29 @@ const ClearFormDocumentPage = () => {
 
   const handleDownload = async (format) => {
     try {
-      // For MVP, we'll create a simple download
+      if (format === 'pdf') {
+        // Use backend PDF generation
+        const API_BASE = process.env.REACT_APP_BACKEND_URL;
+        const token = localStorage.getItem('clearform_token');
+        const response = await fetch(
+          `${API_BASE}/api/clearform/documents/${document.document_id}/download?format=pdf`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) throw new Error('PDF download failed');
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = `${document.title}.pdf`;
+        window.document.body.appendChild(a);
+        a.click();
+        window.document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Downloaded as PDF');
+        return;
+      }
+      
+      // For text formats, use local generation
       const content = format === 'markdown' ? cleanMarkdown(document.content_markdown) : document.content_plain;
       const blob = new Blob([content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
