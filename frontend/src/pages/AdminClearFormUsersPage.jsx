@@ -5,11 +5,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Badge } from '../../components/ui/badge';
+import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
 import { 
   Users, 
   Search,
@@ -19,7 +19,7 @@ import {
   RefreshCw,
   ExternalLink
 } from 'lucide-react';
-import api from '../../api/client';
+import api from '../api/client';
 import { toast } from 'sonner';
 
 const AdminClearFormUsersPage = () => {
