@@ -112,6 +112,8 @@ import AdminEnablementDashboard from './pages/AdminEnablementDashboard';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminTeamPage from './pages/AdminTeamPage';
 import AdminPromptManagerPage from './pages/AdminPromptManagerPage';
+import AdminClearFormUsersPage from './pages/AdminClearFormUsersPage';
+import AdminClearFormDocumentsPage from './pages/AdminClearFormDocumentsPage';
 import SharedReportPage from './pages/SharedReportPage';
 import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
 import CookieBanner from './components/CookieBanner';
