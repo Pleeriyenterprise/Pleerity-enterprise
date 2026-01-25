@@ -662,9 +662,9 @@ const BillingPage = () => {
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <h3 className="font-semibold text-gray-900 mb-2">Is there a free trial?</h3>
+                <h3 className="font-semibold text-gray-900 mb-2">What is your refund policy?</h3>
                 <p className="text-sm text-gray-600">
-                  We offer a 14-day money-back guarantee on all plans. Contact support within 14 days for a full refund if you're not satisfied.
+                  We offer a 14-day money-back guarantee on all plans. Contact support within 14 days for a full refund if you&apos;re not satisfied.
                 </p>
               </CardContent>
             </Card>
