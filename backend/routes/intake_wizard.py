@@ -594,6 +594,30 @@ async def calculate_service_price(request: CalculatePriceRequest):
         }
 
 
+@router.get("/pack-documents/{service_code}")
+async def get_pack_documents(service_code: str):
+    """
+    Get documents in a pack for user selection.
+    
+    Users can select specific documents they need or leave all unchecked
+    to get the complete pack.
+    
+    Returns list of documents with metadata for selection UI.
+    """
+    from services.pack_registry import get_pack_documents_for_selection
+    
+    pack_type = SERVICE_CODE_TO_PACK_TYPE.get(service_code)
+    if not pack_type:
+        raise HTTPException(status_code=400, detail=f"Not a document pack: {service_code}")
+    
+    try:
+        result = get_pack_documents_for_selection(pack_type)
+        result["service_code"] = service_code
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # ============================================================================
 # ADMIN ENDPOINTS
 # ============================================================================
