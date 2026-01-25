@@ -147,19 +147,33 @@ class TestClearFormCredits:
         assert "session_id" in data
         print("25 credits package checkout created successfully")
     
-    def test_purchase_credits_75(self, auth_token):
-        """Test purchasing 75 credits package"""
+    def test_purchase_credits_50(self, auth_token):
+        """Test purchasing 50 credits package"""
         response = requests.post(
             f"{BASE_URL}/api/clearform/credits/purchase",
             headers={"Authorization": f"Bearer {auth_token}"},
-            json={"package_id": "credits_75"}
+            json={"package_id": "credits_50"}
         )
         assert response.status_code == 200
         
         data = response.json()
         assert "checkout_url" in data
         assert "session_id" in data
-        print("75 credits package checkout created successfully")
+        print("50 credits package checkout created successfully")
+    
+    def test_purchase_credits_100(self, auth_token):
+        """Test purchasing 100 credits package"""
+        response = requests.post(
+            f"{BASE_URL}/api/clearform/credits/purchase",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"package_id": "credits_100"}
+        )
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "checkout_url" in data
+        assert "session_id" in data
+        print("100 credits package checkout created successfully")
 
 
 class TestClearFormSubscriptions:
