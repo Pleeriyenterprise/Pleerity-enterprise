@@ -98,6 +98,9 @@ class PDFService:
         Returns:
             PDF bytes
         """
+        # Get fresh styles for each PDF generation
+        styles = self._get_styles()
+        
         buffer = BytesIO()
         
         doc = SimpleDocTemplate(
