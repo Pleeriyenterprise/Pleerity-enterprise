@@ -781,7 +781,7 @@ Enterprise-grade SaaS platform for property compliance management with AI-driven
 ### Phase 20: Order Processing Pipeline Fixes (Complete - Jan 24, 2026)
 - [x] **Stripe Webhook Configuration Fix**
   - Identified webhook URL mismatch (old preview URL vs new)
-  - Confirmed correct URL: `https://prompt-fix-6.preview.emergentagent.com/api/webhook/stripe`
+  - Confirmed correct URL: `https://promptmgr.preview.emergentagent.com/api/webhook/stripe`
   - Signing secret verified: `whsec_jgG1IvSxCpaJM6maQQEhoOeM4YLU4R9x`
   - Webhooks now receiving `checkout.session.completed` events successfully
 - [x] **Order Queue Processing Fix**

@@ -65,7 +65,7 @@ echo ""
 
 echo "4. FRONTEND BUILD"
 echo "-----------------"
-check_requirement "Frontend accessible" "curl -s https://prompt-fix-6.preview.emergentagent.com > /dev/null"
+check_requirement "Frontend accessible" "curl -s https://promptmgr.preview.emergentagent.com > /dev/null"
 echo ""
 
 echo "5. CRITICAL FILES"

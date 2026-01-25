@@ -49,8 +49,8 @@ async def seed_database():
     
     print("\n✅ Database seeding complete!")
     print("\n📝 Quick Start Guide:")
-    print("   1. Admin Login: https://prompt-fix-6.preview.emergentagent.com/admin/signin")
-    print("   2. Client Signup: https://prompt-fix-6.preview.emergentagent.com/intake/start")
+    print("   1. Admin Login: https://promptmgr.preview.emergentagent.com/admin/signin")
+    print("   2. Client Signup: https://promptmgr.preview.emergentagent.com/intake/start")
     print("\n🔐 Admin Credentials:")
     print("   Email: admin@pleerity.com")
     print("   Password: Admin123!")
