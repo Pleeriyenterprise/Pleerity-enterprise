@@ -136,14 +136,16 @@ const SidebarContent = ({
     {/* Logo */}
     <div className="p-4 border-b border-gray-200">
       <Link to="/admin/dashboard" className="flex items-center space-x-2">
-        <div className="w-9 h-9 bg-gradient-to-br from-electric-teal to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-          <span className="text-white font-bold text-lg">P</span>
-        </div>
+        <img 
+          src="/pleerity-logo.jpg" 
+          alt="Pleerity" 
+          className={cn(
+            "transition-all duration-300",
+            sidebarOpen ? "h-9 w-auto" : "h-8 w-8 object-cover rounded-lg"
+          )}
+        />
         {sidebarOpen && (
-          <div className="flex flex-col">
-            <span className="text-lg font-bold text-midnight-blue">Pleerity</span>
-            <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Admin Console</span>
-          </div>
+          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Admin Console</span>
         )}
       </Link>
     </div>
