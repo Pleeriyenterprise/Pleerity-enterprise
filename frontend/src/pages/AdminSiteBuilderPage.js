@@ -61,9 +61,8 @@ import {
   BarChart2,
   ShieldCheck,
   Home,
-  Eye,
-  EyeOff,
   Check,
+  Pencil,
 } from 'lucide-react';
 
 // Block type icons mapping
