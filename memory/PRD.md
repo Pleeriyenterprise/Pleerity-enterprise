@@ -1199,6 +1199,33 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 - [x] Auto-fill sender details (name, address, email, phone)
 - [x] Default profile auto-selection
 
+### Phase 30: Template UI, Intake Auto-save & Marketing Review (Complete - Jan 25, 2026)
+
+**Template Selection UI** (`/app/frontend/src/clearform/pages/ClearFormCreatePage.jsx`):
+- [x] Tabbed interface: "AI Generation" | "Use Template"
+- [x] Template badge showing count of available templates
+- [x] Template card selection with compliance badges
+- [x] Smart Profile selector dropdown with "Saves time" badge
+- [x] Dynamic form fields based on template sections
+- [x] "AI Enhanced" badges on sections using AI generation
+- [x] "Pre-filled" badges on fields auto-populated from profile
+- [x] Credit cost display for templates
+
+**Intake Wizard Progress Auto-save** (`/app/frontend/src/pages/UnifiedIntakeWizard.js`):
+- [x] Auto-save wizard state to localStorage
+- [x] Restore prompt on return within 24 hours
+- [x] Saves: current step, selected service, addons, form data, draft ID
+- [x] Clear saved state before Stripe payment redirect
+- [x] User can choose to continue or start fresh
+
+**Marketing Website Review**:
+- [x] Homepage: Hero section, features, services - Complete
+- [x] About page: Mission, story, company stats - Complete
+- [x] Services page: 4 service categories with descriptions - Complete
+- [x] Pricing page: CVP and ClearForm tabs - Complete
+- [x] Contact page: Form with email, hours, location - Complete
+- All pages have professional content and Pleerity branding
+
 ---
 
 ## Credentials
