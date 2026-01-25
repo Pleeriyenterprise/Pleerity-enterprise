@@ -961,6 +961,8 @@ export default function UnifiedIntakeWizard() {
       const res = await client.post('/intake/draft', {
         service_code: selectedService.service_code,
         category: selectedService.category,
+        // Include selected documents for document packs
+        selected_documents: selectedDocuments.length > 0 ? selectedDocuments : null,
       });
       setDraft(res.data);
       
