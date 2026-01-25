@@ -511,9 +511,10 @@ class WorkflowAutomationService:
         try:
             # Run regeneration through orchestrator
             orchestrator = self._get_orchestrator()
-            result = await orchestrator.execute_regeneration(
+            result = await orchestrator.execute_generation(
                 order_id=order_id,
                 intake_data=order.get("parameters", {}),
+                regeneration=True,
                 regeneration_notes=regen_notes,
             )
             
