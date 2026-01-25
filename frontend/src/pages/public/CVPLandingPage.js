@@ -145,7 +145,7 @@ const CVPLandingPage = () => {
                 data-testid="cvp-get-started"
               >
                 <Link to="/intake/start">
-                  Start Free Trial
+                  Get Started
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Link>
               </Button>
