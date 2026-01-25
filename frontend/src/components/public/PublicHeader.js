@@ -196,17 +196,22 @@ const PublicHeader = () => {
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-t border-gray-200">
           <div className="px-4 py-4 space-y-4">
-            {/* Platform Section */}
+            {/* Products Section */}
             <div>
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Platform</div>
-              {platformLinks.map((link) => (
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Products</div>
+              {productLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="block py-2 text-gray-700 hover:text-electric-teal"
+                  className="flex items-center justify-between py-2 text-gray-700 hover:text-electric-teal"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  {link.badge && (
+                    <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                      {link.badge}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
@@ -228,6 +233,9 @@ const PublicHeader = () => {
 
             {/* Other Links */}
             <div className="border-t border-gray-200 pt-4">
+              <Link to="/pricing" className="block py-2 text-gray-700 hover:text-electric-teal" onClick={() => setMobileMenuOpen(false)}>
+                Pricing
+              </Link>
               <Link to="/insights" className="block py-2 text-gray-700 hover:text-electric-teal" onClick={() => setMobileMenuOpen(false)}>
                 Insights
               </Link>
