@@ -24,7 +24,7 @@ const PublicHeader = () => {
   ];
 
   const serviceLinks = [
-    { href: '/services/ai-workflow-automation', label: 'AI Workflow Automation', description: 'Automate repetitive tasks' },
+    { href: '/services/ai-automation', label: 'AI & Automation', description: 'Automate repetitive tasks' },
     { href: '/services/market-research', label: 'Market Research', description: 'Property market insights' },
     { href: '/services/document-packs', label: 'Document Packs', description: 'Ready-to-use legal documents' },
     { href: '/services/compliance-audits', label: 'Compliance Audits', description: 'HMO and full property audits' },
