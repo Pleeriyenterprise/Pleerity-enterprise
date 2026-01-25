@@ -877,8 +877,8 @@ async def get_published_page(slug: str) -> Optional[Dict[str, Any]]:
     }
 
 
-async def get_page_by_slug(slug: str) -> Optional[Dict[str, Any]]:
-    """Get page by slug (any status)"""
+async def get_page_raw_by_slug(slug: str) -> Optional[Dict[str, Any]]:
+    """Get page by slug as raw dict (any status)"""
     page = await get_db().cms_pages.find_one({"slug": slug}, {"_id": 0})
     return page
 
