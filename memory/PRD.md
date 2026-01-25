@@ -1175,9 +1175,10 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 ## Pending Issues
 
 ### ✅ RESOLVED - Document Pack Services (Jan 25, 2026)
-- **Issue:** Document Pack services allegedly failing to load in intake wizard
-- **Status:** RESOLVED - Services were loading correctly. Verified via API and UI testing.
-- **Conclusion:** Issue was previously fixed or incorrectly reported.
+- **Issue:** Document Pack services fail to proceed past Step 1 in intake wizard
+- **Root Cause:** Service code to pack type mapping mismatch. Service codes `DOC_PACK_PLUS` and `DOC_PACK_PRO` were not mapped to pack registry types `TENANCY` and `ULTIMATE`.
+- **Fix:** Added `SERVICE_CODE_TO_PACK_TYPE` mapping in `/app/backend/routes/intake_wizard.py`
+- **Status:** RESOLVED - Wizard now advances correctly through all steps
 
 ### ✅ RESOLVED - Setup Stripe Products Script (Jan 25, 2026)
 - **Issue:** Validation bug in `/app/backend/scripts/setup_stripe_products.py`
