@@ -869,6 +869,10 @@ const AdminSiteBuilderPage = () => {
                 <FileText className="w-4 h-4 mr-2" />
                 Pages
               </TabsTrigger>
+              <TabsTrigger value="marketing" data-testid="tab-marketing">
+                <Globe className="w-4 h-4 mr-2" />
+                Marketing Website
+              </TabsTrigger>
               <TabsTrigger value="media" data-testid="tab-media">
                 <Image className="w-4 h-4 mr-2" />
                 Media Library
@@ -883,6 +887,10 @@ const AdminSiteBuilderPage = () => {
                 onRefresh={fetchPages}
                 loading={loading}
               />
+            </TabsContent>
+
+            <TabsContent value="marketing" className="mt-6">
+              <MarketingPages onSelectPage={setSelectedPage} />
             </TabsContent>
 
             <TabsContent value="media" className="mt-6">
