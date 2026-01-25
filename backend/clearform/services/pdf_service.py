@@ -134,7 +134,7 @@ class PDFService:
         
         return pdf_bytes
     
-    def _parse_content(self, content: str) -> list:
+    def _parse_content(self, content: str, styles) -> list:
         """Parse markdown-like content into PDF elements."""
         elements = []
         
@@ -152,7 +152,7 @@ class PDFService:
             if not stripped:
                 if current_paragraph:
                     text = ' '.join(current_paragraph)
-                    elements.append(Paragraph(self._escape_html(text), self.styles['BodyText']))
+                    elements.append(Paragraph(self._escape_html(text), styles['BodyText']))
                     current_paragraph = []
                 elements.append(Spacer(1, 0.1*inch))
                 continue
@@ -161,19 +161,19 @@ class PDFService:
             if stripped.startswith('###'):
                 if current_paragraph:
                     text = ' '.join(current_paragraph)
-                    elements.append(Paragraph(self._escape_html(text), self.styles['BodyText']))
+                    elements.append(Paragraph(self._escape_html(text), styles['BodyText']))
                     current_paragraph = []
                 header_text = stripped.lstrip('#').strip()
-                elements.append(Paragraph(self._escape_html(header_text), self.styles['SectionHead']))
+                elements.append(Paragraph(self._escape_html(header_text), styles['SectionHead']))
                 continue
             
             if stripped.startswith('##'):
                 if current_paragraph:
                     text = ' '.join(current_paragraph)
-                    elements.append(Paragraph(self._escape_html(text), self.styles['BodyText']))
+                    elements.append(Paragraph(self._escape_html(text), styles['BodyText']))
                     current_paragraph = []
                 header_text = stripped.lstrip('#').strip()
-                elements.append(Paragraph(self._escape_html(header_text), self.styles['SectionHead']))
+                elements.append(Paragraph(self._escape_html(header_text), styles['SectionHead']))
                 continue
             
             if stripped.startswith('#'):
