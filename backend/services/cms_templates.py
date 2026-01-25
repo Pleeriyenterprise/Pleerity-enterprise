@@ -348,7 +348,7 @@ PRICING_PAGE_TEMPLATE = {
             "block_type": "PRICING_TABLE",
             "content": {
                 "title": "Choose Your Plan",
-                "subtitle": "All plans include a 14-day free trial",
+                "subtitle": "Simple, transparent pricing for every portfolio size",
                 "tiers": [
                     {
                         "name": "Starter",
@@ -360,7 +360,7 @@ PRICING_PAGE_TEMPLATE = {
                             "Email reminders",
                             "Standard support"
                         ],
-                        "cta_text": "Start Free Trial",
+                        "cta_text": "Get Started",
                         "cta_link": "/signup?plan=starter",
                         "is_highlighted": False
                     },
@@ -375,7 +375,7 @@ PRICING_PAGE_TEMPLATE = {
                             "Document storage",
                             "Priority support"
                         ],
-                        "cta_text": "Start Free Trial",
+                        "cta_text": "Get Started",
                         "cta_link": "/signup?plan=professional",
                         "is_highlighted": True
                     },
