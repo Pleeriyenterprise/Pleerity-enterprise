@@ -39,6 +39,7 @@ class ServiceCategory(str, Enum):
     COMPLIANCE = "compliance"                 # Audits, checklists, tracking
     DOCUMENT_PACK = "document_pack"           # Essential, Tenancy, Ultimate packs
     SUBSCRIPTION = "subscription"             # CVP subscription tiers
+    CLEARFORM = "clearform"                   # ClearForm document generation product
 
 
 class PricingModel(str, Enum):

@@ -1851,6 +1851,62 @@ CVP_SUBSCRIPTION_SERVICES = [
 
 
 # ============================================================================
+# CLEARFORM SERVICES (Separate Product)
+# ============================================================================
+
+CLEARFORM_SERVICES = [
+    # ClearForm - Intent-Driven Paperwork Assistant
+    ServiceCatalogueEntryV2(
+        service_code="CLEARFORM",
+        service_name="ClearForm",
+        description="Intent-driven paperwork assistant. Generate professional documents from simple descriptions using AI.",
+        long_description="""ClearForm is an intelligent paperwork assistant designed for individuals and small businesses. 
+        Simply describe what you need, and our AI generates professional documents including formal letters, complaint letters, 
+        CVs, cover letters, and more. Credit-based pricing with packages starting at just £5. No subscription required.""",
+        category=ServiceCategory.CLEARFORM,
+        website_preview="AI-powered document generation for individuals and small businesses. Describe your needs, get professional documents.",
+        learn_more_slug="clearform",
+        pricing_model=PricingModel.ONE_TIME,
+        base_price=500,  # Starting at £5 for 10 credits
+        pricing_variants=[
+            PricingVariant(
+                variant_code="credits_10",
+                variant_name="10 Credits",
+                price_amount=500,
+                stripe_price_id="price_CLEARFORM_10",
+                target_due_hours=0  # Instant delivery
+            ),
+            PricingVariant(
+                variant_code="credits_25",
+                variant_name="25 Credits",
+                price_amount=1000,
+                stripe_price_id="price_CLEARFORM_25",
+                target_due_hours=0
+            ),
+            PricingVariant(
+                variant_code="credits_75",
+                variant_name="75 Credits",
+                price_amount=2500,
+                stripe_price_id="price_CLEARFORM_75",
+                target_due_hours=0
+            ),
+        ],
+        fast_track_available=False,
+        delivery_type=DeliveryType.DIGITAL,
+        standard_turnaround_hours=0,  # Instant
+        workflow_name="clearform_generation",
+        documents_generated=[],  # Dynamic based on document type
+        intake_fields=[],  # Intent-driven, no structured intake
+        generation_mode=GenerationMode.GPT_FULL,
+        review_required=False,
+        active=True,
+        display_order=100,
+        tags=["clearform", "ai", "documents", "letters", "cv", "individuals"]
+    ),
+]
+
+
+# ============================================================================
 # SEED FUNCTION
 # ============================================================================
 
@@ -1859,7 +1915,8 @@ ALL_SERVICES = (
     MARKET_RESEARCH_SERVICES +
     COMPLIANCE_SERVICES +
     DOCUMENT_PACK_SERVICES +
-    CVP_SUBSCRIPTION_SERVICES
+    CVP_SUBSCRIPTION_SERVICES +
+    CLEARFORM_SERVICES
 )
 
 
