@@ -130,12 +130,18 @@ const ClearFormCreditsPage = () => {
   const handlePurchaseCredits = async (packageId) => {
     setPurchasing(packageId);
     try {
-      const pkg = creditPackages.find(p => p.id === packageId);
-      // TODO: Integrate with Stripe checkout
-      toast.info(`Credit purchase coming soon! Package: ${pkg.credits} credits for £${pkg.price}`);
+      // Call the backend to create a Stripe checkout session
+      const result = await creditsApi.createPurchase(packageId);
+      
+      if (result.checkout_url) {
+        // Redirect to Stripe checkout
+        window.location.href = result.checkout_url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
     } catch (error) {
-      toast.error('Failed to start purchase');
-    } finally {
+      console.error('Purchase error:', error);
+      toast.error(error.message || 'Failed to start purchase. Please try again.');
       setPurchasing(null);
     }
   };
@@ -143,11 +149,18 @@ const ClearFormCreditsPage = () => {
   const handleSubscribe = async (planId) => {
     setPurchasing(planId);
     try {
-      // TODO: Integrate with Stripe subscription checkout
-      toast.info(`Subscription coming soon! Plan: ${planId}`);
+      // Call the subscriptions API to create a subscription checkout
+      const result = await subscriptionsApi.subscribe(planId);
+      
+      if (result.checkout_url) {
+        // Redirect to Stripe checkout
+        window.location.href = result.checkout_url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
     } catch (error) {
-      toast.error('Failed to start subscription');
-    } finally {
+      console.error('Subscription error:', error);
+      toast.error(error.message || 'Failed to start subscription. Please try again.');
       setPurchasing(null);
     }
   };
