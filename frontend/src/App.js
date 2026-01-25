@@ -25,6 +25,9 @@ import {
   PartnershipsPage,
   PrivacyPage,
   TermsPage,
+  ServicesHubPageCMS,
+  CategoryPageCMS,
+  ServicePageCMS,
 } from './pages/public';
 
 // Auth & Onboarding pages
