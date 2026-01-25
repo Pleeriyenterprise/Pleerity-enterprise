@@ -73,14 +73,26 @@ const ClearFormDocumentPage = () => {
     }
   };
 
-  // Clean markdown content (remove code fences)
+  // Clean markdown content (remove code fences and AI preamble)
   const cleanMarkdown = (content) => {
     if (!content) return '';
-    // Remove ```markdown or ``` at start and ``` at end
-    return content
-      .replace(/^```(?:markdown)?\s*\n?/i, '')
-      .replace(/\n?```\s*$/i, '')
+    // Remove any AI preamble before the actual content
+    let cleaned = content;
+    // Find and remove ```markdown block
+    const codeBlockMatch = cleaned.match(/```(?:markdown)?\s*\n([\s\S]*?)```/i);
+    if (codeBlockMatch) {
+      cleaned = codeBlockMatch[1];
+    } else {
+      // Just remove any code fence markers
+      cleaned = cleaned
+        .replace(/```(?:markdown)?\s*\n?/gi, '')
+        .replace(/\n?```/gi, '');
+    }
+    // Remove common AI preambles
+    cleaned = cleaned
+      .replace(/^(?:okay,?\s*)?(?:here'?s?\s+)?(?:a\s+)?(?:draft\s+)?(?:of\s+)?(?:a\s+)?(?:professional\s+)?(?:[\w\s]+)?(?:letter|document|cv|resume)(?:\s+based\s+on[\w\s,]+)?(?:formatted\s+in\s+markdown)?:?\s*/i, '')
       .trim();
+    return cleaned;
   };
 
   const handleDownload = async (format) => {
