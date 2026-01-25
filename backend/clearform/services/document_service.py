@@ -149,7 +149,6 @@ class DocumentService:
             
             user_message = UserMessage(text=prompt)
             response = await chat.send_message(user_message)
-            )
             
             # Parse response
             content = response.strip()
