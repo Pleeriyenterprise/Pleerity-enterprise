@@ -720,6 +720,40 @@ async def publish_page(
     return await get_page(page_id)
 
 
+async def unpublish_page(
+    page_id: str,
+    admin_id: str,
+    admin_email: str
+) -> bool:
+    """Unpublish a page (set to draft)"""
+    
+    page = await get_db().cms_pages.find_one({"page_id": page_id})
+    if not page:
+        return False
+    
+    now = now_utc()
+    
+    await get_db().cms_pages.update_one(
+        {"page_id": page_id},
+        {"$set": {
+            "status": PageStatus.DRAFT.value,
+            "updated_at": now,
+            "updated_by": admin_id,
+        }}
+    )
+    
+    await log_audit(
+        action="cms_page_unpublish",
+        entity_type="cms_page",
+        entity_id=page_id,
+        user_id=admin_id,
+        user_email=admin_email,
+        changes={"status": "DRAFT"}
+    )
+    
+    return True
+
+
 async def get_revisions(page_id: str, limit: int = 20) -> List[CMSRevisionResponse]:
     """Get revision history for a page"""
     cursor = get_db().cms_revisions.find({"page_id": page_id}).sort("version", -1).limit(limit)
