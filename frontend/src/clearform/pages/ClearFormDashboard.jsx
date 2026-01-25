@@ -153,8 +153,8 @@ const ClearFormDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/vault')}>
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/vault')} data-testid="vault-card">
             <CardHeader>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
@@ -168,7 +168,7 @@ const ClearFormDashboard = () => {
             </CardHeader>
           </Card>
           
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/credits')}>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/credits')} data-testid="credits-card">
             <CardHeader>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
@@ -177,6 +177,20 @@ const ClearFormDashboard = () => {
                 <div>
                   <CardTitle>Buy Credits</CardTitle>
                   <CardDescription>Top up your credit balance</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+          
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/team')} data-testid="team-card">
+            <CardHeader>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-slate-600" />
+                </div>
+                <div>
+                  <CardTitle>Team Management</CardTitle>
+                  <CardDescription>Manage your organization & members</CardDescription>
                 </div>
               </div>
             </CardHeader>
