@@ -34,8 +34,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { documentsApi } from '../api/clearformApi';
 import { toast } from 'sonner';
 
-// Configure PDF.js worker - use CDN that supports CORS
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+// Configure PDF.js worker - use local worker file
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 const ClearFormDocumentPage = () => {
   const navigate = useNavigate();
