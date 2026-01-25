@@ -7,6 +7,9 @@ import { Toaster } from './components/ui/sonner';
 import TawkToWidget from './components/TawkToWidget';
 import './App.css';
 
+// ClearForm - Separate Product
+import ClearFormApp from './clearform/ClearFormApp';
+
 // Public Website Pages (NEW)
 import {
   HomePage,
