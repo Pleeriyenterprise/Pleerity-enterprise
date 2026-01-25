@@ -56,7 +56,10 @@ async def create_page(
             title=data.title,
             description=data.description,
             admin_id=admin["portal_user_id"],
-            admin_email=admin["email"]
+            admin_email=admin["email"],
+            page_type=data.page_type.value if data.page_type else "GENERIC",
+            category_slug=data.category_slug,
+            service_code=data.service_code,
         )
         return page
     except ValueError as e:
