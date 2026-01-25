@@ -483,6 +483,7 @@ app.include_router(team.router)  # Team Permissions & Role Management
 app.include_router(prompts.router)  # Enterprise Prompt Manager
 app.include_router(document_packs.router)  # Document Pack Orchestrator
 app.include_router(checkout_validation.router)  # Checkout Validation
+app.include_router(marketing.router)  # Marketing Website CMS
 
 # Root endpoint
 @app.get("/api")
