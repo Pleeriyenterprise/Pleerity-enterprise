@@ -966,3 +966,300 @@ def _doc_to_media_response(doc: Dict) -> CMSMediaResponse:
         uploaded_at=doc["uploaded_at"],
         uploaded_by=doc["uploaded_by"]
     )
+
+
+
+# ============================================
+# Marketing Website Functions
+# ============================================
+
+async def get_services_hub() -> Dict[str, Any]:
+    """Get the services hub page with all categories."""
+    db = get_db()
+    
+    # Get hub page
+    hub_page = await db.cms_pages.find_one(
+        {"page_type": "HUB", "status": PageStatus.PUBLISHED.value},
+        {"_id": 0}
+    )
+    
+    # Get all category pages
+    categories = []
+    for cat_slug, config in CATEGORY_CONFIG.items():
+        cat_page = await db.cms_pages.find_one(
+            {"page_type": "CATEGORY", "slug": cat_slug, "status": PageStatus.PUBLISHED.value},
+            {"_id": 0, "title": 1, "description": 1, "slug": 1, "full_path": 1, "hero_image": 1}
+        )
+        
+        if cat_page:
+            categories.append({
+                **cat_page,
+                "icon": config["icon"],
+                "tagline": config["tagline"],
+            })
+        else:
+            # Use config defaults if no CMS page
+            categories.append({
+                "slug": cat_slug,
+                "title": config["name"],
+                "description": config["description"],
+                "tagline": config["tagline"],
+                "icon": config["icon"],
+                "full_path": f"/services/{cat_slug}",
+            })
+    
+    return {
+        "page": hub_page,
+        "categories": sorted(categories, key=lambda x: CATEGORY_CONFIG.get(x["slug"], {}).get("display_order", 99))
+    }
+
+
+async def get_category_page(category_slug: str) -> Optional[Dict[str, Any]]:
+    """Get a category page with its services."""
+    db = get_db()
+    
+    # Validate category
+    if category_slug not in CATEGORY_CONFIG:
+        return None
+    
+    config = CATEGORY_CONFIG[category_slug]
+    
+    # Get category CMS page
+    category_page = await db.cms_pages.find_one(
+        {"page_type": "CATEGORY", "slug": category_slug, "status": PageStatus.PUBLISHED.value},
+        {"_id": 0}
+    )
+    
+    # Get service pages for this category
+    service_pages = await db.cms_pages.find(
+        {
+            "page_type": "SERVICE",
+            "category_slug": category_slug,
+            "status": PageStatus.PUBLISHED.value
+        },
+        {"_id": 0}
+    ).sort("display_order", 1).to_list(length=50)
+    
+    # Enrich service pages with catalogue data
+    enriched_services = []
+    for page in service_pages:
+        service_code = page.get("service_code")
+        if service_code:
+            catalogue_entry = await db.service_catalogue_v2.find_one(
+                {"service_code": service_code},
+                {"_id": 0, "base_price": 1, "fast_track_available": 1, 
+                 "standard_turnaround_hours": 1, "requires_cvp_subscription": 1}
+            )
+            if catalogue_entry:
+                page["pricing"] = {
+                    "base_price": catalogue_entry.get("base_price", 0),
+                    "currency": "gbp",
+                }
+                page["fast_track_available"] = catalogue_entry.get("fast_track_available", False)
+                page["turnaround_hours"] = catalogue_entry.get("standard_turnaround_hours", 48)
+                page["requires_cvp"] = catalogue_entry.get("requires_cvp_subscription", False)
+        
+        enriched_services.append(page)
+    
+    return {
+        "page": category_page or {
+            "slug": category_slug,
+            "title": config["name"],
+            "description": config["description"],
+            "tagline": config["tagline"],
+            "full_path": f"/services/{category_slug}",
+        },
+        "category_config": config,
+        "services": enriched_services,
+    }
+
+
+async def get_service_page(category_slug: str, service_slug: str) -> Optional[Dict[str, Any]]:
+    """Get a service page with full catalogue integration."""
+    db = get_db()
+    
+    # Get service CMS page
+    service_page = await db.cms_pages.find_one(
+        {
+            "page_type": "SERVICE",
+            "category_slug": category_slug,
+            "slug": service_slug,
+            "status": PageStatus.PUBLISHED.value
+        },
+        {"_id": 0}
+    )
+    
+    if not service_page:
+        return None
+    
+    # Get service catalogue entry
+    service_code = service_page.get("service_code")
+    catalogue_entry = None
+    if service_code:
+        catalogue_entry = await db.service_catalogue_v2.find_one(
+            {"service_code": service_code},
+            {"_id": 0}
+        )
+    
+    # Build CTA configuration based on purchase mode
+    cta_config = build_cta_config(catalogue_entry) if catalogue_entry else None
+    
+    return {
+        "page": service_page,
+        "service": catalogue_entry,
+        "cta_config": cta_config,
+        "category": CATEGORY_CONFIG.get(category_slug),
+    }
+
+
+def build_cta_config(service: Dict[str, Any]) -> Dict[str, Any]:
+    """Build CTA button configuration based on service purchase mode."""
+    service_code = service.get("service_code")
+    requires_cvp = service.get("requires_cvp_subscription", False)
+    base_price = service.get("base_price", 0)
+    
+    # Determine purchase mode
+    # Default: STANDALONE unless requires_cvp_subscription is True
+    if requires_cvp:
+        purchase_mode = "CVP_ADDON"
+    else:
+        # Check if service is also available as CVP addon
+        is_cvp_feature = service.get("is_cvp_feature", False)
+        purchase_mode = "BOTH" if is_cvp_feature else "STANDALONE"
+    
+    config = {
+        "purchase_mode": purchase_mode,
+        "service_code": service_code,
+        "price_display": f"£{base_price / 100:.0f}" if base_price else "Free",
+    }
+    
+    if purchase_mode == "STANDALONE":
+        config["primary_cta"] = {
+            "label": "Start Now",
+            "action": "START_INTAKE",
+            "url": f"/order/intake?service={service_code}",
+        }
+    elif purchase_mode == "CVP_ADDON":
+        config["primary_cta"] = {
+            "label": "Add to CVP",
+            "action": "ADD_TO_CVP",
+            "url": f"/order/intake?service={service_code}&mode=addon",
+        }
+        config["requires_cvp_message"] = "This service requires an active Compliance Vault Pro subscription."
+    else:  # BOTH
+        config["primary_cta"] = {
+            "label": "Buy Standalone",
+            "action": "START_INTAKE",
+            "url": f"/order/intake?service={service_code}",
+        }
+        config["secondary_cta"] = {
+            "label": "Add to CVP",
+            "action": "ADD_TO_CVP",
+            "url": f"/order/intake?service={service_code}&mode=addon",
+        }
+    
+    return config
+
+
+async def check_redirect(path: str) -> Optional[Dict[str, Any]]:
+    """Check if a path has a redirect configured."""
+    db = get_db()
+    redirect = await db.cms_redirects.find_one(
+        {"from_path": path},
+        {"_id": 0}
+    )
+    return redirect
+
+
+async def create_redirect(from_path: str, to_path: str, created_by: str = "system") -> None:
+    """Create or update a URL redirect."""
+    db = get_db()
+    
+    redirect_doc = {
+        "redirect_id": f"RDR-{uuid.uuid4().hex[:12].upper()}",
+        "from_path": from_path,
+        "to_path": to_path,
+        "redirect_type": 301,
+        "created_at": now_utc(),
+        "created_by": created_by,
+    }
+    
+    # Upsert - update existing or insert new
+    await db.cms_redirects.update_one(
+        {"from_path": from_path},
+        {"$set": redirect_doc},
+        upsert=True
+    )
+
+
+async def list_category_services(category_slug: str, published_only: bool = True) -> List[Dict[str, Any]]:
+    """List all services in a category."""
+    db = get_db()
+    
+    query = {
+        "page_type": "SERVICE",
+        "category_slug": category_slug,
+    }
+    
+    if published_only:
+        query["status"] = PageStatus.PUBLISHED.value
+    
+    return await db.cms_pages.find(
+        query,
+        {"_id": 0}
+    ).sort("display_order", 1).to_list(length=50)
+
+
+async def validate_service_catalogue_linkage(page_id: str) -> Tuple[bool, str]:
+    """Validate that a service page correctly links to catalogue."""
+    db = get_db()
+    
+    page = await db.cms_pages.find_one({"page_id": page_id})
+    if not page:
+        return False, "Page not found"
+    
+    if page.get("page_type") != "SERVICE":
+        return True, "Not a service page"
+    
+    service_code = page.get("service_code")
+    if not service_code:
+        return False, "Service page has no service_code"
+    
+    service = await db.service_catalogue_v2.find_one({"service_code": service_code})
+    if not service:
+        return False, f"Service '{service_code}' not found in catalogue"
+    
+    if not service.get("active", False):
+        return False, f"Service '{service_code}' is not active"
+    
+    return True, "Linkage valid"
+
+
+async def get_page_for_public(
+    page_type: str = None,
+    category_slug: str = None,
+    slug: str = None,
+    full_path: str = None
+) -> Optional[Dict[str, Any]]:
+    """Get a published page for public display."""
+    db = get_db()
+    
+    query = {"status": PageStatus.PUBLISHED.value}
+    
+    if full_path:
+        query["full_path"] = full_path
+    else:
+        if page_type:
+            query["page_type"] = page_type
+        if category_slug:
+            query["category_slug"] = category_slug
+        if slug:
+            query["slug"] = slug
+    
+    page = await db.cms_pages.find_one(query, {"_id": 0})
+    
+    if page:
+        # Filter to visible blocks only
+        page["blocks"] = [b for b in page.get("blocks", []) if b.get("visible", True)]
+    
+    return page
