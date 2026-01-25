@@ -9,18 +9,31 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '../ui/navigation-menu';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu, X, ChevronDown, FileText, Shield } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const PublicHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-  const platformLinks = [
-    { href: '/compliance-vault-pro', label: 'Compliance Vault Pro', description: 'All-in-one compliance management' },
-    { href: '/pricing', label: 'Pricing', description: 'Transparent plans for every landlord' },
+  // Products dropdown - CVP and ClearForm as separate products
+  const productLinks = [
+    { 
+      href: '/compliance-vault-pro', 
+      label: 'Compliance Vault Pro', 
+      description: 'All-in-one compliance management for landlords',
+      icon: Shield,
+      badge: null,
+    },
+    { 
+      href: '/clearform', 
+      label: 'ClearForm', 
+      description: 'AI-powered document creation for individuals & small businesses',
+      icon: FileText,
+      badge: 'New',
+    },
   ];
 
   const serviceLinks = [
