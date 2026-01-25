@@ -588,6 +588,7 @@ app.include_router(clearform_workspaces_router)  # ClearForm Workspaces
 app.include_router(clearform_profiles_router)  # ClearForm Smart Profiles
 app.include_router(clearform_organizations_router)  # ClearForm Organizations (Institutional)
 app.include_router(clearform_audit_router)  # ClearForm Audit Logs
+app.include_router(clearform_admin_router)  # ClearForm Admin Panel
 
 # Root endpoint
 @app.get("/api")
