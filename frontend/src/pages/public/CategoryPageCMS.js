@@ -162,7 +162,7 @@ const CategoryPageCMS = () => {
               {error}
             </h1>
             <p className="text-gray-600 mb-8">
-              The category you're looking for doesn't exist or has been moved.
+              The category you&apos;re looking for doesn&apos;t exist or has been moved.
             </p>
             <Button asChild>
               <Link to="/services">

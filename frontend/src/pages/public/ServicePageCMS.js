@@ -95,7 +95,7 @@ const ServicePageCMS = () => {
               {error}
             </h1>
             <p className="text-gray-600 mb-8">
-              The service you're looking for doesn't exist or has been moved.
+              The service you&apos;re looking for doesn&apos;t exist or has been moved.
             </p>
             <Button asChild>
               <Link to={`/services/${categorySlug}`}>
@@ -267,7 +267,7 @@ const ServicePageCMS = () => {
           <div className="flex items-center mb-6">
             <Users className="w-6 h-6 mr-3 text-electric-teal" />
             <h2 className="text-2xl font-bold text-midnight-blue">
-              Who It's For
+              Who It&apos;s For
             </h2>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
