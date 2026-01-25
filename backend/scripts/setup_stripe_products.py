@@ -27,9 +27,9 @@ from datetime import datetime, timezone
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Load .env file before using environment variables
+# Load .env file before using environment variables (override existing env vars)
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'), override=True)
 
 import stripe
 from motor.motor_asyncio import AsyncIOMotorClient
