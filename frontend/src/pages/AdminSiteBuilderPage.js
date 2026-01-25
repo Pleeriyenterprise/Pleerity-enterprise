@@ -66,7 +66,6 @@ import {
   Eye,
   EyeOff,
   Check,
-  X,
 } from 'lucide-react';
 
 // Block type icons mapping
