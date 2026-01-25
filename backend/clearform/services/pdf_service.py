@@ -219,7 +219,7 @@ class PDFService:
         # Flush any remaining paragraph
         if current_paragraph:
             text = ' '.join(current_paragraph)
-            elements.append(Paragraph(self._escape_html(text), self.styles['BodyText']))
+            elements.append(Paragraph(self._escape_html(text), styles['BodyText']))
         
         return elements
     
