@@ -277,14 +277,22 @@ class CMSPageCreate(BaseModel):
     slug: str = Field(..., pattern=r'^[a-z0-9-]+$', max_length=100)
     title: str = Field(..., max_length=200)
     description: Optional[str] = Field(None, max_length=500)
+    page_type: PageType = PageType.GENERIC
+    category_slug: Optional[str] = Field(None, max_length=100)  # Parent category for SERVICE pages
+    service_code: Optional[str] = Field(None, max_length=50)    # Linked service from catalogue
 
 
 class CMSPageUpdate(BaseModel):
     """Update CMS page content (creates draft)"""
     title: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = Field(None, max_length=500)
+    slug: Optional[str] = Field(None, pattern=r'^[a-z0-9-]+$', max_length=100)
     blocks: Optional[List[ContentBlock]] = None
     seo: Optional[SEOMetadata] = None
+    subtitle: Optional[str] = Field(None, max_length=300)
+    hero_image: Optional[str] = None
+    display_order: Optional[int] = None
+    visible_in_nav: Optional[bool] = None
 
 
 class CMSPageResponse(BaseModel):
@@ -294,14 +302,102 @@ class CMSPageResponse(BaseModel):
     title: str
     description: Optional[str] = None
     status: PageStatus
+    page_type: PageType = PageType.GENERIC
+    category_slug: Optional[str] = None
+    service_code: Optional[str] = None
+    full_path: Optional[str] = None
+    subtitle: Optional[str] = None
+    hero_image: Optional[str] = None
     blocks: List[ContentBlock] = []
     seo: Optional[SEOMetadata] = None
+    display_order: int = 0
+    visible_in_nav: bool = True
     current_version: int
     created_at: datetime
     updated_at: datetime
     published_at: Optional[datetime] = None
     created_by: str
     updated_by: str
+
+
+# Service Page Content Sections (for SERVICE page type)
+class ServicePageSection(str, Enum):
+    """Required sections for service pages."""
+    OVERVIEW = "OVERVIEW"               # What this service is
+    WHO_ITS_FOR = "WHO_ITS_FOR"         # Ideal users, not-for list
+    DELIVERABLES = "DELIVERABLES"       # What you receive
+    HOW_IT_WORKS = "HOW_IT_WORKS"       # Process steps
+    TIMELINE = "TIMELINE"               # Expected turnaround
+    CVP_RELATIONSHIP = "CVP_RELATIONSHIP"  # Standalone vs CVP add-on
+    WHAT_THIS_IS_NOT = "WHAT_THIS_IS_NOT"  # Clarifications/disclaimers
+    CTA = "CTA"                         # Call to action
+
+
+class ServiceDeliverable(BaseModel):
+    """A single deliverable item."""
+    name: str = Field(..., max_length=100)
+    description: str = Field(..., max_length=300)
+    format: str = Field(default="PDF", max_length=50)  # PDF, DOCX, Portal, etc.
+
+
+class ProcessStep(BaseModel):
+    """A process step for How It Works section."""
+    step_number: int
+    title: str = Field(..., max_length=100)
+    description: str = Field(..., max_length=300)
+
+
+class ServicePageContent(BaseModel):
+    """
+    Structured content for SERVICE page type.
+    Ensures all required sections are present.
+    """
+    # Overview section
+    overview_headline: str = Field(..., max_length=200)
+    overview_description: str = Field(..., max_length=1000)
+    overview_highlights: List[str] = Field(default_factory=list, max_length=6)
+    
+    # Who it's for
+    ideal_for: List[str] = Field(..., min_length=1, max_length=6)
+    not_for: List[str] = Field(default_factory=list, max_length=4)
+    
+    # Deliverables
+    deliverables: List[ServiceDeliverable] = Field(..., min_length=1)
+    
+    # How it works
+    process_steps: List[ProcessStep] = Field(..., min_length=2, max_length=6)
+    
+    # Timeline
+    standard_turnaround: str = Field(..., max_length=100)  # e.g., "48 hours"
+    fast_track_available: bool = False
+    fast_track_turnaround: Optional[str] = Field(None, max_length=100)
+    
+    # CVP Relationship
+    purchase_mode: PurchaseMode = PurchaseMode.STANDALONE
+    requires_cvp_subscription: bool = False
+    standalone_description: Optional[str] = Field(None, max_length=300)
+    addon_description: Optional[str] = Field(None, max_length=300)
+    cvp_benefits: List[str] = Field(default_factory=list, max_length=4)
+    
+    # Disclaimers
+    clarifications: List[str] = Field(default_factory=list, max_length=5)
+    legal_disclaimer: Optional[str] = Field(None, max_length=500)
+    
+    # CTA
+    primary_cta_text: str = Field(default="Start Now", max_length=50)
+    primary_cta_action: str = Field(default="START_INTAKE")  # START_INTAKE, BUY_NOW, etc.
+    secondary_cta_text: Optional[str] = Field(None, max_length=50)
+    secondary_cta_action: Optional[str] = None
+
+
+class CMSRedirect(BaseModel):
+    """URL redirect for slug changes."""
+    redirect_id: str
+    from_path: str
+    to_path: str
+    redirect_type: int = 301  # 301 permanent, 302 temporary
+    created_at: datetime
+    created_by: str
 
 
 # ============================================
