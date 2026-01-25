@@ -212,7 +212,7 @@ const ClearFormDocumentPage = () => {
                 data-testid="document-content"
               >
                 <pre className="whitespace-pre-wrap font-sans text-slate-800 bg-slate-50 p-6 rounded-lg">
-                  {document.content_markdown}
+                  {cleanMarkdown(document.content_markdown)}
                 </pre>
               </div>
             )}
