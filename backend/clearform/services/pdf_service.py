@@ -22,11 +22,19 @@ class PDFService:
     """PDF generation service for ClearForm documents."""
     
     def __init__(self):
-        self.styles = self._create_styles()
+        self._styles = None
     
-    def _create_styles(self):
-        """Create custom paragraph styles."""
+    def _get_styles(self):
+        """Get styles (lazy init to avoid duplicate names)."""
         styles = getSampleStyleSheet()
+        
+        # Override BodyText instead of adding
+        styles['BodyText'].fontSize = 11
+        styles['BodyText'].leading = 16
+        styles['BodyText'].spaceBefore = 6
+        styles['BodyText'].spaceAfter = 6
+        styles['BodyText'].alignment = TA_JUSTIFY
+        styles['BodyText'].textColor = HexColor('#374151')
         
         # Title style
         styles.add(ParagraphStyle(
