@@ -129,11 +129,10 @@ function App() {
               
               {/* CMS-Driven Marketing Pages */}
               <Route path="/services" element={<ServicesHubPageCMS />} />
+              {/* Legacy route must come BEFORE dynamic routes */}
+              <Route path="/services/catalogue" element={<ServicesCataloguePage />} />
               <Route path="/services/:categorySlug" element={<CategoryPageCMS />} />
               <Route path="/services/:categorySlug/:serviceSlug" element={<ServicePageCMS />} />
-              
-              {/* Legacy/Fallback Service Routes */}
-              <Route path="/services/catalogue" element={<ServicesCataloguePage />} />
               
               <Route path="/order/:serviceCode" element={<ServiceOrderPage />} />
               <Route path="/order-success" element={<OrderSuccessPage />} />
