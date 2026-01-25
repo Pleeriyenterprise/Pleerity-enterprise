@@ -11,6 +11,7 @@ import {
   ClearFormVaultPage,
   ClearFormCreditsPage,
   ClearFormOrganizationsPage,
+  ClearFormWorkspacesPage,
 } from './pages';
 
 const ClearFormApp = () => {
@@ -76,6 +77,22 @@ const ClearFormApp = () => {
           element={
             <ClearFormProtectedRoute>
               <ClearFormOrganizationsPage />
+            </ClearFormProtectedRoute>
+          }
+        />
+        <Route
+          path="workspaces"
+          element={
+            <ClearFormProtectedRoute>
+              <ClearFormWorkspacesPage />
+            </ClearFormProtectedRoute>
+          }
+        />
+        <Route
+          path="profiles"
+          element={
+            <ClearFormProtectedRoute>
+              <ClearFormWorkspacesPage />
             </ClearFormProtectedRoute>
           }
         />
