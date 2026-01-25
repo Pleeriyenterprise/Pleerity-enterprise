@@ -248,8 +248,8 @@ const PricingPage = () => {
   return (
     <PublicLayout>
       <SEOHead
-        title="Pricing - Compliance Vault Pro Plans"
-        description="Transparent pricing for Compliance Vault Pro. Choose from Solo (£19/mo), Portfolio (£39/mo), or Professional (£79/mo) plans."
+        title="Pricing - Pleerity Products"
+        description="Transparent pricing for all Pleerity products. Compliance Vault Pro for landlords and ClearForm for document generation."
         canonicalUrl="/pricing"
       />
 
@@ -261,126 +261,297 @@ const PricingPage = () => {
               Simple, Transparent Pricing
             </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Choose the plan that fits your portfolio. All plans include a 14-day free trial.
+              Choose the product and plan that fits your needs.
             </p>
 
-            {/* Billing Toggle */}
-            <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg">
-              <button
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  billingCycle === 'monthly'
-                    ? 'bg-white text-midnight-blue shadow'
-                    : 'text-gray-600 hover:text-midnight-blue'
-                }`}
-                onClick={() => setBillingCycle('monthly')}
-              >
-                Monthly
-              </button>
-              <button
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  billingCycle === 'yearly'
-                    ? 'bg-white text-midnight-blue shadow'
-                    : 'text-gray-600 hover:text-midnight-blue'
-                }`}
-                onClick={() => setBillingCycle('yearly')}
-              >
-                Yearly
-                <span className="ml-1 text-electric-teal text-xs">Save 2 months</span>
-              </button>
-            </div>
+            {/* Product Tabs */}
+            <Tabs value={activeProduct} onValueChange={setActiveProduct} className="w-full max-w-md mx-auto">
+              <TabsList className="grid w-full grid-cols-2 h-12">
+                <TabsTrigger value="cvp" className="flex items-center gap-2 text-sm" data-testid="pricing-tab-cvp">
+                  <Building className="w-4 h-4" />
+                  Compliance Vault Pro
+                </TabsTrigger>
+                <TabsTrigger value="clearform" className="flex items-center gap-2 text-sm" data-testid="pricing-tab-clearform">
+                  <FileText className="w-4 h-4" />
+                  ClearForm
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
       </section>
 
-      {/* Pricing Cards */}
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            {cvpPlans.map((plan) => (
-              <Card
-                key={plan.code}
-                className={`relative ${
-                  plan.popular
-                    ? 'border-2 border-electric-teal shadow-xl scale-105'
-                    : 'border-gray-200'
-                }`}
-                data-testid={`pricing-card-${plan.code.toLowerCase()}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-electric-teal text-white text-sm font-medium rounded-full">
-                    Most Popular
-                  </div>
-                )}
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-2xl font-bold text-midnight-blue">{plan.name}</CardTitle>
-                  <p className="text-gray-500 text-sm">{plan.description}</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center mb-6">
-                    <div className="flex items-baseline justify-center">
-                      <span className="text-5xl font-bold text-midnight-blue">£{getPrice(plan)}</span>
-                      <span className="text-gray-500 ml-2">
-                        /{billingCycle === 'yearly' ? 'year' : 'month'}
-                      </span>
-                    </div>
-                    {billingCycle === 'yearly' && (
-                      <p className="text-sm text-electric-teal mt-1">
-                        Save £{getSavings(plan)} per year
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-500 mt-2">
-                      + £{plan.onboarding} one-time setup
-                    </p>
-                    <p className="text-sm font-medium text-midnight-blue mt-3">
-                      Up to {plan.properties} properties
-                    </p>
-                  </div>
+      {/* CVP Pricing */}
+      {activeProduct === 'cvp' && (
+        <>
+          {/* Billing Toggle for CVP */}
+          <section className="py-4 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+              <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg">
+                <button
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    billingCycle === 'monthly'
+                      ? 'bg-white text-midnight-blue shadow'
+                      : 'text-gray-600 hover:text-midnight-blue'
+                  }`}
+                  onClick={() => setBillingCycle('monthly')}
+                >
+                  Monthly
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    billingCycle === 'yearly'
+                      ? 'bg-white text-midnight-blue shadow'
+                      : 'text-gray-600 hover:text-midnight-blue'
+                  }`}
+                  onClick={() => setBillingCycle('yearly')}
+                >
+                  Yearly
+                  <span className="ml-1 text-electric-teal text-xs">Save 2 months</span>
+                </button>
+              </div>
+            </div>
+          </section>
 
-                  <Button
-                    className={`w-full mb-6 ${
+          {/* CVP Pricing Cards */}
+          <section className="py-12 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="grid md:grid-cols-3 gap-8">
+                {cvpPlans.map((plan) => (
+                  <Card
+                    key={plan.code}
+                    className={`relative ${
                       plan.popular
-                        ? 'bg-electric-teal hover:bg-electric-teal/90'
-                        : ''
+                        ? 'border-2 border-electric-teal shadow-xl scale-105'
+                        : 'border-gray-200'
                     }`}
-                    variant={plan.popular ? 'default' : 'outline'}
-                    asChild
+                    data-testid={`pricing-card-${plan.code.toLowerCase()}`}
                   >
-                    <Link to="/intake/start">
-                      Start Free Trial
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Link>
-                  </Button>
+                    {plan.popular && (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-electric-teal text-white text-sm font-medium rounded-full">
+                        Most Popular
+                      </div>
+                    )}
+                    <CardHeader className="text-center pb-4">
+                      <CardTitle className="text-2xl font-bold text-midnight-blue">{plan.name}</CardTitle>
+                      <p className="text-gray-500 text-sm">{plan.description}</p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center mb-6">
+                        <div className="flex items-baseline justify-center">
+                          <span className="text-5xl font-bold text-midnight-blue">£{getPrice(plan)}</span>
+                          <span className="text-gray-500 ml-2">
+                            /{billingCycle === 'yearly' ? 'year' : 'month'}
+                          </span>
+                        </div>
+                        {billingCycle === 'yearly' && (
+                          <p className="text-sm text-electric-teal mt-1">
+                            Save £{getSavings(plan)} per year
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500 mt-2">
+                          + £{plan.onboarding} one-time setup
+                        </p>
+                        <p className="text-sm font-medium text-midnight-blue mt-3">
+                          Up to {plan.properties} properties
+                        </p>
+                      </div>
 
-                  {/* Feature Categories */}
-                  <div className="space-y-4">
-                    {Object.entries(plan.features).map(([category, features]) => (
-                      <div key={category}>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                          {category}
-                        </h4>
-                        <ul className="space-y-2">
-                          {features.map((feature) => (
-                            <li key={feature.name} className="flex items-center">
-                              {feature.included ? (
-                                <CheckCircle2 className="w-4 h-4 text-electric-teal shrink-0 mr-2" />
-                              ) : (
-                                <X className="w-4 h-4 text-gray-300 shrink-0 mr-2" />
-                              )}
-                              <span className={`text-sm ${feature.included ? 'text-gray-700' : 'text-gray-400'}`}>
-                                {feature.name}
-                              </span>
+                      <Button
+                        className={`w-full mb-6 ${
+                          plan.popular
+                            ? 'bg-electric-teal hover:bg-electric-teal/90'
+                            : ''
+                        }`}
+                        variant={plan.popular ? 'default' : 'outline'}
+                        asChild
+                      >
+                        <Link to="/intake/start">
+                          Start Free Trial
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Link>
+                      </Button>
+
+                      {/* Feature Categories */}
+                      <div className="space-y-4">
+                        {Object.entries(plan.features).map(([category, features]) => (
+                          <div key={category}>
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                              {category}
+                            </h4>
+                            <ul className="space-y-2">
+                              {features.map((feature) => (
+                                <li key={feature.name} className="flex items-center">
+                                  {feature.included ? (
+                                    <CheckCircle2 className="w-4 h-4 text-electric-teal shrink-0 mr-2" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-gray-300 shrink-0 mr-2" />
+                                  )}
+                                  <span className={`text-sm ${feature.included ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    {feature.name}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* ClearForm Pricing */}
+      {activeProduct === 'clearform' && (
+        <section className="py-12 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Credit Top-ups */}
+            <div className="mb-16">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-midnight-blue mb-2">Credit Top-ups</h2>
+                <p className="text-gray-600">Pay as you go. Credits never expire.</p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                {clearformCredits.map((pkg) => (
+                  <Card 
+                    key={pkg.id}
+                    className={`relative ${pkg.popular ? 'border-2 border-emerald-500 shadow-lg scale-105' : ''}`}
+                    data-testid={`clearform-credits-${pkg.id}`}
+                  >
+                    {pkg.popular && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <Badge className="bg-emerald-500 text-white">Best Value</Badge>
+                      </div>
+                    )}
+                    <CardHeader className="text-center pb-2">
+                      <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Zap className="w-6 h-6 text-emerald-600" />
+                      </div>
+                      <CardTitle className="text-3xl font-bold">{pkg.credits}</CardTitle>
+                      <CardDescription>credits</CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                      <div className="mb-4">
+                        <span className="text-3xl font-bold text-midnight-blue">£{pkg.price}</span>
+                        {pkg.savings && (
+                          <Badge variant="outline" className="ml-2 text-emerald-600 border-emerald-600">
+                            Save {pkg.savings}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mb-4">
+                        £{pkg.pricePerCredit.toFixed(2)} per credit
+                      </p>
+                      <Button 
+                        className="w-full"
+                        variant={pkg.popular ? 'default' : 'outline'}
+                        asChild
+                      >
+                        <Link to="/clearform/credits">
+                          Buy Now
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Subscription Plans */}
+            <div>
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-midnight-blue mb-2">Subscription Plans</h2>
+                <p className="text-gray-600">Get monthly credits at a discount.</p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                {clearformPlans.map((plan) => {
+                  const Icon = plan.icon || Star;
+                  return (
+                    <Card 
+                      key={plan.name}
+                      className={`relative ${plan.popular ? 'border-2 border-emerald-500 shadow-lg scale-105' : ''}`}
+                      data-testid={`clearform-plan-${plan.name.toLowerCase().replace(' ', '-')}`}
+                    >
+                      {plan.popular && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <Badge className="bg-emerald-500 text-white">Popular</Badge>
+                        </div>
+                      )}
+                      <CardHeader className="text-center pb-2">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                          plan.icon ? 'bg-amber-100' : 'bg-gray-100'
+                        }`}>
+                          <Icon className={`w-6 h-6 ${plan.icon ? 'text-amber-600' : 'text-gray-600'}`} />
+                        </div>
+                        <CardTitle>{plan.name}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center mb-4">
+                          <div className="flex items-baseline justify-center">
+                            <span className="text-3xl font-bold text-midnight-blue">
+                              {plan.price === 0 ? 'Free' : `£${plan.price}`}
+                            </span>
+                            {plan.price > 0 && (
+                              <span className="text-gray-500 ml-1">/month</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-emerald-600 font-medium mt-1">
+                            {plan.credits} credits {plan.creditsNote}
+                          </p>
+                        </div>
+
+                        <ul className="space-y-2 mb-6">
+                          {plan.features.map((feature, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                              <span className="text-gray-600">{feature}</span>
+                            </li>
+                          ))}
+                          {plan.limitations?.map((limitation, i) => (
+                            <li key={`limit-${i}`} className="text-sm text-gray-400 pl-6">
+                              {limitation}
                             </li>
                           ))}
                         </ul>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+                        <Button 
+                          className="w-full"
+                          variant={plan.popular ? 'default' : 'outline'}
+                          asChild
+                        >
+                          <Link to="/clearform/register">
+                            {plan.price === 0 ? 'Get Started' : 'Subscribe'}
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Important Notes */}
+              <div className="mt-8 max-w-2xl mx-auto">
+                <Card className="bg-gray-50 border-gray-200">
+                  <CardContent className="py-4">
+                    <p className="text-sm text-gray-600 text-center">
+                      <strong>Note:</strong> Subscription credits reset monthly. Top-up credits are separate and never expire. 
+                      Credits are usable across all active document types.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* FAQ Section */}
       <section className="py-20 bg-gray-50">
