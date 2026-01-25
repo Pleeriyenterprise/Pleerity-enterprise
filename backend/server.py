@@ -296,6 +296,37 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to create Document Pack Orchestrator indexes: {e}")
     
+    # Create ClearForm indexes
+    try:
+        db = database.get_db()
+        # Users
+        await db.clearform_users.create_index("user_id", unique=True)
+        await db.clearform_users.create_index("email", unique=True)
+        await db.clearform_users.create_index("stripe_customer_id", sparse=True)
+        # Documents
+        await db.clearform_documents.create_index("document_id", unique=True)
+        await db.clearform_documents.create_index([("user_id", 1), ("created_at", -1)])
+        await db.clearform_documents.create_index("status")
+        await db.clearform_documents.create_index("document_type")
+        # Credit transactions
+        await db.clearform_credit_transactions.create_index("transaction_id", unique=True)
+        await db.clearform_credit_transactions.create_index([("user_id", 1), ("created_at", -1)])
+        await db.clearform_credit_transactions.create_index("transaction_type")
+        # Credit expiry
+        await db.clearform_credit_expiry.create_index("expiry_id", unique=True)
+        await db.clearform_credit_expiry.create_index([("user_id", 1), ("expires_at", 1)])
+        await db.clearform_credit_expiry.create_index("expired")
+        # Subscriptions
+        await db.clearform_subscriptions.create_index("subscription_id", unique=True)
+        await db.clearform_subscriptions.create_index("user_id")
+        await db.clearform_subscriptions.create_index("stripe_subscription_id", sparse=True)
+        # Top-ups
+        await db.clearform_credit_topups.create_index("topup_id", unique=True)
+        await db.clearform_credit_topups.create_index("stripe_checkout_session_id", sparse=True)
+        logger.info("ClearForm indexes created")
+    except Exception as e:
+        logger.error(f"Failed to create ClearForm indexes: {e}")
+    
     # Configure scheduled jobs
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
