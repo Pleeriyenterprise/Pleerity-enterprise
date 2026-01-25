@@ -37,13 +37,14 @@ const PublicFooter = () => {
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-electric-teal rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">P</span>
-              </div>
-              <span className="text-xl font-bold">Pleerity</span>
+              <img 
+                src="/pleerity-logo.jpg" 
+                alt="Pleerity" 
+                className="h-10 w-auto"
+              />
             </div>
             <p className="text-gray-400 text-sm mb-4">
-              AI-Driven Solutions & Compliance for UK Landlords
+              AI-Driven Solutions & Compliance
             </p>
             <p className="text-gray-500 text-xs">
               Pleerity Enterprise Ltd
