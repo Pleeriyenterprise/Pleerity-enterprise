@@ -154,44 +154,58 @@ const ClearFormDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-4 gap-4 mb-8">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/vault')} data-testid="vault-card">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-                  <Folder className="w-6 h-6 text-slate-600" />
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Folder className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <CardTitle>Document Vault</CardTitle>
-                  <CardDescription>Access all your generated documents</CardDescription>
+                  <CardTitle className="text-sm">Document Vault</CardTitle>
+                  <CardDescription className="text-xs">Access documents</CardDescription>
                 </div>
               </div>
             </CardHeader>
           </Card>
           
           <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/credits')} data-testid="credits-card">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-                  <CreditCard className="w-6 h-6 text-slate-600" />
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <CardTitle>Buy Credits</CardTitle>
-                  <CardDescription>Top up your credit balance</CardDescription>
+                  <CardTitle className="text-sm">Buy Credits</CardTitle>
+                  <CardDescription className="text-xs">Top up balance</CardDescription>
                 </div>
               </div>
             </CardHeader>
           </Card>
           
           <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/team')} data-testid="team-card">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-                  <Users className="w-6 h-6 text-slate-600" />
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <CardTitle>Team Management</CardTitle>
-                  <CardDescription>Manage your organization & members</CardDescription>
+                  <CardTitle className="text-sm">Team</CardTitle>
+                  <CardDescription className="text-xs">Manage members</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+          
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/clearform/profiles')} data-testid="profiles-card">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <User className="w-5 h-5 text-slate-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm">Smart Profiles</CardTitle>
+                  <CardDescription className="text-xs">Save your info</CardDescription>
                 </div>
               </div>
             </CardHeader>
