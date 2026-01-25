@@ -275,7 +275,12 @@ async def update_page(
     blocks: Optional[List[Dict]],
     seo: Optional[Dict],
     admin_id: str,
-    admin_email: str
+    admin_email: str,
+    slug: Optional[str] = None,
+    subtitle: Optional[str] = None,
+    hero_image: Optional[str] = None,
+    display_order: Optional[int] = None,
+    visible_in_nav: Optional[bool] = None,
 ) -> CMSPageResponse:
     """Update page content (creates draft state)"""
     
@@ -297,6 +302,49 @@ async def update_page(
     if description is not None:
         update_fields["description"] = description
         changes["description"] = description
+    
+    if subtitle is not None:
+        update_fields["subtitle"] = subtitle
+        changes["subtitle"] = subtitle
+    
+    if hero_image is not None:
+        update_fields["hero_image"] = hero_image
+        changes["hero_image"] = hero_image
+    
+    if display_order is not None:
+        update_fields["display_order"] = display_order
+        changes["display_order"] = display_order
+    
+    if visible_in_nav is not None:
+        update_fields["visible_in_nav"] = visible_in_nav
+        changes["visible_in_nav"] = visible_in_nav
+    
+    # Handle slug change with redirect creation
+    if slug is not None and slug != page.get("slug"):
+        # Check uniqueness
+        existing = await get_db().cms_pages.find_one({
+            "slug": slug,
+            "category_slug": page.get("category_slug"),
+            "page_id": {"$ne": page_id}
+        })
+        if existing:
+            raise ValueError(f"Slug '{slug}' already exists in this category")
+        
+        old_path = page.get("full_path")
+        update_fields["slug"] = slug
+        
+        # Rebuild full_path
+        page_type = page.get("page_type", "GENERIC")
+        category_slug = page.get("category_slug")
+        new_path = build_full_path(page_type, slug, category_slug)
+        update_fields["full_path"] = new_path
+        
+        # Create redirect from old path to new
+        if old_path and old_path != new_path:
+            await create_redirect(old_path, new_path, admin_id)
+        
+        changes["slug"] = slug
+        changes["full_path"] = new_path
     
     if blocks is not None:
         # Validate all blocks
