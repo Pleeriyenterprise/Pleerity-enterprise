@@ -1169,3 +1169,32 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 - ClearForm: orgtest@clearform.com / Test123! (Organization owner)
 - ClearForm: doctest@clearform.com / Test123!
 - Stripe Test Card: 4242424242424242 (Exp: 12/30, CVC: 123)
+
+---
+
+## Pending Issues
+
+### P1 - Document Pack Services
+- **Issue:** Document Pack services fail to load in intake wizard
+- **Status:** NOT STARTED
+- **Next Steps:** Inspect UnifiedIntakeWizard.js service selection step, check network requests
+
+### P2 - Setup Stripe Products Script
+- **Issue:** Minor validation bug in `/app/backend/scripts/setup_stripe_products.py`
+- **Status:** NOT STARTED
+- **Next Steps:** Review product search/listing logic in validation function
+
+---
+
+## Architecture Notes
+
+### ClearForm Pricing (Backend - Source of Truth)
+- **Credit Packages** (`/app/backend/clearform/models/credits.py`):
+  - 10 credits = £9.99, 25 credits = £19.99, 50 credits = £34.99, 100 credits = £59.99
+- **Subscription Plans** (`/app/backend/clearform/models/subscriptions.py`):
+  - Free (pay-as-you-go), Starter £4.99/mo (10 credits), Professional £9.99/mo (30 credits), Unlimited £24.99/mo (100 credits)
+
+### PDF Viewer Configuration
+- Uses `react-pdf` v10.3.0 with local PDF.js worker
+- Worker file: `/app/frontend/public/pdf.worker.min.mjs`
+- CSS imports: `react-pdf/dist/Page/AnnotationLayer.css`, `react-pdf/dist/Page/TextLayer.css`
