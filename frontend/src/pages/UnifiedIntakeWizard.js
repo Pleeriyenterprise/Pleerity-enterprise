@@ -748,6 +748,11 @@ export default function UnifiedIntakeWizard() {
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [postalAddress, setPostalAddress] = useState({});
   
+  // Document Pack selection state
+  const [packDocuments, setPackDocuments] = useState([]);
+  const [selectedDocuments, setSelectedDocuments] = useState([]); // Empty = all documents
+  const [loadingPackDocs, setLoadingPackDocs] = useState(false);
+  
   // Draft
   const [draft, setDraft] = useState(null);
   const [draftId, setDraftId] = useState(null);
