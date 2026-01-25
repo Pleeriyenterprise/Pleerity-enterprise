@@ -4,17 +4,17 @@ Backend endpoints for ClearForm administration panel.
 Requires admin authentication (from main Pleerity admin auth).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from typing import Optional
 from datetime import datetime, timezone
 import logging
 
 from database import database
-from routes.admin import verify_admin  # Use existing admin auth
+from middleware import admin_route_guard
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin/clearform", tags=["ClearForm Admin"])
+router = APIRouter(prefix="/api/admin/clearform", tags=["ClearForm Admin"], dependencies=[Depends(admin_route_guard)])
 
 
 # ============================================================================
