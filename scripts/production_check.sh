@@ -65,7 +65,7 @@ echo ""
 
 echo "4. FRONTEND BUILD"
 echo "-----------------"
-check_requirement "Frontend accessible" "curl -s https://paperwork-assist-1.preview.emergentagent.com > /dev/null"
+check_requirement "Frontend accessible" "curl -s https://order-fulfillment-9.preview.emergentagent.com > /dev/null"
 echo ""
 
 echo "5. CRITICAL FILES"

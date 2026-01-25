@@ -1,0 +1,167 @@
+<analysis>**original_problem_statement:**
+The initial goal was to build a SaaS product, ClearForm, and productionize the existing Pleerity application.
+
+Following the initial build, the user requested a series of P0 features for ClearForm: adding a service catalogue entry, implementing an in-browser PDF viewer, and integrating Stripe checkout.
+
+After these were completed, the user reported a critical bug where the document pack purchase wizard would not proceed. Upon fixing that, the user raised a new set of critical issues:
+1.  **Stuck Orders**: A recently placed order failed to trigger its workflow and is stuck. An investigation is needed to find out why paid orders are not being fulfilled.
+2.  **CVP Launch Readiness**: The user wants confirmation that the Compliance Vault Pro (CVP) product is ready for launch. This includes verifying that payment correctly provisions the user's dashboard, sends a password setup email, and that all subscription tiers are properly gated.
+3.  **Document Pack Enhancement**: The user requested that when a document pack is selected, the UI should allow for the selection of individual documents within that pack.
+
+The next major feature development phase is ClearForm Phase D (Compliance Rule Packs & Deterministic Assistant).
+
+**User's preferred language**: English
+
+**what currently exists?**
+A full-stack application with two products: the original Pleerity (Compliance Vault Pro) and the new ClearForm SaaS.
+-   **P0 Features (Complete)**: ClearForm has been added to the service catalogue, a  based viewer is implemented on the document page, and the frontend credits page is fully connected to the backend Stripe checkout API.
+-   **Bug Fixes (Complete)**: The initial issue with the document pack wizard not advancing has been fixed. The root cause was a naming mismatch between the service catalogue and the backend pack registry.
+-   **Feature Enhancements (Complete)**:
+    -   The document pack intake wizard now dynamically loads the documents within a selected pack and allows the user to select specific documents for generation.
+    -   The ClearForm document creation page has been rebuilt with a tabbed UI to support both AI-driven generation and a new template-based wizard.
+    -   The intake wizard's progress is now auto-saved to .
+-   **Phase D Backend (Complete)**: The backend services, models, and API routes for Compliance Rule Packs and Deterministic Document Generation have been implemented and tested.
+
+**Last working item**:
+    - Last item agent was working: Investigating why multiple paid orders are stuck in the workflow system (e.g., in , , or  status) and not completing. This is a critical failure in the core business logic, preventing order fulfillment. The agent had identified affected orders and was beginning to analyze the workflow state machine () and the automation service ().
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use? backend testing agent. The agent should first write a script to identify all stuck orders (paid but not in a terminal state after a set time). Then, for a specific stuck order, manually trigger the workflow processing via  or  to observe logs and pinpoint the failure in the execution logic.
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  Issue 1:  [P0] Paid orders are stuck in the workflow and not being fulfilled.
+  Issue 2:  [P1] CVP dashboard provisioning and access control needs end-to-end verification.
+  
+  Issues Detail:
+  - Issue 1: 
+     - Attempted fixes: The agent has started an investigation, confirming that multiple paid orders exist in non-terminal states like  and . The analysis of the workflow execution code in  has begun.
+     - Next debug checklist: 
+        1. Examine  to understand how it queries for and processes new/stuck orders.
+        2. Check the supervisor logs ( and ) for any scheduler (APScheduler) errors or exceptions thrown during workflow job execution.
+        3. Manually trigger the workflow for a known stuck order (e.g., ) and trace its execution through the logs to find the point of failure.
+        4. Implement an automatic retry mechanism for transient failures and a monitoring alert for orders that remain stuck for an extended period.
+     - Why fix this issue and what will be achieved with the fix?: This is a critical business logic failure. Customers have paid for services they are not receiving. Fixing this is essential for the business to function.
+     - Status:  IN PROGRESS
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? backend
+     - Blocked on other issue: None. This is the top priority blocker.
+  - Issue 2: 
+     - Attempted fixes: The agent performed a preliminary review of the CVP provisioning code () and the Stripe webhook handler that triggers it. The code flow appears correct, but it has not been tested end-to-end.
+     - Next debug checklist: 
+        1. After resolving the stuck order issue, perform a test purchase of a CVP subscription.
+        2. Verify that the payment webhook correctly triggers the provisioning service.
+        3. Confirm that a password setup email is sent to the customer.
+        4. Use the setup link to create a password, log in, and verify that the CVP dashboard is accessible and reflects the correct subscription tier.
+        5. Attempt to access features from a higher tier to ensure access controls are working.
+     - Why fix this issue and what will be achieved with the fix?: To confirm the CVP product is ready for launch by validating the entire customer journey from payment to dashboard access.
+     - Status:  BLOCKED
+     - Is recurring issue? N/A
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on other issue: Issue 1: Paid orders are stuck in the workflow and not being fulfilled.
+
+**In progress Task List**:
+- None
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - **[P2] Marketing Website Phase 4 - Populate Content**: While the agent found the site to be well-populated, user-facing content like real testimonials and case studies could be added to pages like  and a new .
+    
+    Future Tasks:
+    - **[P2] Profile Pre-fill from Smart Profiles**: The frontend is built, but the backend logic to pre-fill the intake wizard from Smart Profiles needs implementation.
+    - **[P2]  Integration**: Implement address autocomplete in forms.
+    - **[P2] Deprecate Legacy V1 Files**: Schedule removal of obsolete V1 service page files.
+    - **[P3] Template Analytics**: Build a dashboard for admins to see which document templates are most popular.
+
+**Completed work in this session**
+- **ClearForm P0 Features**: Successfully implemented and verified the service catalogue entry, an in-browser PDF viewer, and the full Stripe checkout flow for credits and subscriptions.
+- **Intake Wizard Bug Fix**: Resolved the critical bug where the document pack wizard failed to advance. The fix involved adding a mapping in  to align service codes with internal pack registry names.
+- **Document Pack Enhancement**: Implemented the user's request for granular document selection within a pack, including the backend API () and the frontend UI in .
+- **ClearForm Phase D (Templates & Rules)**:
+    - Built the complete backend for Compliance Rule Packs and Deterministic Document Generation.
+    - Rebuilt the  to include a tabbed UI for choosing between AI Generation and Use Template modes, with a functional template-based form wizard.
+- **Intake Wizard Auto-Save**: Implemented a feature to save the wizard's state to , allowing users to recover their progress if they close the browser.
+- **Handoff Issue Resolution**: Investigated and closed out both pending issues from the previous handoff summary (one was not reproducible, the other was fixed).
+
+**Earlier issues found/mentioned but not fixed**
+- None.
+
+**Known issue recurrence from previous fork**
+- None.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Full-Stack Debugging**: Traced a bug from a frontend UI failure (Continue button not working) to a 400 API error, and finally to a naming mismatch in a backend service (), demonstrating a complete diagnostic process.
+- **Dynamic Frontend UI**: Enhanced the  to conditionally render a new Select Documents section based on API data fetched after a user selects a document pack service.
+- **Client-Side PDF Rendering**: Successfully integrated the  library, overcoming a common  CORS/loading issue by copying the worker file to the  folder and configuring the .
+- **State Management with **: Implemented a robust auto-save and recovery feature in a complex, multi-step React component () using  and .
+
+**key DB schema**
+- ****: Stores pre-built compliance rule packs for documents.
+- ****: Stores deterministic document templates.
+- ****: The collection containing the stuck orders that require investigation.
+
+**changes in tech stack**
+- ****: Added as a new frontend dependency for client-side PDF viewing.
+
+**All files of reference**
+- : Defines the state machine for all orders. **(CRITICAL for debugging)**
+- : Contains the logic for processing orders and advancing their state. **(CRITICAL for debugging)**
+- : Location of the document pack bug fix and the new API for listing pack documents.
+- : Contains the frontend logic for auto-save and the new document selection UI.
+- : Contains the new template-based document creation wizard.
+- : The service responsible for CVP user account setup after payment.
+
+**Areas that need refactoring**:
+- The  router in the backend has grown to handle document types, user templates, system templates, and rule packs. It should be split into smaller, more focused router files (e.g., , ).
+
+**key api endpoints**
+- ****: (GET) Lists the individual documents available within a document pack.
+- ****: (GET) Lists available system templates for document generation.
+- ****: (GET) Lists available compliance rule packs.
+- ****: (POST) Creates a Stripe session for purchasing credit packs.
+- ****: (POST) Creates a Stripe session for purchasing subscriptions.
+
+**Critical Info for New Agent**
+- **Top Priority is the Stuck Order Workflow**: Your immediate and primary focus must be on diagnosing and fixing the issue causing paid orders to get stuck. This is a critical failure blocking all revenue-generating flows. Start by examining  and  and tracing a specific stuck order.
+- **CVP Verification is Blocked**: You cannot verify the CVP launch readiness until the order workflow is fixed. Address the stuck orders first, then proceed to test the CVP end-to-end flow.
+- **Extensive New Features**: Be aware that a significant amount of new, functional code has been added in this session, including a PDF viewer, a template-based creation wizard, and a more complex intake wizard. Do not assume old behavior; review the new code if you encounter unexpected issues in these areas.
+
+**documents and test reports created in this job**
+  - /app/test_reports/iteration_63.json
+  - /app/test_reports/iteration_64.json
+  - /app/test_reports/iteration_65.json
+  - /app/memory/PRD.md (Updated with Phase 28, 29 completions and new feature details)
+
+**Last 10 User Messages and any pending HUMAN messages** 
+- 10. User provides complex requirements: conditional doc selection, confirm CVP launch readiness, check tier gating, and investigate a stuck order.
+- 9. User clarifies CVP requirements (provisioning, email, dashboard accuracy) and asks for details on the doc pack enhancement.
+- 8. User approves the plan to investigate the stuck order and CVP flow.
+- 7. User is waiting for the agent to investigate the stuck workflow and implement an automatic retry mechanism.
+- 1..6 (user 'go ahead' confirmations)
+
+**Project Health Check:**
+- **Broken**: The core order fulfillment workflow is critically broken. Paid orders are not being processed, which prevents revenue collection and service delivery.
+- **Mocked**: Stripe integration is still in test mode.
+
+**3rd Party Integrations**
+- **Stripe (Payments)** — Requires User API Key. Checkout flow is implemented but payment fulfillment is broken.
+- **Gemini (Document AI)** — uses Emergent LLM Key.
+- **reportlab (PDF Generation)** — Backend dependency.
+- **react-pdf (PDF Viewer)** — Frontend dependency.
+- **Postmark (Transactional Emails)** — requires User API Key.
+
+**Testing status**
+  - Testing agent used after significant changes: YES. Used three times ( to ) to validate P0 features and the new template UI. The agent found and fixed bugs related to data mismatches and missing state variables.
+  - Test files created: None
+  - Known regressions: None
+
+**Credentials to test flow:**
+- **Admin**:  / 
+- **ClearForm Test User**:  /  (has 5 credits)
+- **Stripe Test Keys**: Located in .
+
+**What agent forgot to execute**
+- The agent was actively investigating the stuck workflow issue when the session ended. The root cause has not yet been found, and no fix has been implemented. This is the main piece of unfinished work.</analysis>
