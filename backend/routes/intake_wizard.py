@@ -548,6 +548,14 @@ class CalculatePriceRequest(BaseModel):
     addons: List[str] = []
 
 
+# Mapping from service codes to pack registry types
+SERVICE_CODE_TO_PACK_TYPE = {
+    "DOC_PACK_ESSENTIAL": "ESSENTIAL",
+    "DOC_PACK_PLUS": "TENANCY",
+    "DOC_PACK_PRO": "ULTIMATE",
+}
+
+
 @router.post("/calculate-price")
 async def calculate_service_price(request: CalculatePriceRequest):
     """
@@ -562,7 +570,10 @@ async def calculate_service_price(request: CalculatePriceRequest):
     
     if service_code.startswith("DOC_PACK"):
         # Use pack registry for document packs
-        pack_type = service_code.replace("DOC_PACK_", "")
+        # Map service code to pack registry type
+        pack_type = SERVICE_CODE_TO_PACK_TYPE.get(service_code)
+        if not pack_type:
+            raise HTTPException(status_code=400, detail=f"Unknown document pack: {service_code}")
         try:
             pricing = calculate_pack_price(pack_type, request.addons)
             return pricing
