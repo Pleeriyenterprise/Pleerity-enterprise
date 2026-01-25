@@ -11,6 +11,10 @@ from clearform.routes import credits as clearform_credits
 from clearform.routes import documents as clearform_documents
 from clearform.routes import subscriptions as clearform_subscriptions
 from clearform.routes import webhooks as clearform_webhooks
+from clearform.routes.document_types import router as clearform_document_types_router
+from clearform.routes.document_types import templates_router as clearform_templates_router
+from clearform.routes.workspaces import workspaces_router as clearform_workspaces_router
+from clearform.routes.workspaces import profiles_router as clearform_profiles_router
 
 import os
 import logging
