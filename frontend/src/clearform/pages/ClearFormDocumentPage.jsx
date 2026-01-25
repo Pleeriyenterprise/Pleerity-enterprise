@@ -197,9 +197,12 @@ const ClearFormDocumentPage = () => {
               </div>
               
               {document?.status === 'COMPLETED' && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button variant="outline" size="sm" onClick={handleCopy} data-testid="copy-btn">
                     <Copy className="w-4 h-4 mr-2" /> Copy
+                  </Button>
+                  <Button variant="default" size="sm" onClick={() => handleDownload('pdf')} data-testid="download-pdf-btn" className="bg-emerald-600 hover:bg-emerald-700">
+                    <Download className="w-4 h-4 mr-2" /> PDF
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => handleDownload('plain')} data-testid="download-txt-btn">
                     <Download className="w-4 h-4 mr-2" /> TXT
