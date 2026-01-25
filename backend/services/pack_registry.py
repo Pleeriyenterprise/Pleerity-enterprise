@@ -7,9 +7,10 @@ documents are included in each pack.
 
 Rules:
 1. Generation order and delivery order must always follow canonical order
-2. UI may display selection but server remains authoritative
-3. Pack contents are fixed per pack type (no client customization)
-4. Ultimate includes all Essential + all Tenancy documents in order
+2. UI may display document selection for user convenience
+3. If user selects specific documents, only those are generated
+4. If no selection made, all pack documents are generated
+5. Ultimate includes all Essential + all Tenancy documents in order
 """
 from typing import Dict, List, Any
 from enum import Enum
