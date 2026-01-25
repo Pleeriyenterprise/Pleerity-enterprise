@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
-from clearform.services.clearform_auth import get_current_user
+from clearform.routes.auth import get_current_clearform_user
 from clearform.services.organization_service import organization_service
 from clearform.models.organizations import OrgMemberRole, OrganizationType
 
@@ -51,7 +51,7 @@ class UpdateMemberRoleRequest(BaseModel):
 @router.post("")
 async def create_organization(
     request: CreateOrganizationRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Create a new organization."""
     try:
@@ -84,7 +84,7 @@ async def create_organization(
 
 @router.get("")
 async def get_user_organizations(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Get all organizations the current user belongs to."""
     orgs = await organization_service.get_user_organizations(current_user["user_id"])
@@ -97,7 +97,7 @@ async def get_user_organizations(
 @router.get("/{org_id}")
 async def get_organization(
     org_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Get organization details."""
     # Verify membership
@@ -126,7 +126,7 @@ async def get_organization(
 async def update_organization(
     org_id: str,
     request: UpdateOrganizationRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Update organization settings."""
     # Verify admin/owner
@@ -170,7 +170,7 @@ async def update_organization(
 async def get_members(
     org_id: str,
     include_inactive: bool = False,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Get organization members."""
     # Verify membership
@@ -192,7 +192,7 @@ async def get_members(
 async def invite_member(
     org_id: str,
     request: InviteMemberRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Invite a user to join the organization."""
     # Verify admin/owner/manager
@@ -242,7 +242,7 @@ async def invite_member(
 @router.get("/{org_id}/invitations")
 async def get_pending_invitations(
     org_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Get pending invitations for the organization."""
     # Verify admin/owner/manager
@@ -265,7 +265,7 @@ async def update_member_role(
     org_id: str,
     user_id: str,
     request: UpdateMemberRoleRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Update a member's role."""
     # Verify admin/owner
@@ -310,7 +310,7 @@ async def update_member_role(
 async def remove_member(
     org_id: str,
     user_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Remove a member from the organization."""
     # Verify admin/owner
@@ -355,7 +355,7 @@ async def remove_member(
 
 @router.get("/invitations/pending")
 async def get_my_invitations(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Get pending invitations for the current user."""
     invitations = await organization_service.get_user_invitations(current_user["email"])
@@ -368,7 +368,7 @@ async def get_my_invitations(
 @router.post("/invitations/{invitation_id}/accept")
 async def accept_invitation(
     invitation_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Accept an invitation to join an organization."""
     try:
@@ -395,7 +395,7 @@ async def accept_invitation(
 @router.get("/{org_id}/credits")
 async def get_org_credits(
     org_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Get organization credit balance and stats."""
     # Verify membership
@@ -428,7 +428,7 @@ async def get_org_credits(
 
 @router.get("/compliance-packs/list")
 async def list_compliance_packs(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Get available compliance packs."""
     packs = await organization_service.get_compliance_packs()
@@ -441,7 +441,7 @@ async def list_compliance_packs(
 @router.get("/compliance-packs/{pack_id}")
 async def get_compliance_pack(
     pack_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_clearform_user),
 ):
     """Get compliance pack details."""
     pack = await organization_service.get_compliance_pack(pack_id)
