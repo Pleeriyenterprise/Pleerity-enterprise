@@ -42,9 +42,9 @@ const HomePage = () => {
 
   const services = [
     {
-      href: '/services/ai-workflow-automation',
+      href: '/services/ai-automation',
       icon: Sparkles,
-      title: 'AI Workflow Automation',
+      title: 'AI & Automation',
       description: 'Automate repetitive property management tasks with intelligent workflows.',
     },
     {
