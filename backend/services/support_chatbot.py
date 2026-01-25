@@ -667,7 +667,7 @@ Your complete property compliance management platform.
 
 **Ideal for:** HMO landlords and portfolio managers who need to stay compliant.
 
-Would you like to start a free trial or learn more about specific features?""",
+Would you like to get started or learn more about specific features?""",
         "action": "respond",
         "metadata": {"canned": True, "category": "compliance", "service_area": "cvp"}
     },
