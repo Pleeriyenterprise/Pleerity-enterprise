@@ -750,6 +750,7 @@ export default function UnifiedIntakeWizard() {
   
   // Draft
   const [draft, setDraft] = useState(null);
+  const [draftId, setDraftId] = useState(null);
   const [schema, setSchema] = useState(null);
   
   // Form data
