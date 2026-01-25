@@ -214,6 +214,64 @@ class PageStatus(str, Enum):
     ARCHIVED = "ARCHIVED"
 
 
+class PageType(str, Enum):
+    """Types of CMS pages for marketing website."""
+    GENERIC = "GENERIC"          # Generic pages (about, contact, etc.)
+    HUB = "HUB"                   # /services hub page
+    CATEGORY = "CATEGORY"        # /services/{category}
+    SERVICE = "SERVICE"          # /services/{category}/{slug}
+    LANDING = "LANDING"          # Landing/campaign pages
+    LEGAL = "LEGAL"              # Terms, privacy, etc.
+
+
+class PurchaseMode(str, Enum):
+    """How a service can be purchased."""
+    STANDALONE = "STANDALONE"     # Can only be purchased standalone
+    CVP_ADDON = "CVP_ADDON"       # Can only be added to CVP subscription
+    BOTH = "BOTH"                 # Can be purchased either way
+
+
+# Category configuration for marketing website
+CATEGORY_CONFIG = {
+    "ai-automation": {
+        "slug": "ai-automation",
+        "name": "AI & Automation Services",
+        "tagline": "Streamline your operations with intelligent automation solutions",
+        "description": "Our AI-powered services help SMEs automate repetitive tasks, optimise workflows, and make data-driven decisions.",
+        "icon": "cpu",
+        "display_order": 1,
+        "service_catalogue_category": "ai_automation",
+    },
+    "market-research": {
+        "slug": "market-research",
+        "name": "Market Research Services",
+        "tagline": "Data-driven insights to inform your business decisions",
+        "description": "Comprehensive market analysis to help you understand your competition, identify opportunities, and make informed strategic decisions.",
+        "icon": "bar-chart-2",
+        "display_order": 2,
+        "service_catalogue_category": "market_research",
+    },
+    "compliance-audits": {
+        "slug": "compliance-audits",
+        "name": "Compliance & Audit Services",
+        "tagline": "Ensure your properties meet regulatory requirements",
+        "description": "Professional compliance audits and documentation for landlords and property managers. Note: Our services provide guidance only and do not constitute legal advice.",
+        "icon": "shield-check",
+        "display_order": 3,
+        "service_catalogue_category": "compliance",
+    },
+    "document-packs": {
+        "slug": "document-packs",
+        "name": "Landlord Document Packs",
+        "tagline": "Professional documentation for property management",
+        "description": "Professionally generated document packs tailored to your tenancy requirements. Includes essential notices, agreements, and compliance documentation.",
+        "icon": "file-text",
+        "display_order": 4,
+        "service_catalogue_category": "document_pack",
+    },
+}
+
+
 class CMSPageCreate(BaseModel):
     """Create a new CMS page"""
     slug: str = Field(..., pattern=r'^[a-z0-9-]+$', max_length=100)
