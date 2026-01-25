@@ -493,6 +493,15 @@ app.include_router(document_packs.router)  # Document Pack Orchestrator
 app.include_router(checkout_validation.router)  # Checkout Validation
 app.include_router(marketing.router)  # Marketing Website CMS
 
+# ============================================================================
+# ClearForm Routes - Separate Product (Isolated)
+# ============================================================================
+app.include_router(clearform_auth.router)  # ClearForm Auth
+app.include_router(clearform_credits.router)  # ClearForm Credits
+app.include_router(clearform_documents.router)  # ClearForm Documents
+app.include_router(clearform_subscriptions.router)  # ClearForm Subscriptions
+app.include_router(clearform_webhooks.router)  # ClearForm Stripe Webhooks
+
 # Root endpoint
 @app.get("/api")
 async def root():
