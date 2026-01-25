@@ -129,10 +129,7 @@ function App() {
               
               {/* CMS-Driven Marketing Pages */}
               <Route path="/services" element={<ServicesHubPageCMS />} />
-              <Route path="/services/ai-automation" element={<CategoryPageCMS />} />
-              <Route path="/services/market-research" element={<CategoryPageCMS />} />
-              <Route path="/services/compliance-audits" element={<CategoryPageCMS />} />
-              <Route path="/services/document-packs" element={<CategoryPageCMS />} />
+              <Route path="/services/:categorySlug" element={<CategoryPageCMS />} />
               <Route path="/services/:categorySlug/:serviceSlug" element={<ServicePageCMS />} />
               
               {/* Legacy/Fallback Service Routes */}
