@@ -1046,6 +1046,32 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
   - Improved `cleanMarkdown()` function in `ClearFormDocumentPage.jsx`
   - Now properly strips AI preambles and code fences
 
+### Phase 25: ClearForm UI Enhancements & Admin Integration (Complete - Jan 25, 2026)
+
+**Pricing Page Update**:
+- [x] Added product tabs (CVP | ClearForm) to pricing page
+- [x] ClearForm credit top-ups: 10=£5, 25=£10, 75=£25
+- [x] ClearForm subscriptions: Free (3 credits), Personal (£9.99/mo, 20 credits), Power User (£24.99/mo, 75 credits)
+- [x] Credits never expire, show price before generation
+
+**Dashboard Navigation Fix**:
+- [x] Created `/clearform/vault` - Document Vault page with search/filter
+- [x] Created `/clearform/credits` - Credits purchase page with packages and subscriptions
+- [x] Fixed Document Vault and Buy Credits cards to navigate properly
+
+**Unified Admin Console - ClearForm Section**:
+- [x] Added ClearForm section to admin sidebar navigation
+- [x] ClearForm Users page (view all users, credits, documents count)
+- [x] ClearForm Documents page (view all documents, status, user)
+- [x] Admin API endpoints: `/api/admin/clearform/{stats,users,documents,organizations,audit}`
+
+**Welcome Email (ClearForm)**:
+- [x] Branded email template "ClearForm by Pleerity"
+- [x] Uses Pleerity green theme (#10b981)
+- [x] Shows credit balance, "Create Your First Document" CTA
+- [x] Includes legal disclaimer footer
+- [x] Calm, reassuring, plain English tone
+
 ---
 
 ## Credentials
