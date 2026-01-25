@@ -11,6 +11,7 @@ Endpoints:
 from fastapi import APIRouter, HTTPException, Depends, Header
 from typing import Optional
 import logging
+import asyncio
 
 from clearform.models.user import (
     ClearFormUserCreate,
@@ -19,6 +20,7 @@ from clearform.models.user import (
     ClearFormTokenResponse,
 )
 from clearform.services.clearform_auth import clearform_auth_service
+from services.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
