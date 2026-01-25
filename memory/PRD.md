@@ -1174,15 +1174,15 @@ ClearForm is a standalone SaaS product - an intent-driven paperwork assistant wi
 
 ## Pending Issues
 
-### P1 - Document Pack Services
-- **Issue:** Document Pack services fail to load in intake wizard
-- **Status:** NOT STARTED
-- **Next Steps:** Inspect UnifiedIntakeWizard.js service selection step, check network requests
+### ✅ RESOLVED - Document Pack Services (Jan 25, 2026)
+- **Issue:** Document Pack services allegedly failing to load in intake wizard
+- **Status:** RESOLVED - Services were loading correctly. Verified via API and UI testing.
+- **Conclusion:** Issue was previously fixed or incorrectly reported.
 
-### P2 - Setup Stripe Products Script
-- **Issue:** Minor validation bug in `/app/backend/scripts/setup_stripe_products.py`
-- **Status:** NOT STARTED
-- **Next Steps:** Review product search/listing logic in validation function
+### ✅ RESOLVED - Setup Stripe Products Script (Jan 25, 2026)
+- **Issue:** Validation bug in `/app/backend/scripts/setup_stripe_products.py`
+- **Fix:** Added `override=True` to `load_dotenv()` to use actual Stripe key from `.env` instead of environment placeholder
+- **Status:** RESOLVED - Script now validates all services correctly
 
 ---
 
