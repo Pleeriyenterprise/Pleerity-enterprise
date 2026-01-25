@@ -10,6 +10,7 @@ import {
   ClearFormDocumentPage,
   ClearFormVaultPage,
   ClearFormCreditsPage,
+  ClearFormOrganizationsPage,
 } from './pages';
 
 const ClearFormApp = () => {
@@ -59,6 +60,22 @@ const ClearFormApp = () => {
           element={
             <ClearFormProtectedRoute>
               <ClearFormCreditsPage />
+            </ClearFormProtectedRoute>
+          }
+        />
+        <Route
+          path="organizations"
+          element={
+            <ClearFormProtectedRoute>
+              <ClearFormOrganizationsPage />
+            </ClearFormProtectedRoute>
+          }
+        />
+        <Route
+          path="team"
+          element={
+            <ClearFormProtectedRoute>
+              <ClearFormOrganizationsPage />
             </ClearFormProtectedRoute>
           }
         />
