@@ -168,7 +168,7 @@ const ClearFormAuthPage = () => {
                 </>
               ) : (
                 <>
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <Link to="/clearform/register" className="text-emerald-600 hover:underline">
                     Sign up free
                   </Link>
