@@ -49,13 +49,11 @@ const PublicHeader = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2" data-testid="header-logo">
-            <div className="w-8 h-8 bg-electric-teal rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">P</span>
-            </div>
-            <div>
-              <span className="text-xl font-bold text-midnight-blue">Pleerity</span>
-              <span className="hidden sm:inline text-sm text-gray-500 ml-1">Enterprise</span>
-            </div>
+            <img 
+              src="/pleerity-logo.jpg" 
+              alt="Pleerity" 
+              className="h-10 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
