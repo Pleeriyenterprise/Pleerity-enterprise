@@ -28,8 +28,46 @@ import {
 
 const PricingPage = () => {
   const [billingCycle, setBillingCycle] = useState('monthly');
+  const [activeProduct, setActiveProduct] = useState('cvp');
 
-  const plans = [
+  // ClearForm Credit Packages
+  const clearformCredits = [
+    { id: 'credits_10', credits: 10, price: 5, pricePerCredit: 0.50 },
+    { id: 'credits_25', credits: 25, price: 10, pricePerCredit: 0.40, popular: true, savings: '20%' },
+    { id: 'credits_75', credits: 75, price: 25, pricePerCredit: 0.33, savings: '33%' },
+  ];
+
+  // ClearForm Subscription Plans
+  const clearformPlans = [
+    {
+      name: 'Free',
+      price: 0,
+      credits: 3,
+      creditsNote: 'one-time',
+      features: ['3 credits (one-time)', 'Watermarked documents', 'All document types'],
+      limitations: ['Watermarked output'],
+    },
+    {
+      name: 'Personal',
+      price: 9.99,
+      credits: 20,
+      creditsNote: 'per month',
+      popular: true,
+      features: ['20 credits per month', 'No watermark', 'All document types', 'Priority support'],
+      limitations: ['Unused credits don\'t roll over'],
+    },
+    {
+      name: 'Power User',
+      price: 24.99,
+      credits: 75,
+      creditsNote: 'per month',
+      features: ['75 credits per month', 'No watermark', 'Priority generation', 'Early access to new document types', 'Dedicated support'],
+      limitations: ['Unused credits don\'t roll over'],
+      icon: Crown,
+    },
+  ];
+
+  // CVP Plans (existing)
     {
       name: 'Solo Landlord',
       code: 'PLAN_1_SOLO',
