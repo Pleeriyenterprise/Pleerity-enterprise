@@ -387,6 +387,87 @@ def get_addon_requirements(addon_code: str) -> Dict[str, Any]:
     }
 
 
+def get_pack_documents_for_selection(pack_type: str) -> Dict[str, Any]:
+    """
+    Get documents in a pack for user selection UI.
+    Returns list of documents with selection metadata.
+    
+    User can:
+    - Select all (or select none) -> all documents generated
+    - Select specific documents -> only those generated
+    """
+    pack = PACK_REGISTRY.get(pack_type.upper())
+    if not pack:
+        raise ValueError(f"Unknown pack type: {pack_type}")
+    
+    documents = []
+    for idx, doc_code in enumerate(pack["documents"]):
+        doc_def = DOCUMENT_DEFINITIONS.get(doc_code, {})
+        documents.append({
+            "code": doc_code,
+            "name": doc_def.get("name", doc_code),
+            "description": doc_def.get("description", ""),
+            "format": doc_def.get("format", "docx"),
+            "order": idx + 1,
+            "requires_tenant_info": doc_def.get("requires_tenant_info", False),
+        })
+    
+    return {
+        "pack_type": pack["pack_type"],
+        "pack_name": pack["name"],
+        "pack_description": pack["description"],
+        "price_pence": pack["price_pence"],
+        "price_display": f"£{pack['price_pence'] / 100:.2f}",
+        "documents": documents,
+        "total_documents": len(documents),
+        "selection_hint": "Select specific documents or leave all unchecked to generate the complete pack.",
+    }
+
+
+def filter_pack_documents(pack_type: str, selected_codes: List[str] = None) -> List[Dict[str, Any]]:
+    """
+    Filter pack documents based on user selection.
+    
+    Args:
+        pack_type: Pack type (ESSENTIAL, TENANCY, ULTIMATE)
+        selected_codes: List of document codes to include. 
+                       If None or empty, ALL documents are included.
+    
+    Returns:
+        List of documents to generate, in canonical order.
+    """
+    pack = PACK_REGISTRY.get(pack_type.upper())
+    if not pack:
+        raise ValueError(f"Unknown pack type: {pack_type}")
+    
+    all_docs = pack["documents"]
+    
+    # If no selection, return all documents
+    if not selected_codes:
+        return get_pack_documents_ordered(pack_type)
+    
+    # Validate selected codes exist in this pack
+    valid_codes = set(all_docs)
+    selected_set = set(code.upper() for code in selected_codes)
+    invalid = selected_set - valid_codes
+    
+    if invalid:
+        logger.warning(f"Invalid document codes for pack {pack_type}: {invalid}")
+    
+    # Filter to only selected documents, maintaining canonical order
+    result = []
+    for idx, doc_code in enumerate(all_docs):
+        if doc_code in selected_set:
+            result.append({
+                "code": doc_code,
+                "generation_order": idx + 1,
+                "delivery_order": len(result) + 1,  # Re-order for delivery
+                **DOCUMENT_DEFINITIONS.get(doc_code, {}),
+            })
+    
+    return result if result else get_pack_documents_ordered(pack_type)
+
+
 def validate_pack_addons(pack_type: str, addons: List[str]) -> Dict[str, Any]:
     """Validate that selected addons are valid for the pack type."""
     errors = []
