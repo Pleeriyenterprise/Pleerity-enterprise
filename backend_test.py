@@ -164,20 +164,33 @@ class E2ETestRunner:
     async def create_intake_draft(self, service_code: str) -> Optional[Dict]:
         """Create an intake draft"""
         try:
+            # Determine category based on service code
+            if service_code.startswith("AI_"):
+                category = "ai_automation"
+            elif service_code.startswith("MR_"):
+                category = "market_research"
+            elif service_code.startswith("DOC_PACK_"):
+                category = "document_pack"
+            else:
+                category = "compliance"
+            
             # Create intake draft
             draft_data = {
                 "service_code": service_code,
-                "customer": {
-                    "email": TEST_CUSTOMER_EMAIL,
-                    "full_name": TEST_CUSTOMER_NAME,
-                    "phone": TEST_CUSTOMER_PHONE
-                },
-                "parameters": {
-                    "business_name": "Test Business Ltd",
-                    "industry": "Technology",
-                    "workflow_description": "Automated customer onboarding process",
-                    "current_challenges": "Manual data entry, slow processing",
-                    "desired_outcomes": "Faster processing, reduced errors"
+                "category": category,
+                "initial_data": {
+                    "customer": {
+                        "email": TEST_CUSTOMER_EMAIL,
+                        "full_name": TEST_CUSTOMER_NAME,
+                        "phone": TEST_CUSTOMER_PHONE
+                    },
+                    "parameters": {
+                        "business_name": "Test Business Ltd",
+                        "industry": "Technology",
+                        "workflow_description": "Automated customer onboarding process",
+                        "current_challenges": "Manual data entry, slow processing",
+                        "desired_outcomes": "Faster processing, reduced errors"
+                    }
                 }
             }
             
