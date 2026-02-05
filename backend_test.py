@@ -227,53 +227,63 @@ class E2ETestRunner:
             # This is acceptable for testing purposes
             from services.stripe_webhook_service import stripe_webhook_service
             import json
+            import os
             
-            # Create webhook payload
-            webhook_payload = {
-                "id": f"evt_test_{datetime.now().timestamp()}",
-                "type": "checkout.session.completed",
-                "data": {
-                    "object": {
-                        "id": f"cs_test_{datetime.now().timestamp()}",
-                        "mode": "payment",
-                        "payment_intent": f"pi_test_{datetime.now().timestamp()}",
-                        "payment_status": "paid",
-                        "metadata": {
-                            "type": "order_intake",
-                            "draft_id": draft_id,
-                            "draft_ref": draft_ref,
-                            "service_code": service_code
+            # Temporarily disable webhook secret for testing
+            original_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
+            os.environ['STRIPE_WEBHOOK_SECRET'] = ''
+            
+            try:
+                # Create webhook payload
+                webhook_payload = {
+                    "id": f"evt_test_{datetime.now().timestamp()}",
+                    "type": "checkout.session.completed",
+                    "data": {
+                        "object": {
+                            "id": f"cs_test_{datetime.now().timestamp()}",
+                            "mode": "payment",
+                            "payment_intent": f"pi_test_{datetime.now().timestamp()}",
+                            "payment_status": "paid",
+                            "metadata": {
+                                "type": "order_intake",
+                                "draft_id": draft_id,
+                                "draft_ref": draft_ref,
+                                "service_code": service_code
+                            }
                         }
                     }
                 }
-            }
-            
-            # Connect to database
-            await database.connect()
-            
-            # Process webhook directly (bypassing signature verification)
-            success, message, details = await stripe_webhook_service.process_webhook(
-                payload=json.dumps(webhook_payload).encode(),
-                signature=""  # Empty signature will skip verification in dev mode
-            )
-            
-            await database.close()
-            
-            if not success:
+                
+                # Connect to database
+                await database.connect()
+                
+                # Process webhook directly (bypassing signature verification)
+                success, message, details = await stripe_webhook_service.process_webhook(
+                    payload=json.dumps(webhook_payload).encode(),
+                    signature=""  # Empty signature will skip verification in dev mode
+                )
+                
+                await database.close()
+                
+                if not success:
+                    self.log_test(
+                        "Stripe Webhook",
+                        False,
+                        f"Webhook processing failed: {message}",
+                        details
+                    )
+                    return False
+                
                 self.log_test(
                     "Stripe Webhook",
-                    False,
-                    f"Webhook processing failed: {message}",
-                    details
+                    True,
+                    f"Webhook processed: {message}"
                 )
-                return False
-            
-            self.log_test(
-                "Stripe Webhook",
-                True,
-                f"Webhook processed: {message}"
-            )
-            return True
+                return True
+            finally:
+                # Restore original secret
+                if original_secret:
+                    os.environ['STRIPE_WEBHOOK_SECRET'] = original_secret
             
         except Exception as e:
             self.log_test("Stripe Webhook", False, f"Exception: {str(e)}")
