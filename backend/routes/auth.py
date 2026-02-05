@@ -266,8 +266,8 @@ async def set_password(request: Request, data: SetPasswordRequest):
         
         # Mark token as used
         await db.password_tokens.update_one(
-            {"token_id": password_token["token_id"]},
-            {"$set": {"used_at": now.isoformat()}}
+            {"token_hash": token_hash_value},
+            {"$set": {"used": True, "used_at": now.isoformat()}}
         )
         
         # Audit logs - differentiate between admin invite acceptance and regular password setup
