@@ -493,7 +493,31 @@ class DocumentOrchestrator:
         # ================================================================
         # STEP 9: Update order status - Ready for Human Review
         # NEW: Store prompt_version_used permanently on order
+        # CRITICAL FIX: Also add to document_versions array for backwards compatibility
         # ================================================================
+        
+        # Create document_versions entry for backwards compatibility
+        doc_version_entry = {
+            "version": render_result.version,
+            "status": OrchestrationStatus.REVIEW_PENDING.value,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": "system",
+            "is_regeneration": regeneration,
+            "regeneration_notes": regeneration_notes if regeneration else None,
+            # Document files
+            "filename_docx": render_result.docx.filename,
+            "filename_pdf": render_result.pdf.filename,
+            "docx_hash": render_result.docx.sha256_hash,
+            "pdf_hash": render_result.pdf.sha256_hash,
+            "docx_size": render_result.docx.size_bytes,
+            "pdf_size": render_result.pdf.size_bytes,
+            # Content preview
+            "word_count": len(str(structured_output).split()),
+            "section_count": len(structured_output.get("sections", [])) if isinstance(structured_output.get("sections"), list) else 0,
+            # Prompt tracking
+            "prompt_version_used": prompt_version_used,
+        }
+        
         order_update = {
             "$set": {
                 "document_status": "rendered",
@@ -504,10 +528,15 @@ class DocumentOrchestrator:
                 # CRITICAL: Store prompt_version_used permanently for audit
                 "prompt_version_used": prompt_version_used,
             },
+            "$push": {
+                "document_versions": doc_version_entry
+            }
         }
         
         if regeneration:
-            order_update["$inc"] = {"regeneration_count": 1}
+            if "$inc" not in order_update:
+                order_update["$inc"] = {}
+            order_update["$inc"]["regeneration_count"] = 1
         
         await db.orders.update_one({"order_id": order_id}, order_update)
         
