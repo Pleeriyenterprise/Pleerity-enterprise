@@ -420,7 +420,7 @@ class E2ETestRunner:
         # Wait a moment for webhook processing
         await asyncio.sleep(2)
         
-        # Step 3: Verify order created with PAID status
+        # Step 3: Verify order created with PAID or QUEUED status
         order = await self.get_order_by_draft(draft_id)
         if not order:
             self.log_test("Order Creation", False, "Order not found after webhook")
@@ -429,18 +429,19 @@ class E2ETestRunner:
         order_id = order.get("order_id")
         order_ref = order.get("order_ref")
         
-        if order.get("status") != OrderStatus.PAID.value:
+        # Order should be in QUEUED status (WF1 automatically transitions PAID → QUEUED)
+        if order.get("status") not in [OrderStatus.PAID.value, OrderStatus.QUEUED.value]:
             self.log_test(
-                "Order Status (PAID)",
+                "Order Status (PAID/QUEUED)",
                 False,
-                f"Expected PAID, got {order.get('status')}"
+                f"Expected PAID or QUEUED, got {order.get('status')}"
             )
             return False
         
         self.log_test(
             "Order Creation",
             True,
-            f"Order {order_ref} created with PAID status"
+            f"Order {order_ref} created with {order.get('status')} status"
         )
         
         # Step 4: Trigger automated workflow (queue processing)
