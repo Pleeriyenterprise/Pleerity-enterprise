@@ -363,7 +363,7 @@ class E2ETestRunner:
                 f"{BACKEND_URL}/admin/orders/{order_id}/approve",
                 headers=headers,
                 json={
-                    "approved_version": version,
+                    "version": version,
                     "notes": "Automated test approval"
                 }
             )
