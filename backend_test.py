@@ -225,13 +225,13 @@ class E2ETestRunner:
         try:
             # Directly call the webhook service to bypass signature verification
             # This is acceptable for testing purposes
+            import services.stripe_webhook_service as webhook_module
             from services.stripe_webhook_service import stripe_webhook_service
             import json
-            import os
             
-            # Temporarily disable webhook secret for testing
-            original_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
-            os.environ['STRIPE_WEBHOOK_SECRET'] = ''
+            # Temporarily disable webhook secret for testing by patching the module
+            original_secret = webhook_module.STRIPE_WEBHOOK_SECRET
+            webhook_module.STRIPE_WEBHOOK_SECRET = ""
             
             try:
                 # Create webhook payload
@@ -282,8 +282,7 @@ class E2ETestRunner:
                 return True
             finally:
                 # Restore original secret
-                if original_secret:
-                    os.environ['STRIPE_WEBHOOK_SECRET'] = original_secret
+                webhook_module.STRIPE_WEBHOOK_SECRET = original_secret
             
         except Exception as e:
             self.log_test("Stripe Webhook", False, f"Exception: {str(e)}")
