@@ -107,7 +107,7 @@ async def login(request: Request, credentials: LoginRequest):
             action=AuditAction.USER_LOGIN_SUCCESS,
             actor_role=UserRole(portal_user["role"]),
             actor_id=portal_user["portal_user_id"],
-            client_id=portal_user["client_id"]
+            client_id=portal_user.get("client_id")  # Use .get() to handle None
         )
         
         # Check if this is first login and emit enablement event
