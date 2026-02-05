@@ -97,7 +97,7 @@ async def login(request: Request, credentials: LoginRequest):
         # Create access token
         token_data = {
             "portal_user_id": portal_user["portal_user_id"],
-            "client_id": portal_user["client_id"],
+            "client_id": portal_user.get("client_id"),  # Use .get() for admin users without client_id
             "email": portal_user["auth_email"],
             "role": portal_user["role"]
         }
@@ -146,7 +146,7 @@ async def login(request: Request, credentials: LoginRequest):
                 "portal_user_id": portal_user["portal_user_id"],
                 "email": portal_user["auth_email"],
                 "role": portal_user["role"],
-                "client_id": portal_user["client_id"]
+                "client_id": portal_user.get("client_id")  # Use .get() for admin users
             }
         )
     
