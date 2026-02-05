@@ -179,18 +179,11 @@ class E2ETestRunner:
                 "service_code": service_code,
                 "category": category,
                 "initial_data": {
-                    "customer": {
-                        "email": TEST_CUSTOMER_EMAIL,
-                        "full_name": TEST_CUSTOMER_NAME,
-                        "phone": TEST_CUSTOMER_PHONE
-                    },
-                    "parameters": {
-                        "business_name": "Test Business Ltd",
-                        "industry": "Technology",
-                        "workflow_description": "Automated customer onboarding process",
-                        "current_challenges": "Manual data entry, slow processing",
-                        "desired_outcomes": "Faster processing, reduced errors"
-                    }
+                    "business_name": "Test Business Ltd",
+                    "industry": "Technology",
+                    "workflow_description": "Automated customer onboarding process",
+                    "current_challenges": "Manual data entry, slow processing",
+                    "desired_outcomes": "Faster processing, reduced errors"
                 }
             }
             
@@ -209,6 +202,31 @@ class E2ETestRunner:
                 return None
             
             draft = response.json()
+            draft_id = draft.get("draft_id")
+            
+            # Update draft with customer information
+            await database.connect()
+            db = database.get_db()
+            
+            await db.intake_drafts.update_one(
+                {"draft_id": draft_id},
+                {
+                    "$set": {
+                        "client_identity": {
+                            "email": TEST_CUSTOMER_EMAIL,
+                            "full_name": TEST_CUSTOMER_NAME,
+                            "phone": TEST_CUSTOMER_PHONE
+                        },
+                        "delivery_consent": {
+                            "email": TEST_CUSTOMER_EMAIL,
+                            "consent_given": True
+                        }
+                    }
+                }
+            )
+            
+            await database.close()
+            
             self.log_test(
                 f"Create Draft ({service_code})",
                 True,
