@@ -180,7 +180,19 @@ async def set_password(request: Request, data: SetPasswordRequest):
         
         # Validate token
         now = datetime.now(timezone.utc)
-        expires_at = datetime.fromisoformat(password_token["expires_at"]) if isinstance(password_token["expires_at"], str) else password_token["expires_at"]
+        
+        # Handle both string and datetime objects, ensure timezone-aware
+        expires_at_raw = password_token["expires_at"]
+        if isinstance(expires_at_raw, str):
+            expires_at = datetime.fromisoformat(expires_at_raw.replace("Z", "+00:00"))
+        elif isinstance(expires_at_raw, datetime):
+            # Ensure timezone-aware
+            if expires_at_raw.tzinfo is None:
+                expires_at = expires_at_raw.replace(tzinfo=timezone.utc)
+            else:
+                expires_at = expires_at_raw
+        else:
+            expires_at = expires_at_raw
         
         if password_token.get("used_at"):
             raise HTTPException(
