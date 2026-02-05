@@ -219,13 +219,13 @@ frontend:
 
 metadata:
   created_by: "testing_agent"
-  version: "1.0"
-  test_sequence: 1
-  run_ui: false
+  version: "1.1"
+  test_sequence: 2
+  run_ui: true
 
 test_plan:
   current_focus:
-    - "Complete Order Flow Testing"
+    - "Owner Admin Login Verification"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -233,3 +233,5 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "Comprehensive end-to-end order flow testing completed successfully. All critical backend APIs tested and working. Test file created at /app/backend_test.py with 19 test cases, all passing. Minor issues observed: 1) Email notifications failing due to import errors (non-critical), 2) In-app notifications failing (non-critical), 3) Intake validation warnings for optional fields (non-critical). Core order flow from draft creation through payment, workflow automation, document generation, approval, and delivery is fully functional."
+  - agent: "testing"
+    message: "OWNER ADMIN LOGIN - FINAL VERIFICATION COMPLETE ✓ Successfully verified that owner admin (info@pleerityenterprise.co.uk) can login to the admin console. All test objectives met: Login succeeds without errors, redirects to /admin/dashboard, admin console fully accessible with all navigation items visible (Overview, Analytics, Reporting, Clients, Orders Pipeline, etc.), user email appears in sidebar, logout button present. JWT token properly stored in localStorage with correct role (ROLE_ADMIN). No console errors during login flow. System is production-ready for owner admin access."
