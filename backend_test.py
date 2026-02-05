@@ -545,17 +545,17 @@ class E2ETestRunner:
     async def test_cvp_subscription_webhook(self) -> bool:
         """Test 4: CVP Subscription Webhook"""
         print(f"\n{Colors.HEADER}{'='*80}{Colors.ENDC}")
-        print(f"\n{Colors.HEADER}TEST 4: CVP Subscription Webhook{Colors.ENDC}")
+        print(f"{Colors.HEADER}TEST 4: CVP Subscription Webhook{Colors.ENDC}")
         print(f"{Colors.HEADER}{'='*80}{Colors.ENDC}")
         
         try:
+            import services.stripe_webhook_service as webhook_module
             from services.stripe_webhook_service import stripe_webhook_service
             import json
-            import os
             
-            # Temporarily disable webhook secret for testing
-            original_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
-            os.environ['STRIPE_WEBHOOK_SECRET'] = ''
+            # Temporarily disable webhook secret for testing by patching the module
+            original_secret = webhook_module.STRIPE_WEBHOOK_SECRET
+            webhook_module.STRIPE_WEBHOOK_SECRET = ""
             
             try:
                 # Create subscription webhook payload
@@ -670,8 +670,7 @@ class E2ETestRunner:
                 return True
             finally:
                 # Restore original secret
-                if original_secret:
-                    os.environ['STRIPE_WEBHOOK_SECRET'] = original_secret
+                webhook_module.STRIPE_WEBHOOK_SECRET = original_secret
             
         except Exception as e:
             self.log_test("CVP Subscription Webhook", False, f"Exception: {str(e)}")
