@@ -205,17 +205,17 @@ backend:
         comment: "SKIPPED - CVP subscription webhook requires pre-existing client_id in metadata. This is for existing clients upgrading subscriptions, not new client provisioning. Different flow needed for new client provisioning."
 
 frontend:
-  - task: "Frontend Testing"
+  - task: "Owner Admin Login UI"
     implemented: true
-    working: "NA"
-    file: "N/A"
+    working: true
+    file: "/app/frontend/src/pages/LoginPage.js"
     stuck_count: 0
-    priority: "low"
+    priority: "high"
     needs_retesting: false
     status_history:
-      - working: "NA"
+      - working: true
         agent: "testing"
-        comment: "Frontend testing not performed as per testing agent instructions (backend-only testing)."
+        comment: "Owner admin login UI fully functional. Tested with credentials info@pleerityenterprise.co.uk / TestOwner123!. Login form renders correctly, credentials are accepted, redirects to /admin/dashboard successfully. Admin console loads with all navigation elements, user info displayed in sidebar, logout button accessible. No console errors detected during login flow."
 
 metadata:
   created_by: "testing_agent"
