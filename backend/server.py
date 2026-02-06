@@ -629,9 +629,6 @@ app.include_router(prompts.router)  # Enterprise Prompt Manager
 app.include_router(document_packs.router)  # Document Pack Orchestrator
 app.include_router(checkout_validation.router)  # Checkout Validation
 app.include_router(marketing.router)  # Marketing Website CMS
-
-# Admin Legal Content Management
-from routes import admin_legal_content
 app.include_router(admin_legal_content.router)  # Legal Content Editor (Admin)
 
 # ============================================================================
