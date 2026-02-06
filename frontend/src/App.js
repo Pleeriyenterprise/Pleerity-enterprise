@@ -117,6 +117,7 @@ import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
 import AdminLegalContentPage from './pages/AdminLegalContentPage';
 import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
+import AdminTalentPoolPage from './pages/AdminTalentPoolPage';
 import AdminPostalTrackingPage from './pages/AdminPostalTrackingPage';
 import AdminConsentDashboard from './pages/AdminConsentDashboard';
 import AdminSiteBuilderPage from './pages/AdminSiteBuilderPage';
@@ -525,6 +526,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminLeadsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/talent-pool" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminTalentPoolPage />
                 </ProtectedRoute>
               } 
             />
