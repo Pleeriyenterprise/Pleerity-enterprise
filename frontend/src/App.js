@@ -511,6 +511,14 @@ function App() {
               } 
             />
             <Route 
+              path="/admin/settings/legal" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLegalContentPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/admin/leads" 
               element={
                 <ProtectedRoute requireAdmin>
