@@ -168,6 +168,12 @@ function App() {
               <Route path="/legal/privacy" element={<PrivacyPage />} />
               <Route path="/legal/terms" element={<TermsPage />} />
               
+              {/* New Marketing Pages */}
+              <Route path="/products/assurestack" element={<AssureStackPage />} />
+              <Route path="/accessibility" element={<AccessibilityPage />} />
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/newsletter" element={<NewsletterPage />} />
+              
               {/* Knowledge Base (Public) */}
               <Route path="/support/knowledge-base" element={<PublicKnowledgeBasePage />} />
               <Route path="/support/knowledge-base/:slug" element={<PublicKnowledgeBasePage />} />
@@ -178,8 +184,10 @@ function App() {
               {/* ========================================
                   AUTH & ONBOARDING ROUTES
                   ======================================== */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/admin/signin" element={<LoginPage />} />
+              <Route path="/login" element={<PortalSelectorPage />} />
+              <Route path="/login/client" element={<ClientLoginPage />} />
+              <Route path="/login/admin" element={<AdminLoginPage />} />
+              <Route path="/admin/signin" element={<AdminLoginPage />} /> {/* Legacy admin route */}
               <Route path="/set-password" element={<SetPasswordPage />} />
               <Route path="/intake/start" element={<IntakePage />} />
               <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
