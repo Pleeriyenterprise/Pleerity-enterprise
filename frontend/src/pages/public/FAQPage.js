@@ -1,75 +1,82 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
-import { HelpCircle } from 'lucide-react';
+import { ChevronDown, HelpCircle, Mail, Phone } from 'lucide-react';
 
 const FAQPage = () => {
-  const faqs = [
-    {
-      question: 'What is Compliance Vault Pro?',
-      answer: 'Compliance Vault Pro is an all-in-one compliance management platform for UK landlords, helping you track requirements, store documents, and stay audit-ready.'
-    },
-    {
-      question: 'How does pricing work?',
-      answer: 'We offer flexible pricing plans to suit portfolios of all sizes. Visit our pricing page for detailed information on our Starter, Growth, and Enterprise plans.'
-    },
-    {
-      question: 'Is my data secure?',
-      answer: 'Yes. We use bank-level encryption, are GDPR compliant, and store all data securely in UK-based servers with 24/7 monitoring.'
-    },
-    {
-      question: 'Can I try before I buy?',
-      answer: 'Yes! Contact us to arrange a demo or start with our intake wizard to see how the system works.'
-    },
-  ];
+  const [faqs, setFaqs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState({});
+
+  useEffect(() => {
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/faqs`)
+      .then(res => res.json())
+      .then(data => setFaqs(data))
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const grouped = faqs.reduce((acc, faq) => {
+    if (!acc[faq.category]) acc[faq.category] = [];
+    acc[faq.category].push(faq);
+    return acc;
+  }, {});
 
   return (
     <PublicLayout>
-      <SEOHead
-        title="Frequently Asked Questions | Pleerity"
-        description="Common questions about Pleerity's compliance management platform and services."
-        canonicalUrl="/faq"
-      />
-
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="inline-flex items-center px-4 py-2 rounded-full bg-electric-teal/10 text-electric-teal text-sm font-medium mb-6">
-          <HelpCircle className="w-4 h-4 mr-2" />
-          FAQ
+      <SEOHead title="FAQ" canonicalUrl="/faq" />
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <HelpCircle className="w-12 h-12 text-electric-teal mx-auto mb-4" />
+          <h1 className="text-4xl font-bold text-midnight-blue mb-4">Clear Answers. No Guesswork.</h1>
+          <p className="text-lg text-gray-600">
+            We believe transparency builds trust. Here are the questions clients ask most before starting with Pleerity.
+          </p>
         </div>
-        
-        <h1 className="text-4xl sm:text-5xl font-bold text-midnight-blue mb-4">
-          Frequently Asked Questions
-        </h1>
-        
-        <p className="text-lg text-gray-600 mb-12">
-          Find answers to common questions about our platform and services.
-        </p>
 
-        <div className="space-y-8">
-          {faqs.map((faq, index) => (
-            <div key={index} className="border-b border-gray-200 pb-6">
-              <h3 className="text-xl font-semibold text-midnight-blue mb-3">
-                {faq.question}
-              </h3>
-              <p className="text-gray-600">
-                {faq.answer}
-              </p>
+        {loading ? <div className="text-center">Loading...</div> : (
+          <div className="space-y-12">
+            {Object.keys(grouped).map(cat => (
+              <div key={cat}>
+                <h2 className="text-2xl font-bold text-midnight-blue mb-6 pb-3 border-b-2 border-electric-teal">{cat}</h2>
+                <div className="space-y-3">
+                  {grouped[cat].map(faq => (
+                    <div key={faq.faq_id} className="border rounded-lg hover:border-electric-teal transition-colors">
+                      <button
+                        onClick={() => setOpen({...open, [faq.faq_id]: !open[faq.faq_id]})}
+                        className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50"
+                      >
+                        <h3 className="text-lg font-semibold text-midnight-blue pr-4">{faq.question}</h3>
+                        <ChevronDown className={`w-5 h-5 text-electric-teal transition-transform ${open[faq.faq_id] ? 'rotate-180' : ''}`} />
+                      </button>
+                      {open[faq.faq_id] && (
+                        <div className="px-6 py-4 bg-gray-50 border-t">
+                          <p className="text-gray-700">{faq.answer}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-16 bg-gray-50 rounded-lg p-8 text-center">
+          <h3 className="text-2xl font-bold text-midnight-blue mb-3">Still Have Questions?</h3>
+          <p className="text-gray-600 mb-6">Contact us:</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-electric-teal" />
+              <a href="mailto:info@pleerityenterprise.co.uk" className="hover:text-electric-teal">info@pleerityenterprise.co.uk</a>
             </div>
-          ))}
+            <div className="flex items-center gap-2">
+              <Phone className="w-5 h-5 text-electric-teal" />
+              <span>020 3337 6060</span>
+            </div>
+          </div>
         </div>
-
-        <div className="mt-12 text-center bg-gray-50 rounded-lg p-8">
-          <h3 className="text-xl font-semibold text-midnight-blue mb-3">
-            Still have questions?
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Our support team is here to help.
-          </p>
-          <p className="text-gray-600">
-            Email: <a href="mailto:info@pleerityenterprise.co.uk" className="text-electric-teal hover:underline">info@pleerityenterprise.co.uk</a>
-          </p>
-        </div>
-      </section>
+      </div>
     </PublicLayout>
   );
 };

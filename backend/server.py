@@ -632,7 +632,8 @@ app.include_router(marketing.router)  # Marketing Website CMS
 app.include_router(admin_legal_content.router)  # Legal Content Editor
 app.include_router(talent_pool.router)  # Talent Pool
 app.include_router(partnerships.router)  # Partnerships
-app.include_router(admin_modules.router)  # Contact/FAQ/Newsletter/Feedback
+app.include_router(admin_modules.router)  # Public endpoints (contact, newsletter, feedback)
+app.include_router(admin_modules.router_admin)  # Admin endpoints
 
 # ============================================================================
 # ClearForm Routes - Separate Product (Isolated)

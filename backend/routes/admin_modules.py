@@ -12,33 +12,54 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin", tags=["admin-modules"])
+# Create two separate routers - one for public, one for admin
+router = APIRouter(tags=["public-modules"])
+router_admin = APIRouter(prefix="/api/admin", tags=["admin-modules"])
 
-# Contact Enquiries
+# Contact Enquiries - PUBLIC endpoint
 class ContactEnquiryRequest(BaseModel):
     full_name: str
     email: str
     phone: Optional[str] = None
     subject: str
     message: str
+    company_name: Optional[str] = None
+    contact_reason: Optional[str] = None
 
-@router.post("/contact/submit")
+@router.post("/api/public/contact")
 async def submit_contact_enquiry(data: ContactEnquiryRequest):
+    """Public endpoint for contact form."""
     db = database.get_db()
-    enquiry = ContactEnquiry(**data.dict())
+    enquiry = ContactEnquiry(
+        full_name=data.full_name,
+        email=data.email,
+        phone=data.phone,
+        subject=data.subject,
+        message=data.message
+    )
     doc = enquiry.dict()
     for k in ['created_at','updated_at','replied_at']:
         if doc.get(k): doc[k] = doc[k].isoformat() if hasattr(doc[k],'isoformat') else doc[k]
     await db.contact_enquiries.insert_one(doc)
+    
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role="PUBLIC",
+        metadata={"action_type": "CONTACT_ENQUIRY_SUBMITTED", "enquiry_id": enquiry.enquiry_id, "email": enquiry.email}
+    )
+    
     return {"success": True, "enquiry_id": enquiry.enquiry_id}
 
-@router.get("/contact/enquiries", dependencies=[Depends(admin_route_guard)])
+# ADMIN endpoints
+router_admin = APIRouter(prefix="/api/admin", tags=["admin-modules"])
+
+@router_admin.get("/contact/enquiries", dependencies=[Depends(admin_route_guard)])
 async def list_contact_enquiries(status: Optional[str] = None, current_user: dict = Depends(admin_route_guard)):
     db = database.get_db()
     query = {"status": status} if status else {}
     return await db.contact_enquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
 
-@router.get("/contact/enquiries/{id}", dependencies=[Depends(admin_route_guard)])
+@router_admin.get("/contact/enquiries/{id}", dependencies=[Depends(admin_route_guard)])
 async def get_contact_enquiry(id: str, current_user: dict = Depends(admin_route_guard)):
     db = database.get_db()
     e = await db.contact_enquiries.find_one({"enquiry_id": id}, {"_id": 0})
@@ -49,7 +70,7 @@ class ContactReplyRequest(BaseModel):
     reply_message: str
     status: str
 
-@router.post("/contact/enquiries/{id}/reply", dependencies=[Depends(admin_route_guard)])
+@router_admin.post("/contact/enquiries/{id}/reply", dependencies=[Depends(admin_route_guard)])
 async def reply_contact_enquiry(id: str, data: ContactReplyRequest, current_user: dict = Depends(admin_route_guard)):
     db = database.get_db()
     await db.contact_enquiries.update_one({"enquiry_id": id}, {"$set": {
@@ -59,8 +80,10 @@ async def reply_contact_enquiry(id: str, data: ContactReplyRequest, current_user
     return {"success": True}
 
 # FAQ Management
-@router.get("/faqs")
-async def list_faqs():
+# FAQ - PUBLIC endpoint
+@router.get("/api/faqs")
+async def list_public_faqs():
+    """Get active FAQs for public FAQ page."""
     db = database.get_db()
     return await db.faq_items.find({"is_active": True}, {"_id": 0}).sort("display_order", 1).to_list(1000)
 
@@ -98,8 +121,8 @@ async def delete_faq(id: str, current_user: dict = Depends(admin_route_guard)):
     await db.faq_items.delete_one({"faq_id": id})
     return {"success": True}
 
-# Newsletter
-@router.post("/newsletter/subscribe")
+# Newsletter - PUBLIC endpoint
+@router.post("/api/newsletter/subscribe")
 async def subscribe_newsletter(email: str, source: str = "website"):
     """Subscribe to newsletter and sync to Kit."""
     db = database.get_db()
@@ -153,9 +176,10 @@ async def list_newsletter_subscribers(current_user: dict = Depends(admin_route_g
     db = database.get_db()
     return await db.newsletter_subscribers.find({}, {"_id": 0}).sort("subscribed_at", -1).to_list(10000)
 
-# Insights Feedback
-@router.post("/feedback/submit")
+# Insights Feedback - PUBLIC endpoint
+@router.post("/api/feedback/submit")
 async def submit_feedback(article_slug: str, article_title: str, was_helpful: bool, comment: Optional[str] = None):
+    """Submit article feedback."""
     db = database.get_db()
     fb = InsightFeedback(article_slug=article_slug, article_title=article_title, was_helpful=was_helpful, comment=comment)
     doc = fb.dict()

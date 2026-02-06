@@ -16,7 +16,7 @@ const NewsletterPage = () => {
     const API_URL = process.env.REACT_APP_BACKEND_URL;
     
     try {
-      const response = await fetch(`${API_URL}/api/admin/newsletter/subscribe?email=${encodeURIComponent(email)}&source=newsletter_page`, {
+      const response = await fetch(`${API_URL}/api/newsletter/subscribe?email=${encodeURIComponent(email)}&source=newsletter_page`, {
         method: 'POST',
       });
       

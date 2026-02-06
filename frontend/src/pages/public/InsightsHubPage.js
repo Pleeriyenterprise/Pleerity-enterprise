@@ -498,7 +498,7 @@ const InsightsHubPage = () => {
                     Get the latest property insights delivered to your inbox.
                   </p>
                   <Button asChild className="w-full bg-electric-teal hover:bg-electric-teal/90">
-                    <Link to="/contact">Subscribe</Link>
+                    <Link to="/newsletter">Subscribe</Link>
                   </Button>
                 </CardContent>
               </Card>
