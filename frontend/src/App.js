@@ -118,6 +118,8 @@ import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
 import AdminLegalContentPage from './pages/AdminLegalContentPage';
 import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
+import AdminTalentPoolPage from './pages/AdminTalentPoolPage';
+import AdminPartnershipEnquiriesPage from './pages/AdminPartnershipEnquiriesPage';
 import AdminPostalTrackingPage from './pages/AdminPostalTrackingPage';
 import AdminConsentDashboard from './pages/AdminConsentDashboard';
 import AdminSiteBuilderPage from './pages/AdminSiteBuilderPage';
@@ -522,22 +524,10 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/admin/leads" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminLeadsPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/postal-tracking" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminPostalTrackingPage />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeadsPage /></ProtectedRoute>} />
+            <Route path="/admin/talent-pool" element={<ProtectedRoute requireAdmin><AdminTalentPoolPage /></ProtectedRoute>} />
+            <Route path="/admin/partnership-enquiries" element={<ProtectedRoute requireAdmin><AdminPartnershipEnquiriesPage /></ProtectedRoute>} />
+            <Route path="/admin/postal-tracking" element={<ProtectedRoute requireAdmin><AdminPostalTrackingPage /></ProtectedRoute>} />
             <Route 
               path="/admin/privacy/consent" 
               element={
