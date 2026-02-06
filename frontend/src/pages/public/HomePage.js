@@ -106,15 +106,6 @@ const HomePage = () => {
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Link>
                 </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-midnight-blue text-midnight-blue hover:bg-midnight-blue hover:text-white"
-                  asChild
-                  data-testid="hero-book-demo"
-                >
-                  <Link to="/booking">Book a Call</Link>
-                </Button>
               </div>
 
               {/* Trust Points */}
