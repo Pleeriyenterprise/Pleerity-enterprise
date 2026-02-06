@@ -6,8 +6,8 @@ const TermsPage = () => {
   return (
     <PublicLayout>
       <SEOHead
-        title="Terms of Service"
-        description="Pleerity Enterprise Ltd terms of service. Read the terms and conditions for using Compliance Vault Pro."
+        title="Terms of Service | Pleerity Enterprise Ltd"
+        description="Terms of Service governing the use of services provided by Pleerity Enterprise Ltd."
         canonicalUrl="/legal/terms"
         noIndex={false}
       />
@@ -15,118 +15,140 @@ const TermsPage = () => {
       <section className="py-16 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-midnight-blue mb-8">Terms of Service</h1>
-          <p className="text-gray-500 mb-8">Last updated: January 2026</p>
+          <p className="text-gray-600 mb-6">
+            These Terms of Service ("Terms") govern the use of services provided by Pleerity Enterprise Ltd 
+            ("we", "our", or "us"). By engaging our services, you ("Client") agree to comply with and be 
+            bound by these Terms. If you do not agree, please do not use our services.
+          </p>
 
-          <div className="prose prose-lg max-w-none text-gray-700">
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">1. Acceptance of Terms</h2>
-            <p>
-              By accessing or using Compliance Vault Pro ("the Service"), provided by Pleerity Enterprise Ltd 
-              ("we", "our", "us"), you agree to be bound by these Terms of Service. If you do not agree, 
-              please do not use the Service.
-            </p>
+          <div className="bg-gray-50 p-6 rounded-lg mb-8 text-sm">
+            <p className="font-semibold text-midnight-blue mb-2">Company Name: Pleerity Enterprise Ltd</p>
+            <p className="text-gray-700">Company No.: SC855023</p>
+            <p className="text-gray-700">Registered Address: 8 Valley Court, Hamilton ML3 8HW</p>
+            <p className="text-gray-700">Email: info@pleerityenterprise.co.uk</p>
+          </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">2. Description of Service</h2>
-            <p>
-              Compliance Vault Pro is a property compliance management platform that helps landlords and 
-              letting agents track compliance requirements, store documents, and receive reminders.
-            </p>
+          <div className="prose prose-lg max-w-none text-gray-700 space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">1. Services Provided</h2>
+              <p>
+                Pleerity Enterprise Ltd provides AI-powered workflow automation, compliance and documentation 
+                services for landlords, AI-enhanced market research for SMEs, document automation for 
+                professional firms, and professional cleaning services. Service details, inclusions, and fees 
+                are specified in proposals or service descriptions provided to clients.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">3. Account Registration</h2>
-            <p>To use the Service, you must:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Provide accurate and complete registration information</li>
-              <li>Maintain the security of your account credentials</li>
-              <li>Notify us immediately of any unauthorized access</li>
-              <li>Be at least 18 years of age</li>
-            </ul>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">2. Client Responsibilities</h2>
+              <p>
+                Clients are responsible for providing accurate, complete, and timely information necessary for 
+                the delivery of services. We are not liable for delays or outcomes caused by incorrect or 
+                incomplete data provided by the client.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">4. Subscription and Payment</h2>
-            <h3 className="text-xl font-semibold text-midnight-blue mt-6 mb-3">4.1 Fees</h3>
-            <p>
-              Subscription fees are charged monthly or annually as selected. Prices are in GBP and 
-              may be subject to VAT.
-            </p>
-            
-            <h3 className="text-xl font-semibold text-midnight-blue mt-6 mb-3">4.2 Billing</h3>
-            <p>
-              Payments are processed through Stripe. By providing payment information, you authorize 
-              us to charge your payment method for all fees incurred.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">3. Payments and Refunds</h2>
+              <p className="mb-3">
+                All payments must be made in accordance with the invoice or payment link provided. Payments are 
+                processed securely via Stripe or other approved platforms. Refunds are issued only in cases of 
+                proven service error or as outlined in specific service agreements. Once a digital document, 
+                report, or automation has been delivered, it is considered a completed service.
+              </p>
+            </div>
 
-            <h3 className="text-xl font-semibold text-midnight-blue mt-6 mb-3">4.3 Cancellation</h3>
-            <p>
-              You may cancel your subscription at any time. Access continues until the end of the 
-              current billing period.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">4. Cancellations</h2>
+              <p>
+                Clients may cancel services prior to commencement by providing written notice. Once processing 
+                or automation setup has begun, cancellation may not be eligible for refund. We reserve the right 
+                to cancel or suspend services in the event of non-payment or breach of these Terms.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">5. Acceptable Use</h2>
-            <p>You agree not to:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Use the Service for any unlawful purpose</li>
-              <li>Upload malicious content or viruses</li>
-              <li>Attempt to gain unauthorized access</li>
-              <li>Interfere with or disrupt the Service</li>
-              <li>Resell or redistribute the Service without permission</li>
-            </ul>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">5. Intellectual Property</h2>
+              <p>
+                All templates, systems, reports, and automation designs created by Pleerity Enterprise Ltd remain 
+                our intellectual property, unless expressly transferred in writing. Clients are granted a 
+                non-exclusive, non-transferable licence to use delivered documents or reports for their own 
+                lawful business purposes.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">6. Intellectual Property</h2>
-            <p>
-              The Service, including all content, features, and functionality, is owned by 
-              Pleerity Enterprise Ltd and protected by intellectual property laws.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">6. Confidentiality</h2>
+              <p>
+                Both parties agree to maintain confidentiality of all business, personal, or technical information 
+                shared during service delivery. We will not disclose client information to any third party except 
+                as required by law or to fulfil service obligations through approved partners.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">7. Your Content</h2>
-            <p>
-              You retain ownership of documents and data you upload. By uploading content, you grant 
-              us a licence to store, process, and display it as necessary to provide the Service.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">7. Limitation of Liability</h2>
+              <p>
+                To the maximum extent permitted by law, Pleerity Enterprise Ltd shall not be liable for any 
+                indirect, incidental, or consequential damages arising from the use of our services. Our total 
+                liability shall not exceed the amount paid by the client for the specific service in question.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">8. Disclaimer</h2>
-            <p>
-              <strong>The Service is provided "as is" without warranties of any kind.</strong> While we 
-              strive for accuracy, we do not guarantee that compliance reminders will be error-free. 
-              You remain responsible for your own compliance obligations.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">Service Scope Updates</h2>
+              <p className="mb-3">
+                Pleerity Enterprise Ltd reserves the right to update, modify, or discontinue any aspect of its 
+                services, pricing, or delivery scope at any time, provided such changes do not materially diminish 
+                the core functionality of an ongoing service for which the client has already paid.
+              </p>
+              <p>
+                Clients will be notified of significant updates via email or website notice. Continued use of the 
+                service after such notice constitutes acceptance of the updated scope.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">9. Limitation of Liability</h2>
-            <p>
-              To the maximum extent permitted by law, Pleerity Enterprise Ltd shall not be liable for 
-              any indirect, incidental, special, consequential, or punitive damages, including but not 
-              limited to fines, penalties, or losses arising from missed compliance deadlines.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">8. Termination of Services</h2>
+              <p>
+                We may suspend or terminate services without liability if the client breaches these Terms, provides 
+                misleading information, or uses our services for unlawful purposes.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">10. Indemnification</h2>
-            <p>
-              You agree to indemnify and hold harmless Pleerity Enterprise Ltd from any claims arising 
-              from your use of the Service or violation of these Terms.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">9. Data Protection</h2>
+              <p>
+                We comply with UK GDPR and process all personal data in accordance with our Privacy Policy. By 
+                using our services, clients consent to such processing as described in that policy.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">11. Termination</h2>
-            <p>
-              We may suspend or terminate your access to the Service at any time for violation of 
-              these Terms or for any other reason at our discretion.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">10. Governing Law</h2>
+              <p>
+                These Terms are governed by and construed in accordance with the laws of Scotland and the United 
+                Kingdom. Any disputes shall be subject to the exclusive jurisdiction of the Scottish courts.
+              </p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">12. Governing Law</h2>
-            <p>
-              These Terms are governed by the laws of England and Wales. Any disputes shall be 
-              subject to the exclusive jurisdiction of the courts of England and Wales.
-            </p>
+            <div>
+              <h2 className="text-2xl font-bold text-midnight-blue mb-4">11. Contact Information</h2>
+              <p className="mb-3">For questions about these Terms, please contact:</p>
+              <p className="mb-2">
+                📧 <a href="mailto:info@pleerityenterprise.co.uk" className="text-electric-teal hover:underline">
+                  info@pleerityenterprise.co.uk
+                </a>
+              </p>
+              <p>📍 8 Valley Court, Hamilton ML3 8HW</p>
+            </div>
 
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">13. Changes to Terms</h2>
-            <p>
-              We reserve the right to modify these Terms at any time. We will notify you of 
-              significant changes via email or through the Service.
-            </p>
-
-            <h2 className="text-2xl font-bold text-midnight-blue mt-8 mb-4">14. Contact</h2>
-            <p>
-              For questions about these Terms, contact us at:
-            </p>
-            <p className="mt-2">
-              <strong>Email:</strong> legal@pleerityenterprise.co.uk<br />
-              <strong>Address:</strong> Pleerity Enterprise Ltd, United Kingdom
-            </p>
+            <div className="mt-12 pt-8 border-t border-gray-200 text-center">
+              <p className="text-gray-600">
+                Pleerity Enterprise Ltd – AI-Driven Solutions & Compliance
+              </p>
+              <p className="text-sm text-gray-500 mt-2">Last updated: January 2026</p>
+            </div>
           </div>
         </div>
       </section>
