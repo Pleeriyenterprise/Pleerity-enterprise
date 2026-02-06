@@ -113,6 +113,7 @@ import AdminIntakeSchemaPage from './pages/AdminIntakeSchemaPage';
 import AdminAnalyticsDashboard from './pages/AdminAnalyticsDashboard';
 import AdminSupportPage from './pages/AdminSupportPage';
 import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
+import AdminLegalContentPage from './pages/AdminLegalContentPage';
 import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
 import AdminPostalTrackingPage from './pages/AdminPostalTrackingPage';
