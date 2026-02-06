@@ -26,6 +26,8 @@ import {
   ContactPage,
   CareersPage,
   PartnershipsPage,
+  TalentPoolWizard,
+  PartnershipEnquiryForm,
   PrivacyPage,
   TermsPage,
   CookiePolicyPage,
@@ -166,7 +168,9 @@ function App() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/careers" element={<CareersPage />} />
+              <Route path="/careers/talent-pool" element={<TalentPoolWizard />} />
               <Route path="/partnerships" element={<PartnershipsPage />} />
+              <Route path="/partnerships/enquiry" element={<PartnershipEnquiryForm />} />
               <Route path="/legal/privacy" element={<PrivacyPage />} />
               <Route path="/legal/terms" element={<TermsPage />} />
               <Route path="/legal/cookies" element={<CookiePolicyPage />} />
