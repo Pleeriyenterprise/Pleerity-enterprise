@@ -15,6 +15,7 @@ export { default as CareersPage } from './CareersPage';
 export { default as PartnershipsPage } from './PartnershipsPage';
 export { default as PrivacyPage } from './PrivacyPage';
 export { default as TermsPage } from './TermsPage';
+export { default as CookiePolicyPage } from './CookiePolicyPage';
 
 // CMS-Driven Marketing Pages
 export { default as ServicesHubPageCMS } from './ServicesHubPageCMS';

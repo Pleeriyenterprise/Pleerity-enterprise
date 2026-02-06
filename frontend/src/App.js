@@ -28,6 +28,7 @@ import {
   PartnershipsPage,
   PrivacyPage,
   TermsPage,
+  CookiePolicyPage,
   ServicesHubPageCMS,
   CategoryPageCMS,
   ServicePageCMS,
@@ -167,6 +168,7 @@ function App() {
               <Route path="/partnerships" element={<PartnershipsPage />} />
               <Route path="/legal/privacy" element={<PrivacyPage />} />
               <Route path="/legal/terms" element={<TermsPage />} />
+              <Route path="/legal/cookies" element={<CookiePolicyPage />} />
               
               {/* New Marketing Pages */}
               <Route path="/products/assurestack" element={<AssureStackPage />} />

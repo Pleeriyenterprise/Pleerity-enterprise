@@ -65,14 +65,18 @@ const PublicFooter = () => {
               <p>{contactInfo.phone}</p>
               <div className="flex items-center gap-3 pt-2">
                 <a 
-                  href="#" 
+                  href="https://www.facebook.com/pleerityenterpriseltd" 
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-8 h-8 rounded-full bg-white/10 hover:bg-electric-teal flex items-center justify-center transition-colors"
                   aria-label="Facebook"
                 >
                   <Facebook className="w-4 h-4" />
                 </a>
                 <a 
-                  href="#" 
+                  href="https://whatsapp.com/channel/0029Vb607bG4SpkA6x2wFx07" 
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-8 h-8 rounded-full bg-white/10 hover:bg-electric-teal flex items-center justify-center transition-colors"
                   aria-label="WhatsApp"
                 >
