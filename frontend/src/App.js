@@ -26,7 +26,6 @@ import {
   ContactPage,
   CareersPage,
   PartnershipsPage,
-  TalentPoolWizard,
   PrivacyPage,
   TermsPage,
   CookiePolicyPage,
@@ -117,7 +116,6 @@ import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
 import AdminLegalContentPage from './pages/AdminLegalContentPage';
 import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
-import AdminTalentPoolPage from './pages/AdminTalentPoolPage';
 import AdminPostalTrackingPage from './pages/AdminPostalTrackingPage';
 import AdminConsentDashboard from './pages/AdminConsentDashboard';
 import AdminSiteBuilderPage from './pages/AdminSiteBuilderPage';
@@ -168,7 +166,6 @@ function App() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/careers" element={<CareersPage />} />
-              <Route path="/careers/talent-pool" element={<TalentPoolWizard />} />
               <Route path="/partnerships" element={<PartnershipsPage />} />
               <Route path="/legal/privacy" element={<PrivacyPage />} />
               <Route path="/legal/terms" element={<TermsPage />} />
@@ -526,14 +523,6 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminLeadsPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/talent-pool" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminTalentPoolPage />
                 </ProtectedRoute>
               } 
             />

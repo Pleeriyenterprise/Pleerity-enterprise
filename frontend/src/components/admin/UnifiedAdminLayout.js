@@ -58,7 +58,6 @@ const navSections = [
     icon: Users,
     items: [
       { href: '/admin/leads', label: 'Lead Management', icon: Target, badge: 'leads' },
-      { href: '/admin/talent-pool', label: 'Talent Pool', icon: Briefcase },
       { href: '/admin/dashboard', label: 'Clients', icon: Users, tabTarget: 'clients' },
       { href: '/admin/orders', label: 'Orders Pipeline', icon: ClipboardCheck },
     ],
