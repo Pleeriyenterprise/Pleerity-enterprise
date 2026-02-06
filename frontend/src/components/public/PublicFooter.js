@@ -1,19 +1,27 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Facebook, MessageCircle } from 'lucide-react';
 
 const PublicFooter = () => {
   const currentYear = new Date().getFullYear();
 
+  const contactInfo = {
+    company: 'Pleerity Enterprise Ltd',
+    tagline: 'AI-Driven Solutions & Compliance',
+    email: 'info@pleerityenterprise.co.uk',
+    phone: '020 3337 6060',
+  };
+
   const platformLinks = [
-    { href: '/compliance-vault-pro', label: 'Compliance Vault Pro' },
-    { href: '/pricing', label: 'Pricing' },
-    { href: '/booking', label: 'Book a Demo' },
+    { href: '/', label: 'Compliance Vault Pro' },
+    { href: '/clearform', label: 'ClearForm' },
+    { href: '/products/assurestack', label: 'AssureStack' },
   ];
 
   const serviceLinks = [
     { href: '/services/ai-automation', label: 'AI & Automation' },
     { href: '/services/market-research', label: 'Market Research' },
-    { href: '/services/document-packs', label: 'Document Packs' },
+    { href: '/services/document-packs', label: 'Document Automation' },
     { href: '/services/compliance-audits', label: 'Compliance Audits' },
   ];
 
@@ -27,41 +35,64 @@ const PublicFooter = () => {
   const legalLinks = [
     { href: '/legal/privacy', label: 'Privacy Policy' },
     { href: '/legal/terms', label: 'Terms of Service' },
+    { href: '/legal/cookies', label: 'Cookie Policy' },
+    { href: '/accessibility', label: 'Accessibility' },
+  ];
+
+  const supportLinks = [
+    { href: '/newsletter', label: 'Newsletter' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/pricing', label: 'Pricing' },
+    { href: '/login', label: 'Portal Login' },
   ];
 
   return (
     <footer className="bg-midnight-blue text-white">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
-          {/* Brand Column */}
-          <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            <div className="flex items-center space-x-2 mb-4">
-              <img 
-                src="/pleerity-logo.jpg" 
-                alt="Pleerity" 
-                className="h-10 w-auto"
-              />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
+          {/* Column 1: Contact */}
+          <div className="col-span-2 md:col-span-3 lg:col-span-1">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
+              Contact
+            </h3>
+            <div className="space-y-3 text-sm text-gray-400">
+              <p className="font-semibold text-white">{contactInfo.company}</p>
+              <p className="text-xs text-gray-500">{contactInfo.tagline}</p>
+              <p className="hover:text-electric-teal transition-colors">
+                <a href={`mailto:${contactInfo.email}`}>{contactInfo.email}</a>
+              </p>
+              <p>{contactInfo.phone}</p>
+              <div className="flex items-center gap-3 pt-2">
+                <a 
+                  href="#" 
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-electric-teal flex items-center justify-center transition-colors"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="w-4 h-4" />
+                </a>
+                <a 
+                  href="#" 
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-electric-teal flex items-center justify-center transition-colors"
+                  aria-label="WhatsApp"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                </a>
+              </div>
             </div>
-            <p className="text-gray-400 text-sm mb-4">
-              AI-Driven Solutions & Compliance
-            </p>
-            <p className="text-gray-500 text-xs">
-              Pleerity Enterprise Ltd
-            </p>
           </div>
 
-          {/* Platform Links */}
+          {/* Column 2: Platforms */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
-              Platform
+              Platforms
             </h3>
             <ul className="space-y-3">
               {platformLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     to={link.href}
-                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm"
+                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm block"
                   >
                     {link.label}
                   </Link>
@@ -70,7 +101,7 @@ const PublicFooter = () => {
             </ul>
           </div>
 
-          {/* Services Links */}
+          {/* Column 3: Services */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
               Services
@@ -80,7 +111,7 @@ const PublicFooter = () => {
                 <li key={link.href}>
                   <Link
                     to={link.href}
-                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm"
+                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm block"
                   >
                     {link.label}
                   </Link>
@@ -89,7 +120,7 @@ const PublicFooter = () => {
             </ul>
           </div>
 
-          {/* Company Links */}
+          {/* Column 4: Company */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
               Company
@@ -99,7 +130,7 @@ const PublicFooter = () => {
                 <li key={link.href}>
                   <Link
                     to={link.href}
-                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm"
+                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm block"
                   >
                     {link.label}
                   </Link>
@@ -108,7 +139,7 @@ const PublicFooter = () => {
             </ul>
           </div>
 
-          {/* Legal Links */}
+          {/* Column 5: Legal */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
               Legal
@@ -118,7 +149,26 @@ const PublicFooter = () => {
                 <li key={link.href}>
                   <Link
                     to={link.href}
-                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm"
+                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm block"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Column 6: Support */}
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
+              Support
+            </h3>
+            <ul className="space-y-3">
+              {supportLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    to={link.href}
+                    className="text-gray-400 hover:text-electric-teal transition-colors text-sm block"
                   >
                     {link.label}
                   </Link>
@@ -132,12 +182,12 @@ const PublicFooter = () => {
       {/* Bottom Bar */}
       <div className="border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-2 md:space-y-0">
             <p className="text-gray-500 text-sm">
               &copy; {currentYear} Pleerity Enterprise Ltd. All rights reserved.
             </p>
             <p className="text-gray-500 text-xs">
-              Registered in England and Wales
+              Registered in Scotland | Company No. SC855023
             </p>
           </div>
         </div>
