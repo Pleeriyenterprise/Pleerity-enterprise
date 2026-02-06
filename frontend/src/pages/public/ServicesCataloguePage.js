@@ -379,23 +379,13 @@ const ServicesCataloguePage = () => {
           <p className="text-lg text-gray-300 mb-8">
             Can&apos;t find exactly what you need? Our team can create bespoke reports and document packs tailored to your requirements.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="bg-electric-teal hover:bg-electric-teal/90 text-white"
-              asChild
-            >
-              <Link to="/contact">Contact Us</Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white text-white hover:bg-white hover:text-midnight-blue"
-              asChild
-            >
-              <Link to="/booking">Book a Consultation</Link>
-            </Button>
-          </div>
+          <Button
+            size="lg"
+            className="bg-electric-teal hover:bg-electric-teal/90 text-white"
+            asChild
+          >
+            <Link to="/contact">Contact Us</Link>
+          </Button>
         </div>
       </section>
     </PublicLayout>
