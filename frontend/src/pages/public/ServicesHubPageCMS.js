@@ -198,28 +198,16 @@ const ServicesHubPageCMS = () => {
           <p className="text-gray-300 mb-8 text-lg">
             Our team can help you identify the right solution for your business needs.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="bg-electric-teal hover:bg-electric-teal/90 text-white"
-              asChild
-            >
-              <Link to="/contact">
-                Contact Us
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white text-white hover:bg-white/10"
-              asChild
-            >
-              <Link to="/booking">
-                Book a Consultation
-              </Link>
-            </Button>
-          </div>
+          <Button
+            size="lg"
+            className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+            asChild
+          >
+            <Link to="/contact">
+              Contact Us
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </Button>
         </div>
       </section>
     </PublicLayout>
