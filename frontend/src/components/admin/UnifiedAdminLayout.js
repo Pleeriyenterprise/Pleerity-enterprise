@@ -34,6 +34,7 @@ import {
   Cookie,
   FileSignature,
   Briefcase,
+  Handshake,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
