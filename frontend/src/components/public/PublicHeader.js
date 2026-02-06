@@ -18,10 +18,10 @@ const PublicHeader = () => {
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-  // Products dropdown - CVP and ClearForm as separate products
-  const productLinks = [
+  // Platforms dropdown - Flagship products
+  const platformLinks = [
     { 
-      href: '/compliance-vault-pro', 
+      href: '/', 
       label: 'Compliance Vault Pro', 
       description: 'All-in-one compliance management for landlords',
       icon: Shield,
@@ -32,7 +32,14 @@ const PublicHeader = () => {
       label: 'ClearForm', 
       description: 'AI-powered document creation for individuals & small businesses',
       icon: FileText,
-      badge: 'New',
+      badge: 'Coming Soon',
+    },
+    { 
+      href: '/products/assurestack', 
+      label: 'AssureStack', 
+      description: 'Always on. Always watching. (coming soon)',
+      icon: Shield,
+      badge: 'Coming Soon',
     },
   ];
 
