@@ -67,14 +67,14 @@ const PublicHeader = () => {
           <nav className="hidden lg:flex items-center space-x-1">
             <NavigationMenu>
               <NavigationMenuList>
-                {/* Products Dropdown */}
+                {/* Platforms Dropdown */}
                 <NavigationMenuItem>
                   <NavigationMenuTrigger className="text-gray-700 hover:text-midnight-blue">
-                    Products
+                    Platforms
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <ul className="grid w-[450px] gap-3 p-4">
-                      {productLinks.map((link) => {
+                      {platformLinks.map((link) => {
                         const Icon = link.icon;
                         return (
                           <li key={link.href}>
@@ -176,14 +176,15 @@ const PublicHeader = () => {
             </NavigationMenu>
           </nav>
 
-          {/* CTA Buttons */}
+          {/* Portal Login Link */}
           <div className="hidden lg:flex items-center space-x-3">
-            <Button variant="ghost" asChild data-testid="header-login-btn">
-              <Link to="/login">Login</Link>
-            </Button>
-            <Button className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild data-testid="header-book-btn">
-              <Link to="/booking">Book a Call</Link>
-            </Button>
+            <Link 
+              to="/login" 
+              className="text-gray-700 hover:text-electric-teal font-medium text-sm transition-colors"
+              data-testid="header-portal-login"
+            >
+              Portal Login
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
