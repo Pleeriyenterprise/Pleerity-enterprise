@@ -5,7 +5,7 @@ with full audit trail and version control
 """
 from fastapi import APIRouter, HTTPException, Depends
 from database import database
-from auth_middleware import admin_route_guard
+from middleware import admin_route_guard
 from models import AuditAction
 from utils.audit import create_audit_log
 from datetime import datetime, timezone
