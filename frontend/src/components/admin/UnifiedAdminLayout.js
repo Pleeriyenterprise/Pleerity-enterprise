@@ -92,6 +92,7 @@ const navSections = [
       { href: '/admin/knowledge-base', label: 'Knowledge Base', icon: BookOpen },
       { href: '/admin/blog', label: 'Blog / Insights', icon: FileText },
       { href: '/admin/support/responses', label: 'Canned Responses', icon: MessageSquare },
+      { href: '/admin/settings/legal', label: 'Legal Pages', icon: FileSignature },
     ],
   },
   {
@@ -112,7 +113,6 @@ const navSections = [
       { href: '/admin/prompts', label: 'Prompt Manager', icon: Sparkles },
       { href: '/admin/enablement', label: 'Enablement Engine', icon: Zap },
       { href: '/admin/privacy/consent', label: 'Privacy & Consent', icon: Cookie },
-      { href: '/admin/settings/legal', label: 'Legal Pages', icon: FileSignature },
       { href: '/admin/dashboard', label: 'Automation Rules', icon: Settings, tabTarget: 'rules' },
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
       { href: '/admin/dashboard', label: 'Audit Logs', icon: History, tabTarget: 'audit' },

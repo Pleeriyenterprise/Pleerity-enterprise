@@ -19,6 +19,8 @@ const AdminLegalContentPage = () => {
     terms: { slug: 'terms', title: 'Terms of Service', content: '', version: 0 },
     cookies: { slug: 'cookies', title: 'Cookie Policy', content: '', version: 0 },
     accessibility: { slug: 'accessibility', title: 'Accessibility Statement', content: '', version: 0 },
+    careers: { slug: 'careers', title: 'Careers', content: '', version: 0 },
+    partnerships: { slug: 'partnerships', title: 'Partnerships', content: '', version: 0 },
   });
 
   const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -117,10 +119,12 @@ const AdminLegalContentPage = () => {
   };
 
   const tabs = [
-    { value: 'privacy', label: 'Privacy Policy', icon: FileText },
-    { value: 'terms', label: 'Terms', icon: FileText },
-    { value: 'cookies', label: 'Cookies', icon: FileText },
-    { value: 'accessibility', label: 'Accessibility', icon: FileText },
+    { value: 'privacy', label: 'Privacy Policy', icon: FileText, category: 'Legal' },
+    { value: 'terms', label: 'Terms', icon: FileText, category: 'Legal' },
+    { value: 'cookies', label: 'Cookies', icon: FileText, category: 'Legal' },
+    { value: 'accessibility', label: 'Accessibility', icon: FileText, category: 'Legal' },
+    { value: 'careers', label: 'Careers', icon: FileText, category: 'Marketing' },
+    { value: 'partnerships', label: 'Partnerships', icon: FileText, category: 'Marketing' },
   ];
 
   return (
@@ -143,10 +147,10 @@ const AdminLegalContentPage = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             {tabs.map(tab => (
-              <TabsTrigger key={tab.value} value={tab.value}>
-                <tab.icon className="w-4 h-4 mr-2" />
+              <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
+                <tab.icon className="w-4 h-4 mr-1" />
                 {tab.label}
               </TabsTrigger>
             ))}

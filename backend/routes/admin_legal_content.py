@@ -35,9 +35,10 @@ class LegalContentResponse(BaseModel):
 
 @router.get("/{slug}")
 async def get_legal_content(slug: str, current_user: dict = Depends(admin_route_guard)):
-    """Get current legal content by slug."""
+    """Get current legal/marketing content by slug."""
     db = database.get_db()
     
+    # Support both legal and marketing pages
     legal_content = await db.legal_content.find_one(
         {"slug": slug},
         {"_id": 0}
@@ -59,7 +60,7 @@ async def get_legal_content(slug: str, current_user: dict = Depends(admin_route_
 
 @router.get("")
 async def list_legal_content(current_user: dict = Depends(admin_route_guard)):
-    """List all legal content pages."""
+    """List all legal/marketing content pages."""
     db = database.get_db()
     
     content_list = await db.legal_content.find(
@@ -67,15 +68,15 @@ async def list_legal_content(current_user: dict = Depends(admin_route_guard)):
         {"_id": 0}
     ).to_list(100)
     
-    # Ensure all required slugs exist
-    required_slugs = ['privacy', 'terms', 'cookies', 'accessibility']
+    # Ensure all required slugs exist (legal + marketing)
+    required_slugs = ['privacy', 'terms', 'cookies', 'accessibility', 'careers', 'partnerships']
     existing_slugs = {item['slug'] for item in content_list}
     
     for slug in required_slugs:
         if slug not in existing_slugs:
             content_list.append({
                 "slug": slug,
-                "title": f"{slug.title()} Policy",
+                "title": f"{slug.title()} Page",
                 "content": "",
                 "version": 0,
                 "updated_at": None,
@@ -176,7 +177,7 @@ async def reset_to_default(slug: str, current_user: dict = Depends(admin_route_g
     """
     db = database.get_db()
     
-    # Define default content (this can be expanded)
+    # Define default content (legal + marketing pages)
     defaults = {
         "privacy": {
             "title": "Privacy Policy",
@@ -193,6 +194,14 @@ async def reset_to_default(slug: str, current_user: dict = Depends(admin_route_g
         "accessibility": {
             "title": "Accessibility Statement",
             "content": "# Accessibility Statement\n\nPlaceholder content. Please update via admin panel."
+        },
+        "careers": {
+            "title": "Careers",
+            "content": "# Careers\n\nPlaceholder content. Please update via admin panel."
+        },
+        "partnerships": {
+            "title": "Partnerships",
+            "content": "# Partnerships\n\nPlaceholder content. Please update via admin panel."
         }
     }
     
