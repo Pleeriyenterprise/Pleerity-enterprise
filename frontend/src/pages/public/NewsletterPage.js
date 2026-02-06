@@ -10,17 +10,25 @@ const NewsletterPage = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Store in localStorage for now (can be replaced with API call later)
-    const subscribers = JSON.parse(localStorage.getItem('newsletter_subscribers') || '[]');
-    subscribers.push({
-      email,
-      subscribedAt: new Date().toISOString()
-    });
-    localStorage.setItem('newsletter_subscribers', JSON.stringify(subscribers));
-    setSubscribed(true);
-    setEmail('');
+    
+    const API_URL = process.env.REACT_APP_BACKEND_URL;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/admin/newsletter/subscribe?email=${encodeURIComponent(email)}&source=newsletter_page`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        setSubscribed(true);
+        setEmail('');
+      } else {
+        alert('Subscription failed. Please try again.');
+      }
+    } catch (error) {
+      alert('Network error. Please try again.');
+    }
   };
 
   return (

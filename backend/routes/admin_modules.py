@@ -100,16 +100,53 @@ async def delete_faq(id: str, current_user: dict = Depends(admin_route_guard)):
 
 # Newsletter
 @router.post("/newsletter/subscribe")
-async def subscribe_newsletter(email: str):
+async def subscribe_newsletter(email: str, source: str = "website"):
+    """Subscribe to newsletter and sync to Kit."""
     db = database.get_db()
+    
+    # Check if already exists
     existing = await db.newsletter_subscribers.find_one({"email": email}, {"_id": 0})
-    if existing: return {"success": True, "message": "Already subscribed"}
-    sub = NewsletterSubscriber(email=email)
+    if existing:
+        return {"success": True, "message": "Already subscribed"}
+    
+    # Create subscriber
+    sub = NewsletterSubscriber(email=email, source=source)
+    
+    # Sync to Kit
+    from services.kit_integration import kit_integration
+    kit_success, kit_error = await kit_integration.add_subscriber(email, source)
+    
+    # Update sync status
+    if kit_success:
+        sub.kit_sync_status = "SYNCED"
+        sub.kit_synced_at = datetime.now(timezone.utc)
+    else:
+        sub.kit_sync_status = "FAILED"
+        sub.kit_sync_error = kit_error
+    
+    # Save to database regardless of Kit status
     doc = sub.dict()
-    for k in ['subscribed_at','unsubscribed_at']: 
-        if doc.get(k): doc[k] = doc[k].isoformat() if hasattr(doc[k],'isoformat') else doc[k]
+    for k in ['subscribed_at', 'unsubscribed_at', 'kit_synced_at']:
+        if doc.get(k):
+            doc[k] = doc[k].isoformat() if hasattr(doc[k], 'isoformat') else doc[k]
+    
     await db.newsletter_subscribers.insert_one(doc)
-    return {"success": True}
+    
+    # Audit log
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role="PUBLIC",
+        metadata={
+            "action_type": "NEWSLETTER_SUBSCRIBED",
+            "email": email,
+            "source": source,
+            "kit_sync_status": sub.kit_sync_status,
+        }
+    )
+    
+    logger.info(f"Newsletter subscription: {email} (source: {source}, Kit: {sub.kit_sync_status})")
+    
+    return {"success": True, "message": "Subscribed successfully"}
 
 @router.get("/newsletter/subscribers", dependencies=[Depends(admin_route_guard)])
 async def list_newsletter_subscribers(current_user: dict = Depends(admin_route_guard)):

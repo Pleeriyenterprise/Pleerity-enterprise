@@ -42,6 +42,9 @@ class NewsletterSubscriber(BaseModel):
     email: EmailStr
     status: str = "SUBSCRIBED"  # SUBSCRIBED, UNSUBSCRIBED, BOUNCED, BLOCKED
     source: str = "website"
+    kit_sync_status: str = "PENDING"  # PENDING, SYNCED, FAILED
+    kit_sync_error: Optional[str] = None
+    kit_synced_at: Optional[datetime] = None
     subscribed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     unsubscribed_at: Optional[datetime] = None
     

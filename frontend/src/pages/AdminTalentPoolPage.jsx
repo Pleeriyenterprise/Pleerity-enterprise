@@ -11,7 +11,7 @@ const AdminTalentPoolPage = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState('all');
   const [stats, setStats] = useState({});
   const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -20,7 +20,7 @@ const AdminTalentPoolPage = () => {
   const load = async () => {
     try {
       const params = new URLSearchParams();
-      if (filter) params.append('status', filter);
+      if (filter && filter !== 'all') params.append('status', filter);
       if (search) params.append('search', search);
       const res = await fetch(`${API}/api/talent-pool/admin/list?${params}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -61,9 +61,9 @@ const AdminTalentPoolPage = () => {
             <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
           <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="All" /></SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue placeholder="All statuses" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="NEW">New</SelectItem>
               <SelectItem value="REVIEWED">Reviewed</SelectItem>
               <SelectItem value="SHORTLISTED">Shortlisted</SelectItem>
