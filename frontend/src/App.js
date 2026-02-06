@@ -33,8 +33,17 @@ import {
   ServicePageCMS,
 } from './pages/public';
 
+// New public pages
+import AssureStackPage from './pages/public/AssureStackPage';
+import AccessibilityPage from './pages/public/AccessibilityPage';
+import FAQPage from './pages/public/FAQPage';
+import NewsletterPage from './pages/public/NewsletterPage';
+
 // Auth & Onboarding pages
-import LoginPage from './pages/LoginPage';
+import PortalSelectorPage from './pages/PortalSelectorPage';
+import ClientLoginPage from './pages/ClientLoginPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import LoginPage from './pages/LoginPage'; // Legacy - keep for backwards compatibility
 import SetPasswordPage from './pages/SetPasswordPage';
 import IntakePage from './pages/IntakePage';
 import OnboardingStatusPage from './pages/OnboardingStatusPage';
