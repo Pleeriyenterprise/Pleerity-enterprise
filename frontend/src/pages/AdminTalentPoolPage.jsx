@@ -156,11 +156,11 @@ const AdminTalentPoolPage = () => {
                       <td className=\"px-4 py-3 text-sm font-medium\">{sub.full_name}</td>
                       <td className=\"px-4 py-3 text-sm text-gray-600\">{sub.email}</td>
                       <td className=\"px-4 py-3 text-sm text-gray-600\">{sub.country}</td>
-                      <td className=\"px-4 py-3 text-xs\">
+                      <td className="px-4 py-3 text-xs">
                         {sub.interest_areas.slice(0, 2).map(area => (
-                          <div key={area} className=\"text-gray-600\">{area}</div>
+                          <div key={area} className="text-gray-600">{area}</div>
                         ))}
-                        {sub.interest_areas.length > 2 && <div className=\"text-gray-400\">+{sub.interest_areas.length - 2} more</div>}
+                        {sub.interest_areas.length > 2 && <div className="text-gray-400">+{sub.interest_areas.length - 2} more</div>}
                       </td>
                       <td className=\"px-4 py-3 text-sm text-gray-600\">{sub.years_experience}</td>
                       <td className=\"px-4 py-3\">
