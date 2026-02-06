@@ -13,6 +13,7 @@ export { default as AboutPage } from './AboutPage';
 export { default as ContactPage } from './ContactPage';
 export { default as CareersPage } from './CareersPage';
 export { default as PartnershipsPage } from './PartnershipsPage';
+export { default as TalentPoolWizard } from './TalentPoolWizard';
 export { default as PrivacyPage } from './PrivacyPage';
 export { default as TermsPage } from './TermsPage';
 export { default as CookiePolicyPage } from './CookiePolicyPage';
