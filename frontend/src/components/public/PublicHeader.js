@@ -202,10 +202,10 @@ const PublicHeader = () => {
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-t border-gray-200">
           <div className="px-4 py-4 space-y-4">
-            {/* Products Section */}
+            {/* Platforms Section */}
             <div>
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Products</div>
-              {productLinks.map((link) => (
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Platforms</div>
+              {platformLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
@@ -214,7 +214,7 @@ const PublicHeader = () => {
                 >
                   <span>{link.label}</span>
                   {link.badge && (
-                    <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full">
                       {link.badge}
                     </span>
                   )}
@@ -253,13 +253,10 @@ const PublicHeader = () => {
               </Link>
             </div>
 
-            {/* Mobile CTAs */}
-            <div className="border-t border-gray-200 pt-4 space-y-2">
-              <Button variant="outline" className="w-full" asChild>
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
-              </Button>
+            {/* Mobile Portal Login */}
+            <div className="border-t border-gray-200 pt-4">
               <Button className="w-full bg-electric-teal hover:bg-electric-teal/90" asChild>
-                <Link to="/booking" onClick={() => setMobileMenuOpen(false)}>Book a Call</Link>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Portal Login</Link>
               </Button>
             </div>
           </div>
