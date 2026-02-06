@@ -68,8 +68,8 @@ async def list_legal_content(current_user: dict = Depends(admin_route_guard)):
         {"_id": 0}
     ).to_list(100)
     
-    # Ensure all required slugs exist (legal + marketing)
-    required_slugs = ['privacy', 'terms', 'cookies', 'accessibility', 'careers', 'partnerships']
+    # Ensure all required slugs exist (legal + marketing + about)
+    required_slugs = ['privacy', 'terms', 'cookies', 'accessibility', 'careers', 'partnerships', 'about']
     existing_slugs = {item['slug'] for item in content_list}
     
     for slug in required_slugs:

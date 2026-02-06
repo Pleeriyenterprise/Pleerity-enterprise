@@ -87,7 +87,7 @@ async def list_public_faqs():
     db = database.get_db()
     return await db.faq_items.find({"is_active": True}, {"_id": 0}).sort("display_order", 1).to_list(1000)
 
-@router.get("/faqs/admin", dependencies=[Depends(admin_route_guard)])
+@router_admin.get("/faqs/admin", dependencies=[Depends(admin_route_guard)])
 async def list_all_faqs(current_user: dict = Depends(admin_route_guard)):
     db = database.get_db()
     return await db.faq_items.find({}, {"_id": 0}).sort("display_order", 1).to_list(1000)

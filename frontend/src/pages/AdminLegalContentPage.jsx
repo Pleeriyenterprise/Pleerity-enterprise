@@ -21,6 +21,7 @@ const AdminLegalContentPage = () => {
     accessibility: { slug: 'accessibility', title: 'Accessibility Statement', content: '', version: 0 },
     careers: { slug: 'careers', title: 'Careers', content: '', version: 0 },
     partnerships: { slug: 'partnerships', title: 'Partnerships', content: '', version: 0 },
+    about: { slug: 'about', title: 'About Us', content: '', version: 0 },
   });
 
   const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -125,6 +126,7 @@ const AdminLegalContentPage = () => {
     { value: 'accessibility', label: 'Accessibility', icon: FileText, category: 'Legal' },
     { value: 'careers', label: 'Careers', icon: FileText, category: 'Marketing' },
     { value: 'partnerships', label: 'Partnerships', icon: FileText, category: 'Marketing' },
+    { value: 'about', label: 'About Us', icon: FileText, category: 'Marketing' },
   ];
 
   return (
@@ -147,7 +149,7 @@ const AdminLegalContentPage = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             {tabs.map(tab => (
               <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
                 <tab.icon className="w-4 h-4 mr-1" />
