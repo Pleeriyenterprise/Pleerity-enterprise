@@ -106,61 +106,45 @@ LOCATION_RULES = {
 }
 
 class ProvisioningService:
-    async def provision_client_portal(self, client_id: str) -> tuple[bool, str]:
-        """Provision a client's portal access. This is the SINGLE SOURCE OF TRUTH for provisioning."""
+    async def provision_client_portal_core(
+        self, client_id: str
+    ) -> tuple[bool, str, Optional[str]]:
+        """
+        Run provisioning steps 1-6 only (through PROVISIONED + enablement).
+        Idempotent: no duplicate portal users/requirements. Returns (success, message, portal_user_id).
+        Used by provisioning job runner; migrate + welcome email are done by runner.
+        """
         db = database.get_db()
-        
         try:
-            # Get client
             client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
             if not client:
-                return False, "Client not found"
-            
-            # Precondition checks
-            if client["onboarding_status"] not in [
-                OnboardingStatus.INTAKE_PENDING.value,
-                OnboardingStatus.PROVISIONING.value
-            ]:
-                logger.warning(f"Client {client_id} already provisioned or failed")
-                return True, "Already provisioned"
-            
-            # In production, check subscription status
-            # For development, allow PENDING status
+                return False, "Client not found", None
+            if client["onboarding_status"] == OnboardingStatus.PROVISIONED.value:
+                existing_user = await db.portal_users.find_one(
+                    {"client_id": client_id, "role": UserRole.ROLE_CLIENT_ADMIN.value},
+                    {"_id": 0, "portal_user_id": 1}
+                )
+                return True, "Already provisioned", (existing_user["portal_user_id"] if existing_user else None)
             env = os.getenv("ENVIRONMENT", "development")
             if env == "production" and client["subscription_status"] != SubscriptionStatus.ACTIVE.value:
-                return False, "Subscription not active"
-            
-            # STEP 1: Set provisioning status
+                return False, "Subscription not active", None
             await db.clients.update_one(
                 {"client_id": client_id},
-                {"$set": {"onboarding_status": OnboardingStatus.PROVISIONING.value}}
+                {"$set": {"onboarding_status": OnboardingStatus.PROVISIONING.value}, "$unset": {"last_invite_error": ""}}
             )
-            
-            await create_audit_log(
-                action=AuditAction.PROVISIONING_STARTED,
-                client_id=client_id
-            )
-            
-            # STEP 2: Validate properties exist
+            await create_audit_log(action=AuditAction.PROVISIONING_STARTED, client_id=client_id)
             properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(100)
             if not properties:
                 await self._fail_provisioning(client_id, "No properties found")
-                return False, "No properties found"
-            
-            # STEP 3: Generate requirements for each property
+                return False, "No properties found", None
             for prop in properties:
                 await self._generate_requirements(client_id, prop["property_id"])
-            
-            # STEP 4: Compute initial compliance status
             for prop in properties:
                 await self._update_property_compliance(prop["property_id"])
-            
-            # STEP 5: Create PortalUser if doesn't exist (idempotent)
             existing_user = await db.portal_users.find_one(
                 {"client_id": client_id, "role": UserRole.ROLE_CLIENT_ADMIN.value},
                 {"_id": 0}
             )
-            
             if not existing_user:
                 portal_user = PortalUser(
                     client_id=client_id,
@@ -170,50 +154,82 @@ class ProvisioningService:
                     password_status=PasswordStatus.NOT_SET,
                     must_set_password=True
                 )
-                
                 doc = portal_user.model_dump()
                 doc["created_at"] = doc["created_at"].isoformat()
                 await db.portal_users.insert_one(doc)
-                
                 user_id = portal_user.portal_user_id
             else:
                 user_id = existing_user["portal_user_id"]
-            
-            # STEP 6: Set onboarding status to PROVISIONED
             await db.clients.update_one(
                 {"client_id": client_id},
                 {"$set": {"onboarding_status": OnboardingStatus.PROVISIONED.value}}
             )
-            
             await create_audit_log(
                 action=AuditAction.PROVISIONING_COMPLETE,
                 client_id=client_id,
                 metadata={"portal_user_id": user_id}
             )
-            
-            # ENABLEMENT: Emit provisioning completed event
             try:
                 from services.enablement_service import emit_enablement_event
                 from models.enablement import EnablementEventType
+                plan_code = client.get("billing_plan") or client.get("plan_code")
                 await emit_enablement_event(
                     event_type=EnablementEventType.PROVISIONING_COMPLETED,
                     client_id=client_id,
-                    plan_code=client.get("plan_code"),
+                    plan_code=plan_code,
                     context_payload={"portal_user_id": user_id}
                 )
             except Exception as enable_err:
                 logger.warning(f"Failed to emit enablement event: {enable_err}")
-            
-            # STEP 7: Generate and send password setup token
-            await self._send_password_setup_link(client_id, user_id, client["email"], client["full_name"])
-            
-            logger.info(f"Provisioning complete for client {client_id}")
-            return True, "Provisioning successful"
-        
+            return True, "OK", user_id
         except Exception as e:
-            logger.error(f"Provisioning failed for client {client_id}: {e}")
+            logger.error(f"Provisioning core failed for client {client_id}: {e}")
             await self._fail_provisioning(client_id, str(e))
-            return False, str(e)
+            return False, str(e), None
+
+    async def provision_client_portal(self, client_id: str) -> tuple[bool, str]:
+        """Full provisioning: core + migrate CLEAN uploads + send password setup email. Backward-compat / admin."""
+        success, message, user_id = await self.provision_client_portal_core(client_id)
+        if not success:
+            return False, message
+        if user_id is None and message == "Already provisioned":
+            # Resolve user_id for migrate/email
+            db = database.get_db()
+            client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+            existing_user = await db.portal_users.find_one(
+                {"client_id": client_id, "role": UserRole.ROLE_CLIENT_ADMIN.value},
+                {"_id": 0, "portal_user_id": 1}
+            )
+            user_id = existing_user["portal_user_id"] if existing_user else None
+        if not user_id:
+            return True, message
+        db = database.get_db()
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        try:
+            from services.intake_upload_migration import migrate_intake_uploads_to_vault
+            result = await migrate_intake_uploads_to_vault(client_id)
+            if result.get("migrated", 0) > 0:
+                logger.info(f"Migrated {result['migrated']} intake upload(s) for client {client_id}")
+            if result.get("errors"):
+                logger.warning(f"Intake upload migration errors for {client_id}: {result['errors']}")
+        except Exception as mig_err:
+            logger.warning(f"Intake upload migration failed for {client_id}: {mig_err}")
+        try:
+            await self._send_password_setup_link(client_id, user_id, client["email"], client["full_name"])
+        except Exception as email_err:
+            logger.error(f"Portal invite email failed for client {client_id}: {email_err}")
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {"$set": {"last_invite_error": str(email_err)[:500]}}
+            )
+            await create_audit_log(
+                action=AuditAction.PORTAL_INVITE_EMAIL_FAILED,
+                client_id=client_id,
+                metadata={"error": str(email_err)[:500], "portal_user_id": user_id}
+            )
+            return True, "Provisioning successful but invite email failed; use resend invite to retry"
+        logger.info(f"Provisioning complete for client {client_id}")
+        return True, "Provisioning successful"
     
     async def _generate_requirements(self, client_id: str, property_id: str):
         """Generate deterministic requirements for a property based on its attributes.

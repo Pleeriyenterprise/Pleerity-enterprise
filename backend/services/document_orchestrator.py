@@ -33,6 +33,40 @@ import json
 import hashlib
 import logging
 import os
+import uuid as uuid_module
+
+# Max length for stored error_message (orders + orchestration_executions)
+MAX_ERROR_MESSAGE_LENGTH = 1000
+
+# Idempotency: success terminal statuses that allow fast-return (no duplicate run)
+IDEMPOTENT_SUCCESS_STATUSES = ("REVIEW_PENDING", "COMPLETE")
+
+
+def _compute_idempotency_key(
+    order_id: str,
+    service_code: str,
+    regeneration: bool,
+    order_status: str,
+    prompt_version_used: Optional[Dict[str, Any]],
+    regeneration_notes: Optional[str],
+) -> str:
+    """
+    Compute a stable idempotency key for a pipeline run.
+    No PII: regeneration_notes are hashed, not stored raw.
+    """
+    regen_flag = "REGEN" if regeneration else "GEN"
+    status_part = (order_status or "").strip() or "_"
+    prompt_part = ""
+    if prompt_version_used and isinstance(prompt_version_used, dict):
+        tid = prompt_version_used.get("template_id") or ""
+        ver = prompt_version_used.get("version")
+        prompt_part = f"{tid}:{ver}" if tid or ver is not None else ""
+    notes_part = ""
+    if regeneration and regeneration_notes:
+        notes_part = hashlib.sha256(regeneration_notes.encode("utf-8")).hexdigest()[:16]
+    return "|".join(
+        filter(None, [order_id, service_code, regen_flag, status_part, prompt_part or "_", notes_part or "_"])
+    )
 
 from services.gpt_prompt_registry import (
     get_prompt_for_service,
@@ -80,9 +114,11 @@ class OrchestrationResult:
     execution_time_ms: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
-    # NEW: Prompt version tracking for audit compliance
+    # Prompt version tracking for audit compliance
     prompt_version_used: Optional[Dict[str, Any]] = None
-    
+    # Per-run id for idempotent failure recording (orchestrator + callers)
+    execution_id: Optional[str] = None
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "success": self.success,
@@ -99,6 +135,7 @@ class OrchestrationResult:
             "prompt_tokens": self.prompt_tokens,
             "completion_tokens": self.completion_tokens,
             "prompt_version_used": self.prompt_version_used,
+            "execution_id": self.execution_id,
         }
 
 
@@ -135,6 +172,96 @@ class DocumentOrchestrator:
     def __init__(self):
         self._llm_client = None
         self._api_key = None
+    
+    async def _mark_orchestration_failed(
+        self,
+        order_id: str,
+        service_code: str,
+        doc_type: Optional[str],
+        prompt_version_used: Optional[Dict[str, Any]],
+        stage: str,
+        error_code: str,
+        error_message: str,
+        execution_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+    ) -> None:
+        """
+        Set order orchestration to terminal FAILED and persist minimal error metadata.
+        Upserts one orchestration_executions FAILED record keyed by execution_id (idempotent).
+        No intake or raw output stored. error_message is truncated to MAX_ERROR_MESSAGE_LENGTH.
+        """
+        db = database.get_db()
+        now = datetime.now(timezone.utc)
+        msg_sanitized = (error_message or "")[:MAX_ERROR_MESSAGE_LENGTH]
+        if execution_id is None:
+            execution_id = str(uuid_module.uuid4())
+        doc_type_val = doc_type if doc_type is not None else service_code
+        last_error = {
+            "error_code": error_code,
+            "error_message": msg_sanitized,
+            "stage": stage,
+            "service_code": service_code,
+            "doc_type": doc_type_val,
+            "at": now.isoformat(),
+        }
+        if prompt_version_used is not None:
+            last_error["prompt_version_used"] = prompt_version_used
+        await db.orders.update_one(
+            {"order_id": order_id},
+            {
+                "$set": {
+                    "orchestration_status": OrchestrationStatus.FAILED.value,
+                    "last_orchestration_error": last_error,
+                    "last_orchestration_failed_at": now,
+                }
+            },
+        )
+        fail_record = {
+            "order_id": order_id,
+            "service_code": service_code,
+            "doc_type": doc_type_val,
+            "status": OrchestrationStatus.FAILED.value,
+            "stage": stage,
+            "error_code": error_code,
+            "error_message": msg_sanitized,
+            "execution_id": execution_id,
+            "updated_at": now,
+        }
+        if prompt_version_used is not None:
+            fail_record["prompt_version_used"] = prompt_version_used
+        if idempotency_key is not None:
+            fail_record["idempotency_key"] = idempotency_key
+        await db[self.COLLECTION].update_one(
+            {"execution_id": execution_id, "status": OrchestrationStatus.FAILED.value},
+            {
+                "$set": fail_record,
+                "$setOnInsert": {"created_at": now},
+            },
+            upsert=True,
+        )
+        logger.info(f"Orchestration failed for {order_id}: {error_code} at {stage}")
+    
+    async def finalize_orchestration_failure(
+        self,
+        result: "OrchestrationResult",
+        stage: str = "pipeline",
+        error_code: str = "GENERATION_FAILED",
+    ) -> None:
+        """
+        Public helper for callers (admin, WF2, WF4) to mark order failed from a returned result.
+        Call when result.success is False before returning/raising.
+        Uses result.execution_id so the failure record is upserted (no duplicate FAILED row).
+        """
+        await self._mark_orchestration_failed(
+            order_id=result.order_id,
+            service_code=result.service_code or "",
+            doc_type=result.service_code or None,
+            prompt_version_used=result.prompt_version_used,
+            stage=stage,
+            error_code=error_code,
+            error_message=result.error_message or "Generation failed",
+            execution_id=result.execution_id,
+        )
     
     def _get_api_key(self):
         """Get the Emergent LLM API key."""
@@ -211,6 +338,7 @@ class DocumentOrchestrator:
         intake_data: Dict[str, Any],
         regeneration: bool = False,
         regeneration_notes: Optional[str] = None,
+        force: bool = False,
     ) -> OrchestrationResult:
         """
         Execute the FULL document generation pipeline.
@@ -219,19 +347,15 @@ class DocumentOrchestrator:
         1. Payment Verified
         2. Service Identified
         3. Prompt Selected
-        4. Intake Validation
-        5. Intake Snapshot (IMMUTABLE - locked before GPT)
-        6. GPT Execution
-        7. Structured JSON Output
-        8. Document Rendering (DOCX + PDF)
-        9. Versioning + Hashing
-        10. Ready for Human Review
+        4. [Idempotency check: skip if same key already succeeded, or FAILED and not force]
+        5. Intake Validation / Snapshot / GPT / Render / Store
         
         Args:
             order_id: The order ID
             intake_data: Form data from the intake
             regeneration: Whether this is a regeneration request
             regeneration_notes: Notes for regeneration (MANDATORY for regeneration)
+            force: If True, run even when a previous run with same key failed (allow retry).
         
         Returns:
             OrchestrationResult with rendered documents ready for review
@@ -240,18 +364,31 @@ class DocumentOrchestrator:
         
         start_time = datetime.now(timezone.utc)
         db = database.get_db()
+        execution_id = str(uuid_module.uuid4())
         
         # ================================================================
         # STEP 1: Validate order (Payment Verified)
         # ================================================================
         is_valid, error_msg, order = await self.validate_order_for_generation(order_id)
         if not is_valid:
+            svc = order.get("service_code", "") if order else ""
+            await self._mark_orchestration_failed(
+                order_id=order_id,
+                service_code=svc,
+                doc_type=svc or None,
+                prompt_version_used=None,
+                stage="validation",
+                error_code="ORDER_INVALID",
+                error_message=error_msg,
+                execution_id=execution_id,
+            )
             return OrchestrationResult(
                 success=False,
                 status=OrchestrationStatus.FAILED,
-                service_code="",
+                service_code=svc,
                 order_id=order_id,
                 error_message=error_msg,
+                execution_id=execution_id,
             )
         
         service_code = order.get("service_code")
@@ -288,12 +425,23 @@ class DocumentOrchestrator:
                     using_managed_prompt = prompt_info and prompt_info.source == "prompt_manager"
             
             if not prompt_def:
+                await self._mark_orchestration_failed(
+                    order_id=order_id,
+                    service_code=service_code,
+                    doc_type=doc_type,
+                    prompt_version_used=prompt_info.to_dict() if prompt_info else None,
+                    stage="prompt_selection",
+                    error_code="NO_PROMPT",
+                    error_message=f"No prompt defined for service: {service_code}",
+                    execution_id=execution_id,
+                )
                 return OrchestrationResult(
                     success=False,
                     status=OrchestrationStatus.FAILED,
                     service_code=service_code,
                     order_id=order_id,
                     error_message=f"No prompt defined for service: {service_code}",
+                    execution_id=execution_id,
                 )
         
         # Store prompt version info for audit (includes service_code, doc_type)
@@ -303,6 +451,54 @@ class DocumentOrchestrator:
             f"Selected prompt for {order_id}: {prompt_info.template_id if prompt_info else 'unknown'} "
             f"(source: {prompt_info.source if prompt_info else 'none'})"
         )
+        
+        # ================================================================
+        # STEP 2b: Idempotency check - fast-return if same run already succeeded or failed (without force)
+        # ================================================================
+        order_status = order.get("status") or order.get("order_status") or ""
+        idempotency_key = _compute_idempotency_key(
+            order_id=order_id,
+            service_code=service_code,
+            regeneration=regeneration,
+            order_status=order_status,
+            prompt_version_used=prompt_version_used,
+            regeneration_notes=regeneration_notes,
+        )
+        existing = await db[self.COLLECTION].find_one(
+            {"idempotency_key": idempotency_key},
+            sort=[("created_at", -1)],
+        )
+        if existing:
+            existing_status = existing.get("status") or ""
+            if existing_status in IDEMPOTENT_SUCCESS_STATUSES:
+                logger.info(f"Idempotent return for {order_id}: existing execution v{existing.get('version')}")
+                rend = existing.get("rendered_documents") or {}
+                return OrchestrationResult(
+                    success=True,
+                    status=OrchestrationStatus.REVIEW_PENDING if existing_status == "REVIEW_PENDING" else OrchestrationStatus.COMPLETE,
+                    service_code=service_code,
+                    order_id=order_id,
+                    version=existing.get("version", 1),
+                    structured_output=existing.get("structured_output"),
+                    rendered_documents=rend,
+                    validation_issues=existing.get("validation_issues") or [],
+                    data_gaps=existing.get("data_gaps") or [],
+                    execution_time_ms=0,
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    prompt_version_used=existing.get("prompt_version_used"),
+                    execution_id=existing.get("execution_id"),
+                )
+            if existing_status == OrchestrationStatus.FAILED.value and not force:
+                logger.warning(f"Previous run failed for {order_id} (idempotency_key); use force=true to retry")
+                return OrchestrationResult(
+                    success=False,
+                    status=OrchestrationStatus.FAILED,
+                    service_code=service_code,
+                    order_id=order_id,
+                    error_message="Previous run failed. Use force=true to retry.",
+                    execution_id=existing.get("execution_id"),
+                )
         
         # ================================================================
         # STEP 3: Validate intake data
@@ -336,6 +532,26 @@ class DocumentOrchestrator:
         # ================================================================
         try:
             if using_managed_prompt:
+                if "{{INPUT_DATA_JSON}}" not in (prompt_def.user_prompt_template or ""):
+                    await self._mark_orchestration_failed(
+                        order_id=order_id,
+                        service_code=service_code,
+                        doc_type=doc_type,
+                        prompt_version_used=prompt_version_used,
+                        stage="prompt_build",
+                        error_code="PROMPT_CONFIG",
+                        error_message="Managed prompt template must contain {{INPUT_DATA_JSON}} for data injection (configuration error).",
+                        execution_id=execution_id,
+                        idempotency_key=idempotency_key,
+                    )
+                    return OrchestrationResult(
+                        success=False,
+                        status=OrchestrationStatus.FAILED,
+                        service_code=service_code,
+                        order_id=order_id,
+                        error_message="Managed prompt template must contain {{INPUT_DATA_JSON}} for data injection (configuration error).",
+                        execution_id=execution_id,
+                    )
                 # Use the single injection pattern for managed prompts
                 user_prompt = prompt_manager_bridge.build_user_prompt_with_json(
                     template=prompt_def.user_prompt_template,
@@ -347,12 +563,24 @@ class DocumentOrchestrator:
                 # Legacy prompts use format string substitution
                 user_prompt = self._build_user_prompt(prompt_def, intake_snapshot, regeneration, regeneration_notes)
         except Exception as e:
+            await self._mark_orchestration_failed(
+                order_id=order_id,
+                service_code=service_code,
+                doc_type=doc_type,
+                prompt_version_used=prompt_version_used,
+                stage="prompt_build",
+                error_code="PROMPT_BUILD_ERROR",
+                error_message=f"Failed to build prompt: {str(e)}",
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+            )
             return OrchestrationResult(
                 success=False,
                 status=OrchestrationStatus.FAILED,
                 service_code=service_code,
                 order_id=order_id,
                 error_message=f"Failed to build prompt: {str(e)}",
+                execution_id=execution_id,
             )
         
         # ================================================================
@@ -368,28 +596,123 @@ class DocumentOrchestrator:
                 prompt_def,
                 user_prompt,
             )
+        except ValueError as e:
+            if str(e) == "LLM output not valid JSON":
+                logger.error(f"GPT response was not valid JSON for {order_id}")
+                await self._mark_orchestration_failed(
+                    order_id=order_id,
+                    service_code=service_code,
+                    doc_type=doc_type,
+                    prompt_version_used=prompt_version_used,
+                    stage="gpt",
+                    error_code="LLM_INVALID_JSON",
+                    error_message="LLM output not valid JSON",
+                    execution_id=execution_id,
+                    idempotency_key=idempotency_key,
+                )
+                return OrchestrationResult(
+                    success=False,
+                    status=OrchestrationStatus.FAILED,
+                    service_code=service_code,
+                    order_id=order_id,
+                    error_message="LLM output not valid JSON",
+                    execution_id=execution_id,
+                )
+            raise
         except Exception as e:
             logger.error(f"GPT execution failed for {order_id}: {e}")
+            await self._mark_orchestration_failed(
+                order_id=order_id,
+                service_code=service_code,
+                doc_type=doc_type,
+                prompt_version_used=prompt_version_used,
+                stage="gpt",
+                error_code="GPT_ERROR",
+                error_message=f"GPT execution failed: {str(e)}",
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+            )
             return OrchestrationResult(
                 success=False,
                 status=OrchestrationStatus.FAILED,
                 service_code=service_code,
                 order_id=order_id,
                 error_message=f"GPT execution failed: {str(e)}",
+                execution_id=execution_id,
             )
         
         # ================================================================
-        # STEP 6b: Validate structured output is not empty
-        # Prevents rendering empty documents or raw intake as content
+        # STEP 6b: Validate structured output before render
+        # Prevents rendering empty documents, parse-error wrappers, or raw intake as content
         # ================================================================
-        if not structured_output or len(structured_output) == 0:
-            logger.error(f"GPT returned empty structured output for {order_id}")
+        if not isinstance(structured_output, dict) or len(structured_output) == 0:
+            logger.error(f"GPT returned empty or non-dict structured output for {order_id}")
+            await self._mark_orchestration_failed(
+                order_id=order_id,
+                service_code=service_code,
+                doc_type=doc_type,
+                prompt_version_used=prompt_version_used,
+                stage="validation",
+                error_code="EMPTY_OUTPUT",
+                error_message="GPT returned empty output - no content generated",
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+            )
             return OrchestrationResult(
                 success=False,
                 status=OrchestrationStatus.FAILED,
                 service_code=service_code,
                 order_id=order_id,
                 error_message="GPT returned empty output - no content generated",
+                execution_id=execution_id,
+            )
+        if "parse_error" in structured_output or "raw_response" in structured_output:
+            logger.error(f"GPT returned parse-error wrapper for {order_id} - rejecting")
+            await self._mark_orchestration_failed(
+                order_id=order_id,
+                service_code=service_code,
+                doc_type=doc_type,
+                prompt_version_used=prompt_version_used,
+                stage="validation",
+                error_code="LLM_INVALID_JSON",
+                error_message="LLM output not valid JSON",
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+            )
+            return OrchestrationResult(
+                success=False,
+                status=OrchestrationStatus.FAILED,
+                service_code=service_code,
+                order_id=order_id,
+                error_message="LLM output not valid JSON",
+                execution_id=execution_id,
+            )
+        # Optional: require at least one expected schema key if output_schema is a dict of keys
+        schema_keys = (
+            list(prompt_def.output_schema.keys())
+            if isinstance(prompt_def.output_schema, dict) and prompt_def.output_schema
+            else []
+        )
+        if schema_keys and not any(k in structured_output for k in schema_keys):
+            logger.error(f"Structured output for {order_id} has no expected schema keys: {schema_keys[:5]}")
+            await self._mark_orchestration_failed(
+                order_id=order_id,
+                service_code=service_code,
+                doc_type=doc_type,
+                prompt_version_used=prompt_version_used,
+                stage="validation",
+                error_code="SCHEMA_MISMATCH",
+                error_message="Structured output does not match expected schema (missing all expected keys)",
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+            )
+            return OrchestrationResult(
+                success=False,
+                status=OrchestrationStatus.FAILED,
+                service_code=service_code,
+                order_id=order_id,
+                error_message="Structured output does not match expected schema (missing all expected keys)",
+                execution_id=execution_id,
             )
         
         # ================================================================
@@ -411,21 +734,45 @@ class DocumentOrchestrator:
             )
             
             if not render_result.success:
+                await self._mark_orchestration_failed(
+                    order_id=order_id,
+                    service_code=service_code,
+                    doc_type=doc_type,
+                    prompt_version_used=prompt_version_used,
+                    stage="render",
+                    error_code="RENDER_FAILED",
+                    error_message=f"Rendering failed: {render_result.error_message}",
+                    execution_id=execution_id,
+                    idempotency_key=idempotency_key,
+                )
                 return OrchestrationResult(
                     success=False,
                     status=OrchestrationStatus.FAILED,
                     service_code=service_code,
                     order_id=order_id,
                     error_message=f"Rendering failed: {render_result.error_message}",
+                    execution_id=execution_id,
                 )
         except Exception as e:
             logger.error(f"Rendering failed for {order_id}: {e}")
+            await self._mark_orchestration_failed(
+                order_id=order_id,
+                service_code=service_code,
+                doc_type=doc_type,
+                prompt_version_used=prompt_version_used,
+                stage="render",
+                error_code="RENDER_ERROR",
+                error_message=f"Rendering failed: {str(e)}",
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+            )
             return OrchestrationResult(
                 success=False,
                 status=OrchestrationStatus.FAILED,
                 service_code=service_code,
                 order_id=order_id,
                 error_message=f"Rendering failed: {str(e)}",
+                execution_id=execution_id,
             )
         
         # ================================================================
@@ -441,6 +788,8 @@ class DocumentOrchestrator:
             "prompt_id": prompt_def.prompt_id,
             "version": render_result.version,
             "status": OrchestrationStatus.REVIEW_PENDING.value,
+            "idempotency_key": idempotency_key,
+            "execution_id": execution_id,
             # CRITICAL: Prompt version tracking for audit compliance
             "prompt_version_used": prompt_version_used,
             # Immutable snapshots
@@ -580,17 +929,19 @@ class DocumentOrchestrator:
         intake_data: Dict[str, Any],
         regeneration: bool = False,
         regeneration_notes: Optional[str] = None,
+        force: bool = False,
     ) -> OrchestrationResult:
         """
         Execute document generation - delegates to full pipeline.
-        
         DEPRECATED: Use execute_full_pipeline directly.
+        WF2/WF4 use force=False (safe default).
         """
         return await self.execute_full_pipeline(
             order_id=order_id,
             intake_data=intake_data,
             regeneration=regeneration,
             regeneration_notes=regeneration_notes,
+            force=force,
         )
     
     def _build_user_prompt(
@@ -690,12 +1041,7 @@ Return ONLY the JSON object, no additional text or markdown formatting.
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse GPT response as JSON: {e}")
             logger.error(f"Response text: {response_text[:500]}...")
-            # Return a wrapper with the raw text
-            structured_output = {
-                "raw_response": response_text,
-                "parse_error": str(e),
-                "data_gaps_flagged": ["Response could not be parsed as JSON"]
-            }
+            raise ValueError("LLM output not valid JSON") from e
         
         # Extract token counts if available
         tokens = {

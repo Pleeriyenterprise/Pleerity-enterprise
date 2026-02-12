@@ -789,6 +789,7 @@ async def submit_intake(request: Request, data: IntakeFormData):
             service_code=ServiceCode.VAULT_PRO,
             document_submission_method=data.document_submission_method,
             email_upload_consent=data.email_upload_consent,
+            intake_session_id=data.intake_session_id,
             consent_data_processing=data.consent_data_processing,
             consent_service_boundary=data.consent_service_boundary
         )

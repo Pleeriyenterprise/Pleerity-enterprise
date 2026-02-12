@@ -48,6 +48,22 @@ class EntitlementStatus(str, Enum):
 
 
 # ============================================================================
+# SUBSCRIPTION ALLOW-LIST - Shared helper for feature gating
+# ============================================================================
+SUBSCRIPTION_STATUSES_ALLOWING_FEATURE_ACCESS = frozenset({"ACTIVE", "TRIALING"})
+
+
+def subscription_allows_feature_access(subscription_status: Optional[str]) -> bool:
+    """
+    Return True if subscription status is in the allow-list for feature access.
+    Use this consistently for plan-gated endpoints (middleware, enforce_feature, etc.).
+    """
+    if not subscription_status:
+        return False
+    return subscription_status.upper() in SUBSCRIPTION_STATUSES_ALLOWING_FEATURE_ACCESS
+
+
+# ============================================================================
 # STRIPE PRICE ID MAPPINGS - Production Price IDs (from owner)
 # ============================================================================
 STRIPE_PRICE_MAPPINGS = {
@@ -157,6 +173,9 @@ PLAN_DEFINITIONS = {
 
 # ============================================================================
 # FEATURE ENTITLEMENT MATRIX - What each plan gets
+# Canonical feature keys for APIs: /client/entitlements and /client/plan-features
+# use these keys only. 403 responses may preserve legacy 'feature' strings
+# (e.g. compliance_packs, white_label, audit_exports) for backward compatibility.
 # ============================================================================
 FEATURE_MATRIX = {
     PlanCode.PLAN_1_SOLO: {
@@ -534,17 +553,17 @@ class PlanRegistryService:
         if not client:
             return False, "Client not found", {"error_code": "CLIENT_NOT_FOUND"}
         
-        # Check subscription is active
+        # Check subscription allows feature access (allow-list: ACTIVE, TRIALING)
         subscription_status = client.get("subscription_status", "PENDING")
-        if subscription_status != "ACTIVE":
-            return False, f"Subscription is {subscription_status}. Active subscription required.", {
+        if not subscription_allows_feature_access(subscription_status):
+            return False, f"Subscription is {subscription_status}. Active or trialing subscription required.", {
                 "error_code": "SUBSCRIPTION_INACTIVE",
                 "subscription_status": subscription_status
             }
-        
+
         # Get plan (handle legacy codes)
         plan_str = client.get("billing_plan", "PLAN_1_SOLO")
-        plan_code = self._resolve_plan_code(plan_str)
+        plan_code = self.resolve_plan_code(plan_str)
         
         # Check feature access
         is_allowed, message, upgrade_info = self.check_feature_access(plan_code, feature)
@@ -584,7 +603,7 @@ class PlanRegistryService:
             return True, None, None
         
         plan_str = client.get("billing_plan", "PLAN_1_SOLO")
-        plan_code = self._resolve_plan_code(plan_str)
+        plan_code = self.resolve_plan_code(plan_str)
         max_properties = self.get_property_limit(plan_code)
         
         if requested_count > max_properties:
@@ -665,9 +684,9 @@ class PlanRegistryService:
             subscription_status = "UNKNOWN"
         else:
             plan_str = client.get("billing_plan", "PLAN_1_SOLO")
-            plan_code = self._resolve_plan_code(plan_str)
+            plan_code = self.resolve_plan_code(plan_str)
             subscription_status = client.get("subscription_status", "PENDING")
-            is_active = subscription_status == "ACTIVE"
+            is_active = subscription_allows_feature_access(subscription_status)
         
         plan_def = self.get_plan(plan_code)
         features = self.get_features(plan_code)
@@ -739,7 +758,14 @@ class PlanRegistryService:
     # -------------------------------------------------------------------------
     # Helpers
     # -------------------------------------------------------------------------
-    
+
+    def resolve_plan_code(self, code_str: str) -> PlanCode:
+        """
+        Resolve string to PlanCode, handling legacy codes.
+        Public API: use this (not _resolve_plan_code) from middleware and other callers.
+        """
+        return self._resolve_plan_code(code_str)
+
     def _resolve_plan_code(self, code_str: str) -> PlanCode:
         """Resolve string to PlanCode, handling legacy codes."""
         legacy_mapping = {
@@ -747,7 +773,7 @@ class PlanRegistryService:
             "PLAN_2_5": PlanCode.PLAN_2_PORTFOLIO,
             "PLAN_6_15": PlanCode.PLAN_3_PRO,
         }
-        
+
         try:
             return PlanCode(code_str)
         except ValueError:
@@ -764,14 +790,14 @@ class PlanRegistryService:
         """
         plan_str = SUBSCRIPTION_PRICE_TO_PLAN.get(price_id)
         if plan_str:
-            return self._resolve_plan_code(plan_str)
+            return self.resolve_plan_code(plan_str)
         return None
-    
+
     def get_plan_from_onboarding_price_id(self, price_id: str) -> Optional[PlanCode]:
         """Check if a price_id is a valid onboarding fee."""
         plan_str = ONBOARDING_PRICE_TO_PLAN.get(price_id)
         if plan_str:
-            return self._resolve_plan_code(plan_str)
+            return self.resolve_plan_code(plan_str)
         return None
     
     def is_valid_subscription_price(self, price_id: str) -> bool:

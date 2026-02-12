@@ -61,6 +61,10 @@ class Database:
             await self.db.properties.create_index("property_id", unique=True)
             await self.db.properties.create_index("compliance_status")
             
+            # Documents - pending verification admin list (status + uploaded_at; client_id filter)
+            await self.db.documents.create_index([("status", 1), ("uploaded_at", 1)])
+            await self.db.documents.create_index([("client_id", 1), ("status", 1), ("uploaded_at", 1)])
+            
             # Portal user indexes
             try:
                 await self.db.portal_users.create_index("auth_email", unique=True)
@@ -70,10 +74,17 @@ class Database:
             await self.db.portal_users.create_index("client_id")
             await self.db.portal_users.create_index("portal_user_id", unique=True)
             
-            # Audit log indexes - for timeline queries
-            await self.db.audit_logs.create_index([("client_id", 1), ("created_at", -1)])
-            await self.db.audit_logs.create_index("created_at")
+            # Audit log indexes - for timeline queries and email-delivery
+            await self.db.audit_logs.create_index([("client_id", 1), ("timestamp", -1)])
+            await self.db.audit_logs.create_index([("action", 1), ("timestamp", -1)])
+            await self.db.audit_logs.create_index("timestamp")
             await self.db.audit_logs.create_index("action")
+            
+            # Message log indexes - for email-delivery admin view
+            await self.db.message_logs.create_index([("created_at", -1)])
+            await self.db.message_logs.create_index([("status", 1), ("created_at", -1)])
+            await self.db.message_logs.create_index([("template_alias", 1), ("created_at", -1)])
+            await self.db.message_logs.create_index([("client_id", 1), ("created_at", -1)])
             
             # Compliance score history indexes - for trend queries
             await self.db.compliance_score_history.create_index([("client_id", 1), ("date_key", -1)])
@@ -85,6 +96,17 @@ class Database:
             except Exception:
                 pass  # Index may already exist
             
+            # Intake uploads - for migration and list by session
+            await self.db.intake_uploads.create_index("intake_session_id")
+            await self.db.intake_uploads.create_index([("intake_session_id", 1), ("status", 1)])
+            # Provisioning jobs - idempotency by checkout_session_id
+            await self.db.provisioning_jobs.create_index("job_id", unique=True)
+            try:
+                await self.db.provisioning_jobs.create_index("checkout_session_id", unique=True)
+            except Exception:
+                pass
+            await self.db.provisioning_jobs.create_index("client_id")
+            await self.db.provisioning_jobs.create_index("status")
             logger.info("MongoDB indexes created/verified")
         except Exception as e:
             # Indexes may already exist, log but don't fail

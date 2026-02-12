@@ -79,6 +79,19 @@ async def run_daily_reminders():
     except Exception as e:
         logger.error(f"Daily reminders job failed: {e}")
 
+async def run_pending_verification_digest():
+    """Scheduled job: Email OWNER/ADMIN daily summary of pending verifications (counts only) and write audit log."""
+    try:
+        from services.jobs import JobScheduler
+        job_scheduler = JobScheduler()
+        await job_scheduler.connect()
+        sent = await job_scheduler.send_pending_verification_digest()
+        await job_scheduler.close()
+        logger.info(f"Pending verification digest job completed: {sent} emails sent")
+    except Exception as e:
+        logger.error(f"Pending verification digest job failed: {e}")
+
+
 async def run_monthly_digests():
     """Scheduled job: Send monthly compliance digests."""
     try:
@@ -266,6 +279,15 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Compliance Vault Pro API")
     await database.connect()
+
+    # Optional: idempotent OWNER bootstrap when BOOTSTRAP_ENABLED=true
+    if os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true":
+        try:
+            from services.owner_bootstrap import run_bootstrap_owner
+            result = await run_bootstrap_owner()
+            logger.info("Bootstrap owner: %s - %s", result.get("action"), result.get("message"))
+        except Exception as e:
+            logger.warning("Bootstrap owner failed: %s", e)
     
     # Create consent indexes
     try:
@@ -430,6 +452,15 @@ async def lifespan(app: FastAPI):
         CronTrigger(hour=9, minute=0),
         id="daily_reminders",
         name="Daily Compliance Reminders",
+        replace_existing=True
+    )
+    
+    # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
+    scheduler.add_job(
+        run_pending_verification_digest,
+        CronTrigger(hour=9, minute=30),
+        id="pending_verification_digest",
+        name="Pending Verification Digest",
         replace_existing=True
     )
     

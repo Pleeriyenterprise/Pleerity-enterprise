@@ -125,7 +125,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             {"_id": 0}
         ).to_list(500)
         
-        verified_documents = [d for d in documents if d.get("verification_status") == "VERIFIED"]
+        verified_documents = [d for d in documents if d.get("status") == "VERIFIED"]
         
         now = datetime.now(timezone.utc)
         

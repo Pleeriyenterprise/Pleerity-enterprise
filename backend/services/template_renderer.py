@@ -966,9 +966,9 @@ class TemplateRenderer:
         self._add_data_gaps_section(doc, output)
     
     def _render_generic_content(self, doc: Document, output: Dict[str, Any]):
-        """Render generic structured output."""
+        """Render generic structured output. Skips data_gaps_flagged, raw_response, parse_error (match PDF)."""
         for key, value in output.items():
-            if key == "data_gaps_flagged":
+            if key in ("data_gaps_flagged", "raw_response", "parse_error"):
                 continue
             
             self._add_section_heading(doc, key.replace("_", " ").title())

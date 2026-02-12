@@ -64,8 +64,10 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
 def check_rbac(user_role: UserRole, required_role: UserRole) -> bool:
     """Check if user has required role."""
     role_hierarchy = {
+        UserRole.ROLE_OWNER: 4,
         UserRole.ROLE_ADMIN: 3,
         UserRole.ROLE_CLIENT_ADMIN: 2,
-        UserRole.ROLE_CLIENT: 1
+        UserRole.ROLE_CLIENT: 1,
+        UserRole.ROLE_TENANT: 0,
     }
     return role_hierarchy.get(user_role, 0) >= role_hierarchy.get(required_role, 0)

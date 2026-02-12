@@ -545,6 +545,7 @@ const IntakePage = () => {
             setFormData={setFormData}
             onNext={nextStep}
             onBack={prevStep}
+            intakeSessionId={intakeSessionId}
           />
         )}
 
@@ -1472,7 +1473,7 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
 // ============================================================================
 // STEP 4: PREFERENCES & CONSENTS
 // ============================================================================
-const Step4Preferences = ({ formData, setFormData, onNext, onBack }) => {
+const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSessionId }) => {
   const PLEERITY_EMAIL = 'info@pleerityenterprise.co.uk';
 
   return (
@@ -1532,12 +1533,12 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack }) => {
         {/* Upload Here Section */}
         {formData.document_submission_method === 'UPLOAD' && (
           <IntakeDocumentUpload 
-            intakeSessionId={formData.intake_id || uuidv4()}
+            intakeSessionId={intakeSessionId}
             onFilesChange={(files) => setFormData({...formData, uploaded_files: files})}
           />
         )}
 
-        {/* Email Upload Section */}
+        {/* Email to Pleerity Section */}
         {formData.document_submission_method === 'EMAIL' && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4 animate-fadeIn">
             <div>
@@ -1546,8 +1547,14 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack }) => {
                 <Mail className="w-5 h-5 text-blue-600" />
                 <span className="font-mono font-medium text-blue-900">{PLEERITY_EMAIL}</span>
               </div>
+              <p className="text-sm text-blue-800 mt-2">
+                <strong>Subject:</strong> Include your full name and customer reference (you will receive this after payment).
+              </p>
+              <p className="text-sm text-blue-800 mt-1">
+                <strong>Body:</strong> Attach your compliance documents (PDF, JPG, PNG, or DOCX). We will upload them into your portal.
+              </p>
               <p className="text-xs text-blue-700 mt-2">
-                After payment, please email your compliance documents to this address and include your customer reference number.
+                You can also add or upload documents later from your portal after account setup.
               </p>
             </div>
             
@@ -1862,6 +1869,10 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading }) =
 };
 
 // Intake Document Upload Component
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.docx'];
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_SESSION_BYTES = 200 * 1024 * 1024;
+
 const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -1886,6 +1897,11 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
     }
   };
 
+  const isAllowedFile = (file) => {
+    const ext = '.' + (file.name || '').split('.').pop().toLowerCase();
+    return ALLOWED_EXTENSIONS.includes(ext);
+  };
+
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1900,48 +1916,48 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
-    const droppedFiles = Array.from(e.dataTransfer.files);
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(isAllowedFile);
+    const rejected = Array.from(e.dataTransfer.files).filter(f => !isAllowedFile(f));
+    if (rejected.length) toast.error('Only PDF, JPG, PNG, and DOCX allowed. Skipped others.');
     await uploadFiles(droppedFiles);
   };
 
   const handleFileSelect = async (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    await uploadFiles(selectedFiles);
+    const selected = Array.from(e.target.files || []);
+    const allowed = selected.filter(isAllowedFile);
+    if (allowed.length < selected.length) toast.error('Only PDF, JPG, PNG, and DOCX allowed.');
+    await uploadFiles(allowed);
+    e.target.value = '';
   };
 
   const uploadFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return;
-
-    // Check file sizes
     for (const file of fileList) {
-      if (file.size > 25 * 1024 * 1024) {
-        toast.error(`${file.name} exceeds 25MB limit`);
+      if (file.size > MAX_FILE_BYTES) {
+        toast.error(`${file.name} exceeds 20MB limit.`);
         return;
       }
     }
-
+    const currentTotal = files.reduce((sum, f) => sum + (f.file_size || 0), 0);
+    const newTotal = fileList.reduce((sum, f) => sum + f.size, 0);
+    if (currentTotal + newTotal > MAX_SESSION_BYTES) {
+      toast.error('Total would exceed 200MB for this session.');
+      return;
+    }
     setUploading(true);
-
     try {
       const formData = new FormData();
       formData.append('intake_session_id', intakeSessionId);
-      
-      fileList.forEach(file => {
-        formData.append('files', file);
-      });
-
-      const res = await fetch(`${API_URL}/api/intake/uploads/upload`, {
-        method: 'POST',
-        body: formData
-      });
-
+      fileList.forEach(file => formData.append('files', file));
+      const res = await fetch(`${API_URL}/api/intake/uploads/upload`, { method: 'POST', body: formData });
+      const data = res.ok ? null : await res.json().catch(() => ({}));
+      const detail = data?.detail;
+      const message = typeof detail === 'object' ? detail?.message : detail;
       if (res.ok) {
         toast.success(`${fileList.length} file(s) uploaded`);
         await loadExistingFiles();
       } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Upload failed');
+        toast.error(message || 'Upload failed');
       }
     } catch (err) {
       toast.error('Upload failed. Please try again.');
@@ -1952,18 +1968,21 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
 
   const removeFile = async (uploadId) => {
     try {
-      const res = await fetch(`${API_URL}/api/intake/uploads/${uploadId}`, {
-        method: 'DELETE'
-      });
-
+      const res = await fetch(`${API_URL}/api/intake/uploads/${uploadId}`, { method: 'DELETE' });
       if (res.ok) {
         toast.success('File removed');
         await loadExistingFiles();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        const msg = typeof data?.detail === 'object' ? data?.detail?.message : data?.detail;
+        toast.error(msg || 'Failed to remove file');
       }
     } catch (err) {
       toast.error('Failed to remove file');
     }
   };
+
+  const canDelete = (f) => f.status !== 'MIGRATED' && !f.migrated_to_document_id;
 
   const formatFileSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
@@ -1990,12 +2009,13 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
           Drop files here or click to browse
         </h3>
         <p className="text-sm text-gray-600 mb-4">
-          PDF, JPG, PNG, DOC, DOCX - Max 25MB per file, 250MB total
+          PDF, JPG, PNG, DOCX only. Max 20MB per file, 200MB total.
         </p>
         <input
           ref={fileInputRef}
           type="file"
           multiple
+          accept=".pdf,.jpg,.jpeg,.png,.docx,application/pdf,image/jpeg,image/png,image/jpg,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           className="hidden"
           onChange={handleFileSelect}
         />
@@ -2014,28 +2034,28 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
         <div className="border rounded-lg p-4 bg-gray-50">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-semibold text-midnight-blue">Uploaded Files ({files.length})</h4>
-            <span className="text-sm text-gray-600">{formatFileSize(totalSize)} / 250 MB</span>
+            <span className="text-sm text-gray-600">{formatFileSize(totalSize)} / 200 MB</span>
           </div>
-          
           <div className="space-y-2">
             {files.map(file => (
               <div key={file.upload_id} className="flex items-center justify-between p-3 bg-white rounded border">
-                <div className="flex items-center gap-3 flex-1">
-                  <FileText className="w-5 h-5 text-electric-teal" />
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <FileText className="w-5 h-5 text-electric-teal flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{file.original_filename}</p>
-                    <p className="text-xs text-gray-500">{formatFileSize(file.file_size)}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatFileSize(file.file_size)}
+                      {file.status === 'CLEAN' && <span className="text-green-600 ml-2">• Ready</span>}
+                      {file.status === 'QUARANTINED' && <span className="text-amber-600 ml-2">• Not accepted</span>}
+                      {file.status === 'MIGRATED' && <span className="text-gray-500 ml-2">• Migrated</span>}
+                    </p>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFile(file.upload_id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                {canDelete(file) && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeFile(file.upload_id)} className="text-red-600 hover:text-red-700 flex-shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             ))}
           </div>

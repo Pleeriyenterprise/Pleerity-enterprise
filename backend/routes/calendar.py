@@ -248,25 +248,24 @@ async def export_ical_calendar(
         iCal file with VEVENT entries for each requirement expiry
     """
     from fastapi.responses import Response
-    from services.feature_entitlement import feature_entitlement_service
-    
+    from services.plan_registry import plan_registry
+
     user = await client_route_guard(request)
-    
     try:
-        # Plan gating check
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+        # TEMP Step 2: calendar_sync has no plan_registry key; gate by compliance_calendar (all plans have it)
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             user["client_id"],
-            "calendar_sync"
+            "compliance_calendar"
         )
-        
         if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
                     "message": error_msg,
                     "feature": "calendar_sync",
-                    "upgrade_required": True
+                    "upgrade_required": True,
+                    **(error_details or {})
                 }
             )
         
@@ -402,28 +401,27 @@ async def get_calendar_subscription_url(request: Request):
     Returns a URL that can be used to subscribe to the calendar
     in external applications. The URL includes an authentication token.
     
-    Plan gating: Requires Growth plan (PLAN_2_5) or higher.
+    Plan gating: TEMP gated by compliance_calendar (Step 5 may introduce calendar_sync).
     """
-    from services.feature_entitlement import feature_entitlement_service
+    from services.plan_registry import plan_registry
     import os
-    
+
     user = await client_route_guard(request)
-    
     try:
-        # Plan gating check
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+        # TEMP Step 2: calendar_sync -> compliance_calendar
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             user["client_id"],
-            "calendar_sync"
+            "compliance_calendar"
         )
-        
         if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
                     "message": error_msg,
                     "feature": "calendar_sync",
-                    "upgrade_required": True
+                    "upgrade_required": True,
+                    **(error_details or {})
                 }
             )
         

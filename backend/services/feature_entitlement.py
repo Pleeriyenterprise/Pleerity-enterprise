@@ -1,7 +1,8 @@
 """Central Feature Entitlement System - Comprehensive feature gating.
 
-This module provides the complete feature entitlement registry and enforcement.
-All features must be explicitly defined here with plan mappings.
+DEPRECATED: Do not use for new code. All routes have been migrated to
+backend/services/plan_registry.py as the single source of truth (Step 2).
+Feature keys and plan limits here differ from plan_registry. Kept for reference only.
 
 NON-NEGOTIABLE RULES:
 1. Plans only toggle access to completed capability modules

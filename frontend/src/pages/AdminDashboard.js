@@ -8,6 +8,7 @@ import {
   LayoutDashboard, 
   Users, 
   FileText, 
+  FileCheck,
   Mail, 
   Clock, 
   Play,
@@ -1424,6 +1425,270 @@ const AuditLogs = () => {
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Template aliases that support Resend from Email delivery (only password-setup has an endpoint)
+const EMAIL_DELIVERY_RESEND_TEMPLATES = { 'password-setup': true };
+
+// Email Delivery (read-only, no recipient) — message_logs + EMAIL_SKIPPED_NO_RECIPIENT
+const EmailDelivery = () => {
+  const [data, setData] = useState({ total: 0, returned: 0, has_more: false, items: [] });
+  const [loading, setLoading] = useState(true);
+  const [templateAlias, setTemplateAlias] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [sinceHours, setSinceHours] = useState(72);
+  const [skip, setSkip] = useState(0);
+  const [resendConfirmRow, setResendConfirmRow] = useState(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const limit = 50;
+
+  const fetchEmailDelivery = useCallback(async (overrideSkip = null) => {
+    setLoading(true);
+    const currentSkip = overrideSkip !== null ? overrideSkip : skip;
+    try {
+      const { adminAPI } = await import('../api/client');
+      const res = await adminAPI.getEmailDelivery({
+        template_alias: templateAlias || undefined,
+        status: statusFilter || undefined,
+        client_id: clientId || undefined,
+        since_hours: sinceHours,
+        limit,
+        skip: currentSkip,
+      });
+      setData({
+        total: res.data?.total ?? 0,
+        returned: res.data?.returned ?? 0,
+        has_more: res.data?.has_more ?? false,
+        items: res.data?.items ?? [],
+      });
+    } catch (e) {
+      toast.error('Failed to load email delivery list');
+      setData({ total: 0, returned: 0, has_more: false, items: [] });
+    } finally {
+      setLoading(false);
+    }
+  }, [templateAlias, statusFilter, clientId, sinceHours, skip]);
+
+  useEffect(() => {
+    fetchEmailDelivery();
+  }, [fetchEmailDelivery]);
+
+  const handleResendConfirm = useCallback(async () => {
+    if (!resendConfirmRow?.client_id) return;
+    setResendLoading(true);
+    try {
+      const { adminAPI } = await import('../api/client');
+      await adminAPI.resendPasswordSetup(resendConfirmRow.client_id);
+      toast.success('Password setup email resent');
+      setResendConfirmRow(null);
+      fetchEmailDelivery();
+    } catch (e) {
+      const detail = e.response?.data?.detail;
+      const code = detail?.error_code || (typeof detail === 'object' ? detail?.error_code : null);
+      if (e.response?.status === 502 && code === 'EMAIL_SEND_FAILED') {
+        toast.error('Email send failed. Check provider or try again later.');
+      } else if (e.response?.status === 429) {
+        toast.error(detail?.message || 'Too many requests. Please try again later.');
+      } else if (e.response?.status === 404) {
+        toast.error('Client or portal user not found.');
+      } else {
+        toast.error(e.response?.data?.detail?.message || e.message || 'Resend failed');
+      }
+    } finally {
+      setResendLoading(false);
+    }
+  }, [resendConfirmRow, fetchEmailDelivery]);
+
+  const canShowResend = (row) =>
+    row.status === 'failed' &&
+    row.client_id &&
+    EMAIL_DELIVERY_RESEND_TEMPLATES[row.template_alias] === true;
+
+  return (
+    <div className="space-y-6">
+      {/* Resend confirm modal */}
+      {resendConfirmRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-labelledby="resend-modal-title">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 id="resend-modal-title" className="text-lg font-semibold text-midnight-blue mb-2">Resend password setup email?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This will send a new password setup link for client <span className="font-mono text-xs">{resendConfirmRow.client_id}</span>. Existing tokens will be revoked.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setResendConfirmRow(null)}
+                disabled={resendLoading}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResendConfirm}
+                disabled={resendLoading}
+                className="px-3 py-2 text-sm bg-electric-teal text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+                data-testid="email-delivery-resend-confirm"
+              >
+                {resendLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                Resend
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <h2 className="text-xl font-semibold text-midnight-blue">Email delivery (last 72h)</h2>
+      <p className="text-sm text-gray-500">Read-only view for debugging. No recipient emails shown.</p>
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        <label className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Template</span>
+          <input
+            type="text"
+            value={templateAlias}
+            onChange={(e) => setTemplateAlias(e.target.value)}
+            placeholder="e.g. monthly_digest"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-40"
+            data-testid="email-delivery-template"
+          />
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Status</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            data-testid="email-delivery-status"
+          >
+            <option value="">All</option>
+            <option value="sent">Sent</option>
+            <option value="failed">Failed</option>
+            <option value="skipped">Skipped</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Client ID</span>
+          <input
+            type="text"
+            value={clientId}
+            onChange={(e) => setClientId(e.target.value)}
+            placeholder="Optional"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-40"
+            data-testid="email-delivery-client-id"
+          />
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Hours</span>
+          <select
+            value={sinceHours}
+            onChange={(e) => setSinceHours(Number(e.target.value))}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            data-testid="email-delivery-hours"
+          >
+            <option value={24}>24</option>
+            <option value={72}>72</option>
+            <option value={168}>168</option>
+            <option value={720}>720</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={() => { setSkip(0); fetchEmailDelivery(0); }}
+          disabled={loading}
+          className="px-4 py-2 bg-electric-teal text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+          data-testid="email-delivery-apply"
+        >
+          {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Apply
+        </button>
+      </div>
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <RefreshCw className="w-6 h-6 animate-spin text-electric-teal" />
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Template</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Message ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider error</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {data.items.length === 0 ? (
+                  <tr><td colSpan={7} className="px-4 py-6 text-gray-500 text-center">No records.</td></tr>
+                ) : (
+                  data.items.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-600">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                      <td className="px-4 py-2 text-gray-700">{row.template_alias ?? '—'}</td>
+                      <td className="px-4 py-2">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                          row.status === 'failed' ? 'bg-red-100 text-red-800' :
+                          row.status === 'skipped' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {row.status ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 font-mono text-xs">{row.client_id ?? '—'}</td>
+                      <td className="px-4 py-2 font-mono text-xs truncate max-w-[120px]" title={row.message_id}>{row.message_id ?? '—'}</td>
+                      <td className="px-4 py-2 text-gray-600">{row.provider_error_type || row.provider_error_code ? `${row.provider_error_type || ''} ${row.provider_error_code || ''}`.trim() : '—'}</td>
+                      <td className="px-4 py-2">
+                        {canShowResend(row) ? (
+                          <button
+                            type="button"
+                            onClick={() => setResendConfirmRow(row)}
+                            className="text-xs font-medium text-electric-teal hover:underline"
+                            data-testid="email-delivery-resend"
+                          >
+                            Resend
+                          </button>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {data.total > 0 && (
+            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm text-gray-500">
+              <span>Showing {data.returned} of {data.total}{data.has_more ? ' (more available)' : ''}</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={skip === 0}
+                  onClick={() => setSkip(Math.max(0, skip - limit))}
+                  className="px-3 py-1 rounded border border-gray-300 disabled:opacity-50"
+                  data-testid="email-delivery-prev"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={!data.has_more}
+                  onClick={() => setSkip(skip + limit)}
+                  className="px-3 py-1 rounded border border-gray-300 disabled:opacity-50"
+                  data-testid="email-delivery-next"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -3122,6 +3387,10 @@ const StatisticsDashboard = () => {
 const DashboardOverview = ({ onShowDrilldown }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pendingList, setPendingList] = useState({ documents: [], total: 0, returned: 0, has_more: false });
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingHours, setPendingHours] = useState(24);
+  const [pendingClientId, setPendingClientId] = useState('');
 
   useEffect(() => {
     fetchStats();
@@ -3138,6 +3407,29 @@ const DashboardOverview = ({ onShowDrilldown }) => {
     }
   };
 
+  const fetchPendingVerification = async () => {
+    setPendingLoading(true);
+    try {
+      const { adminAPI } = await import('../api/client');
+      const res = await adminAPI.getPendingVerificationDocuments(pendingHours, pendingClientId || null);
+      setPendingList({
+        documents: res.data?.documents || [],
+        total: res.data?.total ?? 0,
+        returned: res.data?.returned ?? 0,
+        has_more: res.data?.has_more ?? false,
+      });
+    } catch (e) {
+      toast.error('Failed to load pending verification list');
+      setPendingList({ documents: [], total: 0, returned: 0, has_more: false });
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!loading && stats != null) fetchPendingVerification();
+  }, [loading, stats]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -3146,11 +3438,14 @@ const DashboardOverview = ({ onShowDrilldown }) => {
     );
   }
 
+  const unverifiedCount = stats?.stats?.unverified_documents_count ?? 0;
+
   const statCards = [
     { label: 'Total Clients', value: stats?.stats?.total_clients || 0, icon: Users, color: 'text-blue-600 bg-blue-100', drilldown: 'clients' },
     { label: 'Total Properties', value: stats?.stats?.total_properties || 0, icon: Building2, color: 'text-purple-600 bg-purple-100', drilldown: 'properties' },
     { label: 'Active Clients', value: stats?.stats?.active_clients || 0, icon: CheckCircle, color: 'text-green-600 bg-green-100', drilldown: 'clients-active' },
     { label: 'Pending Setup', value: stats?.stats?.pending_clients || 0, icon: Clock, color: 'text-amber-600 bg-amber-100', drilldown: 'clients-pending' },
+    { label: 'Unverified Documents', value: unverifiedCount, icon: FileCheck, color: 'text-teal-600 bg-teal-100', drilldown: null, badge: true },
   ];
 
   const complianceCards = [
@@ -3164,28 +3459,40 @@ const DashboardOverview = ({ onShowDrilldown }) => {
       <h2 className="text-xl font-semibold text-midnight-blue">Dashboard Overview</h2>
       
       {/* Stats Grid - Clickable tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat, idx) => (
-          <button 
-            key={idx} 
-            onClick={() => onShowDrilldown && onShowDrilldown(stat.drilldown)}
-            className="bg-white rounded-xl border border-gray-200 p-6 text-left hover:shadow-lg hover:border-electric-teal transition-all cursor-pointer group"
-            data-testid={`kpi-tile-${stat.drilldown}`}
-          >
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-lg ${stat.color} group-hover:scale-110 transition-transform`}>
-                <stat.icon className="w-6 h-6" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {statCards.map((stat, idx) => {
+          const Wrapper = stat.drilldown ? 'button' : 'div';
+          return (
+            <Wrapper
+              key={idx}
+              onClick={stat.drilldown ? () => onShowDrilldown && onShowDrilldown(stat.drilldown) : undefined}
+              className={`bg-white rounded-xl border border-gray-200 p-6 text-left transition-all ${stat.drilldown ? 'hover:shadow-lg hover:border-electric-teal cursor-pointer group' : ''}`}
+              data-testid={stat.drilldown ? `kpi-tile-${stat.drilldown}` : 'kpi-tile-unverified-documents'}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-lg ${stat.color} ${stat.drilldown ? 'group-hover:scale-110 transition-transform' : ''}`}>
+                  <stat.icon className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-2xl font-bold text-midnight-blue flex items-center gap-2">
+                    {stat.value}
+                    {stat.badge && stat.value > 0 && (
+                      <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-teal-100 text-teal-700" title="Awaiting admin verification">
+                        pending
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-sm text-gray-500">{stat.label}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-midnight-blue">{stat.value}</p>
-                <p className="text-sm text-gray-500">{stat.label}</p>
-              </div>
-            </div>
-            <div className="mt-3 text-xs text-electric-teal opacity-0 group-hover:opacity-100 transition-opacity">
-              Click to view details →
-            </div>
-          </button>
-        ))}
+              {stat.drilldown && (
+                <div className="mt-3 text-xs text-electric-teal opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to view details →
+                </div>
+              )}
+            </Wrapper>
+          );
+        })}
       </div>
 
       {/* Compliance Overview - Clickable tiles */}
@@ -3210,6 +3517,88 @@ const DashboardOverview = ({ onShowDrilldown }) => {
           </div>
         </div>
       )}
+
+      {/* Pending verification (UPLOADED older than X hours) */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="pending-verification-section">
+        <h3 className="text-lg font-semibold text-midnight-blue mb-4">Pending verification</h3>
+        <p className="text-sm text-gray-500 mb-4">Documents with status UPLOADED older than selected hours (filterable by client).</p>
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <label className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Older than (hours)</span>
+            <select
+              value={pendingHours}
+              onChange={(e) => setPendingHours(Number(e.target.value))}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              data-testid="pending-verification-hours"
+            >
+              <option value={24}>24</option>
+              <option value={48}>48</option>
+              <option value={72}>72</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Client ID</span>
+            <input
+              type="text"
+              value={pendingClientId}
+              onChange={(e) => setPendingClientId(e.target.value)}
+              placeholder="Optional"
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-48"
+              data-testid="pending-verification-client-id"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={fetchPendingVerification}
+            disabled={pendingLoading}
+            className="px-4 py-2 bg-electric-teal text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+            data-testid="pending-verification-refresh"
+          >
+            {pendingLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Refresh list
+          </button>
+        </div>
+        {pendingLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="w-6 h-6 animate-spin text-electric-teal" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-600">
+                  <th className="py-2 pr-4">Document ID</th>
+                  <th className="py-2 pr-4">Client ID</th>
+                  <th className="py-2 pr-4">Property ID</th>
+                  <th className="py-2 pr-4">Requirement ID</th>
+                  <th className="py-2">Uploaded at</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingList.documents.length === 0 ? (
+                  <tr><td colSpan={5} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
+                ) : (
+                  pendingList.documents.map((doc) => (
+                    <tr key={doc.document_id || doc.client_id + doc.uploaded_at} className="border-b border-gray-100">
+                      <td className="py-2 pr-4 font-mono text-xs">{doc.document_id}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{doc.client_id}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{doc.property_id || '—'}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{doc.requirement_id || '—'}</td>
+                      <td className="py-2 text-gray-600">{doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            {pendingList.total > 0 && (
+              <p className="text-xs text-gray-500 mt-2">
+                Showing {pendingList.returned} of {pendingList.total}
+                {pendingList.has_more ? ' (more available)' : ''}.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Recent Activity */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -3268,6 +3657,7 @@ const AdminDashboard = () => {
     { id: 'admins', label: 'Admins', icon: UserCog },
     { id: 'rules', label: 'Rules', icon: BookOpen },
     { id: 'templates', label: 'Templates', icon: Mail },
+    { id: 'emailDelivery', label: 'Email delivery', icon: Mail },
     { id: 'audit', label: 'Audit Logs', icon: FileText },
     { id: 'messages', label: 'Messages', icon: Activity },
   ];
@@ -3281,6 +3671,7 @@ const AdminDashboard = () => {
       case 'admins': return <AdminsManagement />;
       case 'rules': return <RulesManagement />;
       case 'templates': return <EmailTemplates />;
+      case 'emailDelivery': return <EmailDelivery />;
       case 'audit': return <AuditLogs />;
       case 'messages': return <MessageLogs />;
       default: return <DashboardOverview onShowDrilldown={handleShowDrilldown} />;

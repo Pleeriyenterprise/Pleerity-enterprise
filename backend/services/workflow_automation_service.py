@@ -398,7 +398,11 @@ class WorkflowAutomationService:
                 logger.info(f"WF2: Order {order_id} draft generated successfully")
                 return {"success": True, "status": "DRAFT_READY", "workflow": "WF2", "version": result_version}
             else:
-                # Generation failed
+                # Ensure order has orchestration_status FAILED and error metadata (idempotent with orchestrator)
+                if hasattr(result, "order_id"):
+                    await orchestrator.finalize_orchestration_failure(
+                        result, stage="pipeline", error_code="GENERATION_FAILED"
+                    )
                 await transition_order_state(
                     order_id=order_id,
                     new_status=OrderStatus.FAILED,
@@ -552,6 +556,11 @@ class WorkflowAutomationService:
                 logger.info(f"WF4: Order {order_id} regenerated successfully")
                 return {"success": True, "status": "INTERNAL_REVIEW", "workflow": "WF4", "version": result_version}
             else:
+                # Ensure order has orchestration_status FAILED and error metadata (idempotent with orchestrator)
+                if hasattr(result, "order_id"):
+                    await orchestrator.finalize_orchestration_failure(
+                        result, stage="pipeline", error_code="REGENERATION_FAILED"
+                    )
                 # Regeneration failed - return to review
                 await transition_order_state(
                     order_id=order_id,

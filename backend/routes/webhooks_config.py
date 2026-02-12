@@ -128,22 +128,22 @@ async def create_webhook(request: Request, data: CreateWebhookRequest):
     db = database.get_db()
     
     try:
-        # Plan gating check - webhooks require PLAN_6_15
-        from services.plan_gating import plan_gating_service
-        
-        allowed, error_msg = await plan_gating_service.enforce_feature(
-            user["client_id"], 
+        # Plan gating: webhooks require PLAN_3_PRO (plan_registry)
+        from services.plan_registry import plan_registry
+
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
+            user["client_id"],
             "webhooks"
         )
-        
         if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
                     "message": error_msg,
                     "feature": "webhooks",
-                    "upgrade_required": True
+                    "upgrade_required": True,
+                    **(error_details or {})
                 }
             )
         

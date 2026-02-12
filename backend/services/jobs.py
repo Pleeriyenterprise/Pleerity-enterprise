@@ -214,10 +214,10 @@ class JobScheduler:
                     "documents_uploaded": len(recent_documents)
                 }
                 
-                # Send digest email
-                await self._send_digest_email(client, digest_content)
-                
-                # Log digest
+                # Send digest email (skip and audit if no recipient)
+                sent = await self._send_digest_email(client, digest_content)
+                if not sent:
+                    continue
                 digest_log = {
                     "digest_id": str(datetime.now(timezone.utc).timestamp()),
                     "client_id": client["client_id"],
@@ -227,7 +227,6 @@ class JobScheduler:
                     "sent_at": datetime.now(timezone.utc).isoformat(),
                     "created_at": datetime.now(timezone.utc).isoformat()
                 }
-                
                 await self.db.digest_logs.insert_one(digest_log)
                 digest_count += 1
             
@@ -279,47 +278,128 @@ class JobScheduler:
             logger.error(f"Failed to send reminder email: {e}")
     
     async def _send_digest_email(self, client, content):
-        """Send monthly digest email."""
+        """Send monthly digest email via email_service (counts-only). Returns True if sent, False if skipped (no recipient)."""
         try:
-            # Import here to avoid circular dependency
             from services.email_service import email_service
             from services.webhook_service import fire_digest_sent
             from models import EmailTemplateAlias
-            
-            # In production, this would use the monthly-digest template
-            logger.info(f"Sending digest to {client['email']}: {content['total_requirements']} requirements")
-            
-            # Fire webhook
+            from utils.audit import create_audit_log
+            from models import AuditAction
+
+            recipient = (client.get("email") or client.get("contact_email") or "").strip()
+            if not recipient:
+                await create_audit_log(
+                    action=AuditAction.EMAIL_SKIPPED_NO_RECIPIENT,
+                    client_id=client["client_id"],
+                    metadata={
+                        "template": EmailTemplateAlias.MONTHLY_DIGEST.value,
+                        "properties_count": content.get("properties_count", 0),
+                        "total_requirements": content.get("total_requirements", 0),
+                        "compliant": content.get("compliant", 0),
+                        "overdue": content.get("overdue", 0),
+                        "expiring_soon": content.get("expiring_soon", 0),
+                        "documents_uploaded": content.get("documents_uploaded", 0),
+                    },
+                )
+                logger.info(f"Digest skipped for client {client['client_id']}: no email or contact_email")
+                return False
+
+            template_model = {
+                "period_start": content.get("period_start", ""),
+                "period_end": content.get("period_end", ""),
+                "properties_count": content.get("properties_count", 0),
+                "total_requirements": content.get("total_requirements", 0),
+                "compliant": content.get("compliant", 0),
+                "overdue": content.get("overdue", 0),
+                "expiring_soon": content.get("expiring_soon", 0),
+                "documents_uploaded": content.get("documents_uploaded", 0),
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance",
+            }
+            await email_service.send_email(
+                recipient=recipient,
+                template_alias=EmailTemplateAlias.MONTHLY_DIGEST,
+                template_model=template_model,
+                client_id=client["client_id"],
+                subject="Monthly Compliance Digest",
+            )
+            logger.info(f"Digest sent to {recipient}: {content.get('total_requirements', 0)} requirements")
             try:
                 await fire_digest_sent(
                     client_id=client["client_id"],
                     digest_type="monthly",
-                    recipients=[client["email"]],
+                    recipients=[recipient],
                     properties_count=content.get("properties_count", 0),
                     requirements_summary={
                         "total": content.get("total_requirements", 0),
                         "compliant": content.get("compliant", 0),
                         "overdue": content.get("overdue", 0),
-                        "expiring_soon": content.get("expiring_soon", 0)
-                    }
+                        "expiring_soon": content.get("expiring_soon", 0),
+                    },
                 )
             except Exception as webhook_err:
                 logger.error(f"Webhook error for digest: {webhook_err}")
-            
-            # Create audit log
-            audit_log = {
-                "audit_id": str(datetime.now(timezone.utc).timestamp()),
-                "action": "DIGEST_SENT",
-                "client_id": client["client_id"],
-                "metadata": content,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-            
-            await self.db.audit_logs.insert_one(audit_log)
-        
+            return True
         except Exception as e:
             logger.error(f"Failed to send digest email: {e}")
+            return False
     
+    async def send_pending_verification_digest(self):
+        """Send daily summary of documents with status UPLOADED (counts only, no PII) to OWNER/ADMIN, and write audit log."""
+        logger.info("Running pending verification digest job...")
+        try:
+            from services.email_service import email_service
+            from models import EmailTemplateAlias, AuditAction, UserRole, UserStatus
+            from utils.audit import create_audit_log
+
+            count_pending = await self.db.documents.count_documents({"status": "UPLOADED"})
+            cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+            count_older_24h = await self.db.documents.count_documents({
+                "status": "UPLOADED",
+                "uploaded_at": {"$lte": cutoff_24h}
+            })
+            admins = await self.db.portal_users.find(
+                {
+                    "role": {"$in": [UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value]},
+                    "status": UserStatus.ACTIVE.value,
+                },
+                {"_id": 0, "auth_email": 1}
+            ).to_list(100)
+
+            recipient_emails = [a["auth_email"] for a in admins if a.get("auth_email")]
+            sent = 0
+            for email in recipient_emails:
+                try:
+                    await email_service.send_email(
+                        recipient=email,
+                        template_alias=EmailTemplateAlias.PENDING_VERIFICATION_DIGEST,
+                        template_model={
+                            "count_pending": count_pending,
+                            "count_older_24h": count_older_24h,
+                            "company_name": "Pleerity Enterprise Ltd",
+                            "tagline": "AI-Driven Solutions & Compliance",
+                        },
+                        subject="Pending verification digest",
+                    )
+                    sent += 1
+                except Exception as e:
+                    logger.warning(f"Pending verification digest send failed to {email}: {e}")
+
+            await create_audit_log(
+                action=AuditAction.PENDING_VERIFICATION_DIGEST_SENT,
+                actor_id="system",
+                metadata={
+                    "recipient_count": sent,
+                    "count_pending": count_pending,
+                    "count_older_24h": count_older_24h,
+                },
+            )
+            logger.info(f"Pending verification digest sent to {sent} recipients (count_pending={count_pending}, count_older_24h={count_older_24h})")
+            return sent
+        except Exception as e:
+            logger.error(f"Pending verification digest job error: {e}")
+            return 0
+
     async def check_compliance_status_changes(self):
         """Check for compliance status changes and send alerts.
         

@@ -280,19 +280,18 @@ async def create_report_schedule(request: Request, data: CreateScheduleRequest):
     db = database.get_db()
     
     try:
-        # Feature gating - scheduled_reports requires PLAN_2_PORTFOLIO
-        from services.feature_entitlement import feature_entitlement_service
-        
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+        # Plan gating: scheduled_reports (plan_registry)
+        from services.plan_registry import plan_registry
+
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             user["client_id"],
             "scheduled_reports"
         )
-        
         if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
                     "message": error_msg,
                     "feature": "scheduled_reports",
                     "upgrade_required": True,
@@ -484,29 +483,27 @@ async def toggle_report_schedule(request: Request, schedule_id: str):
 async def download_compliance_summary_pdf(request: Request):
     """Download professionally formatted compliance summary PDF.
     
-    Plan gating: Requires Growth plan (PLAN_2_5) or higher.
+    Plan gating: Requires Portfolio plan or higher (plan_registry reports_pdf).
     Uses client branding settings for white-label customization.
     """
-    from services.feature_entitlement import feature_entitlement_service
+    from services.plan_registry import plan_registry
     from services.professional_reports import professional_report_generator
-    
+
     user = await client_route_guard(request)
-    
     try:
-        # Enforce feature access
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             user["client_id"],
             "reports_pdf"
         )
-        
         if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
                     "message": error_msg,
                     "feature": "reports_pdf",
-                    "upgrade_required": True
+                    "upgrade_required": True,
+                    **(error_details or {})
                 }
             )
         
@@ -555,28 +552,26 @@ async def download_expiry_schedule_pdf(
 ):
     """Download professionally formatted expiry schedule PDF.
     
-    Plan gating: Requires Growth plan (PLAN_2_5) or higher.
+    Plan gating: Requires Portfolio plan or higher (plan_registry reports_pdf).
     """
-    from services.feature_entitlement import feature_entitlement_service
+    from services.plan_registry import plan_registry
     from services.professional_reports import professional_report_generator
-    
+
     user = await client_route_guard(request)
-    
     try:
-        # Enforce feature access
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             user["client_id"],
             "reports_pdf"
         )
-        
         if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
+                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
                     "message": error_msg,
                     "feature": "reports_pdf",
-                    "upgrade_required": True
+                    "upgrade_required": True,
+                    **(error_details or {})
                 }
             )
         
@@ -631,31 +626,28 @@ async def download_audit_log_pdf(
 ):
     """Download professionally formatted audit log PDF.
     
-    Plan gating: Requires Portfolio plan (PLAN_6_15) or higher.
+    Plan gating: Requires Professional plan (plan_registry audit_log_export).
     """
-    from services.feature_entitlement import feature_entitlement_service
+    from services.plan_registry import plan_registry
     from services.professional_reports import professional_report_generator
-    
+
     user = await client_route_guard(request)
-    
     try:
-        # Enforce feature access
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+        # Canonical: audit_exports -> audit_log_export (plan_registry)
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             user["client_id"],
-            "audit_exports"
+            "audit_log_export"
         )
-        
         if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "audit_exports",
-                    "upgrade_required": True
-                }
-            )
-        
+            detail = {
+                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
+                "message": error_msg,
+                "upgrade_required": True,
+                **(error_details or {}),
+            }
+            detail["feature"] = "audit_exports"  # preserve response shape
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
         # Parse actions filter
         action_list = actions.split(",") if actions else None
         

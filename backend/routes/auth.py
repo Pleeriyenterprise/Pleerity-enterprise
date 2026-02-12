@@ -63,10 +63,9 @@ async def login(request: Request, credentials: LoginRequest):
                 detail="Password not set"
             )
         
-        # Admin users don't need client association
+        # Staff (OWNER/ADMIN) and admin users don't need client association
         client = None
-        if portal_user["role"] == UserRole.ROLE_ADMIN.value:
-            # Admin login - no client check needed
+        if portal_user["role"] in (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value):
             pass
         else:
             # Get client info for non-admin users
@@ -97,9 +96,10 @@ async def login(request: Request, credentials: LoginRequest):
         # Create access token
         token_data = {
             "portal_user_id": portal_user["portal_user_id"],
-            "client_id": portal_user.get("client_id"),  # Use .get() for admin users without client_id
+            "client_id": portal_user.get("client_id"),
             "email": portal_user["auth_email"],
-            "role": portal_user["role"]
+            "role": portal_user["role"],
+            "session_version": portal_user.get("session_version", 0),
         }
         access_token = create_access_token(token_data)
         
@@ -298,12 +298,13 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 client_id=password_token.get("client_id")
             )
         
-        # Create access token for auto-login
+        # Create access token for auto-login (include session_version)
         token_data = {
             "portal_user_id": portal_user["portal_user_id"],
             "client_id": portal_user.get("client_id"),
             "email": portal_user["auth_email"],
-            "role": portal_user["role"]
+            "role": portal_user["role"],
+            "session_version": portal_user.get("session_version", 0),
         }
         access_token = create_access_token(token_data)
         
@@ -347,11 +348,11 @@ async def admin_login(request: Request, credentials: LoginRequest):
     db = database.get_db()
     
     try:
-        # Find admin user - ONLY check role, no client association needed
+        # Find staff user (OWNER or ADMIN)
         portal_user = await db.portal_users.find_one(
             {
                 "auth_email": credentials.email,
-                "role": UserRole.ROLE_ADMIN.value
+                "role": {"$in": [UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value]}
             },
             {"_id": 0}
         )
@@ -411,18 +412,19 @@ async def admin_login(request: Request, credentials: LoginRequest):
             {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}}
         )
         
-        # Create access token - NO client_id required for admins
+        # Create access token (include session_version for force-logout invalidation)
         token_data = {
             "portal_user_id": portal_user["portal_user_id"],
-            "client_id": None,  # Admins don't need client association
+            "client_id": None,
             "email": portal_user["auth_email"],
-            "role": portal_user["role"]
+            "role": portal_user["role"],
+            "session_version": portal_user.get("session_version", 0),
         }
         access_token = create_access_token(token_data)
         
         await create_audit_log(
             action=AuditAction.ADMIN_LOGIN_SUCCESS,
-            actor_role=UserRole.ROLE_ADMIN,
+            actor_role=UserRole(portal_user["role"]),
             actor_id=portal_user["portal_user_id"],
             metadata={"email": credentials.email}
         )
@@ -445,6 +447,55 @@ async def admin_login(request: Request, credentials: LoginRequest):
             detail="Login failed"
         )
 
+
+
+@router.post("/break-glass")
+async def break_glass_reset_owner_password(request: Request):
+    """
+    Break-glass: reset OWNER password when locked out. Enabled only if BREAK_GLASS_ENABLED=true.
+    Protected by BOOTSTRAP_SECRET (header X-Break-Glass-Secret or Authorization Bearer).
+    Resets first OWNER's password, increments session_version (force logout), writes BREAK_GLASS_OWNER_USED audit.
+    Do not log or return plaintext password.
+    """
+    import os
+    if os.environ.get("BREAK_GLASS_ENABLED", "").strip().lower() != "true":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    secret = os.environ.get("BOOTSTRAP_SECRET", "").strip()
+    if not secret:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Break-glass not configured")
+    auth_header = request.headers.get("Authorization", "")
+    header_secret = request.headers.get("X-Break-Glass-Secret", "").strip() or (auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else "")
+    if header_secret != secret:
+        await create_audit_log(action=AuditAction.BREAK_GLASS_OWNER_USED, metadata={"outcome": "invalid_secret"})
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    body = await request.json() if request.headers.get("content-type") == "application/json" else {}
+    new_password = (body.get("new_password") or "").strip()
+    if not new_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="new_password required")
+    is_valid, msg = validate_password_strength(new_password)
+    if not is_valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    db = database.get_db()
+    owner = await db.portal_users.find_one(
+        {"role": UserRole.ROLE_OWNER.value},
+        {"_id": 0, "portal_user_id": 1, "auth_email": 1}
+    )
+    if not owner:
+        await create_audit_log(action=AuditAction.BREAK_GLASS_OWNER_USED, metadata={"outcome": "no_owner"})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No OWNER found")
+    pid = owner["portal_user_id"]
+    await db.portal_users.update_one(
+        {"portal_user_id": pid},
+        {"$set": {"password_hash": hash_password(new_password)}, "$inc": {"session_version": 1}}
+    )
+    await create_audit_log(
+        action=AuditAction.BREAK_GLASS_OWNER_USED,
+        actor_id=pid,
+        resource_type="portal_user",
+        resource_id=pid,
+        metadata={"outcome": "success", "auth_email": owner.get("auth_email")}
+    )
+    return {"message": "OWNER password reset; all sessions invalidated"}
 
 
 @router.post("/log-route-guard-block")

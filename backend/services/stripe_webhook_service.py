@@ -29,9 +29,8 @@ from services.plan_registry import (
     EntitlementStatus,
     SUBSCRIPTION_PRICE_TO_PLAN
 )
-from services.provisioning import provisioning_service
 from utils.audit import create_audit_log
-from models import AuditAction
+from models import AuditAction, ProvisioningJob, ProvisioningJobStatus
 
 logger = logging.getLogger(__name__)
 
@@ -390,42 +389,62 @@ class StripeWebhookService:
             }
         )
         
-        # Trigger provisioning if entitled
+        # Provisioning jobs: persist state only; return 200 quickly. Poller processes PAYMENT_CONFIRMED jobs.
+        checkout_session_id = session.get("id")
         provisioning_triggered = False
-        if entitlement_status == EntitlementStatus.ENABLED:
-            client = await db.clients.find_one(
-                {"client_id": client_id},
-                {"_id": 0, "onboarding_status": 1, "contact_email": 1, "contact_name": 1}
+        if entitlement_status == EntitlementStatus.ENABLED and checkout_session_id:
+            existing_job = await db.provisioning_jobs.find_one(
+                {"checkout_session_id": checkout_session_id},
+                {"_id": 0, "job_id": 1, "status": 1}
             )
-            
-            if client and client.get("onboarding_status") != "PROVISIONED":
-                success, message = await provisioning_service.provision_client_portal(client_id)
-                provisioning_triggered = success
-                
-                if success:
-                    logger.info(f"Provisioning triggered for client {client_id}")
+            if existing_job:
+                existing_status = existing_job.get("status")
+                if existing_status in (
+                    ProvisioningJobStatus.PAYMENT_CONFIRMED.value,
+                    ProvisioningJobStatus.FAILED.value,
+                ):
+                    await db.provisioning_jobs.update_one(
+                        {"checkout_session_id": checkout_session_id},
+                        {"$set": {"needs_run": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+                    )
+                    provisioning_triggered = True
+                    logger.info(f"Checkout {checkout_session_id} job {existing_job.get('job_id')} marked needs_run (re-dispatch)")
                 else:
-                    logger.error(f"Provisioning failed for client {client_id}: {message}")
-            
-            # Send payment received email
-            try:
-                from services.email_service import email_service
-                
-                plan_def = plan_registry.get_plan(plan_code)
-                amount = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
-                frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
-                
-                await email_service.send_payment_received_email(
-                    recipient=client.get("contact_email") if client else metadata.get("email", ""),
-                    client_name=client.get("contact_name", "Valued Customer") if client else "Valued Customer",
-                    client_id=client_id,
-                    plan_name=plan_def.get("name", plan_code.value),
-                    amount=amount,
-                    portal_link=f"{frontend_url}/app/dashboard"
+                    logger.info(f"Checkout {checkout_session_id} already has job {existing_job.get('job_id')} status={existing_status}")
+            else:
+                client_for_job = await db.clients.find_one(
+                    {"client_id": client_id},
+                    {"_id": 0, "intake_session_id": 1}
                 )
-                logger.info(f"Payment received email sent to {client.get('contact_email')}")
-            except Exception as e:
-                logger.error(f"Failed to send payment received email: {e}")
+                now = datetime.now(timezone.utc)
+                job = ProvisioningJob(
+                    client_id=client_id,
+                    intake_session_id=(client_for_job or {}).get("intake_session_id"),
+                    checkout_session_id=checkout_session_id,
+                    status=ProvisioningJobStatus.PAYMENT_CONFIRMED,
+                    attempt_count=0,
+                    payment_confirmed_at=now,
+                    needs_run=True,
+                )
+                doc = job.model_dump()
+                for k in ["payment_confirmed_at", "provisioning_started_at", "provisioning_completed_at", "welcome_email_sent_at", "failed_at", "created_at", "updated_at", "locked_until"]:
+                    if doc.get(k) and isinstance(doc[k], datetime):
+                        doc[k] = doc[k].isoformat()
+                try:
+                    await db.provisioning_jobs.insert_one(doc)
+                    provisioning_triggered = True
+                    logger.info(f"Job {doc['job_id']} created for client {client_id} (poller will process)")
+                except Exception as e:
+                    if "duplicate key" in str(e).lower() or "E11000" in str(e):
+                        await db.provisioning_jobs.update_one(
+                            {"checkout_session_id": checkout_session_id},
+                            {"$set": {"needs_run": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+                        )
+                        provisioning_triggered = True
+                        logger.info(f"Job already exists for checkout {checkout_session_id} - marked needs_run")
+                    else:
+                        logger.error(f"Failed to create provisioning job: {e}")
+                        raise
         
         # Audit log
         await create_audit_log(

@@ -75,10 +75,14 @@ export const clientAPI = {
 
 export const adminAPI = {
   getDashboard: () => apiClient.get('/admin/dashboard'),
+  getPendingVerificationDocuments: (hours = 24, clientId = null, limit = 50, skip = 0) =>
+    apiClient.get('/admin/documents/pending-verification', { params: { hours, client_id: clientId || undefined, limit, skip } }),
   getClients: (skip = 0, limit = 50) => apiClient.get('/admin/clients', { params: { skip, limit } }),
   getClientDetail: (clientId) => apiClient.get(`/admin/clients/${clientId}`),
   getAuditLogs: (skip = 0, limit = 100, clientId = null) => 
     apiClient.get('/admin/audit-logs', { params: { skip, limit, client_id: clientId } }),
+  getEmailDelivery: (params = {}) =>
+    apiClient.get('/admin/email-delivery', { params: { limit: 50, skip: 0, since_hours: 72, ...params } }),
   resendPasswordSetup: (clientId) => apiClient.post(`/admin/clients/${clientId}/resend-password-setup`),
   // Admin user management
   listAdmins: () => apiClient.get('/admin/admins'),

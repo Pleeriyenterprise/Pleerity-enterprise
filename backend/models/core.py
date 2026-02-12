@@ -40,10 +40,23 @@ class OnboardingStatus(str, Enum):
     PROVISIONED = "PROVISIONED"
     FAILED = "FAILED"
 
+
+class ProvisioningJobStatus(str, Enum):
+    """Single source of truth for purchase lifecycle (provisioning_jobs)."""
+    INTAKE_RECEIVED = "INTAKE_RECEIVED"
+    PAYMENT_PENDING = "PAYMENT_PENDING"
+    PAYMENT_CONFIRMED = "PAYMENT_CONFIRMED"
+    PROVISIONING_STARTED = "PROVISIONING_STARTED"
+    PROVISIONING_COMPLETED = "PROVISIONING_COMPLETED"
+    WELCOME_EMAIL_SENT = "WELCOME_EMAIL_SENT"
+    FAILED = "FAILED"
+
+
 class ServiceCode(str, Enum):
     VAULT_PRO = "VAULT_PRO"
 
 class UserRole(str, Enum):
+    ROLE_OWNER = "ROLE_OWNER"  # System owner; bypasses billing/plan gating; cannot be deleted/downgraded
     ROLE_CLIENT = "ROLE_CLIENT"
     ROLE_CLIENT_ADMIN = "ROLE_CLIENT_ADMIN"
     ROLE_ADMIN = "ROLE_ADMIN"
@@ -101,7 +114,9 @@ class AuditAction(str, Enum):
     PROVISIONING_STARTED = "PROVISIONING_STARTED"
     PROVISIONING_COMPLETE = "PROVISIONING_COMPLETE"
     PROVISIONING_FAILED = "PROVISIONING_FAILED"
-    
+    PORTAL_INVITE_EMAIL_FAILED = "PORTAL_INVITE_EMAIL_FAILED"
+    PORTAL_INVITE_RESENT = "PORTAL_INVITE_RESENT"
+
     # Requirements
     REQUIREMENTS_GENERATED = "REQUIREMENTS_GENERATED"
     REQUIREMENTS_EVALUATED = "REQUIREMENTS_EVALUATED"
@@ -123,6 +138,14 @@ class AuditAction(str, Enum):
     ADMIN_LOGIN_FAILED = "ADMIN_LOGIN_FAILED"
     ADMIN_INVITED = "ADMIN_INVITED"
     ADMIN_INVITE_ACCEPTED = "ADMIN_INVITE_ACCEPTED"
+    # Owner / governance
+    OWNER_CREATED = "OWNER_CREATED"
+    OWNER_PROMOTED_FROM_ADMIN = "OWNER_PROMOTED_FROM_ADMIN"
+    BREAK_GLASS_OWNER_USED = "BREAK_GLASS_OWNER_USED"
+    ADMIN_DISABLED = "ADMIN_DISABLED"
+    ADMIN_ENABLED = "ADMIN_ENABLED"
+    PASSWORD_RESET_BY_OWNER = "PASSWORD_RESET_BY_OWNER"
+    SESSION_FORCE_LOGOUT = "SESSION_FORCE_LOGOUT"
     
     # Route Guards
     ROUTE_GUARD_REDIRECT = "ROUTE_GUARD_REDIRECT"
@@ -131,6 +154,7 @@ class AuditAction(str, Enum):
     # Email
     EMAIL_SENT = "EMAIL_SENT"
     EMAIL_FAILED = "EMAIL_FAILED"
+    EMAIL_SKIPPED_NO_RECIPIENT = "EMAIL_SKIPPED_NO_RECIPIENT"
     REMINDER_SENT = "REMINDER_SENT"
     DIGEST_SENT = "DIGEST_SENT"
     
@@ -164,6 +188,7 @@ class AuditAction(str, Enum):
     CMS_BLOCKS_REORDER = "CMS_BLOCKS_REORDER"
     CMS_MEDIA_UPLOAD = "CMS_MEDIA_UPLOAD"
     CMS_MEDIA_DELETE = "CMS_MEDIA_DELETE"
+    PENDING_VERIFICATION_DIGEST_SENT = "PENDING_VERIFICATION_DIGEST_SENT"
 
 class EmailTemplateAlias(str, Enum):
     PASSWORD_SETUP = "password-setup"
@@ -187,6 +212,8 @@ class EmailTemplateAlias(str, Enum):
     # Order system emails
     ORDER_DELIVERED = "order-delivered"  # Documents ready for download
     ORDER_CLIENT_INFO_REQUEST = "order-client-info-request"  # Request for client input
+    # Admin operational
+    PENDING_VERIFICATION_DIGEST = "pending-verification-digest"  # Daily digest of docs awaiting verification (counts only)
     # ClearForm emails
     CLEARFORM_WELCOME = "clearform-welcome"  # ClearForm account creation
 
@@ -287,11 +314,41 @@ class Client(BaseModel):
     # Document submission preference
     document_submission_method: Optional[str] = None  # "UPLOAD" or "EMAIL"
     email_upload_consent: bool = False  # Consent to Pleerity uploading on behalf
+    # Intake session id (for migrating Preferences & Consents uploads after provisioning)
+    intake_session_id: Optional[str] = None
     # Consents
     consent_data_processing: bool = False
     consent_service_boundary: bool = False  # "Does not provide legal advice" acknowledgment
+    last_invite_error: Optional[str] = None  # Set when portal invite email fails (so support can retry)
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+
+
+class ProvisioningJob(BaseModel):
+    """Single authoritative workflow record for purchase lifecycle (provisioning_jobs collection)."""
+    model_config = ConfigDict(extra="ignore")
+
+    job_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    intake_session_id: Optional[str] = None
+    checkout_session_id: str  # Idempotency key; unique index
+    status: ProvisioningJobStatus = ProvisioningJobStatus.PAYMENT_PENDING
+    attempt_count: int = 0
+    last_error: Optional[str] = None
+    # Concurrency: runner acquires lock atomically; poller only dispatches jobs with no valid lock
+    locked_until: Optional[datetime] = None
+    lock_owner: Optional[str] = None
+    # When True, poller will pick up job (duplicate webhook can set this to recover stuck jobs)
+    needs_run: bool = True
+    # Stage timestamps (ISO strings in DB)
+    payment_confirmed_at: Optional[datetime] = None
+    provisioning_started_at: Optional[datetime] = None
+    provisioning_completed_at: Optional[datetime] = None
+    welcome_email_sent_at: Optional[datetime] = None
+    failed_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+
 
 class NotificationPreferences(BaseModel):
     """Client notification preferences."""
@@ -377,15 +434,17 @@ class PortalUser(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     portal_user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_id: str
+    client_id: Optional[str] = None  # None for staff (OWNER/ADMIN)
     auth_email: EmailStr
     password_hash: Optional[str] = None
     role: UserRole = UserRole.ROLE_CLIENT_ADMIN
     status: UserStatus = UserStatus.INVITED
     password_status: PasswordStatus = PasswordStatus.NOT_SET
     must_set_password: bool = True
+    session_version: int = 0  # Incremented to force logout of all sessions
     last_login: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    created_by_owner_id: Optional[str] = None  # For staff: OWNER who created this user
 
 class Property(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -473,7 +532,7 @@ class Document(BaseModel):
     
     document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_id: str
-    property_id: str
+    property_id: Optional[str] = None  # None = client-level document (e.g. intake migration with no mapping)
     requirement_id: Optional[str] = None  # Optional for bulk uploads without auto-matching
     file_name: str
     file_path: str
@@ -518,6 +577,8 @@ class MessageLog(BaseModel):
     opened_at: Optional[datetime] = None
     bounced_at: Optional[datetime] = None
     error_message: Optional[str] = None
+    provider_error_type: Optional[str] = None
+    provider_error_code: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
 class DigestLog(BaseModel):

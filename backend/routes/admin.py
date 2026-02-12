@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Request, Depends, status, Query
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from database import database
-from middleware import admin_route_guard
-from models import AuditAction, PasswordToken, UserRole, UserStatus, PasswordStatus
+from middleware import admin_route_guard, require_owner, require_owner_or_admin
+from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus
 from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
 import logging
@@ -21,7 +21,7 @@ class AdminInviteRequest(BaseModel):
     full_name: str
 
 
-@router.get("/dashboard")
+@router.get("/dashboard", dependencies=[Depends(require_owner_or_admin)])
 async def get_admin_dashboard(request: Request):
     """Get admin dashboard data with enhanced statistics."""
     user = await admin_route_guard(request)
@@ -54,6 +54,9 @@ async def get_admin_dashboard(request: Request):
             "created_at": {"$gte": seven_days_ago}
         })
         
+        # Unverified documents (UPLOADED status) for admin verification workflow badge
+        unverified_documents_count = await db.documents.count_documents({"status": "UPLOADED"})
+        
         return {
             "stats": {
                 "total_clients": total_clients,
@@ -62,7 +65,8 @@ async def get_admin_dashboard(request: Request):
                 "provisioned_clients": provisioned_clients,
                 "failed_provisioning": failed_provisioning,
                 "total_properties": total_properties,
-                "recent_signups_7d": recent_signups
+                "recent_signups_7d": recent_signups,
+                "unverified_documents_count": unverified_documents_count,
             },
             "compliance_overview": compliance_breakdown
         }
@@ -72,6 +76,161 @@ async def get_admin_dashboard(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load admin dashboard"
+        )
+
+
+@router.get("/documents/pending-verification", dependencies=[Depends(require_owner_or_admin)])
+async def list_pending_verification_documents(
+    request: Request,
+    hours: int = Query(24, ge=1, le=720),
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    skip: int = Query(0, ge=0),
+):
+    """List documents with status UPLOADED older than X hours (default 24), filterable by client_id. Paginated."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        query = {"status": "UPLOADED", "uploaded_at": {"$lte": cutoff}}
+        if client_id:
+            query["client_id"] = client_id
+        total = await db.documents.count_documents(query)
+        cursor = db.documents.find(
+            query,
+            {"_id": 0, "document_id": 1, "client_id": 1, "property_id": 1, "requirement_id": 1, "uploaded_at": 1}
+        ).sort("uploaded_at", 1).skip(skip).limit(limit)
+        items = await cursor.to_list(limit)
+        returned = len(items)
+        return {
+            "documents": items,
+            "total": total,
+            "returned": returned,
+            "has_more": skip + returned < total,
+            "hours": hours,
+            "client_id_filter": client_id,
+        }
+    except Exception as e:
+        logger.error(f"Pending verification list error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list pending verification documents"
+        )
+
+
+@router.get("/email-delivery", dependencies=[Depends(require_owner_or_admin)])
+async def get_email_delivery(
+    request: Request,
+    template_alias: Optional[str] = Query(None),
+    status: Optional[str] = Query(None, regex="^(sent|failed|skipped)$"),
+    client_id: Optional[str] = Query(None),
+    since_hours: int = Query(72, ge=1, le=720),
+    limit: int = Query(50, ge=1, le=200),
+    skip: int = Query(0, ge=0),
+):
+    """Read-only email delivery view (message_logs + EMAIL_SKIPPED_NO_RECIPIENT audit). No recipient in response."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat()
+        status_order = {"failed": 0, "skipped": 1, "sent": 2}
+
+        items_from_msg = []
+        count_msg = 0
+        if status is None or status in ("sent", "failed"):
+            q = {"created_at": {"$gte": since}, "status": {"$in": ["sent", "failed"]}}
+            if status:
+                q["status"] = status
+            if template_alias:
+                q["template_alias"] = template_alias
+            if client_id:
+                q["client_id"] = client_id
+            count_msg = await db.message_logs.count_documents(q)
+            cursor = (
+                db.message_logs.find(
+                    q,
+                    {
+                        "_id": 0,
+                        "created_at": 1,
+                        "template_alias": 1,
+                        "status": 1,
+                        "client_id": 1,
+                        "message_id": 1,
+                        "provider_error_type": 1,
+                        "provider_error_code": 1,
+                    },
+                )
+                .sort("created_at", -1)
+                .limit(2000)
+            )
+            raw = await cursor.to_list(2000)
+            for r in raw:
+                items_from_msg.append({
+                    "created_at": r.get("created_at"),
+                    "template_alias": r.get("template_alias"),
+                    "status": r.get("status"),
+                    "client_id": r.get("client_id"),
+                    "message_id": r.get("message_id"),
+                    "provider_error_type": r.get("provider_error_type"),
+                    "provider_error_code": r.get("provider_error_code"),
+                })
+
+        items_from_audit = []
+        count_audit = 0
+        if status is None or status == "skipped":
+            q = {"action": AuditAction.EMAIL_SKIPPED_NO_RECIPIENT.value, "timestamp": {"$gte": since}}
+            if client_id:
+                q["client_id"] = client_id
+            if template_alias:
+                q["metadata.template"] = template_alias
+            count_audit = await db.audit_logs.count_documents(q)
+            cursor = (
+                db.audit_logs.find(
+                    q,
+                    {"_id": 0, "timestamp": 1, "client_id": 1, "metadata": 1},
+                )
+                .sort("timestamp", -1)
+                .limit(2000)
+            )
+            raw = await cursor.to_list(2000)
+            for r in raw:
+                meta = r.get("metadata") or {}
+                template = meta.get("template")
+                items_from_audit.append({
+                    "created_at": r.get("timestamp"),
+                    "template_alias": template,
+                    "status": "skipped",
+                    "client_id": r.get("client_id"),
+                    "message_id": None,
+                    "provider_error_type": None,
+                    "provider_error_code": None,
+                })
+
+        total = count_msg + count_audit
+        merged = items_from_msg + items_from_audit
+        def _sort_key(x):
+            ts = x.get("created_at")
+            if ts is None:
+                return (status_order.get(x.get("status"), 3), 0.0)
+            if isinstance(ts, str):
+                ts = datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+            else:
+                ts = getattr(ts, "timestamp", lambda: 0)() if hasattr(ts, "timestamp") else 0
+            return (status_order.get(x.get("status"), 3), -ts)
+        merged.sort(key=_sort_key)
+        page = merged[skip : skip + limit]
+        returned = len(page)
+        return {
+            "total": total,
+            "returned": returned,
+            "has_more": skip + returned < total,
+            "items": page,
+        }
+    except Exception as e:
+        logger.error(f"Email delivery list error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load email delivery list",
         )
 
 
@@ -543,21 +702,41 @@ async def resend_password_setup(request: Request, client_id: str):
         
         await db.password_tokens.insert_one(doc)
         
-        # Send email
-        from services.email_service import email_service
+        recipient = (client.get("email") or "").strip()
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
+        if not recipient or not setup_link:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error_code": "EMAIL_INPUT_INVALID", "message": "Missing recipient email or setup link"},
+            )
         
-        await email_service.send_password_setup_email(
-            recipient=client["email"],
-            client_name=client["full_name"],
-            setup_link=setup_link,
-            client_id=client_id
-        )
+        from services.email_service import email_service
+        try:
+            result = await email_service.send_password_setup_email(
+                recipient=recipient,
+                client_name=client.get("full_name") or "Customer",
+                setup_link=setup_link,
+                client_id=client_id
+            )
+        except Exception as e:
+            logger.error(f"Resend password setup send error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value},
+            )
+        if result.status != "sent":
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "error_code": "EMAIL_SEND_FAILED",
+                    "template": EmailTemplateAlias.PASSWORD_SETUP.value,
+                    "message_id": getattr(result, "message_id", None),
+                },
+            )
         
-        # Audit log
         await create_audit_log(
-            action=AuditAction.PASSWORD_SETUP_LINK_RESENT,
+            action=AuditAction.PORTAL_INVITE_RESENT,
             actor_id=user["portal_user_id"],
             client_id=client_id,
             metadata={"admin_email": user["email"]}
@@ -570,8 +749,8 @@ async def resend_password_setup(request: Request, client_id: str):
     except Exception as e:
         logger.error(f"Resend password setup error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to resend password setup link"
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value},
         )
 
 
@@ -822,6 +1001,8 @@ async def get_client_audit_timeline(request: Request, client_id: str, limit: int
             "PASSWORD_TOKEN_GENERATED",
             "PASSWORD_SET_SUCCESS",
             "PASSWORD_SETUP_LINK_RESENT",
+            "PORTAL_INVITE_RESENT",
+            "PORTAL_INVITE_EMAIL_FAILED",
             "USER_LOGIN_SUCCESS",
             "USER_LOGIN_FAILED",
             "DOCUMENT_UPLOADED",
@@ -862,7 +1043,7 @@ async def get_client_audit_timeline(request: Request, client_id: str, limit: int
                 categorized["intake"].append(log)
             elif action.startswith("PROVISIONING_"):
                 categorized["provisioning"].append(log)
-            elif action in ["PASSWORD_TOKEN_GENERATED", "PASSWORD_SET_SUCCESS", "PASSWORD_SETUP_LINK_RESENT", "USER_LOGIN_SUCCESS", "USER_LOGIN_FAILED"]:
+            elif action in ["PASSWORD_TOKEN_GENERATED", "PASSWORD_SET_SUCCESS", "PASSWORD_SETUP_LINK_RESENT", "PORTAL_INVITE_RESENT", "PORTAL_INVITE_EMAIL_FAILED", "USER_LOGIN_SUCCESS", "USER_LOGIN_FAILED"]:
                 categorized["authentication"].append(log)
             elif action.startswith("DOCUMENT_"):
                 categorized["documents"].append(log)
@@ -1631,6 +1812,53 @@ async def admin_trigger_provision(request: Request, client_id: str):
             detail="Failed to trigger provisioning"
         )
 
+
+@router.post("/provisioning-jobs/{job_id}/retry")
+async def retry_provisioning_job(request: Request, job_id: str):
+    """Retry a failed or stuck provisioning job (admin only). Runs the job runner once."""
+    await admin_route_guard(request)
+    from services.provisioning_runner import run_provisioning_job
+    try:
+        ok = await run_provisioning_job(job_id)
+        job = await database.get_db().provisioning_jobs.find_one({"job_id": job_id}, {"_id": 0, "status": 1, "client_id": 1})
+        if not job:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            client_id=job.get("client_id"),
+            metadata={"action": "provisioning_job_retry", "job_id": job_id, "runner_returned": ok}
+        )
+        return {"message": "Retry triggered", "job_id": job_id, "status": job.get("status")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Retry provisioning job error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retry job")
+
+
+@router.post("/provisioning-jobs/{job_id}/resend-invite")
+async def resend_provisioning_invite(request: Request, job_id: str):
+    """Resend welcome (password setup) email for a job in PROVISIONING_COMPLETED (admin only)."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    job = await db.provisioning_jobs.find_one({"job_id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    if job.get("status") != ProvisioningJobStatus.PROVISIONING_COMPLETED.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Job status is {job.get('status')}; resend-invite only for PROVISIONING_COMPLETED"
+        )
+    from services.provisioning_runner import run_provisioning_job
+    ok = await run_provisioning_job(job_id)  # Runner will do email-only retry for this status
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        client_id=job.get("client_id"),
+        metadata={"action": "provisioning_job_resend_invite", "job_id": job_id, "success": ok}
+    )
+    return {"message": "Resend invite triggered", "job_id": job_id, "success": ok}
+
+
 @router.get("/clients/{client_id}/password-setup-link")
 async def get_password_setup_link(request: Request, client_id: str, generate_new: bool = False):
     """Get or generate password setup link for a client (admin only, for internal testing).
@@ -1738,7 +1966,6 @@ async def get_password_setup_link(request: Request, client_id: str, generate_new
         
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
         
-        # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
@@ -1749,6 +1976,16 @@ async def get_password_setup_link(request: Request, client_id: str, generate_new
                 "for_user": portal_user["portal_user_id"]
             }
         )
+        if user.get("role") == UserRole.ROLE_OWNER.value:
+            await create_audit_log(
+                action=AuditAction.PASSWORD_RESET_BY_OWNER,
+                actor_role=UserRole.ROLE_OWNER,
+                actor_id=user["portal_user_id"],
+                client_id=client_id,
+                resource_type="portal_user",
+                resource_id=portal_user["portal_user_id"],
+                metadata={"for_email": portal_user.get("auth_email")}
+            )
         
         return {
             "message": "Password setup link generated",
@@ -1872,16 +2109,13 @@ async def get_client_full_status(request: Request, client_id: str):
 
 @router.get("/admins")
 async def list_admins(request: Request):
-    """List all admin users (admin only).
-    
-    Returns list of all users with ROLE_ADMIN, excluding password hashes.
-    """
+    """List all staff (OWNER + ADMIN) for admin management. Excludes password hashes."""
     user = await admin_route_guard(request)
     db = database.get_db()
     
     try:
         admins = await db.portal_users.find(
-            {"role": UserRole.ROLE_ADMIN.value},
+            {"role": {"$in": [UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value]}},
             {"_id": 0, "password_hash": 0}
         ).to_list(100)
         
@@ -1900,29 +2134,14 @@ async def list_admins(request: Request):
 
 @router.post("/admins/invite")
 async def invite_admin(request: Request, invite_data: AdminInviteRequest):
-    """Invite a new admin user via email.
+    """Invite a new ADMIN user (OWNER only). Creates ROLE_ADMIN only; no second OWNER.
     
-    This endpoint:
-    1. Creates a new PortalUser with ROLE_ADMIN in INVITED status
-    2. Generates a secure password setup token
-    3. Sends an invitation email via Postmark
-    4. Logs the action in the audit trail
-    
-    The invited admin must click the link in the email to set their password,
-    which will activate their account.
-    
-    Args:
-        email: Email address for the new admin
-        full_name: Full name of the new admin
-    
-    Returns:
-        Success message with the new admin's portal_user_id
+    Creates PortalUser with ROLE_ADMIN, sends password setup email, audits. Staff field created_by_owner_id set when invited by OWNER.
     """
-    inviter = await admin_route_guard(request)
+    inviter = await require_owner(request)
     db = database.get_db()
     
     try:
-        # Check if email already exists in portal_users
         existing_user = await db.portal_users.find_one(
             {"auth_email": invite_data.email},
             {"_id": 0}
@@ -1934,23 +2153,25 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
                 detail="A user with this email already exists"
             )
         
-        # Create new admin portal user
         portal_user_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
+        is_owner = inviter.get("role") == UserRole.ROLE_OWNER.value
         
         new_admin = {
             "portal_user_id": portal_user_id,
-            "client_id": None,  # Admins don't have client association
+            "client_id": None,
             "auth_email": invite_data.email,
             "password_hash": None,
             "role": UserRole.ROLE_ADMIN.value,
             "status": UserStatus.INVITED.value,
             "password_status": PasswordStatus.NOT_SET.value,
             "must_set_password": True,
+            "session_version": 0,
             "last_login": None,
             "created_at": now.isoformat(),
-            "full_name": invite_data.full_name,  # Store the name for display
-            "invited_by": inviter["portal_user_id"]
+            "full_name": invite_data.full_name,
+            "invited_by": inviter["portal_user_id"],
+            "created_by_owner_id": inviter["portal_user_id"] if is_owner else None,
         }
         
         await db.portal_users.insert_one(new_admin)
@@ -1994,10 +2215,9 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
         )
         logger.info(f"Sent admin invite email to: {invite_data.email}")
         
-        # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_INVITED,
-            actor_role=UserRole.ROLE_ADMIN,
+            actor_role=UserRole(inviter["role"]),
             actor_id=inviter["portal_user_id"],
             resource_type="portal_user",
             resource_id=portal_user_id,
@@ -2028,51 +2248,60 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
 
 @router.delete("/admins/{portal_user_id}")
 async def deactivate_admin(request: Request, portal_user_id: str):
-    """Deactivate an admin user (admin only).
-    
-    This sets the admin's status to DISABLED. They will no longer be able to log in.
-    Note: An admin cannot deactivate themselves.
-    """
+    """Deactivate an ADMIN user (OWNER or ADMIN). OWNER cannot be deactivated or downgraded; last OWNER cannot be removed."""
     user = await admin_route_guard(request)
     db = database.get_db()
     
     try:
-        # Prevent self-deactivation
         if user["portal_user_id"] == portal_user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="You cannot deactivate your own account"
             )
         
-        # Find the target admin
-        target_admin = await db.portal_users.find_one(
-            {"portal_user_id": portal_user_id, "role": UserRole.ROLE_ADMIN.value},
-            {"_id": 0}
+        target = await db.portal_users.find_one(
+            {"portal_user_id": portal_user_id},
+            {"_id": 0, "role": 1, "status": 1, "auth_email": 1}
         )
         
-        if not target_admin:
+        if not target:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Admin not found"
+                detail="User not found"
             )
         
-        # Deactivate
+        # OWNER cannot be deleted, deactivated, or downgraded via API
+        if target.get("role") == UserRole.ROLE_OWNER.value:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="OWNER cannot be deactivated or removed via API"
+            )
+        
+        # Target is ADMIN: last-active-admin protection
+        active_admin_count = await db.portal_users.count_documents({
+            "role": UserRole.ROLE_ADMIN.value,
+            "status": UserStatus.ACTIVE.value
+        })
+        if active_admin_count <= 1 and target.get("status") == UserStatus.ACTIVE.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot deactivate the last active admin. Add another admin or use the recovery script to re-enable an admin by email."
+            )
+
         await db.portal_users.update_one(
             {"portal_user_id": portal_user_id},
             {"$set": {"status": UserStatus.DISABLED.value}}
         )
         
-        # Audit log
         await create_audit_log(
-            action=AuditAction.ADMIN_ACTION,
-            actor_role=UserRole.ROLE_ADMIN,
+            action=AuditAction.ADMIN_DISABLED,
+            actor_role=UserRole(user["role"]),
             actor_id=user["portal_user_id"],
             resource_type="portal_user",
             resource_id=portal_user_id,
             metadata={
-                "action": "admin_deactivated",
-                "deactivated_email": target_admin.get("auth_email"),
-                "by_admin": user.get("email")
+                "deactivated_email": target.get("auth_email"),
+                "by": user.get("email")
             }
         )
         
@@ -2093,46 +2322,42 @@ async def deactivate_admin(request: Request, portal_user_id: str):
 
 @router.post("/admins/{portal_user_id}/reactivate")
 async def reactivate_admin(request: Request, portal_user_id: str):
-    """Reactivate a disabled admin user (admin only)."""
+    """Reactivate a disabled ADMIN user. Only ADMIN can be reactivated (OWNER cannot be deactivated)."""
     user = await admin_route_guard(request)
     db = database.get_db()
     
     try:
-        # Find the target admin
-        target_admin = await db.portal_users.find_one(
+        target = await db.portal_users.find_one(
             {"portal_user_id": portal_user_id, "role": UserRole.ROLE_ADMIN.value},
             {"_id": 0}
         )
         
-        if not target_admin:
+        if not target:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Admin not found"
             )
         
-        if target_admin.get("status") == UserStatus.ACTIVE.value:
+        if target.get("status") == UserStatus.ACTIVE.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Admin is already active"
             )
         
-        # Reactivate
         await db.portal_users.update_one(
             {"portal_user_id": portal_user_id},
             {"$set": {"status": UserStatus.ACTIVE.value}}
         )
         
-        # Audit log
         await create_audit_log(
-            action=AuditAction.ADMIN_ACTION,
-            actor_role=UserRole.ROLE_ADMIN,
+            action=AuditAction.ADMIN_ENABLED,
+            actor_role=UserRole(user["role"]),
             actor_id=user["portal_user_id"],
             resource_type="portal_user",
             resource_id=portal_user_id,
             metadata={
-                "action": "admin_reactivated",
-                "reactivated_email": target_admin.get("auth_email"),
-                "by_admin": user.get("email")
+                "reactivated_email": target.get("auth_email"),
+                "by": user.get("email")
             }
         )
         
@@ -2149,6 +2374,43 @@ async def reactivate_admin(request: Request, portal_user_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reactivate admin"
         )
+
+
+@router.post("/admins/{portal_user_id}/force-logout")
+async def force_logout_admin(request: Request, portal_user_id: str):
+    """Force logout all sessions for a staff user by incrementing session_version (OWNER only). Audited."""
+    user = await require_owner(request)
+    db = database.get_db()
+    
+    try:
+        target = await db.portal_users.find_one(
+            {"portal_user_id": portal_user_id},
+            {"_id": 0, "role": 1, "auth_email": 1}
+        )
+        if not target:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        
+        result = await db.portal_users.update_one(
+            {"portal_user_id": portal_user_id},
+            {"$inc": {"session_version": 1}}
+        )
+        if result.modified_count == 0:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update session version")
+        
+        await create_audit_log(
+            action=AuditAction.SESSION_FORCE_LOGOUT,
+            actor_role=UserRole.ROLE_OWNER,
+            actor_id=user["portal_user_id"],
+            resource_type="portal_user",
+            resource_id=portal_user_id,
+            metadata={"target_email": target.get("auth_email"), "by": user.get("email")}
+        )
+        return {"message": "Sessions invalidated", "portal_user_id": portal_user_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Force logout error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to force logout")
 
 
 @router.post("/admins/{portal_user_id}/resend-invite")

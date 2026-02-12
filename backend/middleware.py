@@ -10,7 +10,7 @@ from database import database
 logger = logging.getLogger(__name__)
 
 async def get_current_user(request: Request) -> Optional[dict]:
-    """Extract and validate current user from JWT token."""
+    """Extract and validate current user from JWT token. Validates session_version when present (force-logout)."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return None
@@ -20,6 +20,18 @@ async def get_current_user(request: Request) -> Optional[dict]:
     
     if not payload:
         return None
+    
+    # If token carries session_version, verify it matches DB (force-logout invalidation)
+    if "session_version" in payload:
+        db = database.get_db()
+        user_doc = await db.portal_users.find_one(
+            {"portal_user_id": payload.get("portal_user_id")},
+            {"_id": 0, "session_version": 1}
+        )
+        if user_doc is None:
+            return None
+        if user_doc.get("session_version", 0) != payload.get("session_version", 0):
+            return None
     
     return payload
 
@@ -39,9 +51,11 @@ async def require_role(request: Request, required_role: UserRole) -> dict:
     user_role = user.get("role")
     
     role_hierarchy = {
+        UserRole.ROLE_OWNER.value: 4,
         UserRole.ROLE_ADMIN.value: 3,
         UserRole.ROLE_CLIENT_ADMIN.value: 2,
-        UserRole.ROLE_CLIENT.value: 1
+        UserRole.ROLE_CLIENT.value: 1,
+        UserRole.ROLE_TENANT.value: 0,
     }
     
     if role_hierarchy.get(user_role, 0) < role_hierarchy.get(required_role.value, 0):
@@ -53,8 +67,16 @@ async def require_role(request: Request, required_role: UserRole) -> dict:
     return user
 
 async def require_admin(request: Request) -> dict:
-    """Require admin role."""
+    """Require admin or owner role (admin routes)."""
     return await require_role(request, UserRole.ROLE_ADMIN)
+
+async def require_owner_or_admin(request: Request) -> dict:
+    """Explicit RBAC: require OWNER or ADMIN role (admin-only routes)."""
+    return await require_role(request, UserRole.ROLE_ADMIN)
+
+async def require_owner(request: Request) -> dict:
+    """Require owner role (OWNER-only actions)."""
+    return await require_role(request, UserRole.ROLE_OWNER)
 
 async def client_route_guard(request: Request) -> dict:
     """Guard for client routes - checks auth, provisioning, password status."""

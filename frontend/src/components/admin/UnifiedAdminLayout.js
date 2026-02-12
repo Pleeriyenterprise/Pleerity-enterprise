@@ -123,6 +123,7 @@ const navSections = [
       { href: '/admin/privacy/consent', label: 'Privacy & Consent', icon: Cookie },
       { href: '/admin/dashboard', label: 'Automation Rules', icon: Settings, tabTarget: 'rules' },
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
+      { href: '/admin/dashboard', label: 'Email delivery', icon: Mail, tabTarget: 'emailDelivery' },
       { href: '/admin/dashboard', label: 'Audit Logs', icon: History, tabTarget: 'audit' },
       { href: '/admin/notifications/preferences', label: 'Notifications', icon: Bell },
     ],

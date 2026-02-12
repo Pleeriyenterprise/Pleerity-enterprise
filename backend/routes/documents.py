@@ -339,22 +339,22 @@ async def upload_zip_archive(
     db = database.get_db()
     
     try:
-        # Plan gating check - ZIP upload requires PLAN_6_15
-        from services.plan_gating import plan_gating_service
-        
-        allowed, error_msg = await plan_gating_service.enforce_feature(
-            user["client_id"], 
+        # Plan gating: zip_upload requires PLAN_2_PORTFOLIO (plan_registry)
+        from services.plan_registry import plan_registry
+
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
+            user["client_id"],
             "zip_upload"
         )
-        
         if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
                     "message": error_msg,
                     "feature": "zip_upload",
-                    "upgrade_required": True
+                    "upgrade_required": True,
+                    **(error_details or {})
                 }
             )
         
@@ -667,6 +667,8 @@ async def upload_document(
         
         # Update requirement status and regenerate due date
         await regenerate_requirement_due_date(requirement_id, user["client_id"])
+        from services.provisioning import provisioning_service
+        await provisioning_service._update_property_compliance(property_id)
         
         # Audit log
         await create_audit_log(
@@ -766,6 +768,8 @@ async def admin_upload_document(
         
         # Update requirement status and regenerate due date
         await regenerate_requirement_due_date(requirement_id, client_id)
+        from services.provisioning import provisioning_service
+        await provisioning_service._update_property_compliance(property_id)
         
         # Audit log
         await create_audit_log(
@@ -826,10 +830,11 @@ async def verify_document(request: Request, document_id: str):
             {"$set": {"status": RequirementStatus.COMPLIANT.value}}
         )
         
-        # Recompute property compliance
-        from services.provisioning import provisioning_service
-        await provisioning_service._update_property_compliance(document["property_id"])
-        
+        # Recompute property compliance (skip for client-level docs with no property_id)
+        if document.get("property_id"):
+            from services.provisioning import provisioning_service
+            await provisioning_service._update_property_compliance(document["property_id"])
+
         # Audit log
         await create_audit_log(
             action=AuditAction.DOCUMENT_VERIFIED,
@@ -846,18 +851,19 @@ async def verify_document(request: Request, document_id: str):
             from services.enablement_service import emit_enablement_event
             from models.enablement import EnablementEventType
             
-            # Get property address for context
+            # Get property address for context (client-level docs may have property_id None)
+            property_id = document.get("property_id")
             property_doc = await db.properties.find_one(
-                {"property_id": document["property_id"]},
+                {"property_id": property_id},
                 {"_id": 0, "address": 1}
-            )
+            ) if property_id else None
             property_address = property_doc.get("address", {}).get("line1", "") if property_doc else ""
-            
+
             await emit_enablement_event(
                 event_type=EnablementEventType.DOCUMENT_VERIFIED,
                 client_id=document["client_id"],
                 document_id=document_id,
-                property_id=document["property_id"],
+                property_id=property_id,
                 context_payload={
                     "document_name": document.get("document_name", document.get("requirement_name", "Document")),
                     "property_address": property_address,
@@ -900,6 +906,12 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
             {"$set": {"status": DocumentStatus.REJECTED.value}}
         )
         
+        # If this was the only verified doc for the requirement, revert requirement and sync property
+        if document.get("requirement_id"):
+            await _revert_requirement_if_no_verified_docs(
+                db, document["requirement_id"], document.get("property_id")
+            )
+        
         # Audit log
         await create_audit_log(
             action=AuditAction.DOCUMENT_REJECTED,
@@ -922,6 +934,100 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reject document"
         )
+
+
+@router.delete("/{document_id}")
+async def delete_document(request: Request, document_id: str):
+    """Client deletes own document. Requirement reverted to PENDING if no other VERIFIED doc; property compliance synced."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    try:
+        document = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+        if not document:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        if document["client_id"] != user["client_id"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this document")
+        requirement_id = document.get("requirement_id")
+        property_id = document.get("property_id")
+        was_verified = document.get("status") == DocumentStatus.VERIFIED.value
+        await db.documents.delete_one({"document_id": document_id})
+        if was_verified and requirement_id:
+            await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
+        try:
+            file_path = Path(document.get("file_path", ""))
+            if file_path.is_file():
+                file_path.unlink(missing_ok=True)
+        except Exception as file_err:
+            logger.warning(f"Could not remove file for document {document_id}: {file_err}")
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=user["client_id"],
+            resource_type="document",
+            resource_id=document_id,
+            metadata={"action": "document_deleted"}
+        )
+        return {"message": "Document deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Document delete error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete document")
+
+
+@router.delete("/admin/{document_id}")
+async def admin_delete_document(request: Request, document_id: str):
+    """Admin deletes a document on behalf of any client. Requirement reverted if no other VERIFIED doc; property compliance synced."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        document = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+        if not document:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        requirement_id = document.get("requirement_id")
+        property_id = document.get("property_id")
+        was_verified = document.get("status") == DocumentStatus.VERIFIED.value
+        client_id = document["client_id"]
+        await db.documents.delete_one({"document_id": document_id})
+        if was_verified and requirement_id:
+            await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
+        try:
+            file_path = Path(document.get("file_path", ""))
+            if file_path.is_file():
+                file_path.unlink(missing_ok=True)
+        except Exception as file_err:
+            logger.warning(f"Could not remove file for document {document_id}: {file_err}")
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=client_id,
+            resource_type="document",
+            resource_id=document_id,
+            metadata={"action": "admin_document_deleted"}
+        )
+        return {"message": "Document deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin document delete error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete document")
+
+
+async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, property_id: Optional[str]) -> None:
+    """If no VERIFIED document remains for this requirement, set requirement to PENDING and sync property compliance."""
+    remaining = await db.documents.count_documents(
+        {"requirement_id": requirement_id, "status": DocumentStatus.VERIFIED.value}
+    )
+    if remaining > 0:
+        return
+    await db.requirements.update_one(
+        {"requirement_id": requirement_id},
+        {"$set": {"status": RequirementStatus.PENDING.value}}
+    )
+    if property_id:
+        from services.provisioning import provisioning_service
+        await provisioning_service._update_property_compliance(property_id)
+
 
 async def regenerate_requirement_due_date(requirement_id: str, client_id: str):
     """Regenerate requirement due date after document upload."""

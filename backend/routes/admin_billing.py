@@ -26,7 +26,7 @@ from fastapi import APIRouter, HTTPException, Request, status, Depends
 from pydantic import BaseModel
 from database import database
 from middleware import admin_route_guard
-from models import AuditAction, UserRole
+from models import AuditAction, EmailTemplateAlias, UserRole
 from utils.audit import create_audit_log
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus, SUBSCRIPTION_PRICE_TO_PLAN
 from services.provisioning import provisioning_service
@@ -646,29 +646,39 @@ async def resend_password_setup(request: Request, client_id: str):
             }
         )
         
-        # Send email
         frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
         setup_url = f"{frontend_url}/setup-password?token={setup_token}"
+        user_email = (portal_user.get("auth_email") or portal_user.get("email") or "").strip()
+        if not user_email or not setup_url:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error_code": "EMAIL_INPUT_INVALID", "message": "Missing recipient email or setup link"},
+            )
         
         from services.email_service import email_service
-        
-        # Use auth_email field (portal_users use auth_email, not email)
-        user_email = portal_user.get("auth_email") or portal_user.get("email")
-        
-        # Send email (doesn't return value, will raise on error)
         try:
-            await email_service.send_password_setup_email(
+            result = await email_service.send_password_setup_email(
                 recipient=user_email,
+                client_name=portal_user.get("full_name") or portal_user.get("name", ""),
                 setup_link=setup_url,
-                client_name=portal_user.get("name", ""),
                 client_id=client_id
             )
-            email_sent = True
-        except Exception as email_error:
-            logger.error(f"Email send error: {email_error}")
-            email_sent = False
+        except Exception as e:
+            logger.error(f"Resend setup send error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value},
+            )
+        if result.status != "sent":
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "error_code": "EMAIL_SEND_FAILED",
+                    "template": EmailTemplateAlias.PASSWORD_SETUP.value,
+                    "message_id": getattr(result, "message_id", None),
+                },
+            )
         
-        # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_role=UserRole.ROLE_ADMIN,
@@ -676,17 +686,14 @@ async def resend_password_setup(request: Request, client_id: str):
             client_id=client_id,
             metadata={
                 "action_type": "PASSWORD_SETUP_RESENT",
-                "target_email": user_email,
-                "email_sent": email_sent,
                 "reason": "Admin requested resend",
             }
         )
         
         return {
             "success": True,
-            "message": "Password setup email sent" if email_sent else "Setup token generated but email may have failed",
+            "message": "Password setup email sent",
             "email": user_email,
-            "email_sent": email_sent,
         }
         
     except HTTPException:
@@ -694,8 +701,8 @@ async def resend_password_setup(request: Request, client_id: str):
     except Exception as e:
         logger.error(f"Resend setup error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to resend setup email"
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value},
         )
 
 

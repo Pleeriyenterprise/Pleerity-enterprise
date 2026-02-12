@@ -245,15 +245,44 @@ async def get_plan_features(request: Request):
     """Get the current client's plan features and limits.
     
     Returns feature availability for UI gating.
+    Uses plan_registry (2/10/25 caps); response shape preserved for compatibility.
     """
     user = await client_route_guard(request)
-    
     try:
-        from services.plan_gating import plan_gating_service
-        
-        plan_info = await plan_gating_service.get_client_plan_info(user["client_id"])
-        return plan_info
-    
+        from services.plan_registry import plan_registry, subscription_allows_feature_access
+
+        client_id = user["client_id"]
+        db = database.get_db()
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "billing_plan": 1, "subscription_status": 1}
+        )
+        if not client:
+            plan_code = plan_registry.resolve_plan_code("PLAN_1_SOLO")
+            plan_def = plan_registry.get_plan(plan_code)
+            features = plan_registry.get_features(plan_code)
+            features["max_properties"] = plan_registry.get_property_limit(plan_code)
+            return {
+                "plan": plan_code.value,
+                "plan_name": plan_def["name"],
+                "subscription_status": "UNKNOWN",
+                "features": features,
+                "is_active": False,
+            }
+        plan_str = client.get("billing_plan", "PLAN_1_SOLO")
+        plan_code = plan_registry.resolve_plan_code(plan_str)
+        plan_def = plan_registry.get_plan(plan_code)
+        subscription_status = client.get("subscription_status", "PENDING")
+        is_active = subscription_allows_feature_access(subscription_status)
+        features = plan_registry.get_features(plan_code)
+        features["max_properties"] = plan_registry.get_property_limit(plan_code)
+        return {
+            "plan": plan_code.value,
+            "plan_name": plan_def["name"],
+            "subscription_status": subscription_status,
+            "features": features,
+            "is_active": is_active,
+        }
     except Exception as e:
         logger.error(f"Plan features error: {e}")
         raise HTTPException(
@@ -343,30 +372,27 @@ async def download_compliance_pack(
 ):
     """Download a compliance pack PDF for a property.
     
-    Requires Portfolio plan (PLAN_6_15) or higher.
+    Requires Portfolio plan or higher. TEMP: gated by reports_pdf until Step 5 canonical key.
     """
     user = await client_route_guard(request)
-    
     try:
-        # Plan gating check
-        from services.plan_gating import plan_gating_service
-        
-        allowed, error_msg = await plan_gating_service.enforce_feature(
-            user["client_id"], 
-            "compliance_packs"
+        # TEMP Step 2: compliance_packs has no plan_registry key; gate by reports_pdf (Portfolio+)
+        from services.plan_registry import plan_registry
+
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
+            user["client_id"],
+            "reports_pdf"
         )
-        
         if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": "PLAN_NOT_ELIGIBLE",
-                    "message": error_msg,
-                    "feature": "compliance_packs",
-                    "upgrade_required": True
-                }
-            )
-        
+            detail = {
+                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
+                "message": error_msg,
+                "upgrade_required": True,
+                **(error_details or {}),
+            }
+            detail["feature"] = "compliance_packs"  # preserve response shape
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
         from services.compliance_pack import compliance_pack_service
         
         pdf_bytes = await compliance_pack_service.generate_compliance_pack(
@@ -848,19 +874,18 @@ async def get_branding_settings(request: Request):
     Returns current branding configuration for white-label customization.
     Plan gating: Requires Portfolio plan (PLAN_6_15) for full customization.
     """
-    from services.feature_entitlement import feature_entitlement_service
+    from services.plan_registry import plan_registry
     from datetime import datetime, timezone
-    
+
     user = await client_route_guard(request)
-    
     try:
         db = database.get_db()
         client_id = user["client_id"]
-        
-        # Check feature access
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+
+        # Canonical: white_label -> white_label_reports (plan_registry)
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             client_id,
-            "white_label"
+            "white_label_reports"
         )
         
         # Get existing branding settings
@@ -919,37 +944,34 @@ async def get_branding_settings(request: Request):
 async def update_branding_settings(request: Request):
     """Update the client's branding settings.
     
-    Plan gating: Requires Portfolio plan (PLAN_6_15).
+    Plan gating: Requires Professional plan (white_label_reports).
     """
-    from services.feature_entitlement import feature_entitlement_service
+    from services.plan_registry import plan_registry
     from models import AuditAction
     from utils.audit import create_audit_log
     from datetime import datetime, timezone
-    
+
     user = await client_route_guard(request)
     body = await request.json()
-    
     try:
         db = database.get_db()
         client_id = user["client_id"]
-        
-        # Enforce feature access
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+
+        # Canonical: white_label -> white_label_reports (plan_registry)
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             client_id,
-            "white_label"
+            "white_label_reports"
         )
-        
         if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "white_label",
-                    "upgrade_required": True
-                }
-            )
-        
+            detail = {
+                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
+                "message": error_msg,
+                "upgrade_required": True,
+                **(error_details or {}),
+            }
+            detail["feature"] = "white_label"  # preserve response shape
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
         # Allowed fields to update
         allowed_fields = [
             "company_name", "logo_url", "favicon_url",
@@ -1017,35 +1039,32 @@ async def update_branding_settings(request: Request):
 async def reset_branding_settings(request: Request):
     """Reset branding settings to defaults.
     
-    Plan gating: Requires Portfolio plan (PLAN_6_15).
+    Plan gating: Requires Professional plan (white_label_reports).
     """
-    from services.feature_entitlement import feature_entitlement_service
+    from services.plan_registry import plan_registry
     from models import AuditAction
     from utils.audit import create_audit_log
-    
+
     user = await client_route_guard(request)
-    
     try:
         db = database.get_db()
         client_id = user["client_id"]
-        
-        # Enforce feature access
-        allowed, error_msg, error_details = await feature_entitlement_service.enforce_feature(
+
+        # Canonical: white_label -> white_label_reports (plan_registry)
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(
             client_id,
-            "white_label"
+            "white_label_reports"
         )
-        
         if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": error_details.get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "white_label",
-                    "upgrade_required": True
-                }
-            )
-        
+            detail = {
+                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
+                "message": error_msg,
+                "upgrade_required": True,
+                **(error_details or {}),
+            }
+            detail["feature"] = "white_label"  # preserve response shape
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
         # Delete branding settings
         result = await db.branding_settings.delete_one({"client_id": client_id})
         

@@ -1,7 +1,8 @@
 """Plan Gating Service - Enforce feature access based on subscription plan.
 
-This service provides server-side enforcement of plan-based feature gating.
-All gated features must check plan eligibility before execution.
+DEPRECATED: Do not use for new code. All routes have been migrated to
+backend/services/plan_registry.py as the single source of truth (Step 2).
+Plan limits here (1/5/15) do not match canonical 2/10/25. Kept for reference only.
 """
 from typing import Dict, List, Optional, Tuple
 from models import BillingPlan

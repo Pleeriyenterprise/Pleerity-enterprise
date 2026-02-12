@@ -32,6 +32,7 @@ class GenerateDocumentRequest(BaseModel):
     """Request to generate documents for an order."""
     order_id: str = Field(..., description="Order ID to generate documents for")
     intake_data: Dict[str, Any] = Field(..., description="Intake form data")
+    force: Optional[bool] = Field(False, description="If True, run even when previous run with same key failed (retry)")
 
 
 class RegenerateDocumentRequest(BaseModel):
@@ -39,6 +40,7 @@ class RegenerateDocumentRequest(BaseModel):
     order_id: str = Field(..., description="Order ID to regenerate")
     intake_data: Dict[str, Any] = Field(..., description="Updated intake form data")
     regeneration_notes: str = Field(..., description="Notes describing requested changes")
+    force: Optional[bool] = Field(False, description="If True, run even when previous run with same key failed (retry)")
 
 
 class ReviewRequest(BaseModel):
@@ -78,9 +80,13 @@ async def generate_documents(
         order_id=request.order_id,
         intake_data=request.intake_data,
         regeneration=False,
+        force=request.force or False,
     )
     
     if not result.success:
+        await document_orchestrator.finalize_orchestration_failure(
+            result, stage="pipeline", error_code="GENERATION_FAILED"
+        )
         raise HTTPException(
             status_code=400,
             detail=result.error_message or "Generation failed"
@@ -130,9 +136,13 @@ async def regenerate_documents(
         intake_data=request.intake_data,
         regeneration=True,
         regeneration_notes=request.regeneration_notes,
+        force=request.force or False,
     )
     
     if not result.success:
+        await document_orchestrator.finalize_orchestration_failure(
+            result, stage="pipeline", error_code="REGENERATION_FAILED"
+        )
         raise HTTPException(
             status_code=400,
             detail=result.error_message or "Regeneration failed"

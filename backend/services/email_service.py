@@ -117,9 +117,13 @@ class EmailService:
         except Exception as e:
             message_log.status = "failed"
             message_log.error_message = str(e)
+            message_log.provider_error_type = type(e).__name__
+            message_log.provider_error_code = getattr(e, "code", None) or getattr(e, "error_code", None)
+            if message_log.provider_error_code is not None:
+                message_log.provider_error_code = str(message_log.provider_error_code)
             logger.error(f"Failed to send email to {recipient}: {e}")
         
-        # Store message log
+        # Store message log (template_alias, client_id already set; provider fields for failures)
         doc = message_log.model_dump()
         for key in ["created_at", "sent_at", "delivered_at", "opened_at", "bounced_at"]:
             if doc.get(key) and isinstance(doc[key], datetime):
@@ -132,11 +136,12 @@ class EmailService:
             action=AuditAction.EMAIL_SENT if message_log.status == "sent" else AuditAction.EMAIL_FAILED,
             client_id=client_id,
             metadata={
-                "recipient": recipient,
                 "template": template_alias.value,
                 "status": message_log.status,
                 "postmark_id": message_log.postmark_message_id,
-                "error": message_log.error_message
+                "error": message_log.error_message,
+                "provider_error_type": message_log.provider_error_type,
+                "provider_error_code": message_log.provider_error_code,
             }
         )
         
@@ -502,6 +507,50 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.PENDING_VERIFICATION_DIGEST:
+            count_pending = model.get("count_pending", 0)
+            count_older_24h = model.get("count_older_24h", 0)
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0;">Pending verification digest</h1>
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Summary of documents awaiting admin verification (counts only):</p>
+                    <ul>
+                        <li><strong>Total UPLOADED:</strong> {count_pending}</li>
+                        <li><strong>Older than 24 hours:</strong> {count_older_24h}</li>
+                    </ul>
+                    <p>Review the admin dashboard pending-verification list to process these documents.</p>
+                </div>
+                {footer}
+            </body>
+            </html>
+            """
+        elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0;">Monthly compliance digest</h1>
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Summary for the period (counts only):</p>
+                    <ul>
+                        <li><strong>Properties:</strong> {model.get('properties_count', 0)}</li>
+                        <li><strong>Total requirements:</strong> {model.get('total_requirements', 0)}</li>
+                        <li><strong>Compliant:</strong> {model.get('compliant', 0)}</li>
+                        <li><strong>Overdue:</strong> {model.get('overdue', 0)}</li>
+                        <li><strong>Expiring soon:</strong> {model.get('expiring_soon', 0)}</li>
+                        <li><strong>Documents uploaded (period):</strong> {model.get('documents_uploaded', 0)}</li>
+                    </ul>
+                    <p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p>
+                </div>
+                {self._build_email_footer(model)}
+            </body>
+            </html>
+            """
         elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
             # Use the dedicated ClearForm method
             return self._build_clearform_welcome_html(model)
@@ -671,6 +720,38 @@ Your documents are also available in your portal dashboard:
 Need help? Contact us at info@pleerityenterprise.co.uk
 {footer}
             """
+        elif template_alias == EmailTemplateAlias.PENDING_VERIFICATION_DIGEST:
+            count_pending = model.get("count_pending", 0)
+            count_older_24h = model.get("count_older_24h", 0)
+            return f"""
+PENDING VERIFICATION DIGEST
+==========================
+
+Summary of documents awaiting admin verification (counts only):
+
+- Total UPLOADED: {count_pending}
+- Older than 24 hours: {count_older_24h}
+
+Review the admin dashboard pending-verification list to process these documents.
+{footer}
+            """
+        elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
+            return f"""
+MONTHLY COMPLIANCE DIGEST
+========================
+
+Summary for the period (counts only):
+
+- Properties: {model.get('properties_count', 0)}
+- Total requirements: {model.get('total_requirements', 0)}
+- Compliant: {model.get('compliant', 0)}
+- Overdue: {model.get('overdue', 0)}
+- Expiring soon: {model.get('expiring_soon', 0)}
+- Documents uploaded (period): {model.get('documents_uploaded', 0)}
+
+Period: {model.get('period_start', '')} to {model.get('period_end', '')}
+{footer}
+            """
         elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
             return f"""
 WELCOME TO CLEARFORM BY PLEERITY
@@ -720,9 +801,9 @@ Hello {model.get('client_name', 'there')},
         client_name: str,
         setup_link: str,
         client_id: str
-    ):
-        """Send password setup email."""
-        await self.send_email(
+    ) -> MessageLog:
+        """Send password setup email. Returns MessageLog so callers can check status."""
+        return await self.send_email(
             recipient=recipient,
             template_alias=EmailTemplateAlias.PASSWORD_SETUP,
             template_model={

@@ -299,6 +299,8 @@ curl https://order-fulfillment-9.preview.emergentagent.com/api/health
 
 ## 🧪 Testing
 
+CI runs on push and pull requests to `main` (see [.github/workflows](.github/workflows)).
+
 ### Manual Testing Flow
 
 1. **Intake → Payment → Provisioning:**
