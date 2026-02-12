@@ -1529,6 +1529,14 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack }) => {
           </div>
         </div>
 
+        {/* Upload Here Section */}
+        {formData.document_submission_method === 'UPLOAD' && (
+          <IntakeDocumentUpload 
+            intakeSessionId={formData.intake_id || uuidv4()}
+            onFilesChange={(files) => setFormData({...formData, uploaded_files: files})}
+          />
+        )}
+
         {/* Email Upload Section */}
         {formData.document_submission_method === 'EMAIL' && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4 animate-fadeIn">
@@ -1849,6 +1857,194 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading }) =
           Cancel and return to homepage
         </button>
       </div>
+    </div>
+  );
+};
+
+// Intake Document Upload Component
+const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
+  const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+  useEffect(() => {
+    loadExistingFiles();
+  }, [intakeSessionId]);
+
+  const loadExistingFiles = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/intake/uploads/list/${intakeSessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFiles(data);
+        onFilesChange(data);
+      }
+    } catch (err) {
+      console.error('Failed to load files:', err);
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    await uploadFiles(droppedFiles);
+  };
+
+  const handleFileSelect = async (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    await uploadFiles(selectedFiles);
+  };
+
+  const uploadFiles = async (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+
+    // Check file sizes
+    for (const file of fileList) {
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 25MB limit`);
+        return;
+      }
+    }
+
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('intake_session_id', intakeSessionId);
+      
+      fileList.forEach(file => {
+        formData.append('files', file);
+      });
+
+      const res = await fetch(`${API_URL}/api/intake/uploads/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        toast.success(`${fileList.length} file(s) uploaded`);
+        await loadExistingFiles();
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Upload failed');
+      }
+    } catch (err) {
+      toast.error('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeFile = async (uploadId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/intake/uploads/${uploadId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        toast.success('File removed');
+        await loadExistingFiles();
+      }
+    } catch (err) {
+      toast.error('Failed to remove file');
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const totalSize = files.reduce((sum, f) => sum + f.file_size, 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Drag & Drop Area */}
+      <div
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+          dragActive ? 'border-electric-teal bg-electric-teal/5' : 'border-gray-300 hover:border-gray-400'
+        }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
+        <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-midnight-blue mb-2">
+          Drop files here or click to browse
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          PDF, JPG, PNG, DOC, DOCX - Max 25MB per file, 250MB total
+        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <Button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="bg-electric-teal hover:bg-electric-teal/90"
+        >
+          {uploading ? 'Uploading...' : 'Select Files'}
+        </Button>
+      </div>
+
+      {/* Uploaded Files List */}
+      {files.length > 0 && (
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold text-midnight-blue">Uploaded Files ({files.length})</h4>
+            <span className="text-sm text-gray-600">{formatFileSize(totalSize)} / 250 MB</span>
+          </div>
+          
+          <div className="space-y-2">
+            {files.map(file => (
+              <div key={file.upload_id} className="flex items-center justify-between p-3 bg-white rounded border">
+                <div className="flex items-center gap-3 flex-1">
+                  <FileText className="w-5 h-5 text-electric-teal" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{file.original_filename}</p>
+                    <p className="text-xs text-gray-500">{formatFileSize(file.file_size)}</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeFile(file.upload_id)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-500 italic">
+        Documents uploaded here are optional. You can also add documents after account setup.
+      </p>
     </div>
   );
 };

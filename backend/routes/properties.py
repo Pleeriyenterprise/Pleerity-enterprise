@@ -26,14 +26,13 @@ class CreatePropertyRequest(BaseModel):
 async def create_property(request: Request, data: CreatePropertyRequest):
     """Create a new property for the authenticated client.
     
-    This creates the property and triggers requirement generation
-    using the existing provisioning logic.
+    Enforces plan-based property limits.
     """
     user = await client_route_guard(request)
     db = database.get_db()
     
     try:
-        # Verify client is provisioned
+        # Get client with plan info
         client = await db.clients.find_one(
             {"client_id": user["client_id"]},
             {"_id": 0}
@@ -43,6 +42,37 @@ async def create_property(request: Request, data: CreatePropertyRequest):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account must be fully provisioned to add properties"
+            )
+        
+        # PROPERTY CAP ENFORCEMENT
+        current_count = await db.properties.count_documents({"client_id": user["client_id"]})
+        
+        from services.plan_registry import plan_registry, PlanCode
+        plan_code = PlanCode(client.get("plan_code", "PLAN_1_SOLO"))
+        plan_def = plan_registry.get_plan(plan_code)
+        limit = plan_def["max_properties"]
+        
+        if current_count >= limit:
+            # Audit log - property limit exceeded
+            await create_audit_log(
+                action=AuditAction.ADMIN_ACTION,
+                actor_role=UserRole(user["role"]),
+                actor_id=user["portal_user_id"],
+                client_id=user["client_id"],
+                metadata={
+                    "action_type": "PLAN_LIMIT_EXCEEDED",
+                    "feature": "property_creation",
+                    "plan_code": plan_code.value,
+                    "plan_name": plan_def["name"],
+                    "current_count": current_count,
+                    "limit": limit,
+                    "attempted_address": data.address_line_1
+                }
+            )
+            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Property limit reached. Your {plan_def['name']} plan allows up to {limit} properties. Upgrade to add more."
             )
         
         # Create property

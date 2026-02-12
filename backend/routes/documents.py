@@ -147,8 +147,14 @@ async def bulk_upload_documents(
 ):
     """Bulk upload multiple documents for a property.
     
+    Gated: PORTFOLIO and PROFESSIONAL only (zip_upload feature).
     Documents will be auto-matched to requirements based on AI analysis.
     """
+    # Feature gating enforcement
+    from middleware.feature_gating import require_feature
+    gating_check = require_feature("zip_upload")
+    await gating_check(lambda r: None)(request)
+    
     user = await client_route_guard(request)
     db = database.get_db()
     

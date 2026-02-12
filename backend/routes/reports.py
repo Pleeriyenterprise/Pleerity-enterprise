@@ -34,9 +34,15 @@ async def get_compliance_summary_report(
     """
     Generate compliance status summary report for the client.
     
-    Formats: csv, pdf (pdf returns JSON data for client-side rendering)
+    CSV: All plans
+    PDF: PORTFOLIO and PROFESSIONAL only
     """
     user = await client_route_guard(request)
+    
+    # Feature gating for PDF format
+    if format == "pdf":
+        from middleware.feature_gating import require_feature
+        await require_feature("reports_pdf")(lambda r: None)(request)
     
     try:
         result = await reporting_service.generate_compliance_summary_report(
