@@ -265,3 +265,17 @@ class TestCheckFeatureAccessSoloPortfolioPro:
         pro = plan_registry.get_features(PlanCode.PLAN_3_PRO)
         assert pro.get("webhooks") is True
         assert pro.get("audit_log_export") is True
+
+    def test_reports_csv_solo_denied_portfolio_allowed(self):
+        """reports_csv: Solo denied, Portfolio+ allowed (pricing page promise)."""
+        allowed_solo, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_1_SOLO, "reports_csv")
+        allowed_portfolio, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_2_PORTFOLIO, "reports_csv")
+        assert allowed_solo is False
+        assert allowed_portfolio is True
+
+    def test_tenant_portal_solo_denied_portfolio_allowed(self):
+        """tenant_portal: Solo denied, Portfolio+ allowed (pricing page promise)."""
+        allowed_solo, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_1_SOLO, "tenant_portal")
+        allowed_portfolio, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_2_PORTFOLIO, "tenant_portal")
+        assert allowed_solo is False
+        assert allowed_portfolio is True

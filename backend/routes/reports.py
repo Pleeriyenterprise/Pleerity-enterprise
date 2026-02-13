@@ -34,15 +34,27 @@ async def get_compliance_summary_report(
     """
     Generate compliance status summary report for the client.
     
-    CSV: All plans
-    PDF: PORTFOLIO and PROFESSIONAL only
+    CSV: PORTFOLIO and PROFESSIONAL only (reports_csv).
+    PDF: PORTFOLIO and PROFESSIONAL only (reports_pdf).
     """
     user = await client_route_guard(request)
     
-    # Feature gating for PDF format
+    from services.plan_registry import plan_registry
+    # Feature gating: PDF and CSV both require Portfolio+ per pricing page
     if format == "pdf":
-        from middleware.feature_gating import require_feature
-        await require_feature("reports_pdf")(lambda r: None)(request)
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True}
+            )
+    if format == "csv":
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_csv")
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_details or {"message": error_msg, "feature": "reports_csv", "upgrade_required": True}
+            )
     
     try:
         result = await reporting_service.generate_compliance_summary_report(
@@ -99,9 +111,25 @@ async def get_requirements_report(
     Generate detailed requirements report for the client.
     
     Optionally filter by property_id.
-    Formats: csv, pdf
+    CSV/PDF: PORTFOLIO and PROFESSIONAL only (reports_csv / reports_pdf) per pricing page.
     """
     user = await client_route_guard(request)
+    
+    from services.plan_registry import plan_registry
+    if format == "pdf":
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True}
+            )
+    if format == "csv":
+        allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_csv")
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_details or {"message": error_msg, "feature": "reports_csv", "upgrade_required": True}
+            )
     
     try:
         result = await reporting_service.generate_requirements_report(

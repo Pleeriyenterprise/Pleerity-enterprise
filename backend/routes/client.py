@@ -443,8 +443,16 @@ async def invite_tenant(request: Request):
     Invite a tenant to view property compliance status.
     
     Creates a ROLE_TENANT user with read-only access.
+    Gated: Portfolio and Professional only (tenant_portal).
     """
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
     db = database.get_db()
     
     # Only CLIENT_ADMIN can invite tenants
@@ -558,8 +566,15 @@ async def invite_tenant(request: Request):
 
 @router.get("/tenants")
 async def list_tenants(request: Request):
-    """List all tenants invited by this client."""
+    """List all tenants invited by this client. Gated: Portfolio+ (tenant_portal)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
     db = database.get_db()
     
     try:
@@ -602,8 +617,15 @@ async def list_tenants(request: Request):
 
 @router.post("/tenants/{tenant_id}/assign-property")
 async def assign_tenant_to_property(request: Request, tenant_id: str):
-    """Assign a tenant to a property."""
+    """Assign a tenant to a property. Gated: Portfolio+ (tenant_portal)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -685,8 +707,15 @@ async def assign_tenant_to_property(request: Request, tenant_id: str):
 
 @router.delete("/tenants/{tenant_id}/unassign-property/{property_id}")
 async def unassign_tenant_from_property(request: Request, tenant_id: str, property_id: str):
-    """Remove a tenant's assignment to a property."""
+    """Remove a tenant's assignment to a property. Gated: Portfolio+ (tenant_portal)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -737,8 +766,15 @@ async def unassign_tenant_from_property(request: Request, tenant_id: str, proper
 
 @router.delete("/tenants/{tenant_id}")
 async def revoke_tenant_access(request: Request, tenant_id: str):
-    """Revoke a tenant's access entirely (disable account)."""
+    """Revoke a tenant's access entirely (disable account). Gated: Portfolio+ (tenant_portal)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -786,8 +822,15 @@ async def revoke_tenant_access(request: Request, tenant_id: str):
 
 @router.post("/tenants/{tenant_id}/resend-invite")
 async def resend_tenant_invite(request: Request, tenant_id: str):
-    """Resend invitation email to a tenant."""
+    """Resend invitation email to a tenant. Gated: Portfolio+ (tenant_portal)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:

@@ -236,8 +236,15 @@ async def create_webhook(request: Request, data: CreateWebhookRequest):
 
 @router.get("")
 async def list_webhooks(request: Request):
-    """List all webhooks for the client (excluding soft-deleted)."""
+    """List all webhooks for the client (excluding soft-deleted). Gated: Pro only (webhooks)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "webhooks")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "webhooks", "upgrade_required": True}
+        )
     db = database.get_db()
     
     try:
@@ -271,8 +278,15 @@ async def list_webhooks(request: Request):
 
 @router.get("/{webhook_id}")
 async def get_webhook(request: Request, webhook_id: str):
-    """Get webhook details with masked secret."""
+    """Get webhook details with masked secret. Gated: Pro only (webhooks)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "webhooks")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "webhooks", "upgrade_required": True}
+        )
     db = database.get_db()
     
     try:
