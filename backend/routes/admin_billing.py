@@ -710,6 +710,42 @@ async def resend_password_setup(request: Request, client_id: str):
 # Force Provisioning
 # =============================================================================
 
+class TestProvisionBody(BaseModel):
+    """Set onboarding_status and billing_plan for test clients (admin only)."""
+    onboarding_status: str = "PROVISIONED"
+    billing_plan: Optional[str] = "PLAN_1_SOLO"
+
+
+@router.patch("/clients/{client_id}/test-provision")
+async def set_test_client_provisioned(request: Request, client_id: str, body: TestProvisionBody):
+    """
+    Set onboarding_status and billing_plan for a client (test/seed accounts).
+    Use so test clients can access /app/dashboard without full Stripe provisioning.
+    Admin only.
+    """
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 1})
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+    update = {}
+    if body.onboarding_status in ("PROVISIONED", "PENDING_PAYMENT", "PROVISIONING", "FAILED", "INTAKE_PENDING"):
+        update["onboarding_status"] = body.onboarding_status
+    if body.billing_plan and body.billing_plan in ("PLAN_1_SOLO", "PLAN_2_PORTFOLIO", "PLAN_3_PRO"):
+        update["billing_plan"] = body.billing_plan
+    if not update:
+        return {"updated": False, "client_id": client_id}
+    await db.clients.update_one({"client_id": client_id}, {"$set": update})
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=admin.get("portal_user_id"),
+        client_id=client_id,
+        metadata={"action_type": "TEST_PROVISION_UPDATE", "update": update}
+    )
+    return {"updated": True, "client_id": client_id, "update": update}
+
+
 @router.post("/clients/{client_id}/force-provision")
 async def force_provision_client(request: Request, client_id: str):
     """

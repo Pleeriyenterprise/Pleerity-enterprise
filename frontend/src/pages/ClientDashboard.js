@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard } from 'lucide-react';
-import api from '../api/client';
+import api, { API_URL } from '../api/client';
 import Sparkline from '../components/Sparkline';
 
 const ClientDashboard = () => {
@@ -22,6 +22,7 @@ const ClientDashboard = () => {
   // Explicit UI states instead of blank screen (Goal C)
   const [restrictReason, setRestrictReason] = useState(null); // 'plan' | 'not_provisioned' | 'provisioning_incomplete' | null
   const [redirectPath, setRedirectPath] = useState(null); // from 403 X-Redirect header
+  const [networkError, setNetworkError] = useState(false); // true when no response (CORS/network)
 
   useEffect(() => {
     fetchDashboard();
@@ -41,6 +42,7 @@ const ClientDashboard = () => {
         setRestrictReason('not_provisioned');
       }
     } catch (err) {
+      setNetworkError(!err.response);
       const detail = err.response?.data?.detail ?? '';
       const status = err.response?.status;
       const redirect = err.response?.headers?.['x-redirect'];
@@ -53,7 +55,12 @@ const ClientDashboard = () => {
           setRestrictReason('provisioning_incomplete');
         }
       }
-      setError(typeof detail === 'string' ? detail : err.response?.data?.detail || 'Failed to load dashboard');
+      if (!err.response) {
+        setError(`Cannot reach server. Backend: ${API_URL || '(not set)'}`);
+      } else {
+        const msg = typeof detail === 'string' ? detail : (detail && typeof detail === 'object' && detail.message ? detail.message : JSON.stringify(detail));
+        setError(msg || 'Failed to load dashboard');
+      }
     } finally {
       setLoading(false);
     }

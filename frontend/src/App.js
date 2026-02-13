@@ -8,6 +8,9 @@ import TawkToWidget from './components/TawkToWidget';
 import './App.css';
 
 // Build stamp for deployment verification (set REACT_APP_BUILD_SHA in CI/CD)
+if (typeof window !== 'undefined') {
+  window.__CVP_BUILD_SHA = process.env.REACT_APP_BUILD_SHA || '(not set)';
+}
 if (process.env.REACT_APP_BUILD_SHA) {
   console.log('[CVP] Build SHA:', process.env.REACT_APP_BUILD_SHA);
 }
@@ -142,6 +145,7 @@ import SharedReportPage from './pages/SharedReportPage';
 import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
 import CookieBanner from './components/CookieBanner';
 import ErrorBoundary from './components/ErrorBoundary';
+import DebugPanel from './components/DebugPanel';
 
 function App() {
   return (
@@ -616,6 +620,7 @@ function App() {
           <Toaster />
           <TawkToWidget />
           <CookieBanner />
+          <DebugPanel />
         </div>
           </ErrorBoundary>
       </BrowserRouter>

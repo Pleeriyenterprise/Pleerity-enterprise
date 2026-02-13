@@ -2,12 +2,28 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Log API base URL once for live debug (non-sensitive)
+// Runtime debug: log backend URL once; expose for debug panel
 if (typeof window !== 'undefined') {
-  const base = API_URL ? `${API_URL}/api` : '(not set)';
-  console.log('[CVP] API base URL:', base);
+  window.__CVP_BACKEND_URL = API_URL ?? '(not set)';
+  console.log('[CVP] REACT_APP_BACKEND_URL:', window.__CVP_BACKEND_URL);
   if (!API_URL) {
     console.warn('[CVP] REACT_APP_BACKEND_URL is not set; API calls will fail.');
+  }
+}
+
+// Track first 3 API requests for debug (URL + status)
+let apiRequestCount = 0;
+function logApiRequest(url, status, message) {
+  if (apiRequestCount >= 3) return;
+  apiRequestCount += 1;
+  const statusStr = status != null ? String(status) : (message || 'no response');
+  console.log(`[CVP] API request #${apiRequestCount}:`, url, '→', statusStr);
+}
+
+// Expose last API error for debug panel (?debug=1)
+function setLastApiError(status, message) {
+  if (typeof window !== 'undefined') {
+    window.__CVP_LAST_API_ERROR = { status, message, at: new Date().toISOString() };
   }
 }
 
@@ -30,10 +46,19 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: 401 → session expired flow (clear message on login page)
+// Response: log first 3 requests, 401 → session expired, track last error for debug panel
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const url = response.config?.url ?? response.config?.baseURL ?? '?';
+    logApiRequest(url, response.status);
+    return response;
+  },
   (error) => {
+    const url = error.config?.url ?? error.config?.baseURL ?? '?';
+    const status = error.response?.status;
+    const message = error.response?.data?.detail ?? error.message ?? 'Network error';
+    logApiRequest(url, status, message);
+    setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(message));
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
@@ -42,6 +67,8 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export { API_URL, setLastApiError };
 
 export default apiClient;
 
