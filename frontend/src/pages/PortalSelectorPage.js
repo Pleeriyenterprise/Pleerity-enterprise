@@ -1,8 +1,9 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Shield, User } from 'lucide-react';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Shield, User, AlertCircle } from 'lucide-react';
 
 /**
  * Portal Selector Page - "Welcome Back" selector matching the design
@@ -10,10 +11,21 @@ import { Shield, User } from 'lucide-react';
  */
 const PortalSelectorPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('session_expired') === '1';
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {sessionExpired && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="session-expired-alert">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <span className="font-medium text-amber-900">Session expired.</span>
+              <span className="block mt-1 text-amber-800">Please sign in again.</span>
+            </AlertDescription>
+          </Alert>
+        )}
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-midnight-blue mb-4">

@@ -19,6 +19,9 @@ const ClientDashboard = () => {
   const [complianceScore, setComplianceScore] = useState(null);
   const [scoreTrend, setScoreTrend] = useState(null);
   const [showScoreExplanation, setShowScoreExplanation] = useState(false);
+  // Explicit UI states instead of blank screen (Goal C)
+  const [restrictReason, setRestrictReason] = useState(null); // 'plan' | 'not_provisioned' | 'provisioning_incomplete' | null
+  const [redirectPath, setRedirectPath] = useState(null); // from 403 X-Redirect header
 
   useEffect(() => {
     fetchDashboard();
@@ -29,10 +32,28 @@ const ClientDashboard = () => {
 
   const fetchDashboard = async () => {
     try {
+      setRestrictReason(null);
       const response = await clientAPI.getDashboard();
       setData(response.data);
+      // Defensive: detect missing plan/entitlement (test accounts not fully provisioned)
+      const client = response.data?.client;
+      if (client && client.billing_plan == null && client.plan_code == null) {
+        setRestrictReason('not_provisioned');
+      }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load dashboard');
+      const detail = err.response?.data?.detail ?? '';
+      const status = err.response?.status;
+      const redirect = err.response?.headers?.['x-redirect'];
+      if (redirect) setRedirectPath(redirect);
+      if (status === 403) {
+        const msg = typeof detail === 'string' ? detail.toLowerCase() : String(detail).toLowerCase();
+        if (msg.includes('plan') || msg.includes('feature') || msg.includes('entitlement') || msg.includes('restricted')) {
+          setRestrictReason('plan');
+        } else if (msg.includes('provisioning') || msg.includes('incomplete') || msg.includes('password not set')) {
+          setRestrictReason('provisioning_incomplete');
+        }
+      }
+      setError(typeof detail === 'string' ? detail : err.response?.data?.detail || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
@@ -206,6 +227,55 @@ const ClientDashboard = () => {
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Explicit "Access restricted by plan" UI (no blank screen) */}
+        {restrictReason === 'plan' && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="alert-restricted-by-plan">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <span className="font-medium text-amber-900">Access restricted by plan.</span>
+              <span className="block mt-1 text-amber-800">This feature or area is not included in your current plan. Contact support or upgrade to access it.</span>
+              <a href="mailto:support@pleerity.com" className="inline-block mt-2 text-sm font-medium text-electric-teal hover:underline">Contact support</a>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Defensive: missing plan/entitlement (account not provisioned properly) */}
+        {restrictReason === 'not_provisioned' && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="alert-not-provisioned">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <span className="font-medium text-amber-900">Account not provisioned properly.</span>
+              <span className="block mt-1 text-amber-800">Your account is missing plan or entitlement information. Please contact support to complete setup.</span>
+              <a href="mailto:support@pleerity.com" className="inline-block mt-2 text-sm font-medium text-electric-teal hover:underline">Contact support</a>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* 403 Provisioning incomplete / Password not set — show next steps */}
+        {restrictReason === 'provisioning_incomplete' && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="alert-provisioning-incomplete">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <span className="font-medium text-amber-900">Not provisioned or action required.</span>
+              <span className="block mt-1 text-amber-800">{error || 'Complete onboarding or set your password to access the dashboard.'}</span>
+              {redirectPath && (
+                <Button
+                  size="sm"
+                  className="mt-3 bg-electric-teal hover:bg-electric-teal/90"
+                  onClick={() => navigate(redirectPath)}
+                >
+                  Continue
+                </Button>
+              )}
+              {!redirectPath && (
+                <Button size="sm" className="mt-3 bg-electric-teal hover:bg-electric-teal/90" onClick={() => navigate('/onboarding-status')}>
+                  Check onboarding status
+                </Button>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -682,6 +752,13 @@ const ClientDashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* Build stamp for deployment verification */}
+      {process.env.REACT_APP_BUILD_SHA && (
+        <footer className="text-center py-2 text-xs text-gray-400" data-testid="build-stamp">
+          Build: {process.env.REACT_APP_BUILD_SHA}
+        </footer>
+      )}
     </div>
   );
 };

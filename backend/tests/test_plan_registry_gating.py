@@ -245,3 +245,23 @@ class TestCheckFeatureAccessSoloPortfolioPro:
         )
         assert allowed_solo is False
         assert allowed_portfolio is True
+
+    def test_feature_matrix_honored_per_plan(self):
+        """One test per plan: feature matrix is honored (enabled/disabled list)."""
+        # Solo: core only; no zip_upload, reports, webhooks, audit_log_export
+        solo = plan_registry.get_features(PlanCode.PLAN_1_SOLO)
+        assert solo.get("compliance_dashboard") is True
+        assert solo.get("zip_upload") is False
+        assert solo.get("reports_pdf") is False
+        assert solo.get("webhooks") is False
+        assert solo.get("audit_log_export") is False
+        # Portfolio: core + zip, reports, sms, tenant_portal; no webhooks/audit
+        portfolio = plan_registry.get_features(PlanCode.PLAN_2_PORTFOLIO)
+        assert portfolio.get("zip_upload") is True
+        assert portfolio.get("reports_pdf") is True
+        assert portfolio.get("webhooks") is False
+        assert portfolio.get("audit_log_export") is False
+        # Pro: all features
+        pro = plan_registry.get_features(PlanCode.PLAN_3_PRO)
+        assert pro.get("webhooks") is True
+        assert pro.get("audit_log_export") is True

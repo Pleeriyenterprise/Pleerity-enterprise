@@ -2,6 +2,15 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Log API base URL once for live debug (non-sensitive)
+if (typeof window !== 'undefined') {
+  const base = API_URL ? `${API_URL}/api` : '(not set)';
+  console.log('[CVP] API base URL:', base);
+  if (!API_URL) {
+    console.warn('[CVP] REACT_APP_BACKEND_URL is not set; API calls will fail.');
+  }
+}
+
 const apiClient = axios.create({
   baseURL: `${API_URL}/api`,
   headers: {
@@ -21,14 +30,14 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for global error handling
+// Response interceptor: 401 → session expired flow (clear message on login page)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.href = '/login?session_expired=1';
     }
     return Promise.reject(error);
   }

@@ -702,6 +702,15 @@ async def health_check():
         "environment": os.getenv("ENVIRONMENT", "development")
     }
 
+
+# Version/build stamp for deployment verification (commit SHA set by CI/CD, e.g. GIT_COMMIT_SHA)
+@app.get("/api/version")
+async def version_info():
+    return {
+        "commit_sha": os.getenv("GIT_COMMIT_SHA", os.getenv("BUILD_SHA", "unknown")),
+        "environment": os.getenv("ENVIRONMENT", "development"),
+    }
+
 # Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

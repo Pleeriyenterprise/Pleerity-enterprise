@@ -7,6 +7,11 @@ import { Toaster } from './components/ui/sonner';
 import TawkToWidget from './components/TawkToWidget';
 import './App.css';
 
+// Build stamp for deployment verification (set REACT_APP_BUILD_SHA in CI/CD)
+if (process.env.REACT_APP_BUILD_SHA) {
+  console.log('[CVP] Build SHA:', process.env.REACT_APP_BUILD_SHA);
+}
+
 // ClearForm - Separate Product
 import ClearFormApp from './clearform/ClearFormApp';
 
@@ -136,12 +141,14 @@ import AdminClearFormDocumentsPage from './pages/AdminClearFormDocumentsPage';
 import SharedReportPage from './pages/SharedReportPage';
 import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
 import CookieBanner from './components/CookieBanner';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
         <BrowserRouter>
+          <ErrorBoundary>
           <div className="App">
             <Routes>
               {/* ========================================
@@ -610,6 +617,7 @@ function App() {
           <TawkToWidget />
           <CookieBanner />
         </div>
+          </ErrorBoundary>
       </BrowserRouter>
     </AuthProvider>
     </HelmetProvider>
