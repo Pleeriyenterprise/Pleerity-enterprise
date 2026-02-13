@@ -91,7 +91,10 @@ class GeminiProvider(LLMProviderInterface):
         temperature: float,
         max_tokens: int,
     ) -> Tuple[str, Dict[str, int]]:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
+        except ImportError:
+            raise ValueError("emergentintegrations not available for Gemini provider")
         import uuid
         
         api_key = self._get_api_key()

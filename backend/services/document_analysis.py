@@ -3,8 +3,10 @@
 IMPORTANT: This service is ASSISTIVE ONLY. Extracted data must be reviewed by users
 before being applied. AI CANNOT mark a requirement as compliant - the deterministic
 compliance engine remains the final authority.
+
+Requires emergentintegrations for LLM; if not installed, analyze_document returns
+success=False with error "AI extraction unavailable".
 """
-from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContentWithMimeType
 from database import database
 from models import AuditAction
 from utils.audit import create_audit_log
@@ -197,6 +199,16 @@ class DocumentAnalysisService:
         db = database.get_db()
         
         try:
+            try:
+                from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContentWithMimeType
+            except ImportError:
+                logger.warning("emergentintegrations not available; AI document extraction disabled")
+                return {
+                    "success": False,
+                    "error": "AI extraction unavailable",
+                    "extracted_data": None,
+                    "requires_review": True,
+                }
             # Verify file exists
             if not os.path.exists(file_path):
                 logger.error(f"Document file not found: {file_path}")

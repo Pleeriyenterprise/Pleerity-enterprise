@@ -273,7 +273,10 @@ class DocumentOrchestrator:
     
     def _create_llm_client(self, system_prompt: str, session_id: str = None):
         """Create a new LLM client instance with the given system prompt."""
-        from emergentintegrations.llm.chat import LlmChat
+        try:
+            from emergentintegrations.llm.chat import LlmChat
+        except ImportError:
+            raise ValueError("emergentintegrations not available")
         import uuid
         
         api_key = self._get_api_key()
@@ -988,7 +991,10 @@ class DocumentOrchestrator:
         
         Uses LlmChat from emergentintegrations library.
         """
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
+        except ImportError:
+            raise ValueError("emergentintegrations not available for document generation")
         import uuid
         
         # Build the full system prompt with JSON output instruction

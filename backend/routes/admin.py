@@ -2817,7 +2817,13 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
         }
         
         # Step 3: Call LLM with injected snapshot using emergentintegrations
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
+        except ImportError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Admin assistant unavailable (emergentintegrations not installed)",
+            )
         
         api_key = os.getenv("EMERGENT_LLM_KEY", "sk-emergent-f9533226f52E25cF35")
         

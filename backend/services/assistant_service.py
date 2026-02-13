@@ -18,7 +18,6 @@ from datetime import datetime, timezone
 from database import database
 from models import AuditAction
 from utils.audit import create_audit_log
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 from dotenv import load_dotenv
 import json
 
@@ -249,16 +248,30 @@ The client's question is: {question}
 Provide a helpful answer based ONLY on the data shown above. Follow all rules in your system prompt.
 Remember to respond in the exact JSON format specified."""
             
-            # Initialize chat with emergentintegrations
+            # Initialize chat with emergentintegrations (optional dependency)
+            try:
+                from emergentintegrations.llm.chat import LlmChat, UserMessage
+            except ImportError:
+                logger.warning("emergentintegrations not available; assistant disabled")
+                await self._audit_interaction(
+                    client_id=client_id, actor_id=actor_id, question=question,
+                    correlation_id=correlation_id, success=False,
+                    reason_code="ASSISTANT_UNAVAILABLE", error_message="emergentintegrations not installed"
+                )
+                return {
+                    "answer": "Assistant is temporarily unavailable.",
+                    "what_this_is_based_on": [],
+                    "next_actions": ["Contact support if this persists."],
+                    "refused": True,
+                    "refusal_reason": "Service unavailable",
+                    "correlation_id": correlation_id,
+                }
             logger.info(f"[{correlation_id}] Calling LLM ({self.model_provider}/{self.model_name})...")
-            
             chat = LlmChat(
                 api_key=self.api_key,
                 session_id=f"assistant-{client_id}-{correlation_id}",
                 system_message=SYSTEM_PROMPT
             ).with_model(self.model_provider, self.model_name)
-            
-            # Send message
             user_message = UserMessage(text=context_message)
             response_text = await chat.send_message(user_message)
             
