@@ -24,12 +24,22 @@ const ClientDashboard = () => {
   const [redirectPath, setRedirectPath] = useState(null); // from 403 X-Redirect header
   const [networkError, setNetworkError] = useState(false); // true when no response (CORS/network)
 
+  // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
+  const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
+
   useEffect(() => {
+    if (!isClientUser) {
+      setLoading(false);
+      if (user && !user.client_id) setError('Client not found. Use the correct portal for your role.');
+      return;
+    }
     fetchDashboard();
     fetchNotificationPrefs();
     fetchComplianceScore();
     fetchScoreTrend();
-  }, []);
+    // Intentionally depend only on role/client_id; fetch functions are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClientUser, user?.role, user?.client_id]);
 
   const fetchDashboard = async () => {
     try {

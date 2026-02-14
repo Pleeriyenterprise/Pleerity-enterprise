@@ -3,23 +3,25 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
 
+const isStaffRole = (role) => role === 'ROLE_OWNER' || role === 'ROLE_ADMIN';
+
 export const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
   const hasLoggedBlock = useRef(false);
+  const pathname = location.pathname;
+  const isClientPath = pathname.startsWith('/app');
+  const isAdminPath = pathname.startsWith('/admin');
 
-  // Log admin route guard blocks
+  // Log admin route guard blocks (non-staff trying to access admin)
   useEffect(() => {
-    if (!loading && user && requireAdmin && user.role !== 'ROLE_ADMIN' && !hasLoggedBlock.current) {
+    if (!loading && user && requireAdmin && !isStaffRole(user.role) && !hasLoggedBlock.current) {
       hasLoggedBlock.current = true;
-      // Fire and forget - don't block navigation
       apiClient.post('/auth/log-route-guard-block', {
-        attempted_path: location.pathname
-      }).catch(() => {
-        // Silently ignore errors - audit logging shouldn't break the app
-      });
+        attempted_path: pathname
+      }).catch(() => {});
     }
-  }, [loading, user, requireAdmin, location.pathname]);
+  }, [loading, user, requireAdmin, pathname]);
 
   if (loading) {
     return (
@@ -33,14 +35,19 @@ export const ProtectedRoute = ({ children, requireAdmin = false }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Admin route protection - block non-admin users
-  if (requireAdmin && user.role !== 'ROLE_ADMIN') {
+  // Staff (OWNER/ADMIN) on client path -> redirect to admin dashboard
+  if (isClientPath && isStaffRole(user.role)) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  // Client role on admin path -> redirect to client dashboard
+  if (isAdminPath && !isStaffRole(user.role)) {
     return <Navigate to="/app/dashboard" replace />;
   }
 
-  // Redirect admin to admin dashboard when accessing client routes
-  if (!requireAdmin && user.role === 'ROLE_ADMIN') {
-    return <Navigate to="/admin/dashboard" replace />;
+  // Admin route protection - allow only OWNER and ADMIN
+  if (requireAdmin && !isStaffRole(user.role)) {
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   // Tenant routing - redirect to tenant dashboard if not already there

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, getRedirectPathForRole } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -23,9 +23,10 @@ const ClientLoginPage = () => {
     setLoading(true);
 
     try {
-      const result = await login(email, password, false); // false = client login
+      const result = await login(email, password, false); // client portal -> /api/auth/login
       if (result.success) {
-        navigate('/app/dashboard');
+        const path = getRedirectPathForRole(result.user?.role);
+        navigate(path);
       } else {
         setError(result.error || 'Login failed');
       }
