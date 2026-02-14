@@ -1,12 +1,15 @@
 """
-Idempotent OWNER bootstrap: ensure exactly one OWNER exists.
-- If an OWNER already exists, do nothing.
-- If a user exists with auth_email == BOOTSTRAP_OWNER_EMAIL, promote to OWNER (audit OWNER_PROMOTED_FROM_ADMIN, session_version++).
-- Otherwise create OWNER from env (BOOTSTRAP_OWNER_EMAIL; BOOTSTRAP_OWNER_PASSWORD optional, one-time use).
+Idempotent OWNER bootstrap: create/find owner from env (Render/MongoDB Atlas).
+- When BOOTSTRAP_OWNER_EMAIL and BOOTSTRAP_OWNER_PASSWORD are set: if a user with that email
+  exists, do nothing (idempotent); otherwise create owner with hashed password (same as login).
+- Optional: BOOTSTRAP_OWNER_NAME, BOOTSTRAP_OWNER_ROLE (default "owner").
+- When only BOOTSTRAP_OWNER_EMAIL is set (e.g. BOOTSTRAP_ENABLED=true): ensure one OWNER
+  (promote existing user or create with invite email).
 Never logs or returns plaintext passwords.
 """
 import os
 import logging
+import uuid
 from datetime import datetime, timezone, timedelta
 from database import database
 from models import UserRole, UserStatus, PasswordStatus, AuditAction
@@ -15,23 +18,82 @@ from auth import hash_password, generate_secure_token, hash_token
 
 logger = logging.getLogger(__name__)
 
-# Env keys (no defaults for email - must be explicit)
 BOOTSTRAP_OWNER_EMAIL_KEY = "BOOTSTRAP_OWNER_EMAIL"
 BOOTSTRAP_OWNER_PASSWORD_KEY = "BOOTSTRAP_OWNER_PASSWORD"
+BOOTSTRAP_OWNER_NAME_KEY = "BOOTSTRAP_OWNER_NAME"
+BOOTSTRAP_OWNER_ROLE_KEY = "BOOTSTRAP_OWNER_ROLE"
+
+
+def _role_from_env() -> str:
+    raw = os.environ.get(BOOTSTRAP_OWNER_ROLE_KEY, "owner").strip().upper()
+    if raw in ("OWNER", "ROLE_OWNER", ""):
+        return UserRole.ROLE_OWNER.value
+    if raw in ("ADMIN", "ROLE_ADMIN"):
+        return UserRole.ROLE_ADMIN.value
+    return UserRole.ROLE_OWNER.value
 
 
 async def run_bootstrap_owner() -> dict:
     """
-    Idempotent bootstrap: ensure one OWNER. Uses BOOTSTRAP_OWNER_EMAIL from env.
+    Idempotent bootstrap. When both BOOTSTRAP_OWNER_EMAIL and BOOTSTRAP_OWNER_PASSWORD are set:
+    create owner by email if not present (safe for Render). Otherwise ensure one OWNER (legacy).
     Returns dict with keys: action (str), portal_user_id (str|None), message (str).
     """
     email = os.environ.get(BOOTSTRAP_OWNER_EMAIL_KEY, "").strip()
+    password = os.environ.get(BOOTSTRAP_OWNER_PASSWORD_KEY, "").strip()
     if not email:
         return {"action": "skipped", "portal_user_id": None, "message": "BOOTSTRAP_OWNER_EMAIL not set"}
 
     db = database.get_db()
 
-    # 1) If any OWNER already exists, do nothing (idempotent)
+    # Path 1: Email + password both set → idempotent create-by-email (Render-friendly)
+    if email and password:
+        existing = await db.portal_users.find_one(
+            {"auth_email": email},
+            {"_id": 0, "portal_user_id": 1, "auth_email": 1}
+        )
+        if existing:
+            logger.info("Bootstrap owner: already exists (email=%s)", email)
+            return {
+                "action": "already_exists",
+                "portal_user_id": existing["portal_user_id"],
+                "message": "Owner already exists for this email",
+            }
+        name = os.environ.get(BOOTSTRAP_OWNER_NAME_KEY, "").strip() or None
+        role_value = _role_from_env()
+        portal_user_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        new_owner = {
+            "portal_user_id": portal_user_id,
+            "client_id": None,
+            "auth_email": email,
+            "password_hash": hash_password(password),
+            "role": role_value,
+            "status": UserStatus.ACTIVE.value,
+            "password_status": PasswordStatus.SET.value,
+            "must_set_password": False,
+            "session_version": 0,
+            "last_login": None,
+            "created_at": now,
+        }
+        if name:
+            new_owner["full_name"] = name
+        await db.portal_users.insert_one(new_owner)
+        await create_audit_log(
+            action=AuditAction.OWNER_CREATED,
+            actor_id=portal_user_id,
+            resource_type="portal_user",
+            resource_id=portal_user_id,
+            metadata={"auth_email": email, "method": "bootstrap_env"},
+        )
+        logger.info("Bootstrap owner: created (email=%s, role=%s)", email, role_value)
+        return {
+            "action": "created",
+            "portal_user_id": portal_user_id,
+            "message": "Owner created from env",
+        }
+
+    # Path 2: Only email set → ensure exactly one OWNER (legacy: promote or create + invite)
     existing_owner = await db.portal_users.find_one(
         {"role": UserRole.ROLE_OWNER.value},
         {"_id": 0, "portal_user_id": 1, "auth_email": 1}
@@ -43,7 +105,6 @@ async def run_bootstrap_owner() -> dict:
             "message": "OWNER already exists",
         }
 
-    # 2) User with this email already exists? Promote to OWNER.
     existing_user = await db.portal_users.find_one(
         {"auth_email": email},
         {"_id": 0}
@@ -75,8 +136,6 @@ async def run_bootstrap_owner() -> dict:
             "message": "Existing user promoted to OWNER",
         }
 
-    # 3) Create new OWNER
-    import uuid
     portal_user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     bootstrap_password = os.environ.get(BOOTSTRAP_OWNER_PASSWORD_KEY, "").strip()
@@ -99,7 +158,7 @@ async def run_bootstrap_owner() -> dict:
         new_owner["password_hash"] = hash_password(bootstrap_password)
         new_owner["status"] = UserStatus.ACTIVE.value
         new_owner["password_status"] = PasswordStatus.SET.value
-        new_owner["must_set_password"] = True  # Require rotation after first login (handled by client/flow)
+        new_owner["must_set_password"] = True
 
     await db.portal_users.insert_one(new_owner)
     await create_audit_log(

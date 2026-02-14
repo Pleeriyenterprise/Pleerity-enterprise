@@ -280,8 +280,11 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Compliance Vault Pro API")
     await database.connect()
 
-    # Optional: idempotent OWNER bootstrap when BOOTSTRAP_ENABLED=true
-    if os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true":
+    # Idempotent OWNER bootstrap: when BOOTSTRAP_ENABLED=true OR when email+password env are set (Render)
+    bootstrap_enabled = os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true"
+    bootstrap_email = (os.environ.get("BOOTSTRAP_OWNER_EMAIL") or "").strip()
+    bootstrap_password = (os.environ.get("BOOTSTRAP_OWNER_PASSWORD") or "").strip()
+    if bootstrap_enabled or (bootstrap_email and bootstrap_password):
         try:
             from services.owner_bootstrap import run_bootstrap_owner
             result = await run_bootstrap_owner()
