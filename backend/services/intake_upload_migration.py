@@ -14,7 +14,8 @@ from models.intake_uploads import IntakeUploadStatus
 
 logger = logging.getLogger(__name__)
 
-DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", "/app/data/documents"))
+DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(DATA_DIR) / "data" / "documents")))
 
 
 async def migrate_intake_uploads_to_vault(client_id: str) -> dict:
@@ -49,6 +50,7 @@ async def migrate_intake_uploads_to_vault(client_id: str) -> dict:
     ).to_list(500)
 
     # property_id only when explicitly provided by intake data; else client-level (None)
+    DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
     dest_dir = DOCUMENT_STORAGE_PATH / client_id
     dest_dir.mkdir(parents=True, exist_ok=True)
     migrated = 0

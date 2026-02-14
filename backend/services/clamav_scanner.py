@@ -12,9 +12,10 @@ from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
+DATA_DIR = os.getenv("DATA_DIR", "/tmp")
 # Quarantine directory for flagged/failed files (sibling to intake uploads)
-INTAKE_UPLOAD_DIR = Path(os.environ.get("INTAKE_UPLOAD_DIR", "/app/uploads/intake"))
-QUARANTINE_DIR = Path(os.environ.get("INTAKE_QUARANTINE_DIR", "/app/uploads/intake_quarantine"))
+INTAKE_UPLOAD_DIR = Path(os.environ.get("INTAKE_UPLOAD_DIR", str(Path(DATA_DIR) / "uploads" / "intake")))
+QUARANTINE_DIR = Path(os.environ.get("INTAKE_QUARANTINE_DIR", str(Path(DATA_DIR) / "uploads" / "intake_quarantine")))
 
 
 def _ensure_quarantine_dir() -> Path:

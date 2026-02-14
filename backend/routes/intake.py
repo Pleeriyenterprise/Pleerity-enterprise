@@ -1001,7 +1001,8 @@ async def upload_intake_document(
         
         # Generate storage path
         document_id = str(uuid.uuid4())
-        storage_dir = os.path.join("/app", "uploads", "intake", intake_session_id)
+        data_dir = os.getenv("DATA_DIR", "/tmp")
+        storage_dir = os.path.join(data_dir, "uploads", "intake", intake_session_id)
         os.makedirs(storage_dir, exist_ok=True)
         
         file_ext = os.path.splitext(file.filename)[1] if file.filename else ".pdf"

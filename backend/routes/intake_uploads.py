@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intake/uploads", tags=["intake-uploads"])
 
 # Limits (safe defaults)
-INTAKE_UPLOAD_DIR = Path(os.environ.get("INTAKE_UPLOAD_DIR", "/app/uploads/intake"))
+DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+INTAKE_UPLOAD_DIR = Path(os.environ.get("INTAKE_UPLOAD_DIR", str(Path(DATA_DIR) / "uploads" / "intake")))
 INTAKE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_FILE_BYTES = 20 * 1024 * 1024   # 20MB

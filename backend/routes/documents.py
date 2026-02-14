@@ -135,8 +135,9 @@ class ExtractionApplyRequest(BaseModel):
     confirmed_data: Optional[Dict[str, Any]] = None
 
 
-# Document storage directory
-DOCUMENT_STORAGE_PATH = Path("/app/data/documents")
+# Document storage directory (configurable via DATA_DIR or DOCUMENT_STORAGE_PATH)
+DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(DATA_DIR) / "data" / "documents")))
 DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
 @router.post("/bulk-upload")
