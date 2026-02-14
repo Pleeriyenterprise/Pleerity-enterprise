@@ -34,19 +34,25 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor: add auth token + dev log first request (endpoint + Authorization)
+let firstRequestLogged = false;
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (!firstRequestLogged && typeof window !== 'undefined') {
+      firstRequestLogged = true;
+      const url = config.url ?? config.baseURL ?? '?';
+      console.log('[CVP] First API request:', url, 'Authorization:', token ? 'Bearer present' : 'MISSING');
+    }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response: log first 3 requests, 401 → session expired, track last error for debug panel
+// Response: log first 3 requests, 401 → logout + redirect, 403 → track, track last error for debug panel
 apiClient.interceptors.response.use(
   (response) => {
     const url = response.config?.url ?? response.config?.baseURL ?? '?';
@@ -59,10 +65,11 @@ apiClient.interceptors.response.use(
     const message = error.response?.data?.detail ?? error.message ?? 'Network error';
     logApiRequest(url, status, message);
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(message));
-    if (error.response?.status === 401) {
+    if (status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      window.location.href = '/login?session_expired=1';
+      const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+      window.location.href = isAdminPath ? '/login/admin?session_expired=1' : '/login?session_expired=1';
     }
     return Promise.reject(error);
   }

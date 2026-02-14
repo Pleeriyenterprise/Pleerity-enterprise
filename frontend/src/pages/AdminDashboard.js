@@ -3389,24 +3389,41 @@ const StatisticsDashboard = () => {
 };
 
 // Dashboard Overview
+const EMPTY_STATS = { stats: {}, compliance_overview: {}, recent_activity: [] };
+
 const DashboardOverview = ({ onShowDrilldown }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState(null);
   const [pendingList, setPendingList] = useState({ documents: [], total: 0, returned: 0, has_more: false });
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingHours, setPendingHours] = useState(24);
   const [pendingClientId, setPendingClientId] = useState('');
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[CVP] AdminDashboard first load: calling GET /admin/dashboard');
+    }
     fetchStats();
   }, []);
 
   const fetchStats = async () => {
     try {
       const response = await api.get('/admin/dashboard');
+      setDashboardError(null);
       setStats(response.data);
     } catch (error) {
-      toast.error('Failed to load dashboard stats');
+      const status = error.response?.status;
+      const message = error.response?.data?.detail ?? error.message ?? 'Failed to load dashboard';
+      setDashboardError({ status, message });
+      setStats(EMPTY_STATS);
+      if (status === 403) {
+        toast.error('Not authorized');
+      } else if (status === 401) {
+        toast.error('Session expired');
+      } else {
+        toast.error('Failed to load dashboard stats');
+      }
     } finally {
       setLoading(false);
     }
@@ -3444,6 +3461,25 @@ const DashboardOverview = ({ onShowDrilldown }) => {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      </div>
+    );
+  }
+
+  if (dashboardError) {
+    const is403 = dashboardError.status === 403;
+    const is401 = dashboardError.status === 401;
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold text-midnight-blue">Dashboard Overview</h2>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+          <AlertCircle className="w-10 h-10 text-amber-600 mx-auto mb-2" />
+          <p className="font-medium text-amber-900">
+            {is401 && 'Session expired. Please sign in again.'}
+            {is403 && 'Not authorized to view this page.'}
+            {!is401 && !is403 && 'Failed to load dashboard. Please try again or refresh.'}
+          </p>
+          <p className="text-sm text-amber-700 mt-1">{dashboardError.message}</p>
+        </div>
       </div>
     );
   }
@@ -3614,17 +3650,20 @@ const DashboardOverview = ({ onShowDrilldown }) => {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-midnight-blue mb-4">Recent Activity</h3>
         <div className="space-y-3">
-          {stats?.recent_activity?.slice(0, 5).map((activity, idx) => (
-            <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <Activity className="w-5 h-5 text-electric-teal" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-midnight-blue">{activity.action}</p>
-                <p className="text-xs text-gray-500">{new Date(activity.timestamp).toLocaleString()}</p>
-              </div>
-            </div>
-          )) || (
-            <p className="text-gray-500 text-sm">No recent activity</p>
-          )}
+          {(() => {
+            const activities = (stats?.recent_activity ?? []).slice(0, 5);
+            return activities.length > 0
+              ? activities.map((activity, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Activity className="w-5 h-5 text-electric-teal" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-midnight-blue">{activity.action}</p>
+                      <p className="text-xs text-gray-500">{new Date(activity.timestamp).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))
+              : <p className="text-gray-500 text-sm">No recent activity</p>;
+          })()}
         </div>
       </div>
     </div>
