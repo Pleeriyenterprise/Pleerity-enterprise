@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, 
@@ -30,15 +30,7 @@ const CalendarPage = () => {
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth() + 1;
 
-  useEffect(() => {
-    if (view === 'calendar') {
-      fetchCalendarData();
-    } else {
-      fetchUpcomingData();
-    }
-  }, [currentYear, currentMonth, view, daysAhead]);
-
-  const fetchCalendarData = async () => {
+  const fetchCalendarData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get(`/calendar/expiries?year=${currentYear}&month=${currentMonth}`);
@@ -48,9 +40,9 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentYear, currentMonth]);
 
-  const fetchUpcomingData = async () => {
+  const fetchUpcomingData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get(`/calendar/upcoming?days=${daysAhead}`);
@@ -60,7 +52,15 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [daysAhead]);
+
+  useEffect(() => {
+    if (view === 'calendar') {
+      fetchCalendarData();
+    } else {
+      fetchUpcomingData();
+    }
+  }, [view, fetchCalendarData, fetchUpcomingData]);
 
   const navigateMonth = (direction) => {
     const newDate = new Date(currentDate);

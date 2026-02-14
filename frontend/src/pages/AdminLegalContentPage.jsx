@@ -27,32 +27,33 @@ const AdminLegalContentPage = () => {
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
-    loadAllContent();
-  }, []);
-
-  const loadAllContent = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/admin/legal-content`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const contentMap = {};
-        data.forEach(item => {
-          contentMap[item.slug] = item;
+    let cancelled = false;
+    const loadAllContent = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`${API_URL}/api/admin/legal-content`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         });
-        setContent(prev => ({ ...prev, ...contentMap }));
+        if (cancelled) return;
+        if (response.ok) {
+          const data = await response.json();
+          const contentMap = {};
+          data.forEach(item => {
+            contentMap[item.slug] = item;
+          });
+          setContent(prev => ({ ...prev, ...contentMap }));
+        }
+      } catch (error) {
+        if (!cancelled) console.error('Failed to load legal content:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load legal content:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    loadAllContent();
+    return () => { cancelled = true; };
+  }, [API_URL]);
 
   const handleSave = async (slug) => {
     setSaving(true);

@@ -54,8 +54,23 @@ const ClearFormDocumentPage = () => {
   const [pdfError, setPdfError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadDocument = async () => {
+      try {
+        const doc = await documentsApi.getDocument(documentId);
+        if (!cancelled) setDocument(doc);
+      } catch (error) {
+        if (!cancelled) {
+          toast.error('Document not found');
+          navigate('/clearform/vault');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     loadDocument();
-  }, [documentId]);
+    return () => { cancelled = true; };
+  }, [documentId, navigate]);
 
   useEffect(() => {
     // Poll for updates if document is generating
@@ -77,26 +92,8 @@ const ClearFormDocumentPage = () => {
     }
   }, [document?.status, documentId]);
 
-  // Load PDF when document is completed
-  useEffect(() => {
-    if (document?.status === 'COMPLETED') {
-      loadPdf();
-    }
-  }, [document?.status, document?.document_id]);
-
-  const loadDocument = async () => {
-    try {
-      const doc = await documentsApi.getDocument(documentId);
-      setDocument(doc);
-    } catch (error) {
-      toast.error('Document not found');
-      navigate('/clearform/vault');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadPdf = async () => {
+  const loadPdf = useCallback(async () => {
+    if (!document?.document_id) return;
     setPdfLoading(true);
     setPdfError(null);
     try {
@@ -116,7 +113,14 @@ const ClearFormDocumentPage = () => {
     } finally {
       setPdfLoading(false);
     }
-  };
+  }, [document?.document_id]);
+
+  // Load PDF when document is completed
+  useEffect(() => {
+    if (document?.status === 'COMPLETED' && document?.document_id) {
+      loadPdf();
+    }
+  }, [document?.status, document?.document_id, loadPdf]);
 
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);

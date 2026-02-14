@@ -496,7 +496,7 @@ const PageEditor = ({ page, onBack, onRefresh }) => {
     }
   }, [page.page_id]);
 
-  const fetchRevisions = async () => {
+  const fetchRevisions = useCallback(async () => {
     setLoadingRevisions(true);
     try {
       const res = await client.get(`/admin/cms/pages/${page.page_id}/revisions`);
@@ -506,13 +506,13 @@ const PageEditor = ({ page, onBack, onRefresh }) => {
     } finally {
       setLoadingRevisions(false);
     }
-  };
+  }, [page.page_id]);
 
   useEffect(() => {
     if (showRevisions) {
       fetchRevisions();
     }
-  }, [showRevisions, page.page_id]);
+  }, [showRevisions, page.page_id, fetchRevisions]);
 
   const handleAddBlock = async (blockType) => {
     try {

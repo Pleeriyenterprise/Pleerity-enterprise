@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -26,6 +26,18 @@ const OnboardingStatusPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const fetchStatus = useCallback(async () => {
+    try {
+      const response = await api.get(`/intake/onboarding-status/${clientId}`);
+      setStatus(response.data);
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to load onboarding status');
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId]);
+
   useEffect(() => {
     if (clientId) {
       fetchStatus();
@@ -40,19 +52,7 @@ const OnboardingStatusPage = () => {
       setError('No client ID provided');
       setLoading(false);
     }
-  }, [clientId, status?.is_complete]);
-
-  const fetchStatus = async () => {
-    try {
-      const response = await api.get(`/intake/onboarding-status/${clientId}`);
-      setStatus(response.data);
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load onboarding status');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [clientId, status?.is_complete, fetchStatus]);
 
   const getStepIcon = (step) => {
     const icons = {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -15,9 +15,7 @@ const AdminTalentPoolPage = () => {
   const [stats, setStats] = useState({});
   const API = process.env.REACT_APP_BACKEND_URL;
 
-  useEffect(() => { load(); loadStats(); }, [filter]);
-
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (filter && filter !== 'all') params.append('status', filter);
@@ -28,16 +26,21 @@ const AdminTalentPoolPage = () => {
       if (res.ok) setData(await res.json());
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
-  };
+  }, [API, filter, search]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/talent-pool/admin/stats`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) setStats(await res.json());
     } catch(e) {}
-  };
+  }, [API]);
+
+  useEffect(() => {
+    load();
+    loadStats();
+  }, [filter, load, loadStats]);
 
   const colors = {'NEW':'bg-blue-100 text-blue-700','REVIEWED':'bg-gray-100 text-gray-700','SHORTLISTED':'bg-green-100 text-green-700','ARCHIVED':'bg-gray-100 text-gray-500'};
 

@@ -31,40 +31,36 @@ const ClearFormPaymentSuccessPage = () => {
   const isSubscription = window.location.pathname.includes('subscription');
 
   useEffect(() => {
-    if (sessionId) {
-      checkPaymentStatus();
-    } else {
+    if (!sessionId) {
       setLoading(false);
       setStatus('error');
+      return;
     }
-  }, [sessionId]);
-
-  const checkPaymentStatus = async () => {
-    try {
-      // Poll the backend to check if the payment has been processed
-      const API_BASE = process.env.REACT_APP_BACKEND_URL;
-      const token = localStorage.getItem('clearform_token');
-      
-      // Wait a moment for webhook to process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Refresh user to get updated credit balance
-      await refreshUser();
-      
-      setStatus('success');
-      setPurchaseInfo({
-        type: isSubscription ? 'subscription' : 'credits',
-        sessionId,
-      });
-    } catch (error) {
-      console.error('Error checking payment status:', error);
-      // Even if check fails, the webhook likely still processed
-      // Show success optimistically
-      setStatus('success');
-    } finally {
-      setLoading(false);
-    }
-  };
+    let cancelled = false;
+    const checkPaymentStatus = async () => {
+      try {
+        // Wait a moment for webhook to process
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (cancelled) return;
+        await refreshUser();
+        if (cancelled) return;
+        setStatus('success');
+        setPurchaseInfo({
+          type: window.location.pathname.includes('subscription') ? 'subscription' : 'credits',
+          sessionId,
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Error checking payment status:', error);
+          setStatus('success');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    checkPaymentStatus();
+    return () => { cancelled = true; };
+  }, [sessionId, refreshUser]);
 
   if (loading) {
     return (

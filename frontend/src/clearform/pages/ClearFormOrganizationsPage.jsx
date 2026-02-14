@@ -78,43 +78,45 @@ const ClearFormOrganizationsPage = () => {
   const [inviteMessage, setInviteMessage] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+    const loadOrganizations = async () => {
+      setLoading(true);
+      try {
+        const data = await organizationsApi.getUserOrganizations();
+        if (cancelled) return;
+        setOrganizations(data.organizations || []);
+        if (data.organizations?.length > 0) {
+          setSelectedOrg(data.organizations[0]);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load organizations:', error);
+          toast.error('Failed to load organizations');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     loadOrganizations();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (selectedOrg) {
-      loadOrgDetails(selectedOrg.org_id);
-    }
-  }, [selectedOrg?.org_id]);
-
-  const loadOrganizations = async () => {
-    setLoading(true);
-    try {
-      const data = await organizationsApi.getUserOrganizations();
-      setOrganizations(data.organizations || []);
-      if (data.organizations?.length > 0 && !selectedOrg) {
-        setSelectedOrg(data.organizations[0]);
+    if (!selectedOrg?.org_id) return;
+    const loadOrgDetails = async (orgId) => {
+      try {
+        const [membersData, invitationsData] = await Promise.all([
+          organizationsApi.getMembers(orgId),
+          organizationsApi.getPendingInvitations(orgId).catch(() => ({ invitations: [] })),
+        ]);
+        setMembers(membersData.members || []);
+        setInvitations(invitationsData.invitations || []);
+      } catch (error) {
+        console.error('Failed to load org details:', error);
       }
-    } catch (error) {
-      console.error('Failed to load organizations:', error);
-      toast.error('Failed to load organizations');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadOrgDetails = async (orgId) => {
-    try {
-      const [membersData, invitationsData] = await Promise.all([
-        organizationsApi.getMembers(orgId),
-        organizationsApi.getPendingInvitations(orgId).catch(() => ({ invitations: [] })),
-      ]);
-      setMembers(membersData.members || []);
-      setInvitations(invitationsData.invitations || []);
-    } catch (error) {
-      console.error('Failed to load org details:', error);
-    }
-  };
+    };
+    loadOrgDetails(selectedOrg.org_id);
+  }, [selectedOrg]);
 
   const handleCreateOrg = async () => {
     if (!newOrgName.trim()) {

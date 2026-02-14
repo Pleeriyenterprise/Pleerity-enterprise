@@ -192,7 +192,7 @@ export default function AdminAnalyticsDashboard() {
     if (!loading) {
       fetchAdvancedData();
     }
-  }, [compareEnabled, breakdownDimension, customDateRange]);
+  }, [compareEnabled, breakdownDimension, customDateRange, loading, fetchAdvancedData]);
   
   const { summary, services, sla, customers, funnel, addons } = data;
   

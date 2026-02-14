@@ -898,7 +898,7 @@ export default function UnifiedIntakeWizard() {
       console.error('Failed to restore wizard state:', err);
       localStorage.removeItem(STORAGE_KEY);
     }
-  }, []);
+  }, [setSearchParams]);
   
   // Save state whenever key fields change
   useEffect(() => {

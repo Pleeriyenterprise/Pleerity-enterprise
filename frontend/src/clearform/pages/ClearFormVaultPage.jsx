@@ -48,25 +48,29 @@ const ClearFormVaultPage = () => {
   });
 
   useEffect(() => {
+    let cancelled = false;
+    const loadDocuments = async () => {
+      setLoading(true);
+      try {
+        const page = pagination.page;
+        const pageSize = pagination.pageSize;
+        const data = await documentsApi.getVault(page, pageSize);
+        if (cancelled) return;
+        setDocuments(data.items || []);
+        setPagination(prev => ({
+          ...prev,
+          total: data.total || 0,
+          hasMore: data.has_more || false
+        }));
+      } catch (error) {
+        if (!cancelled) console.error('Failed to load documents:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     loadDocuments();
-  }, [pagination.page, statusFilter, typeFilter]);
-
-  const loadDocuments = async () => {
-    setLoading(true);
-    try {
-      const data = await documentsApi.getVault(pagination.page, pagination.pageSize);
-      setDocuments(data.items || []);
-      setPagination(prev => ({
-        ...prev,
-        total: data.total || 0,
-        hasMore: data.has_more || false
-      }));
-    } catch (error) {
-      console.error('Failed to load documents:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => { cancelled = true; };
+  }, [pagination.page, pagination.pageSize, statusFilter, typeFilter]);
 
   const getStatusIcon = (status) => {
     switch (status) {

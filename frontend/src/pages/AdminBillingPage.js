@@ -75,7 +75,7 @@ const AdminBillingPage = () => {
       fetchBillingSnapshot(selectedClientId);
       setSearchParams({ client: selectedClientId });
     }
-  }, [selectedClientId]);
+  }, [selectedClientId, setSearchParams]);
 
   const fetchStatistics = async () => {
     try {

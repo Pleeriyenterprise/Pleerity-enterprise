@@ -33,24 +33,27 @@ const ClearFormDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      try {
+        const [walletData, vaultData] = await Promise.all([
+          creditsApi.getWallet(),
+          documentsApi.getVault(1, 10),
+        ]);
+        if (!cancelled) {
+          setWallet(walletData);
+          setDocuments(vaultData.items);
+        }
+        await refreshUser();
+      } catch (error) {
+        if (!cancelled) console.error('Failed to load dashboard:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const [walletData, vaultData] = await Promise.all([
-        creditsApi.getWallet(),
-        documentsApi.getVault(1, 10),
-      ]);
-      setWallet(walletData);
-      setDocuments(vaultData.items);
-      await refreshUser();
-    } catch (error) {
-      console.error('Failed to load dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => { cancelled = true; };
+  }, [refreshUser]);
 
   const handleLogout = () => {
     logout();

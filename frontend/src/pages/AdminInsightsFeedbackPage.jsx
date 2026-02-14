@@ -10,15 +10,21 @@ const AdminInsightsFeedbackPage = () => {
   const [loading, setLoading] = useState(true);
   const API = process.env.REACT_APP_BACKEND_URL;
 
-  useEffect(() => { load(); }, []);
-
-  const load = async () => {
-    try {
-      const res = await fetch(`${API}/api/admin/feedback/list`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-      if (res.ok) setData(await res.json());
-    } catch(e) {}
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/api/admin/feedback/list`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+        if (cancelled) return;
+        if (res.ok) setData(await res.json());
+      } catch (e) {}
+      finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [API]);
 
   const colors = {'NEW':'bg-blue-100 text-blue-700','REVIEWED':'bg-gray-100 text-gray-700','ACTIONED':'bg-green-100 text-green-700','ARCHIVED':'bg-gray-100 text-gray-500'};
 

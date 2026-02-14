@@ -11,15 +11,21 @@ const AdminNewsletterPage = () => {
   const [loading, setLoading] = useState(true);
   const API = process.env.REACT_APP_BACKEND_URL;
 
-  useEffect(() => { load(); }, []);
-
-  const load = async () => {
-    try {
-      const res = await fetch(`${API}/api/admin/newsletter/subscribers`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-      if (res.ok) setSubs(await res.json());
-    } catch(e) {}
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/api/admin/newsletter/subscribers`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+        if (cancelled) return;
+        if (res.ok) setSubs(await res.json());
+      } catch (e) {}
+      finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [API]);
 
   const exportCSV = () => {
     const csv = ['Email,Status,Source,Subscribed Date\n', ...subs.map(s => `${s.email},${s.status},${s.source},${s.subscribed_at}`)].join('\n');

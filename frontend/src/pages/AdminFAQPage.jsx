@@ -14,12 +14,12 @@ const AdminFAQPage = () => {
   const [form, setForm] = useState({ category: '', question: '', answer: '', is_active: true, display_order: 0 });
   const API = process.env.REACT_APP_BACKEND_URL;
 
-  useEffect(() => { load(); }, []);
-
-  const load = async () => {
+  const load = React.useCallback(async () => {
     const res = await fetch(`${API}/api/admin/faqs/admin`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
     if (res.ok) setFaqs(await res.json());
-  };
+  }, [API]);
+
+  useEffect(() => { load(); }, [load]);
 
   const save = async () => {
     const endpoint = editing ? `${API}/api/admin/faqs/${editing}` : `${API}/api/admin/faqs`;

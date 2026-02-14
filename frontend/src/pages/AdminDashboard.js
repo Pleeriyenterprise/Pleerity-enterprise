@@ -185,13 +185,8 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   const [triggeringProvision, setTriggeringProvision] = useState(false);
   const [resendingPassword, setResendingPassword] = useState(false);
 
-  useEffect(() => {
-    if (clientId) {
-      fetchClientData();
-    }
-  }, [clientId]);
-
-  const fetchClientData = async () => {
+  const fetchClientData = useCallback(async () => {
+    if (!clientId) return;
     setLoading(true);
     try {
       const [detailRes, readinessRes, timelineRes] = await Promise.all([
@@ -217,7 +212,13 @@ const ClientDetailModal = ({ clientId, onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (clientId) {
+      fetchClientData();
+    }
+  }, [clientId, fetchClientData]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -651,44 +652,46 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
   const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    if (drilldownType) {
-      fetchDrilldownData();
-    }
+    if (!drilldownType) return;
+    let cancelled = false;
+    const fetchDrilldownData = async () => {
+      setLoading(true);
+      try {
+        let endpoint = '';
+        
+        // Map drilldown type to API endpoint
+        if (drilldownType === 'clients' || drilldownType === 'clients-active' || drilldownType === 'clients-pending') {
+          const status = drilldownType === 'clients-active' ? '&subscription_status=ACTIVE' : 
+                         drilldownType === 'clients-pending' ? '&onboarding_status=PENDING' : '';
+          endpoint = `/admin/clients?limit=50${status}`;
+        } else if (drilldownType === 'properties') {
+          endpoint = '/admin/kpi/properties?limit=50';
+        } else if (drilldownType.startsWith('compliance-')) {
+          const status = drilldownType.replace('compliance-', '');
+          endpoint = `/admin/kpi/properties?status_filter=${status}&limit=50`;
+        }
+
+        const response = await api.get(endpoint);
+        if (cancelled) return;
+        if (drilldownType.includes('client')) {
+          setData(response.data.clients || []);
+          setTotalCount(response.data.total || 0);
+        } else {
+          setData(response.data.properties || []);
+          setTotalCount(response.data.total || 0);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error('Failed to load drill-down data');
+          setData([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchDrilldownData();
+    return () => { cancelled = true; };
   }, [drilldownType]);
-
-  const fetchDrilldownData = async () => {
-    setLoading(true);
-    try {
-      let endpoint = '';
-      
-      // Map drilldown type to API endpoint
-      if (drilldownType === 'clients' || drilldownType === 'clients-active' || drilldownType === 'clients-pending') {
-        const status = drilldownType === 'clients-active' ? '&subscription_status=ACTIVE' : 
-                       drilldownType === 'clients-pending' ? '&onboarding_status=PENDING' : '';
-        endpoint = `/admin/clients?limit=50${status}`;
-      } else if (drilldownType === 'properties') {
-        endpoint = '/admin/kpi/properties?limit=50';
-      } else if (drilldownType.startsWith('compliance-')) {
-        const status = drilldownType.replace('compliance-', '');
-        endpoint = `/admin/kpi/properties?status_filter=${status}&limit=50`;
-      }
-
-      const response = await api.get(endpoint);
-      
-      if (drilldownType.includes('client')) {
-        setData(response.data.clients || []);
-        setTotalCount(response.data.total || 0);
-      } else {
-        setData(response.data.properties || []);
-        setTotalCount(response.data.total || 0);
-      }
-    } catch (error) {
-      toast.error('Failed to load drill-down data');
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getTitle = () => {
     switch (drilldownType) {
@@ -1289,23 +1292,25 @@ const AuditLogs = () => {
   const limit = 20;
 
   useEffect(() => {
+    let cancelled = false;
+    const fetchLogs = async () => {
+      setLoading(true);
+      try {
+        let url = `/admin/audit-logs?limit=${limit}&skip=${page * limit}`;
+        if (actionFilter) url += `&action=${actionFilter}`;
+        const response = await api.get(url);
+        if (cancelled) return;
+        setLogs(response.data.logs);
+        setTotalLogs(response.data.total);
+      } catch (error) {
+        if (!cancelled) toast.error('Failed to load audit logs');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     fetchLogs();
+    return () => { cancelled = true; };
   }, [actionFilter, page]);
-
-  const fetchLogs = async () => {
-    setLoading(true);
-    try {
-      let url = `/admin/audit-logs?limit=${limit}&skip=${page * limit}`;
-      if (actionFilter) url += `&action=${actionFilter}`;
-      const response = await api.get(url);
-      setLogs(response.data.logs);
-      setTotalLogs(response.data.total);
-    } catch (error) {
-      toast.error('Failed to load audit logs');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getActionIcon = (action) => {
     if (action.includes('LOGIN')) return <Shield className="w-4 h-4" />;
@@ -3407,28 +3412,33 @@ const DashboardOverview = ({ onShowDrilldown }) => {
     }
   };
 
-  const fetchPendingVerification = async () => {
-    setPendingLoading(true);
-    try {
-      const { adminAPI } = await import('../api/client');
-      const res = await adminAPI.getPendingVerificationDocuments(pendingHours, pendingClientId || null);
-      setPendingList({
-        documents: res.data?.documents || [],
-        total: res.data?.total ?? 0,
-        returned: res.data?.returned ?? 0,
-        has_more: res.data?.has_more ?? false,
-      });
-    } catch (e) {
-      toast.error('Failed to load pending verification list');
-      setPendingList({ documents: [], total: 0, returned: 0, has_more: false });
-    } finally {
-      setPendingLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (!loading && stats != null) fetchPendingVerification();
-  }, [loading, stats]);
+    if (loading || stats == null) return;
+    let cancelled = false;
+    const fetchPendingVerification = async () => {
+      setPendingLoading(true);
+      try {
+        const { adminAPI } = await import('../api/client');
+        const res = await adminAPI.getPendingVerificationDocuments(pendingHours, pendingClientId || null);
+        if (cancelled) return;
+        setPendingList({
+          documents: res.data?.documents || [],
+          total: res.data?.total ?? 0,
+          returned: res.data?.returned ?? 0,
+          has_more: res.data?.has_more ?? false,
+        });
+      } catch (e) {
+        if (!cancelled) {
+          toast.error('Failed to load pending verification list');
+          setPendingList({ documents: [], total: 0, returned: 0, has_more: false });
+        }
+      } finally {
+        if (!cancelled) setPendingLoading(false);
+      }
+    };
+    fetchPendingVerification();
+    return () => { cancelled = true; };
+  }, [loading, stats, pendingHours, pendingClientId]);
 
   if (loading) {
     return (

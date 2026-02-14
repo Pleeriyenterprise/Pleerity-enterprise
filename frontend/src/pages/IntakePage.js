@@ -1880,11 +1880,7 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
   const fileInputRef = useRef(null);
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-  useEffect(() => {
-    loadExistingFiles();
-  }, [intakeSessionId]);
-
-  const loadExistingFiles = async () => {
+  const loadExistingFiles = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/intake/uploads/list/${intakeSessionId}`);
       if (res.ok) {
@@ -1895,7 +1891,11 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
     } catch (err) {
       console.error('Failed to load files:', err);
     }
-  };
+  }, [API_URL, intakeSessionId, onFilesChange]);
+
+  useEffect(() => {
+    loadExistingFiles();
+  }, [loadExistingFiles]);
 
   const isAllowedFile = (file) => {
     const ext = '.' + (file.name || '').split('.').pop().toLowerCase();
