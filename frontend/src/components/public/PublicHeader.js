@@ -18,28 +18,31 @@ const PublicHeader = () => {
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-  // Platforms dropdown - Flagship products
+  // Platforms dropdown - Flagship products (comingSoon: greyed + unclickable)
   const platformLinks = [
-    { 
-      href: '/', 
-      label: 'Compliance Vault Pro', 
+    {
+      href: '/compliance-vault-pro',
+      label: 'Compliance Vault Pro',
       description: 'All-in-one compliance management for landlords',
       icon: Shield,
       badge: null,
+      comingSoon: false,
     },
-    { 
-      href: '/clearform', 
-      label: 'ClearForm', 
+    {
+      href: '/clearform',
+      label: 'ClearForm',
       description: 'AI-powered document creation for individuals & small businesses',
       icon: FileText,
       badge: 'Coming Soon',
+      comingSoon: true,
     },
-    { 
-      href: '/products/assurestack', 
-      label: 'AssureStack', 
+    {
+      href: '/products/assurestack',
+      label: 'AssureStack',
       description: 'Always on. Always watching. (coming soon)',
       icon: Shield,
       badge: 'Coming Soon',
+      comingSoon: true,
     },
   ];
 
@@ -76,32 +79,48 @@ const PublicHeader = () => {
                     <ul className="grid w-[450px] gap-3 p-4">
                       {platformLinks.map((link) => {
                         const Icon = link.icon;
-                        return (
-                          <li key={link.href}>
-                            <NavigationMenuLink asChild>
-                              <Link
-                                to={link.href}
-                                className={cn(
-                                  "flex items-start gap-3 select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100",
-                                  isActive(link.href) && "bg-gray-100"
+                        const content = (
+                          <>
+                            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                              <Icon className={cn("w-5 h-5", link.comingSoon ? "text-gray-400" : "text-emerald-600")} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={cn("text-sm font-medium", link.comingSoon ? "text-gray-400" : "text-midnight-blue")}>{link.label}</span>
+                                {link.badge && (
+                                  <span className="text-xs bg-gray-300 text-gray-600 px-2 py-0.5 rounded-full">
+                                    {link.badge}
+                                  </span>
                                 )}
+                              </div>
+                              <p className="text-sm text-gray-500 mt-1">{link.description}</p>
+                            </div>
+                          </>
+                        );
+                        return (
+                          <li key={link.href + link.label}>
+                            {link.comingSoon ? (
+                              <div
+                                className={cn(
+                                  "flex items-start gap-3 select-none rounded-md p-3 leading-none cursor-not-allowed pointer-events-none opacity-75"
+                                )}
+                                aria-disabled="true"
                               >
-                                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                  <Icon className="w-5 h-5 text-emerald-600" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-midnight-blue">{link.label}</span>
-                                    {link.badge && (
-                                      <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">
-                                        {link.badge}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-500 mt-1">{link.description}</p>
-                                </div>
-                              </Link>
-                            </NavigationMenuLink>
+                                {content}
+                              </div>
+                            ) : (
+                              <NavigationMenuLink asChild>
+                                <Link
+                                  to={link.href}
+                                  className={cn(
+                                    "flex items-start gap-3 select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100",
+                                    isActive(link.href) && "bg-gray-100"
+                                  )}
+                                >
+                                  {content}
+                                </Link>
+                              </NavigationMenuLink>
+                            )}
                           </li>
                         );
                       })}
@@ -205,21 +224,36 @@ const PublicHeader = () => {
             {/* Platforms Section */}
             <div>
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Platforms</div>
-              {platformLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className="flex items-center justify-between py-2 text-gray-700 hover:text-electric-teal"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span>{link.label}</span>
-                  {link.badge && (
-                    <span className="text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full">
-                      {link.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
+              {platformLinks.map((link) =>
+                link.comingSoon ? (
+                  <div
+                    key={link.href + link.label}
+                    className="flex items-center justify-between py-2 text-gray-400 cursor-not-allowed pointer-events-none"
+                    aria-disabled="true"
+                  >
+                    <span>{link.label}</span>
+                    {link.badge && (
+                      <span className="text-xs bg-gray-300 text-gray-600 px-2 py-0.5 rounded-full">
+                        {link.badge}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className="flex items-center justify-between py-2 text-gray-700 hover:text-electric-teal"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <span>{link.label}</span>
+                    {link.badge && (
+                      <span className="text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full">
+                        {link.badge}
+                      </span>
+                    )}
+                  </Link>
+                )
+              )}
             </div>
 
             {/* Services Section */}
