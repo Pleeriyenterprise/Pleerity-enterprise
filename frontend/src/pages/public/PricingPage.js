@@ -107,7 +107,6 @@ const PricingPage = () => {
         ],
         'Integrations': [
           { name: 'Webhooks', included: false },
-          { name: 'API Access', included: false },
         ],
         'Advanced': [
           { name: 'White-Label Reports', included: false },
@@ -154,7 +153,6 @@ const PricingPage = () => {
         ],
         'Integrations': [
           { name: 'Webhooks', included: false },
-          { name: 'API Access', included: false },
         ],
         'Advanced': [
           { name: 'White-Label Reports', included: false },
@@ -200,7 +198,6 @@ const PricingPage = () => {
         ],
         'Integrations': [
           { name: 'Webhooks', included: true },
-          { name: 'API Access', included: true },
         ],
         'Advanced': [
           { name: 'White-Label Reports', included: true },

@@ -127,7 +127,6 @@ const FEATURE_CATEGORIES = [
     icon: Webhook,
     features: [
       { key: 'webhooks', name: 'Webhooks', description: 'Send compliance events to external systems' },
-      { key: 'api_access', name: 'API Access', description: 'Programmatic access to compliance data' },
     ],
   },
   {
@@ -159,7 +158,6 @@ const FEATURE_MATRIX = {
     sms_reminders: false,
     tenant_portal: false,
     webhooks: false,
-    api_access: false,
     white_label_reports: false,
     audit_log_export: false,
   },
@@ -180,7 +178,6 @@ const FEATURE_MATRIX = {
     sms_reminders: true,
     tenant_portal: true,
     webhooks: false,
-    api_access: false,
     white_label_reports: false,
     audit_log_export: false,
   },
@@ -201,7 +198,6 @@ const FEATURE_MATRIX = {
     sms_reminders: true,
     tenant_portal: true,
     webhooks: true,
-    api_access: true,
     white_label_reports: true,
     audit_log_export: true,
   },
@@ -506,7 +502,7 @@ const BillingPage = () => {
                     {plan.code === 'PLAN_3_PRO' && (
                       <div className="flex items-center gap-2 text-sm">
                         <Check className="w-4 h-4 text-green-500" />
-                        <span>Webhooks & API access</span>
+                        <span>Webhooks</span>
                       </div>
                     )}
                   </div>
