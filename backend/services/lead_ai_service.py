@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 LEADS_COLLECTION = "leads"
 
-# LLM API key for Gemini (LLM_API_KEY or EMERGENT_LLM_KEY for backward compat)
+# LLM API key for Gemini
 def _get_llm_key():
-    return os.environ.get("LLM_API_KEY") or os.environ.get("EMERGENT_LLM_KEY")
+    return os.environ.get("LLM_API_KEY")
 
 
 class LeadAISummaryService:

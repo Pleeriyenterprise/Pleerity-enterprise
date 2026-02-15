@@ -264,12 +264,9 @@ class DocumentOrchestrator:
         )
     
     def _get_api_key(self):
-        """Get the LLM API key (LLM_API_KEY or EMERGENT_LLM_KEY for backward compat)."""
+        """Get the LLM API key (LLM_API_KEY only)."""
         from utils.llm_chat import _get_api_key as get_key
-        key = get_key()
-        if not key:
-            raise ValueError("LLM_API_KEY not found in environment")
-        return key
+        return get_key()
 
     async def validate_order_for_generation(
         self,
@@ -346,10 +343,22 @@ class DocumentOrchestrator:
             OrchestrationResult with rendered documents ready for review
         """
         from services.template_renderer import template_renderer
-        
+        from utils.llm_chat import _get_api_key as get_llm_key
+
         start_time = datetime.now(timezone.utc)
         db = database.get_db()
         execution_id = str(uuid_module.uuid4())
+
+        # LLM required for generation; missing key => controlled failure (no crash)
+        if not get_llm_key():
+            return OrchestrationResult(
+                success=False,
+                status=OrchestrationStatus.FAILED,
+                service_code="",
+                order_id=order_id,
+                error_message="AI service unavailable. Set LLM_API_KEY.",
+                execution_id=execution_id,
+            )
         
         # ================================================================
         # STEP 1: Validate order (Payment Verified)

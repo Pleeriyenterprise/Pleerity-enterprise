@@ -376,9 +376,11 @@ Set these for a clean deploy with **no Emergent dependencies**:
 | | `FRONTEND_URL` | Yes | Full frontend URL (e.g. `https://your-app.vercel.app`) |
 | | `POSTMARK_SERVER_TOKEN` | If using email | Postmark API token |
 | | `UNSUBSCRIBE_URL` | If using email | e.g. `{FRONTEND_URL}/unsubscribe` |
-| | `LLM_API_KEY` | If using AI features | Google AI Studio / Gemini API key |
+| | `LLM_API_KEY` | If using AI features | Google AI Studio / Gemini API key. When unset, AI endpoints return 503 or graceful fallback (no crash). |
 | | `ENVIRONMENT` | Optional | `production` on Render |
 | **Vercel** (frontend) | `REACT_APP_BACKEND_URL` | Yes | Backend base URL (e.g. `https://your-app.onrender.com`) |
+
+**Scripts:** `scripts/production_check.sh` uses `BACKEND_URL` (default `http://localhost:8001`) and `FRONTEND_URL` (default `http://localhost:3000`).
 
 **Backend entry:** `uvicorn server:app --host 0.0.0.0 --port 8001` (or Render’s default).  
 **Frontend build:** `npm run build` (CRA); Vercel runs this automatically.

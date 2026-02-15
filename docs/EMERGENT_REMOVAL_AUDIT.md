@@ -18,7 +18,7 @@ This document lists all Emergent-related references and how they were handled so
 
 | Variable | Type | Action |
 |----------|------|--------|
-| `EMERGENT_LLM_KEY` | HARD | Replaced by `LLM_API_KEY`. Code still reads `EMERGENT_LLM_KEY` as fallback for backward compat. |
+| `EMERGENT_LLM_KEY` | HARD | Removed. Only `LLM_API_KEY` is used. |
 | `FRONTEND_URL` default `https://order-fulfillment-9.preview.emergentagent.com` | SOFT | Default set to `http://localhost:3000` in backend. |
 | `UNSUBSCRIBE_URL` default Emergent URL | SOFT | Default set to `http://localhost:3000/unsubscribe`. |
 | `STRIPE_API_KEY` default `sk_test_emergent` | SOFT | Default set to `""`; must be set in env for Stripe. |
@@ -86,6 +86,8 @@ This document lists all Emergent-related references and how they were handled so
 
 ## 3. Summary
 
-- **HARD:** All `emergentintegrations` usage removed and replaced with `backend/utils/llm_chat.py` (Google Generative AI). LLM env is `LLM_API_KEY` (with `EMERGENT_LLM_KEY` fallback).
+- **HARD:** All `emergentintegrations` usage removed and replaced with `backend/utils/llm_chat.py` (Google Generative AI). LLM env is `LLM_API_KEY` only (no Emergent fallback).
 - **SOFT:** Emergent URLs and Stripe/Emergent defaults removed from code and README; `.emergent` removed and ignored; docs/env aligned to Render + Vercel + Atlas.
 - **Product behavior:** Auth, RBAC, Stripe, Tawk, and app behavior unchanged except for removal of Emergent-specific code and config.
+- **Stability:** When `LLM_API_KEY` is unset, AI endpoints return 503 or a controlled message (orchestrator returns failed result; prompt test returns 503; clearform document fails gracefully; assistant/support return fallback). No crash.
+- **Scripts:** `production_check.sh` uses `BACKEND_URL` (default `http://localhost:8001`) and `FRONTEND_URL` (default `http://localhost:3000`); no Emergent URLs.

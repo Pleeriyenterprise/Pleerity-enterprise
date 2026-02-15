@@ -15,7 +15,7 @@ LLM_API_KEY = os.environ.get("LLM_API_KEY")
 
 
 def _get_api_key() -> Optional[str]:
-    return LLM_API_KEY or os.environ.get("EMERGENT_LLM_KEY")  # backward compat
+    return LLM_API_KEY
 
 
 def _sync_chat(system_prompt: str, user_text: str, model: str = "gemini-2.0-flash") -> str:

@@ -69,7 +69,7 @@ If asked for legal advice, to modify data, or to access restricted info, respond
 
 class AssistantService:
     def __init__(self):
-        self.api_key = os.getenv("LLM_API_KEY") or os.getenv("EMERGENT_LLM_KEY")
+        self.api_key = os.getenv("LLM_API_KEY")
         self.model_provider = "gemini"
         self.model_name = "gemini-3-flash-preview"
     

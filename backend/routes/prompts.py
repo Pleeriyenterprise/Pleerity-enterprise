@@ -268,7 +268,15 @@ async def test_prompt(
             request=request,
             executed_by=current_user.get("email", "admin"),
         )
+        # Missing LLM config => 503 so clients can show "AI unavailable"
+        if getattr(result, "status", None) == "FAILED" and result.error_message and "LLM_API_KEY" in result.error_message:
+            raise HTTPException(
+                status_code=503,
+                detail="AI service unavailable. Set LLM_API_KEY to use prompt testing.",
+            )
         return result
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

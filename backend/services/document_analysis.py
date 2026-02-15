@@ -149,7 +149,7 @@ class DocumentAnalysisService:
     """
     
     def __init__(self):
-        self.api_key = os.getenv("LLM_API_KEY") or os.getenv("EMERGENT_LLM_KEY")
+        self.api_key = os.getenv("LLM_API_KEY")
         logger.info("Document Analysis Service initialized (Enhanced)")
     
     def _detect_document_type_hint(self, filename: str) -> str:

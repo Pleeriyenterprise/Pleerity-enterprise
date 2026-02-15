@@ -139,7 +139,19 @@ class DocumentService:
             
             from utils.llm_chat import chat, _get_api_key
             if not _get_api_key():
-                raise ValueError("LLM_API_KEY not set")
+                await db.clearform_documents.update_one(
+                    {"document_id": document.document_id},
+                    {
+                        "$set": {
+                            "status": ClearFormDocumentStatus.FAILED.value,
+                            "error_message": "AI service unavailable. Set LLM_API_KEY.",
+                            "updated_at": datetime.now(timezone.utc),
+                        },
+                        "$inc": {"retry_count": 1},
+                    },
+                )
+                logger.warning("LLM_API_KEY not set; document generation skipped")
+                return
             response = await chat(
                 system_prompt=self._get_system_prompt(document.document_type),
                 user_text=prompt,
