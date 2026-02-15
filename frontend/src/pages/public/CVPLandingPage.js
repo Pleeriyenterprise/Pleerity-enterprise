@@ -94,7 +94,6 @@ const CVPLandingPage = () => {
       properties: '25',
       features: [
         'Everything in Portfolio',
-        'Webhooks',
         'White-Label Reports',
         'Audit Log Export',
         'ZIP Bulk Upload',

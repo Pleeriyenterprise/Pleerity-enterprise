@@ -105,9 +105,6 @@ const PricingPage = () => {
         'Tenant Portal': [
           { name: 'Tenant View Access', included: false },
         ],
-        'Integrations': [
-          { name: 'Webhooks', included: false },
-        ],
         'Advanced': [
           { name: 'White-Label Reports', included: false },
           { name: 'Audit Log Export', included: false },
@@ -151,9 +148,6 @@ const PricingPage = () => {
         'Tenant Portal': [
           { name: 'Tenant View Access', included: false },
         ],
-        'Integrations': [
-          { name: 'Webhooks', included: false },
-        ],
         'Advanced': [
           { name: 'White-Label Reports', included: false },
           { name: 'Audit Log Export', included: false },
@@ -195,9 +189,6 @@ const PricingPage = () => {
         ],
         'Tenant Portal': [
           { name: 'Tenant View Access', included: true },
-        ],
-        'Integrations': [
-          { name: 'Webhooks', included: true },
         ],
         'Advanced': [
           { name: 'White-Label Reports', included: true },
