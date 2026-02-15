@@ -662,7 +662,7 @@ async def get_audit_logs(
 async def get_property_compliance_score_history(
     request: Request,
     property_id: str,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
 ):
     """Get compliance score history timeline for a property (admin observability, read-only).
     
@@ -683,7 +683,7 @@ async def get_property_compliance_score_history(
         snapshots = await db.property_compliance_score_history.find(
             {"property_id": property_id},
             {"_id": 0},
-        ).sort("created_at", -1).limit(min(limit, 200)).to_list(min(limit, 200))
+        ).sort("created_at", -1).limit(limit).to_list(limit)
         return {
             "property_id": property_id,
             "client_id": prop.get("client_id"),
