@@ -6,14 +6,12 @@ const EntitlementsContext = createContext(null);
 
 export function EntitlementsProvider({ children }) {
   const { user } = useAuth();
-  const clientId = user?.client_id;
-  const role = user?.role;
   const [entitlements, setEntitlements] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchEntitlements = useCallback(async () => {
-    const isClient = clientId && (role === 'ROLE_CLIENT' || role === 'ROLE_CLIENT_ADMIN');
+    const isClient = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
     if (!isClient) {
       setEntitlements(null);
       setLoading(false);
@@ -30,7 +28,7 @@ export function EntitlementsProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [clientId, role]);
+  }, [user]);
 
   useEffect(() => {
     fetchEntitlements();
