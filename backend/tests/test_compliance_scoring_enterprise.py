@@ -166,3 +166,89 @@ class TestDashboardReadsStoredScore:
         assert result["score"] == 80
         assert "breakdown" in result
         db.properties.find.assert_called()
+
+
+class TestValidateComplianceScoreEndpoint:
+    """Admin validate-compliance-score: response shape, mismatch audit, fix path."""
+
+    @pytest.mark.asyncio
+    async def test_validate_match_returns_match_true_no_mismatch_audit(self):
+        from routes.admin import validate_compliance_score, ValidateComplianceScoreRequest
+        from models import AuditAction
+
+        request = MagicMock()
+        prop = {"property_id": "p1", "client_id": "c1", "compliance_score": 70, "compliance_breakdown": {"status_score": 70, "expiry_score": 80, "document_score": 70, "overdue_penalty_score": 80, "risk_score": 100}}
+        computed = {"score": 70, "breakdown": {"status_score": 70, "expiry_score": 80, "document_score": 70, "overdue_penalty_score": 80, "risk_score": 100}}
+        db = MagicMock()
+        db.properties.find_one = AsyncMock(return_value=prop)
+
+        with patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value={"portal_user_id": "admin1"}):
+            with patch("routes.admin.database.get_db", return_value=db):
+                with patch("services.compliance_scoring_service.calculate_property_compliance", new_callable=AsyncMock, return_value=computed):
+                    with patch("routes.admin.create_audit_log", new_callable=AsyncMock) as audit:
+                        body = ValidateComplianceScoreRequest(fix=False)
+                        result = await validate_compliance_score(request, "p1", body)
+        assert result["property_id"] == "p1"
+        assert result["stored_score"] == 70
+        assert result["computed_score"] == 70
+        assert result["match"] is True
+        assert "diff_summary" in result
+        assert result["repaired"] is False
+        audit.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_validate_mismatch_writes_mismatch_audit(self):
+        from routes.admin import validate_compliance_score, ValidateComplianceScoreRequest
+        from models import AuditAction
+
+        request = MagicMock()
+        prop = {"property_id": "p1", "client_id": "c1", "compliance_score": 70, "compliance_breakdown": {}}
+        computed = {"score": 85, "breakdown": {"status_score": 90, "expiry_score": 80, "document_score": 85, "overdue_penalty_score": 90, "risk_score": 100}}
+        db = MagicMock()
+        db.properties.find_one = AsyncMock(return_value=prop)
+
+        with patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value={"portal_user_id": "admin1"}):
+            with patch("routes.admin.database.get_db", return_value=db):
+                with patch("services.compliance_scoring_service.calculate_property_compliance", new_callable=AsyncMock, return_value=computed):
+                    with patch("routes.admin.create_audit_log", new_callable=AsyncMock) as audit:
+                        body = ValidateComplianceScoreRequest(fix=False)
+                        result = await validate_compliance_score(request, "p1", body)
+        assert result["match"] is False
+        assert result["stored_score"] == 70
+        assert result["computed_score"] == 85
+        assert result["diff_summary"]["score_delta"] == 15
+        assert result["repaired"] is False
+        audit.assert_called_once()
+        assert getattr(audit.call_args[1]["action"], "value", str(audit.call_args[1]["action"])) == "COMPLIANCE_SCORE_MISMATCH_DETECTED"
+
+    @pytest.mark.asyncio
+    async def test_validate_mismatch_with_fix_updates_property_and_writes_repaired_audit(self):
+        from routes.admin import validate_compliance_score, ValidateComplianceScoreRequest
+        from models import AuditAction
+
+        request = MagicMock()
+        prop = {"property_id": "p1", "client_id": "c1", "compliance_score": 70, "compliance_breakdown": {}}
+        computed = {"score": 85, "breakdown": {"status_score": 90, "expiry_score": 80, "document_score": 85, "overdue_penalty_score": 90, "risk_score": 100}, "weights_version": "v1"}
+        db = MagicMock()
+        db.properties.find_one = AsyncMock(return_value=prop)
+        db.properties.update_one = AsyncMock()
+        db.property_compliance_score_history.insert_one = AsyncMock()
+
+        with patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value={"portal_user_id": "admin1"}):
+            with patch("routes.admin.database.get_db", return_value=db):
+                with patch("services.compliance_scoring_service.calculate_property_compliance", new_callable=AsyncMock, return_value=computed):
+                    with patch("routes.admin.create_audit_log", new_callable=AsyncMock) as audit:
+                        body = ValidateComplianceScoreRequest(fix=True)
+                        result = await validate_compliance_score(request, "p1", body)
+        assert result["match"] is False
+        assert result["repaired"] is True
+        db.properties.update_one.assert_called_once()
+        assert db.properties.update_one.call_args[0][1]["$set"]["compliance_score"] == 85
+        db.property_compliance_score_history.insert_one.assert_called_once()
+        history = db.property_compliance_score_history.insert_one.call_args[0][0]
+        assert history["reason"] == "VALIDATOR_REPAIR"
+        assert history["score"] == 85
+        assert audit.await_count == 2
+        actions = [getattr(c[1]["action"], "value", str(c[1]["action"])) for c in audit.call_args_list]
+        assert "COMPLIANCE_SCORE_MISMATCH_DETECTED" in actions
+        assert "COMPLIANCE_SCORE_REPAIRED" in actions

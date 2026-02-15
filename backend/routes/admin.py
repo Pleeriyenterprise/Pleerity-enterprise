@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Request, Depends, status, Query, Body
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from database import database
@@ -19,6 +19,11 @@ router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(ad
 class AdminInviteRequest(BaseModel):
     email: EmailStr
     full_name: str
+
+
+class ValidateComplianceScoreRequest(BaseModel):
+    """Optional body for validate-compliance-score: fix=true to repair stored score."""
+    fix: bool = False
 
 
 @router.get("/dashboard", dependencies=[Depends(require_owner_or_admin)])
@@ -742,6 +747,133 @@ async def get_property_compliance_recalc_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load compliance recalc status",
+        )
+
+
+@router.post("/properties/{property_id}/validate-compliance-score")
+async def validate_compliance_score(
+    request: Request,
+    property_id: str,
+    body: ValidateComplianceScoreRequest = Body(default=ValidateComplianceScoreRequest()),
+):
+    """Admin-only: verify stored compliance score matches freshly computed score.
+    Optionally fix=true updates stored score to computed and writes snapshot + COMPLIANCE_SCORE_REPAIRED audit.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        prop = await db.properties.find_one(
+            {"property_id": property_id},
+            {"_id": 0, "property_id": 1, "client_id": 1, "compliance_score": 1, "compliance_breakdown": 1},
+        )
+        if not prop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found",
+            )
+        from services.compliance_scoring_service import calculate_property_compliance, WEIGHTS_VERSION
+
+        result = await calculate_property_compliance(property_id)
+        if result.get("error"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Score computation failed: {result.get('error')}",
+            )
+        stored_score = prop.get("compliance_score")
+        computed_score = result["score"]
+        stored_breakdown = prop.get("compliance_breakdown") or {}
+        computed_breakdown = result.get("breakdown") or {}
+        score_match = (
+            stored_score is not None
+            and computed_score is not None
+            and stored_score == computed_score
+        )
+        breakdown_diffs = {}
+        for key in ("status_score", "expiry_score", "document_score", "overdue_penalty_score", "risk_score"):
+            s = stored_breakdown.get(key)
+            c = computed_breakdown.get(key)
+            if s != c:
+                breakdown_diffs[key] = {"stored": s, "computed": c}
+        match = score_match and len(breakdown_diffs) == 0
+        diff_summary = {
+            "score_delta": (computed_score - stored_score) if stored_score is not None else None,
+            "breakdown_diffs": breakdown_diffs if breakdown_diffs else None,
+        }
+
+        if not match:
+            await create_audit_log(
+                action=AuditAction.COMPLIANCE_SCORE_MISMATCH_DETECTED,
+                actor_id=user.get("portal_user_id"),
+                client_id=prop["client_id"],
+                resource_type="property",
+                resource_id=property_id,
+                metadata={
+                    "property_id": property_id,
+                    "stored_score": stored_score,
+                    "computed_score": computed_score,
+                    "diff_summary": diff_summary,
+                },
+            )
+            if body.fix:
+                now = datetime.now(timezone.utc)
+                new_breakdown = result.get("breakdown", {})
+                await db.properties.update_one(
+                    {"property_id": property_id},
+                    {"$set": {
+                        "compliance_score": computed_score,
+                        "compliance_breakdown": new_breakdown,
+                        "compliance_last_calculated_at": now.isoformat(),
+                        "compliance_version": result.get("weights_version", WEIGHTS_VERSION),
+                        "compliance_score_pending": False,
+                    }},
+                )
+                breakdown_summary = {
+                    "status_score": new_breakdown.get("status_score"),
+                    "expiry_score": new_breakdown.get("expiry_score"),
+                    "document_score": new_breakdown.get("document_score"),
+                    "overdue_penalty_score": new_breakdown.get("overdue_penalty_score"),
+                    "risk_score": new_breakdown.get("risk_score"),
+                }
+                history_doc = {
+                    "property_id": property_id,
+                    "client_id": prop["client_id"],
+                    "score": computed_score,
+                    "breakdown_summary": breakdown_summary,
+                    "created_at": now.isoformat(),
+                    "reason": "VALIDATOR_REPAIR",
+                    "actor": {"id": user.get("portal_user_id"), "role": "ADMIN"},
+                }
+                await db.property_compliance_score_history.insert_one(history_doc)
+                await create_audit_log(
+                    action=AuditAction.COMPLIANCE_SCORE_REPAIRED,
+                    actor_id=user.get("portal_user_id"),
+                    client_id=prop["client_id"],
+                    resource_type="property",
+                    resource_id=property_id,
+                    before_state={"compliance_score": stored_score},
+                    after_state={"compliance_score": computed_score},
+                    metadata={
+                        "property_id": property_id,
+                        "previous_score": stored_score,
+                        "new_score": computed_score,
+                    },
+                )
+
+        return {
+            "property_id": property_id,
+            "stored_score": stored_score,
+            "computed_score": computed_score,
+            "match": match,
+            "diff_summary": diff_summary,
+            "repaired": bool(not match and body.fix),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Validate compliance score error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to validate compliance score",
         )
 
 
