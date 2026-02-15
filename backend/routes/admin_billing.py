@@ -69,14 +69,14 @@ async def search_billing_clients(request: Request, q: str = "", limit: int = 20)
         return {"clients": [], "total": 0, "query": q}
     
     try:
-        # Build search query
+        # Build search query (clients collection: email, full_name, customer_reference)
         search_query = {
             "$or": [
-                {"contact_email": {"$regex": q, "$options": "i"}},
-                {"crn": {"$regex": q, "$options": "i"}},
+                {"email": {"$regex": q, "$options": "i"}},
+                {"customer_reference": {"$regex": q, "$options": "i"}},
                 {"client_id": {"$regex": q, "$options": "i"}},
                 {"company_name": {"$regex": q, "$options": "i"}},
-                {"contact_name": {"$regex": q, "$options": "i"}},
+                {"full_name": {"$regex": q, "$options": "i"}},
             ]
         }
         
@@ -86,10 +86,10 @@ async def search_billing_clients(request: Request, q: str = "", limit: int = 20)
             {
                 "_id": 0,
                 "client_id": 1,
-                "contact_email": 1,
-                "contact_name": 1,
+                "email": 1,
+                "full_name": 1,
                 "company_name": 1,
-                "crn": 1,
+                "customer_reference": 1,
                 "billing_plan": 1,
                 "subscription_status": 1,
                 "entitlement_status": 1,
@@ -120,10 +120,10 @@ async def search_billing_clients(request: Request, q: str = "", limit: int = 20)
                     {
                         "_id": 0,
                         "client_id": 1,
-                        "contact_email": 1,
-                        "contact_name": 1,
+                        "email": 1,
+                        "full_name": 1,
                         "company_name": 1,
-                        "crn": 1,
+                        "customer_reference": 1,
                         "billing_plan": 1,
                         "subscription_status": 1,
                         "entitlement_status": 1,
@@ -134,6 +134,9 @@ async def search_billing_clients(request: Request, q: str = "", limit: int = 20)
                 
                 clients.extend(additional_clients)
         
+        # Expose customer_reference as crn for frontend compatibility
+        for client in clients:
+            client["crn"] = client.get("customer_reference")
         # Add plan names
         for client in clients:
             plan_code = client.get("billing_plan", "PLAN_1_SOLO")
@@ -217,12 +220,12 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
         
         # Build snapshot
         snapshot = {
-            # Client identifiers
+            # Client identifiers (clients collection: full_name, email, customer_reference)
             "client_id": client_id,
-            "contact_name": client.get("contact_name"),
-            "contact_email": client.get("contact_email"),
+            "contact_name": client.get("full_name"),
+            "contact_email": client.get("email"),
             "company_name": client.get("company_name"),
-            "crn": client.get("crn"),
+            "crn": client.get("customer_reference"),
             
             # Plan info
             "plan_code": plan_code,

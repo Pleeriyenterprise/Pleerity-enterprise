@@ -388,7 +388,15 @@ class StripeWebhookService:
                 }
             }
         )
-        
+
+        # CRN: generate on payment confirmation only (idempotent; once set, never changed)
+        try:
+            from services.crn_service import ensure_client_crn
+            await ensure_client_crn(client_id)
+        except Exception as crn_err:
+            logger.error(f"CRN assignment failed for {client_id}: {crn_err}")
+            raise
+
         # Provisioning jobs: persist state only; return 200 quickly. Poller processes PAYMENT_CONFIRMED jobs.
         checkout_session_id = session.get("id")
         provisioning_triggered = False

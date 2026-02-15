@@ -277,10 +277,10 @@ async def lookup_account_by_crn(crn: str, email: str) -> Optional[Dict[str, Any]
     """
     db = database.get_db()
     
-    # Find client by CRN
+    # Find client by CRN (stored as customer_reference on clients)
     client = await db["clients"].find_one(
-        {"crn": crn.upper()},
-        {"_id": 0, "email": 1, "name": 1, "subscription_status": 1, "created_at": 1}
+        {"customer_reference": crn.upper()},
+        {"_id": 0, "email": 1, "full_name": 1, "subscription_status": 1, "created_at": 1}
     )
     
     if not client:
@@ -291,11 +291,12 @@ async def lookup_account_by_crn(crn: str, email: str) -> Optional[Dict[str, Any]
         return None
     
     # Return sanitized summary only
+    name = client.get("full_name") or client.get("name")
     return {
         "verified": True,
         "account_status": client.get("subscription_status", "unknown"),
         "member_since": client.get("created_at", "")[:10] if client.get("created_at") else "N/A",
-        "name_initial": client.get("name", "?")[0].upper() if client.get("name") else "?",
+        "name_initial": (name or "?")[0].upper() if name else "?",
     }
 
 
@@ -326,9 +327,9 @@ async def get_client_snapshot(client_id: str) -> Optional[Dict[str, Any]]:
     properties_count = await db["properties"].count_documents({"client_id": client_id})
     
     return {
-        "name": client.get("name"),
+        "name": client.get("full_name") or client.get("name"),
         "email": client.get("email"),
-        "crn": client.get("crn"),
+        "crn": client.get("customer_reference"),
         "subscription_status": client.get("subscription_status", "none"),
         "recent_orders": recent_orders,
         "properties_count": properties_count,

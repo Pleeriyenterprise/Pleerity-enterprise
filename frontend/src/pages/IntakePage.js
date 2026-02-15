@@ -406,11 +406,19 @@ const IntakePage = () => {
       const response = await intakeAPI.submit(submitData);
       const { client_id, customer_reference } = response.data;
       
-      // Store for post-checkout
+      // Store for post-checkout (CRN is assigned after payment confirmation)
       localStorage.setItem('pending_client_id', client_id);
-      localStorage.setItem('customer_reference', customer_reference);
+      if (customer_reference) {
+        localStorage.setItem('customer_reference', customer_reference);
+      } else {
+        localStorage.removeItem('customer_reference');
+      }
       
-      toast.success(`Registration successful! Reference: ${customer_reference}`);
+      toast.success(
+        customer_reference
+          ? `Registration successful! Reference: ${customer_reference}`
+          : "Registration successful! You'll receive your Customer Reference Number (CRN) after payment."
+      );
       
       // Create checkout session and redirect
       const checkoutResponse = await intakeAPI.createCheckout(client_id);

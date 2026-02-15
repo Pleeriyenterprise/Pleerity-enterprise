@@ -30,7 +30,6 @@ import logging
 import json
 import os
 import uuid
-import random
 import string
 from datetime import datetime, timezone
 from typing import Optional
@@ -287,36 +286,6 @@ def _load_councils():
             logger.error(f"Failed to load councils data: {e}")
             _councils_cache = []
     return _councils_cache
-
-
-def _generate_customer_reference() -> str:
-    """Generate unique customer reference: PLE-CVP-YYYY-XXXXX
-    
-    Rules:
-    - Uppercase only
-    - 5-character alphanumeric suffix
-    - Avoid confusing characters (O/0, I/1, L)
-    """
-    year = datetime.now(timezone.utc).year
-    
-    # Safe characters (excluding O, 0, I, 1, L)
-    safe_chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-    suffix = ''.join(random.choices(safe_chars, k=5))
-    
-    return f"PLE-CVP-{year}-{suffix}"
-
-
-async def _ensure_unique_reference(db) -> str:
-    """Generate a unique customer reference, checking database."""
-    for _ in range(10):  # Max 10 attempts
-        reference = _generate_customer_reference()
-        existing = await db.clients.find_one({"customer_reference": reference})
-        if not existing:
-            return reference
-    
-    # Fallback with timestamp
-    timestamp = int(datetime.now(timezone.utc).timestamp()) % 100000
-    return f"PLE-CVP-{datetime.now(timezone.utc).year}-{timestamp:05d}"
 
 
 @router.get("/plans")
@@ -773,12 +742,9 @@ async def submit_intake(request: Request, data: IntakeFormData):
                     )
         
         # =========== CREATE CLIENT ===========
-        
-        # Generate unique customer reference
-        customer_reference = await _ensure_unique_reference(db)
-        
+        # CRN (customer_reference) is assigned on PAYMENT CONFIRMATION only (Stripe webhook), not at intake.
         client = Client(
-            customer_reference=customer_reference,
+            customer_reference=None,
             full_name=data.full_name,
             email=data.email,
             phone=data.phone if data.phone else None,
@@ -891,7 +857,6 @@ async def submit_intake(request: Request, data: IntakeFormData):
             client_id=client.client_id,
             metadata={
                 "email": data.email,
-                "customer_reference": customer_reference,
                 "properties_count": len(data.properties),
                 "billing_plan": data.billing_plan.value,
                 "document_submission_method": data.document_submission_method
@@ -908,19 +873,18 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 plan_code=data.billing_plan.value,
                 context_payload={
                     "email": data.email,
-                    "customer_reference": customer_reference,
                     "properties_count": len(data.properties)
                 }
             )
         except Exception as enable_err:
             logger.warning(f"Failed to emit enablement event: {enable_err}")
         
-        logger.info(f"Intake submitted for {data.email}, ref: {customer_reference}")
+        logger.info(f"Intake submitted for {data.email}, client_id: {client.client_id}")
         
         return {
             "message": "Intake submitted successfully",
             "client_id": client.client_id,
-            "customer_reference": customer_reference,
+            "customer_reference": None,
             "next_step": "checkout"
         }
     

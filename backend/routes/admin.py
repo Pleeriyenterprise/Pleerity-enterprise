@@ -526,6 +526,33 @@ async def get_clients(
             detail="Failed to load clients"
         )
 
+
+@router.get("/clients/by-crn/{crn}")
+async def get_client_by_crn(request: Request, crn: str):
+    """
+    Get client by Customer Reference Number (CRN). Single source of truth: clients.customer_reference.
+    Returns 404 with clear message if not found. Admin only.
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    if not crn or len(crn.strip()) < 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Valid CRN required (format: PLE-CVP-YYYY-XXXXX)"
+        )
+    crn_upper = crn.strip().upper()
+    client = await db.clients.find_one(
+        {"customer_reference": crn_upper},
+        {"_id": 0}
+    )
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No client found with CRN: {crn_upper}"
+        )
+    return client
+
+
 @router.get("/clients/{client_id}")
 async def get_client_detail(request: Request, client_id: str):
     """Get client details (admin only)."""
