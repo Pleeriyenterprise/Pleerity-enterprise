@@ -30,7 +30,7 @@ export function EntitlementsProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.client_id, user?.role]);
+  }, [user]);
 
   useEffect(() => {
     fetchEntitlements();
