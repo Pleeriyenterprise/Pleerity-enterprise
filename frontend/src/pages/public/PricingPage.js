@@ -134,22 +134,22 @@ const PricingPage = () => {
         ],
         'AI Features': [
           { name: 'Basic AI Extraction', included: true },
-          { name: 'Advanced AI Extraction', included: true },
-          { name: 'AI Review Interface', included: true },
+          { name: 'Advanced AI Extraction', included: false },
+          { name: 'AI Review Interface', included: false },
         ],
         'Documents': [
           { name: 'ZIP Bulk Upload', included: true },
         ],
         'Reporting': [
           { name: 'PDF Reports', included: true },
-          { name: 'CSV Export', included: true },
+          { name: 'CSV Export', included: false },
           { name: 'Scheduled Reports', included: true },
         ],
         'Communication': [
-          { name: 'SMS Reminders', included: true },
+          { name: 'SMS Reminders', included: false },
         ],
         'Tenant Portal': [
-          { name: 'Tenant View Access', included: true },
+          { name: 'Tenant View Access', included: false },
         ],
         'Integrations': [
           { name: 'Webhooks', included: false },
