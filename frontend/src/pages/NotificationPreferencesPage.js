@@ -22,9 +22,8 @@ import { Switch } from '../components/ui/switch';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 import api from '../api/client';
-
-// Feature flag for SMS (can be controlled from environment or API in production)
-const SMS_FEATURE_ENABLED = true;
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import UpgradePrompt from '../components/UpgradePrompt';
 
 // SMS Notifications Section Component
 const SMSNotificationsSection = ({ preferences, setPreferences, handleToggle, setHasChanges, originalPreferences }) => {
@@ -214,6 +213,7 @@ const SMSNotificationsSection = ({ preferences, setPreferences, handleToggle, se
 
 const NotificationPreferencesPage = () => {
   const navigate = useNavigate();
+  const { hasFeature } = useEntitlements();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState({
@@ -543,8 +543,8 @@ const NotificationPreferencesPage = () => {
           )}
         </section>
 
-        {/* SMS Notifications Section (Feature Flagged) */}
-        {SMS_FEATURE_ENABLED && (
+        {/* SMS Notifications Section (Pro only) */}
+        {hasFeature('sms_reminders') ? (
           <SMSNotificationsSection 
             preferences={preferences}
             setPreferences={setPreferences}
@@ -552,6 +552,16 @@ const NotificationPreferencesPage = () => {
             setHasChanges={setHasChanges}
             originalPreferences={originalPreferences}
           />
+        ) : (
+          <div className="mb-6" data-testid="sms-upgrade-prompt">
+            <UpgradePrompt
+              featureName="SMS Notifications"
+              featureDescription="Receive urgent compliance alerts via text message."
+              requiredPlan="PLAN_3_PRO"
+              requiredPlanName="Professional"
+              variant="card"
+            />
+          </div>
         )}
 
         {/* Email Digest Customization Section */}

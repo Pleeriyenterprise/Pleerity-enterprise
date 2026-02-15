@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -12,6 +13,7 @@ import Sparkline from '../components/Sparkline';
 const ClientDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { hasFeature } = useEntitlements();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -194,6 +196,7 @@ const ClientDashboard = () => {
               <Calendar className="w-4 h-4 mr-2" />
               Calendar
             </button>
+            {(hasFeature('reports_pdf') || hasFeature('reports_csv')) && (
             <button 
               className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
               onClick={() => navigate('/app/reports')}
@@ -202,6 +205,8 @@ const ClientDashboard = () => {
               <BarChart3 className="w-4 h-4 mr-2" />
               Reports
             </button>
+            )}
+            {hasFeature('tenant_portal') && (
             <button 
               className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
               onClick={() => navigate('/app/tenants')}
@@ -210,6 +215,8 @@ const ClientDashboard = () => {
               <Users className="w-4 h-4 mr-2" />
               Tenants
             </button>
+            )}
+            {hasFeature('webhooks') && (
             <button 
               className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
               onClick={() => navigate('/app/integrations')}
@@ -218,6 +225,7 @@ const ClientDashboard = () => {
               <Webhook className="w-4 h-4 mr-2" />
               Integrations
             </button>
+            )}
             <button 
               className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
               onClick={() => navigate('/app/profile')}

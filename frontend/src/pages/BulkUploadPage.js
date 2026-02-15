@@ -2,6 +2,8 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import { UpgradeRequired } from '../components/UpgradePrompt';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
@@ -25,6 +27,7 @@ import {
 const BulkUploadPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { hasFeature } = useEntitlements();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState('');
@@ -35,11 +38,12 @@ const BulkUploadPage = () => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadMode, setUploadMode] = useState('files'); // 'files' or 'zip'
   const [zipFile, setZipFile] = useState(null);
-  const [planFeatures, setPlanFeatures] = useState(null);
+  const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
+
+  const canUseZipUpload = hasFeature('zip_upload');
 
   useEffect(() => {
     fetchProperties();
-    fetchPlanFeatures();
   }, []);
 
   const fetchProperties = async () => {
@@ -52,17 +56,6 @@ const BulkUploadPage = () => {
       setLoading(false);
     }
   };
-
-  const fetchPlanFeatures = async () => {
-    try {
-      const response = await api.get('/client/plan-features');
-      setPlanFeatures(response.data);
-    } catch (error) {
-      console.error('Failed to load plan features:', error);
-    }
-  };
-
-  const canUseZipUpload = planFeatures?.features?.zip_upload === true;
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -220,13 +213,17 @@ const BulkUploadPage = () => {
       }
 
     } catch (error) {
-      const errorDetail = error.response?.data?.detail;
-      if (errorDetail?.error_code === 'PLAN_NOT_ELIGIBLE') {
-        toast.error(`Upgrade required: ${errorDetail.message}`);
+      if (error.isPlanGateDenied && error.upgradeDetail) {
+        setUpgradeRequiredDetail(error.upgradeDetail);
       } else {
-        toast.error(typeof errorDetail === 'string' ? errorDetail : 'ZIP upload failed');
+        const errorDetail = error.response?.data?.detail;
+        if (errorDetail?.error_code === 'PLAN_NOT_ELIGIBLE') {
+          toast.error(`Upgrade required: ${errorDetail.message}`);
+        } else {
+          toast.error(typeof errorDetail === 'string' ? errorDetail : 'ZIP upload failed');
+        }
       }
-      setZipFile(prev => ({ ...prev, status: 'error' }));
+      setZipFile(prev => prev && typeof prev === 'object' ? { ...prev, status: 'error' } : null);
     } finally {
       setUploading(false);
     }
@@ -363,6 +360,11 @@ const BulkUploadPage = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {upgradeRequiredDetail && (
+          <div className="mb-6" data-testid="bulk-upload-upgrade-required">
+            <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
+          </div>
+        )}
         {/* Property Selection */}
         <Card className="mb-6" data-testid="property-selection-card">
           <CardHeader>

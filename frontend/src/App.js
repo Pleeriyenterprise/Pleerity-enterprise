@@ -2,7 +2,9 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
+import { EntitlementsProvider } from './contexts/EntitlementsContext';
 import { ProtectedRoute } from './utils/ProtectedRoute';
+import { EntitlementProtectedRoute } from './utils/EntitlementProtectedRoute';
 import { Toaster } from './components/ui/sonner';
 import TawkToWidget from './components/TawkToWidget';
 import './App.css';
@@ -151,6 +153,7 @@ function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
+        <EntitlementsProvider>
         <BrowserRouter>
           <ErrorBoundary>
           <div className="App">
@@ -330,7 +333,9 @@ function App() {
               path="/app/tenants" 
               element={
                 <ProtectedRoute>
-                  <TenantManagementPage />
+                  <EntitlementProtectedRoute requiredFeature="tenant_portal">
+                    <TenantManagementPage />
+                  </EntitlementProtectedRoute>
                 </ProtectedRoute>
               } 
             />
@@ -346,7 +351,9 @@ function App() {
               path="/app/integrations" 
               element={
                 <ProtectedRoute>
-                  <IntegrationsPage />
+                  <EntitlementProtectedRoute requiredFeature="webhooks">
+                    <IntegrationsPage />
+                  </EntitlementProtectedRoute>
                 </ProtectedRoute>
               } 
             />
@@ -354,7 +361,9 @@ function App() {
               path="/app/settings/branding" 
               element={
                 <ProtectedRoute>
-                  <BrandingSettingsPage />
+                  <EntitlementProtectedRoute requiredFeature="white_label_reports">
+                    <BrandingSettingsPage />
+                  </EntitlementProtectedRoute>
                 </ProtectedRoute>
               } 
             />
@@ -624,6 +633,7 @@ function App() {
         </div>
           </ErrorBoundary>
       </BrowserRouter>
+        </EntitlementsProvider>
     </AuthProvider>
     </HelmetProvider>
   );

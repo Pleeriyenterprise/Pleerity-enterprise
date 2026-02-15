@@ -275,8 +275,8 @@ export const PropertyLimitPrompt = ({
   );
 };
 
-// Helper function to get human-readable plan name
-function getRequiredPlanName(planCode) {
+// Helper function to get human-readable plan name (exported for UpgradeRequired)
+export function getRequiredPlanName(planCode) {
   const planNames = {
     'PLAN_1_SOLO': 'Solo Landlord',
     'PLAN_2_PORTFOLIO': 'Portfolio',
@@ -287,6 +287,101 @@ function getRequiredPlanName(planCode) {
     'PLAN_6_15': 'Professional',
   };
   return planNames[planCode] || 'Portfolio';
+}
+
+// Feature key -> minimum plan (matches backend plan_registry)
+const FEATURE_MIN_PLAN = {
+  document_upload_bulk_zip: 'PLAN_2_PORTFOLIO',
+  zip_upload: 'PLAN_2_PORTFOLIO',
+  reports_pdf: 'PLAN_2_PORTFOLIO',
+  scheduled_reports: 'PLAN_2_PORTFOLIO',
+  ai_extraction_advanced: 'PLAN_3_PRO',
+  extraction_review_ui: 'PLAN_3_PRO',
+  ai_review_interface: 'PLAN_3_PRO',
+  reports_csv: 'PLAN_3_PRO',
+  sms_reminders: 'PLAN_3_PRO',
+  tenant_portal: 'PLAN_3_PRO',
+  tenant_portal_access: 'PLAN_3_PRO',
+  webhooks: 'PLAN_3_PRO',
+  white_label_reports: 'PLAN_3_PRO',
+  audit_log_export: 'PLAN_3_PRO',
+  audit_exports: 'PLAN_3_PRO',
+  white_label: 'PLAN_3_PRO',
+};
+
+const FEATURE_DISPLAY = {
+  zip_upload: { name: 'ZIP bulk upload', description: 'Upload documents as a single ZIP archive.' },
+  document_upload_bulk_zip: { name: 'ZIP bulk upload', description: 'Upload documents as a single ZIP archive.' },
+  reports_pdf: { name: 'PDF reports', description: 'Generate and download PDF compliance reports.' },
+  reports_csv: { name: 'CSV export', description: 'Export report data as CSV.' },
+  scheduled_reports: { name: 'Scheduled reports', description: 'Schedule automated report delivery.' },
+  ai_extraction_advanced: { name: 'Advanced AI extraction', description: 'Confidence scoring and field validation for extracted data.' },
+  extraction_review_ui: { name: 'Extraction review', description: 'Review and approve AI-extracted data before applying.' },
+  ai_review_interface: { name: 'AI review interface', description: 'Review and apply AI-extracted data (Professional).' },
+  sms_reminders: { name: 'SMS reminders', description: 'Receive compliance reminders via SMS.' },
+  tenant_portal: { name: 'Tenant portal', description: 'Invite tenants and manage tenant access.' },
+  tenant_portal_access: { name: 'Tenant portal', description: 'Invite tenants and manage tenant access.' },
+  webhooks: { name: 'Webhooks', description: 'Configure webhooks for integrations.' },
+  white_label_reports: { name: 'White-label branding', description: 'Customise report branding.' },
+  white_label: { name: 'White-label branding', description: 'Customise report branding.' },
+  audit_log_export: { name: 'Audit export', description: 'Export audit logs.' },
+  audit_exports: { name: 'Audit export', description: 'Export audit logs.' },
+};
+
+export function getFeatureDisplayInfo(featureKey, entitlements = null) {
+  const planCode = entitlements?.features?.[featureKey]?.minimum_plan ?? FEATURE_MIN_PLAN[featureKey] ?? 'PLAN_2_PORTFOLIO';
+  const display = FEATURE_DISPLAY[featureKey] || { name: featureKey.replace(/_/g, ' '), description: '' };
+  return {
+    featureName: display.name,
+    featureDescription: display.description,
+    requiredPlan: planCode,
+    requiredPlanName: getRequiredPlanName(planCode),
+  };
+}
+
+/**
+ * Reusable "Upgrade required" state for plan-gated features.
+ * Use when a 403 with upgrade_required is returned or when user hits a locked route.
+ * Props: feature (key), plan (optional override), variant, showBackToDashboard
+ */
+export function UpgradeRequired({
+  feature,
+  plan = null,
+  variant = 'card',
+  showBackToDashboard = true,
+  className = '',
+  upgradeDetail = null,
+}) {
+  const navigate = useNavigate();
+  const featureKey = upgradeDetail?.feature ?? upgradeDetail?.feature_key ?? feature;
+  const planOverride = plan ?? upgradeDetail?.upgrade_to ?? null;
+  const info = getFeatureDisplayInfo(featureKey, null);
+  const requiredPlan = planOverride ?? info.requiredPlan;
+  const requiredPlanName = getRequiredPlanName(requiredPlan);
+
+  return (
+    <div className={showBackToDashboard ? 'space-y-4' : ''}>
+      <UpgradePrompt
+        featureName={info.featureName}
+        featureDescription={info.featureDescription}
+        requiredPlan={requiredPlan}
+        requiredPlanName={requiredPlanName}
+        variant={variant}
+        className={className}
+      />
+      {showBackToDashboard && (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/app/dashboard')}
+            data-testid="upgrade-required-back"
+          >
+            Back to Dashboard
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default UpgradePrompt;

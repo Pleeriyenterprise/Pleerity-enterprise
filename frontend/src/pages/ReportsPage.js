@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import { UpgradeRequired } from '../components/UpgradePrompt';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
@@ -34,6 +36,7 @@ import UpgradePrompt from '../components/UpgradePrompt';
 const ReportsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { hasFeature } = useEntitlements();
   const [availableReports, setAvailableReports] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +44,7 @@ const ReportsPage = () => {
   const [properties, setProperties] = useState([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [creatingSchedule, setCreatingSchedule] = useState(false);
-  const [entitlements, setEntitlements] = useState(null);
+  const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
   const [selectedFilters, setSelectedFilters] = useState({
     property_id: '',
     start_date: '',
@@ -54,27 +57,16 @@ const ReportsPage = () => {
     recipients: ''
   });
 
-  // Check if reports feature is available
-  const hasReportsAccess = entitlements?.features?.reports_pdf?.enabled || 
-                           entitlements?.features?.reports_csv?.enabled;
-  const hasScheduledReportsAccess = entitlements?.features?.scheduled_reports?.enabled;
+  const hasReportsAccess = hasFeature('reports_pdf') || hasFeature('reports_csv');
+  const hasScheduledReportsAccess = hasFeature('scheduled_reports');
 
   useEffect(() => {
     fetchData();
-    fetchEntitlements();
   }, []);
-
-  const fetchEntitlements = async () => {
-    try {
-      const response = await api.get('/client/entitlements');
-      setEntitlements(response.data);
-    } catch (error) {
-      console.error('Failed to fetch entitlements:', error);
-    }
-  };
 
   const fetchData = async () => {
     try {
+      setUpgradeRequiredDetail(null);
       const [reportsRes, propsRes, schedulesRes] = await Promise.all([
         api.get('/reports/available'),
         api.get('/client/properties'),
@@ -84,7 +76,11 @@ const ReportsPage = () => {
       setProperties(propsRes.data.properties || []);
       setSchedules(schedulesRes.data.schedules || []);
     } catch (error) {
-      toast.error('Failed to load reports');
+      if (error.isPlanGateDenied && error.upgradeDetail) {
+        setUpgradeRequiredDetail(error.upgradeDetail);
+      } else {
+        toast.error('Failed to load reports');
+      }
     } finally {
       setLoading(false);
     }
@@ -272,7 +268,11 @@ const ReportsPage = () => {
         toast.success('PDF report generated successfully');
       }
     } catch (error) {
-      toast.error('Failed to generate report');
+      if (error.isPlanGateDenied && error.upgradeDetail) {
+        setUpgradeRequiredDetail(error.upgradeDetail);
+      } else {
+        toast.error('Failed to generate report');
+      }
       console.error('Report error:', error);
     } finally {
       setGenerating(null);
@@ -300,7 +300,11 @@ const ReportsPage = () => {
       setScheduleForm({ report_type: 'compliance_summary', frequency: 'weekly', recipients: '' });
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create schedule');
+      if (error.isPlanGateDenied && error.upgradeDetail) {
+        setUpgradeRequiredDetail(error.upgradeDetail);
+      } else {
+        toast.error(error.response?.data?.detail || 'Failed to create schedule');
+      }
     } finally {
       setCreatingSchedule(false);
     }
@@ -312,7 +316,11 @@ const ReportsPage = () => {
       toast.success(response.data.message);
       fetchData();
     } catch (error) {
-      toast.error('Failed to toggle schedule');
+      if (error.isPlanGateDenied && error.upgradeDetail) {
+        setUpgradeRequiredDetail(error.upgradeDetail);
+      } else {
+        toast.error('Failed to toggle schedule');
+      }
     }
   };
 
@@ -326,7 +334,11 @@ const ReportsPage = () => {
       toast.success('Schedule deleted');
       fetchData();
     } catch (error) {
-      toast.error('Failed to delete schedule');
+      if (error.isPlanGateDenied && error.upgradeDetail) {
+        setUpgradeRequiredDetail(error.upgradeDetail);
+      } else {
+        toast.error('Failed to delete schedule');
+      }
     }
   };
 
@@ -406,15 +418,19 @@ const ReportsPage = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Upgrade Prompt for Reports Access */}
-        {entitlements && !hasReportsAccess && (
+        {upgradeRequiredDetail && (
+          <div className="mb-6" data-testid="reports-upgrade-required">
+            <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
+          </div>
+        )}
+        {/* Upgrade Prompt for Reports Access (no report features at all) */}
+        {!hasReportsAccess && (
           <div className="mb-6" data-testid="reports-upgrade-prompt">
             <UpgradePrompt
               featureName="Advanced Reports"
               featureDescription="Download compliance reports as PDF and CSV documents. Schedule automated reports to be sent to your email."
               requiredPlan="PLAN_2_PORTFOLIO"
               requiredPlanName="Portfolio"
-              currentPlan={entitlements?.plan_name}
               variant="card"
             />
           </div>

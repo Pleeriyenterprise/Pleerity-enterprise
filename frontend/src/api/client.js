@@ -62,9 +62,16 @@ apiClient.interceptors.response.use(
   (error) => {
     const url = error.config?.url ?? error.config?.baseURL ?? '?';
     const status = error.response?.status;
-    const message = error.response?.data?.detail ?? error.message ?? 'Network error';
+    const data = error.response?.data;
+    const detail = data?.detail;
+    const message = (typeof detail === 'string' ? detail : detail?.message) ?? error.message ?? 'Network error';
     logApiRequest(url, status, message);
-    setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(message));
+    setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
+    // Plan-gate 403: attach so UI can show upgrade state instead of crashing
+    if (status === 403 && data && (data.upgrade_required === true || data.feature || data.feature_key)) {
+      error.isPlanGateDenied = true;
+      error.upgradeDetail = typeof detail === 'object' ? detail : { message, feature: data.feature ?? data.feature_key, upgrade_required: true };
+    }
     if (status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
@@ -110,6 +117,7 @@ export const intakeAPI = {
 
 export const clientAPI = {
   getDashboard: () => apiClient.get('/client/dashboard'),
+  getEntitlements: () => apiClient.get('/client/entitlements'),
   getProperties: () => apiClient.get('/client/properties'),
   getPropertyRequirements: (propertyId) => apiClient.get(`/client/properties/${propertyId}/requirements`),
   getRequirements: () => apiClient.get('/client/requirements'),

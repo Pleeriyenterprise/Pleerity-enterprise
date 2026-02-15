@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import { UpgradeRequired } from '../components/UpgradePrompt';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
@@ -33,6 +35,7 @@ import {
 const DocumentsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { hasFeature } = useEntitlements();
   const [documents, setDocuments] = useState([]);
   const [properties, setProperties] = useState([]);
   const [requirements, setRequirements] = useState([]);
@@ -42,6 +45,7 @@ const DocumentsPage = () => {
   const [reviewModal, setReviewModal] = useState(null);
   const [applying, setApplying] = useState(false);
   const [editedData, setEditedData] = useState({});
+  const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
   const [uploadForm, setUploadForm] = useState({
     property_id: '',
     requirement_id: '',
@@ -106,8 +110,12 @@ const DocumentsPage = () => {
 
   const analyzeDocument = async (documentId) => {
     setAnalyzing(documentId);
+    setUpgradeRequiredDetail(null);
     try {
-      const response = await api.post(`/documents/analyze/${documentId}`);
+      const returnAdvanced = hasFeature('ai_extraction_advanced');
+      const response = await api.post(`/documents/analyze/${documentId}`, null, {
+        params: { return_advanced: returnAdvanced }
+      });
       
       if (response.data.extraction?.status === 'completed' || response.data.success) {
         toast.success('Document analyzed successfully');
@@ -121,7 +129,11 @@ const DocumentsPage = () => {
         toast.error(response.data.error || 'Analysis failed');
       }
     } catch (error) {
-      toast.error('Failed to analyze document');
+      if (error.isPlanGateDenied && error.upgradeDetail) {
+        setUpgradeRequiredDetail(error.upgradeDetail);
+        return;
+      }
+      toast.error(typeof error.response?.data?.detail === 'string' ? error.response.data.detail : 'Failed to analyze document');
     } finally {
       setAnalyzing(null);
     }
@@ -171,6 +183,11 @@ const DocumentsPage = () => {
       setReviewModal(null);
       fetchData();
     } catch (error) {
+      if (error.isPlanGateDenied && error.upgradeDetail) {
+        setReviewModal(null);
+        setUpgradeRequiredDetail(error.upgradeDetail);
+        return;
+      }
       toast.error(error.response?.data?.detail || 'Failed to apply extraction');
     } finally {
       setApplying(false);
@@ -299,6 +316,12 @@ const DocumentsPage = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {upgradeRequiredDetail ? (
+          <div className="flex flex-col items-center justify-center py-12" data-testid="documents-upgrade-required">
+            <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
+            <Button variant="ghost" className="mt-4" onClick={() => setUpgradeRequiredDetail(null)}>Continue to documents</Button>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upload Form */}
           <div className="lg:col-span-1">
@@ -538,8 +561,8 @@ const DocumentsPage = () => {
                                   </div>
                                 )}
 
-                                {/* Review button if not yet reviewed */}
-                                {doc.ai_extraction.review_status === 'pending' && (
+                                {/* Review button if not yet reviewed (Pro only) */}
+                                {hasFeature('ai_review_interface') && doc.ai_extraction.review_status === 'pending' && (
                                   <div className="mt-3 pt-3 border-t border-teal-200">
                                     <Button
                                       size="sm"
@@ -584,7 +607,7 @@ const DocumentsPage = () => {
                                 )}
                               </Button>
                             )}
-                            {doc.ai_extraction?.data && doc.ai_extraction.review_status !== 'pending' && (
+                            {hasFeature('ai_review_interface') && doc.ai_extraction?.data && doc.ai_extraction.review_status !== 'pending' && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -604,6 +627,7 @@ const DocumentsPage = () => {
             </Card>
           </div>
         </div>
+        )}
       </main>
 
       {/* Review Modal */}
