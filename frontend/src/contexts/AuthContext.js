@@ -35,22 +35,25 @@ export const AuthProvider = ({ children }) => {
       const endpoint = isAdmin ? '/api/auth/admin/login' : '/api/auth/login';
       const response = await loginMethod({ email, password });
       const { access_token, user: userData } = response.data;
-      
+      // Only store token/user on success; 403 (wrong portal) is not stored
       localStorage.setItem('auth_token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
-      
+
       if (process.env.NODE_ENV === 'development') {
         const role = userData?.role || '(none)';
         const redirectPath = getRedirectPathForRole(role);
         console.log('[Auth dev] portal=', isAdmin ? 'staff' : 'client', 'endpoint=', endpoint, 'role=', role, 'redirect=', redirectPath);
       }
-      
+
       return { success: true, user: userData };
     } catch (error) {
+      const status = error.response?.status;
+      const detail = error.response?.data?.detail || 'Login failed';
       return {
         success: false,
-        error: error.response?.data?.detail || 'Login failed'
+        error: detail,
+        status,
       };
     }
   };

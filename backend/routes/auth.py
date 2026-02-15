@@ -12,6 +12,10 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+# Portal separation: which roles may use which login endpoint
+CLIENT_PORTAL_ROLES = (UserRole.ROLE_CLIENT.value, UserRole.ROLE_CLIENT_ADMIN.value)
+STAFF_PORTAL_ROLES = (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value)
+
 @router.post("/login", response_model=TokenResponse)
 async def login(request: Request, credentials: LoginRequest):
     """Client login endpoint."""
@@ -61,6 +65,18 @@ async def login(request: Request, credentials: LoginRequest):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Password not set"
+            )
+        
+        # Enforce client portal: only client roles may use this endpoint
+        if portal_user["role"] in STAFF_PORTAL_ROLES:
+            await create_audit_log(
+                action=AuditAction.USER_LOGIN_FAILED,
+                actor_id=portal_user["portal_user_id"],
+                metadata={"email": credentials.email, "reason": "staff_use_client_portal"}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This account must sign in via the Staff/Admin portal."
             )
         
         # Staff (OWNER/ADMIN) and admin users don't need client association
@@ -348,12 +364,9 @@ async def admin_login(request: Request, credentials: LoginRequest):
     db = database.get_db()
     
     try:
-        # Find staff user (OWNER or ADMIN)
+        # Find user by email (any role); role check happens after password verification
         portal_user = await db.portal_users.find_one(
-            {
-                "auth_email": credentials.email,
-                "role": {"$in": [UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value]}
-            },
+            {"auth_email": credentials.email},
             {"_id": 0}
         )
         
@@ -380,6 +393,18 @@ async def admin_login(request: Request, credentials: LoginRequest):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
+            )
+        
+        # Enforce staff portal: only staff roles may use this endpoint
+        if portal_user.get("role") not in STAFF_PORTAL_ROLES:
+            await create_audit_log(
+                action=AuditAction.ADMIN_LOGIN_FAILED,
+                actor_id=portal_user["portal_user_id"],
+                metadata={"email": credentials.email, "reason": "client_use_staff_portal"}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This account must sign in via the Client portal."
             )
         
         # Check user status - admin must be ACTIVE

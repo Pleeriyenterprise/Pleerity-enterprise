@@ -30,9 +30,9 @@ class TestAdminAuthentication:
     """Admin authentication tests"""
     
     def test_admin_login_success(self):
-        """Test admin login with valid credentials"""
+        """Test admin login via staff portal with valid credentials"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         assert response.status_code == 200, f"Login failed: {response.text}"
@@ -43,11 +43,23 @@ class TestAdminAuthentication:
         assert data["user"]["role"] == "ROLE_ADMIN"
         print(f"✅ Admin login successful: {data['user']['email']}")
         return data["access_token"]
+
+    def test_admin_rejected_at_client_login(self):
+        """Admin using client portal gets 403 with staff portal message"""
+        response = requests.post(
+            f"{BASE_URL}/api/auth/login",
+            json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
+        )
+        assert response.status_code == 403, f"Expected 403: {response.text}"
+        data = response.json()
+        assert "detail" in data
+        assert "Staff/Admin portal" in data["detail"]
+        print("✅ Admin correctly rejected at client login")
     
     def test_admin_login_invalid_password(self):
         """Test admin login with invalid password"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": "WrongPassword123!"}
         )
         assert response.status_code == 401
@@ -56,7 +68,7 @@ class TestAdminAuthentication:
     def test_admin_login_invalid_email(self):
         """Test admin login with non-existent email"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": "nonexistent@pleerity.com", "password": ADMIN_PASSWORD}
         )
         assert response.status_code == 401
@@ -68,9 +80,9 @@ class TestAdminDashboard:
     
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Get auth token before each test"""
+        """Get auth token before each test (staff portal)"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:
@@ -114,9 +126,9 @@ class TestAdminClients:
     
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Get auth token before each test"""
+        """Get auth token before each test (staff portal)"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:
@@ -167,9 +179,9 @@ class TestAdminAuditLogs:
     
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Get auth token before each test"""
+        """Get auth token before each test (staff portal)"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:
@@ -222,9 +234,9 @@ class TestAdminJobsStatus:
     
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Get auth token before each test"""
+        """Get auth token before each test (staff portal)"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:
@@ -274,9 +286,9 @@ class TestAdminJobTrigger:
     
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Get auth token before each test"""
+        """Get auth token before each test (staff portal)"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:
@@ -335,9 +347,9 @@ class TestAdminClientInvite:
     
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Get auth token before each test"""
+        """Get auth token before each test (staff portal)"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+            f"{BASE_URL}/api/auth/admin/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:

@@ -345,10 +345,17 @@ curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/intake/su
     "consent_communications": true
   }'
 
-# Login
+# Login (client portal – ROLE_CLIENT / ROLE_CLIENT_ADMIN only)
 curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com", "password": "Password123"}'
+  -d '{"email": "client@example.com", "password": "Password123"}'
+# Staff accounts get 403: {"detail": "This account must sign in via the Staff/Admin portal."}
+
+# Staff/Admin login (admin portal – ROLE_ADMIN / ROLE_OWNER only)
+curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/auth/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@example.com", "password": "Password123"}'
+# Client accounts get 403: {"detail": "This account must sign in via the Client portal."}
 ```
 
 ---

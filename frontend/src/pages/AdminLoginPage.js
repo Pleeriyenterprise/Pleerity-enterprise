@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, getRedirectPathForRole } from '../contexts/AuthContext';
+import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { AlertCircle, Shield } from 'lucide-react';
+
+const CLIENT_PORTAL_MESSAGE = 'This account must sign in via the Client portal.';
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
@@ -26,7 +29,11 @@ const AdminLoginPage = () => {
         const path = getRedirectPathForRole(result.user?.role);
         navigate(path);
       } else {
-        setError(result.error || 'Login failed');
+        const msg = result.error || 'Login failed';
+        setError(msg);
+        if (result.status === 403 && msg === CLIENT_PORTAL_MESSAGE) {
+          toast.error(msg);
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred');
