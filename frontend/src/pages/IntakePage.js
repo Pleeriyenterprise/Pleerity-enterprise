@@ -249,6 +249,7 @@ const IntakePage = () => {
           setError('Please accept the email upload consent');
           return false;
         }
+        // When UPLOAD: files are optional; when EMAIL: no uploads required
         if (!formData.consent_data_processing) {
           setError('GDPR consent is required');
           return false;
@@ -1491,7 +1492,7 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
             {/* Option A: Upload */}
             <button
               type="button"
-              onClick={() => setFormData({ ...formData, document_submission_method: 'UPLOAD', email_upload_consent: false })}
+              onClick={() => setFormData(prev => ({ ...prev, document_submission_method: 'UPLOAD', email_upload_consent: false }))}
               className={`p-6 rounded-xl border-2 text-left transition-all ${
                 formData.document_submission_method === 'UPLOAD'
                   ? 'border-electric-teal bg-electric-teal/5 ring-2 ring-electric-teal/20'
@@ -1511,7 +1512,7 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
             {/* Option B: Email */}
             <button
               type="button"
-              onClick={() => setFormData({ ...formData, document_submission_method: 'EMAIL' })}
+              onClick={() => setFormData(prev => ({ ...prev, document_submission_method: 'EMAIL' }))}
               className={`p-6 rounded-xl border-2 text-left transition-all ${
                 formData.document_submission_method === 'EMAIL'
                   ? 'border-electric-teal bg-electric-teal/5 ring-2 ring-electric-teal/20'
@@ -1530,11 +1531,11 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
           </div>
         </div>
 
-        {/* Upload Here Section */}
+        {/* Upload Here Section: only when UPLOAD; EMAIL path has no dropzone, no file requirement */}
         {formData.document_submission_method === 'UPLOAD' && (
           <IntakeDocumentUpload 
             intakeSessionId={intakeSessionId}
-            onFilesChange={(files) => setFormData({...formData, uploaded_files: files})}
+            onFilesChange={(files) => setFormData(prev => ({ ...prev, uploaded_files: files }))}
           />
         )}
 
@@ -1562,7 +1563,7 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
               <input
                 type="checkbox"
                 checked={formData.email_upload_consent}
-                onChange={(e) => setFormData({ ...formData, email_upload_consent: e.target.checked })}
+                onChange={(e) => setFormData(prev => ({ ...prev, email_upload_consent: e.target.checked }))}
                 className="mt-1 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
                 data-testid="email-consent-checkbox"
               />
