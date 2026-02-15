@@ -80,7 +80,13 @@ export default function AdminLeadsPage() {
   const [leads, setLeads] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [sources, setSources] = useState({});
+  const [sources, setSources] = useState({
+    source_platforms: [],
+    service_interests: [],
+    intent_scores: [],
+    stages: [],
+    statuses: [],
+  });
   
   // Filters
   const [search, setSearch] = useState('');
@@ -113,14 +119,28 @@ export default function AdminLeadsPage() {
   const [actionForm, setActionForm] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Fetch sources
+  // Fetch sources (normalize to always have array fields so .map never throws)
   useEffect(() => {
     const fetchSources = async () => {
       try {
         const response = await client.get('/admin/leads/sources');
-        setSources(response.data);
+        const data = response?.data || {};
+        setSources({
+          source_platforms: Array.isArray(data.source_platforms) ? data.source_platforms : [],
+          service_interests: Array.isArray(data.service_interests) ? data.service_interests : [],
+          intent_scores: Array.isArray(data.intent_scores) ? data.intent_scores : [],
+          stages: Array.isArray(data.stages) ? data.stages : [],
+          statuses: Array.isArray(data.statuses) ? data.statuses : [],
+        });
       } catch (error) {
         console.error('Failed to fetch sources:', error);
+        setSources({
+          source_platforms: [],
+          service_interests: [],
+          intent_scores: [],
+          stages: [],
+          statuses: [],
+        });
       }
     };
     fetchSources();
@@ -141,9 +161,10 @@ export default function AdminLeadsPage() {
       params.append('limit', '50');
       
       const response = await client.get(`/admin/leads?${params.toString()}`);
-      setLeads(response.data.leads || []);
-      setTotal(response.data.total || 0);
-      setStats(response.data.stats || {});
+      const data = response?.data || {};
+      setLeads(Array.isArray(data.leads) ? data.leads : []);
+      setTotal(typeof data.total === 'number' ? data.total : 0);
+      setStats(data.stats && typeof data.stats === 'object' ? data.stats : {});
     } catch (error) {
       console.error('Failed to fetch leads:', error);
       toast.error('Failed to load leads');
@@ -328,42 +349,42 @@ export default function AdminLeadsPage() {
       </div>
 
       {/* Stats Cards */}
-      {stats && (
+      {stats != null && (
         <div className="grid md:grid-cols-6 gap-4">
           <Card>
             <CardContent className="py-4">
-              <div className="text-3xl font-bold text-teal-600">{stats.total_leads || 0}</div>
+              <div className="text-3xl font-bold text-teal-600">{stats.total_leads ?? 0}</div>
               <div className="text-sm text-gray-500">Total Leads</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="py-4">
-              <div className="text-3xl font-bold text-blue-600">{stats.new_leads || 0}</div>
+              <div className="text-3xl font-bold text-blue-600">{stats.new_leads ?? 0}</div>
               <div className="text-sm text-gray-500">New</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="py-4">
-              <div className="text-3xl font-bold text-purple-600">{stats.contacted_leads || 0}</div>
+              <div className="text-3xl font-bold text-purple-600">{stats.contacted_leads ?? 0}</div>
               <div className="text-sm text-gray-500">Contacted</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="py-4">
-              <div className="text-3xl font-bold text-green-600">{stats.converted_leads || 0}</div>
+              <div className="text-3xl font-bold text-green-600">{stats.converted_leads ?? 0}</div>
               <div className="text-sm text-gray-500">Converted</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="py-4">
-              <div className="text-3xl font-bold text-green-700">{stats.conversion_rate || 0}%</div>
+              <div className="text-3xl font-bold text-green-700">{stats.conversion_rate ?? 0}%</div>
               <div className="text-sm text-gray-500">Conversion Rate</div>
             </CardContent>
           </Card>
-          <Card className={stats.sla_breaches_today > 0 ? 'border-red-300 bg-red-50' : ''}>
+          <Card className={(stats.sla_breaches_today ?? 0) > 0 ? 'border-red-300 bg-red-50' : ''}>
             <CardContent className="py-4">
-              <div className={`text-3xl font-bold ${stats.sla_breaches_today > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                {stats.sla_breaches_today || 0}
+              <div className={`text-3xl font-bold ${(stats.sla_breaches_today ?? 0) > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                {stats.sla_breaches_today ?? 0}
               </div>
               <div className="text-sm text-gray-500 flex items-center gap-1">
                 {stats.sla_breaches_today > 0 && <AlertTriangle className="h-3 w-3 text-red-500" />}
@@ -393,8 +414,8 @@ export default function AdminLeadsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Sources</SelectItem>
-            {sources.source_platforms?.map(s => (
-              <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
+            {(Array.isArray(sources.source_platforms) ? sources.source_platforms : []).map(s => (
+              <SelectItem key={String(s)} value={String(s)}>{String(s).replace(/_/g, ' ')}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -404,8 +425,8 @@ export default function AdminLeadsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stages</SelectItem>
-            {sources.stages?.map(s => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
+            {(Array.isArray(sources.stages) ? sources.stages : []).map(s => (
+              <SelectItem key={String(s)} value={String(s)}>{String(s)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -415,8 +436,8 @@ export default function AdminLeadsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Intent</SelectItem>
-            {sources.intent_scores?.map(s => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
+            {(Array.isArray(sources.intent_scores) ? sources.intent_scores : []).map(s => (
+              <SelectItem key={String(s)} value={String(s)}>{String(s)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -437,7 +458,7 @@ export default function AdminLeadsPage() {
       {/* Leads List */}
       {loading ? (
         <div className="text-center py-12 text-gray-500">Loading leads...</div>
-      ) : leads.length === 0 ? (
+      ) : (Array.isArray(leads) ? leads : []).length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Users className="h-12 w-12 mx-auto text-gray-300 mb-4" />
@@ -453,11 +474,13 @@ export default function AdminLeadsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {leads.map(lead => {
+          {(Array.isArray(leads) ? leads : []).map(lead => {
+            if (!lead || typeof lead !== 'object') return null;
             const Icon = SourceIcon(lead.source_platform);
+            const createdAt = lead.created_at ? new Date(lead.created_at) : null;
             return (
               <Card 
-                key={lead.lead_id} 
+                key={lead.lead_id ?? lead.email ?? Math.random()} 
                 className={`hover:shadow-md transition-shadow cursor-pointer ${lead.sla_breach ? 'border-red-300 bg-red-50' : ''}`}
                 onClick={() => openLeadDetail(lead.lead_id)}
                 data-testid={`lead-${lead.lead_id}`}
@@ -481,23 +504,23 @@ export default function AdminLeadsPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <span>{lead.email}</span>
+                          <span>{lead.email ?? ''}</span>
                           {lead.phone && <span>• {lead.phone}</span>}
                           {lead.company_name && <span>• {lead.company_name}</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge variant="secondary" className="text-xs">
-                            {lead.source_platform?.replace(/_/g, ' ')}
+                            {(lead.source_platform ?? '').replace(/_/g, ' ')}
                           </Badge>
                           <Badge className={`text-xs ${stageColors[lead.stage] || ''}`}>
-                            {lead.stage}
+                            {lead.stage ?? ''}
                           </Badge>
                           <Badge variant="outline" className={`text-xs ${intentColors[lead.intent_score] || ''}`}>
-                            {lead.intent_score} Intent
+                            {(lead.intent_score ?? '')} Intent
                           </Badge>
                           {lead.service_interest && lead.service_interest !== 'UNKNOWN' && (
                             <Badge variant="outline" className="text-xs">
-                              {lead.service_interest.replace(/_/g, ' ')}
+                              {String(lead.service_interest).replace(/_/g, ' ')}
                             </Badge>
                           )}
                         </div>
@@ -505,8 +528,14 @@ export default function AdminLeadsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right text-xs text-gray-400">
-                        <div>{new Date(lead.created_at).toLocaleDateString()}</div>
-                        <div>{new Date(lead.created_at).toLocaleTimeString()}</div>
+                        {createdAt ? (
+                          <>
+                            <div>{createdAt.toLocaleDateString()}</div>
+                            <div>{createdAt.toLocaleTimeString()}</div>
+                          </>
+                        ) : (
+                          <div>—</div>
+                        )}
                       </div>
                       <ChevronRight className="h-5 w-5 text-gray-400" />
                     </div>
@@ -519,7 +548,7 @@ export default function AdminLeadsPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between py-4">
             <div className="text-sm text-gray-500">
-              Showing {leads.length} of {total} leads
+              Showing {(Array.isArray(leads) ? leads : []).length} of {typeof total === 'number' ? total : 0} leads
             </div>
             <div className="flex gap-2">
               <Button
@@ -533,7 +562,7 @@ export default function AdminLeadsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={leads.length < 50}
+                disabled={(Array.isArray(leads) ? leads : []).length < 50}
                 onClick={() => setPage(p => p + 1)}
               >
                 Next
@@ -609,8 +638,8 @@ export default function AdminLeadsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {sources.service_interests?.map(s => (
-                      <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
+                    {(Array.isArray(sources.service_interests) ? sources.service_interests : []).map(s => (
+                      <SelectItem key={String(s)} value={String(s)}>{String(s).replace(/_/g, ' ')}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -618,7 +647,7 @@ export default function AdminLeadsPage() {
               <div>
                 <Label>Intent Score</Label>
                 <Select
-                  value={createForm.intent_score}
+                  value={createForm.intent_score ?? ''}
                   onValueChange={(val) => setCreateForm({ ...createForm, intent_score: val })}
                 >
                   <SelectTrigger>
@@ -626,8 +655,8 @@ export default function AdminLeadsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Auto-calculate</SelectItem>
-                    {sources.intent_scores?.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    {(Array.isArray(sources.intent_scores) ? sources.intent_scores : []).map(s => (
+                      <SelectItem key={String(s)} value={String(s)}>{String(s)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
