@@ -1293,39 +1293,43 @@ const AuditLogs = () => {
   const [page, setPage] = useState(0);
   const limit = 20;
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchLogs = async () => {
-      setLoading(true);
-      try {
-        let url = `/admin/audit-logs?limit=${limit}&skip=${page * limit}`;
-        if (actionFilter) url += `&action=${actionFilter}`;
-        const response = await api.get(url);
-        if (cancelled) return;
-        setLogs(response.data?.logs ?? []);
-        setTotalLogs(response.data.total);
-      } catch (error) {
-        if (!cancelled) toast.error('Failed to load audit logs');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    fetchLogs();
-    return () => { cancelled = true; };
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      let url = `/admin/audit-logs?limit=${limit}&skip=${page * limit}`;
+      if (actionFilter) url += `&action=${actionFilter}`;
+      const response = await api.get(url);
+      const data = response?.data;
+      const logList = Array.isArray(data?.logs) ? data.logs : [];
+      setLogs(logList);
+      setTotalLogs(typeof data?.total === 'number' ? data.total : 0);
+    } catch (error) {
+      toast.error('Failed to load audit logs');
+      setLogs([]);
+      setTotalLogs(0);
+    } finally {
+      setLoading(false);
+    }
   }, [actionFilter, page]);
 
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
   const getActionIcon = (action) => {
-    if (action.includes('LOGIN')) return <Shield className="w-4 h-4" />;
-    if (action.includes('EMAIL')) return <Mail className="w-4 h-4" />;
-    if (action.includes('PASSWORD')) return <Activity className="w-4 h-4" />;
-    if (action.includes('PROVISIONING')) return <CheckCircle className="w-4 h-4" />;
+    const a = action ?? '';
+    if (a.includes('LOGIN')) return <Shield className="w-4 h-4" />;
+    if (a.includes('EMAIL')) return <Mail className="w-4 h-4" />;
+    if (a.includes('PASSWORD')) return <Activity className="w-4 h-4" />;
+    if (a.includes('PROVISIONING')) return <CheckCircle className="w-4 h-4" />;
     return <FileText className="w-4 h-4" />;
   };
 
   const getActionColor = (action) => {
-    if (action.includes('SUCCESS') || action.includes('COMPLETE')) return 'text-green-600 bg-green-50';
-    if (action.includes('FAILED') || action.includes('ERROR')) return 'text-red-600 bg-red-50';
-    if (action.includes('SENT')) return 'text-blue-600 bg-blue-50';
+    const a = action ?? '';
+    if (a.includes('SUCCESS') || a.includes('COMPLETE')) return 'text-green-600 bg-green-50';
+    if (a.includes('FAILED') || a.includes('ERROR')) return 'text-red-600 bg-red-50';
+    if (a.includes('SENT')) return 'text-blue-600 bg-blue-50';
     return 'text-gray-600 bg-gray-50';
   };
 
@@ -1386,21 +1390,23 @@ const AuditLogs = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {(logs ?? []).map((log, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
+                {(logs ?? []).filter(Boolean).map((log, idx) => (
+                  <tr key={log?.log_id ?? idx} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(log.timestamp).toLocaleString()}
+                      {log?.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getActionColor(log.action)}`}>
-                        {getActionIcon(log.action)}
-                        {log.action}
+                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getActionColor(log?.action)}`}>
+                        {getActionIcon(log?.action)}
+                        {log?.action ?? '—'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {log.metadata && Object.entries(log.metadata).slice(0, 3).map(([k, v]) => (
-                        v && <span key={k} className="mr-3"><strong>{k}:</strong> {String(v).substring(0, 50)}</span>
-                      ))}
+                      {log?.metadata && typeof log.metadata === 'object' && !Array.isArray(log.metadata)
+                        ? Object.entries(log.metadata).slice(0, 3).map(([k, v]) => (
+                            v != null && <span key={k} className="mr-3"><strong>{k}:</strong> {String(v).substring(0, 50)}</span>
+                          ))
+                        : '—'}
                     </td>
                   </tr>
                 ))}
