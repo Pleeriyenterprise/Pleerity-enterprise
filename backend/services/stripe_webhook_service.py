@@ -331,19 +331,22 @@ class StripeWebhookService:
             logger.error(f"No matching plan for subscription prices: {stripe_subscription_id}")
             raise ValueError(f"No matching plan found for subscription {stripe_subscription_id}")
         
-        # Check onboarding fee (from session line_items)
+        # Check onboarding (setup) fee from session line_items; persist amount and invoice for billing history
         onboarding_fee_paid = False
+        setup_fee_amount_cents = None
+        setup_fee_invoice_id = None
         expected_onboarding_price = plan_registry.get_stripe_price_ids(plan_code).get("onboarding_price_id")
         
-        # Expand line_items if available in session
         if session.get("line_items"):
             for item in session.get("line_items", {}).get("data", []):
                 item_price_id = item.get("price", {}).get("id")
                 if item_price_id == expected_onboarding_price:
                     onboarding_fee_paid = True
+                    setup_fee_amount_cents = item.get("amount", 0)
                     break
+            if onboarding_fee_paid and session.get("invoice"):
+                setup_fee_invoice_id = session["invoice"] if isinstance(session["invoice"], str) else (session["invoice"] or {}).get("id")
         else:
-            # Fallback: assume paid if session completed successfully
             onboarding_fee_paid = True
             logger.warning("line_items not expanded in session - assuming onboarding paid")
         
@@ -368,6 +371,10 @@ class StripeWebhookService:
             "latest_invoice_id": subscription.get("latest_invoice"),
             "updated_at": datetime.now(timezone.utc),
         }
+        if setup_fee_amount_cents is not None:
+            billing_record["setup_fee_amount_cents"] = setup_fee_amount_cents
+        if setup_fee_invoice_id:
+            billing_record["setup_fee_invoice_id"] = setup_fee_invoice_id
         await db.client_billing.update_one(
             {"client_id": client_id},
             {

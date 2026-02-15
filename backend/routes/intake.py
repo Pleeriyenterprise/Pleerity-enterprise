@@ -1048,15 +1048,17 @@ async def create_checkout(request: Request, client_id: str):
                 "source": "intake_checkout",
             },
         )
+        plan_code = client.get("billing_plan") or "PLAN_1_SOLO"
         session = await stripe_service.create_checkout_session(
             client_id=client_id,
-            billing_plan=BillingPlan(client["billing_plan"]),
-            origin_url=origin
+            plan_code=plan_code,
+            origin_url=origin,
+            customer_email=client.get("contact_email"),
         )
         
         return {
-            "checkout_url": session.url,
-            "session_id": session.session_id
+            "checkout_url": session["checkout_url"],
+            "session_id": session["session_id"],
         }
     
     except HTTPException:

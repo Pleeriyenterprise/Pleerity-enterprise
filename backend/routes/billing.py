@@ -223,6 +223,27 @@ async def cancel_subscription(request: Request, body: CancelRequest):
         )
 
 
+@router.get("/invoices")
+async def get_billing_invoices(request: Request, limit: int = 24):
+    """Get billing history (paid invoices) for the current client. Includes subscription and setup fee line items."""
+    user = await client_route_guard(request)
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No client_id associated with user"
+        )
+    try:
+        result = await stripe_service.list_invoices(client_id=client_id, limit=min(limit, 100))
+        return result
+    except Exception as e:
+        logger.error(f"Failed to get invoices: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve billing history"
+        )
+
+
 @router.get("/plans")
 async def get_available_plans():
     """Get all available subscription plans."""

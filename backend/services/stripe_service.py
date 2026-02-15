@@ -79,8 +79,13 @@ class StripeService:
             },
         ]
         
-        # Add onboarding fee if configured
-        if onboarding_price_id:
+        # Add onboarding (setup) fee only if not already paid (idempotent: no double charge)
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "onboarding_fee_paid": 1}
+        )
+        already_paid = billing and billing.get("onboarding_fee_paid") is True
+        if onboarding_price_id and not already_paid:
             line_items.append({
                 "price": onboarding_price_id,
                 "quantity": 1,
@@ -297,6 +302,73 @@ class StripeService:
         except stripe.error.StripeError as e:
             logger.error(f"Stripe cancel error for client {client_id}: {e}")
             raise ValueError(f"Failed to cancel subscription: {str(e)}")
+
+    async def list_invoices(self, client_id: str, limit: int = 24) -> Dict[str, Any]:
+        """
+        List paid invoices for the client (billing history).
+        Returns subscription invoices and identifies setup fee line items.
+        """
+        db = database.get_db()
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "stripe_customer_id": 1}
+        )
+        if not billing or not billing.get("stripe_customer_id"):
+            return {"invoices": [], "has_more": False}
+
+        stripe_customer_id = billing["stripe_customer_id"]
+        onboarding_price_ids = set()
+        for plan in (PlanCode.PLAN_1_SOLO, PlanCode.PLAN_2_PORTFOLIO, PlanCode.PLAN_3_PRO):
+            pid = plan_registry.get_stripe_price_ids(plan).get("onboarding_price_id")
+            if pid:
+                onboarding_price_ids.add(pid)
+
+        try:
+            invoices = stripe.Invoice.list(
+                customer=stripe_customer_id,
+                status="paid",
+                limit=min(limit, 100),
+                expand=["data.lines.data.price"],
+            )
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe invoice list error for client {client_id}: {e}")
+            return {"invoices": [], "has_more": False}
+
+        result = []
+        for inv in invoices.get("data", []):
+            lines = []
+            for line in inv.get("lines", {}).get("data", []):
+                price = line.get("price")
+                if isinstance(price, str):
+                    price_id = price
+                elif isinstance(price, dict):
+                    price_id = price.get("id")
+                else:
+                    price_id = getattr(price, "id", None) if price else None
+                is_setup_fee = price_id in onboarding_price_ids if price_id else False
+                amount = line.get("amount", 0)
+                desc = line.get("description")
+                if not desc and isinstance(price, dict):
+                    desc = price.get("nickname") or price.get("product")
+                if is_setup_fee:
+                    desc = "Setup fee"
+                lines.append({
+                    "description": desc or "Subscription",
+                    "amount_cents": amount,
+                    "type": "setup_fee" if is_setup_fee else "subscription",
+                })
+            result.append({
+                "id": inv.get("id"),
+                "number": inv.get("number"),
+                "created": inv.get("created"),
+                "amount_paid": inv.get("amount_paid", 0),
+                "currency": (inv.get("currency") or "gbp").upper(),
+                "lines": lines,
+            })
+        return {
+            "invoices": result,
+            "has_more": invoices.get("has_more", False),
+        }
 
 
 # Singleton instance

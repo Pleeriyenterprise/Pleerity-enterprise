@@ -214,6 +214,7 @@ const BillingPage = () => {
   const [upgrading, setUpgrading] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [invoices, setInvoices] = useState([]);
   
   const highlightPlan = searchParams.get('upgrade_to');
 
@@ -227,6 +228,14 @@ const BillingPage = () => {
     });
     setExpandedCategories(expanded);
   }, []);
+
+  useEffect(() => {
+    if (billingStatus?.has_subscription) {
+      fetchInvoices();
+    } else {
+      setInvoices([]);
+    }
+  }, [billingStatus?.has_subscription]);
 
   const fetchEntitlements = async () => {
     try {
@@ -247,6 +256,15 @@ const BillingPage = () => {
       setBillingStatus(response.data);
     } catch (error) {
       console.error('Failed to fetch billing status:', error);
+    }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const response = await api.get('/billing/invoices');
+      setInvoices(response.data.invoices || []);
+    } catch (error) {
+      console.error('Failed to fetch invoices:', error);
     }
   };
 
@@ -635,6 +653,50 @@ const BillingPage = () => {
             );
           })}
         </div>
+
+        {/* Billing History */}
+        {billingStatus?.has_subscription && (
+          <div className="mb-12" data-testid="billing-history">
+            <h2 className="text-xl font-semibold text-midnight-blue mb-4">Billing history</h2>
+            {invoices.length === 0 ? (
+              <p className="text-sm text-gray-500">No invoices yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {invoices.map((inv) => (
+                  <Card key={inv.id}>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <span className="text-sm font-medium text-gray-700">
+                          {inv.number || inv.id}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {inv.created ? new Date(inv.created * 1000).toLocaleDateString() : ''}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="space-y-1">
+                          {(inv.lines || []).map((line, idx) => (
+                            <div key={idx} className="text-sm text-gray-600">
+                              {line.description}
+                              {line.type === 'setup_fee' && (
+                                <span className="ml-2 text-gray-500">
+                                  £{((line.amount_cents || 0) / 100).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <span className="font-semibold text-midnight-blue">
+                          £{((inv.amount_paid || 0) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* FAQ Section */}
         <div className="mt-12" data-testid="billing-faq">
