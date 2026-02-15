@@ -447,11 +447,17 @@ async def get_service_codes(
             "code": s["service_code"],
             "name": s.get("service_name", s["service_code"]),
             "category": s.get("category", "other"),
-            # Canonical doc_type equals service_code
             "canonical_doc_type": s["service_code"],
         }
-        for s in services if s.get("service_code")
+        for s in (services or []) if s and s.get("service_code")
     ]
+    
+    # Fallback when DB has no active services (e.g. fresh Atlas) so Prompt Manager dropdowns are usable
+    if not service_codes:
+        service_codes = [
+            {"code": "CLEARFORM", "name": "ClearForm (default)", "category": "document", "canonical_doc_type": "CLEARFORM"},
+            {"code": "CVP_SUBSCRIPTION", "name": "CVP Subscription", "category": "subscription", "canonical_doc_type": "CVP_SUBSCRIPTION"},
+        ]
     
     return {
         "service_codes": service_codes,

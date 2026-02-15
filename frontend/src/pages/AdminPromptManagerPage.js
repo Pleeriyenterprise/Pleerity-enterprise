@@ -1159,32 +1159,40 @@ Provide workflow recommendations in JSON format.`}
                 <div className="space-y-2">
                   <Label>Service Code *</Label>
                   <Select
-                    value={templateForm.service_code}
+                    value={templateForm.service_code || ''}
                     onValueChange={(v) => setTemplateForm(f => ({ ...f, service_code: v }))}
                   >
                     <SelectTrigger data-testid="form-service-code">
                       <SelectValue placeholder="Select service" />
                     </SelectTrigger>
                     <SelectContent>
-                      {serviceCodes.map(sc => (
-                        <SelectItem key={sc.code} value={sc.code}>{sc.name}</SelectItem>
-                      ))}
+                      {(Array.isArray(serviceCodes) ? serviceCodes : []).length === 0 ? (
+                        <SelectItem value="__none__" disabled className="text-gray-500">No services configured yet</SelectItem>
+                      ) : (
+                        (Array.isArray(serviceCodes) ? serviceCodes : []).map(sc => (
+                          <SelectItem key={sc?.code ?? sc} value={sc?.code ?? ''}>{sc?.name ?? sc?.code ?? ''}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Document Type *</Label>
                   <Select
-                    value={templateForm.doc_type}
+                    value={templateForm.doc_type || ''}
                     onValueChange={(v) => setTemplateForm(f => ({ ...f, doc_type: v }))}
                   >
                     <SelectTrigger data-testid="form-doc-type">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {docTypes.map(dt => (
-                        <SelectItem key={dt.code} value={dt.code}>{dt.name}</SelectItem>
-                      ))}
+                      {(Array.isArray(docTypes) ? docTypes : []).length === 0 ? (
+                        <SelectItem value="__none__" disabled className="text-gray-500">No document types yet</SelectItem>
+                      ) : (
+                        (Array.isArray(docTypes) ? docTypes : []).map(dt => (
+                          <SelectItem key={dt?.code ?? dt} value={dt?.code ?? ''}>{dt?.name ?? dt?.code ?? ''}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
