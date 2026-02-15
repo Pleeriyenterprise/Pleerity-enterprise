@@ -295,13 +295,17 @@ async def bulk_upload_documents(
             }
         )
         
-        from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
-        await recalculate_and_persist(
-            property_id,
-            REASON_DOCUMENT_UPLOADED,
-            {"id": user["portal_user_id"], "role": user.get("role")},
-            {"bulk_upload": True, "files_count": len(files)},
-        )
+        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+        for r in results:
+            if r.get("status") == "uploaded" and r.get("document_id"):
+                await enqueue_compliance_recalc(
+                    property_id=property_id,
+                    client_id=user["client_id"],
+                    trigger_reason=TRIGGER_DOC_UPLOADED,
+                    actor_type=ACTOR_CLIENT,
+                    actor_id=user.get("portal_user_id"),
+                    correlation_id=f"DOC_UPLOADED:{r['document_id']}",
+                )
         
         return {
             "message": f"Processed {len(files)} files",
@@ -584,13 +588,17 @@ async def upload_zip_archive(
                 }
             )
             
-            from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
-            await recalculate_and_persist(
-                property_id,
-                REASON_DOCUMENT_UPLOADED,
-                {"id": user["portal_user_id"], "role": user.get("role")},
-                {"zip_upload": True, "zip_filename": file.filename},
-            )
+            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+            for r in results:
+                if r.get("status") == "uploaded" and r.get("document_id"):
+                    await enqueue_compliance_recalc(
+                        property_id=property_id,
+                        client_id=user["client_id"],
+                        trigger_reason=TRIGGER_DOC_UPLOADED,
+                        actor_type=ACTOR_CLIENT,
+                        actor_id=user.get("portal_user_id"),
+                        correlation_id=f"DOC_UPLOADED:{r['document_id']}",
+                    )
             
             return {
                 "message": f"Processed ZIP archive: {file.filename}",
@@ -686,12 +694,14 @@ async def upload_document(
         await regenerate_requirement_due_date(requirement_id, user["client_id"])
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
-        from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
-        await recalculate_and_persist(
-            property_id,
-            REASON_DOCUMENT_UPLOADED,
-            {"id": user["portal_user_id"], "role": user.get("role")},
-            {"document_id": document.document_id, "requirement_id": requirement_id},
+        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+        await enqueue_compliance_recalc(
+            property_id=property_id,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_DOC_UPLOADED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=f"DOC_UPLOADED:{document.document_id}",
         )
         
         # Audit log
@@ -794,12 +804,14 @@ async def admin_upload_document(
         await regenerate_requirement_due_date(requirement_id, client_id)
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
-        from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
-        await recalculate_and_persist(
-            property_id,
-            REASON_DOCUMENT_UPLOADED,
-            {"id": user["portal_user_id"], "role": user.get("role")},
-            {"document_id": document.document_id, "requirement_id": requirement_id},
+        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_ADMIN_UPLOAD, ACTOR_ADMIN
+        await enqueue_compliance_recalc(
+            property_id=property_id,
+            client_id=client_id,
+            trigger_reason=TRIGGER_ADMIN_UPLOAD,
+            actor_type=ACTOR_ADMIN,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=f"ADMIN_UPLOAD:{document.document_id}",
         )
         
         # Audit log
@@ -865,12 +877,14 @@ async def verify_document(request: Request, document_id: str):
         if document.get("property_id"):
             from services.provisioning import provisioning_service
             await provisioning_service._update_property_compliance(document["property_id"])
-            from services.compliance_scoring_service import recalculate_and_persist, REASON_REQUIREMENT_CHANGED
-            await recalculate_and_persist(
-                document["property_id"],
-                REASON_REQUIREMENT_CHANGED,
-                {"id": user["portal_user_id"], "role": user.get("role")},
-                {"document_id": document_id, "requirement_id": document.get("requirement_id")},
+            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
+            await enqueue_compliance_recalc(
+                property_id=document["property_id"],
+                client_id=document["client_id"],
+                trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+                actor_type=ACTOR_ADMIN,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=f"DOC_STATUS_CHANGED:{document_id}:VERIFIED",
             )
 
         # Audit log
@@ -951,12 +965,14 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
             )
         property_id = document.get("property_id")
         if property_id:
-            from services.compliance_scoring_service import recalculate_and_persist, REASON_REQUIREMENT_CHANGED
-            await recalculate_and_persist(
-                property_id,
-                REASON_REQUIREMENT_CHANGED,
-                {"id": user["portal_user_id"], "role": user.get("role")},
-                {"document_id": document_id, "action": "document_rejected"},
+            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
+            await enqueue_compliance_recalc(
+                property_id=property_id,
+                client_id=document["client_id"],
+                trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+                actor_type=ACTOR_ADMIN,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=f"DOC_STATUS_CHANGED:{document_id}:REJECTED",
             )
         
         # Audit log
@@ -1001,12 +1017,14 @@ async def delete_document(request: Request, document_id: str):
         if was_verified and requirement_id:
             await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
         if property_id:
-            from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_DELETED
-            await recalculate_and_persist(
-                property_id,
-                REASON_DOCUMENT_DELETED,
-                {"id": user["portal_user_id"], "role": user.get("role")},
-                {"document_id": document_id},
+            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_DELETED, ACTOR_CLIENT
+            await enqueue_compliance_recalc(
+                property_id=property_id,
+                client_id=user["client_id"],
+                trigger_reason=TRIGGER_DOC_DELETED,
+                actor_type=ACTOR_CLIENT,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=f"DOC_DELETED:{document_id}",
             )
         try:
             file_path = Path(document.get("file_path", ""))
@@ -1047,12 +1065,14 @@ async def admin_delete_document(request: Request, document_id: str):
         if was_verified and requirement_id:
             await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
         if property_id:
-            from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_DELETED
-            await recalculate_and_persist(
-                property_id,
-                REASON_DOCUMENT_DELETED,
-                {"id": user["portal_user_id"], "role": user.get("role")},
-                {"document_id": document_id, "action": "admin_document_deleted"},
+            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_ADMIN_DELETE, ACTOR_ADMIN
+            await enqueue_compliance_recalc(
+                property_id=property_id,
+                client_id=client_id,
+                trigger_reason=TRIGGER_ADMIN_DELETE,
+                actor_type=ACTOR_ADMIN,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=f"ADMIN_DELETE:{document_id}",
             )
         try:
             file_path = Path(document.get("file_path", ""))
@@ -1561,12 +1581,14 @@ async def apply_ai_extraction(
         
         property_id = document.get("property_id")
         if property_id:
-            from services.compliance_scoring_service import recalculate_and_persist, REASON_AI_APPLIED
-            await recalculate_and_persist(
-                property_id,
-                REASON_AI_APPLIED,
-                {"id": user["portal_user_id"], "role": user.get("role")},
-                {"document_id": document_id, "requirement_id": requirement_id},
+            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_AI_APPLIED, ACTOR_CLIENT
+            await enqueue_compliance_recalc(
+                property_id=property_id,
+                client_id=document["client_id"],
+                trigger_reason=TRIGGER_AI_APPLIED,
+                actor_type=ACTOR_CLIENT,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=f"AI_APPLIED:{document_id}",
             )
         
         # Send email notification to the client

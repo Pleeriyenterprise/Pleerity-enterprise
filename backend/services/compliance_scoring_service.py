@@ -278,6 +278,7 @@ async def recalculate_and_persist(
             "compliance_breakdown": new_breakdown,
             "compliance_last_calculated_at": now.isoformat(),
             "compliance_version": result.get("weights_version", WEIGHTS_VERSION),
+            "compliance_score_pending": False,
         }}
     )
 

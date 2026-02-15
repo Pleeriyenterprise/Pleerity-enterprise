@@ -114,10 +114,10 @@ class TestRecalculateAndPersist:
 
 
 class TestExpiryRolloverJob:
-    """Expiry rollover job recalculates affected properties."""
+    """Expiry rollover job enqueues compliance recalc for affected properties."""
 
     @pytest.mark.asyncio
-    async def test_run_expiry_rollover_recalc_calls_recalculate_for_affected_properties(self):
+    async def test_run_expiry_rollover_recalc_enqueues_for_affected_properties(self):
         from job_runner import run_expiry_rollover_recalc
 
         items = [{"property_id": "p1"}, {"property_id": "p2"}]
@@ -136,13 +136,14 @@ class TestExpiryRolloverJob:
 
         db = MagicMock()
         db.requirements.find = MagicMock(return_value=AsyncIterCursor())
+        db.properties.find_one = AsyncMock(side_effect=[{"client_id": "c1"}, {"client_id": "c2"}])
 
         with patch("job_runner.database.get_db", return_value=db):
-            with patch("job_runner.recalculate_and_persist", new_callable=AsyncMock) as recalc:
+            with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock, return_value=True) as enqueue:
                 result = await run_expiry_rollover_recalc()
-        assert recalc.await_count == 2
+        assert enqueue.await_count == 2
         assert result.get("count") == 2
-        assert "properties updated" in result.get("message", "")
+        assert "enqueued" in result.get("message", "")
 
 
 class TestDashboardReadsStoredScore:

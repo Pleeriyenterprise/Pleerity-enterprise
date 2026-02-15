@@ -25,6 +25,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.jobstores.mongodb import MongoDBJobStore
 
 # Load environment variables
@@ -75,6 +76,7 @@ from job_runner import (
     run_compliance_status_check,
     run_scheduled_reports,
     run_compliance_score_snapshots,
+    run_compliance_recalc_worker,
     run_expiry_rollover_recalc,
     run_order_delivery_processing,
     run_sla_monitoring,
@@ -332,6 +334,15 @@ async def lifespan(app: FastAPI):
         CronTrigger(hour=0, minute=10),
         id="expiry_rollover_recalc",
         name="Expiry Rollover Compliance Recalc",
+        replace_existing=True
+    )
+    
+    # Async compliance recalc worker - runs every 15 seconds (Option B)
+    scheduler.add_job(
+        run_compliance_recalc_worker,
+        IntervalTrigger(seconds=15),
+        id="compliance_recalc_worker",
+        name="Compliance Recalc Worker",
         replace_existing=True
     )
     

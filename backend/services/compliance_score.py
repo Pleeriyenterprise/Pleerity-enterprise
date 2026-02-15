@@ -89,14 +89,16 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "recommendations": [],
                 "enhanced_model": True,
             }
-        from services.compliance_scoring_service import recalculate_and_persist, REASON_LAZY_BACKFILL
+        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
         need_backfill = [p for p in properties if p.get("compliance_score") is None]
         for p in need_backfill:
-            await recalculate_and_persist(
-                p["property_id"],
-                REASON_LAZY_BACKFILL,
-                {"id": "system", "role": "SYSTEM"},
-                {},
+            await enqueue_compliance_recalc(
+                property_id=p["property_id"],
+                client_id=client_id,
+                trigger_reason=TRIGGER_LAZY_BACKFILL,
+                actor_type=ACTOR_SYSTEM,
+                actor_id=None,
+                correlation_id=f"LAZY_BACKFILL:{p['property_id']}",
             )
         properties = await db.properties.find(
             {"client_id": client_id},

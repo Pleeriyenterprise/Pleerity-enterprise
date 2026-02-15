@@ -98,6 +98,16 @@ class Database:
             # Property-level score history (event-driven)
             await self.db.property_compliance_score_history.create_index([("property_id", 1), ("created_at", -1)])
             await self.db.property_compliance_score_history.create_index([("client_id", 1), ("created_at", -1)])
+            # Async compliance recalc queue (Option B)
+            try:
+                await self.db.compliance_recalc_queue.create_index(
+                    [("property_id", 1), ("correlation_id", 1)],
+                    unique=True
+                )
+            except Exception:
+                pass
+            await self.db.compliance_recalc_queue.create_index([("status", 1), ("next_run_at", 1)])
+            await self.db.compliance_recalc_queue.create_index([("property_id", 1), ("status", 1)])
             
             # Intake uploads - for migration and list by session
             await self.db.intake_uploads.create_index("intake_session_id")

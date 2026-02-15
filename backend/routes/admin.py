@@ -703,6 +703,48 @@ async def get_property_compliance_score_history(
         )
 
 
+@router.get("/properties/{property_id}/compliance-recalc-status")
+async def get_property_compliance_recalc_status(
+    request: Request,
+    property_id: str,
+    limit: int = Query(20, ge=1, le=50),
+):
+    """Get compliance recalc queue status for a property (admin observability, read-only).
+    
+    Returns compliance_score_pending, last_calculated_at, and recent queue jobs.
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        prop = await db.properties.find_one(
+            {"property_id": property_id},
+            {"_id": 0, "property_id": 1, "client_id": 1, "compliance_score_pending": 1, "compliance_last_calculated_at": 1},
+        )
+        if not prop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found",
+            )
+        queue_recent = await db.compliance_recalc_queue.find(
+            {"property_id": property_id},
+            {"_id": 0, "status": 1, "trigger_reason": 1, "attempts": 1, "updated_at": 1, "last_error": 1, "correlation_id": 1},
+        ).sort("updated_at", -1).limit(limit).to_list(limit)
+        return {
+            "property_id": property_id,
+            "compliance_score_pending": prop.get("compliance_score_pending", False),
+            "compliance_last_calculated_at": prop.get("compliance_last_calculated_at"),
+            "queue_recent": queue_recent,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Property compliance recalc status error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load compliance recalc status",
+        )
+
+
 @router.post("/clients/{client_id}/resend-password-setup")
 async def resend_password_setup(request: Request, client_id: str):
     """Resend password setup link (admin only)."""

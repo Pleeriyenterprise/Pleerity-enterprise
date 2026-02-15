@@ -87,15 +87,137 @@ async def run_compliance_score_snapshots():
         raise
 
 
-async def run_expiry_rollover_recalc():
-    """Daily job: recalc compliance score for properties whose requirements' due_date
-    crossed expiry/expiring_soon thresholds (e.g. expired today or entered 30-day window).
-    Writes history snapshot + AuditLog per property (EXPIRY_ROLLOVER).
+# Backoff seconds: attempt 1 => +10s, 2 => +30s, 3 => +2m, 4 => +10m, >=5 => DEAD
+COMPLIANCE_RECALC_BACKOFF = [10, 30, 120, 600]
+
+
+async def run_compliance_recalc_worker():
+    """
+    Process compliance_recalc_queue: claim PENDING jobs, run recalculate_and_persist,
+    optional drift audit, retry with backoff or mark DEAD.
     """
     try:
         from database import database
-        from datetime import datetime, timezone, timedelta
-        from services.compliance_scoring_service import recalculate_and_persist, REASON_EXPIRY_ROLLOVER
+        from services.compliance_recalc_queue import (
+            STATUS_PENDING,
+            STATUS_RUNNING,
+            STATUS_DONE,
+            STATUS_FAILED,
+            STATUS_DEAD,
+        )
+        from services.compliance_scoring_service import recalculate_and_persist
+        from models import AuditAction
+        from utils.audit import create_audit_log
+
+        db = database.get_db()
+        now = datetime.now(timezone.utc)
+        now_iso = now.isoformat()
+        cursor = db.compliance_recalc_queue.find(
+            {"status": STATUS_PENDING, "next_run_at": {"$lte": now_iso}}
+        ).sort("next_run_at", 1).limit(10)
+        jobs = await cursor.to_list(10)
+        processed = 0
+        for job in jobs:
+            jid = job["_id"]
+            property_id = job["property_id"]
+            client_id = job.get("client_id")
+            trigger_reason = job.get("trigger_reason", "")
+            correlation_id = job.get("correlation_id", "")
+            actor_type = job.get("actor_type", "SYSTEM")
+            actor_id = job.get("actor_id")
+            attempts = job.get("attempts", 0)
+            # Atomic claim
+            r = await db.compliance_recalc_queue.update_one(
+                {"_id": jid, "status": STATUS_PENDING},
+                {"$set": {"status": STATUS_RUNNING, "updated_at": now_iso}},
+            )
+            if r.modified_count == 0:
+                continue
+            actor = {"id": actor_id or "system", "role": actor_type}
+            context = {"correlation_id": correlation_id, "trigger_reason": trigger_reason}
+            old_prop = await db.properties.find_one(
+                {"property_id": property_id},
+                {"_id": 0, "compliance_score": 1, "compliance_version": 1},
+            )
+            old_score = old_prop.get("compliance_score") if old_prop else None
+            try:
+                await recalculate_and_persist(property_id, trigger_reason, actor, context)
+                prop_after = await db.properties.find_one(
+                    {"property_id": property_id},
+                    {"_id": 0, "compliance_score": 1},
+                )
+                new_score = prop_after.get("compliance_score") if prop_after else None
+                if old_score is not None and new_score is not None and old_score != new_score:
+                    await create_audit_log(
+                        action=AuditAction.COMPLIANCE_SCORE_DRIFT_DETECTED,
+                        actor_id=actor_id,
+                        client_id=client_id,
+                        resource_type="property",
+                        resource_id=property_id,
+                        before_state={"compliance_score": old_score},
+                        after_state={"compliance_score": new_score},
+                        metadata={
+                            "correlation_id": correlation_id,
+                            "trigger_reason": trigger_reason,
+                        },
+                    )
+                await db.compliance_recalc_queue.update_one(
+                    {"_id": jid},
+                    {"$set": {"status": STATUS_DONE, "updated_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                processed += 1
+            except Exception as e:
+                next_attempts = attempts + 1
+                if next_attempts >= 5:
+                    new_status = STATUS_DEAD
+                    next_run_at = now_iso
+                else:
+                    new_status = STATUS_FAILED
+                    delta = COMPLIANCE_RECALC_BACKOFF[min(next_attempts - 1, len(COMPLIANCE_RECALC_BACKOFF) - 1)]
+                    next_run_at = (now + timedelta(seconds=delta)).isoformat()
+                err_str = str(e)
+                await db.compliance_recalc_queue.update_one(
+                    {"_id": jid},
+                    {"$set": {
+                        "status": new_status,
+                        "attempts": next_attempts,
+                        "next_run_at": next_run_at,
+                        "last_error": err_str,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                await create_audit_log(
+                    action=AuditAction.COMPLIANCE_RECALC_FAILED,
+                    actor_id=actor_id,
+                    client_id=client_id,
+                    resource_type="property",
+                    resource_id=property_id,
+                    metadata={
+                        "attempts": next_attempts,
+                        "error": err_str,
+                        "correlation_id": correlation_id,
+                        "trigger_reason": trigger_reason,
+                    },
+                )
+                logger.warning(f"Compliance recalc failed property_id={property_id} attempts={next_attempts} err={err_str}")
+        return {"message": f"Compliance recalc worker: {processed} processed", "count": processed}
+    except Exception as e:
+        logger.error(f"Compliance recalc worker failed: {e}")
+        raise
+
+
+async def run_expiry_rollover_recalc():
+    """Daily job: enqueue compliance recalc for properties whose requirements' due_date
+    crossed expiry/expiring_soon thresholds. Worker will run recalc.
+    """
+    try:
+        from database import database
+        from datetime import timedelta
+        from services.compliance_recalc_queue import (
+            enqueue_compliance_recalc,
+            TRIGGER_EXPIRY_JOB,
+            ACTOR_SYSTEM,
+        )
 
         db = database.get_db()
         now = datetime.now(timezone.utc)
@@ -103,6 +225,7 @@ async def run_expiry_rollover_recalc():
         window_end = (now + timedelta(days=31)).replace(hour=23, minute=59, second=59, microsecond=999000)
         window_start_iso = window_start.isoformat()
         window_end_iso = window_end.isoformat()
+        date_str = now.strftime("%Y-%m-%d")
 
         cursor = db.requirements.find(
             {"due_date": {"$gte": window_start_iso, "$lte": window_end_iso}},
@@ -112,17 +235,25 @@ async def run_expiry_rollover_recalc():
         async for doc in cursor:
             property_ids.add(doc["property_id"])
 
-        actor = {"id": "system", "role": "SYSTEM"}
         count = 0
         for property_id in property_ids:
-            try:
-                await recalculate_and_persist(property_id, REASON_EXPIRY_ROLLOVER, actor, {"job": "expiry_rollover"})
+            prop = await db.properties.find_one({"property_id": property_id}, {"client_id": 1})
+            if not prop:
+                continue
+            correlation_id = f"EXPIRY_JOB:{property_id}:{date_str}"
+            enqueued = await enqueue_compliance_recalc(
+                property_id=property_id,
+                client_id=prop["client_id"],
+                trigger_reason=TRIGGER_EXPIRY_JOB,
+                actor_type=ACTOR_SYSTEM,
+                actor_id=None,
+                correlation_id=correlation_id,
+            )
+            if enqueued:
                 count += 1
-            except Exception as e:
-                logger.warning(f"Expiry rollover recalc failed for property {property_id}: {e}")
 
-        logger.info(f"Expiry rollover recalc completed: {count} properties updated")
-        return {"message": f"Expiry rollover: {count} properties updated", "count": count}
+        logger.info(f"Expiry rollover enqueued: {count} properties")
+        return {"message": f"Expiry rollover: {count} properties enqueued", "count": count}
     except Exception as e:
         logger.error(f"Expiry rollover job failed: {e}")
         raise
@@ -244,6 +375,7 @@ JOB_RUNNERS = {
     "compliance_check_evening": run_compliance_status_check,
     "scheduled_reports": run_scheduled_reports,
     "compliance_score_snapshots": run_compliance_score_snapshots,
+    "compliance_recalc_worker": run_compliance_recalc_worker,
     "expiry_rollover_recalc": run_expiry_rollover_recalc,
     "order_delivery_processing": run_order_delivery_processing,
     "sla_monitoring": run_sla_monitoring,

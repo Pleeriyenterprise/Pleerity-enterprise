@@ -123,12 +123,14 @@ async def create_property(request: Request, data: CreatePropertyRequest):
         await provisioning_service._update_property_compliance(
             property_obj.property_id
         )
-        from services.compliance_scoring_service import recalculate_and_persist, REASON_PROPERTY_CREATED
-        await recalculate_and_persist(
-            property_obj.property_id,
-            REASON_PROPERTY_CREATED,
-            {"id": user["portal_user_id"], "role": user.get("role")},
-            {},
+        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_CREATED, ACTOR_ADMIN
+        await enqueue_compliance_recalc(
+            property_id=property_obj.property_id,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_PROPERTY_CREATED,
+            actor_type=ACTOR_ADMIN,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=f"PROPERTY_CREATED:{property_obj.property_id}",
         )
         
         # Audit log
