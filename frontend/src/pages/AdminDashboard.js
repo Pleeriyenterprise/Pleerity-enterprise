@@ -3401,6 +3401,7 @@ const DashboardOverview = ({ onShowDrilldown }) => {
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingHours, setPendingHours] = useState(24);
   const [pendingClientId, setPendingClientId] = useState('');
+  const [pendingListWarning, setPendingListWarning] = useState(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -3408,6 +3409,29 @@ const DashboardOverview = ({ onShowDrilldown }) => {
     }
     fetchStats();
   }, []);
+
+  const fetchPendingVerification = useCallback(async () => {
+    setPendingLoading(true);
+    setPendingListWarning(null);
+    try {
+      const { adminAPI } = await import('../api/client');
+      const res = await adminAPI.getPendingVerificationDocuments(pendingHours, pendingClientId || null);
+      const data = res?.data;
+      const docs = Array.isArray(data?.documents) ? data.documents : [];
+      setPendingList({
+        documents: docs,
+        total: typeof data?.total === 'number' ? data.total : 0,
+        returned: typeof data?.returned === 'number' ? data.returned : docs.length,
+        has_more: Boolean(data?.has_more),
+      });
+    } catch (e) {
+      setPendingList({ documents: [], total: 0, returned: 0, has_more: false });
+      setPendingListWarning('Could not load pending verification list. You can try again or refresh the page.');
+      toast.error('Failed to load pending verification list');
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [pendingHours, pendingClientId]);
 
   const fetchStats = async () => {
     try {
@@ -3434,31 +3458,8 @@ const DashboardOverview = ({ onShowDrilldown }) => {
 
   useEffect(() => {
     if (loading || dashboardError) return;
-    let cancelled = false;
-    const fetchPendingVerification = async () => {
-      setPendingLoading(true);
-      try {
-        const { adminAPI } = await import('../api/client');
-        const res = await adminAPI.getPendingVerificationDocuments(pendingHours, pendingClientId || null);
-        if (cancelled) return;
-        setPendingList({
-          documents: res.data?.documents || [],
-          total: res.data?.total ?? 0,
-          returned: res.data?.returned ?? 0,
-          has_more: res.data?.has_more ?? false,
-        });
-      } catch (e) {
-        if (!cancelled) {
-          toast.error('Failed to load pending verification list');
-          setPendingList({ documents: [], total: 0, returned: 0, has_more: false });
-        }
-      } finally {
-        if (!cancelled) setPendingLoading(false);
-      }
-    };
     fetchPendingVerification();
-    return () => { cancelled = true; };
-  }, [loading, dashboardError, pendingHours, pendingClientId]);
+  }, [loading, dashboardError, pendingHours, pendingClientId, fetchPendingVerification]);
 
   if (loading) {
     return (
@@ -3571,6 +3572,11 @@ const DashboardOverview = ({ onShowDrilldown }) => {
       <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="pending-verification-section">
         <h3 className="text-lg font-semibold text-midnight-blue mb-4">Pending verification</h3>
         <p className="text-sm text-gray-500 mb-4">Documents with status UPLOADED older than selected hours (filterable by client).</p>
+        {pendingListWarning && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800" role="alert">
+            {pendingListWarning}
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <label className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Older than (hours)</span>
@@ -3627,13 +3633,13 @@ const DashboardOverview = ({ onShowDrilldown }) => {
                 {(pendingList.documents ?? []).length === 0 ? (
                   <tr><td colSpan={5} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
                 ) : (
-                  (pendingList.documents ?? []).map((doc) => (
-                    <tr key={doc.document_id || doc.client_id + doc.uploaded_at} className="border-b border-gray-100">
-                      <td className="py-2 pr-4 font-mono text-xs">{doc.document_id}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{doc.client_id}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{doc.property_id || '—'}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{doc.requirement_id || '—'}</td>
-                      <td className="py-2 text-gray-600">{doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
+                  (pendingList.documents ?? []).filter(Boolean).map((doc, idx) => (
+                    <tr key={doc?.document_id ?? doc?.client_id ?? idx} className="border-b border-gray-100">
+                      <td className="py-2 pr-4 font-mono text-xs">{doc?.document_id ?? '—'}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{doc?.client_id ?? '—'}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{doc?.property_id ?? '—'}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{doc?.requirement_id ?? '—'}</td>
+                      <td className="py-2 text-gray-600">{doc?.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
                     </tr>
                   ))
                 )}
