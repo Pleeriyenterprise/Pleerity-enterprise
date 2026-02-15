@@ -17,7 +17,9 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('[CVP] ErrorBoundary caught:', error, errorInfo?.componentStack);
+    // Log in all environments (production-safe: no secrets, helps debug crash location)
+    const stack = errorInfo?.componentStack ?? '';
+    console.error('[CVP] ErrorBoundary caught:', error?.message ?? error, '\nComponent stack:', stack);
   }
 
   handleGoLogin = () => {

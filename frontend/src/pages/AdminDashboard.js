@@ -411,7 +411,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
               <div>
                 <h3 className="font-semibold text-midnight-blue mb-4">Properties ({client.properties?.length || 0})</h3>
                 <div className="space-y-2">
-                  {client.properties?.slice(0, 5).map((prop) => (
+                  {(client.properties ?? []).slice(0, 5).map((prop) => (
                     <div key={prop.property_id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
                       <div>
                         <p className="font-medium">{prop.nickname || prop.address_line_1}</p>
@@ -437,7 +437,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                   Readiness Checklist
                 </h3>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                  {readiness?.checklist?.map((item) => (
+                  {(readiness?.checklist ?? []).map((item) => (
                     <div key={item.item} className="flex items-center gap-3">
                       {item.status === 'complete' ? (
                         <CheckCircle className="w-5 h-5 text-green-500" />
@@ -610,10 +610,10 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                 Audit Timeline
               </h3>
               <div className="space-y-3">
-                {timeline.length === 0 ? (
+                {(timeline ?? []).length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No audit events found</p>
                 ) : (
-                  timeline.map((event, idx) => (
+                  (timeline ?? []).map((event, idx) => (
                     <div key={idx} className="flex gap-4 p-4 bg-gray-50 rounded-lg">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                         event.action?.includes('SUCCESS') || event.action?.includes('COMPLETE') ? 'bg-green-100 text-green-600' :
@@ -732,14 +732,14 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
             </div>
-          ) : data.length === 0 ? (
+          ) : (data ?? []).length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               No records found
             </div>
           ) : isClientView ? (
             // Client list view
             <div className="space-y-3">
-              {data.map((client) => (
+              {(data ?? []).map((client) => (
                 <button
                   key={client.client_id}
                   onClick={() => {
@@ -778,7 +778,7 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
           ) : (
             // Properties list view
             <div className="space-y-3">
-              {data.map((property) => (
+              {(data ?? []).map((property) => (
                 <div
                   key={property.property_id}
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
@@ -897,7 +897,7 @@ const JobsMonitoring = () => {
         {/* Scheduled Jobs */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Scheduled Jobs</h3>
-          {jobsStatus?.scheduled_jobs?.map((job) => {
+          {(jobsStatus?.scheduled_jobs ?? []).map((job) => {
             const jobType = getJobType(job.id);
             return (
               <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -1210,10 +1210,10 @@ const ClientsManagement = () => {
             </div>
 
             {/* Portal User */}
-            {clientDetails.portal_users?.length > 0 && (
+            {(clientDetails.portal_users ?? []).length > 0 && (
               <div className="border-t pt-4">
                 <h4 className="text-sm font-medium text-gray-500 mb-3">Portal Access</h4>
-                {clientDetails.portal_users.map((user, idx) => (
+                {(clientDetails.portal_users ?? []).map((user, idx) => (
                   <div key={idx} className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Status</span>
@@ -1233,7 +1233,7 @@ const ClientsManagement = () => {
                     </div>
                   </div>
                 ))}
-                {clientDetails.portal_users[0]?.password_status === 'NOT_SET' && (
+                {(clientDetails.portal_users ?? [])[0]?.password_status === 'NOT_SET' && (
                   <button
                     onClick={() => resendPasswordSetup(clientDetails.client?.client_id)}
                     className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors"
@@ -1250,7 +1250,7 @@ const ClientsManagement = () => {
               <div className="border-t pt-4">
                 <h4 className="text-sm font-medium text-gray-500 mb-3">Readiness Check</h4>
                 <div className="space-y-2">
-                  {Object.entries(clientDetails.readiness_check).map(([key, value]) => (
+                  {Object.entries(clientDetails.readiness_check ?? {}).map(([key, value]) => (
                     <div key={key} className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">{key.replace(/_/g, ' ')}</span>
                       {value ? (
@@ -1269,7 +1269,7 @@ const ClientsManagement = () => {
               <h4 className="text-sm font-medium text-gray-500 mb-3">
                 Properties ({clientDetails.properties_count || 0})
               </h4>
-              {clientDetails.properties?.slice(0, 3).map((prop, idx) => (
+              {(clientDetails.properties ?? []).slice(0, 3).map((prop, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm mb-2">
                   <Building2 className="w-4 h-4 text-gray-400" />
                   <span>{prop.address_line_1}, {prop.city}</span>
@@ -1300,7 +1300,7 @@ const AuditLogs = () => {
         if (actionFilter) url += `&action=${actionFilter}`;
         const response = await api.get(url);
         if (cancelled) return;
-        setLogs(response.data.logs);
+        setLogs(response.data?.logs ?? []);
         setTotalLogs(response.data.total);
       } catch (error) {
         if (!cancelled) toast.error('Failed to load audit logs');
@@ -1384,7 +1384,7 @@ const AuditLogs = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {logs.map((log, idx) => (
+                {(logs ?? []).map((log, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(log.timestamp).toLocaleString()}
@@ -1629,10 +1629,10 @@ const EmailDelivery = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.items.length === 0 ? (
+                {(data?.items ?? []).length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-6 text-gray-500 text-center">No records.</td></tr>
                 ) : (
-                  data.items.map((row, idx) => (
+                  (data?.items ?? []).map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       <td className="px-4 py-2 whitespace-nowrap text-gray-600">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
                       <td className="px-4 py-2 text-gray-700">{row.template_alias ?? '—'}</td>
@@ -1756,7 +1756,7 @@ const MessageLogs = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {messages.map((msg, idx) => (
+              {(messages ?? []).map((msg, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(msg.timestamp).toLocaleString()}
@@ -2085,7 +2085,7 @@ const AdminsManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {admins.map((admin) => {
+              {(admins ?? []).map((admin) => {
                 const statusBadge = getStatusBadge(admin.status, admin.password_status);
                 const isLoading = actionLoading === admin.portal_user_id;
                 const isDisabled = admin.status === 'DISABLED';
@@ -2549,7 +2549,7 @@ const RulesManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {rules.map((rule) => (
+              {(rules ?? []).map((rule) => (
                 <tr key={rule.rule_id} className={`hover:bg-gray-50 ${!rule.is_active ? 'opacity-50' : ''}`}>
                   <td className="px-6 py-4">
                     <div>
@@ -2920,7 +2920,7 @@ const EmailTemplates = () => {
 
       {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {templates.map((template) => (
+        {(templates ?? []).map((template) => (
           <div 
             key={template.template_id} 
             className={`bg-white rounded-xl border border-gray-200 p-6 ${!template.is_active ? 'opacity-50' : ''}`}
@@ -2963,9 +2963,9 @@ const EmailTemplates = () => {
               <strong>Subject:</strong> {template.subject}
             </p>
             
-            {template.available_variables?.length > 0 && (
+            {(template.available_variables ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {template.available_variables.map((v, i) => (
+                {(template.available_variables ?? []).map((v, i) => (
                   <span key={i} className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
                     {"{{"}{v}{"}}"}
                   </span>
@@ -3072,7 +3072,7 @@ const StatisticsDashboard = () => {
         <div>
           <h2 className="text-xl font-semibold text-midnight-blue">Compliance Statistics</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Last updated: {new Date(stats.generated_at).toLocaleString()}
+            Last updated: {stats?.generated_at ? new Date(stats.generated_at).toLocaleString() : '—'}
           </p>
         </div>
         <button
@@ -3324,9 +3324,9 @@ const StatisticsDashboard = () => {
               {/* Compliance Trend - Simplified Bar Representation */}
               <div data-testid="compliance-trend-chart">
                 <h4 className="text-sm font-semibold text-midnight-blue mb-4">Requirement Status Distribution</h4>
-                {stats.requirements?.by_status && Object.keys(stats.requirements.by_status).length > 0 ? (
+                {stats.requirements?.by_status && Object.keys(stats.requirements.by_status ?? {}).length > 0 ? (
                   <div className="space-y-3">
-                    {Object.entries(stats.requirements.by_status)
+                    {Object.entries(stats.requirements?.by_status ?? {})
                       .sort(([,a], [,b]) => b - a)
                       .map(([status, count]) => {
                         const percent = totalReqs > 0 ? Math.round((count / totalReqs) * 100) : 0;
@@ -3392,7 +3392,7 @@ const StatisticsDashboard = () => {
 const EMPTY_STATS = { stats: {}, compliance_overview: {}, recent_activity: [] };
 
 const DashboardOverview = ({ onShowDrilldown }) => {
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState(null);
   const [pendingList, setPendingList] = useState({ documents: [], total: 0, returned: 0, has_more: false });
@@ -3430,7 +3430,7 @@ const DashboardOverview = ({ onShowDrilldown }) => {
   };
 
   useEffect(() => {
-    if (loading || stats == null) return;
+    if (loading || dashboardError) return;
     let cancelled = false;
     const fetchPendingVerification = async () => {
       setPendingLoading(true);
@@ -3455,7 +3455,7 @@ const DashboardOverview = ({ onShowDrilldown }) => {
     };
     fetchPendingVerification();
     return () => { cancelled = true; };
-  }, [loading, stats, pendingHours, pendingClientId]);
+  }, [loading, dashboardError, pendingHours, pendingClientId]);
 
   if (loading) {
     return (
@@ -3478,7 +3478,7 @@ const DashboardOverview = ({ onShowDrilldown }) => {
             {is403 && 'Not authorized to view this page.'}
             {!is401 && !is403 && 'Failed to load dashboard. Please try again or refresh.'}
           </p>
-          <p className="text-sm text-amber-700 mt-1">{dashboardError.message}</p>
+          <p className="text-sm text-amber-700 mt-1">{typeof dashboardError.message === 'string' ? dashboardError.message : 'An error occurred.'}</p>
         </div>
       </div>
     );
