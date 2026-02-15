@@ -22,7 +22,6 @@ PLAN_FEATURES = {
         "zip_upload": False,
         "compliance_packs": False,
         "integrations": False,
-        "api_access": False,
         "priority_support": False,
         "ai_assistant": True,  # All plans get basic assistant
         "scheduled_reports": False
@@ -36,7 +35,6 @@ PLAN_FEATURES = {
         "zip_upload": False,
         "compliance_packs": False,
         "integrations": False,
-        "api_access": False,
         "priority_support": True,
         "ai_assistant": True,
         "scheduled_reports": True
@@ -50,7 +48,6 @@ PLAN_FEATURES = {
         "zip_upload": True,
         "compliance_packs": True,
         "integrations": True,
-        "api_access": True,
         "priority_support": True,
         "ai_assistant": True,
         "scheduled_reports": True
@@ -66,7 +63,6 @@ FEATURE_NAMES = {
     "zip_upload": "ZIP File Upload",
     "compliance_packs": "Compliance Packs",
     "integrations": "Third-party Integrations",
-    "api_access": "API Access",
     "priority_support": "Priority Support",
     "scheduled_reports": "Scheduled Report Delivery"
 }
@@ -79,7 +75,6 @@ MINIMUM_PLAN_FOR_FEATURE = {
     "zip_upload": BillingPlan.PLAN_6_15,
     "compliance_packs": BillingPlan.PLAN_6_15,
     "integrations": BillingPlan.PLAN_6_15,
-    "api_access": BillingPlan.PLAN_6_15,
     "scheduled_reports": BillingPlan.PLAN_2_5
 }
 

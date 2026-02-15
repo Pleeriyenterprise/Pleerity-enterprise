@@ -411,10 +411,32 @@ async def create_report_schedule(request: Request, data: CreateScheduleRequest):
 
 @router.get("/schedules")
 async def list_report_schedules(request: Request):
-    """List all scheduled reports for the client."""
+    """List all scheduled reports for the client. Gated: Portfolio+ (scheduled_reports)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(
+        user["client_id"],
+        "scheduled_reports"
+    )
+    if not allowed:
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user.get("portal_user_id"),
+            client_id=user["client_id"],
+            metadata={
+                "action_type": "PLAN_GATE_DENIED",
+                "feature_key": "scheduled_reports",
+                "endpoint": "/api/reports/schedules",
+                "method": "GET",
+                "reason": error_msg,
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "scheduled_reports", "upgrade_required": True}
+        )
     db = database.get_db()
-    
     try:
         schedules = await db.report_schedules.find(
             {"client_id": user["client_id"]},
@@ -433,10 +455,32 @@ async def list_report_schedules(request: Request):
 
 @router.delete("/schedules/{schedule_id}")
 async def delete_report_schedule(request: Request, schedule_id: str):
-    """Delete a scheduled report."""
+    """Delete a scheduled report. Gated: Portfolio+ (scheduled_reports)."""
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(
+        user["client_id"],
+        "scheduled_reports"
+    )
+    if not allowed:
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user.get("portal_user_id"),
+            client_id=user["client_id"],
+            metadata={
+                "action_type": "PLAN_GATE_DENIED",
+                "feature_key": "scheduled_reports",
+                "endpoint": f"/api/reports/schedules/{schedule_id}",
+                "method": "DELETE",
+                "reason": error_msg,
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "scheduled_reports", "upgrade_required": True}
+        )
     db = database.get_db()
-    
     try:
         # Verify ownership
         schedule = await db.report_schedules.find_one(

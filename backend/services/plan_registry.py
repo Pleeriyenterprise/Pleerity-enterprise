@@ -172,117 +172,95 @@ PLAN_DEFINITIONS = {
 
 
 # ============================================================================
-# FEATURE ENTITLEMENT MATRIX - What each plan gets
-# Canonical feature keys for APIs: /client/entitlements and /client/plan-features
-# use these keys only. 403 responses may preserve legacy 'feature' strings
-# (e.g. compliance_packs, white_label, audit_exports) for backward compatibility.
+# FEATURE ENTITLEMENT MATRIX - What each plan gets (Pricing Page truth)
+# SOLO: Core + Basic AI. PORTFOLIO: SOLO + ZIP bulk, PDF reports, Scheduled reports.
+# PROFESSIONAL: PORTFOLIO + Advanced AI, Review UI, CSV, SMS, Tenant portal,
+# Webhooks, White label, Audit log export. API Access removed (not implemented).
+# Legacy keys (zip_upload, compliance_calendar, extraction_review_ui, tenant_portal)
+# kept for backward compatibility with existing enforce_feature/require_feature.
 # ============================================================================
 FEATURE_MATRIX = {
     PlanCode.PLAN_1_SOLO: {
-        # Core features (always available)
+        # Core (all plans)
         "compliance_dashboard": True,
         "compliance_score": True,
         "compliance_calendar": True,
+        "expiry_calendar": True,
         "email_notifications": True,
+        "document_upload_single": True,
         "multi_file_upload": True,
         "score_trending": True,
-        
-        # AI Features
-        "ai_extraction_basic": True,  # Extract type, issue date, expiry date
-        "ai_extraction_advanced": False,  # Confidence scoring, review UI
-        "extraction_review_ui": False,
-        
-        # Document Features
+        "ai_extraction_basic": True,
+        # Portfolio additions -> False for Solo
+        "document_upload_bulk_zip": False,
         "zip_upload": False,
-        
-        # Reporting Features
         "reports_pdf": False,
-        "reports_csv": False,
         "scheduled_reports": False,
-        
-        # Communication Features
+        # Professional additions -> False for Solo
+        "ai_extraction_advanced": False,
+        "extraction_review_ui": False,
+        "ai_review_interface": False,
+        "reports_csv": False,
         "sms_reminders": False,
-        
-        # Portal Features
         "tenant_portal": False,
-        
-        # Integration Features
+        "tenant_portal_access": False,
         "webhooks": False,
-        "api_access": False,
-        
-        # Advanced Features
         "white_label_reports": False,
         "audit_log_export": False,
     },
     PlanCode.PLAN_2_PORTFOLIO: {
-        # Core features
+        # Core
         "compliance_dashboard": True,
         "compliance_score": True,
         "compliance_calendar": True,
+        "expiry_calendar": True,
         "email_notifications": True,
+        "document_upload_single": True,
         "multi_file_upload": True,
         "score_trending": True,
-        
-        # AI Features
         "ai_extraction_basic": True,
-        "ai_extraction_advanced": True,  # Full confidence scoring
-        "extraction_review_ui": True,
-        
-        # Document Features
+        # Portfolio additions
+        "document_upload_bulk_zip": True,
         "zip_upload": True,
-        
-        # Reporting Features
         "reports_pdf": True,
-        "reports_csv": True,
         "scheduled_reports": True,
-        
-        # Communication Features
-        "sms_reminders": True,
-        
-        # Portal Features
-        "tenant_portal": True,  # View-only
-        
-        # Integration Features
+        # Professional only -> False for Portfolio
+        "ai_extraction_advanced": False,
+        "extraction_review_ui": False,
+        "ai_review_interface": False,
+        "reports_csv": False,
+        "sms_reminders": False,
+        "tenant_portal": False,
+        "tenant_portal_access": False,
         "webhooks": False,
-        "api_access": False,
-        
-        # Advanced Features
         "white_label_reports": False,
         "audit_log_export": False,
     },
     PlanCode.PLAN_3_PRO: {
-        # Core features
+        # Core
         "compliance_dashboard": True,
         "compliance_score": True,
         "compliance_calendar": True,
+        "expiry_calendar": True,
         "email_notifications": True,
+        "document_upload_single": True,
         "multi_file_upload": True,
         "score_trending": True,
-        
-        # AI Features
         "ai_extraction_basic": True,
+        # Portfolio
+        "document_upload_bulk_zip": True,
+        "zip_upload": True,
+        "reports_pdf": True,
+        "scheduled_reports": True,
+        # Professional
         "ai_extraction_advanced": True,
         "extraction_review_ui": True,
-        
-        # Document Features
-        "zip_upload": True,
-        
-        # Reporting Features
-        "reports_pdf": True,
+        "ai_review_interface": True,
         "reports_csv": True,
-        "scheduled_reports": True,
-        
-        # Communication Features
         "sms_reminders": True,
-        
-        # Portal Features
-        "tenant_portal": True,  # View-only
-        
-        # Integration Features
+        "tenant_portal": True,
+        "tenant_portal_access": True,
         "webhooks": True,
-        "api_access": True,
-        
-        # Advanced Features
         "white_label_reports": True,
         "audit_log_export": True,
     },
@@ -308,10 +286,20 @@ FEATURE_METADATA = {
         "description": "View expiry dates in calendar format",
         "category": "core",
     },
+    "expiry_calendar": {
+        "name": "Expiry Calendar",
+        "description": "View certificate expirations in calendar format",
+        "category": "core",
+    },
     "email_notifications": {
         "name": "Email Notifications",
         "description": "Receive compliance reminders via email",
         "category": "communication",
+    },
+    "document_upload_single": {
+        "name": "Document Upload",
+        "description": "Upload compliance documents (single file)",
+        "category": "documents",
     },
     "multi_file_upload": {
         "name": "Multi-File Upload",
@@ -337,6 +325,16 @@ FEATURE_METADATA = {
         "name": "Extraction Review UI",
         "description": "Review and approve AI-extracted data before applying",
         "category": "ai",
+    },
+    "ai_review_interface": {
+        "name": "AI Review Interface",
+        "description": "Review and approve AI-extracted data before applying (Professional)",
+        "category": "ai",
+    },
+    "document_upload_bulk_zip": {
+        "name": "ZIP Bulk Upload",
+        "description": "Upload documents as a single ZIP archive (Portfolio+)",
+        "category": "documents",
     },
     "zip_upload": {
         "name": "ZIP Archive Upload",
@@ -368,14 +366,14 @@ FEATURE_METADATA = {
         "description": "Allow tenants to view property compliance (read-only)",
         "category": "portal",
     },
+    "tenant_portal_access": {
+        "name": "Tenant View Access",
+        "description": "Allow tenants to view property compliance (Professional)",
+        "category": "portal",
+    },
     "webhooks": {
         "name": "Webhooks",
         "description": "Send compliance events to external systems",
-        "category": "integration",
-    },
-    "api_access": {
-        "name": "API Access",
-        "description": "Programmatic access to compliance data",
         "category": "integration",
     },
     "white_label_reports": {
@@ -392,22 +390,23 @@ FEATURE_METADATA = {
 
 
 # ============================================================================
-# MINIMUM PLAN FOR FEATURE - Which plan unlocks each feature
+# MINIMUM PLAN FOR FEATURE - Which plan unlocks each feature (Pricing Page)
 # ============================================================================
 MINIMUM_PLAN_FOR_FEATURE = {
-    # PLAN_2_PORTFOLIO unlocks
-    "ai_extraction_advanced": PlanCode.PLAN_2_PORTFOLIO,
-    "extraction_review_ui": PlanCode.PLAN_2_PORTFOLIO,
+    # PLAN_2_PORTFOLIO: ZIP bulk, PDF reports, Scheduled reports only
+    "document_upload_bulk_zip": PlanCode.PLAN_2_PORTFOLIO,
     "zip_upload": PlanCode.PLAN_2_PORTFOLIO,
     "reports_pdf": PlanCode.PLAN_2_PORTFOLIO,
-    "reports_csv": PlanCode.PLAN_2_PORTFOLIO,
     "scheduled_reports": PlanCode.PLAN_2_PORTFOLIO,
-    "sms_reminders": PlanCode.PLAN_2_PORTFOLIO,
-    "tenant_portal": PlanCode.PLAN_2_PORTFOLIO,
-    
     # PLAN_3_PRO only
+    "ai_extraction_advanced": PlanCode.PLAN_3_PRO,
+    "extraction_review_ui": PlanCode.PLAN_3_PRO,
+    "ai_review_interface": PlanCode.PLAN_3_PRO,
+    "reports_csv": PlanCode.PLAN_3_PRO,
+    "sms_reminders": PlanCode.PLAN_3_PRO,
+    "tenant_portal": PlanCode.PLAN_3_PRO,
+    "tenant_portal_access": PlanCode.PLAN_3_PRO,
     "webhooks": PlanCode.PLAN_3_PRO,
-    "api_access": PlanCode.PLAN_3_PRO,
     "white_label_reports": PlanCode.PLAN_3_PRO,
     "audit_log_export": PlanCode.PLAN_3_PRO,
 }

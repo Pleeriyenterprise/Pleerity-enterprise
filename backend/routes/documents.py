@@ -1067,60 +1067,78 @@ async def regenerate_requirement_due_date(requirement_id: str, client_id: str):
 
 
 @router.post("/analyze/{document_id}")
-async def analyze_document_ai(request: Request, document_id: str):
+async def analyze_document_ai(
+    request: Request,
+    document_id: str,
+    return_advanced: bool = False,
+):
     """Analyze a document using AI to extract metadata.
     
-    AI Extraction Behavior by Plan:
-    - PLAN_1_SOLO (Basic): Extracts document_type, issue_date, expiry_date only
-      - No confidence scoring
-      - Auto-applies if confidence would have been high (for basic extraction)
-    
-    - PLAN_2_PORTFOLIO / PLAN_3_PRO (Advanced): Full extraction
-      - Includes confidence scoring
-      - Returns data for Review & Apply UI
-      - Field-level validation
+    - Basic extraction (all plans): document_type, issue_date, expiry_date.
+    - Advanced extraction (Professional only): confidence scoring, Review & Apply UI.
+    If return_advanced=True and client is not entitled to ai_extraction_advanced, returns 403.
     """
     user = await client_route_guard(request)
     db = database.get_db()
-    
+    from services.plan_registry import plan_registry
+
     try:
         # Get document
         document = await db.documents.find_one(
             {"document_id": document_id},
             {"_id": 0}
         )
-        
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Document not found"
             )
-        
-        # Verify ownership (client can only analyze their own documents)
         if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to analyze this document"
             )
-        
+        client_id = document["client_id"]
+
+        # Hard gate: requesting advanced response without entitlement -> 403 (no silent downgrade)
+        if return_advanced:
+            allowed, error_msg, error_details = await plan_registry.enforce_feature(
+                client_id, "ai_extraction_advanced"
+            )
+            if not allowed:
+                await create_audit_log(
+                    action=AuditAction.ADMIN_ACTION,
+                    actor_id=user.get("portal_user_id"),
+                    client_id=client_id,
+                    metadata={
+                        "action_type": "PLAN_GATE_DENIED",
+                        "feature_key": "ai_extraction_advanced",
+                        "endpoint": f"/api/documents/analyze/{document_id}",
+                        "method": "POST",
+                        "reason": error_msg,
+                    }
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=error_details or {
+                        "message": "Upgrade to Professional to use Advanced AI.",
+                        "feature": "ai_extraction_advanced",
+                        "upgrade_required": True,
+                    }
+                )
+
         # Check if already analyzed
         if document.get("ai_extraction", {}).get("status") == "completed":
             return {
                 "message": "Document already analyzed",
                 "extraction": document["ai_extraction"]
             }
-        
-        # Check client's plan for extraction mode
-        from services.plan_registry import plan_registry
-        
         client = await db.clients.find_one(
-            {"client_id": document["client_id"]},
+            {"client_id": client_id},
             {"_id": 0, "billing_plan": 1}
         )
-        
         plan_str = client.get("billing_plan", "PLAN_1_SOLO") if client else "PLAN_1_SOLO"
         has_advanced_extraction = plan_registry.get_features_by_string(plan_str).get("ai_extraction_advanced", False)
-        
         # Perform AI analysis
         from services.document_analysis import document_analysis_service
         
@@ -1288,20 +1306,41 @@ async def apply_ai_extraction(
     
     Returns:
         Success message with changes applied, or descriptive error.
+    Gated: Professional only (ai_review_interface).
     """
     user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(
+        user["client_id"], "ai_review_interface"
+    )
+    if not allowed:
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user.get("portal_user_id"),
+            client_id=user["client_id"],
+            metadata={
+                "action_type": "PLAN_GATE_DENIED",
+                "feature_key": "ai_review_interface",
+                "endpoint": f"/api/documents/{document_id}/apply-extraction",
+                "method": "POST",
+                "reason": error_msg,
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {
+                "message": "AI Review Interface requires Professional plan.",
+                "feature": "ai_review_interface",
+                "upgrade_required": True,
+            }
+        )
     db = database.get_db()
-    
-    # Extract confirmed_data from body
     confirmed_data = body.confirmed_data if body else None
-    
     try:
-        # Get document
         document = await db.documents.find_one(
             {"document_id": document_id},
             {"_id": 0}
         )
-        
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

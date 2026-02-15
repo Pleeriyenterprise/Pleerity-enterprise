@@ -1037,10 +1037,17 @@ async def create_checkout(request: Request, client_id: str):
                 detail="Client not found"
             )
         
-        # Get origin from request
         origin = request.headers.get("origin") or "http://localhost:3000"
-        
-        # Create checkout session
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role="SYSTEM",
+            client_id=client_id,
+            metadata={
+                "action_type": "PLAN_CHANGE_REQUESTED",
+                "target_plan": client.get("billing_plan"),
+                "source": "intake_checkout",
+            },
+        )
         session = await stripe_service.create_checkout_session(
             client_id=client_id,
             billing_plan=BillingPlan(client["billing_plan"]),

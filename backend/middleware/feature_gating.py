@@ -72,7 +72,7 @@ def require_feature(feature_key: str):
             if not features.get(feature_key, False):
                 plan_def = plan_registry.get_plan(plan_code)
 
-                # Log denial with resolved plan_code and requested feature
+                reason = f"This feature requires a higher plan. Your {plan_def['name']} plan does not include this feature. Please upgrade to access."
                 await create_audit_log(
                     action=AuditAction.ADMIN_ACTION,
                     actor_role=user.get("role"),
@@ -84,7 +84,8 @@ def require_feature(feature_key: str):
                         "plan_code": plan_code.value,
                         "plan_name": plan_def["name"],
                         "endpoint": str(request.url.path),
-                        "method": request.method
+                        "method": request.method,
+                        "reason": reason,
                     }
                 )
                 logger.warning(
@@ -92,10 +93,7 @@ def require_feature(feature_key: str):
                     client_id, plan_code.value, feature_key, request.url.path, request.method
                 )
 
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"This feature requires a higher plan. Your {plan_def['name']} plan does not include this feature. Please upgrade to access."
-                )
+                raise HTTPException(status_code=403, detail=reason)
 
             # Feature allowed - proceed
             return await func(request, *args, **kwargs)

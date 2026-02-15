@@ -247,35 +247,49 @@ class TestCheckFeatureAccessSoloPortfolioPro:
         assert allowed_portfolio is True
 
     def test_feature_matrix_honored_per_plan(self):
-        """One test per plan: feature matrix is honored (enabled/disabled list)."""
-        # Solo: core only; no zip_upload, reports, webhooks, audit_log_export
+        """Feature matrix aligned to pricing: Solo core+basic; Portfolio +zip, PDF, scheduled; Pro +rest."""
         solo = plan_registry.get_features(PlanCode.PLAN_1_SOLO)
         assert solo.get("compliance_dashboard") is True
         assert solo.get("zip_upload") is False
         assert solo.get("reports_pdf") is False
         assert solo.get("webhooks") is False
         assert solo.get("audit_log_export") is False
-        # Portfolio: core + zip, reports, sms, tenant_portal; no webhooks/audit
+        assert solo.get("reports_csv") is False
+        assert solo.get("sms_reminders") is False
+        assert solo.get("tenant_portal") is False
+        assert solo.get("ai_extraction_advanced") is False
         portfolio = plan_registry.get_features(PlanCode.PLAN_2_PORTFOLIO)
         assert portfolio.get("zip_upload") is True
         assert portfolio.get("reports_pdf") is True
+        assert portfolio.get("scheduled_reports") is True
         assert portfolio.get("webhooks") is False
         assert portfolio.get("audit_log_export") is False
-        # Pro: all features
+        assert portfolio.get("reports_csv") is False
+        assert portfolio.get("sms_reminders") is False
+        assert portfolio.get("tenant_portal") is False
+        assert portfolio.get("ai_extraction_advanced") is False
         pro = plan_registry.get_features(PlanCode.PLAN_3_PRO)
         assert pro.get("webhooks") is True
         assert pro.get("audit_log_export") is True
+        assert pro.get("reports_csv") is True
+        assert pro.get("sms_reminders") is True
+        assert pro.get("tenant_portal") is True
+        assert pro.get("ai_extraction_advanced") is True
 
-    def test_reports_csv_solo_denied_portfolio_allowed(self):
-        """reports_csv: Solo denied, Portfolio+ allowed (pricing page promise)."""
+    def test_reports_csv_pro_only(self):
+        """reports_csv: Solo and Portfolio denied, Pro only (pricing page)."""
         allowed_solo, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_1_SOLO, "reports_csv")
         allowed_portfolio, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_2_PORTFOLIO, "reports_csv")
+        allowed_pro, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_3_PRO, "reports_csv")
         assert allowed_solo is False
-        assert allowed_portfolio is True
+        assert allowed_portfolio is False
+        assert allowed_pro is True
 
-    def test_tenant_portal_solo_denied_portfolio_allowed(self):
-        """tenant_portal: Solo denied, Portfolio+ allowed (pricing page promise)."""
+    def test_tenant_portal_pro_only(self):
+        """tenant_portal: Solo and Portfolio denied, Pro only (pricing page)."""
         allowed_solo, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_1_SOLO, "tenant_portal")
         allowed_portfolio, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_2_PORTFOLIO, "tenant_portal")
+        allowed_pro, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_3_PRO, "tenant_portal")
         assert allowed_solo is False
-        assert allowed_portfolio is True
+        assert allowed_portfolio is False
+        assert allowed_pro is True

@@ -13,6 +13,8 @@ from database import database
 from services.stripe_service import stripe_service
 from services.plan_registry import plan_registry, PlanCode
 from middleware import client_route_guard
+from utils.audit import create_audit_log
+from models import AuditAction
 import logging
 
 logger = logging.getLogger(__name__)
@@ -58,11 +60,20 @@ async def create_checkout(request: Request, body: CheckoutRequest):
     # Get origin URL from request
     origin = request.headers.get("origin", "")
     if not origin:
-        # Fallback to host
         host = request.headers.get("host", "localhost")
         scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
         origin = f"{scheme}://{host}"
-    
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=user.get("role", "CLIENT"),
+        actor_id=user.get("portal_user_id"),
+        client_id=client_id,
+        metadata={
+            "action_type": "PLAN_CHANGE_REQUESTED",
+            "target_plan": body.plan_code,
+            "source": "billing_checkout",
+        },
+    )
     try:
         result = await stripe_service.create_upgrade_session(
             client_id=client_id,

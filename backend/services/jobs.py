@@ -133,6 +133,13 @@ class JobScheduler:
                         overdue_requirements
                     )
                     reminder_count += 1
+                    # Professional only: send SMS reminder if entitled and configured
+                    await self._maybe_send_reminder_sms(
+                        client,
+                        prefs,
+                        expiring_requirements,
+                        overdue_requirements
+                    )
             
             logger.info(f"Daily reminder job complete. Sent {reminder_count} reminders.")
             return reminder_count
@@ -276,6 +283,54 @@ class JobScheduler:
         
         except Exception as e:
             logger.error(f"Failed to send reminder email: {e}")
+
+    async def _maybe_send_reminder_sms(self, client, prefs, expiring, overdue):
+        """Send SMS reminder for Professional clients when entitled and configured.
+        Per-client failure does not crash the job. Throttle: at most one SMS per client per day.
+        """
+        try:
+            from services.plan_registry import plan_registry
+            allowed, _, _ = await plan_registry.enforce_feature(
+                client["client_id"], "sms_reminders"
+            )
+            if not allowed:
+                return
+            if not prefs or not prefs.get("sms_enabled") or not prefs.get("sms_phone_number"):
+                return
+            phone = (prefs.get("sms_phone_number") or "").strip()
+            if not phone:
+                return
+            # Throttle: avoid duplicate SMS same day if job reruns
+            today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            existing = await self.db.sms_logs.find_one(
+                {
+                    "client_id": client["client_id"],
+                    "created_at": {"$gte": today_start.isoformat()},
+                }
+            )
+            if existing:
+                return
+            from services.sms_service import sms_service
+            if not sms_service.is_enabled():
+                return
+            total = len(expiring) + len(overdue)
+            portal_base = os.environ.get("PORTAL_BASE_URL", "https://app.pleerity.co.uk")
+            message = f"Pleerity: {total} compliance item(s) need attention. View: {portal_base}/app/dashboard"
+            if len(message) > 160:
+                message = message[:157] + "..."
+            result = await sms_service.send_sms(
+                to_number=phone,
+                message=message,
+                client_id=client["client_id"]
+            )
+            if not result.get("success"):
+                logger.warning(
+                    "SMS reminder send failed for client %s: %s",
+                    client["client_id"],
+                    result.get("error", "unknown"),
+                )
+        except Exception as e:
+            logger.warning("SMS reminder error for client %s (non-fatal): %s", client.get("client_id"), e)
     
     async def _send_digest_email(self, client, content):
         """Send monthly digest email via email_service (counts-only). Returns True if sent, False if skipped (no recipient)."""

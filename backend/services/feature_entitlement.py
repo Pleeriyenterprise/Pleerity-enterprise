@@ -16,7 +16,7 @@ Feature Categories:
 - Document Features (bulk_upload, zip_upload)
 - Communication Features (sms, email_digest)
 - Reporting Features (reports_pdf, reports_csv, scheduled_reports)
-- Integration Features (webhooks, api_access)
+- Integration Features (webhooks; api_access removed - not implemented)
 - Portal Features (tenant_portal, calendar_sync)
 - Advanced Features (compliance_packs, audit_exports, white_label)
 """
@@ -116,13 +116,7 @@ FEATURE_REGISTRY = {
         "category": FeatureCategory.INTEGRATION,
         "is_core": False,
     },
-    "api_access": {
-        "name": "API Access",
-        "description": "Programmatic access to compliance data",
-        "category": FeatureCategory.INTEGRATION,
-        "is_core": False,
-    },
-    
+    # api_access removed - not implemented per pricing page
     # Portal Features
     "tenant_portal": {
         "name": "Tenant Portal",
@@ -192,12 +186,10 @@ PLAN_FEATURE_MATRIX = {
         
         # Integrations
         "webhooks": False,
-        "api_access": False,
-        
+        # api_access removed
         # Portal
         "tenant_portal": True,
         "calendar_sync": False,
-        
         # Advanced
         "compliance_packs": False,
         "audit_exports": False,
@@ -226,7 +218,6 @@ PLAN_FEATURE_MATRIX = {
         
         # Integrations
         "webhooks": False,
-        "api_access": False,
         
         # Portal
         "tenant_portal": True,
@@ -260,7 +251,6 @@ PLAN_FEATURE_MATRIX = {
         
         # Integrations
         "webhooks": True,
-        "api_access": True,
         
         # Portal
         "tenant_portal": True,
@@ -287,7 +277,6 @@ MINIMUM_PLAN_FOR_FEATURE = {
     "reports_csv": BillingPlan.PLAN_2_5,
     "scheduled_reports": BillingPlan.PLAN_2_5,
     "webhooks": BillingPlan.PLAN_6_15,
-    "api_access": BillingPlan.PLAN_6_15,
     "calendar_sync": BillingPlan.PLAN_2_5,
     "compliance_packs": BillingPlan.PLAN_6_15,
     "audit_exports": BillingPlan.PLAN_6_15,
