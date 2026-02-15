@@ -19,6 +19,7 @@ from models.prompts import (
     PromptStatus, PromptTemplateCreate, PromptTemplateUpdate,
     PromptTemplateResponse, PromptTestRequest, PromptTestResult,
     PromptActivationRequest, PromptListResponse,
+    OutputSchema, OutputSchemaField,
 )
 from models.permissions import BUILT_IN_ROLES, has_permission
 from services.prompt_service import prompt_service
@@ -132,6 +133,51 @@ async def list_prompt_templates(
         page_size=page_size,
         total_pages=(total + page_size - 1) // page_size,
     )
+
+
+@router.post("/seed")
+async def seed_default_prompts(current_user: dict = Depends(require_super_admin)):
+    """
+    Idempotent seed: create a small set of default prompt templates if none exist.
+    Uses collection: prompt_templates (same as list/get).
+    Returns already_seeded if templates already exist.
+    """
+    from database import database as db_module
+
+    db = db_module.get_db()
+    existing = await db[prompt_service.COLLECTION].count_documents({})
+    if existing > 0:
+        return {"message": "already seeded", "existing_count": existing}
+
+    defaults = [
+        PromptTemplateCreate(
+            service_code="CLEARFORM",
+            doc_type="default",
+            name="Default document generation",
+            description="Default prompt for AI document generation with {{INPUT_DATA_JSON}}.",
+            system_prompt="You are a precise document assistant. Output valid JSON only.",
+            user_prompt_template="Process the following input data and produce structured output as JSON.\n\n{{INPUT_DATA_JSON}}\n\nProvide your analysis as JSON.",
+            output_schema=OutputSchema(
+                schema_version="1.0",
+                root_type="object",
+                strict_validation=True,
+                fields=[
+                    OutputSchemaField(field_name="summary", field_type="string", description="Brief summary", required=True),
+                ],
+            ),
+            temperature=0.3,
+            max_tokens=4000,
+            tags=["default", "seed"],
+        ),
+    ]
+    created = 0
+    for data in defaults:
+        try:
+            await prompt_service.create_template(data=data, created_by=current_user.get("email", "admin"))
+            created += 1
+        except Exception as e:
+            logger.warning("Seed create_template failed for one default: %s", e)
+    return {"message": "seeded", "created": created}
 
 
 @router.get("/active/{service_code}/{doc_type}", response_model=PromptTemplateResponse)

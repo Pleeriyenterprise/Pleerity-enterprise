@@ -86,11 +86,13 @@ function StatCard({ title, value, icon: Icon, color = 'blue', description }) {
 export default function AdminPromptManagerPage() {
   const [activeTab, setActiveTab] = useState('templates');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [stats, setStats] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
   const [serviceCodes, setServiceCodes] = useState([]);
   const [docTypes, setDocTypes] = useState([]);
+  const [seeding, setSeeding] = useState(false);
   
   // Analytics state
   const [analytics, setAnalytics] = useState(null);
@@ -148,6 +150,7 @@ export default function AdminPromptManagerPage() {
   // Load data
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [statsRes, templatesRes, auditRes, serviceCodesRes, docTypesRes] = await Promise.all([
         client.get('/admin/prompts/stats/overview'),
@@ -163,19 +166,39 @@ export default function AdminPromptManagerPage() {
         client.get('/admin/prompts/reference/service-codes'),
         client.get('/admin/prompts/reference/doc-types'),
       ]);
-      
-      setStats(statsRes.data);
-      setTemplates(templatesRes.data.prompts || []);
-      setAuditLog(auditRes.data.entries || []);
-      setServiceCodes(serviceCodesRes.data.service_codes || []);
-      setDocTypes(docTypesRes.data.doc_types || []);
+      const data = templatesRes.data;
+      const prompts = Array.isArray(data?.prompts) ? data.prompts : (Array.isArray(data) ? data : []);
+      setStats(statsRes.data ?? null);
+      setTemplates(prompts);
+      setAuditLog(Array.isArray(auditRes.data?.entries) ? auditRes.data.entries : []);
+      setServiceCodes(Array.isArray(serviceCodesRes.data?.service_codes) ? serviceCodesRes.data.service_codes : []);
+      setDocTypes(Array.isArray(docTypesRes.data?.doc_types) ? docTypesRes.data.doc_types : []);
     } catch (error) {
       console.error('Load error:', error);
+      setLoadError(error);
+      setTemplates([]);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
   }, [filters]);
+
+  const handleSeedDefaults = async () => {
+    setSeeding(true);
+    try {
+      const res = await client.post('/admin/prompts/seed');
+      if (res.data?.message === 'already seeded') {
+        toast.info('Prompts already exist. Refreshing list.');
+      } else {
+        toast.success(res.data?.message === 'seeded' ? `Seeded ${res.data?.created ?? 0} default prompt(s).` : 'Seed completed.');
+      }
+      await loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to seed defaults');
+    } finally {
+      setSeeding(false);
+    }
+  };
   
   // Load analytics data
   const loadAnalytics = useCallback(async () => {
@@ -577,8 +600,8 @@ export default function AdminPromptManagerPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Services</SelectItem>
-                        {serviceCodes.map(sc => (
-                          <SelectItem key={sc.code} value={sc.code}>{sc.name}</SelectItem>
+                        {(serviceCodes ?? []).map(sc => (
+                          <SelectItem key={sc?.code ?? sc} value={sc?.code ?? sc}>{sc?.name ?? sc?.code ?? sc}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -621,14 +644,33 @@ export default function AdminPromptManagerPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {templates.length === 0 ? (
+                    {loading ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                          No prompt templates found. Create your first one!
+                          <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                          Loading…
+                        </TableCell>
+                      </TableRow>
+                    ) : loadError ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <p className="text-red-600 mb-2">Failed to load prompts.</p>
+                          <Button variant="outline" size="sm" onClick={loadData}>Retry</Button>
+                        </TableCell>
+                      </TableRow>
+                    ) : (templates ?? []).filter(Boolean).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                          <p className="mb-2">No prompts yet.</p>
+                          <Button onClick={handleSeedDefaults} disabled={seeding} data-testid="seed-defaults-btn">
+                            {seeding ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Seed defaults
+                          </Button>
+                          <span className="block mt-2 text-sm">or create your first one with &quot;New Prompt&quot;.</span>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      templates.map(template => (
+                      (templates ?? []).filter(Boolean).map(template => (
                         <TableRow key={template.template_id} data-testid={`template-row-${template.template_id}`}>
                           <TableCell>
                             <div>
