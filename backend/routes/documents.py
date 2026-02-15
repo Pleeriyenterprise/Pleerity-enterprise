@@ -295,6 +295,14 @@ async def bulk_upload_documents(
             }
         )
         
+        from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
+        await recalculate_and_persist(
+            property_id,
+            REASON_DOCUMENT_UPLOADED,
+            {"id": user["portal_user_id"], "role": user.get("role")},
+            {"bulk_upload": True, "files_count": len(files)},
+        )
+        
         return {
             "message": f"Processed {len(files)} files",
             "results": results,
@@ -576,6 +584,14 @@ async def upload_zip_archive(
                 }
             )
             
+            from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
+            await recalculate_and_persist(
+                property_id,
+                REASON_DOCUMENT_UPLOADED,
+                {"id": user["portal_user_id"], "role": user.get("role")},
+                {"zip_upload": True, "zip_filename": file.filename},
+            )
+            
             return {
                 "message": f"Processed ZIP archive: {file.filename}",
                 "results": results,
@@ -670,6 +686,13 @@ async def upload_document(
         await regenerate_requirement_due_date(requirement_id, user["client_id"])
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
+        from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
+        await recalculate_and_persist(
+            property_id,
+            REASON_DOCUMENT_UPLOADED,
+            {"id": user["portal_user_id"], "role": user.get("role")},
+            {"document_id": document.document_id, "requirement_id": requirement_id},
+        )
         
         # Audit log
         await create_audit_log(
@@ -771,6 +794,13 @@ async def admin_upload_document(
         await regenerate_requirement_due_date(requirement_id, client_id)
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
+        from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
+        await recalculate_and_persist(
+            property_id,
+            REASON_DOCUMENT_UPLOADED,
+            {"id": user["portal_user_id"], "role": user.get("role")},
+            {"document_id": document.document_id, "requirement_id": requirement_id},
+        )
         
         # Audit log
         await create_audit_log(
@@ -835,6 +865,13 @@ async def verify_document(request: Request, document_id: str):
         if document.get("property_id"):
             from services.provisioning import provisioning_service
             await provisioning_service._update_property_compliance(document["property_id"])
+            from services.compliance_scoring_service import recalculate_and_persist, REASON_REQUIREMENT_CHANGED
+            await recalculate_and_persist(
+                document["property_id"],
+                REASON_REQUIREMENT_CHANGED,
+                {"id": user["portal_user_id"], "role": user.get("role")},
+                {"document_id": document_id, "requirement_id": document.get("requirement_id")},
+            )
 
         # Audit log
         await create_audit_log(
@@ -912,6 +949,15 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
             await _revert_requirement_if_no_verified_docs(
                 db, document["requirement_id"], document.get("property_id")
             )
+        property_id = document.get("property_id")
+        if property_id:
+            from services.compliance_scoring_service import recalculate_and_persist, REASON_REQUIREMENT_CHANGED
+            await recalculate_and_persist(
+                property_id,
+                REASON_REQUIREMENT_CHANGED,
+                {"id": user["portal_user_id"], "role": user.get("role")},
+                {"document_id": document_id, "action": "document_rejected"},
+            )
         
         # Audit log
         await create_audit_log(
@@ -954,6 +1000,14 @@ async def delete_document(request: Request, document_id: str):
         await db.documents.delete_one({"document_id": document_id})
         if was_verified and requirement_id:
             await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
+        if property_id:
+            from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_DELETED
+            await recalculate_and_persist(
+                property_id,
+                REASON_DOCUMENT_DELETED,
+                {"id": user["portal_user_id"], "role": user.get("role")},
+                {"document_id": document_id},
+            )
         try:
             file_path = Path(document.get("file_path", ""))
             if file_path.is_file():
@@ -992,6 +1046,14 @@ async def admin_delete_document(request: Request, document_id: str):
         await db.documents.delete_one({"document_id": document_id})
         if was_verified and requirement_id:
             await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
+        if property_id:
+            from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_DELETED
+            await recalculate_and_persist(
+                property_id,
+                REASON_DOCUMENT_DELETED,
+                {"id": user["portal_user_id"], "role": user.get("role")},
+                {"document_id": document_id, "action": "admin_document_deleted"},
+            )
         try:
             file_path = Path(document.get("file_path", ""))
             if file_path.is_file():
@@ -1496,6 +1558,16 @@ async def apply_ai_extraction(
         )
         
         logger.info(f"AI extraction applied for document {document_id}: {changes_made}")
+        
+        property_id = document.get("property_id")
+        if property_id:
+            from services.compliance_scoring_service import recalculate_and_persist, REASON_AI_APPLIED
+            await recalculate_and_persist(
+                property_id,
+                REASON_AI_APPLIED,
+                {"id": user["portal_user_id"], "role": user.get("role")},
+                {"document_id": document_id, "requirement_id": requirement_id},
+            )
         
         # Send email notification to the client
         try:

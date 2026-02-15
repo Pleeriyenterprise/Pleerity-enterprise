@@ -75,6 +75,7 @@ from job_runner import (
     run_compliance_status_check,
     run_scheduled_reports,
     run_compliance_score_snapshots,
+    run_expiry_rollover_recalc,
     run_order_delivery_processing,
     run_sla_monitoring,
     run_stuck_order_detection,
@@ -322,6 +323,15 @@ async def lifespan(app: FastAPI):
         CronTrigger(hour=2, minute=0),
         id="compliance_score_snapshots",
         name="Daily Compliance Score Snapshots",
+        replace_existing=True
+    )
+    
+    # Expiry rollover: recalc score for properties with due_date in window (daily 00:10 UTC)
+    scheduler.add_job(
+        run_expiry_rollover_recalc,
+        CronTrigger(hour=0, minute=10),
+        id="expiry_rollover_recalc",
+        name="Expiry Rollover Compliance Recalc",
         replace_existing=True
     )
     

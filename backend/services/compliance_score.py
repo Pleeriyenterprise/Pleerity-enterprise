@@ -67,26 +67,18 @@ def get_requirement_weight(requirement_type: str) -> float:
 
 
 async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
-    """Calculate the overall compliance score for a client.
+    """Return client-level compliance score from stored property scores (fast).
     
-    Enhanced scoring model with:
-    - Weighted requirement types (Gas Safety > EPC)
-    - HMO property risk adjustment
-    - Verified document counting
-    - Historical late renewal penalty
-    
-    Returns:
-        dict with score (0-100), grade (A-F), breakdown, and recommendations
+    Uses persisted compliance_score/compliance_breakdown on each Property.
+    Legacy properties without a stored score get one recalc and persist (lazy backfill).
+    Single source of truth for scoring: compliance_scoring_service.
     """
     db = database.get_db()
-    
     try:
-        # Get all properties for this client
         properties = await db.properties.find(
             {"client_id": client_id},
-            {"_id": 0}
+            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_last_calculated_at": 1, "is_hmo": 1}
         ).to_list(100)
-        
         if not properties:
             return {
                 "score": 100,
@@ -97,17 +89,143 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "recommendations": [],
                 "enhanced_model": True,
             }
-        
+        from services.compliance_scoring_service import recalculate_and_persist, REASON_LAZY_BACKFILL
+        need_backfill = [p for p in properties if p.get("compliance_score") is None]
+        for p in need_backfill:
+            await recalculate_and_persist(
+                p["property_id"],
+                REASON_LAZY_BACKFILL,
+                {"id": "system", "role": "SYSTEM"},
+                {},
+            )
+        properties = await db.properties.find(
+            {"client_id": client_id},
+            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "is_hmo": 1}
+        ).to_list(100)
+        scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
+        if not scores:
+            return {
+                "score": 100,
+                "grade": "A",
+                "color": "green",
+                "message": "No requirements to evaluate",
+                "breakdown": {},
+                "recommendations": [],
+                "enhanced_model": True,
+            }
+        client_score = round(sum(scores) / len(scores))
+        breakdowns = [p.get("compliance_breakdown") or {} for p in properties if isinstance(p.get("compliance_breakdown"), dict)]
+        if breakdowns:
+            def avg(key):
+                vals = [b.get(key) for b in breakdowns if b.get(key) is not None]
+                return round(sum(vals) / len(vals), 1) if vals else 0
+            breakdown = {
+                "status_score": avg("status_score"),
+                "expiry_score": avg("expiry_score"),
+                "document_score": avg("document_score"),
+                "overdue_penalty_score": avg("overdue_penalty_score"),
+                "risk_score": avg("risk_score"),
+            }
+        else:
+            breakdown = {}
+        if client_score >= 90:
+            grade, color, message = "A", "green", "Excellent compliance health"
+        elif client_score >= 80:
+            grade, color, message = "B", "green", "Good compliance status"
+        elif client_score >= 70:
+            grade, color, message = "C", "amber", "Moderate - some attention needed"
+        elif client_score >= 60:
+            grade, color, message = "D", "amber", "Below average - action required"
+        else:
+            grade, color, message = "F", "red", "Critical - immediate action needed"
+        requirements = await db.requirements.find(
+            {"client_id": client_id},
+            {"_id": 0, "status": 1}
+        ).to_list(500)
+        total_reqs = len(requirements)
+        compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
+        pending = sum(1 for r in requirements if r.get("status") == "PENDING")
+        expiring_soon = sum(1 for r in requirements if r.get("status") == "EXPIRING_SOON")
+        overdue = sum(1 for r in requirements if r.get("status") in ("OVERDUE", "EXPIRED"))
+        stats = {
+            "total_requirements": total_reqs,
+            "compliant": compliant,
+            "pending": pending,
+            "expiring_soon": expiring_soon,
+            "overdue": overdue,
+            "critical_overdue": 0,
+            "documents_uploaded": 0,
+            "documents_verified": 0,
+            "verified_coverage_percent": 0,
+            "total_coverage_percent": 0,
+            "days_until_next_expiry": None,
+            "nearest_expiry_type": None,
+            "hmo_properties": sum(1 for p in properties if p.get("is_hmo")),
+        }
+        recommendations = []
+        if overdue > 0:
+            recommendations.append({"priority": "high", "action": f"Address {overdue} overdue requirement(s)", "impact": "+10-20 points"})
+        if expiring_soon > 0:
+            recommendations.append({"priority": "medium", "action": f"Renew {expiring_soon} certificate(s) expiring soon", "impact": "+10-15 points"})
+        return {
+            "score": client_score,
+            "grade": grade,
+            "color": color,
+            "message": message,
+            "enhanced_model": True,
+            "breakdown": breakdown,
+            "weights": {
+                "status": "35%",
+                "expiry": "25%",
+                "documents": "15%",
+                "overdue_penalty": "15%",
+                "risk_factor": "10%",
+            },
+            "stats": stats,
+            "recommendations": recommendations[:5],
+            "properties_count": len(properties),
+        }
+    except Exception as e:
+        logger.error(f"Error calculating compliance score: {e}")
+        return {
+            "score": 0,
+            "grade": "?",
+            "color": "gray",
+            "message": "Unable to calculate score",
+            "breakdown": {},
+            "recommendations": [],
+            "error": str(e),
+            "enhanced_model": True,
+        }
+
+
+async def _calculate_compliance_score_legacy_from_db(client_id: str) -> Dict[str, Any]:
+    """Legacy path: compute client score from full DB (used only if needed for fallback).
+    Kept for reference; normal path uses stored property scores.
+    """
+    db = database.get_db()
+    try:
+        properties = await db.properties.find(
+            {"client_id": client_id},
+            {"_id": 0}
+        ).to_list(100)
+        if not properties:
+            return {
+                "score": 100,
+                "grade": "A",
+                "color": "green",
+                "message": "No properties to evaluate",
+                "breakdown": {},
+                "recommendations": [],
+                "enhanced_model": True,
+            }
         property_ids = [p["property_id"] for p in properties]
         hmo_property_ids = [p["property_id"] for p in properties if p.get("is_hmo", False)]
         hmo_count = len(hmo_property_ids)
-        
-        # Get all requirements
         requirements = await db.requirements.find(
             {"property_id": {"$in": property_ids}},
             {"_id": 0}
         ).to_list(500)
-        
         if not requirements:
             return {
                 "score": 100,
@@ -118,15 +236,11 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "recommendations": [],
                 "enhanced_model": True,
             }
-        
-        # Get all documents (only VERIFIED count for scoring)
         documents = await db.documents.find(
             {"property_id": {"$in": property_ids}},
             {"_id": 0}
         ).to_list(500)
-        
         verified_documents = [d for d in documents if d.get("status") == "VERIFIED"]
-        
         now = datetime.now(timezone.utc)
         
         # ============================================

@@ -87,6 +87,47 @@ async def run_compliance_score_snapshots():
         raise
 
 
+async def run_expiry_rollover_recalc():
+    """Daily job: recalc compliance score for properties whose requirements' due_date
+    crossed expiry/expiring_soon thresholds (e.g. expired today or entered 30-day window).
+    Writes history snapshot + AuditLog per property (EXPIRY_ROLLOVER).
+    """
+    try:
+        from database import database
+        from datetime import datetime, timezone, timedelta
+        from services.compliance_scoring_service import recalculate_and_persist, REASON_EXPIRY_ROLLOVER
+
+        db = database.get_db()
+        now = datetime.now(timezone.utc)
+        window_start = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        window_end = (now + timedelta(days=31)).replace(hour=23, minute=59, second=59, microsecond=999000)
+        window_start_iso = window_start.isoformat()
+        window_end_iso = window_end.isoformat()
+
+        cursor = db.requirements.find(
+            {"due_date": {"$gte": window_start_iso, "$lte": window_end_iso}},
+            {"property_id": 1}
+        )
+        property_ids = set()
+        async for doc in cursor:
+            property_ids.add(doc["property_id"])
+
+        actor = {"id": "system", "role": "SYSTEM"}
+        count = 0
+        for property_id in property_ids:
+            try:
+                await recalculate_and_persist(property_id, REASON_EXPIRY_ROLLOVER, actor, {"job": "expiry_rollover"})
+                count += 1
+            except Exception as e:
+                logger.warning(f"Expiry rollover recalc failed for property {property_id}: {e}")
+
+        logger.info(f"Expiry rollover recalc completed: {count} properties updated")
+        return {"message": f"Expiry rollover: {count} properties updated", "count": count}
+    except Exception as e:
+        logger.error(f"Expiry rollover job failed: {e}")
+        raise
+
+
 async def run_order_delivery_processing():
     try:
         from services.order_delivery_service import order_delivery_service
@@ -203,6 +244,7 @@ JOB_RUNNERS = {
     "compliance_check_evening": run_compliance_status_check,
     "scheduled_reports": run_scheduled_reports,
     "compliance_score_snapshots": run_compliance_score_snapshots,
+    "expiry_rollover_recalc": run_expiry_rollover_recalc,
     "order_delivery_processing": run_order_delivery_processing,
     "sla_monitoring": run_sla_monitoring,
     "stuck_order_detection": run_stuck_order_detection,

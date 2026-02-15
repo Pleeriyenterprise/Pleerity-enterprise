@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
+from typing import Optional
 import logging
 import io
 
@@ -64,28 +65,57 @@ async def get_compliance_score_trend(
 @router.get("/compliance-score/explanation")
 async def get_compliance_score_explanation(
     request: Request,
-    compare_days: int = 7
+    compare_days: int = 7,
+    property_id: Optional[str] = None
 ):
-    """Get a plain-English explanation of what changed in the compliance score.
+    """Get explanation of compliance score: per-property (stored breakdown) or client-level trend.
     
-    Compares current state to N days ago and explains the difference.
+    If property_id is set: returns stored score, breakdown summary, and key reasons for that property
+    (no recompute; reads Property.compliance_score / compliance_breakdown).
+    If property_id is omitted: compares client score to N days ago (trend explanation).
     
     Args:
-        compare_days: Days back to compare (default 7, max 30)
+        compare_days: Days back to compare for client-level trend (default 7, max 30)
+        property_id: Optional; when set, return property-level explanation from stored data
     """
     user = await client_route_guard(request)
     
     try:
+        if property_id:
+            db = database.get_db()
+            prop = await db.properties.find_one(
+                {"property_id": property_id, "client_id": user["client_id"]},
+                {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_last_calculated_at": 1}
+            )
+            if not prop:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+            score = prop.get("compliance_score")
+            breakdown = prop.get("compliance_breakdown") or {}
+            reasons = []
+            if breakdown.get("status_score") is not None and breakdown.get("status_score") < 100:
+                reasons.append("Some requirements are not yet compliant (status score {:.0f}%)".format(breakdown["status_score"]))
+            if breakdown.get("expiry_score") is not None and breakdown.get("expiry_score") < 100:
+                reasons.append("Upcoming or past expiries affecting score (expiry score {:.0f}%)".format(breakdown["expiry_score"]))
+            if breakdown.get("document_score") is not None and breakdown.get("document_score") < 100:
+                reasons.append("Document coverage below 100% (document score {:.0f}%)".format(breakdown["document_score"]))
+            if breakdown.get("overdue_penalty_score") is not None and breakdown.get("overdue_penalty_score") < 100:
+                reasons.append("Overdue items are reducing the score")
+            return {
+                "property_id": property_id,
+                "score": score,
+                "breakdown_summary": breakdown,
+                "compliance_last_calculated_at": prop.get("compliance_last_calculated_at"),
+                "key_reasons": reasons if reasons else ["Score is based on stored compliance breakdown for this property."],
+            }
         from services.compliance_trending import get_score_change_explanation
-        
-        # Cap at 30 days
         compare_days = min(compare_days, 30)
-        
         explanation = await get_score_change_explanation(
             client_id=user["client_id"],
             compare_days=compare_days
         )
         return explanation
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Compliance score explanation error: {e}")
         raise HTTPException(

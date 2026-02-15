@@ -141,6 +141,14 @@ class ProvisioningService:
                 await self._generate_requirements(client_id, prop["property_id"])
             for prop in properties:
                 await self._update_property_compliance(prop["property_id"])
+            from services.compliance_scoring_service import recalculate_and_persist, REASON_REQUIREMENT_CHANGED
+            for prop in properties:
+                await recalculate_and_persist(
+                    prop["property_id"],
+                    REASON_REQUIREMENT_CHANGED,
+                    {"id": "system", "role": "SYSTEM"},
+                    {"trigger": "provisioning"},
+                )
             existing_user = await db.portal_users.find_one(
                 {"client_id": client_id, "role": UserRole.ROLE_CLIENT_ADMIN.value},
                 {"_id": 0}

@@ -123,6 +123,13 @@ async def create_property(request: Request, data: CreatePropertyRequest):
         await provisioning_service._update_property_compliance(
             property_obj.property_id
         )
+        from services.compliance_scoring_service import recalculate_and_persist, REASON_PROPERTY_CREATED
+        await recalculate_and_persist(
+            property_obj.property_id,
+            REASON_PROPERTY_CREATED,
+            {"id": user["portal_user_id"], "role": user.get("role")},
+            {},
+        )
         
         # Audit log
         await create_audit_log(

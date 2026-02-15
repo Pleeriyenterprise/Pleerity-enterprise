@@ -95,6 +95,9 @@ class Database:
                 )
             except Exception:
                 pass  # Index may already exist
+            # Property-level score history (event-driven)
+            await self.db.property_compliance_score_history.create_index([("property_id", 1), ("created_at", -1)])
+            await self.db.property_compliance_score_history.create_index([("client_id", 1), ("created_at", -1)])
             
             # Intake uploads - for migration and list by session
             await self.db.intake_uploads.create_index("intake_session_id")
