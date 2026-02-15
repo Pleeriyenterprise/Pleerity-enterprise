@@ -30,20 +30,17 @@ class TestIntakeUploadValidation:
         from server import app
         return TestClient(app)
 
-    def test_upload_rejects_disallowed_type(self, app_client):
-        """Upload with disallowed MIME/extension returns 400."""
+    def test_upload_accepts_any_file_type(self, app_client):
+        """All file types allowed (no MIME/extension restriction). Non-PDF accepted when ClamAV returns CLEAN."""
         session_id = str(uuid.uuid4())
-        files = [("files", ("bad.exe", io.BytesIO(b"x"), "application/x-msdownload"))]
+        files = [("files", ("notes.txt", io.BytesIO(b"plain text"), "text/plain"))]
         data = {"intake_session_id": session_id}
-        r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
-        assert r.status_code == 400
-        body = r.json()
-        assert "detail" in body
-        detail = body["detail"]
-        if isinstance(detail, dict):
-            assert detail.get("message") or "allowed" in str(detail).lower()
-        else:
-            assert "allowed" in str(detail).lower()
+        with patch("services.clamav_scanner.scan_file", return_value=("CLEAN", None)):
+            r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+        assert r.status_code == 200
+        assert r.json().get("success") is True
+        assert len(r.json().get("uploaded", [])) == 1
+        assert r.json()["uploaded"][0]["status"] == "CLEAN"
 
     def test_upload_rejects_file_over_20mb(self, app_client):
         """Upload with file > 20MB returns 413."""
@@ -70,17 +67,17 @@ class TestIntakeUploadValidation:
         assert len(r.json().get("uploaded", [])) == 1
         assert r.json()["uploaded"][0]["status"] == "CLEAN"
 
-    def test_upload_rejects_more_than_20_files_per_request(self, app_client):
-        """More than 20 files in one request returns 400 with TOO_MANY_FILES."""
+    def test_upload_accepts_many_files_no_count_limit(self, app_client):
+        """No document count limit; many files in one request accepted (subject to size limits)."""
         session_id = str(uuid.uuid4())
         content = b"%PDF-1.4 minimal"
-        files = [("files", (f"f{i}.pdf", io.BytesIO(content), "application/pdf")) for i in range(21)]
+        files = [("files", (f"f{i}.pdf", io.BytesIO(content), "application/pdf")) for i in range(25)]
         data = {"intake_session_id": session_id}
-        r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
-        assert r.status_code == 400
-        body = r.json()
-        assert body.get("detail", {}).get("error_code") == "TOO_MANY_FILES"
-        assert "20" in str(body.get("detail", {}).get("message", ""))
+        with patch("services.clamav_scanner.scan_file", return_value=("CLEAN", None)):
+            r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+        assert r.status_code == 200
+        assert r.json().get("success") is True
+        assert len(r.json().get("uploaded", [])) == 25
 
     def test_scanner_unavailable_marks_quarantined_not_clean(self, app_client):
         """When ClamAV is unavailable or scan errors, file is QUARANTINED and never CLEAN."""

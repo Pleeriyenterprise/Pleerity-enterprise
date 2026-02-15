@@ -63,8 +63,9 @@ async def migrate_intake_uploads_to_vault(client_id: str) -> dict:
             errors.append(f"Upload {upload_id}: file not found at {storage_path}")
             continue
         original_filename = upload.get("original_filename", "document")
-        ext = Path(original_filename).suffix or ""
-        if not ext or ext.lower() not in {".pdf", ".jpg", ".jpeg", ".png", ".docx"}:
+        ext = (Path(original_filename).suffix or "").strip().lower()
+        # Preserve any extension (intake allows all file types); fallback to .bin if missing/invalid
+        if not ext or "/" in ext or "\\" in ext or len(ext) > 12:
             ext = ".bin"
         unique_name = f"{uuid.uuid4().hex}{ext}"
         dest_path = dest_dir / unique_name

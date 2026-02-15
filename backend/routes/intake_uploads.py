@@ -23,18 +23,9 @@ DATA_DIR = os.getenv("DATA_DIR", "/tmp")
 INTAKE_UPLOAD_DIR = Path(os.environ.get("INTAKE_UPLOAD_DIR", str(Path(DATA_DIR) / "uploads" / "intake")))
 INTAKE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-MAX_FILE_BYTES = 20 * 1024 * 1024   # 20MB
-MAX_SESSION_BYTES = 200 * 1024 * 1024  # 200MB
-MAX_FILES_PER_REQUEST = 20  # Per-request cap (no overall file count limit)
-
-ALLOWED_MIMES = {
-    "application/pdf",
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # DOCX
-}
-ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".docx"}
+MAX_FILE_BYTES = 20 * 1024 * 1024   # 20MB per file
+MAX_SESSION_BYTES = 200 * 1024 * 1024  # 200MB per intake session
+# No document count limit: only size limits apply (per file + per session)
 
 
 def _error_payload(message: str, error_code: str = "UPLOAD_VALIDATION_FAILED", **extra) -> dict:
@@ -46,28 +37,6 @@ def _error_payload(message: str, error_code: str = "UPLOAD_VALIDATION_FAILED", *
     }
 
 
-def _validate_file_type(filename: str, content_type: str | None) -> None:
-    ext = Path(filename).suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=_error_payload(
-                "Only PDF, JPG, PNG, and DOCX files are allowed.",
-                allowed_types=list(ALLOWED_EXTENSIONS),
-            ),
-        )
-    if content_type and content_type not in ALLOWED_MIMES:
-        # Allow by extension if MIME is generic
-        if content_type not in ("application/octet-stream",):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=_error_payload(
-                    f"File type not allowed: {content_type}. Use PDF, JPG, PNG, or DOCX.",
-                    allowed_types=list(ALLOWED_EXTENSIONS),
-                ),
-            )
-
-
 @router.post("/upload")
 async def upload_intake_documents(
     intake_session_id: str = Form(...),
@@ -75,7 +44,7 @@ async def upload_intake_documents(
 ):
     """
     Upload documents during intake (Preferences & Consents step).
-    - Allowed: PDF, JPG, PNG, DOCX. Max 20MB per file, 200MB per session.
+    - All file types allowed (no MIME/extension restriction). Max 20MB per file, 200MB per session.
     - Files are scanned with ClamAV; flagged/failed → QUARANTINED (not migrated).
     """
     if not files:
@@ -83,24 +52,14 @@ async def upload_intake_documents(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=_error_payload("At least one file is required."),
         )
-    if len(files) > MAX_FILES_PER_REQUEST:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=_error_payload(
-                f"Too many files in one request. Maximum {MAX_FILES_PER_REQUEST} files per upload.",
-                error_code="TOO_MANY_FILES",
-                max_files=MAX_FILES_PER_REQUEST,
-                received=len(files),
-            ),
-        )
 
     db = database.get_db()
 
-    # Session total
+    # Session total (no file count limit; only byte limit)
     existing = await db.intake_uploads.find(
         {"intake_session_id": intake_session_id},
         {"_id": 0, "file_size": 1},
-    ).to_list(1000)
+    ).to_list(10000)
     current_session_bytes = sum(u.get("file_size", 0) for u in existing)
     new_bytes = 0
     for f in files:
@@ -137,10 +96,9 @@ async def upload_intake_documents(
                     file_size=file_size,
                 ),
             )
-        _validate_file_type(file.filename or "", file.content_type)
-
-        file_ext = Path(file.filename or ".bin").suffix.lower()
-        if not file_ext or file_ext not in ALLOWED_EXTENSIONS:
+        # All file types allowed (no MIME/extension restriction)
+        file_ext = Path(file.filename or ".bin").suffix
+        if not file_ext:
             file_ext = ".bin"
         safe_name = f"{uuid.uuid4().hex}{file_ext}"
         storage_path = INTAKE_UPLOAD_DIR / safe_name

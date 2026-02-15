@@ -1868,8 +1868,7 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading }) =
   );
 };
 
-// Intake Document Upload Component
-const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.docx'];
+// Intake Document Upload Component (all file types; no count limit; size limits only)
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_SESSION_BYTES = 200 * 1024 * 1024;
 
@@ -1897,11 +1896,6 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
     loadExistingFiles();
   }, [loadExistingFiles]);
 
-  const isAllowedFile = (file) => {
-    const ext = '.' + (file.name || '').split('.').pop().toLowerCase();
-    return ALLOWED_EXTENSIONS.includes(ext);
-  };
-
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1916,17 +1910,13 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(isAllowedFile);
-    const rejected = Array.from(e.dataTransfer.files).filter(f => !isAllowedFile(f));
-    if (rejected.length) toast.error('Only PDF, JPG, PNG, and DOCX allowed. Skipped others.');
+    const droppedFiles = Array.from(e.dataTransfer.files);
     await uploadFiles(droppedFiles);
   };
 
   const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || []);
-    const allowed = selected.filter(isAllowedFile);
-    if (allowed.length < selected.length) toast.error('Only PDF, JPG, PNG, and DOCX allowed.');
-    await uploadFiles(allowed);
+    await uploadFiles(selected);
     e.target.value = '';
   };
 
@@ -2009,13 +1999,12 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
           Drop files here or click to browse
         </h3>
         <p className="text-sm text-gray-600 mb-4">
-          PDF, JPG, PNG, DOCX only. Max 20MB per file, 200MB total.
+          All file types. Max 20MB per file, 200MB total per session.
         </p>
         <input
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.jpg,.jpeg,.png,.docx,application/pdf,image/jpeg,image/png,image/jpg,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           className="hidden"
           onChange={handleFileSelect}
         />
