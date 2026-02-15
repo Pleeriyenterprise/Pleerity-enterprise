@@ -67,211 +67,22 @@ except Exception as e:
 
 scheduler = AsyncIOScheduler(jobstores=jobstores)
 
-async def run_daily_reminders():
-    """Scheduled job: Send daily compliance reminders."""
-    try:
-        from services.jobs import JobScheduler
-        job_scheduler = JobScheduler()
-        await job_scheduler.connect()
-        count = await job_scheduler.send_daily_reminders()
-        await job_scheduler.close()
-        logger.info(f"Daily reminders job completed: {count} reminders sent")
-    except Exception as e:
-        logger.error(f"Daily reminders job failed: {e}")
-
-async def run_pending_verification_digest():
-    """Scheduled job: Email OWNER/ADMIN daily summary of pending verifications (counts only) and write audit log."""
-    try:
-        from services.jobs import JobScheduler
-        job_scheduler = JobScheduler()
-        await job_scheduler.connect()
-        sent = await job_scheduler.send_pending_verification_digest()
-        await job_scheduler.close()
-        logger.info(f"Pending verification digest job completed: {sent} emails sent")
-    except Exception as e:
-        logger.error(f"Pending verification digest job failed: {e}")
-
-
-async def run_monthly_digests():
-    """Scheduled job: Send monthly compliance digests."""
-    try:
-        from services.jobs import JobScheduler
-        job_scheduler = JobScheduler()
-        await job_scheduler.connect()
-        count = await job_scheduler.send_monthly_digests()
-        await job_scheduler.close()
-        logger.info(f"Monthly digest job completed: {count} digests sent")
-    except Exception as e:
-        logger.error(f"Monthly digest job failed: {e}")
-
-async def run_compliance_status_check():
-    """Scheduled job: Check for compliance status changes and send alerts."""
-    try:
-        from services.jobs import JobScheduler
-        job_scheduler = JobScheduler()
-        await job_scheduler.connect()
-        count = await job_scheduler.check_compliance_status_changes()
-        await job_scheduler.close()
-        logger.info(f"Compliance status check completed: {count} alerts sent")
-    except Exception as e:
-        logger.error(f"Compliance status check failed: {e}")
-
-
-async def run_scheduled_reports():
-    """Scheduled job: Process and send scheduled reports."""
-    try:
-        from services.jobs import run_scheduled_reports as process_reports
-        count = await process_reports()
-        logger.info(f"Scheduled reports job completed: {count} reports sent")
-    except Exception as e:
-        logger.error(f"Scheduled reports job failed: {e}")
-
-
-async def run_compliance_score_snapshots():
-    """Scheduled job: Capture daily compliance score snapshots for all clients."""
-    try:
-        from services.compliance_trending import capture_all_client_snapshots
-        result = await capture_all_client_snapshots()
-        logger.info(f"Compliance score snapshots completed: {result['success_count']}/{result['total_clients']} clients")
-    except Exception as e:
-        logger.error(f"Compliance score snapshots job failed: {e}")
-
-
-async def run_order_delivery_processing():
-    """Scheduled job: Process orders in FINALISING status for automatic delivery."""
-    try:
-        from services.order_delivery_service import order_delivery_service
-        result = await order_delivery_service.process_finalising_orders()
-        
-        if result['processed'] > 0:
-            logger.info(
-                f"Order delivery job: {result['processed']} processed, "
-                f"{result['delivered']} delivered, {result['failed']} failed"
-            )
-            if result['errors']:
-                for err in result['errors']:
-                    logger.warning(f"Delivery failed for {err['order_id']}: {err['error']}")
-        else:
-            logger.debug("Order delivery job: No orders to process")
-            
-    except Exception as e:
-        logger.error(f"Order delivery job failed: {e}")
-
-
-async def run_sla_monitoring():
-    """Scheduled job: Check SLA for all active orders and send warnings/breach notifications."""
-    try:
-        from services.workflow_automation_service import workflow_automation_service
-        result = await workflow_automation_service.wf9_sla_check()
-        
-        results = result.get('results', {})
-        if results.get('warnings_sent', 0) > 0 or results.get('breaches_sent', 0) > 0:
-            logger.info(
-                f"SLA monitoring: {results['checked']} checked, "
-                f"{results['warnings_sent']} warnings, {results['breaches_sent']} breaches"
-            )
-        else:
-            logger.debug(f"SLA monitoring: {results['checked']} orders checked, no alerts")
-            
-    except Exception as e:
-        logger.error(f"SLA monitoring job failed: {e}")
-
-
-async def run_stuck_order_detection():
-    """Scheduled job: Detect orders stuck in FINALISING without proper documents."""
-    try:
-        from services.order_workflow import OrderStatus
-        from database import database
-        from datetime import timedelta
-        
-        db = database.get_db()
-        
-        # Find FINALISING orders that have been there for more than 1 hour
-        # and don't have proper approval fields
-        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
-        
-        stuck_orders = await db.orders.find({
-            "status": OrderStatus.FINALISING.value,
-            "updated_at": {"$lt": one_hour_ago},
-            "$or": [
-                {"document_versions": {"$size": 0}},
-                {"version_locked": {"$ne": True}},
-                {"approved_document_version": {"$exists": False}},
-                {"approved_document_version": None}
-            ]
-        }, {"_id": 0, "order_id": 1, "service_code": 1, "customer_email": 1}).to_list(100)
-        
-        if stuck_orders:
-            logger.warning(
-                f"🚨 STUCK ORDER ALERT: Found {len(stuck_orders)} orders in FINALISING "
-                f"without proper documents/approval for >1 hour"
-            )
-            for order in stuck_orders:
-                logger.warning(
-                    f"  - Order {order.get('order_id')} ({order.get('service_code')}) "
-                    f"needs manual intervention"
-                )
-            
-            # TODO: Send notification to admin
-            # For now, just log
-        else:
-            logger.debug("Stuck order detection: No stuck orders found")
-            
-    except Exception as e:
-        logger.error(f"Stuck order detection job failed: {e}")
-
-
-async def run_queued_order_processing():
-    """Scheduled job: Process queued orders through document generation."""
-    try:
-        from services.workflow_automation_service import workflow_automation_service
-        result = await workflow_automation_service.process_queued_orders(limit=5)
-        
-        results = result.get('results', {})
-        if results.get('processed', 0) > 0:
-            logger.info(
-                f"Queue processing: {results['processed']} processed, "
-                f"{results.get('to_review', 0)} to review, "
-                f"{results.get('regenerated', 0)} regenerated, "
-                f"{results['failed']} failed"
-            )
-        else:
-            logger.info("Queue processing: No paid orders needing processing (QUEUED/DRAFT_READY/REGEN_REQUESTED)")
-            
-    except Exception as e:
-        logger.error(f"Queue processing job failed: {e}")
-
-
-async def run_abandoned_intake_detection():
-    """Scheduled job: Detect abandoned intakes and create leads."""
-    try:
-        from services.lead_service import AbandonedIntakeService
-        created = await AbandonedIntakeService.detect_abandoned_intakes(timeout_hours=1.0)
-        if created:
-            logger.info(f"Created {len(created)} leads from abandoned intakes")
-    except Exception as e:
-        logger.error(f"Abandoned intake detection failed: {e}")
-
-
-async def run_lead_followup_processing():
-    """Scheduled job: Process lead follow-up email queue."""
-    try:
-        from services.lead_followup_service import LeadFollowUpService
-        await LeadFollowUpService.process_followup_queue()
-    except Exception as e:
-        logger.error(f"Lead follow-up processing failed: {e}")
-
-
-async def run_lead_sla_check():
-    """Scheduled job: Check for lead SLA breaches."""
-    try:
-        from services.lead_followup_service import LeadSLAService
-        breaches = await LeadSLAService.check_sla_breaches(sla_hours=24)
-        if breaches:
-            logger.warning(f"Detected {breaches} lead SLA breaches")
-    except Exception as e:
-        logger.error(f"Lead SLA check failed: {e}")
-
+# Import job runners from shared module (used by scheduler and admin run-now)
+from job_runner import (
+    run_daily_reminders,
+    run_pending_verification_digest,
+    run_monthly_digests,
+    run_compliance_status_check,
+    run_scheduled_reports,
+    run_compliance_score_snapshots,
+    run_order_delivery_processing,
+    run_sla_monitoring,
+    run_stuck_order_detection,
+    run_queued_order_processing,
+    run_abandoned_intake_detection,
+    run_lead_followup_processing,
+    run_lead_sla_check,
+)
 
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager

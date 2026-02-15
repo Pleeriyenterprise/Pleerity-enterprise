@@ -845,25 +845,19 @@ const JobsMonitoring = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const triggerJob = async (jobType) => {
-    setTriggering(jobType);
+  const triggerJob = async (jobId) => {
+    if (!jobId) return;
+    setTriggering(jobId);
     try {
-      const response = await api.post(`/admin/jobs/trigger/${jobType}`);
-      toast.success(response.data.message);
+      const response = await api.post('/admin/jobs/run', { job: jobId });
+      const message = response.data?.message || `${jobId} completed`;
+      toast.success(message);
       fetchJobsStatus();
     } catch (error) {
-      toast.error(`Failed to trigger ${jobType} job`);
+      toast.error(error.response?.data?.detail || `Failed to run ${jobId}`);
     } finally {
       setTriggering(null);
     }
-  };
-
-  // Map job IDs to job types for triggering
-  const getJobType = (jobId) => {
-    if (jobId.includes('daily')) return 'daily';
-    if (jobId.includes('monthly')) return 'monthly';
-    if (jobId.includes('compliance')) return 'compliance';
-    return 'daily';
   };
 
   if (loading) {
@@ -900,25 +894,25 @@ const JobsMonitoring = () => {
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Scheduled Jobs</h3>
           {(jobsStatus?.scheduled_jobs ?? []).map((job) => {
-            const jobType = getJobType(job.id);
+            const jobId = job?.id;
             return (
-              <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div key={jobId || job?.name} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-4">
                   <Clock className="w-5 h-5 text-electric-teal" />
                   <div>
-                    <p className="font-medium text-midnight-blue">{job.name}</p>
+                    <p className="font-medium text-midnight-blue">{job?.name}</p>
                     <p className="text-sm text-gray-500">
-                      Next run: {job.next_run ? new Date(job.next_run).toLocaleString() : 'Not scheduled'}
+                      Next run: {job?.next_run ? new Date(job.next_run).toLocaleString() : 'Not scheduled'}
                     </p>
                   </div>
                 </div>
                 <button
-                  onClick={() => triggerJob(jobType)}
-                  disabled={triggering !== null}
+                  onClick={() => triggerJob(jobId)}
+                  disabled={triggering !== null || !jobId}
                   className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50"
-                  data-testid={`trigger-${jobType}-btn`}
+                  data-testid={`trigger-${jobId}-btn`}
                 >
-                  {triggering === jobType ? (
+                  {triggering === jobId ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
                     <Play className="w-4 h-4" />
@@ -936,12 +930,12 @@ const JobsMonitoring = () => {
         <h3 className="text-lg font-semibold text-midnight-blue mb-4">Manual Job Triggers</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => triggerJob('daily')}
+            onClick={() => triggerJob('daily_reminders')}
             disabled={triggering !== null}
             className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-electric-teal hover:bg-teal-50 transition-colors disabled:opacity-50"
             data-testid="manual-trigger-daily"
           >
-            {triggering === 'daily' ? (
+            {triggering === 'daily_reminders' ? (
               <RefreshCw className="w-6 h-6 animate-spin text-electric-teal" />
             ) : (
               <Mail className="w-6 h-6 text-electric-teal" />
@@ -951,12 +945,12 @@ const JobsMonitoring = () => {
           </button>
 
           <button
-            onClick={() => triggerJob('monthly')}
+            onClick={() => triggerJob('monthly_digest')}
             disabled={triggering !== null}
             className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-electric-teal hover:bg-teal-50 transition-colors disabled:opacity-50"
             data-testid="manual-trigger-monthly"
           >
-            {triggering === 'monthly' ? (
+            {triggering === 'monthly_digest' ? (
               <RefreshCw className="w-6 h-6 animate-spin text-electric-teal" />
             ) : (
               <Calendar className="w-6 h-6 text-electric-teal" />
@@ -966,12 +960,12 @@ const JobsMonitoring = () => {
           </button>
 
           <button
-            onClick={() => triggerJob('compliance')}
+            onClick={() => triggerJob('compliance_check_morning')}
             disabled={triggering !== null}
             className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-amber-500 hover:bg-amber-50 transition-colors disabled:opacity-50"
             data-testid="manual-trigger-compliance"
           >
-            {triggering === 'compliance' ? (
+            {triggering === 'compliance_check_morning' ? (
               <RefreshCw className="w-6 h-6 animate-spin text-amber-600" />
             ) : (
               <AlertTriangle className="w-6 h-6 text-amber-600" />

@@ -1532,38 +1532,59 @@ async def get_feature_matrix(request: Request):
             detail="Failed to load feature matrix"
         )
 
+class RunJobRequest(BaseModel):
+    job: str
+
+
+@router.post("/jobs/run")
+async def run_job_now(request: Request, body: RunJobRequest):
+    """Run a single background job by id (admin only). Returns job-specific message for toast."""
+    user = await admin_route_guard(request)
+    from job_runner import JOB_RUNNERS
+
+    job_id = (body.job or "").strip()
+    if not job_id or job_id not in JOB_RUNNERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid job. Use one of: {', '.join(sorted(JOB_RUNNERS.keys()))}"
+        )
+    try:
+        result = await JOB_RUNNERS[job_id]()
+        message = (result.get("message") if result else None) or f"Job {job_id} completed"
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=None,
+            metadata={
+                "action": "manual_job_run",
+                "job_id": job_id,
+                "admin_email": user["email"],
+            },
+        )
+        return {"success": True, "job": job_id, "message": message}
+    except Exception as e:
+        logger.error(f"Manual job run error ({job_id}): {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to run job: {job_id}"
+        )
+
+
 @router.post("/jobs/trigger/{job_type}")
 async def trigger_job(request: Request, job_type: str):
-    """Manually trigger a background job (admin only).
-    
-    job_type: 'daily', 'monthly', or 'compliance'
-    """
+    """Legacy: manually trigger daily/monthly/compliance (admin only). Prefer POST /jobs/run with body { job: '<id>' }."""
     user = await admin_route_guard(request)
-    
     if job_type not in ["daily", "monthly", "compliance"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid job type. Use 'daily', 'monthly', or 'compliance'"
         )
-    
+    job_id = {"daily": "daily_reminders", "monthly": "monthly_digest", "compliance": "compliance_check_morning"}[job_type]
+    from job_runner import JOB_RUNNERS
     try:
-        from services.jobs import JobScheduler
-        job_scheduler = JobScheduler()
-        await job_scheduler.connect()
-        
-        if job_type == "daily":
-            count = await job_scheduler.send_daily_reminders()
-            result_msg = f"Daily reminders sent: {count}"
-        elif job_type == "monthly":
-            count = await job_scheduler.send_monthly_digests()
-            result_msg = f"Monthly digests sent: {count}"
-        else:  # compliance
-            count = await job_scheduler.check_compliance_status_changes()
-            result_msg = f"Compliance alerts sent: {count}"
-        
-        await job_scheduler.close()
-        
-        # Audit log
+        result = await JOB_RUNNERS[job_id]()
+        message = (result.get("message") if result else None) or f"{job_type} job completed"
+        count = result.get("count") if result else None
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
@@ -1574,9 +1595,7 @@ async def trigger_job(request: Request, job_type: str):
                 "admin_email": user["email"]
             }
         )
-        
-        return {"message": result_msg, "count": count}
-    
+        return {"message": message, "count": count}
     except Exception as e:
         logger.error(f"Manual job trigger error: {e}")
         raise HTTPException(
