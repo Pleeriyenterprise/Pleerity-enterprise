@@ -141,4 +141,6 @@ export const adminAPI = {
   deactivateAdmin: (portalUserId) => apiClient.delete(`/admin/admins/${portalUserId}`),
   reactivateAdmin: (portalUserId) => apiClient.post(`/admin/admins/${portalUserId}/reactivate`),
   resendAdminInvite: (portalUserId) => apiClient.post(`/admin/admins/${portalUserId}/resend-invite`),
+  getComplianceScoreHistory: (propertyId, limit = 20) =>
+    apiClient.get(`/admin/properties/${propertyId}/compliance-score-history`, { params: { limit } }),
 };

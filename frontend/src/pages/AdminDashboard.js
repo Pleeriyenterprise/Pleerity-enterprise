@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import api from '../api/client';
+import api, { adminAPI } from '../api/client';
 import { toast } from 'sonner';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { 
@@ -298,10 +298,13 @@ const ClientDetailModal = ({ clientId, onClose }) => {
     setScoreHistoryLoading(true);
     setScoreHistoryError(null);
     try {
-      const res = await api.get(`/admin/properties/${propertyId}/compliance-score-history`, { params: { limit } });
+      const res = await adminAPI.getComplianceScoreHistory(propertyId, limit);
       return res?.data ?? null;
     } catch (err) {
-      const msg = err.response?.data?.detail ?? (typeof err.response?.data?.message === 'string' ? err.response.data.message : 'Failed to load score history');
+      const status = err.response?.status;
+      const msg = status === 403 || status === 401
+        ? 'Not authorized'
+        : (err.response?.data?.detail ?? (typeof err.response?.data?.message === 'string' ? err.response.data.message : 'Failed to load score history'));
       setScoreHistoryError(msg);
       toast.error(msg);
       return null;
@@ -483,40 +486,66 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                 </div>
               </div>
 
-              {/* Compliance Score History (property-level, when a property is selected) */}
+              {/* Compliance panel (property-level, when a property is selected) */}
               {selectedPropertyId && (
                 <div className="border-t pt-6 mt-6">
-                  <h3 className="font-semibold text-midnight-blue mb-4">Compliance Score History</h3>
+                  <h3 className="font-semibold text-midnight-blue mb-4">Compliance</h3>
                   {scoreHistoryLoading && !scoreHistoryData && (
-                    <div className="flex items-center gap-2 text-gray-500 py-4">
-                      <RefreshCw className="w-5 h-5 animate-spin" />
-                      <span>Loading history…</span>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-48 animate-pulse" />
+                      <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Timestamp</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Score</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Trigger reason</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Actor</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <tr key={i}>
+                                <td className="px-4 py-2"><span className="inline-block h-4 bg-gray-100 rounded w-32 animate-pulse" /></td>
+                                <td className="px-4 py-2"><span className="inline-block h-4 bg-gray-100 rounded w-8 animate-pulse" /></td>
+                                <td className="px-4 py-2"><span className="inline-block h-4 bg-gray-100 rounded w-24 animate-pulse" /></td>
+                                <td className="px-4 py-2"><span className="inline-block h-4 bg-gray-100 rounded w-16 animate-pulse" /></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                   {scoreHistoryError && !scoreHistoryData && (
-                    <p className="text-sm text-red-600 py-2">{scoreHistoryError}</p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-red-600">{scoreHistoryError}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleViewScoreHistory(selectedPropertyId)}
+                        className="text-sm font-medium text-electric-teal hover:underline"
+                        data-testid="retry-score-history"
+                      >
+                        Retry
+                      </button>
+                    </div>
                   )}
                   {scoreHistoryData && (
                     <>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Current Compliance Score</p>
                         <p className="text-sm text-gray-600">
-                          Current score: <span className="font-semibold">{scoreHistoryData.current_score ?? '—'}</span>
+                          <span className="font-semibold">{scoreHistoryData.current_score ?? '—'}</span>
                           {scoreHistoryData.last_calculated_at && (
                             <span className="text-gray-500 ml-2">
                               (last calculated {new Date(scoreHistoryData.last_calculated_at).toLocaleString()})
                             </span>
                           )}
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPropertyId(null)}
-                          className="text-sm text-gray-500 hover:text-gray-700"
-                        >
-                          Close
-                        </button>
                       </div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">Compliance Score History</p>
                       {(scoreHistoryData.history ?? []).length === 0 ? (
-                        <p className="text-sm text-gray-500 py-4">No history recorded.</p>
+                        <p className="text-sm text-gray-500 py-4">No compliance score history recorded yet.</p>
                       ) : (
                         <>
                           <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -572,7 +601,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                     </div>
                     <div className="overflow-auto flex-1 p-4">
                       {fullHistoryModal.length === 0 ? (
-                        <p className="text-sm text-gray-500">No history recorded.</p>
+                        <p className="text-sm text-gray-500">No compliance score history recorded yet.</p>
                       ) : (
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0">
