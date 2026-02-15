@@ -5,12 +5,13 @@ Compliance Vault Pro - Complete Flow Verification
 Tests the entire user journey from intake to dashboard access.
 """
 import asyncio
+import os
 import requests
 import json
 from datetime import datetime
 import sys
 
-API_URL = "https://order-fulfillment-9.preview.emergentagent.com/api"
+API_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/") + "/api"
 
 class E2ETestSuite:
     def __init__(self):

@@ -20,8 +20,9 @@ logger = logging.getLogger(__name__)
 
 LEADS_COLLECTION = "leads"
 
-# Emergent LLM Key (for Gemini)
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY")
+# LLM API key for Gemini (LLM_API_KEY or EMERGENT_LLM_KEY for backward compat)
+def _get_llm_key():
+    return os.environ.get("LLM_API_KEY") or os.environ.get("EMERGENT_LLM_KEY")
 
 
 class LeadAISummaryService:
@@ -127,36 +128,28 @@ Write a brief summary:"""
     
     @staticmethod
     async def _call_gemini(context: Dict[str, str]) -> Optional[str]:
-        """Call Gemini API to generate summary."""
-        if not EMERGENT_LLM_KEY:
-            logger.warning("Emergent LLM key not configured, skipping AI summary")
+        """Call Gemini API to generate summary (utils.llm_chat)."""
+        if not _get_llm_key():
+            logger.warning("LLM_API_KEY not configured, skipping AI summary")
             return None
-        
         try:
-            from emergentintegrations.llm.gemini import GeminiChat
-            
-            # Format prompt
+            from utils.llm_chat import chat, _get_api_key
+            if not _get_api_key():
+                return None
             prompt = LeadAISummaryService.SUMMARY_PROMPT.format(**context)
-            
-            # Call Gemini
-            gemini = GeminiChat(
-                emergent_api_key=EMERGENT_LLM_KEY,
+            response = await chat(
+                system_prompt="You are a concise business summarizer. Output only the summary, no preamble.",
+                user_text=prompt,
+                model="gemini-2.0-flash",
             )
-            
-            response = await gemini.send_message(prompt)
-            
-            if response and response.text:
-                # Clean up response
-                summary = response.text.strip()
-                # Ensure reasonable length
+            if response:
+                summary = response.strip()
                 if len(summary) > 500:
                     summary = summary[:497] + "..."
                 return summary
-            
             return None
-            
         except ImportError:
-            logger.warning("emergentintegrations not available, skipping AI summary")
+            logger.warning("utils.llm_chat not available, skipping AI summary")
             return None
         except Exception as e:
             logger.error(f"Gemini API error: {e}")

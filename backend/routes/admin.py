@@ -1897,7 +1897,7 @@ async def get_password_setup_link(request: Request, client_id: str, generate_new
         from auth import generate_secure_token, hash_token
         from models import PasswordToken
         
-        frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         
         # Check for existing valid token (not used, not revoked, not expired)
         existing_token = None
@@ -2204,7 +2204,7 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
         import os
         from services.email_service import email_service
         
-        frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
         
         await email_service.send_admin_invite_email(
@@ -2475,7 +2475,7 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
         import os
         from services.email_service import email_service
         
-        frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
         
         admin_name = target_admin.get("full_name", target_admin.get("auth_email", "Admin"))
@@ -2816,32 +2816,27 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             ]
         }
         
-        # Step 3: Call LLM with injected snapshot using emergentintegrations
+        # Step 3: Call LLM with injected snapshot (Google Generative AI)
         try:
-            from emergentintegrations.llm.chat import LlmChat, UserMessage
+            from utils.llm_chat import chat, _get_api_key
         except ImportError:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Admin assistant unavailable (emergentintegrations not installed)",
+                detail="Admin assistant unavailable (LLM not configured)",
             )
-        
-        api_key = os.getenv("EMERGENT_LLM_KEY", "sk-emergent-f9533226f52E25cF35")
-        
-        # Build prompt with snapshot injection
+        if not _get_api_key():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Admin assistant unavailable (LLM_API_KEY not set)",
+            )
         system_prompt = ADMIN_ASSISTANT_PROMPT.format(
             snapshot=json.dumps(snapshot_data, indent=2, default=str)
         )
-        
-        # Initialize chat with Gemini for text generation
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"admin-assistant-{user['portal_user_id']}-{crn}",
-            system_message=system_prompt
-        ).with_model("gemini", "gemini-2.5-flash")
-        
-        # Send the question
-        user_message = UserMessage(text=question)
-        answer = await chat.send_message(user_message)
+        answer = await chat(
+            system_prompt=system_prompt,
+            user_text=question,
+            model="gemini-2.5-flash",
+        )
         
         # Step 4: Save query to history collection
         query_history_entry = {

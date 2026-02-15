@@ -681,7 +681,7 @@ class StripeWebhookService:
             )
             
             if client and client.get("contact_email"):
-                frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
+                frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
                 
                 # Access ends immediately for deleted subscription
                 access_end_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
@@ -867,7 +867,7 @@ class StripeWebhookService:
             )
             
             if client and client.get("contact_email"):
-                frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
+                frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
                 
                 # Get next retry date if available
                 retry_date = None

@@ -137,21 +137,15 @@ class DocumentService:
             # Build prompt based on document type
             prompt = self._build_generation_prompt(document)
             
-            # Call LLM using emergentintegrations
-            import os
-            from emergentintegrations.llm.chat import LlmChat, UserMessage
-            
-            chat = LlmChat(
-                api_key=os.environ.get("EMERGENT_LLM_KEY"),
-                session_id=f"clearform-{document.document_id}",
-                system_message=self._get_system_prompt(document.document_type),
-            ).with_model("gemini", "gemini-2.0-flash")
-            
-            user_message = UserMessage(text=prompt)
-            response = await chat.send_message(user_message)
-            
-            # Parse response
-            content = response.strip()
+            from utils.llm_chat import chat, _get_api_key
+            if not _get_api_key():
+                raise ValueError("LLM_API_KEY not set")
+            response = await chat(
+                system_prompt=self._get_system_prompt(document.document_type),
+                user_text=prompt,
+                model="gemini-2.0-flash",
+            )
+            content = (response or "").strip()
             
             # Calculate generation time
             end_time = datetime.now(timezone.utc)

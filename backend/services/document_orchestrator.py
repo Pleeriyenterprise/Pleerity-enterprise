@@ -264,31 +264,13 @@ class DocumentOrchestrator:
         )
     
     def _get_api_key(self):
-        """Get the Emergent LLM API key."""
-        if self._api_key is None:
-            self._api_key = os.environ.get("EMERGENT_LLM_KEY")
-            if not self._api_key:
-                raise ValueError("EMERGENT_LLM_KEY not found in environment")
-        return self._api_key
-    
-    def _create_llm_client(self, system_prompt: str, session_id: str = None):
-        """Create a new LLM client instance with the given system prompt."""
-        try:
-            from emergentintegrations.llm.chat import LlmChat
-        except ImportError:
-            raise ValueError("emergentintegrations not available")
-        import uuid
-        
-        api_key = self._get_api_key()
-        if session_id is None:
-            session_id = f"doc_gen_{uuid.uuid4().hex[:8]}"
-        
-        return LlmChat(
-            api_key=api_key,
-            session_id=session_id,
-            system_message=system_prompt
-        )
-    
+        """Get the LLM API key (LLM_API_KEY or EMERGENT_LLM_KEY for backward compat)."""
+        from utils.llm_chat import _get_api_key as get_key
+        key = get_key()
+        if not key:
+            raise ValueError("LLM_API_KEY not found in environment")
+        return key
+
     async def validate_order_for_generation(
         self,
         order_id: str,
@@ -988,18 +970,12 @@ class DocumentOrchestrator:
     ) -> Tuple[Dict[str, Any], Dict[str, int]]:
         """
         Execute GPT generation and return structured output.
-        
-        Uses LlmChat from emergentintegrations library.
+        Uses Google Generative AI (utils.llm_chat).
         """
-        try:
-            from emergentintegrations.llm.chat import LlmChat, UserMessage
-        except ImportError:
-            raise ValueError("emergentintegrations not available for document generation")
-        import uuid
-        
-        # Build the full system prompt with JSON output instruction
+        from utils.llm_chat import chat, _get_api_key
+        if not _get_api_key():
+            raise ValueError("LLM_API_KEY not found in environment")
         output_schema_str = json.dumps(prompt_def.output_schema, indent=2)
-        
         full_system_prompt = f"""{prompt_def.system_prompt}
 
 OUTPUT FORMAT:
@@ -1011,26 +987,11 @@ You MUST return your response as valid JSON matching this exact schema:
 
 Return ONLY the JSON object, no additional text or markdown formatting.
 """
-        
-        # Get API key
-        api_key = self._get_api_key()
-        
-        # Create a new LLM client for this generation
-        client = LlmChat(
-            api_key=api_key,
-            session_id=f"doc_gen_{uuid.uuid4().hex[:8]}",
-            system_message=full_system_prompt
+        response_text = await chat(
+            system_prompt=full_system_prompt,
+            user_text=user_prompt,
+            model="gemini-2.0-flash",
         )
-        
-        # Use with_model to set the model (provider, model)
-        client = client.with_model("gemini", "gemini-2.0-flash")
-        
-        # Execute generation using LlmChat send_message with UserMessage
-        user_msg = UserMessage(text=user_prompt)
-        response = await client.send_message(user_msg)
-        
-        # Parse response - LlmChat returns the message content directly as string
-        response_text = response if isinstance(response, str) else str(response)
         
         # Clean up response - remove markdown code blocks if present
         response_text = response_text.strip()

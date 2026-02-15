@@ -4,8 +4,8 @@ IMPORTANT: This service is ASSISTIVE ONLY. Extracted data must be reviewed by us
 before being applied. AI CANNOT mark a requirement as compliant - the deterministic
 compliance engine remains the final authority.
 
-Requires emergentintegrations for LLM; if not installed, analyze_document returns
-success=False with error "AI extraction unavailable".
+Requires LLM_API_KEY and Google Generative AI for LLM; if not configured,
+analyze_document returns success=False with error "AI extraction unavailable".
 """
 from database import database
 from models import AuditAction
@@ -149,7 +149,7 @@ class DocumentAnalysisService:
     """
     
     def __init__(self):
-        self.api_key = os.getenv("EMERGENT_LLM_KEY", "sk-emergent-f9533226f52E25cF35")
+        self.api_key = os.getenv("LLM_API_KEY") or os.getenv("EMERGENT_LLM_KEY")
         logger.info("Document Analysis Service initialized (Enhanced)")
     
     def _detect_document_type_hint(self, filename: str) -> str:
@@ -200,16 +200,23 @@ class DocumentAnalysisService:
         
         try:
             try:
-                from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContentWithMimeType
+                from utils.llm_chat import chat_with_file, _get_api_key
             except ImportError:
-                logger.warning("emergentintegrations not available; AI document extraction disabled")
+                logger.warning("utils.llm_chat not available; AI document extraction disabled")
                 return {
                     "success": False,
                     "error": "AI extraction unavailable",
                     "extracted_data": None,
                     "requires_review": True,
                 }
-            # Verify file exists
+            if not _get_api_key():
+                logger.warning("LLM_API_KEY not set; AI document extraction disabled")
+                return {
+                    "success": False,
+                    "error": "AI extraction unavailable",
+                    "extracted_data": None,
+                    "requires_review": True,
+                }
             if not os.path.exists(file_path):
                 logger.error(f"Document file not found: {file_path}")
                 return {
@@ -218,38 +225,18 @@ class DocumentAnalysisService:
                     "extracted_data": None,
                     "requires_review": True
                 }
-            
-            # Detect document type from filename if not provided
             if not doc_type_hint:
                 doc_type_hint = self._detect_document_type_hint(os.path.basename(file_path))
-            
-            # Get appropriate prompt for document type
             analysis_prompt = self._get_analysis_prompt(doc_type_hint)
-            
-            # Initialize chat with Gemini (required for file attachments)
-            chat = LlmChat(
-                api_key=self.api_key,
-                session_id=f"doc-analysis-{document_id}",
-                system_message=analysis_prompt
-            ).with_model("gemini", "gemini-2.5-flash")
-            
-            # Create file content object
-            file_content = FileContentWithMimeType(
+            user_text = "Analyze this compliance document and extract all relevant metadata. Focus on the priority fields: expiry date, issue date, certificate number, and engineer/assessor details. Return only the JSON object."
+            response = await chat_with_file(
+                system_prompt=analysis_prompt,
+                user_text=user_text,
                 file_path=file_path,
-                mime_type=mime_type
+                mime_type=mime_type,
+                model="gemini-2.5-flash",
             )
-            
-            # Send message with file attachment
-            user_message = UserMessage(
-                text="Analyze this compliance document and extract all relevant metadata. Focus on the priority fields: expiry date, issue date, certificate number, and engineer/assessor details. Return only the JSON object.",
-                file_contents=[file_content]
-            )
-            
-            response = await chat.send_message(user_message)
-            
-            # Parse the JSON response
             try:
-                # Clean up response - remove markdown code blocks if present
                 response_text = response.strip()
                 if response_text.startswith("```json"):
                     response_text = response_text[7:]

@@ -403,21 +403,18 @@ class TemplateService:
             return current_content
         
         try:
-            from emergentintegrations.llm.chat import LlmChat, UserMessage
-            
-            # Build prompt with data substitution
+            from utils.llm_chat import chat, _get_api_key
+            if not _get_api_key():
+                return current_content
             prompt = section.ai_prompt
             for key, value in data.items():
                 prompt = prompt.replace(f"{{{{{key}}}}}", str(value) if value else "[not provided]")
-            
-            chat = LlmChat(
-                api_key=os.environ.get("EMERGENT_LLM_KEY"),
-                session_id=f"template-{section.section_id}",
-                system_message="You are a professional document writer. Generate clear, professional content. Output only the requested content, no explanations or formatting instructions.",
-            ).with_model("gemini", "gemini-2.0-flash")
-            
-            response = await chat.send_message(UserMessage(text=prompt))
-            return response.strip()
+            response = await chat(
+                system_prompt="You are a professional document writer. Generate clear, professional content. Output only the requested content, no explanations or formatting instructions.",
+                user_text=prompt,
+                model="gemini-2.0-flash",
+            )
+            return response.strip() if response else current_content
             
         except Exception as e:
             logger.error(f"AI enhancement failed: {e}")

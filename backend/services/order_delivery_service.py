@@ -24,8 +24,8 @@ from models import EmailTemplateAlias
 logger = logging.getLogger(__name__)
 
 # Frontend URL for portal links
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
-BACKEND_URL = os.getenv("REACT_APP_BACKEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.getenv("REACT_APP_BACKEND_URL", "http://localhost:8001")
 
 
 class OrderDeliveryService:

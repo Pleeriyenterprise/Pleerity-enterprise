@@ -12,7 +12,7 @@ A comprehensive SaaS platform for UK landlords, letting agents, and property com
 **Service Type:** Full-stack SaaS web application  
 **Target Audience:** UK landlords, letting agents, property managers  
 **Tech Stack:** React + FastAPI + MongoDB  
-**Deployment:** Emergent Platform
+**Deployment:** Render (backend), Vercel (frontend), MongoDB Atlas
 
 ### Brand Identity
 - **Primary Color:** Midnight Blue (#0B1D3A)
@@ -54,7 +54,7 @@ Admin Console (/admin/*)
 - Pydantic (data validation)
 - bcrypt + JWT (authentication)
 - Postmark (transactional emails)
-- Stripe (payment processing via emergentintegrations)
+- Stripe (payment processing)
 
 **Frontend:**
 - React 19 with React Router
@@ -187,38 +187,40 @@ All sends logged to `MessageLog` collection.
 
 ### Environment Variables
 
-**Backend (`.env`):**
+**Backend (Render / local `.env`):**
 ```bash
-MONGO_URL=mongodb://localhost:27017
+MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net/DB_NAME
 DB_NAME=compliance_vault_pro
-CORS_ORIGINS=*
+CORS_ORIGINS=https://your-app.vercel.app,http://localhost:3000
 JWT_SECRET=your-production-secret-key-change-this
 JWT_ALGORITHM=HS256
 JWT_EXPIRATION_HOURS=24
-STRIPE_API_KEY=sk_test_emergent
+STRIPE_API_KEY=sk_live_xxx
 POSTMARK_SERVER_TOKEN=
-FRONTEND_URL=http://localhost:3000
-ENVIRONMENT=development
+FRONTEND_URL=https://your-app.vercel.app
+UNSUBSCRIBE_URL=https://your-app.vercel.app/unsubscribe
+LLM_API_KEY=
+ENVIRONMENT=production
 ```
 
-**Frontend (`.env`):**
+**Frontend (Vercel / local `.env`):**
 ```bash
-REACT_APP_BACKEND_URL=https://order-fulfillment-9.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://your-backend.onrender.com
 ```
 
 ### Quick Start
 
 ```bash
-# Backend
-cd /app/backend
+# Backend (Render or local)
+cd backend
 pip install -r requirements.txt
 python seed.py  # Create admin user
-sudo supervisorctl restart backend
+uvicorn server:app --host 0.0.0.0 --port 8001
 
-# Frontend
-cd /app/frontend
-yarn install
-sudo supervisorctl restart frontend
+# Frontend (Vercel or local)
+cd frontend
+npm install
+npm run build   # Vercel runs this; locally: npm start for dev
 ```
 
 ### Admin Credentials (Development)
@@ -229,7 +231,7 @@ Password: Admin123!
 
 ### API Health Check
 ```bash
-curl https://order-fulfillment-9.preview.emergentagent.com/api/health
+curl https://your-backend.onrender.com/api/health
 ```
 
 ---
@@ -329,10 +331,10 @@ CI runs on push and pull requests to `main` (see [.github/workflows](.github/wor
 
 ```bash
 # Health check
-curl https://order-fulfillment-9.preview.emergentagent.com/api/health
+curl https://YOUR_BACKEND_URL/api/health
 
 # Submit intake
-curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/intake/submit \
+curl -X POST https://YOUR_BACKEND_URL/api/intake/submit \
   -H "Content-Type: application/json" \
   -d '{
     "full_name": "Test User",
@@ -346,17 +348,40 @@ curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/intake/su
   }'
 
 # Login (client portal – ROLE_CLIENT / ROLE_CLIENT_ADMIN only)
-curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/auth/login \
+curl -X POST https://YOUR_BACKEND_URL/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "client@example.com", "password": "Password123"}'
 # Staff accounts get 403: {"detail": "This account must sign in via the Staff/Admin portal."}
 
 # Staff/Admin login (admin portal – ROLE_ADMIN / ROLE_OWNER only)
-curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/auth/admin/login \
+curl -X POST https://YOUR_BACKEND_URL/api/auth/admin/login \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@example.com", "password": "Password123"}'
 # Client accounts get 403: {"detail": "This account must sign in via the Client portal."}
 ```
+
+---
+
+## 🔧 Render + Vercel + Atlas – Env Checklist
+
+Set these for a clean deploy with **no Emergent dependencies**:
+
+| Where | Variable | Required | Notes |
+|-------|----------|----------|--------|
+| **Render** (backend) | `MONGO_URL` | Yes | MongoDB Atlas connection string |
+| | `DB_NAME` | Yes | e.g. `compliance_vault_pro` |
+| | `CORS_ORIGINS` | Yes | Include your Vercel frontend origin (e.g. `https://app.vercel.app`) |
+| | `JWT_SECRET` | Yes | Strong secret for tokens |
+| | `STRIPE_API_KEY` | Yes | Stripe secret key (test or live) |
+| | `FRONTEND_URL` | Yes | Full frontend URL (e.g. `https://your-app.vercel.app`) |
+| | `POSTMARK_SERVER_TOKEN` | If using email | Postmark API token |
+| | `UNSUBSCRIBE_URL` | If using email | e.g. `{FRONTEND_URL}/unsubscribe` |
+| | `LLM_API_KEY` | If using AI features | Google AI Studio / Gemini API key |
+| | `ENVIRONMENT` | Optional | `production` on Render |
+| **Vercel** (frontend) | `REACT_APP_BACKEND_URL` | Yes | Backend base URL (e.g. `https://your-app.onrender.com`) |
+
+**Backend entry:** `uvicorn server:app --host 0.0.0.0 --port 8001` (or Render’s default).  
+**Frontend build:** `npm run build` (CRA); Vercel runs this automatically.
 
 ---
 
@@ -407,7 +432,7 @@ curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/auth/admi
 **Product Owner:** Pleerity Enterprise Ltd  
 **Email:** support@pleerity.com  
 **System:** Compliance Vault Pro  
-**Platform:** Emergent
+**Platform:** Render + Vercel + MongoDB Atlas
 
 ---
 
@@ -419,7 +444,7 @@ curl -X POST https://order-fulfillment-9.preview.emergentagent.com/api/auth/admi
    - Create email templates with specified aliases
 
 2. **Stripe Setup:**
-   - Test mode works with `sk_test_emergent`
+   - Test mode: set STRIPE_API_KEY to your Stripe test key
    - For production: Add live keys
    - Configure webhooks to point to `/api/webhook/stripe`
 

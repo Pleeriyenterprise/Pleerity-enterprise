@@ -9,11 +9,12 @@ Verifies:
 4. Audit logging
 5. No side effects
 """
+import os
 import requests
 import json
 import time
 
-API_URL = "https://order-fulfillment-9.preview.emergentagent.com/api"
+API_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/") + "/api"
 
 class AssistantTester:
     def __init__(self):
@@ -146,7 +147,7 @@ class AssistantTester:
         # Test frontend is accessible
         try:
             response = requests.get(
-                "https://order-fulfillment-9.preview.emergentagent.com/app/assistant",
+                os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/") + "/app/assistant",
                 timeout=5
             )
             # Will redirect to login if not authenticated, but route exists

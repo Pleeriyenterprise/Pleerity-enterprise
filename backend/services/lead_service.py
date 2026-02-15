@@ -822,10 +822,8 @@ class LeadService:
             "admin@pleerity.com"
         ).split(",")
         SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
-        ADMIN_DASHBOARD_URL = os.environ.get(
-            "ADMIN_DASHBOARD_URL",
-            "https://order-fulfillment-9.preview.emergentagent.com/admin/leads"
-        )
+        _base = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        ADMIN_DASHBOARD_URL = os.environ.get("ADMIN_DASHBOARD_URL", f"{_base}/admin/leads")
         
         if not POSTMARK_SERVER_TOKEN or POSTMARK_SERVER_TOKEN == "leadsquared":
             logger.warning("Postmark not properly configured, skipping HIGH intent notification")

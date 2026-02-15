@@ -345,18 +345,14 @@ async def generate_ai_response(
     client_context: Optional[Dict[str, Any]] = None
 ) -> Tuple[str, Dict[str, Any]]:
     """
-    Generate AI response using Gemini via Emergent LLM Key.
+    Generate AI response using Gemini (utils.llm_chat).
     Returns (response_text, metadata).
     """
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        emergent_key = os.environ.get("EMERGENT_LLM_KEY")
-        if not emergent_key:
-            logger.warning("EMERGENT_LLM_KEY not set, using fallback response")
+        from utils.llm_chat import chat, _get_api_key
+        if not _get_api_key():
+            logger.warning("LLM_API_KEY not set, using fallback response")
             return await generate_fallback_response(message, client_context)
-        
-        # Build system message
         system_parts = [
             "You are Pleerity Support, a helpful AI assistant for Pleerity Enterprise Ltd.",
             "You help customers with: Compliance Vault Pro, Document Packs, AI Automation, Market Research, and general account queries.",
@@ -370,37 +366,27 @@ async def generate_ai_response(
             "KNOWLEDGE BASE:",
             json.dumps(KNOWLEDGE_BASE, indent=2),
         ]
-        
         if client_context:
             system_parts.extend([
                 "",
                 "CUSTOMER CONTEXT (authenticated):",
                 json.dumps(client_context, indent=2),
             ])
-        
-        # Initialize chat
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"support-{message[:20]}",
-            system_message="\n".join(system_parts)
-        ).with_model("gemini", "gemini-2.0-flash")
-        
-        # Build conversation context
         context_text = ""
-        for msg in conversation_history[-5:]:  # Last 5 messages
+        for msg in conversation_history[-5:]:
             role = "Customer" if msg.get("sender") == "user" else "Assistant"
             context_text += f"{role}: {msg.get('message_text', '')}\n"
-        
         prompt = f"""Previous conversation:
 {context_text}
 
 Customer's new message: {message}
 
 Respond helpfully and concisely. If you don't know something specific to their account, acknowledge it and offer alternatives."""
-        
-        user_message = UserMessage(text=prompt)
-        response = await chat.send_message(user_message)
-        
+        response = await chat(
+            system_prompt="\n".join(system_parts),
+            user_text=prompt,
+            model="gemini-2.0-flash",
+        )
         metadata = {
             "ai_generated": True,
             "model": "gemini-2.0-flash",

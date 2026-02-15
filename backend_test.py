@@ -25,7 +25,7 @@ from database import database
 from services.order_workflow import OrderStatus
 
 # Configuration
-BACKEND_URL = "https://order-fulfillment-9.preview.emergentagent.com/api"
+BACKEND_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/") + "/api"
 ADMIN_EMAIL = "admin@pleerity.com"
 ADMIN_PASSWORD = "Admin123!"
 

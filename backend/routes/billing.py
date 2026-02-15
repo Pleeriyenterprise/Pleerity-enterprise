@@ -60,7 +60,7 @@ async def create_checkout(request: Request, body: CheckoutRequest):
     if not origin:
         # Fallback to host
         host = request.headers.get("host", "localhost")
-        scheme = "https" if "preview.emergentagent.com" in host else "http"
+        scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
         origin = f"{scheme}://{host}"
     
     try:
@@ -149,13 +149,13 @@ async def create_billing_portal(request: Request):
     origin = request.headers.get("origin", "")
     if not origin:
         host = request.headers.get("host", "localhost")
-        scheme = "https" if "preview.emergentagent.com" in host else "http"
+        scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
         origin = f"{scheme}://{host}"
     
     try:
         import stripe
         import os
-        stripe.api_key = os.getenv("STRIPE_API_KEY", "sk_test_emergent")
+        stripe.api_key = os.getenv("STRIPE_API_KEY", "")
         
         portal_session = stripe.billing_portal.Session.create(
             customer=billing.get("stripe_customer_id"),

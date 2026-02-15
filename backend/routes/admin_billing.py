@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/billing", tags=["admin-billing"], dependencies=[Depends(admin_route_guard)])
 
 # Initialize Stripe
-stripe.api_key = os.getenv("STRIPE_API_KEY", "sk_test_emergent")
+stripe.api_key = os.getenv("STRIPE_API_KEY", "")
 
 
 # =============================================================================
@@ -560,7 +560,7 @@ async def create_billing_portal_link(request: Request, client_id: str):
             )
         
         # Get return URL
-        frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         
         # Create portal session
         portal_session = stripe.billing_portal.Session.create(
@@ -646,7 +646,7 @@ async def resend_password_setup(request: Request, client_id: str):
             }
         )
         
-        frontend_url = os.getenv("FRONTEND_URL", "https://order-fulfillment-9.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         setup_url = f"{frontend_url}/setup-password?token={setup_token}"
         user_email = (portal_user.get("auth_email") or portal_user.get("email") or "").strip()
         if not user_email or not setup_url:

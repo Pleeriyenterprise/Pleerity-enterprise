@@ -46,11 +46,17 @@ dump.rdb
 .DS_Store
 *.pem
 
+# Platform config (non-Emergent deploy)
+.emergent/
+
 # Python
 __pycache__/
 *pyc*
 venv/
 .venv/
+
+# Platform config (optional; not used for Render/Vercel deploy)
+.emergent/
 
 # Development tools
 chainlit.md

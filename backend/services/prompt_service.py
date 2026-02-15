@@ -68,17 +68,7 @@ class LLMProviderInterface(ABC):
 
 
 class GeminiProvider(LLMProviderInterface):
-    """Gemini LLM provider using emergentintegrations LlmChat."""
-    
-    def __init__(self):
-        self._api_key = None
-    
-    def _get_api_key(self):
-        if self._api_key is None:
-            self._api_key = os.environ.get("EMERGENT_LLM_KEY")
-            if not self._api_key:
-                raise ValueError("EMERGENT_LLM_KEY not found in environment")
-        return self._api_key
+    """Gemini LLM provider using Google Generative AI (utils.llm_chat)."""
     
     @property
     def provider_name(self) -> str:
@@ -91,36 +81,18 @@ class GeminiProvider(LLMProviderInterface):
         temperature: float,
         max_tokens: int,
     ) -> Tuple[str, Dict[str, int]]:
-        try:
-            from emergentintegrations.llm.chat import LlmChat, UserMessage
-        except ImportError:
-            raise ValueError("emergentintegrations not available for Gemini provider")
-        import uuid
-        
-        api_key = self._get_api_key()
-        
-        # Create a unique session ID for this test run
-        session_id = f"prompt-test-{uuid.uuid4().hex[:8]}"
-        
-        # Initialize chat with Gemini model
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=session_id,
-            system_message=system_prompt,
-        ).with_model("gemini", "gemini-2.5-flash")
-        
-        # Create user message
-        user_message = UserMessage(text=user_prompt)
-        
-        # Send message and get response
-        response_text = await chat.send_message(user_message)
-        
-        # Token counts are not directly available, estimate
+        from utils.llm_chat import chat, _get_api_key
+        if not _get_api_key():
+            raise ValueError("LLM_API_KEY not found in environment")
+        response_text = await chat(
+            system_prompt=system_prompt,
+            user_text=user_prompt,
+            model="gemini-2.5-flash",
+        )
         tokens = {
             "prompt_tokens": len(system_prompt.split()) + len(user_prompt.split()),
             "completion_tokens": len(response_text.split()) if response_text else 0,
         }
-        
         return response_text, tokens
 
 
