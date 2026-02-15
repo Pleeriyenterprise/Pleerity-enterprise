@@ -657,6 +657,52 @@ async def get_audit_logs(
             detail="Failed to load audit logs"
         )
 
+
+@router.get("/properties/{property_id}/compliance-score-history")
+async def get_property_compliance_score_history(
+    request: Request,
+    property_id: str,
+    limit: int = 50,
+):
+    """Get compliance score history timeline for a property (admin observability, read-only).
+    
+    Returns last N snapshots from property_compliance_score_history. No score computation.
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        prop = await db.properties.find_one(
+            {"property_id": property_id},
+            {"_id": 0, "property_id": 1, "client_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_last_calculated_at": 1, "compliance_version": 1},
+        )
+        if not prop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found",
+            )
+        snapshots = await db.property_compliance_score_history.find(
+            {"property_id": property_id},
+            {"_id": 0},
+        ).sort("created_at", -1).limit(min(limit, 200)).to_list(min(limit, 200))
+        return {
+            "property_id": property_id,
+            "client_id": prop.get("client_id"),
+            "current_score": prop.get("compliance_score"),
+            "current_breakdown": prop.get("compliance_breakdown"),
+            "last_calculated_at": prop.get("compliance_last_calculated_at"),
+            "compliance_version": prop.get("compliance_version"),
+            "history": snapshots,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Property compliance score history error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load compliance score history",
+        )
+
+
 @router.post("/clients/{client_id}/resend-password-setup")
 async def resend_password_setup(request: Request, client_id: str):
     """Resend password setup link (admin only)."""

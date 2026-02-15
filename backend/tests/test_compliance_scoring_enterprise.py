@@ -98,10 +98,11 @@ class TestRecalculateAndPersist:
         assert result.get("score") is not None
         db.properties.update_one.assert_called_once()
         call = db.properties.update_one.call_args
+        update_payload = call[0][1]
         assert call[0][0] == {"property_id": "p1"}
-        assert "compliance_score" in call[1]["$set"]
-        assert "compliance_breakdown" in call[1]["$set"]
-        assert "compliance_last_calculated_at" in call[1]["$set"]
+        assert "compliance_score" in update_payload.get("$set", {})
+        assert "compliance_breakdown" in update_payload.get("$set", {})
+        assert "compliance_last_calculated_at" in update_payload.get("$set", {})
         db.property_compliance_score_history.insert_one.assert_called_once()
         history_doc = db.property_compliance_score_history.insert_one.call_args[0][0]
         assert history_doc["property_id"] == "p1"
