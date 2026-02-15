@@ -184,6 +184,11 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [triggeringProvision, setTriggeringProvision] = useState(false);
   const [resendingPassword, setResendingPassword] = useState(false);
+  const [selectedPropertyId, setSelectedPropertyId] = useState(null);
+  const [scoreHistoryData, setScoreHistoryData] = useState(null);
+  const [scoreHistoryLoading, setScoreHistoryLoading] = useState(false);
+  const [scoreHistoryError, setScoreHistoryError] = useState(null);
+  const [fullHistoryModal, setFullHistoryModal] = useState(null);
 
   const fetchClientData = useCallback(async () => {
     if (!clientId) return;
@@ -218,6 +223,10 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   useEffect(() => {
     if (clientId) {
       fetchClientData();
+      setSelectedPropertyId(null);
+      setScoreHistoryData(null);
+      setScoreHistoryError(null);
+      setFullHistoryModal(null);
     }
   }, [clientId, fetchClientData]);
 
@@ -283,6 +292,42 @@ const ClientDetailModal = ({ clientId, onClose }) => {
       setResendingPassword(false);
     }
   };
+
+  const fetchComplianceScoreHistory = useCallback(async (propertyId, limit = 20) => {
+    if (!propertyId) return null;
+    setScoreHistoryLoading(true);
+    setScoreHistoryError(null);
+    try {
+      const res = await api.get(`/admin/properties/${propertyId}/compliance-score-history`, { params: { limit } });
+      return res?.data ?? null;
+    } catch (err) {
+      const msg = err.response?.data?.detail ?? (typeof err.response?.data?.message === 'string' ? err.response.data.message : 'Failed to load score history');
+      setScoreHistoryError(msg);
+      toast.error(msg);
+      return null;
+    } finally {
+      setScoreHistoryLoading(false);
+    }
+  }, []);
+
+  const handleViewScoreHistory = useCallback(async (propertyId) => {
+    setSelectedPropertyId(propertyId);
+    setScoreHistoryData(null);
+    const data = await fetchComplianceScoreHistory(propertyId, 20);
+    if (data) setScoreHistoryData(data);
+  }, [fetchComplianceScoreHistory]);
+
+  const handleViewFullHistory = useCallback(async () => {
+    if (!selectedPropertyId) return;
+    setScoreHistoryLoading(true);
+    try {
+      const data = await fetchComplianceScoreHistory(selectedPropertyId, 200);
+      if (data?.history?.length) setFullHistoryModal(data.history);
+      else setFullHistoryModal([]);
+    } finally {
+      setScoreHistoryLoading(false);
+    }
+  }, [selectedPropertyId, fetchComplianceScoreHistory]);
 
   if (loading) {
     return (
@@ -419,14 +464,141 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                         <p className="font-medium">{prop.nickname || prop.address_line_1}</p>
                         <p className="text-sm text-gray-500">{prop.postcode}</p>
                       </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        prop.compliance_status === 'GREEN' ? 'bg-green-100 text-green-700' :
-                        prop.compliance_status === 'AMBER' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                      }`}>{prop.compliance_status}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          prop.compliance_status === 'GREEN' ? 'bg-green-100 text-green-700' :
+                          prop.compliance_status === 'AMBER' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                        }`}>{prop.compliance_status}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleViewScoreHistory(prop.property_id)}
+                          className="text-xs text-electric-teal hover:underline font-medium"
+                          data-testid={`view-score-history-${prop.property_id}`}
+                        >
+                          Score history
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
+
+              {/* Compliance Score History (property-level, when a property is selected) */}
+              {selectedPropertyId && (
+                <div className="border-t pt-6 mt-6">
+                  <h3 className="font-semibold text-midnight-blue mb-4">Compliance Score History</h3>
+                  {scoreHistoryLoading && !scoreHistoryData && (
+                    <div className="flex items-center gap-2 text-gray-500 py-4">
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      <span>Loading history…</span>
+                    </div>
+                  )}
+                  {scoreHistoryError && !scoreHistoryData && (
+                    <p className="text-sm text-red-600 py-2">{scoreHistoryError}</p>
+                  )}
+                  {scoreHistoryData && (
+                    <>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm text-gray-600">
+                          Current score: <span className="font-semibold">{scoreHistoryData.current_score ?? '—'}</span>
+                          {scoreHistoryData.last_calculated_at && (
+                            <span className="text-gray-500 ml-2">
+                              (last calculated {new Date(scoreHistoryData.last_calculated_at).toLocaleString()})
+                            </span>
+                          )}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPropertyId(null)}
+                          className="text-sm text-gray-500 hover:text-gray-700"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      {(scoreHistoryData.history ?? []).length === 0 ? (
+                        <p className="text-sm text-gray-500 py-4">No history recorded.</p>
+                      ) : (
+                        <>
+                          <div className="overflow-x-auto rounded-lg border border-gray-200">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-4 py-2 text-left font-medium text-gray-600">Timestamp</th>
+                                  <th className="px-4 py-2 text-left font-medium text-gray-600">Score</th>
+                                  <th className="px-4 py-2 text-left font-medium text-gray-600">Trigger reason</th>
+                                  <th className="px-4 py-2 text-left font-medium text-gray-600">Actor</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {(scoreHistoryData.history ?? []).map((row, idx) => (
+                                  <tr key={idx}>
+                                    <td className="px-4 py-2">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                                    <td className="px-4 py-2 font-medium">{row.score ?? '—'}</td>
+                                    <td className="px-4 py-2">{row.reason ?? '—'}</td>
+                                    <td className="px-4 py-2">{row.actor?.role === 'SYSTEM' ? 'System' : (row.actor?.id ?? row.actor?.role ?? '—')}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {(scoreHistoryData.history ?? []).length >= 20 && (
+                            <button
+                              type="button"
+                              onClick={handleViewFullHistory}
+                              disabled={scoreHistoryLoading}
+                              className="mt-3 flex items-center gap-2 text-sm text-electric-teal hover:underline font-medium disabled:opacity-50"
+                              data-testid="view-full-score-history"
+                            >
+                              {scoreHistoryLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <History className="w-4 h-4" />}
+                              View Full History
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Full History Modal */}
+              {fullHistoryModal !== null && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" data-testid="full-history-modal">
+                  <div className="bg-white rounded-xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col shadow-xl">
+                    <div className="flex items-center justify-between p-4 border-b">
+                      <h3 className="font-semibold text-midnight-blue">Compliance Score History (full)</h3>
+                      <button type="button" onClick={() => setFullHistoryModal(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="overflow-auto flex-1 p-4">
+                      {fullHistoryModal.length === 0 ? (
+                        <p className="text-sm text-gray-500">No history recorded.</p>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Timestamp</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Score</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Trigger reason</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Actor</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {fullHistoryModal.map((row, idx) => (
+                              <tr key={idx}>
+                                <td className="px-4 py-2">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                                <td className="px-4 py-2 font-medium">{row.score ?? '—'}</td>
+                                <td className="px-4 py-2">{row.reason ?? '—'}</td>
+                                <td className="px-4 py-2">{row.actor?.role === 'SYSTEM' ? 'System' : (row.actor?.id ?? row.actor?.role ?? '—')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
