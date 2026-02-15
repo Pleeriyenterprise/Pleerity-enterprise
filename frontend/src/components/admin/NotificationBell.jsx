@@ -56,11 +56,11 @@ const formatTimeAgo = (dateString) => {
  * Get icon component based on notification priority/type
  */
 const NotificationIcon = ({ notification }) => {
-  const priority = notification.priority;
+  const priority = notification?.priority;
   if (priority === 'urgent' || priority === 'high') {
     return <AlertTriangle className="h-4 w-4" />;
   }
-  if (notification.order_id) {
+  if (notification?.order_id) {
     return <Package className="h-4 w-4" />;
   }
   return <Bell className="h-4 w-4" />;
@@ -86,6 +86,7 @@ const getPriorityClass = (priority) => {
  * Single notification item
  */
 const NotificationItem = ({ notification, onRead, onClick }) => {
+  if (!notification || typeof notification !== 'object') return null;
   const priorityClass = getPriorityClass(notification.priority);
 
   return (
@@ -95,7 +96,7 @@ const NotificationItem = ({ notification, onRead, onClick }) => {
         !notification.is_read && 'bg-blue-50/50'
       )}
       onClick={() => {
-        if (!notification.is_read) onRead(notification.notification_id);
+        if (!notification.is_read && notification.notification_id) onRead(notification.notification_id);
         onClick(notification);
       }}
     >
@@ -117,14 +118,14 @@ const NotificationItem = ({ notification, onRead, onClick }) => {
                 notification.is_read && 'text-gray-600'
               )}
             >
-              {notification.title}
+              {notification.title ?? '—'}
             </p>
             {!notification.is_read && (
               <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
             )}
           </div>
           <p className="text-xs text-gray-500 truncate mt-0.5">
-            {notification.message}
+            {notification.message ?? ''}
           </p>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -166,14 +167,14 @@ const NotificationBell = () => {
       const response = await fetch(`${API_URL}/api/admin/notifications/?limit=20`, {
         headers: getAuthHeaders(),
       });
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unread_count || 0);
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
+          setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
       }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    }
   }, []);
 
   const fetchUnreadCount = useCallback(async () => {
@@ -183,7 +184,7 @@ const NotificationBell = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setUnreadCount(data.unread_count || 0);
+        setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
       }
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
@@ -239,7 +240,7 @@ const NotificationBell = () => {
         });
         if (response.ok && mounted) {
           const data = await response.json();
-          setUnreadCount(data.unread_count || 0);
+          setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
         }
       } catch (error) {
         console.error('Failed to fetch unread count:', error);
@@ -264,14 +265,14 @@ const NotificationBell = () => {
         });
         if (response.ok && mounted) {
           const data = await response.json();
-          setNotifications(data.notifications || []);
-          setUnreadCount(data.unread_count || 0);
+          setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
+          setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
         }
       } catch (error) {
         console.error('Failed to fetch notifications:', error);
       }
     };
-    
+
     loadNotifications();
     
     return () => { mounted = false; };
@@ -323,9 +324,9 @@ const NotificationBell = () => {
               <p className="text-sm">No notifications</p>
             </div>
           ) : (
-            notifications.map((notification) => (
+            notifications.filter(Boolean).map((notification) => (
               <NotificationItem
-                key={notification.notification_id}
+                key={notification.notification_id ?? notification.created_at ?? Math.random()}
                 notification={notification}
                 onRead={markAsRead}
                 onClick={handleNotificationClick}

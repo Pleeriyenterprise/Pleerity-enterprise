@@ -195,18 +195,19 @@ const ClientDetailModal = ({ clientId, onClose }) => {
         api.get(`/admin/clients/${clientId}/audit-timeline?limit=30`)
       ]);
       
-      setClient(detailRes.data);
+      const data = detailRes.data;
+      const c = data?.client;
+      setClient(data);
       setReadiness(readinessRes.data);
       setTimeline(timelineRes.data.timeline || []);
-      
-      // Initialize profile form
-      const c = detailRes.data.client;
-      setProfileForm({
-        full_name: c.full_name || '',
-        phone: c.phone || '',
-        company_name: c.company_name || '',
-        preferred_contact: c.preferred_contact || 'EMAIL'
-      });
+      if (c && typeof c === 'object') {
+        setProfileForm({
+          full_name: c.full_name || '',
+          phone: c.phone || '',
+          company_name: c.company_name || '',
+          preferred_contact: c.preferred_contact || 'EMAIL'
+        });
+      }
     } catch (error) {
       toast.error('Failed to load client data');
     } finally {
@@ -296,7 +297,8 @@ const ClientDetailModal = ({ clientId, onClose }) => {
 
   if (!client) return null;
 
-  const c = client.client;
+  const c = client?.client;
+  if (!c || typeof c !== 'object') return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-8" data-testid="client-detail-modal">
@@ -3411,7 +3413,8 @@ const DashboardOverview = ({ onShowDrilldown }) => {
     try {
       const response = await api.get('/admin/dashboard');
       setDashboardError(null);
-      setStats(response.data);
+      const data = response?.data;
+      setStats(data && typeof data === 'object' && !Array.isArray(data) ? data : EMPTY_STATS);
     } catch (error) {
       const status = error.response?.status;
       const message = error.response?.data?.detail ?? error.message ?? 'Failed to load dashboard';
@@ -3621,10 +3624,10 @@ const DashboardOverview = ({ onShowDrilldown }) => {
                 </tr>
               </thead>
               <tbody>
-                {pendingList.documents.length === 0 ? (
+                {(pendingList.documents ?? []).length === 0 ? (
                   <tr><td colSpan={5} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
                 ) : (
-                  pendingList.documents.map((doc) => (
+                  (pendingList.documents ?? []).map((doc) => (
                     <tr key={doc.document_id || doc.client_id + doc.uploaded_at} className="border-b border-gray-100">
                       <td className="py-2 pr-4 font-mono text-xs">{doc.document_id}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc.client_id}</td>
@@ -3651,14 +3654,15 @@ const DashboardOverview = ({ onShowDrilldown }) => {
         <h3 className="text-lg font-semibold text-midnight-blue mb-4">Recent Activity</h3>
         <div className="space-y-3">
           {(() => {
-            const activities = (stats?.recent_activity ?? []).slice(0, 5);
+            const raw = stats?.recent_activity ?? [];
+            const activities = Array.isArray(raw) ? raw.filter(Boolean).slice(0, 5) : [];
             return activities.length > 0
               ? activities.map((activity, idx) => (
                   <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Activity className="w-5 h-5 text-electric-teal" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-midnight-blue">{activity.action}</p>
-                      <p className="text-xs text-gray-500">{new Date(activity.timestamp).toLocaleString()}</p>
+                      <p className="text-sm font-medium text-midnight-blue">{activity?.action ?? '—'}</p>
+                      <p className="text-xs text-gray-500">{activity?.timestamp ? new Date(activity.timestamp).toLocaleString() : '—'}</p>
                     </div>
                   </div>
                 ))
