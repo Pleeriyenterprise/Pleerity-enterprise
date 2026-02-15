@@ -351,7 +351,7 @@ class StripeWebhookService:
         subscription_status = subscription.get("status", "incomplete")
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(subscription_status)
         
-        # Upsert ClientBilling record
+        # Upsert ClientBilling record; increment entitlements_version (Stripe is source of truth)
         billing_record = {
             "client_id": client_id,
             "stripe_customer_id": stripe_customer_id,
@@ -368,14 +368,22 @@ class StripeWebhookService:
             "latest_invoice_id": subscription.get("latest_invoice"),
             "updated_at": datetime.now(timezone.utc),
         }
-        
         await db.client_billing.update_one(
             {"client_id": client_id},
-            {"$set": billing_record, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
+            {
+                "$set": billing_record,
+                "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
+                "$inc": {"entitlements_version": 1},
+            },
             upsert=True
         )
-        
-        # Update client record with billing info
+        billing_after = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "entitlements_version": 1}
+        )
+        entitlements_version = (billing_after or {}).get("entitlements_version", 1)
+
+        # Update client record with billing info and entitlements_version
         await db.clients.update_one(
             {"client_id": client_id},
             {
@@ -385,6 +393,7 @@ class StripeWebhookService:
                     "stripe_customer_id": stripe_customer_id,
                     "stripe_subscription_id": stripe_subscription_id,
                     "entitlement_status": entitlement_status.value,
+                    "entitlements_version": entitlements_version,
                 }
             }
         )
@@ -454,7 +463,23 @@ class StripeWebhookService:
                         logger.error(f"Failed to create provisioning job: {e}")
                         raise
         
-        # Audit log
+        # Audit log (plan updated from Stripe; used for pre-check and verification)
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role="SYSTEM",
+            client_id=client_id,
+            metadata={
+                "action_type": "PLAN_UPDATED_FROM_STRIPE",
+                "event_type": "checkout.session.completed",
+                "plan_code": plan_code.value,
+                "subscription_status": subscription_status,
+                "entitlement_status": entitlement_status.value,
+                "entitlements_version": entitlements_version,
+                "provisioning_triggered": provisioning_triggered,
+                "onboarding_fee_paid": onboarding_fee_paid,
+            }
+        )
+
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_role="SYSTEM",
@@ -476,6 +501,7 @@ class StripeWebhookService:
             "subscription_id": stripe_subscription_id,
             "plan_code": plan_code.value,
             "entitlement_status": entitlement_status.value,
+            "entitlements_version": entitlements_version,
             "provisioning_triggered": provisioning_triggered,
         }
     
@@ -539,7 +565,7 @@ class StripeWebhookService:
         # Map status to entitlement
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(subscription_status)
         
-        # Update billing record
+        # Update billing record; increment entitlements_version on plan/status change from Stripe
         billing_update = {
             "current_plan_code": new_plan_code.value,
             "subscription_status": subscription_status.upper(),
@@ -552,12 +578,16 @@ class StripeWebhookService:
             "latest_invoice_id": subscription.get("latest_invoice"),
             "updated_at": datetime.now(timezone.utc),
         }
-        
         await db.client_billing.update_one(
             {"client_id": client_id},
-            {"$set": billing_update}
+            {"$set": billing_update, "$inc": {"entitlements_version": 1}}
         )
-        
+        billing_after = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "entitlements_version": 1}
+        )
+        entitlements_version = (billing_after or {}).get("entitlements_version", 1)
+
         # Update client record
         await db.clients.update_one(
             {"client_id": client_id},
@@ -566,6 +596,7 @@ class StripeWebhookService:
                     "billing_plan": new_plan_code.value,
                     "subscription_status": "ACTIVE" if subscription_status in ("active", "trialing") else subscription_status.upper(),
                     "entitlement_status": entitlement_status.value,
+                    "entitlements_version": entitlements_version,
                 }
             }
         )
@@ -604,7 +635,24 @@ class StripeWebhookService:
                 )
                 logger.warning(f"Client {client_id} over property limit after downgrade: {property_count} > {new_limit}")
         
-        # Audit log
+        # Audit log: plan updated from Stripe (pre-check / verification)
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role="SYSTEM",
+            client_id=client_id,
+            metadata={
+                "action_type": "PLAN_UPDATED_FROM_STRIPE",
+                "event_type": event.get("type"),
+                "old_plan": old_plan,
+                "new_plan": new_plan_code.value,
+                "old_status": old_status,
+                "new_status": subscription_status.upper(),
+                "entitlement_status": entitlement_status.value,
+                "entitlements_version": entitlements_version,
+                "is_upgrade": is_upgrade,
+                "is_downgrade": is_downgrade,
+            }
+        )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_role="SYSTEM",
@@ -628,6 +676,7 @@ class StripeWebhookService:
             "subscription_id": stripe_subscription_id,
             "plan_code": new_plan_code.value,
             "entitlement_status": entitlement_status.value,
+            "entitlements_version": entitlements_version,
             "is_upgrade": is_upgrade,
             "is_downgrade": is_downgrade,
         }
