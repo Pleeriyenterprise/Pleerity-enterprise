@@ -138,6 +138,7 @@ import AdminPostalTrackingPage from './pages/AdminPostalTrackingPage';
 import AdminConsentDashboard from './pages/AdminConsentDashboard';
 import AdminSiteBuilderPage from './pages/AdminSiteBuilderPage';
 import AdminEnablementDashboard from './pages/AdminEnablementDashboard';
+import AdminNotificationHealthPage from './pages/AdminNotificationHealthPage';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminTeamPage from './pages/AdminTeamPage';
 import AdminPromptManagerPage from './pages/AdminPromptManagerPage';
@@ -577,6 +578,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminEnablementDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/notification-health" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminNotificationHealthPage />
                 </ProtectedRoute>
               } 
             />

@@ -1741,40 +1741,78 @@ async def get_message_logs(request: Request, skip: int = 0, limit: int = 100, cl
         )
 
 
+def _parse_iso_datetime(s: Optional[str]):
+    """Parse ISO datetime string to timezone-aware datetime for DB query. Returns None if invalid."""
+    if not s or not s.strip():
+        return None
+    try:
+        dt = datetime.fromisoformat(s.strip().replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, TypeError):
+        return None
+
+
 @router.get("/message-logs")
 async def list_message_logs_delivery(
     request: Request,
     client_id: Optional[str] = Query(None),
+    channel: Optional[str] = Query(None),
+    template_key: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    status_prefix: Optional[str] = Query(None, description="e.g. BLOCKED for any BLOCKED_*"),
+    from_: Optional[str] = Query(None, alias="from", description="ISO datetime (created_at >= from)"),
+    to: Optional[str] = Query(None, description="ISO datetime (created_at <= to)"),
+    recipient: Optional[str] = Query(None, description="Substring match on recipient"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    """Admin observability: list message_logs (status, attempt_count, timestamps, provider_message_id, template_key, channel, error_message). Read-only."""
+    """Admin observability: list message_logs with filters. Read-only."""
     await admin_route_guard(request)
     db = database.get_db()
     try:
         q = {}
         if client_id:
             q["client_id"] = client_id
-        cursor = db.message_logs.find(
-            q,
-            {
-                "_id": 0,
-                "message_id": 1,
-                "client_id": 1,
-                "template_key": 1,
-                "template_alias": 1,
-                "channel": 1,
-                "status": 1,
-                "attempt_count": 1,
-                "created_at": 1,
-                "sent_at": 1,
-                "delivered_at": 1,
-                "bounced_at": 1,
-                "provider_message_id": 1,
-                "postmark_message_id": 1,
-                "error_message": 1,
-            },
-        ).sort("created_at", -1).skip(offset).limit(limit)
+        if channel:
+            q["channel"] = channel
+        if template_key:
+            q["template_key"] = template_key
+        if status:
+            if "," in status:
+                q["status"] = {"$in": [s.strip() for s in status.split(",") if s.strip()]}
+            else:
+                q["status"] = status.strip()
+        if status_prefix:
+            q["status"] = {"$regex": f"^{status_prefix.strip()}"}
+        from_dt = _parse_iso_datetime(from_)
+        to_dt = _parse_iso_datetime(to)
+        if from_dt is not None:
+            q.setdefault("created_at", {})["$gte"] = from_dt
+        if to_dt is not None:
+            q.setdefault("created_at", {})["$lte"] = to_dt
+        if recipient and recipient.strip():
+            q["recipient"] = {"$regex": recipient.strip(), "$options": "i"}
+        projection = {
+            "_id": 0,
+            "message_id": 1,
+            "client_id": 1,
+            "template_key": 1,
+            "template_alias": 1,
+            "channel": 1,
+            "status": 1,
+            "attempt_count": 1,
+            "created_at": 1,
+            "sent_at": 1,
+            "delivered_at": 1,
+            "bounced_at": 1,
+            "provider_message_id": 1,
+            "postmark_message_id": 1,
+            "error_message": 1,
+            "recipient": 1,
+        }
+        cursor = db.message_logs.find(q, projection).sort("created_at", -1).skip(offset).limit(limit)
         items = await cursor.to_list(limit)
         for it in items:
             for k in ("created_at", "sent_at", "delivered_at", "bounced_at"):

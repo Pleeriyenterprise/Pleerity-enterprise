@@ -35,6 +35,7 @@ import {
   FileSignature,
   Briefcase,
   Handshake,
+  Activity,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -124,6 +125,7 @@ const navSections = [
       { href: '/admin/dashboard', label: 'Automation Rules', icon: Settings, tabTarget: 'rules' },
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
       { href: '/admin/dashboard', label: 'Email delivery', icon: Mail, tabTarget: 'emailDelivery' },
+      { href: '/admin/notification-health', label: 'Notification Health', icon: Activity },
       { href: '/admin/dashboard', label: 'Audit Logs', icon: History, tabTarget: 'audit' },
       { href: '/admin/notifications/preferences', label: 'Notifications', icon: Bell },
     ],

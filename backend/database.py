@@ -83,6 +83,7 @@ class Database:
             # Message log indexes - for email-delivery admin view and orchestrator
             await self.db.message_logs.create_index([("created_at", -1)])
             await self.db.message_logs.create_index([("status", 1), ("created_at", -1)])
+            await self.db.message_logs.create_index([("channel", 1), ("created_at", -1)])
             await self.db.message_logs.create_index([("template_alias", 1), ("created_at", -1)])
             await self.db.message_logs.create_index([("client_id", 1), ("created_at", -1)])
             await self.db.message_logs.create_index([("template_key", 1), ("created_at", -1)])
