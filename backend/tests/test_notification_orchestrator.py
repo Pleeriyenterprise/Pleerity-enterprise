@@ -275,6 +275,79 @@ async def test_delivery_webhook_updates_message_log():
 
 
 @pytest.mark.asyncio
+async def test_postmark_webhook_rejects_missing_token():
+    """When POSTMARK_WEBHOOK_TOKEN is set, request without X-Postmark-Token returns 401 and does not update message_logs."""
+    from fastapi.testclient import TestClient
+    from routes.webhooks import router
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+
+    payload = {"MessageID": "pm-xyz", "RecordType": "Delivery", "DeliveredAt": "2026-02-12T12:00:00Z"}
+    with patch.dict("os.environ", {"POSTMARK_WEBHOOK_TOKEN": "secret123"}, clear=False):
+        with patch("routes.webhooks.database.get_db") as get_db:
+            resp = client.post("/api/webhooks/postmark", json=payload)
+            assert resp.status_code == 401
+            get_db.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_postmark_webhook_rejects_wrong_token():
+    """When POSTMARK_WEBHOOK_TOKEN is set, wrong X-Postmark-Token returns 401 and does not update message_logs."""
+    from fastapi.testclient import TestClient
+    from routes.webhooks import router
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+
+    payload = {"MessageID": "pm-xyz", "RecordType": "Delivery"}
+    with patch.dict("os.environ", {"POSTMARK_WEBHOOK_TOKEN": "secret123"}, clear=False):
+        with patch("routes.webhooks.database.get_db") as get_db:
+            resp = client.post(
+                "/api/webhooks/postmark",
+                json=payload,
+                headers={"X-Postmark-Token": "wrong-token"},
+            )
+            assert resp.status_code == 401
+            get_db.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_postmark_webhook_accepts_correct_token_and_updates_message_log():
+    """When POSTMARK_WEBHOOK_TOKEN is set, correct X-Postmark-Token is accepted and MessageLog status is updated."""
+    from fastapi.testclient import TestClient
+    from routes.webhooks import router
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+
+    db = MagicMock()
+    db.message_logs.find_one = AsyncMock(return_value={"message_id": "msg-1", "client_id": "c1"})
+    db.message_logs.update_many = AsyncMock(return_value=MagicMock(modified_count=1))
+
+    payload = {"MessageID": "pm-abc", "RecordType": "Delivery", "DeliveredAt": "2026-02-12T12:00:00Z"}
+    with patch.dict("os.environ", {"POSTMARK_WEBHOOK_TOKEN": "secret123"}, clear=False):
+        with patch("routes.webhooks.database.get_db", return_value=db):
+            with patch("routes.webhooks.create_audit_log", new_callable=AsyncMock):
+                resp = client.post(
+                    "/api/webhooks/postmark",
+                    json=payload,
+                    headers={"X-Postmark-Token": "secret123"},
+                )
+    assert resp.status_code == 200
+    assert resp.json().get("status") == "received"
+    db.message_logs.update_many.assert_called()
+    call = db.message_logs.update_many.call_args
+    assert call[0][1]["$set"]["status"] == "DELIVERED"
+
+
+@pytest.mark.asyncio
 async def test_missing_provider_env_does_not_crash():
     """POSTMARK_SERVER_TOKEN missing → MessageLog BLOCKED_PROVIDER_NOT_CONFIGURED, no exception."""
     from services.notification_orchestrator import notification_orchestrator

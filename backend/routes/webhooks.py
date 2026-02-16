@@ -7,15 +7,25 @@ Stripe webhook endpoint with:
 
 POST /api/webhook/stripe - Main Stripe webhook endpoint
 POST /api/webhooks/stripe - Alias for Stripe webhook (for backward compatibility)
+POST /api/webhooks/postmark - Postmark delivery/bounce/spam; validated by X-Postmark-Token when POSTMARK_WEBHOOK_TOKEN is set.
 """
 from fastapi import APIRouter, HTTPException, Request, Header, status
 from database import database
 from services.stripe_webhook_service import stripe_webhook_service
 import logging
 import json
+import os
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["webhooks"])
+
+
+def _postmark_webhook_token_ok(header_token: str = None) -> bool:
+    """Return True if Postmark webhook request is authorized. When POSTMARK_WEBHOOK_TOKEN is set, header must match."""
+    configured = os.getenv("POSTMARK_WEBHOOK_TOKEN") or os.getenv("POSTMARK_WEBHOOK_SECRET")
+    if not configured or not configured.strip():
+        return True
+    return bool(header_token and header_token.strip() == configured.strip())
 
 
 async def _handle_stripe_webhook(request: Request, stripe_signature: str = None):
@@ -78,8 +88,15 @@ async def stripe_webhook_alias(
 
 
 @router.post("/api/webhooks/postmark")
-async def postmark_webhook(request: Request):
-    """Single Postmark webhook: Delivered, Bounce, SpamComplaint. Updates message_logs and writes audits."""
+async def postmark_webhook(
+    request: Request,
+    x_postmark_token: str = Header(None, alias="X-Postmark-Token"),
+):
+    """Single Postmark webhook: Delivered, Bounce, SpamComplaint. Updates message_logs and writes audits.
+    When POSTMARK_WEBHOOK_TOKEN (or POSTMARK_WEBHOOK_SECRET) is set, X-Postmark-Token header must match; else 401 and no DB update."""
+    if not _postmark_webhook_token_ok(x_postmark_token):
+        logger.warning("Postmark webhook rejected: missing or invalid X-Postmark-Token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     from datetime import datetime, timezone
     from models import AuditAction
     from utils.audit import create_audit_log
