@@ -708,6 +708,40 @@ async def get_property_compliance_score_history(
         )
 
 
+@router.get("/compliance/sla-alerts")
+async def get_compliance_sla_alerts(
+    request: Request,
+    status: str = Query("active", description="active | all"),
+    severity: Optional[str] = Query(None),
+    alert_type: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """List compliance recalc SLA alerts (admin observability). Filters: status (active/all), severity, alert_type."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        q = {}
+        if status == "active":
+            q["active"] = True
+        if severity:
+            q["severity"] = severity
+        if alert_type:
+            q["alert_type"] = alert_type
+        cursor = db.compliance_sla_alerts.find(
+            q,
+            {"_id": 0, "property_id": 1, "client_id": 1, "alert_type": 1, "severity": 1, "active": 1, "last_detected_at": 1, "last_sent_at": 1, "count": 1, "details": 1},
+        ).sort("last_detected_at", -1).skip(offset).limit(limit)
+        items = await cursor.to_list(limit)
+        return {"alerts": items, "limit": limit, "offset": offset}
+    except Exception as e:
+        logger.error(f"Compliance SLA alerts list error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load compliance SLA alerts",
+        )
+
+
 @router.get("/properties/{property_id}/compliance-recalc-status")
 async def get_property_compliance_recalc_status(
     request: Request,
@@ -747,6 +781,112 @@ async def get_property_compliance_recalc_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load compliance recalc status",
+        )
+
+
+@router.get("/properties/{property_id}/compliance-sla")
+async def get_property_compliance_sla(
+    request: Request,
+    property_id: str,
+    limit: int = Query(20, ge=1, le=50),
+):
+    """Property-level compliance SLA view: pending status, last calculated, active alerts, recent recalc jobs."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        prop = await db.properties.find_one(
+            {"property_id": property_id},
+            {"_id": 0, "property_id": 1, "client_id": 1, "compliance_score_pending": 1, "compliance_last_calculated_at": 1, "compliance_score": 1},
+        )
+        if not prop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found",
+            )
+        active_alerts = await db.compliance_sla_alerts.find(
+            {"property_id": property_id, "active": True},
+            {"_id": 0},
+        ).sort("last_detected_at", -1).to_list(20)
+        queue_recent = await db.compliance_recalc_queue.find(
+            {"property_id": property_id},
+            {"_id": 0, "status": 1, "trigger_reason": 1, "attempts": 1, "updated_at": 1, "last_error": 1, "correlation_id": 1, "created_at": 1},
+        ).sort("updated_at", -1).limit(limit).to_list(limit)
+        return {
+            "property_id": property_id,
+            "client_id": prop.get("client_id"),
+            "compliance_score_pending": prop.get("compliance_score_pending", False),
+            "compliance_last_calculated_at": prop.get("compliance_last_calculated_at"),
+            "compliance_score": prop.get("compliance_score"),
+            "active_alerts": active_alerts,
+            "recalc_jobs_recent": queue_recent,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Property compliance SLA error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load property compliance SLA",
+        )
+
+
+@router.get("/provisioning/{client_id}")
+async def get_provisioning_status(request: Request, client_id: str):
+    """Admin observability: client provisioning state (read-only). No override ability."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "client_id": 1, "customer_reference": 1, "billing_plan": 1, "subscription_status": 1,
+             "onboarding_status": 1, "stripe_customer_id": 1, "stripe_subscription_id": 1},
+        )
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found",
+            )
+        job = await db.provisioning_jobs.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "job_id": 1, "status": 1, "attempt_count": 1, "last_error": 1, "created_at": 1, "updated_at": 1},
+            sort=[("created_at", -1)],
+        )
+        provisioning_job = None
+        if job:
+            provisioning_job = dict(job)
+            for k in ("created_at", "updated_at"):
+                if provisioning_job.get(k) and hasattr(provisioning_job[k], "isoformat"):
+                    provisioning_job[k] = provisioning_job[k].isoformat()
+        prov_actions = [
+            "PROVISIONING_STARTED", "PROVISIONING_COMPLETE", "CRN_ASSIGNED", "ADMIN_PROVISIONING_TRIGGERED",
+            "ADMIN_ACTION",
+        ]
+        cursor = db.audit_logs.find(
+            {"client_id": client_id, "action": {"$in": prov_actions}},
+            {"_id": 0, "action": 1, "timestamp": 1, "metadata": 1},
+        ).sort("timestamp", -1).limit(10)
+        audit_events = await cursor.to_list(10)
+        for ev in audit_events:
+            if ev.get("timestamp") and hasattr(ev["timestamp"], "isoformat"):
+                ev["timestamp"] = ev["timestamp"].isoformat()
+        return {
+            "client_id": client_id,
+            "crn": client.get("customer_reference"),
+            "billing_plan": client.get("billing_plan"),
+            "subscription_status": client.get("subscription_status"),
+            "onboarding_status": client.get("onboarding_status"),
+            "provisioning_job": provisioning_job,
+            "stripe_customer_id": client.get("stripe_customer_id"),
+            "stripe_subscription_id": client.get("stripe_subscription_id"),
+            "audit_events": audit_events,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Provisioning status error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load provisioning status",
         )
 
 
@@ -911,7 +1051,12 @@ async def resend_password_setup(request: Request, client_id: str):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Client not found"
             )
-        
+        if client.get("onboarding_status") != "PROVISIONED":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"error_code": "ACCOUNT_NOT_READY", "message": "Provisioning not completed."}
+            )
+
         portal_user = await db.portal_users.find_one(
             {"client_id": client_id},
             {"_id": 0}

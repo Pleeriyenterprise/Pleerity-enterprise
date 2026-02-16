@@ -100,7 +100,7 @@ async def login(request: Request, credentials: LoginRequest):
             if client["onboarding_status"] != OnboardingStatus.PROVISIONED.value:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Account provisioning incomplete"
+                    detail={"error_code": "ACCOUNT_NOT_READY", "message": "Your portal is still being provisioned."}
                 )
         
         # Update last login

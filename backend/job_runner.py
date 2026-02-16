@@ -366,6 +366,18 @@ async def run_lead_sla_check():
         raise
 
 
+async def run_compliance_recalc_sla_monitor():
+    """Compliance recalc SLA: detect stuck PENDING/RUNNING, repeated failures, property pending too long; dedupe alerts, audit, optional email."""
+    try:
+        from services.compliance_sla_monitor import run_compliance_recalc_sla_monitor as _run
+        result = await _run()
+        logger.info(f"Compliance recalc SLA monitor: {result.get('breaches', 0)} breaches, {result.get('resolved', 0)} resolved")
+        return result
+    except Exception as e:
+        logger.error(f"Compliance recalc SLA monitor failed: {e}")
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -384,4 +396,5 @@ JOB_RUNNERS = {
     "abandoned_intake_detection": run_abandoned_intake_detection,
     "lead_followup_processing": run_lead_followup_processing,
     "lead_sla_check": run_lead_sla_check,
+    "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
 }

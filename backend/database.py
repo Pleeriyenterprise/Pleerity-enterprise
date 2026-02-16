@@ -108,10 +108,25 @@ class Database:
                 pass
             await self.db.compliance_recalc_queue.create_index([("status", 1), ("next_run_at", 1)])
             await self.db.compliance_recalc_queue.create_index([("property_id", 1), ("status", 1)])
-            
+            # Compliance recalc SLA alerts (dedupe by property + alert type)
+            try:
+                await self.db.compliance_sla_alerts.create_index(
+                    [("property_id", 1), ("alert_type", 1)],
+                    unique=True
+                )
+            except Exception:
+                pass
+            await self.db.compliance_sla_alerts.create_index([("active", 1), ("last_detected_at", -1)])
+            await self.db.compliance_sla_alerts.create_index([("severity", 1)])
+
             # Intake uploads - for migration and list by session
             await self.db.intake_uploads.create_index("intake_session_id")
             await self.db.intake_uploads.create_index([("intake_session_id", 1), ("status", 1)])
+            # Stripe webhook idempotency - duplicate event_id must not process twice
+            try:
+                await self.db.stripe_events.create_index("event_id", unique=True)
+            except Exception:
+                pass
             # Provisioning jobs - idempotency by checkout_session_id
             await self.db.provisioning_jobs.create_index("job_id", unique=True)
             try:

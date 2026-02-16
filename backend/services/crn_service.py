@@ -10,9 +10,12 @@ Business rules:
 """
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 from pymongo import ReturnDocument
 from database import database
+from models import AuditAction
+from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
 
@@ -43,16 +46,16 @@ async def get_next_crn() -> str:
     return crn
 
 
-async def ensure_client_crn(client_id: str) -> str:
+async def ensure_client_crn(client_id: str, stripe_event_id: Optional[str] = None) -> str:
     """
     Ensure the client has a customer_reference (CRN). Idempotent.
-    If client already has customer_reference, return it. Otherwise generate, update client, return.
+    If client already has customer_reference, return it. Otherwise generate, update client, audit, return.
     Call this at payment confirmation (e.g. Stripe checkout.session.completed).
     """
     db = database.get_db()
     client = await db.clients.find_one(
         {"client_id": client_id},
-        {"_id": 0, "customer_reference": 1},
+        {"_id": 0, "customer_reference": 1, "client_id": 1},
     )
     if not client:
         raise ValueError(f"Client not found: {client_id}")
@@ -66,4 +69,14 @@ async def ensure_client_crn(client_id: str) -> str:
         {"$set": {"customer_reference": crn}},
     )
     logger.info(f"Assigned CRN {crn} to client {client_id}")
+    metadata = {"client_id": client_id, "crn": crn, "timestamp": datetime.now(timezone.utc).isoformat()}
+    if stripe_event_id:
+        metadata["stripe_event_id"] = stripe_event_id
+    await create_audit_log(
+        action=AuditAction.CRN_ASSIGNED,
+        client_id=client_id,
+        resource_type="client",
+        resource_id=client_id,
+        metadata=metadata,
+    )
     return crn

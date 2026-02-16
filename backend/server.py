@@ -77,6 +77,7 @@ from job_runner import (
     run_scheduled_reports,
     run_compliance_score_snapshots,
     run_compliance_recalc_worker,
+    run_compliance_recalc_sla_monitor,
     run_expiry_rollover_recalc,
     run_order_delivery_processing,
     run_sla_monitoring,
@@ -343,6 +344,15 @@ async def lifespan(app: FastAPI):
         IntervalTrigger(seconds=15),
         id="compliance_recalc_worker",
         name="Compliance Recalc Worker",
+        replace_existing=True
+    )
+    
+    # Compliance recalc SLA monitor - every 5 minutes (stuck jobs + alerts)
+    scheduler.add_job(
+        run_compliance_recalc_sla_monitor,
+        CronTrigger(minute="*/5"),
+        id="compliance_recalc_sla_monitor",
+        name="Compliance Recalc SLA Monitor",
         replace_existing=True
     )
     

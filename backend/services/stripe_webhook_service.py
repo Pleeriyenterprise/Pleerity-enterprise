@@ -109,8 +109,14 @@ class StripeWebhookService:
                 {"$set": event_record}
             )
         else:
-            await db.stripe_events.insert_one(event_record)
-        
+            try:
+                await db.stripe_events.insert_one(event_record)
+            except Exception as insert_err:
+                if "duplicate key" in str(insert_err).lower() or "E11000" in str(insert_err):
+                    logger.info(f"Event {event_id} duplicate insert (race) - skipping")
+                    return True, "Already processed", {"event_id": event_id}
+                raise
+
         # Step 4: Process event
         try:
             result = await self._handle_event(event)
@@ -408,7 +414,7 @@ class StripeWebhookService:
         # CRN: generate on payment confirmation only (idempotent; once set, never changed)
         try:
             from services.crn_service import ensure_client_crn
-            await ensure_client_crn(client_id)
+            await ensure_client_crn(client_id, stripe_event_id=event.get("id") if event else None)
         except Exception as crn_err:
             logger.error(f"CRN assignment failed for {client_id}: {crn_err}")
             raise
