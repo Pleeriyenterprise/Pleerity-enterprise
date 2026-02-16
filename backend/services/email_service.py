@@ -13,6 +13,15 @@ logger = logging.getLogger(__name__)
 # Verified sender in Postmark
 DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
 
+# Quarantine: all outbound sends must go through NotificationOrchestrator (STEP 6).
+# This module is only used for template rendering (_build_html_body, _build_text_body) by the orchestrator.
+def _raise_send_deprecated():
+    raise RuntimeError(
+        "Direct email send is deprecated. Use services.notification_orchestrator.notification_orchestrator.send() "
+        "with the appropriate template_key. All outbound email/SMS must go through the orchestrator."
+    )
+
+
 class EmailService:
     def __init__(self):
         postmark_token = os.getenv("POSTMARK_SERVER_TOKEN")
@@ -31,7 +40,8 @@ class EmailService:
         client_id: Optional[str] = None,
         subject: str = "Compliance Vault Pro"
     ) -> MessageLog:
-        """Send an email using database template, Postmark template, or fallback to built-in."""
+        """DEPRECATED: Use notification_orchestrator.send(). Kept for reference only."""
+        _raise_send_deprecated()
         db = database.get_db()
         
         # Create message log
@@ -802,7 +812,8 @@ Hello {model.get('client_name', 'there')},
         setup_link: str,
         client_id: str
     ) -> MessageLog:
-        """Send password setup email. Returns MessageLog so callers can check status."""
+        """DEPRECATED: Use notification_orchestrator.send(template_key='WELCOME_EMAIL')."""
+        _raise_send_deprecated()
         return await self.send_email(
             recipient=recipient,
             template_alias=EmailTemplateAlias.PASSWORD_SETUP,
@@ -823,7 +834,8 @@ Hello {model.get('client_name', 'there')},
         portal_link: str,
         client_id: str
     ):
-        """Send portal ready notification."""
+        """DEPRECATED: Use notification_orchestrator.send() with appropriate template_key."""
+        _raise_send_deprecated()
         await self.send_email(
             recipient=recipient,
             template_alias=EmailTemplateAlias.PORTAL_READY,
@@ -845,7 +857,8 @@ Hello {model.get('client_name', 'there')},
         portal_link: str,
         client_id: str
     ):
-        """Send compliance status change alert."""
+        """DEPRECATED: Use notification_orchestrator.send(template_key='COMPLIANCE_ALERT')."""
+        _raise_send_deprecated()
         # Determine the most severe status for the subject line
         has_red = any(p.get('new_status') == 'RED' for p in affected_properties)
         has_amber = any(p.get('new_status') == 'AMBER' for p in affected_properties)
@@ -887,7 +900,8 @@ Hello {model.get('client_name', 'there')},
         inviter_name: str,
         setup_link: str
     ):
-        """Send admin invitation email."""
+        """DEPRECATED: Use notification_orchestrator.send(template_key='ADMIN_INVITE')."""
+        _raise_send_deprecated()
         await self.send_email(
             recipient=recipient,
             template_alias=EmailTemplateAlias.ADMIN_INVITE,
@@ -914,10 +928,8 @@ Hello {model.get('client_name', 'there')},
         requirement_status: str,
         portal_link: str
     ):
-        """Send AI extraction applied notification email.
-        
-        Called after a user reviews and applies AI-extracted certificate data.
-        """
+        """DEPRECATED: Use notification_orchestrator.send(template_key='AI_EXTRACTION_APPLIED')."""
+        _raise_send_deprecated()
         # Determine status color for email styling
         status_colors = {
             'COMPLIANT': '#22c55e',
@@ -959,12 +971,8 @@ Hello {model.get('client_name', 'there')},
         amount: str,
         portal_link: str
     ):
-        """
-        Send payment received / provisioning started email.
-        
-        Sent after checkout.session.completed webhook.
-        Confirms payment and informs about provisioning.
-        """
+        """DEPRECATED: Use notification_orchestrator.send(template_key='SUBSCRIPTION_CONFIRMED')."""
+        _raise_send_deprecated()
         await self.send_email(
             recipient=recipient,
             template_alias=EmailTemplateAlias.PAYMENT_RECEIVED,
@@ -990,13 +998,8 @@ Hello {model.get('client_name', 'there')},
         billing_portal_link: str,
         retry_date: Optional[str] = None
     ):
-        """
-        Send payment failed notification.
-        
-        Sent after invoice.payment_failed webhook.
-        Includes link to update payment method.
-        No scare language per specification.
-        """
+        """DEPRECATED: Use notification_orchestrator.send(template_key='PAYMENT_FAILED')."""
+        _raise_send_deprecated()
         await self.send_email(
             recipient=recipient,
             template_alias=EmailTemplateAlias.PAYMENT_FAILED,
@@ -1023,11 +1026,8 @@ Hello {model.get('client_name', 'there')},
         amount: str,
         billing_portal_link: str
     ):
-        """
-        Send upcoming renewal reminder (7 days before renewal).
-        
-        Sent by scheduled job when current_period_end is within 7 days.
-        """
+        """DEPRECATED: Use notification_orchestrator.send(template_key='RENEWAL_REMINDER')."""
+        _raise_send_deprecated()
         await self.send_email(
             recipient=recipient,
             template_alias=EmailTemplateAlias.RENEWAL_REMINDER,
@@ -1054,12 +1054,8 @@ Hello {model.get('client_name', 'there')},
         access_end_date: str,
         billing_portal_link: str
     ):
-        """
-        Send subscription cancellation confirmation.
-        
-        Sent after customer.subscription.deleted webhook
-        or when cancel_at_period_end is set.
-        """
+        """DEPRECATED: Use notification_orchestrator.send(template_key='SUBSCRIPTION_CANCELED')."""
+        _raise_send_deprecated()
         await self.send_email(
             recipient=recipient,
             template_alias=EmailTemplateAlias.SUBSCRIPTION_CANCELED,
@@ -1088,12 +1084,8 @@ Hello {model.get('client_name', 'there')},
         credit_balance: int = 5,
         dashboard_link: str = None
     ):
-        """
-        Send ClearForm welcome email after account creation.
-        
-        Brand: ClearForm by Pleerity
-        Tone: Calm, reassuring, plain English
-        """
+        """DEPRECATED: Use notification_orchestrator.send(template_key='CLEARFORM_WELCOME')."""
+        _raise_send_deprecated()
         if dashboard_link is None:
             frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
             dashboard_link = f"{frontend_url}/clearform/dashboard"
