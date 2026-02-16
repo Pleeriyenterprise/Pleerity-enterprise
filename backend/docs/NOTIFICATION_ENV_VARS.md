@@ -7,11 +7,11 @@ Verified call sites and safe behavior when missing.
 | **POSTMARK_SERVER_TOKEN** | `notification_orchestrator.py:62` | Postmark API client for sending email. | `_postmark_client` is None; `_send_email` sets MessageLog status to `BLOCKED_PROVIDER_NOT_CONFIGURED`, writes audit, returns blocked — no crash. |
 | | `email_service.py:27` | Legacy EmailService Postmark client. | `self.client = None`; send paths are quarantined (raise). |
 | | `lead_service.py:819`, `lead_followup_service.py:28,640` | Legacy checks before sending (now migrated to orchestrator). | Skip/early return; no crash. |
-| **POSTMARK_MESSAGE_STREAM** | *(not used)* | — | N/A. Add to Postmark send if using streams. |
+| **POSTMARK_MESSAGE_STREAM** | `notification_orchestrator.py:22` (read), `notification_orchestrator.py:_send_email` (applied) | Postmark `MessageStream` for every orchestrator email send. | Default `"outbound"`; passed as payload field `MessageStream` on all sends. |
 | **EMAIL_SENDER** | `notification_orchestrator.py:21` | Default `From` for all orchestrator email. | Default `info@pleerityenterprise.co.uk` — safe. |
 | | `email_service.py:14` | Legacy default From. | Same default. |
 | | `order_email_templates.py:12` | SUPPORT_EMAIL fallback. | Same default. |
-| **EMAIL_REPLY_TO** | *(not used)* | — | N/A. Can be added to send_kw in orchestrator if needed. |
+| **EMAIL_REPLY_TO** | `notification_orchestrator.py:23` (read), `notification_orchestrator.py:_send_email` (applied) | Postmark `ReplyTo` for every orchestrator email send (including attachments). | Optional; if set and non-empty, payload field `ReplyTo` is set. |
 | **SMS_ENABLED** | `notification_orchestrator.py:69,545` | Whether Twilio client is used and SMS sends allowed. | Treated as false; SMS path sets `BLOCKED_PROVIDER_NOT_CONFIGURED` — no crash. |
 | **TWILIO_ACCOUNT_SID** | `notification_orchestrator.py:70` | Twilio client init. | With SMS_ENABLED=true but SID missing, `_twilio_client` stays None; SMS sends blocked with audit — safe. |
 | **TWILIO_AUTH_TOKEN** | `notification_orchestrator.py:71` | Twilio client init. | Same as SID. |

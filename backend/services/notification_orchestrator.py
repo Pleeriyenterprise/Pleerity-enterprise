@@ -19,6 +19,8 @@ from utils.audit import create_audit_log
 logger = logging.getLogger(__name__)
 
 DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
+POSTMARK_MESSAGE_STREAM = os.getenv("POSTMARK_MESSAGE_STREAM", "outbound").strip() or "outbound"
+EMAIL_REPLY_TO = (os.getenv("EMAIL_REPLY_TO") or "").strip()
 
 # Retry backoff seconds: EMAIL 30s, 2m, 10m (3 attempts); SMS 1m (2 attempts)
 EMAIL_BACKOFFS = [30, 120, 600]
@@ -460,7 +462,10 @@ class NotificationOrchestrator:
                 TrackOpens=True,
                 TrackLinks="HtmlOnly",
                 Tag=template_key,
+                MessageStream=POSTMARK_MESSAGE_STREAM,
             )
+            if EMAIL_REPLY_TO:
+                send_kw["ReplyTo"] = EMAIL_REPLY_TO
             attachments = (context or {}).get("attachments")
             if attachments and isinstance(attachments, list):
                 send_kw["Attachments"] = [

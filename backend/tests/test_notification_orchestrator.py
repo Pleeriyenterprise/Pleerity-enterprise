@@ -111,6 +111,107 @@ async def test_billing_email_allowed_pre_provisioning():
     assert result.outcome == "sent"
 
 
+def _send_email_db_mock():
+    """Shared DB mocks for orchestrator email send tests."""
+    db = MagicMock()
+    db.notification_templates.find_one = AsyncMock(return_value={
+        "template_key": "SUBSCRIPTION_CONFIRMED",
+        "channel": "EMAIL",
+        "email_template_alias": "payment-receipt",
+        "requires_provisioned": False,
+        "is_active": True,
+    })
+    db.clients.find_one = AsyncMock(return_value={
+        "client_id": "c1",
+        "email": "u@test.com",
+        "contact_email": "u@test.com",
+        "onboarding_status": "PROVISIONING",
+        "subscription_status": "ACTIVE",
+        "entitlement_status": "ENABLED",
+    })
+    db.notification_preferences.find_one = AsyncMock(return_value=None)
+    db.message_logs.find_one = AsyncMock(return_value=None)
+    db.message_logs.insert_one = AsyncMock()
+    db.message_logs.update_one = AsyncMock()
+    db.email_templates.find_one = AsyncMock(return_value={
+        "subject": "Payment received",
+        "html_body": "Hi {{client_name}}",
+        "text_body": "Hi {{client_name}}",
+    })
+    return db
+
+
+@pytest.mark.asyncio
+async def test_postmark_send_includes_message_stream_when_set():
+    """When POSTMARK_MESSAGE_STREAM is set, mocked Postmark send payload includes MessageStream with that value."""
+    from services.notification_orchestrator import notification_orchestrator
+
+    db = _send_email_db_mock()
+    with patch("services.notification_orchestrator.database.get_db", return_value=db):
+        with patch("services.notification_orchestrator.create_audit_log", new_callable=AsyncMock):
+            with patch.object(notification_orchestrator, "_postmark_client", MagicMock()) as pm:
+                pm.emails.send = MagicMock(return_value={"MessageID": "pm-123"})
+                with patch("services.notification_orchestrator.POSTMARK_MESSAGE_STREAM", "transactional"):
+                    result = await notification_orchestrator.send(
+                        template_key="SUBSCRIPTION_CONFIRMED",
+                        client_id="c1",
+                        context={"client_name": "Test", "plan_name": "Pro", "amount": "£79/mo"},
+                        idempotency_key="stream_test_1",
+                    )
+    assert result.outcome == "sent"
+    pm.emails.send.assert_called_once()
+    kwargs = pm.emails.send.call_args[1]
+    assert kwargs.get("MessageStream") == "transactional"
+
+
+@pytest.mark.asyncio
+async def test_postmark_send_includes_reply_to_when_set():
+    """When EMAIL_REPLY_TO is set, mocked Postmark send payload includes ReplyTo with that value."""
+    from services.notification_orchestrator import notification_orchestrator
+
+    db = _send_email_db_mock()
+    with patch("services.notification_orchestrator.database.get_db", return_value=db):
+        with patch("services.notification_orchestrator.create_audit_log", new_callable=AsyncMock):
+            with patch.object(notification_orchestrator, "_postmark_client", MagicMock()) as pm:
+                pm.emails.send = MagicMock(return_value={"MessageID": "pm-456"})
+                with patch("services.notification_orchestrator.EMAIL_REPLY_TO", "replies@example.com"):
+                    result = await notification_orchestrator.send(
+                        template_key="SUBSCRIPTION_CONFIRMED",
+                        client_id="c1",
+                        context={"client_name": "Test", "plan_name": "Pro", "amount": "£79/mo"},
+                        idempotency_key="reply_to_test_1",
+                    )
+    assert result.outcome == "sent"
+    pm.emails.send.assert_called_once()
+    kwargs = pm.emails.send.call_args[1]
+    assert kwargs.get("ReplyTo") == "replies@example.com"
+
+
+@pytest.mark.asyncio
+async def test_postmark_send_includes_message_stream_and_reply_to_together():
+    """When both POSTMARK_MESSAGE_STREAM and EMAIL_REPLY_TO are set, send payload includes both."""
+    from services.notification_orchestrator import notification_orchestrator
+
+    db = _send_email_db_mock()
+    with patch("services.notification_orchestrator.database.get_db", return_value=db):
+        with patch("services.notification_orchestrator.create_audit_log", new_callable=AsyncMock):
+            with patch.object(notification_orchestrator, "_postmark_client", MagicMock()) as pm:
+                pm.emails.send = MagicMock(return_value={"MessageID": "pm-789"})
+                with patch("services.notification_orchestrator.POSTMARK_MESSAGE_STREAM", "outbound-bulk"):
+                    with patch("services.notification_orchestrator.EMAIL_REPLY_TO", "support@example.com"):
+                        result = await notification_orchestrator.send(
+                            template_key="SUBSCRIPTION_CONFIRMED",
+                            client_id="c1",
+                            context={"client_name": "Test", "plan_name": "Pro", "amount": "£79/mo"},
+                            idempotency_key="both_test_1",
+                        )
+    assert result.outcome == "sent"
+    pm.emails.send.assert_called_once()
+    kwargs = pm.emails.send.call_args[1]
+    assert kwargs.get("MessageStream") == "outbound-bulk"
+    assert kwargs.get("ReplyTo") == "support@example.com"
+
+
 @pytest.mark.asyncio
 async def test_professional_sms_allowed():
     """Client on PLAN_3_PRO with sms_reminders can send SMS (mock Twilio)."""
