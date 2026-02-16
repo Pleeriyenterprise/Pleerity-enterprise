@@ -779,30 +779,20 @@ async def send_lead_message(
     if not lead.get("email"):
         raise HTTPException(status_code=400, detail="Lead has no email address")
     
-    # Send email via Postmark
-    import os
-    from postmarker.core import PostmarkClient
-    
-    POSTMARK_SERVER_TOKEN = os.environ.get("POSTMARK_SERVER_TOKEN")
-    SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
-    
-    if not POSTMARK_SERVER_TOKEN:
-        raise HTTPException(status_code=500, detail="Email service not configured")
-    
+    from services.notification_orchestrator import notification_orchestrator
+    from datetime import datetime, timezone
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
+    idempotency_key = f"{lead_id}_LEAD_MANUAL_MESSAGE_{ts}"
     try:
-        client = PostmarkClient(server_token=POSTMARK_SERVER_TOKEN)
-        client.emails.send(
-            From=SUPPORT_EMAIL,
-            To=lead["email"],
-            Subject=subject,
-            TextBody=message,
-            Tag="admin_manual_message",
-            Metadata={
-                "lead_id": lead_id,
-                "sent_by": current_user.get("email"),
-            },
+        result = await notification_orchestrator.send(
+            template_key="LEAD_MANUAL_MESSAGE",
+            client_id=None,
+            context={"recipient": lead["email"], "subject": subject, "message": message},
+            idempotency_key=idempotency_key,
+            event_type="lead_manual_message",
         )
-        
+        if result.outcome not in ("sent", "duplicate_ignored"):
+            raise HTTPException(status_code=500, detail=result.error_message or result.block_reason or "Failed to send email")
         # Log contact
         await LeadService.log_contact(
             lead_id=lead_id,

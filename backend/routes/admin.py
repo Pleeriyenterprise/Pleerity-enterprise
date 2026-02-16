@@ -1094,22 +1094,26 @@ async def resend_password_setup(request: Request, client_id: str):
         
         await db.password_tokens.insert_one(doc)
         
-        recipient = (client.get("email") or "").strip()
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
-        if not recipient or not setup_link:
+        if not setup_link:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"error_code": "EMAIL_INPUT_INVALID", "message": "Missing recipient email or setup link"},
+                detail={"error_code": "EMAIL_INPUT_INVALID", "message": "Missing setup link"},
             )
-        
-        from services.email_service import email_service
+        from services.notification_orchestrator import notification_orchestrator
         try:
-            result = await email_service.send_password_setup_email(
-                recipient=recipient,
-                client_name=client.get("full_name") or "Customer",
-                setup_link=setup_link,
-                client_id=client_id
+            result = await notification_orchestrator.send(
+                template_key="WELCOME_EMAIL",
+                client_id=client_id,
+                context={
+                    "setup_link": setup_link,
+                    "client_name": client.get("full_name") or "Customer",
+                    "company_name": "Pleerity Enterprise Ltd",
+                    "tagline": "AI-Driven Solutions & Compliance",
+                },
+                idempotency_key=None,
+                event_type="admin_resend",
             )
         except Exception as e:
             logger.error(f"Resend password setup send error: {e}")
@@ -1117,13 +1121,18 @@ async def resend_password_setup(request: Request, client_id: str):
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value},
             )
-        if result.status != "sent":
+        if result.status_code == 403:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=result.details or {"error_code": "ACCOUNT_NOT_READY", "message": result.block_reason or "Blocked"},
+            )
+        if result.outcome == "failed":
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail={
                     "error_code": "EMAIL_SEND_FAILED",
                     "template": EmailTemplateAlias.PASSWORD_SETUP.value,
-                    "message_id": getattr(result, "message_id", None),
+                    "message_id": result.message_id,
                 },
             )
         
@@ -1631,70 +1640,64 @@ async def send_message_to_client(
                 detail="Client not found"
             )
         
-        # Import email service
-        from services.email_service import email_service
-        from models import EmailTemplateAlias
-        
-        # Send email using email service
-        message_log = await email_service.send_email(
-            recipient=client.get("email"),
-            template_alias=EmailTemplateAlias.ADMIN_MANUAL,
-            template_model={
+        from services.notification_orchestrator import notification_orchestrator
+        import uuid
+        req_id = str(uuid.uuid4())
+        idempotency_key = f"{client_id}_ADMIN_MANUAL_{req_id}"
+        result = await notification_orchestrator.send(
+            template_key="ADMIN_MANUAL",
+            client_id=client_id,
+            context={
                 "client_name": client.get("full_name", "Client"),
                 "message": message_data.message.replace(chr(10), '<br>'),
                 "subject": message_data.subject,
                 "customer_reference": client.get("customer_reference", "N/A"),
                 "company_name": "Pleerity Enterprise Ltd",
-                "tagline": "AI-Driven Solutions & Compliance"
+                "tagline": "AI-Driven Solutions & Compliance",
             },
-            client_id=client_id,
-            subject=message_data.subject
+            idempotency_key=idempotency_key,
+            event_type="admin_send_message",
         )
-        
-        success = message_log.status == "sent"
-        
+        success = result.outcome in ("sent", "duplicate_ignored")
+        message_id = result.message_id or req_id
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send email"
             )
-        
-        # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_MESSAGE_SENT,
             client_id=client_id,
             actor_id=user.get("portal_user_id"),
             actor_role=UserRole.ROLE_ADMIN,
             metadata={
-                "message_id": message_log.message_id,
+                "message_id": message_id,
                 "subject": message_data.subject,
                 "recipient": client.get("email"),
                 "admin_email": user.get("auth_email")
             }
         )
-        
-        # Send copy to admin if requested
         if message_data.send_copy_to_admin:
-            await email_service.send_email(
-                recipient=user.get("auth_email"),
-                template_alias=EmailTemplateAlias.ADMIN_MANUAL,
-                template_model={
+            copy_key = f"{client_id}_ADMIN_MANUAL_copy_{user.get('auth_email')}_{req_id}"
+            await notification_orchestrator.send(
+                template_key="ADMIN_MANUAL",
+                client_id=None,
+                context={
+                    "recipient": user.get("auth_email"),
                     "client_name": "Admin",
                     "message": f"[Copy of message sent to {client.get('email')}]<br><br>{message_data.message.replace(chr(10), '<br>')}",
                     "subject": f"[Copy] {message_data.subject}",
                     "customer_reference": client.get("customer_reference", "N/A"),
                     "company_name": "Pleerity Enterprise Ltd",
-                    "tagline": "AI-Driven Solutions & Compliance"
+                    "tagline": "AI-Driven Solutions & Compliance",
                 },
-                client_id=client_id,
-                subject=f"[Copy] {message_data.subject}"
+                idempotency_key=copy_key,
+                event_type="admin_send_message_copy",
             )
-        
         logger.info(f"Admin {user.get('auth_email')} sent message to client {client_id}")
-        
         return {
             "success": True,
-            "message_id": message_log.message_id,
+            "message_id": message_id,
             "recipient": client.get("email"),
             "subject": message_data.subject
         }
@@ -1737,6 +1740,82 @@ async def get_message_logs(request: Request, skip: int = 0, limit: int = 100, cl
             detail="Failed to load message logs"
         )
 
+
+@router.get("/message-logs")
+async def list_message_logs_delivery(
+    request: Request,
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """Admin observability: list message_logs (status, attempt_count, timestamps, provider_message_id, template_key, channel, error_message). Read-only."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        q = {}
+        if client_id:
+            q["client_id"] = client_id
+        cursor = db.message_logs.find(
+            q,
+            {
+                "_id": 0,
+                "message_id": 1,
+                "client_id": 1,
+                "template_key": 1,
+                "template_alias": 1,
+                "channel": 1,
+                "status": 1,
+                "attempt_count": 1,
+                "created_at": 1,
+                "sent_at": 1,
+                "delivered_at": 1,
+                "bounced_at": 1,
+                "provider_message_id": 1,
+                "postmark_message_id": 1,
+                "error_message": 1,
+            },
+        ).sort("created_at", -1).skip(offset).limit(limit)
+        items = await cursor.to_list(limit)
+        for it in items:
+            for k in ("created_at", "sent_at", "delivered_at", "bounced_at"):
+                if it.get(k) and hasattr(it[k], "isoformat"):
+                    it[k] = it[k].isoformat()
+        total = await db.message_logs.count_documents(q)
+        return {"items": items, "total": total, "limit": limit, "offset": offset}
+    except Exception as e:
+        logger.error(f"Message logs list error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load message logs",
+        )
+
+
+@router.get("/message-logs/{message_id}")
+async def get_message_log_by_id(request: Request, message_id: str):
+    """Admin observability: single message_log by message_id. Read-only."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        log = await db.message_logs.find_one(
+            {"message_id": message_id},
+            {"_id": 0},
+        )
+        if not log:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+        for k in ("created_at", "sent_at", "delivered_at", "bounced_at", "opened_at"):
+            if log.get(k) and hasattr(log[k], "isoformat"):
+                log[k] = log[k].isoformat()
+        return log
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Message log get error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load message log",
+        )
+
+
 @router.post("/send-manual-email")
 async def send_manual_email(
     request: Request,
@@ -1757,24 +1836,23 @@ async def send_manual_email(
                 detail="Client not found"
             )
         
-        # Send email using email service
-        from services.email_service import email_service
-        from models import EmailTemplateAlias
-        
-        await email_service.send_email(
-            recipient=client["email"],
-            template_alias=EmailTemplateAlias.ADMIN_MANUAL,
-            template_model={
-                "client_name": client["full_name"],
-                "message": message,
-                "company_name": "Pleerity Enterprise Ltd",
-                "tagline": "AI-Driven Solutions & Compliance"
-            },
+        from services.notification_orchestrator import notification_orchestrator
+        from datetime import datetime, timezone
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
+        idempotency_key = f"{client_id}_ADMIN_MANUAL_{ts}"
+        await notification_orchestrator.send(
+            template_key="ADMIN_MANUAL",
             client_id=client_id,
-            subject=subject
+            context={
+                "client_name": client.get("full_name", "Client"),
+                "message": message,
+                "subject": subject,
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance",
+            },
+            idempotency_key=idempotency_key,
+            event_type="manual_email_sent",
         )
-        
-        # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
@@ -1782,10 +1860,9 @@ async def send_manual_email(
             metadata={
                 "action": "manual_email_sent",
                 "subject": subject,
-                "admin_email": user["email"]
+                "admin_email": user.get("email") or user.get("auth_email")
             }
         )
-        
         return {"message": "Email sent successfully"}
     
     except HTTPException:
@@ -2611,18 +2688,23 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
         await db.password_tokens.insert_one(token_doc)
         logger.info(f"Generated password token for admin: {invite_data.email}")
         
-        # Send invitation email
+        from services.notification_orchestrator import notification_orchestrator
         import os
-        from services.email_service import email_service
-        
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
-        
-        await email_service.send_admin_invite_email(
-            recipient=invite_data.email,
-            admin_name=invite_data.full_name,
-            inviter_name=inviter.get("email", "System Administrator"),
-            setup_link=setup_link
+        idempotency_key = f"{portal_user_id}_ADMIN_INVITE"
+        await notification_orchestrator.send(
+            template_key="ADMIN_INVITE",
+            client_id=None,
+            context={
+                "recipient": invite_data.email,
+                "admin_name": invite_data.full_name,
+                "inviter_name": inviter.get("email", "System Administrator"),
+                "setup_link": setup_link,
+                "company_name": "Pleerity Enterprise Ltd",
+            },
+            idempotency_key=idempotency_key,
+            event_type="admin_invite",
         )
         logger.info(f"Sent admin invite email to: {invite_data.email}")
         
@@ -2882,22 +2964,25 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
         
         await db.password_tokens.insert_one(token_doc)
         
-        # Send invitation email
         import os
-        from services.email_service import email_service
-        
+        from services.notification_orchestrator import notification_orchestrator
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
-        
         admin_name = target_admin.get("full_name", target_admin.get("auth_email", "Admin"))
-        
-        await email_service.send_admin_invite_email(
-            recipient=target_admin["auth_email"],
-            admin_name=admin_name,
-            inviter_name=user.get("email", "System Administrator"),
-            setup_link=setup_link
+        idempotency_key = f"{portal_user_id}_ADMIN_INVITE"
+        await notification_orchestrator.send(
+            template_key="ADMIN_INVITE",
+            client_id=None,
+            context={
+                "recipient": target_admin["auth_email"],
+                "admin_name": admin_name,
+                "inviter_name": user.get("email", "System Administrator"),
+                "setup_link": setup_link,
+                "company_name": "Pleerity Enterprise Ltd",
+            },
+            idempotency_key=idempotency_key,
+            event_type="admin_invite_resend",
         )
-        
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,

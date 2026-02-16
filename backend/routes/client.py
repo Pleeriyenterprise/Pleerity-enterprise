@@ -559,22 +559,21 @@ async def invite_tenant(request: Request):
                         "assigned_by": user["portal_user_id"]
                     })
         
-        # Send invite email using proper template
-        from services.email_service import email_service
-        from models import EmailTemplateAlias
+        from services.notification_orchestrator import notification_orchestrator
         invite_url = f"{body.get('base_url', '')}/set-password?token={token}"
-        
-        await email_service.send_email(
-            recipient=email,
-            template_alias=EmailTemplateAlias.TENANT_INVITE,
-            template_model={
-                "tenant_name": full_name or "there",
-                "setup_link": invite_url
-            },
+        idempotency_key = f"{tenant_id}_TENANT_INVITE"
+        await notification_orchestrator.send(
+            template_key="TENANT_INVITE",
             client_id=user["client_id"],
-            subject="You've been invited to view property compliance"
+            context={
+                "recipient": email,
+                "tenant_name": full_name or "there",
+                "setup_link": invite_url,
+                "subject": "You've been invited to view property compliance",
+            },
+            idempotency_key=idempotency_key,
+            event_type="tenant_invite",
         )
-        
         logger.info(f"Tenant invited: {email} by {user['email']}")
         
         return {
@@ -905,23 +904,21 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
         }
         await db.password_tokens.insert_one(token_doc)
         
-        # Send invite email
-        from services.email_service import email_service
-        from models import EmailTemplateAlias
-        
+        from services.notification_orchestrator import notification_orchestrator
         invite_url = f"{body.get('base_url', '')}/set-password?token={token}"
-        
-        await email_service.send_email(
-            recipient=tenant["email"],
-            template_alias=EmailTemplateAlias.TENANT_INVITE,
-            template_model={
-                "tenant_name": tenant.get("full_name", "there"),
-                "setup_link": invite_url
-            },
+        idempotency_key = f"{tenant_id}_TENANT_INVITE_resend"
+        await notification_orchestrator.send(
+            template_key="TENANT_INVITE",
             client_id=user["client_id"],
-            subject="Reminder: Set up your tenant portal access"
+            context={
+                "recipient": tenant["email"],
+                "tenant_name": tenant.get("full_name", "there"),
+                "setup_link": invite_url,
+                "subject": "Reminder: Set up your tenant portal access",
+            },
+            idempotency_key=idempotency_key,
+            event_type="tenant_invite_resend",
         )
-        
         logger.info(f"Tenant invite resent to {tenant['email']}")
         
         return {"message": "Invitation resent successfully"}

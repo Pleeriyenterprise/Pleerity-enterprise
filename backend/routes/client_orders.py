@@ -121,8 +121,6 @@ async def submit_client_input(
     Submit client's response to an input request.
     Validates, stores versioned response, and auto-transitions back to INTERNAL_REVIEW.
     """
-    from services.email_service import email_service
-    from models import EmailTemplateAlias
     import os
     
     order = await get_order(order_id)
@@ -195,11 +193,18 @@ async def submit_client_input(
             )
             
             try:
-                await email_service.send_email(
-                    recipient=admin["email"],
-                    template_alias=EmailTemplateAlias.GENERIC,
-                    template_model={"message": email_data["text"]},
-                    subject=email_data["subject"],
+                from services.notification_orchestrator import notification_orchestrator
+                idempotency_key = f"{order_id}_ORDER_NOTIFICATION_client_info_{admin.get('email', '')}"
+                await notification_orchestrator.send(
+                    template_key="ORDER_NOTIFICATION",
+                    client_id=None,
+                    context={
+                        "recipient": admin["email"],
+                        "message": email_data["text"],
+                        "subject": email_data["subject"],
+                    },
+                    idempotency_key=idempotency_key,
+                    event_type="order_client_info_received",
                 )
             except Exception as e:
                 logger.error(f"Failed to send admin notification: {e}")

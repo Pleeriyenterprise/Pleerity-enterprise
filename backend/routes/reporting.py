@@ -856,9 +856,9 @@ async def send_report_email(
     end: datetime,
     schedule_name: str = None
 ) -> dict:
-    """Generate report and send via email with attachment."""
-    from services.email_service import email_service
-    
+    """Generate report and send via NotificationOrchestrator with attachment."""
+    from services.notification_orchestrator import notification_orchestrator
+    import base64
     # Generate file attachment
     if format == "xlsx":
         output = format_xlsx(data, report_type, start, end)
@@ -932,32 +932,29 @@ This is an automated report from Pleerity Enterprise.
     """
     
     results = []
-    import base64
-    
+    attachments = [{"Name": filename, "Content": base64.b64encode(file_content).decode("utf-8"), "ContentType": content_type}]
     for recipient in recipients:
         try:
-            if email_service.client:
-                response = email_service.client.emails.send(
-                    From=os.environ.get("EMAIL_SENDER", "info@pleerityenterprise.co.uk"),
-                    To=recipient,
-                    Subject=subject,
-                    HtmlBody=html_body,
-                    TextBody=text_body,
-                    TrackOpens=True,
-                    Attachments=[{
-                        "Name": filename,
-                        "Content": base64.b64encode(file_content).decode('utf-8'),
-                        "ContentType": content_type
-                    }]
-                )
-                results.append({"recipient": recipient, "status": "sent", "message_id": response.get("MessageID")})
+            idempotency_key = f"SCHEDULED_REPORT_{report_type}_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}_{recipient}"
+            result = await notification_orchestrator.send(
+                template_key="SCHEDULED_REPORT",
+                client_id=None,
+                context={
+                    "recipient": recipient,
+                    "subject": subject,
+                    "message": html_body,
+                    "attachments": attachments,
+                },
+                idempotency_key=idempotency_key,
+                event_type="report_email",
+            )
+            if result.outcome in ("sent", "duplicate_ignored"):
+                results.append({"recipient": recipient, "status": "sent", "message_id": result.message_id})
             else:
-                logger.warning(f"Email service not configured, would send to {recipient}")
-                results.append({"recipient": recipient, "status": "skipped", "reason": "email_not_configured"})
+                results.append({"recipient": recipient, "status": "failed", "error": result.error_message or result.block_reason})
         except Exception as e:
             logger.error(f"Failed to send report email to {recipient}: {e}")
             results.append({"recipient": recipient, "status": "failed", "error": str(e)})
-    
     return {"results": results, "filename": filename}
 
 

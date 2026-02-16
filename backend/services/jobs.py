@@ -245,99 +245,64 @@ class JobScheduler:
             return 0
     
     async def _send_reminder_email(self, client, expiring, overdue):
-        """Send reminder email using email service."""
+        """Send reminder email via NotificationOrchestrator."""
         try:
-            # Import here to avoid circular dependency
-            from services.email_service import email_service
+            from services.notification_orchestrator import notification_orchestrator
             from services.webhook_service import fire_reminder_sent
-            from models import EmailTemplateAlias
-            
-            # In production, this would use a proper reminder template
-            # For now, log the reminder
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}"
+            portal_link = os.environ.get("FRONTEND_URL", "https://app.pleerity.co.uk") + "/app/dashboard"
+            await notification_orchestrator.send(
+                template_key="COMPLIANCE_EXPIRY_REMINDER",
+                client_id=client["client_id"],
+                context={
+                    "client_name": client.get("full_name", "Valued Customer"),
+                    "expiring_count": len(expiring),
+                    "overdue_count": len(overdue),
+                    "portal_link": portal_link,
+                },
+                idempotency_key=idempotency_key,
+                event_type="daily_reminder",
+            )
             logger.info(f"Sending reminder to {client['email']}: {len(expiring)} expiring, {len(overdue)} overdue")
-            
-            # Fire webhook
             try:
-                await fire_reminder_sent(
-                    client_id=client["client_id"],
-                    recipient=client["email"],
-                    expiring_count=len(expiring),
-                    overdue_count=len(overdue)
-                )
+                await fire_reminder_sent(client_id=client["client_id"], recipient=client["email"], expiring_count=len(expiring), overdue_count=len(overdue))
             except Exception as webhook_err:
                 logger.error(f"Webhook error for reminder: {webhook_err}")
-            
-            # Create audit log
             audit_log = {
                 "audit_id": str(datetime.now(timezone.utc).timestamp()),
                 "action": "REMINDER_SENT",
                 "client_id": client["client_id"],
-                "metadata": {
-                    "expiring_count": len(expiring),
-                    "overdue_count": len(overdue)
-                },
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "metadata": {"expiring_count": len(expiring), "overdue_count": len(overdue)},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
-            
             await self.db.audit_logs.insert_one(audit_log)
-        
         except Exception as e:
             logger.error(f"Failed to send reminder email: {e}")
 
     async def _maybe_send_reminder_sms(self, client, prefs, expiring, overdue):
-        """Send SMS reminder for Professional clients when entitled and configured.
-        Per-client failure does not crash the job. Throttle: at most one SMS per client per day.
-        """
+        """Send SMS reminder via NotificationOrchestrator (plan-gated, 24h throttle inside orchestrator)."""
         try:
-            from services.plan_registry import plan_registry
-            allowed, _, _ = await plan_registry.enforce_feature(
-                client["client_id"], "sms_reminders"
-            )
-            if not allowed:
-                return
-            if not prefs or not prefs.get("sms_enabled") or not prefs.get("sms_phone_number"):
-                return
-            phone = (prefs.get("sms_phone_number") or "").strip()
-            if not phone:
-                return
-            # Throttle: avoid duplicate SMS same day if job reruns
-            today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-            existing = await self.db.sms_logs.find_one(
-                {
-                    "client_id": client["client_id"],
-                    "created_at": {"$gte": today_start.isoformat()},
-                }
-            )
-            if existing:
-                return
-            from services.sms_service import sms_service
-            if not sms_service.is_enabled():
-                return
+            from services.notification_orchestrator import notification_orchestrator
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}"
+            portal_link = os.environ.get("PORTAL_BASE_URL", "https://app.pleerity.co.uk") + "/app/dashboard"
             total = len(expiring) + len(overdue)
-            portal_base = os.environ.get("PORTAL_BASE_URL", "https://app.pleerity.co.uk")
-            message = f"Pleerity: {total} compliance item(s) need attention. View: {portal_base}/app/dashboard"
-            if len(message) > 160:
-                message = message[:157] + "..."
-            result = await sms_service.send_sms(
-                to_number=phone,
-                message=message,
-                client_id=client["client_id"]
+            await notification_orchestrator.send(
+                template_key="COMPLIANCE_EXPIRY_REMINDER_SMS",
+                client_id=client["client_id"],
+                context={"count": total, "portal_link": portal_link},
+                idempotency_key=idempotency_key,
+                event_type="daily_reminder_sms",
             )
-            if not result.get("success"):
-                logger.warning(
-                    "SMS reminder send failed for client %s: %s",
-                    client["client_id"],
-                    result.get("error", "unknown"),
-                )
         except Exception as e:
             logger.warning("SMS reminder error for client %s (non-fatal): %s", client.get("client_id"), e)
     
     async def _send_digest_email(self, client, content):
-        """Send monthly digest email via email_service (counts-only). Returns True if sent, False if skipped (no recipient)."""
+        """Send monthly digest email via NotificationOrchestrator. Returns True if sent, False if skipped."""
         try:
-            from services.email_service import email_service
+            from services.notification_orchestrator import notification_orchestrator
             from services.webhook_service import fire_digest_sent
-            from models import EmailTemplateAlias
             from utils.audit import create_audit_log
             from models import AuditAction
 
@@ -347,7 +312,7 @@ class JobScheduler:
                     action=AuditAction.EMAIL_SKIPPED_NO_RECIPIENT,
                     client_id=client["client_id"],
                     metadata={
-                        "template": EmailTemplateAlias.MONTHLY_DIGEST.value,
+                        "template_key": "MONTHLY_DIGEST",
                         "properties_count": content.get("properties_count", 0),
                         "total_requirements": content.get("total_requirements", 0),
                         "compliant": content.get("compliant", 0),
@@ -359,6 +324,8 @@ class JobScheduler:
                 logger.info(f"Digest skipped for client {client['client_id']}: no email or contact_email")
                 return False
 
+            period_end = (content.get("period_end") or "").replace("T", " ")[:10]
+            idempotency_key = f"{client['client_id']}_MONTHLY_DIGEST_{period_end}"
             template_model = {
                 "period_start": content.get("period_start", ""),
                 "period_end": content.get("period_end", ""),
@@ -370,14 +337,18 @@ class JobScheduler:
                 "documents_uploaded": content.get("documents_uploaded", 0),
                 "company_name": "Pleerity Enterprise Ltd",
                 "tagline": "AI-Driven Solutions & Compliance",
+                "subject": "Monthly Compliance Digest",
             }
-            await email_service.send_email(
-                recipient=recipient,
-                template_alias=EmailTemplateAlias.MONTHLY_DIGEST,
-                template_model=template_model,
+            from services.notification_orchestrator import notification_orchestrator
+            result = await notification_orchestrator.send(
+                template_key="MONTHLY_DIGEST",
                 client_id=client["client_id"],
-                subject="Monthly Compliance Digest",
+                context=template_model,
+                idempotency_key=idempotency_key,
+                event_type="monthly_digest",
             )
+            if result.outcome not in ("sent", "duplicate_ignored"):
+                return False
             logger.info(f"Digest sent to {recipient}: {content.get('total_requirements', 0)} requirements")
             try:
                 await fire_digest_sent(
@@ -400,11 +371,11 @@ class JobScheduler:
             return False
     
     async def send_pending_verification_digest(self):
-        """Send daily summary of documents with status UPLOADED (counts only, no PII) to OWNER/ADMIN, and write audit log."""
+        """Send daily summary of documents with status UPLOADED (counts only, no PII) to OWNER/ADMIN via orchestrator."""
         logger.info("Running pending verification digest job...")
         try:
-            from services.email_service import email_service
-            from models import EmailTemplateAlias, AuditAction, UserRole, UserStatus
+            from services.notification_orchestrator import notification_orchestrator
+            from models import AuditAction, UserRole, UserStatus
             from utils.audit import create_audit_log
 
             count_pending = await self.db.documents.count_documents({"status": "UPLOADED"})
@@ -422,21 +393,26 @@ class JobScheduler:
             ).to_list(100)
 
             recipient_emails = [a["auth_email"] for a in admins if a.get("auth_email")]
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             sent = 0
             for email in recipient_emails:
                 try:
-                    await email_service.send_email(
-                        recipient=email,
-                        template_alias=EmailTemplateAlias.PENDING_VERIFICATION_DIGEST,
-                        template_model={
+                    result = await notification_orchestrator.send(
+                        template_key="PENDING_VERIFICATION_DIGEST",
+                        client_id=None,
+                        context={
+                            "recipient": email,
                             "count_pending": count_pending,
                             "count_older_24h": count_older_24h,
                             "company_name": "Pleerity Enterprise Ltd",
                             "tagline": "AI-Driven Solutions & Compliance",
+                            "subject": "Pending verification digest",
                         },
-                        subject="Pending verification digest",
+                        idempotency_key=f"PENDING_VERIFICATION_DIGEST_{date_key}_{email}",
+                        event_type="pending_verification_digest",
                     )
-                    sent += 1
+                    if result.outcome in ("sent", "duplicate_ignored"):
+                        sent += 1
                 except Exception as e:
                     logger.warning(f"Pending verification digest send failed to {email}: {e}")
 
@@ -469,7 +445,6 @@ class JobScheduler:
         logger.info("Running compliance status change check...")
         
         try:
-            from services.email_service import email_service
             from services.webhook_service import fire_compliance_status_changed
             
             # Get all active clients with ENABLED entitlement
@@ -566,18 +541,24 @@ class JobScheduler:
                                 }}
                             )
                 
-                # Send email alert if there are properties with degraded status
+                # Send email alert via orchestrator if there are properties with degraded status
                 if properties_with_changes and status_alerts_enabled:
                     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-                    
-                    await email_service.send_compliance_alert_email(
-                        recipient=client["email"],
-                        client_name=client["full_name"],
-                        affected_properties=properties_with_changes,
-                        portal_link=f"{frontend_url}/app/dashboard",
-                        client_id=client["client_id"]
+                    from services.notification_orchestrator import notification_orchestrator
+                    date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    ids_hash = "_".join(sorted(p.get("property_id", "") for p in properties_with_changes))[:32]
+                    idempotency_key = f"{client['client_id']}_COMPLIANCE_ALERT_{date_key}_{ids_hash}"
+                    await notification_orchestrator.send(
+                        template_key="COMPLIANCE_ALERT",
+                        client_id=client["client_id"],
+                        context={
+                            "client_name": client.get("full_name", "Valued Customer"),
+                            "affected_properties": properties_with_changes,
+                            "portal_link": f"{frontend_url}/app/dashboard",
+                        },
+                        idempotency_key=idempotency_key,
+                        event_type="compliance_status_changed",
                     )
-                    
                     # Audit log
                     audit_log = {
                         "audit_id": str(datetime.now(timezone.utc).timestamp()),
@@ -674,7 +655,6 @@ class JobScheduler:
         logger.info("Running renewal reminder job...")
         
         try:
-            from services.email_service import email_service
             from services.plan_registry import plan_registry
             
             now = datetime.now(timezone.utc)
@@ -736,17 +716,24 @@ class JobScheduler:
                     amount = f"£{plan_def.get('monthly_price', 0):.2f}"
                     frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
                     
-                    # Send renewal reminder email
-                    await email_service.send_renewal_reminder_email(
-                        recipient=client.get("contact_email"),
-                        client_name=client.get("contact_name", "Valued Customer"),
+                    # Send renewal reminder via orchestrator
+                    period_end = billing.get("current_period_end")
+                    period_str = period_end.strftime("%Y-%m-%d") if isinstance(period_end, datetime) else str(period_end or "")[:10]
+                    idempotency_key = f"{client_id}_RENEWAL_REMINDER_{period_str}"
+                    from services.notification_orchestrator import notification_orchestrator
+                    await notification_orchestrator.send(
+                        template_key="RENEWAL_REMINDER",
                         client_id=client_id,
-                        plan_name=plan_def.get("name", plan_code) if plan_def else plan_code,
-                        renewal_date=renewal_date_str,
-                        amount=amount,
-                        billing_portal_link=f"{frontend_url}/app/billing"
+                        context={
+                            "client_name": client.get("contact_name", "Valued Customer"),
+                            "plan_name": plan_def.get("name", plan_code) if plan_def else plan_code,
+                            "renewal_date": renewal_date_str,
+                            "amount": amount,
+                            "billing_portal_link": f"{frontend_url}/app/billing",
+                        },
+                        idempotency_key=idempotency_key,
+                        event_type="renewal_reminder",
                     )
-                    
                     # Mark reminder as sent to prevent duplicates
                     await self.db.client_billing.update_one(
                         {"client_id": client_id},
@@ -819,10 +806,8 @@ class ScheduledReportJob:
         IMPORTANT: Only runs for clients with ENABLED entitlement.
         Per spec: no background jobs when entitlement is DISABLED.
         """
-        from services.email_service import email_service
         from services.reporting_service import reporting_service
-        from models import EmailTemplateAlias
-        
+
         logger.info("Processing scheduled reports...")
         
         now = datetime.now(timezone.utc)
@@ -882,24 +867,30 @@ class ScheduledReportJob:
                     
                     subject = f"Your {frequency.title()} Compliance Report - {now.strftime('%d %b %Y')}"
                     
-                    # Send to each recipient
+                    # Send to each recipient via orchestrator
+                    date_key = now.strftime("%Y-%m-%d")
                     for recipient in recipients:
                         try:
-                            await email_service.send_email(
-                                recipient=recipient,
-                                template_alias=EmailTemplateAlias.SCHEDULED_REPORT,
-                                template_model={
+                            idempotency_key = f"{schedule.get('schedule_id', schedule['client_id'])}_SCHEDULED_REPORT_{date_key}_{recipient}"
+                            from services.notification_orchestrator import notification_orchestrator
+                            result = await notification_orchestrator.send(
+                                template_key="SCHEDULED_REPORT",
+                                client_id=schedule["client_id"],
+                                context={
+                                    "recipient": recipient,
                                     "client_name": client.get("full_name", "there"),
                                     "report_type": report_type.replace("_", " ").title(),
                                     "frequency": frequency,
                                     "generated_date": now.strftime("%d %B %Y"),
-                                    "report_content": report_data.get("content", "")[:2000],  # Truncate for email
-                                    "company_name": client.get("company_name", "Your Company")
+                                    "report_content": report_data.get("content", "")[:2000],
+                                    "company_name": client.get("company_name", "Your Company"),
+                                    "subject": subject,
                                 },
-                                client_id=schedule["client_id"],
-                                subject=subject
+                                idempotency_key=idempotency_key,
+                                event_type="scheduled_report",
                             )
-                            reports_sent += 1
+                            if result.outcome in ("sent", "duplicate_ignored"):
+                                reports_sent += 1
                         except Exception as e:
                             logger.error(f"Failed to send report to {recipient}: {e}")
                     

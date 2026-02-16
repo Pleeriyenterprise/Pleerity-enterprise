@@ -507,6 +507,35 @@ class StripeWebhookService:
                 "onboarding_fee_paid": onboarding_fee_paid,
             }
         )
+
+        # Billing notification via orchestrator (allowed pre-provisioning, idempotent)
+        try:
+            plan_def = plan_registry.get_plan(plan_code)
+            client_for_email = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "contact_name": 1, "full_name": 1},
+            )
+            client_name = (client_for_email or {}).get("contact_name") or (client_for_email or {}).get("full_name") or "Valued Customer"
+            amount = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            event_id = (event or {}).get("id", "")
+            idempotency_key = f"{event_id}_SUBSCRIPTION_CONFIRMED" if event_id else None
+            from services.notification_orchestrator import notification_orchestrator
+            await notification_orchestrator.send(
+                template_key="SUBSCRIPTION_CONFIRMED",
+                client_id=client_id,
+                context={
+                    "client_name": client_name,
+                    "plan_name": plan_def.get("name", plan_code.value),
+                    "amount": amount,
+                    "portal_link": f"{frontend_url}/app/dashboard",
+                    "subject": "Payment received - Compliance Vault Pro",
+                },
+                idempotency_key=idempotency_key,
+                event_type="checkout.session.completed",
+            )
+        except Exception as e:
+            logger.warning(f"SUBSCRIPTION_CONFIRMED notification: {e}")
         
         return {
             "handled": True,
@@ -741,10 +770,8 @@ class StripeWebhookService:
             }
         )
         
-        # Send subscription canceled email
+        # Send subscription canceled email via orchestrator
         try:
-            from services.email_service import email_service
-            
             client = await db.clients.find_one(
                 {"client_id": client_id},
                 {"_id": 0, "contact_email": 1, "contact_name": 1}
@@ -752,20 +779,26 @@ class StripeWebhookService:
             
             if client and client.get("contact_email"):
                 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-                
-                # Access ends immediately for deleted subscription
                 access_end_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
-                
-                await email_service.send_subscription_canceled_email(
-                    recipient=client.get("contact_email"),
-                    client_name=client.get("contact_name", "Valued Customer"),
+                event_id = (event or {}).get("id", "")
+                idempotency_key = f"{event_id}_SUBSCRIPTION_CANCELED" if event_id else None
+                from services.notification_orchestrator import notification_orchestrator
+                await notification_orchestrator.send(
+                    template_key="SUBSCRIPTION_CANCELED",
                     client_id=client_id,
-                    access_end_date=access_end_date,
-                    billing_portal_link=f"{frontend_url}/app/billing"
+                    context={
+                        "client_name": client.get("contact_name", "Valued Customer"),
+                        "access_end_date": access_end_date,
+                        "billing_portal_link": f"{frontend_url}/app/billing",
+                        "company_name": "Pleerity Enterprise Ltd",
+                        "support_email": "info@pleerityenterprise.co.uk",
+                    },
+                    idempotency_key=idempotency_key,
+                    event_type="customer.subscription.deleted",
                 )
-                logger.info(f"Subscription canceled email sent to {client.get('contact_email')}")
+                logger.info(f"Subscription canceled notification sent for client {client_id}")
         except Exception as e:
-            logger.error(f"Failed to send subscription canceled email: {e}")
+            logger.error(f"Failed to send subscription canceled notification: {e}")
         
         # Audit log
         await create_audit_log(
@@ -927,35 +960,39 @@ class StripeWebhookService:
             }
         )
         
-        # Send payment failed email
+        # Send payment failed email via orchestrator (idempotent, no direct provider)
         try:
-            from services.email_service import email_service
-            
-            client = await db.clients.find_one(
+            client_for_name = await db.clients.find_one(
                 {"client_id": client_id},
-                {"_id": 0, "contact_email": 1, "contact_name": 1}
+                {"_id": 0, "contact_name": 1, "full_name": 1},
             )
-            
-            if client and client.get("contact_email"):
-                frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-                
-                # Get next retry date if available
-                retry_date = None
-                if invoice.get("next_payment_attempt"):
-                    retry_date = datetime.fromtimestamp(
-                        invoice.get("next_payment_attempt"), tz=timezone.utc
-                    ).strftime("%B %d, %Y")
-                
-                await email_service.send_payment_failed_email(
-                    recipient=client.get("contact_email"),
-                    client_name=client.get("contact_name", "Valued Customer"),
-                    client_id=client_id,
-                    billing_portal_link=f"{frontend_url}/app/billing",
-                    retry_date=retry_date
-                )
-                logger.info(f"Payment failed email sent to {client.get('contact_email')}")
+            client_name = (client_for_name or {}).get("contact_name") or (client_for_name or {}).get("full_name") or "Valued Customer"
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            retry_date = None
+            if invoice.get("next_payment_attempt"):
+                retry_date = datetime.fromtimestamp(
+                    invoice.get("next_payment_attempt"), tz=timezone.utc
+                ).strftime("%B %d, %Y")
+            event_id = (event or {}).get("id", "")
+            idempotency_key = f"{event_id}_PAYMENT_FAILED" if event_id else None
+            from services.notification_orchestrator import notification_orchestrator
+            result = await notification_orchestrator.send(
+                template_key="PAYMENT_FAILED",
+                client_id=client_id,
+                context={
+                    "client_name": client_name,
+                    "billing_portal_link": f"{frontend_url}/app/billing",
+                    "retry_date": retry_date or "",
+                },
+                idempotency_key=idempotency_key,
+                event_type="invoice.payment_failed",
+            )
+            if result.outcome == "sent":
+                logger.info(f"Payment failed notification sent for client {client_id}")
+            elif result.outcome not in ("duplicate_ignored", "blocked"):
+                logger.warning(f"Payment failed notification outcome: {result.outcome} - {result.error_message}")
         except Exception as e:
-            logger.error(f"Failed to send payment failed email: {e}")
+            logger.error(f"Failed to send payment failed notification: {e}")
         
         # Audit log
         await create_audit_log(

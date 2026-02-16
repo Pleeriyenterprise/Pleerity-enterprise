@@ -19,7 +19,6 @@ from database import database
 from services.order_workflow import OrderStatus
 from services.order_service import transition_order_state, get_order
 from services.order_email_templates import build_order_delivered_email
-from models import EmailTemplateAlias
 
 logger = logging.getLogger(__name__)
 
@@ -184,28 +183,29 @@ class OrderDeliveryService:
             portal_link=portal_link,
         )
         
-        # Send email
-        email_service = self._get_email_service()
+        from services.notification_orchestrator import notification_orchestrator
         delivery_success = False
         delivery_error = None
-        
+        client_id = order.get("client_id")
+        idempotency_key = f"{order_id}_ORDER_DELIVERED"
         try:
-            # Use the email service to send
-            await email_service.send_email(
-                recipient=customer_email,
-                template_alias=EmailTemplateAlias.ORDER_DELIVERED,
-                template_model={
+            result = await notification_orchestrator.send(
+                template_key="ORDER_DELIVERED",
+                client_id=client_id,
+                context={
                     "client_name": customer_name,
                     "order_reference": order_id,
                     "service_name": order.get("service_name", "Document Service"),
                     "download_link": download_link,
                     "portal_link": portal_link,
+                    "subject": email_content["subject"],
                 },
-                subject=email_content["subject"],
+                idempotency_key=idempotency_key,
+                event_type="order_delivered",
             )
-            delivery_success = True
-            logger.info(f"Delivery email sent for order {order_id} to {customer_email}")
-            
+            delivery_success = result.outcome in ("sent", "duplicate_ignored")
+            if delivery_success:
+                logger.info(f"Delivery email sent for order {order_id} to {customer_email}")
         except Exception as e:
             delivery_error = str(e)
             logger.error(f"Failed to send delivery email for order {order_id}: {e}")

@@ -285,50 +285,35 @@ This is an automated confirmation. Your enquiry reference is {lead_id}.
         if not lead.get("email"):
             return False, "No email address"
         
-        if not POSTMARK_SERVER_TOKEN:
-            logger.warning("Postmark not configured, skipping email")
-            return False, "Postmark not configured"
-        
         try:
-            from postmarker.core import PostmarkClient
-            
-            # Get draft if abandoned intake
+            from services.notification_orchestrator import notification_orchestrator
+            db = database.get_db()
             draft = None
             if lead.get("intake_draft_id"):
-                db = database.get_db()
                 draft = await db["intake_drafts"].find_one(
                     {"draft_id": lead["intake_draft_id"]},
                     {"_id": 0}
                 )
-            
-            # Render template
             subject, body = LeadFollowUpService.render_template(
                 template_id=template_id,
                 lead=lead,
                 draft=draft,
             )
-            
-            # Convert markdown to HTML (simple conversion)
             html_body = LeadFollowUpService.markdown_to_html(body)
-            
-            # Send via Postmark
-            postmark_client = PostmarkClient(server_token=POSTMARK_SERVER_TOKEN)
-            postmark_client.emails.send(
-                From=SUPPORT_EMAIL,
-                To=lead["email"],
-                Subject=subject,
-                HtmlBody=html_body,
-                TextBody=body,
-                Tag=f"lead_followup_{template_id}",
-                Metadata={
-                    "lead_id": lead["lead_id"],
-                    "template_id": template_id,
-                },
+            from datetime import datetime, timezone
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            idempotency_key = f"{lead['lead_id']}_LEAD_FOLLOWUP_{template_id}_{date_key}"
+            result = await notification_orchestrator.send(
+                template_key="LEAD_FOLLOWUP",
+                client_id=None,
+                context={"recipient": lead["email"], "subject": subject, "message": html_body},
+                idempotency_key=idempotency_key,
+                event_type=f"lead_followup_{template_id}",
             )
-            
-            logger.info(f"Follow-up email sent to {lead['email']} for lead {lead['lead_id']}")
-            return True, None
-            
+            if result.outcome in ("sent", "duplicate_ignored"):
+                logger.info(f"Follow-up email sent to {lead['email']} for lead {lead['lead_id']}")
+                return True, None
+            return False, result.error_message or result.block_reason or result.outcome
         except Exception as e:
             logger.error(f"Failed to send follow-up email: {e}")
             return False, str(e)
@@ -661,82 +646,36 @@ class LeadSLAService:
         _base = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
         ADMIN_DASHBOARD_URL = os.environ.get("ADMIN_DASHBOARD_URL", f"{_base}/admin/leads")
         
-        if not POSTMARK_SERVER_TOKEN or POSTMARK_SERVER_TOKEN == "leadsquared":
-            logger.warning("Postmark not properly configured, skipping SLA breach notification")
-            return
-        
         try:
-            from postmarker.core import PostmarkClient
-            
+            from services.notification_orchestrator import notification_orchestrator
+            from datetime import datetime, timezone
             lead_id = lead.get("lead_id")
             name = lead.get("name") or "Unknown"
             email = lead.get("email") or "No email"
             created_at = lead.get("created_at", "Unknown")
-            
             subject = f"⚠️ SLA BREACH: Lead {lead_id} not contacted within 24 hours"
-            
-            html_body = f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="background: #DC2626; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                        <h1 style="margin: 0; font-size: 24px;">⚠️ SLA Breach Alert</h1>
-                        <p style="margin: 5px 0 0 0; opacity: 0.9;">Lead not contacted within SLA</p>
-                    </div>
-                    
-                    <div style="background: #fef2f2; padding: 20px; border: 1px solid #fecaca; border-top: none;">
-                        <p style="color: #991B1B; font-weight: bold;">
-                            This lead has not been contacted within the required 24-hour SLA window.
-                        </p>
-                        
-                        <h2 style="color: #1f2937; margin-top: 20px;">Lead Details</h2>
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <tr>
-                                <td style="padding: 8px 0; font-weight: bold;">Lead ID:</td>
-                                <td style="padding: 8px 0;">{lead_id}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; font-weight: bold;">Name:</td>
-                                <td style="padding: 8px 0;">{name}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; font-weight: bold;">Email:</td>
-                                <td style="padding: 8px 0;"><a href="mailto:{email}">{email}</a></td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; font-weight: bold;">Created:</td>
-                                <td style="padding: 8px 0;">{created_at}</td>
-                            </tr>
-                        </table>
-                        
-                        <div style="margin-top: 20px; text-align: center;">
-                            <a href="{ADMIN_DASHBOARD_URL}" style="display: inline-block; background: #DC2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                                Contact Lead Now →
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
-            
-            postmark_client = PostmarkClient(server_token=POSTMARK_SERVER_TOKEN)
-            
+            message = (
+                f"<p>This lead has not been contacted within the required 24-hour SLA window.</p>"
+                f"<p><strong>Lead ID:</strong> {lead_id}<br><strong>Name:</strong> {name}<br>"
+                f"<strong>Email:</strong> {email}<br><strong>Created:</strong> {created_at}</p>"
+                f"<p><a href=\"{ADMIN_DASHBOARD_URL}\">Contact Lead Now →</a></p>"
+            )
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             for admin_email in ADMIN_NOTIFICATION_EMAILS:
                 admin_email = admin_email.strip()
                 if admin_email:
                     try:
-                        postmark_client.emails.send(
-                            From=SUPPORT_EMAIL,
-                            To=admin_email,
-                            Subject=subject,
-                            HtmlBody=html_body,
-                            Tag="sla_breach_notification",
-                            Metadata={"lead_id": lead_id},
+                        idempotency_key = f"{lead_id}_LEAD_SLA_BREACH_ADMIN_{date_key}_{admin_email}"
+                        result = await notification_orchestrator.send(
+                            template_key="LEAD_SLA_BREACH_ADMIN",
+                            client_id=None,
+                            context={"recipient": admin_email, "subject": subject, "message": message},
+                            idempotency_key=idempotency_key,
+                            event_type="lead_sla_breach",
                         )
-                        logger.info(f"SLA breach notification sent to {admin_email} for lead {lead_id}")
+                        if result.outcome in ("sent", "duplicate_ignored"):
+                            logger.info(f"SLA breach notification sent to {admin_email} for lead {lead_id}")
                     except Exception as e:
                         logger.error(f"Failed to send SLA breach notification: {e}")
-                        
         except Exception as e:
             logger.error(f"Failed to send SLA breach notification: {e}")

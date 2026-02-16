@@ -86,6 +86,7 @@ from job_runner import (
     run_abandoned_intake_detection,
     run_lead_followup_processing,
     run_lead_sla_check,
+    run_notification_retry_worker,
 )
 
 # Lifespan context manager for startup/shutdown
@@ -353,6 +354,15 @@ async def lifespan(app: FastAPI):
         CronTrigger(minute="*/5"),
         id="compliance_recalc_sla_monitor",
         name="Compliance Recalc SLA Monitor",
+        replace_existing=True
+    )
+    
+    # Notification retry worker (outbox) - every minute
+    scheduler.add_job(
+        run_notification_retry_worker,
+        CronTrigger(minute="*"),
+        id="notification_retry_worker",
+        name="Notification Retry Worker",
         replace_existing=True
     )
     

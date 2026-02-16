@@ -304,28 +304,24 @@ async def deliver_email(
         if not client or not client.get("email"):
             logger.warning(f"No email found for client {client_id}")
             return False
-        
-        # Import email service
-        from services.email_service import EmailService
-        
-        email_service = EmailService()
-        
-        if email_service.client:
-            # Send via Postmark
-            email_service.client.emails.send(
-                From="info@pleerityenterprise.co.uk",
-                To=client["email"],
-                Subject=subject,
-                HtmlBody=body_html,
-                TextBody=body_html.replace("<br>", "\n").replace("</p>", "\n\n"),
-                Tag=f"enablement-{category.value.lower()}"
-            )
+        from services.notification_orchestrator import notification_orchestrator
+        idempotency_key = f"{client_id}_ENABLEMENT_DELIVERY_{category.value}_{hash(subject) % 10**10}"
+        result = await notification_orchestrator.send(
+            template_key="ENABLEMENT_DELIVERY",
+            client_id=client_id,
+            context={
+                "subject": subject,
+                "message": body_html,
+            },
+            idempotency_key=idempotency_key,
+            event_type=f"enablement_{category.value.lower()}",
+        )
+        if result.outcome in ("sent", "duplicate_ignored"):
             logger.info(f"Email delivered to {client['email']} for client {client_id}")
             return True
-        else:
-            logger.warning("Email service not configured - logging only")
-            return True  # Consider success if no Postmark configured
-            
+        if result.outcome == "blocked" and "not configured" in (result.block_reason or "").lower():
+            return True
+        return False
     except Exception as e:
         logger.error(f"Failed to deliver email: {e}")
         return False

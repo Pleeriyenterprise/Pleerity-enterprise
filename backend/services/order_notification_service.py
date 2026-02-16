@@ -312,38 +312,52 @@ class OrderNotificationService:
                     logger.error(f"Failed to create in-app notification: {e}")
                     results["errors"].append(f"In-app ({admin_id}): {e}")
             
-            # Email notification
+            # Email notification via orchestrator (admin/internal)
             if config.get("email_enabled", False) and prefs.get("email_enabled", True):
                 notification_email = prefs.get("notification_email") or admin_email
                 if notification_email:
                     try:
-                        email_service = self._get_email_service()
-                        await email_service.send_email(
-                            recipient=notification_email,
-                            template_alias=EmailTemplateAlias.COMPLIANCE_ALERT,  # Generic alert template
-                            template_model={
+                        from services.notification_orchestrator import notification_orchestrator
+                        idempotency_key = f"{order_id}_ORDER_NOTIFICATION_{event_type}_{notification_email}"
+                        result = await notification_orchestrator.send(
+                            template_key="ORDER_NOTIFICATION",
+                            client_id=None,
+                            context={
+                                "recipient": notification_email,
                                 "client_name": admin.get("name", "Admin"),
                                 "title": f"{config.get('icon', '')} {title}",
                                 "message": f"Order: {order_id}\n\n{message}",
                                 "portal_link": f"{os.environ.get('FRONTEND_URL', '')}/admin/orders",
+                                "subject": f"[Pleerity] {title}: {order_id}",
                             },
-                            subject=f"[Pleerity] {title}: {order_id}",
+                            idempotency_key=idempotency_key,
+                            event_type=f"order_notification_{event_type}",
                         )
-                        results["email"] += 1
+                        if result.outcome in ("sent", "duplicate_ignored"):
+                            results["email"] += 1
                         logger.debug(f"Sent email notification to {notification_email}")
                     except Exception as e:
                         logger.error(f"Failed to send email notification: {e}")
                         results["errors"].append(f"Email ({notification_email}): {e}")
             
-            # SMS notification (for urgent/high priority)
+            # SMS notification via orchestrator (admin/internal)
             if config.get("sms_enabled", False) and prefs.get("sms_enabled", False) and admin_phone:
                 try:
-                    sms_service = self._get_sms_service()
-                    await sms_service.send_sms(
-                        to=admin_phone,
-                        message=f"[Pleerity] {title}\nOrder: {order_id}\n{message[:100]}",
+                    from services.notification_orchestrator import notification_orchestrator
+                    sms_body = f"[Pleerity] {title}\nOrder: {order_id}\n{message[:100]}"
+                    idempotency_key = f"{order_id}_ADMIN_MANUAL_SMS_{event_type}_{admin_phone}"
+                    result = await notification_orchestrator.send(
+                        template_key="ADMIN_MANUAL_SMS",
+                        client_id=None,
+                        context={
+                            "recipient": admin_phone,
+                            "body": sms_body,
+                        },
+                        idempotency_key=idempotency_key,
+                        event_type=f"order_notification_sms_{event_type}",
                     )
-                    results["sms"] += 1
+                    if result.outcome in ("sent", "duplicate_ignored"):
+                        results["sms"] += 1
                     logger.debug(f"Sent SMS notification to {admin_phone}")
                 except Exception as e:
                     logger.error(f"Failed to send SMS notification: {e}")

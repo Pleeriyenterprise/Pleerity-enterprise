@@ -80,15 +80,21 @@ async def resend_invite(email: str) -> bool:
             doc[key] = doc[key].isoformat()
     await db.password_tokens.insert_one(doc)
 
-    # Send email
-    from services.email_service import email_service
+    from services.notification_orchestrator import notification_orchestrator
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
     setup_link = f"{frontend_url}/set-password?token={raw_token}"
-    await email_service.send_password_setup_email(
-        recipient=client["email"],
-        client_name=client.get("full_name", "Valued Customer"),
-        setup_link=setup_link,
-        client_id=client_id
+    idempotency_key = f"{client_id}_WELCOME_EMAIL_script_{raw_token[:16]}"
+    await notification_orchestrator.send(
+        template_key="WELCOME_EMAIL",
+        client_id=client_id,
+        context={
+            "setup_link": setup_link,
+            "client_name": client.get("full_name", "Valued Customer"),
+            "company_name": "Pleerity Enterprise Ltd",
+            "tagline": "AI-Driven Solutions & Compliance",
+        },
+        idempotency_key=idempotency_key,
+        event_type="script_resend_invite",
     )
 
     await create_audit_log(

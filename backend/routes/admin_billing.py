@@ -658,13 +658,26 @@ async def resend_password_setup(request: Request, client_id: str):
                 detail={"error_code": "EMAIL_INPUT_INVALID", "message": "Missing recipient email or setup link"},
             )
         
-        from services.email_service import email_service
+        from services.notification_orchestrator import notification_orchestrator
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "onboarding_status": 1})
+        if client and client.get("onboarding_status") != "PROVISIONED":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"error_code": "ACCOUNT_NOT_READY", "message": "Provisioning not completed."},
+            )
+        idempotency_key = f"{client_id}_WELCOME_EMAIL_resend_{portal_user.get('portal_user_id', '')}_{setup_token[:8]}"
         try:
-            result = await email_service.send_password_setup_email(
-                recipient=user_email,
-                client_name=portal_user.get("full_name") or portal_user.get("name", ""),
-                setup_link=setup_url,
-                client_id=client_id
+            result = await notification_orchestrator.send(
+                template_key="WELCOME_EMAIL",
+                client_id=client_id,
+                context={
+                    "setup_link": setup_url,
+                    "client_name": portal_user.get("full_name") or portal_user.get("name", "Customer"),
+                    "company_name": "Pleerity Enterprise Ltd",
+                    "tagline": "AI-Driven Solutions & Compliance",
+                },
+                idempotency_key=idempotency_key,
+                event_type="admin_resend_billing",
             )
         except Exception as e:
             logger.error(f"Resend setup send error: {e}")
@@ -672,14 +685,12 @@ async def resend_password_setup(request: Request, client_id: str):
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value},
             )
-        if result.status != "sent":
+        if result.status_code == 403:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=result.details or {"error_code": "ACCOUNT_NOT_READY"})
+        if result.outcome == "failed":
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={
-                    "error_code": "EMAIL_SEND_FAILED",
-                    "template": EmailTemplateAlias.PASSWORD_SETUP.value,
-                    "message_id": getattr(result, "message_id", None),
-                },
+                detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value, "message_id": result.message_id},
             )
         
         await create_audit_log(
@@ -912,28 +923,44 @@ async def send_client_message(request: Request, client_id: str, data: MessageReq
             await db.client_messages.insert_one(message_record)
             results["in_app"] = {"sent": True, "message_id": message_record["message_id"]}
         
-        # Send email
+        # Send email via orchestrator
         if "email" in data.channels:
-            from services.email_service import email_service
-            
-            email_sent = await email_service.send_admin_message(
-                to_email=client.get("contact_email"),
-                subject=subject,
-                body=body,
+            from services.notification_orchestrator import notification_orchestrator
+            import uuid
+            msg_id = str(uuid.uuid4())
+            idempotency_key = f"{client_id}_ADMIN_MANUAL_{msg_id}"
+            result = await notification_orchestrator.send(
+                template_key="ADMIN_MANUAL",
+                client_id=client_id,
+                context={
+                    "subject": subject,
+                    "message": body,
+                    "client_name": client.get("full_name", "Client"),
+                    "customer_reference": client.get("customer_reference", "N/A"),
+                    "company_name": "Pleerity Enterprise Ltd",
+                    "tagline": "AI-Driven Solutions & Compliance",
+                },
+                idempotency_key=idempotency_key,
+                event_type="admin_billing_message",
             )
-            results["email"] = {"sent": email_sent}
+            results["email"] = {"sent": result.outcome in ("sent", "duplicate_ignored")}
         
-        # Send SMS
+        # Send SMS via orchestrator
         if "sms" in data.channels and sms_entitled:
+            from services.notification_orchestrator import notification_orchestrator
             phone = client.get("phone")
             if phone:
-                from services.sms_service import sms_service
-                
-                sms_sent = await sms_service.send_sms(
-                    to_phone=phone,
-                    message=body[:160],  # SMS limit
+                import uuid
+                sms_id = str(uuid.uuid4())
+                idempotency_key = f"{client_id}_ADMIN_MANUAL_SMS_{sms_id}"
+                result = await notification_orchestrator.send(
+                    template_key="ADMIN_MANUAL_SMS",
+                    client_id=client_id,
+                    context={"body": body[:160]},
+                    idempotency_key=idempotency_key,
+                    event_type="admin_billing_sms",
                 )
-                results["sms"] = {"sent": sms_sent}
+                results["sms"] = {"sent": result.outcome in ("sent", "duplicate_ignored")}
             else:
                 results["sms"] = {"sent": False, "reason": "NO_PHONE_NUMBER"}
         

@@ -189,12 +189,19 @@ async def run_bootstrap_owner() -> dict:
         frontend_url = os.getenv("FRONTEND_URL", "")
         setup_link = f"{frontend_url}/set-password?token={raw_token}" if frontend_url else ""
         try:
-            from services.email_service import email_service
-            await email_service.send_admin_invite_email(
-                recipient=email,
-                admin_name=email.split("@")[0],
-                inviter_name="System",
-                setup_link=setup_link,
+            from services.notification_orchestrator import notification_orchestrator
+            await notification_orchestrator.send(
+                template_key="ADMIN_INVITE",
+                client_id=None,
+                context={
+                    "recipient": email,
+                    "admin_name": email.split("@")[0],
+                    "inviter_name": "System",
+                    "setup_link": setup_link,
+                    "company_name": "Pleerity Enterprise Ltd",
+                },
+                idempotency_key=f"{portal_user_id}_ADMIN_INVITE",
+                event_type="owner_bootstrap",
             )
         except Exception as e:
             logger.warning("Bootstrap owner: could not send invite email: %s", e)

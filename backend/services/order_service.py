@@ -282,52 +282,48 @@ async def notify_admin_of_state(order_id: str, status: OrderStatus):
         if not order:
             return
         
-        # Import here to avoid circular imports
-        from services.email_service import send_email
-        from services.sms_service import send_sms
-        
-        # Get admin contact info
+        from services.notification_orchestrator import notification_orchestrator
         admin = await db.portal_users.find_one(
             {"role": "admin", "status": "active"},
             {"email": 1, "phone": 1, "name": 1}
         )
-        
         if not admin:
             logger.warning("No active admin found for notification")
             return
-        
         subject_map = {
             OrderStatus.INTERNAL_REVIEW: f"Order {order_id} Ready for Review",
             OrderStatus.FAILED: f"Order {order_id} Failed - Action Required",
             OrderStatus.DELIVERY_FAILED: f"Order {order_id} Delivery Failed",
         }
-        
         subject = subject_map.get(status, f"Order {order_id} Status Update")
-        
         message = (
             f"Order {order_id} has reached status: {status.value}\n"
             f"Service: {order.get('service_name', 'Unknown')}\n"
             f"Customer: {order.get('customer', {}).get('full_name', 'Unknown')}\n"
             f"Please review in the admin dashboard."
         )
-        
-        # Send email notification
         if admin.get("email"):
             try:
-                await send_email(
-                    to_email=admin["email"],
-                    subject=subject,
-                    body=message,
+                await notification_orchestrator.send(
+                    template_key="ORDER_NOTIFICATION",
+                    client_id=None,
+                    context={"recipient": admin["email"], "subject": subject, "message": message},
+                    idempotency_key=f"{order_id}_ORDER_NOTIFICATION_admin_{status.value}",
+                    event_type="order_admin_notify",
                 )
                 logger.info(f"Admin email notification sent for {order_id}")
             except Exception as e:
                 logger.error(f"Failed to send admin email: {e}")
-        
-        # Send SMS notification
         if admin.get("phone"):
             try:
-                sms_message = f"Order {order_id} needs attention: {status.value}. Check admin dashboard."
-                await send_sms(admin["phone"], sms_message)
+                sms_body = f"Order {order_id} needs attention: {status.value}. Check admin dashboard."
+                await notification_orchestrator.send(
+                    template_key="ADMIN_MANUAL_SMS",
+                    client_id=None,
+                    context={"recipient": admin["phone"], "body": sms_body},
+                    idempotency_key=f"{order_id}_ADMIN_MANUAL_SMS_{status.value}",
+                    event_type="order_admin_sms",
+                )
                 logger.info(f"Admin SMS notification sent for {order_id}")
             except Exception as e:
                 logger.error(f"Failed to send admin SMS: {e}")

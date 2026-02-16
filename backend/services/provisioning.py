@@ -4,7 +4,6 @@ from models import (
     UserRole, UserStatus, PasswordStatus, ComplianceStatus, RequirementStatus,
     AuditAction, SubscriptionStatus
 )
-from services.email_service import email_service
 from utils.audit import create_audit_log
 from auth import generate_secure_token, hash_token
 from datetime import datetime, timedelta, timezone
@@ -465,15 +464,20 @@ class ProvisioningService:
             {"$set": {"compliance_status": status.value}}
         )
     
-    async def _send_password_setup_link(self, client_id: str, user_id: str, email: str, name: str):
-        """Generate token and send password setup email."""
+    async def _send_password_setup_link(
+        self,
+        client_id: str,
+        user_id: str,
+        email: str,
+        name: str,
+        idempotency_key: Optional[str] = None,
+    ):
+        """Generate token and send password setup email via NotificationOrchestrator."""
         db = database.get_db()
-        
-        # Generate token
+
         raw_token = generate_secure_token()
         token_hash = hash_token(raw_token)
-        
-        # Create password token record
+
         from models import PasswordToken
         password_token = PasswordToken(
             token_hash=token_hash,
@@ -483,26 +487,33 @@ class ProvisioningService:
             created_by="SYSTEM",
             send_count=1
         )
-        
+
         doc = password_token.model_dump()
         for key in ["expires_at", "used_at", "revoked_at", "created_at"]:
             if doc.get(key) and isinstance(doc[key], datetime):
                 doc[key] = doc[key].isoformat()
-        
+
         await db.password_tokens.insert_one(doc)
-        
-        # Create setup link
+
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         setup_link = f"{frontend_url}/set-password?token={raw_token}"
-        
-        # Send email
-        await email_service.send_password_setup_email(
-            recipient=email,
-            client_name=name,
-            setup_link=setup_link,
-            client_id=client_id
+
+        from services.notification_orchestrator import notification_orchestrator
+        result = await notification_orchestrator.send(
+            template_key="WELCOME_EMAIL",
+            client_id=client_id,
+            context={
+                "setup_link": setup_link,
+                "client_name": name,
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance",
+            },
+            idempotency_key=idempotency_key,
+            event_type="provisioning_welcome",
         )
-        
+        if result.outcome not in ("sent", "duplicate_ignored"):
+            raise RuntimeError(result.error_message or result.block_reason or result.outcome)
+
         await create_audit_log(
             action=AuditAction.PASSWORD_TOKEN_GENERATED,
             client_id=client_id,

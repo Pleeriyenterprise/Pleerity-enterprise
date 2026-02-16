@@ -487,7 +487,6 @@ async def request_client_info(
     """
     from services.order_service import create_client_input_request
     from services.order_email_templates import build_client_input_required_email
-    from services.email_service import email_service
     import os
     
     if not request.request_notes.strip():
@@ -544,16 +543,21 @@ async def request_client_info(
             provide_info_link=provide_info_link,
         )
         
-        # Send the email
+        client_id = order.get("client_id")
         client_email = order.get("customer", {}).get("email")
-        if client_email:
+        if client_email and client_id:
             try:
-                from models import EmailTemplateAlias
-                await email_service.send_email(
-                    recipient=client_email,
-                    template_alias=EmailTemplateAlias.GENERIC,
-                    template_model={"message": email_data["text"]},
-                    subject=email_data["subject"],
+                from services.notification_orchestrator import notification_orchestrator
+                idempotency_key = f"{order_id}_ORDER_NOTIFICATION_info_request"
+                await notification_orchestrator.send(
+                    template_key="ORDER_NOTIFICATION",
+                    client_id=client_id,
+                    context={
+                        "message": email_data["text"],
+                        "subject": email_data["subject"],
+                    },
+                    idempotency_key=idempotency_key,
+                    event_type="order_info_request",
                 )
                 logger.info(f"Client input required email sent for order {order_id}")
             except Exception as email_error:
@@ -1597,15 +1601,12 @@ async def update_postal_status(
         },
     })
     
-    # Notify customer if dispatched
     if request.status == "DISPATCHED" and request.tracking_number:
         try:
-            from services.email_service import email_service
+            from services.notification_orchestrator import notification_orchestrator
             customer = order.get("customer", {})
-            await email_service.send_custom_notification(
-                to_email=customer.get("email"),
-                subject=f"Your order {order_id} has been dispatched",
-                body=f"""
+            client_id = order.get("client_id")
+            body = f"""
 Dear {customer.get('full_name', 'Customer')},
 
 Your printed documents for order {order_id} have been dispatched.
@@ -1619,7 +1620,17 @@ Thank you for your business.
 
 Best regards,
 Pleerity Enterprise Ltd
-                """.strip(),
+            """.strip()
+            await notification_orchestrator.send(
+                template_key="CUSTOM_NOTIFICATION",
+                client_id=client_id,
+                context={
+                    "subject": f"Your order {order_id} has been dispatched",
+                    "message": body,
+                    "client_name": customer.get("full_name", "Customer"),
+                },
+                idempotency_key=f"{order_id}_CUSTOM_NOTIFICATION_dispatch",
+                event_type="order_dispatch",
             )
         except Exception as e:
             logger.warning(f"Failed to send dispatch notification: {e}")

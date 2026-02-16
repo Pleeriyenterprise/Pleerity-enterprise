@@ -378,6 +378,31 @@ async def run_compliance_recalc_sla_monitor():
         raise
 
 
+async def run_notification_retry_worker():
+    """Process notification retry queue (outbox pattern). Picks items with next_run_at <= now and re-attempts send."""
+    from database import database
+    from datetime import datetime, timezone
+    try:
+        db = database.get_db()
+        now = datetime.now(timezone.utc)
+        cursor = db.notification_retry_queue.find(
+            {"status": "PENDING", "next_run_at": {"$lte": now}},
+        ).limit(50)
+        items = await cursor.to_list(50)
+        from services.notification_orchestrator import notification_orchestrator
+        processed = 0
+        for item in items:
+            try:
+                await notification_orchestrator.process_retry(item["message_id"])
+                processed += 1
+            except Exception as e:
+                logger.warning(f"Notification retry for {item.get('message_id')} failed: {e}")
+        return {"message": f"Processed {processed} notification retries", "count": processed}
+    except Exception as e:
+        logger.error(f"Notification retry worker failed: {e}")
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -397,4 +422,5 @@ JOB_RUNNERS = {
     "lead_followup_processing": run_lead_followup_processing,
     "lead_sla_check": run_lead_sla_check,
     "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
+    "notification_retry_worker": run_notification_retry_worker,
 }

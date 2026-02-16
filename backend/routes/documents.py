@@ -1591,10 +1591,8 @@ async def apply_ai_extraction(
                 correlation_id=f"AI_APPLIED:{document_id}",
             )
         
-        # Send email notification to the client
+        # Send email notification to the client via orchestrator
         try:
-            from services.email_service import email_service
-            
             # Get client details for email
             client = await db.clients.find_one(
                 {"client_id": document["client_id"]},
@@ -1621,19 +1619,25 @@ async def apply_ai_extraction(
                     except (ValueError, AttributeError):
                         expiry_display = update_fields.get("due_date", "N/A")
                 
-                await email_service.send_ai_extraction_email(
-                    recipient=client["email"],
-                    client_name=client.get("full_name", "there"),
+                from services.notification_orchestrator import notification_orchestrator
+                result = await notification_orchestrator.send(
+                    template_key="AI_EXTRACTION_APPLIED",
                     client_id=document["client_id"],
-                    customer_reference=client.get("customer_reference", ""),
-                    property_address=property_address,
-                    document_type=data.get("document_type") or document.get("file_name", "Certificate"),
-                    certificate_number=cert_number or "N/A",
-                    expiry_date=expiry_display,
-                    requirement_status=after_state.get("status", "UPDATED"),
-                    portal_link=os.getenv("FRONTEND_URL", "https://compliance-vault-pro.pleerity.com") + "/app/dashboard"
+                    context={
+                        "client_name": client.get("full_name", "there"),
+                        "customer_reference": client.get("customer_reference", ""),
+                        "property_address": property_address,
+                        "document_type": data.get("document_type") or document.get("file_name", "Certificate"),
+                        "certificate_number": cert_number or "N/A",
+                        "expiry_date": expiry_display,
+                        "requirement_status": after_state.get("status", "UPDATED"),
+                        "portal_link": os.getenv("FRONTEND_URL", "https://compliance-vault-pro.pleerity.com") + "/app/dashboard",
+                    },
+                    idempotency_key=f"{document_id}_AI_EXTRACTION_APPLIED",
+                    event_type="ai_extraction_applied",
                 )
-                logger.info(f"AI extraction email sent to {client['email']}")
+                if result.outcome in ("sent", "duplicate_ignored"):
+                    logger.info(f"AI extraction email sent to {client['email']}")
         except Exception as email_err:
             # Don't fail the extraction if email fails
             logger.warning(f"Failed to send AI extraction email: {email_err}")

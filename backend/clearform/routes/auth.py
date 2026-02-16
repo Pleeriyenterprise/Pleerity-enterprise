@@ -20,7 +20,6 @@ from clearform.models.user import (
     ClearFormTokenResponse,
 )
 from clearform.services.clearform_auth import clearform_auth_service
-from services.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +58,20 @@ async def register(data: ClearFormUserCreate):
             ClearFormUserLogin(email=data.email, password=data.password)
         )
         
-        # Send welcome email (fire-and-forget, don't block response)
+        # Send welcome email via orchestrator (fire-and-forget)
+        from services.notification_orchestrator import notification_orchestrator
         asyncio.create_task(
-            email_service.send_clearform_welcome_email(
-                recipient=user.email,
-                full_name=user.full_name,
-                user_id=user.user_id,
-                credit_balance=user.credit_balance,
+            notification_orchestrator.send(
+                template_key="CLEARFORM_WELCOME",
+                client_id=None,
+                context={
+                    "recipient": user.email,
+                    "full_name": user.full_name,
+                    "user_id": user.user_id,
+                    "credit_balance": user.credit_balance,
+                },
+                idempotency_key=f"{user.user_id}_CLEARFORM_WELCOME",
+                event_type="clearform_signup",
             )
         )
         

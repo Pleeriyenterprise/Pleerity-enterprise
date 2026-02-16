@@ -134,7 +134,11 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
             return False
         try:
             await provisioning_service._send_password_setup_link(
-                client_id, portal_user["portal_user_id"], client["email"], client.get("full_name", "Valued Customer")
+                client_id,
+                portal_user["portal_user_id"],
+                client["email"],
+                client.get("full_name", "Valued Customer"),
+                idempotency_key=f"{job_id}_welcome",
             )
             await db.clients.update_one({"client_id": client_id}, {"$unset": {"last_invite_error": ""}})
             await db.provisioning_jobs.update_one(
@@ -225,7 +229,11 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
         return False
     try:
         await provisioning_service._send_password_setup_link(
-            client_id, user_id, client["email"], client.get("full_name", "Valued Customer")
+            client_id,
+            user_id,
+            client["email"],
+            client.get("full_name", "Valued Customer"),
+            idempotency_key=f"{job_id}_welcome",
         )
         now3 = datetime.now(timezone.utc).isoformat()
         await db.provisioning_jobs.update_one(
@@ -240,34 +248,6 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
             }
         )
         logger.info(f"Job {job_id}: WELCOME_EMAIL_SENT")
-        # Payment-received email (portal is ready)
-        try:
-            import os
-            from services.email_service import email_service
-            from services.plan_registry import plan_registry
-            client_after = await db.clients.find_one(
-                {"client_id": client_id},
-                {"_id": 0, "contact_email": 1, "contact_name": 1, "email": 1, "full_name": 1, "billing_plan": 1}
-            )
-            if client_after:
-                plan_code_val = client_after.get("billing_plan") or "PLAN_1"
-                plan_def = plan_registry.get_plan_by_code_string(plan_code_val)
-                if plan_def:
-                    recipient = (client_after.get("contact_email") or client_after.get("email") or "").strip()
-                    client_name = (client_after.get("contact_name") or client_after.get("full_name") or "Valued Customer").strip()
-                    amount = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
-                    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-                    await email_service.send_payment_received_email(
-                        recipient=recipient,
-                        client_name=client_name,
-                        client_id=client_id,
-                        plan_name=plan_def.get("name", plan_code_val),
-                        amount=amount,
-                        portal_link=f"{frontend_url}/app/dashboard",
-                    )
-                    logger.info(f"Job {job_id}: payment received email sent to {recipient}")
-        except Exception as e:
-            logger.warning(f"Job {job_id}: payment received email failed: {e}")
         return True
     except Exception as email_err:
         err_msg = str(email_err)[:500]

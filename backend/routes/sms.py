@@ -198,16 +198,17 @@ async def test_send_sms(request: Request):
             "message": f"Test SMS would be sent to {phone[:7]}*** (SMS not enabled)"
         }
     
-    result = await sms_service.send_sms(
-        phone,
-        "🔔 Compliance Vault Pro: This is a test message. Your SMS notifications are working!",
-        user["client_id"]
+    from services.notification_orchestrator import notification_orchestrator
+    result = await notification_orchestrator.send(
+        template_key="ADMIN_MANUAL_SMS",
+        client_id=user["client_id"],
+        context={"body": "🔔 Compliance Vault Pro: This is a test message. Your SMS notifications are working!"},
+        idempotency_key=f"{user['client_id']}_test_sms_{__import__('time').time()}",
+        event_type="test_sms",
     )
-    
-    if result["success"]:
+    if result.outcome in ("sent", "duplicate_ignored"):
         return {"success": True, "message": f"Test SMS sent to {phone[:7]}***"}
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result.get("error", "Failed to send test SMS")
-        )
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=result.error_message or result.block_reason or "Failed to send test SMS"
+    )

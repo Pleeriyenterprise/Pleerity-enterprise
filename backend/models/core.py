@@ -164,6 +164,16 @@ class AuditAction(str, Enum):
     EMAIL_SKIPPED_NO_RECIPIENT = "EMAIL_SKIPPED_NO_RECIPIENT"
     REMINDER_SENT = "REMINDER_SENT"
     DIGEST_SENT = "DIGEST_SENT"
+    EMAIL_DELIVERED = "EMAIL_DELIVERED"
+    EMAIL_BOUNCED = "EMAIL_BOUNCED"
+    EMAIL_SPAM_COMPLAINT = "EMAIL_SPAM_COMPLAINT"
+    # Notification orchestration
+    NOTIFICATION_BLOCKED_PROVISIONING_INCOMPLETE = "NOTIFICATION_BLOCKED_PROVISIONING_INCOMPLETE"
+    NOTIFICATION_BLOCKED_SUBSCRIPTION_INACTIVE = "NOTIFICATION_BLOCKED_SUBSCRIPTION_INACTIVE"
+    NOTIFICATION_BLOCKED_PLAN_GATE = "NOTIFICATION_BLOCKED_PLAN_GATE"
+    NOTIFICATION_PROVIDER_NOT_CONFIGURED = "NOTIFICATION_PROVIDER_NOT_CONFIGURED"
+    NOTIFICATION_FAILED_PERMANENT = "NOTIFICATION_FAILED_PERMANENT"
+    PLAN_GATE_DENIED = "PLAN_GATE_DENIED"
     
     # Documents
     DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED"
@@ -571,15 +581,19 @@ class AuditLog(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
 class MessageLog(BaseModel):
+    """Unified log for email and SMS. Orchestrator uses channel, template_key, idempotency_key."""
     model_config = ConfigDict(extra="ignore")
     
     message_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     postmark_message_id: Optional[str] = None
+    provider_message_id: Optional[str] = None  # Postmark MessageID or Twilio SID
     client_id: Optional[str] = None
-    recipient: EmailStr
-    template_alias: EmailTemplateAlias
-    subject: str
-    status: str = "queued"
+    recipient: Optional[str] = None  # Email or phone; required when channel present
+    template_alias: Optional[EmailTemplateAlias] = None  # Legacy; use template_key for orchestrator
+    template_key: Optional[str] = None  # e.g. WELCOME_EMAIL, PAYMENT_FAILED
+    channel: Optional[str] = None  # EMAIL | SMS
+    subject: Optional[str] = None
+    status: str = "queued"  # PENDING|SENT|FAILED|DELIVERED|BOUNCED|BLOCKED_*
     sent_at: Optional[datetime] = None
     delivered_at: Optional[datetime] = None
     opened_at: Optional[datetime] = None
@@ -587,6 +601,9 @@ class MessageLog(BaseModel):
     error_message: Optional[str] = None
     provider_error_type: Optional[str] = None
     provider_error_code: Optional[str] = None
+    idempotency_key: Optional[str] = None
+    attempt_count: int = 1
+    metadata: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 
 class DigestLog(BaseModel):

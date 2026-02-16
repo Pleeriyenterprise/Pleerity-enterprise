@@ -49,21 +49,19 @@ async def _send_alert_email(alert_type: str, severity: str, property_id: str, bo
     if not OPS_ALERT_EMAIL:
         logger.warning("OPS_ALERT_EMAIL not set; compliance SLA alert not sent by email")
         return False
-    token = os.getenv("POSTMARK_SERVER_TOKEN")
-    if not token:
-        logger.warning("POSTMARK_SERVER_TOKEN not set; compliance SLA alert logged only")
-        return False
     try:
-        from postmarker.core import PostmarkClient
-        client = PostmarkClient(server_token=token)
-        client.emails.send(
-            From=os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk"),
-            To=OPS_ALERT_EMAIL,
-            Subject=subject,
-            HtmlBody=body,
-            Tag="compliance-sla-alert",
+        from services.notification_orchestrator import notification_orchestrator
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        idempotency_key = f"COMPLIANCE_SLA_ALERT_{now}_{hash(subject) % 10**8}"
+        result = await notification_orchestrator.send(
+            template_key="COMPLIANCE_SLA_ALERT",
+            client_id=None,
+            context={"recipient": OPS_ALERT_EMAIL, "subject": subject, "message": body},
+            idempotency_key=idempotency_key,
+            event_type="compliance_sla_alert",
         )
-        return True
+        return result.outcome in ("sent", "duplicate_ignored")
     except Exception as e:
         logger.exception("Failed to send compliance SLA alert email: %s", e)
         return False

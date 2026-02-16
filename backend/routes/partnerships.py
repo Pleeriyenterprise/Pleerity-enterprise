@@ -111,64 +111,28 @@ async def submit_partnership_enquiry(data: PartnershipEnquiryRequest):
 
 
 async def send_partnership_ack_email(enquiry: PartnershipEnquiry) -> bool:
-    """Send partnership acknowledgement email."""
+    """Send partnership acknowledgement email via NotificationOrchestrator."""
     try:
-        from services.email_service import email_service
-        
+        from services.notification_orchestrator import notification_orchestrator
         subject = "Partnership Enquiry Received – Pleerity Enterprise Ltd"
-        
-        html_body = f"""<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-<p>Hello {enquiry.first_name},</p>
-
-<p>Thank you for submitting a partnership enquiry to Pleerity Enterprise Ltd.</p>
-
-<p>We have received your information and your proposal is now under initial review. All partnership enquiries are assessed based on strategic alignment, operational capability, and regulatory considerations.</p>
-
-<p>If your proposal is suitable for further discussion, a member of our team will contact you to explore the collaboration in more detail. Please note that submitting an enquiry does not guarantee acceptance into a partnership.</p>
-
-<p>No further action is required from you at this stage.</p>
-
-<p style="margin-top: 30px;">
-Kind regards,<br>
-<strong>Pleerity Enterprise Ltd</strong><br>
-AI-Driven Solutions & Compliance
-</p>
-
-<p style="color: #666; font-size: 14px;">
-📧 info@pleerityenterprise.co.uk<br>
-🌐 <a href="https://pleerityenterprise.co.uk" style="color: #00B8A9;">https://pleerityenterprise.co.uk</a>
-</p>
-</body></html>"""
-        
-        text_body = f"""Hello {enquiry.first_name},
-
-Thank you for submitting a partnership enquiry to Pleerity Enterprise Ltd.
-
-We have received your information and your proposal is now under initial review. All partnership enquiries are assessed based on strategic alignment, operational capability, and regulatory considerations.
-
-If your proposal is suitable for further discussion, a member of our team will contact you to explore the collaboration in more detail. Please note that submitting an enquiry does not guarantee acceptance into a partnership.
-
-No further action is required from you at this stage.
-
-Kind regards,
-Pleerity Enterprise Ltd
-AI-Driven Solutions & Compliance
-
-info@pleerityenterprise.co.uk
-https://pleerityenterprise.co.uk
-"""
-        
-        # Send via email service
-        if email_service.client:
-            response = email_service.client.emails.send(
-                From="info@pleerityenterprise.co.uk",
-                To=enquiry.work_email,
-                Subject=subject,
-                HtmlBody=html_body,
-                TextBody=text_body,
-                Tag="partnership_ack"
-            )
-            
+        message = (
+            f"<p>Hello {enquiry.first_name},</p>"
+            "<p>Thank you for submitting a partnership enquiry to Pleerity Enterprise Ltd.</p>"
+            "<p>We have received your information and your proposal is now under initial review. "
+            "All partnership enquiries are assessed based on strategic alignment, operational capability, and regulatory considerations.</p>"
+            "<p>If your proposal is suitable for further discussion, a member of our team will contact you. "
+            "Please note that submitting an enquiry does not guarantee acceptance into a partnership.</p>"
+            "<p>No further action is required from you at this stage.</p>"
+            "<p>Kind regards,<br><strong>Pleerity Enterprise Ltd</strong><br>AI-Driven Solutions & Compliance</p>"
+        )
+        result = await notification_orchestrator.send(
+            template_key="PARTNERSHIP_ACK",
+            client_id=None,
+            context={"recipient": enquiry.work_email, "subject": subject, "message": message},
+            idempotency_key=f"{enquiry.enquiry_id}_PARTNERSHIP_ACK",
+            event_type="partnership_enquiry_ack",
+        )
+        if result.outcome in ("sent", "duplicate_ignored"):
             # Log in audit
             await create_audit_log(
                 action=AuditAction.ADMIN_ACTION,
@@ -177,15 +141,13 @@ https://pleerityenterprise.co.uk
                     "action_type": "PARTNERSHIP_ENQUIRY_ACK_SENT",
                     "enquiry_id": enquiry.enquiry_id,
                     "recipient_email": enquiry.work_email,
-                    "postmark_message_id": response.get("MessageID"),
+                    "message_id": result.message_id,
                 }
             )
-            
             logger.info(f"Partnership ack email sent to {enquiry.work_email}")
             return True
-        else:
-            logger.warning("Email service not configured - ack email not sent")
-            return False
+        logger.warning("Partnership ack email not sent: %s", result.outcome)
+        return False
             
     except Exception as e:
         logger.error(f"Failed to send partnership ack email: {e}")

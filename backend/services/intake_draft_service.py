@@ -743,8 +743,7 @@ async def convert_draft_to_order(
 
 
 async def _send_order_confirmation_email(order: Dict[str, Any]) -> bool:
-    """Send order confirmation email to customer after successful payment."""
-    from services.email_service import email_service
+    """Send order confirmation email to customer via NotificationOrchestrator."""
     from services.order_email_templates import build_order_confirmation_email
     import os
     
@@ -790,19 +789,26 @@ async def _send_order_confirmation_email(order: Dict[str, Any]) -> bool:
         view_order_link=view_order_link,
     )
     
-    # Send email
-    success = await email_service.send_email(
-        recipient=customer_email,
-        subject=email_content["subject"],
-        html_body=email_content["html"],
-        text_body=email_content["text"],
+    from services.notification_orchestrator import notification_orchestrator
+    client_id = order.get("client_id")
+    order_ref = order.get("order_ref", order.get("order_id", ""))
+    idempotency_key = f"{order_ref}_ORDER_NOTIFICATION_confirmation"
+    result = await notification_orchestrator.send(
+        template_key="ORDER_NOTIFICATION",
+        client_id=client_id,
+        context={
+            "subject": email_content["subject"],
+            "message": email_content.get("html") or email_content.get("text", ""),
+            "client_name": customer_name,
+        },
+        idempotency_key=idempotency_key,
+        event_type="order_confirmation",
     )
-    
+    success = result.outcome in ("sent", "duplicate_ignored")
     if success:
         logger.info(f"Order confirmation email sent to {customer_email} for order {order.get('order_ref')}")
     else:
         logger.warning(f"Failed to send order confirmation email to {customer_email}")
-    
     return success
 
 
