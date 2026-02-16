@@ -1779,11 +1779,11 @@ async def list_message_logs_delivery(
             q["channel"] = channel
         if template_key:
             q["template_key"] = template_key
-        if status:
-            if "," in status:
-                q["status"] = {"$in": [s.strip() for s in status.split(",") if s.strip()]}
+        if status_filter:
+            if "," in status_filter:
+                q["status"] = {"$in": [s.strip() for s in status_filter.split(",") if s.strip()]}
             else:
-                q["status"] = status.strip()
+                q["status"] = status_filter.strip()
         if status_prefix:
             q["status"] = {"$regex": f"^{status_prefix.strip()}"}
         from_dt = _parse_iso_datetime(from_)
