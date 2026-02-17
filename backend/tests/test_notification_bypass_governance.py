@@ -16,10 +16,10 @@ SMS_SERVICE = BACKEND_ROOT / "services" / "sms_service.py"  # Holds Twilio clien
 ALLOWED_POSTMARK = {ORCHESTRATOR, EMAIL_SERVICE}
 # Files allowed to contain twilio.rest.Client / from twilio
 ALLOWED_TWILIO = {ORCHESTRATOR, SMS_SERVICE}
-# No file except orchestrator may call email_service.send_* or sms_service.send_sms.
-# send_otp (and verify_otp) remain in routes/sms.py for Twilio Verify flow until migrated.
+# No file except orchestrator may call email_service.send_* or sms_service.send_sms/send_otp/verify_otp.
+# Legacy Twilio Verify endpoints deprecated (410); OTP is orchestrator-only via /api/otp/send and /api/otp/verify.
 ALLOWED_CALL_EMAIL_SERVICE_SEND = set()
-ALLOWED_CALL_SMS_SERVICE_SEND = {BACKEND_ROOT / "routes" / "sms.py"}
+ALLOWED_CALL_SMS_SERVICE_SEND = set()
 
 # Patterns that indicate a bypass (caller or direct provider use)
 PATTERN_EMAIL_SERVICE_SEND = re.compile(r"email_service\.send_")
