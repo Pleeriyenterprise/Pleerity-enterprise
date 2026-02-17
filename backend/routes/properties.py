@@ -44,17 +44,13 @@ async def create_property(request: Request, data: CreatePropertyRequest):
                 detail="Account must be fully provisioned to add properties"
             )
         
-        # PROPERTY CAP ENFORCEMENT (plan_registry: 2/10/25)
+        # Property cap enforcement (plan_registry canonical)
         current_count = await db.properties.count_documents({"client_id": user["client_id"]})
-
-        from services.plan_registry import plan_registry, PlanCode
-        plan_str = client.get("billing_plan", "PLAN_1_SOLO")
-        plan_code = plan_registry.resolve_plan_code(plan_str)
-        plan_def = plan_registry.get_plan(plan_code)
-        limit = plan_def["max_properties"]
-        
-        if current_count >= limit:
-            # Audit log - property limit exceeded
+        from services.plan_registry import plan_registry
+        allowed, error_msg, error_details = await plan_registry.enforce_property_limit(
+            user["client_id"], current_count + 1
+        )
+        if not allowed:
             await create_audit_log(
                 action=AuditAction.ADMIN_ACTION,
                 actor_role=UserRole(user["role"]),
@@ -63,32 +59,15 @@ async def create_property(request: Request, data: CreatePropertyRequest):
                 metadata={
                     "action_type": "PLAN_LIMIT_EXCEEDED",
                     "feature": "property_create",
-                    "plan_code": plan_code.value,
-                    "plan_name": plan_def["name"],
                     "current_count": current_count,
-                    "limit": limit,
-                    "attempted_address": data.address_line_1
-                }
+                    "requested_count": 1,
+                    "attempted_address": data.address_line_1,
+                },
             )
-            upgrade_plan = None
-            for check_code in [PlanCode.PLAN_2_PORTFOLIO, PlanCode.PLAN_3_PRO]:
-                if plan_registry.get_property_limit(check_code) > current_count:
-                    upgrade_plan = check_code
-                    break
-            upgrade_def = plan_registry.get_plan(upgrade_plan) if upgrade_plan else None
-            detail = {
-                "error_code": "PROPERTY_LIMIT_EXCEEDED",
-                "message": f"Property limit reached. Your {plan_def['name']} plan allows up to {limit} properties. Upgrade to add more.",
-                "feature": "property_creation",
-                "upgrade_required": True,
-                "current_limit": limit,
-                "current_count": current_count,
-                "requested_count": 1,
-                "upgrade_to": upgrade_plan.value if upgrade_plan else None,
-                "upgrade_to_name": upgrade_def["name"] if upgrade_def else None,
-                "upgrade_to_limit": upgrade_def["max_properties"] if upgrade_def else None,
-            }
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_details or {"error_code": "PROPERTY_LIMIT_EXCEEDED", "message": error_msg},
+            )
         
         # Create property
         property_obj = Property(
@@ -242,15 +221,14 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
                 detail="Account must be fully provisioned to add properties"
             )
 
-        # Property cap enforcement (plan_registry: 2/10/25)
-        from services.plan_registry import plan_registry, PlanCode
-        plan_str = client.get("billing_plan", "PLAN_1_SOLO")
-        plan_code = plan_registry.resolve_plan_code(plan_str)
-        plan_def = plan_registry.get_plan(plan_code)
-        limit = plan_def["max_properties"]
+        # Property cap enforcement (plan_registry canonical)
         current_count = await db.properties.count_documents({"client_id": user["client_id"]})
         import_count = len(data.properties)
-        if current_count + import_count > limit:
+        from services.plan_registry import plan_registry
+        allowed, error_msg, error_details = await plan_registry.enforce_property_limit(
+            user["client_id"], current_count + import_count
+        )
+        if not allowed:
             await create_audit_log(
                 action=AuditAction.ADMIN_ACTION,
                 actor_role=UserRole(user["role"]),
@@ -259,32 +237,14 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
                 metadata={
                     "action_type": "PLAN_LIMIT_EXCEEDED",
                     "feature": "property_bulk_import",
-                    "plan_code": plan_code.value,
-                    "plan_name": plan_def["name"],
                     "current_count": current_count,
                     "import_count": import_count,
-                    "limit": limit,
-                }
+                },
             )
-            upgrade_plan = None
-            for check_code in [PlanCode.PLAN_2_PORTFOLIO, PlanCode.PLAN_3_PRO]:
-                if plan_registry.get_property_limit(check_code) >= current_count + import_count:
-                    upgrade_plan = check_code
-                    break
-            upgrade_def = plan_registry.get_plan(upgrade_plan) if upgrade_plan else None
-            detail = {
-                "error_code": "PROPERTY_LIMIT_EXCEEDED",
-                "message": f"Property limit would be exceeded. Your {plan_def['name']} plan allows up to {limit} properties (you have {current_count}; requested {import_count} more). Upgrade to add more.",
-                "feature": "property_creation",
-                "upgrade_required": True,
-                "current_limit": limit,
-                "current_count": current_count,
-                "requested_count": import_count,
-                "upgrade_to": upgrade_plan.value if upgrade_plan else None,
-                "upgrade_to_name": upgrade_def["name"] if upgrade_def else None,
-                "upgrade_to_limit": upgrade_def["max_properties"] if upgrade_def else None,
-            }
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_details or {"error_code": "PROPERTY_LIMIT_EXCEEDED", "message": error_msg},
+            )
 
         results = {
             "total": len(data.properties),

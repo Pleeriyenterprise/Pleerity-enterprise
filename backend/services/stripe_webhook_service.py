@@ -676,6 +676,21 @@ class StripeWebhookService:
                     {"$set": {"over_property_limit": True}}
                 )
                 logger.warning(f"Client {client_id} over property limit after downgrade: {property_count} > {new_limit}")
+
+        # Reconcile plan change: disable/revoke paid features on downgrade or when subscription not active
+        try:
+            from services.plan_reconciliation_service import reconcile_plan_change
+            new_status_upper = subscription_status.upper() if subscription_status else None
+            await reconcile_plan_change(
+                client_id=client_id,
+                old_plan=old_plan,
+                new_plan=new_plan_code.value,
+                reason="stripe_webhook",
+                subscription_status=new_status_upper,
+            )
+        except Exception as reconcile_err:
+            logger.exception("Plan reconciliation failed for client %s: %s", client_id, reconcile_err)
+            # Do not fail webhook; audit and continue
         
         # Audit log: plan updated from Stripe (pre-check / verification)
         await create_audit_log(
@@ -747,6 +762,7 @@ class StripeWebhookService:
             return {"handled": False, "reason": "no_billing_record"}
         
         client_id = billing.get("client_id")
+        old_plan = billing.get("current_plan_code")
         
         # Update to DISABLED - DO NOT DELETE DATA
         await db.client_billing.update_one(
@@ -769,6 +785,19 @@ class StripeWebhookService:
                 }
             }
         )
+        
+        # Reconcile: revoke all paid-feature state (scheduled reports, SMS, tenant portal, white-label)
+        try:
+            from services.plan_reconciliation_service import reconcile_plan_change
+            await reconcile_plan_change(
+                client_id=client_id,
+                old_plan=old_plan,
+                new_plan=None,
+                reason="stripe_webhook",
+                subscription_status="CANCELED",
+            )
+        except Exception as reconcile_err:
+            logger.exception("Plan reconciliation failed for client %s on subscription deleted: %s", client_id, reconcile_err)
         
         # Send subscription canceled email via orchestrator
         try:

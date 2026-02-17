@@ -133,13 +133,23 @@ class JobScheduler:
                         overdue_requirements
                     )
                     reminder_count += 1
-                    # Professional only: send SMS reminder if entitled and configured
-                    await self._maybe_send_reminder_sms(
-                        client,
-                        prefs,
-                        expiring_requirements,
-                        overdue_requirements
+                    # Professional only: runtime plan gating before SMS (survives downgrade/cancel)
+                    from services.plan_registry import plan_registry
+                    sms_allowed, _sms_err, _sms_details = await plan_registry.enforce_feature(
+                        client["client_id"], "sms_reminders"
                     )
+                    if sms_allowed:
+                        await self._maybe_send_reminder_sms(
+                            client,
+                            prefs,
+                            expiring_requirements,
+                            overdue_requirements
+                        )
+                    else:
+                        logger.info(
+                            "Skipping SMS reminder for client %s - plan/subscription does not allow sms_reminders",
+                            client["client_id"],
+                        )
             
             logger.info(f"Daily reminder job complete. Sent {reminder_count} reminders.")
             return reminder_count
@@ -841,6 +851,48 @@ class ScheduledReportJob:
                         continue
                     if client.get("entitlement_status") not in ["ENABLED", None]:
                         logger.info(f"Skipping scheduled report for {schedule['client_id']} - entitlement is {client.get('entitlement_status')}")
+                        continue
+                    
+                    # Runtime plan gating: scheduled_reports must be allowed (survives downgrade/cancel)
+                    from services.plan_registry import plan_registry
+                    allowed, error_msg, error_details = await plan_registry.enforce_feature(
+                        schedule["client_id"], "scheduled_reports"
+                    )
+                    if not allowed:
+                        logger.info(
+                            "Skipping scheduled report for client %s - plan/subscription does not allow scheduled_reports: %s",
+                            schedule["client_id"],
+                            error_msg,
+                        )
+                        from utils.audit import create_audit_log
+                        from models import AuditAction
+                        await create_audit_log(
+                            action=AuditAction.ADMIN_ACTION,
+                            actor_role="SYSTEM",
+                            client_id=schedule["client_id"],
+                            metadata={
+                                "action_type": "SCHEDULED_REPORT_BLOCKED_PLAN",
+                                "schedule_id": schedule.get("schedule_id"),
+                                "reason": error_msg,
+                                "error_code": (error_details or {}).get("error_code"),
+                            },
+                        )
+                        # MessageLog for visibility in notification health
+                        try:
+                            await self.db.message_logs.insert_one({
+                                "message_id": str(__import__("uuid").uuid4()),
+                                "client_id": schedule["client_id"],
+                                "recipient": None,
+                                "template_key": "SCHEDULED_REPORT",
+                                "channel": "EMAIL",
+                                "status": "BLOCKED_PLAN",
+                                "attempt_count": 1,
+                                "error_message": error_msg,
+                                "metadata": {"event_type": "scheduled_report", "block_reason": "BLOCKED_PLAN"},
+                                "created_at": datetime.now(timezone.utc),
+                            })
+                        except Exception:
+                            pass
                         continue
                     
                     # Generate report

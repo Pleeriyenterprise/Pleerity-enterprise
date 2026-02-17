@@ -293,3 +293,45 @@ class TestCheckFeatureAccessSoloPortfolioPro:
         assert allowed_solo is False
         assert allowed_portfolio is False
         assert allowed_pro is True
+
+
+class TestCheckPropertyLimit:
+    """check_property_limit (sync) and enforce_property_limit behavior (2/10/25)."""
+
+    def test_solo_allows_2(self):
+        """Solo: requested_count 1 and 2 allowed."""
+        allowed_1, _, _ = plan_registry.check_property_limit(PlanCode.PLAN_1_SOLO, 1)
+        allowed_2, _, _ = plan_registry.check_property_limit(PlanCode.PLAN_1_SOLO, 2)
+        assert allowed_1 is True
+        assert allowed_2 is True
+
+    def test_solo_denies_3(self):
+        """Solo: requested_count 3 denied, error_code PROPERTY_LIMIT_EXCEEDED."""
+        allowed, msg, details = plan_registry.check_property_limit(PlanCode.PLAN_1_SOLO, 3)
+        assert allowed is False
+        assert details is not None
+        assert details.get("error_code") == "PROPERTY_LIMIT_EXCEEDED"
+        assert details.get("current_limit") == 2
+        assert details.get("requested_count") == 3
+
+    def test_portfolio_allows_10(self):
+        """Portfolio: up to 10 allowed."""
+        allowed, _, _ = plan_registry.check_property_limit(PlanCode.PLAN_2_PORTFOLIO, 10)
+        assert allowed is True
+
+    def test_portfolio_denies_11(self):
+        """Portfolio: 11 denied."""
+        allowed, _, details = plan_registry.check_property_limit(PlanCode.PLAN_2_PORTFOLIO, 11)
+        assert allowed is False
+        assert details.get("current_limit") == 10
+
+    def test_pro_allows_25(self):
+        """Pro: up to 25 allowed."""
+        allowed, _, _ = plan_registry.check_property_limit(PlanCode.PLAN_3_PRO, 25)
+        assert allowed is True
+
+    def test_pro_denies_26(self):
+        """Pro: 26 denied."""
+        allowed, _, details = plan_registry.check_property_limit(PlanCode.PLAN_3_PRO, 26)
+        assert allowed is False
+        assert details.get("current_limit") == 25
