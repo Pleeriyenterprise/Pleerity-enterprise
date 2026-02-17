@@ -5,9 +5,10 @@ from fastapi import APIRouter, HTTPException, Request, status
 from database import database
 from middleware import client_route_guard
 from services.sms_service import sms_service
+from services.otp_service import send_otp as otp_send, verify_otp as otp_verify
 from utils.audit import create_audit_log
 from models import AuditAction, UserRole
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 import logging
 
@@ -17,6 +18,19 @@ router = APIRouter(prefix="/api/sms", tags=["sms"])
 
 class SendOTPRequest(BaseModel):
     phone_number: str  # E.164 format (+44...)
+
+
+class OtpSendRequest(BaseModel):
+    """Enterprise OTP send: generic response only."""
+    phone_number: str = Field(..., min_length=10)
+    purpose: str = Field(..., pattern="^(verify_phone|step_up)$")
+
+
+class OtpVerifyRequest(BaseModel):
+    """Enterprise OTP verify: generic response only."""
+    phone_number: str = Field(..., min_length=10)
+    code: str = Field(..., pattern="^[0-9]{6}$")
+    purpose: str = Field(..., pattern="^(verify_phone|step_up)$")
 
 
 class VerifyOTPRequest(BaseModel):
@@ -32,6 +46,47 @@ async def get_sms_status():
         "configured": sms_service.is_configured(),
         "feature_flag": sms_service.is_enabled()
     }
+
+
+def _correlation_id(request: Request) -> str:
+    return (request.headers.get("X-Correlation-ID") or "").strip() or None
+
+
+@router.post("/otp/send")
+async def enterprise_otp_send(request: Request, data: OtpSendRequest):
+    """
+    Send OTP to phone via Twilio Messaging Service.
+    Generic response only; does not reveal whether the phone exists.
+    """
+    try:
+        ok, message = await otp_send(
+            phone_number=data.phone_number,
+            purpose=data.purpose,
+            correlation_id=_correlation_id(request),
+        )
+        return {"success": ok, "message": message}
+    except Exception as e:
+        logger.exception(f"OTP send error: {e}")
+        return {"success": True, "message": "If this number is registered, you will receive a verification code shortly."}
+
+
+@router.post("/otp/verify")
+async def enterprise_otp_verify(request: Request, data: OtpVerifyRequest):
+    """
+    Verify OTP code. On success and purpose=verify_phone, marks phone as verified.
+    Generic response only.
+    """
+    try:
+        ok, message = await otp_verify(
+            phone_number=data.phone_number,
+            code=data.code,
+            purpose=data.purpose,
+            correlation_id=_correlation_id(request),
+        )
+        return {"success": ok, "message": message}
+    except Exception as e:
+        logger.exception(f"OTP verify error: {e}")
+        return {"success": False, "message": "Invalid or expired code. Please try again or request a new code."}
 
 
 @router.post("/send-otp")

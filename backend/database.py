@@ -131,6 +131,16 @@ class Database:
             await self.db.compliance_sla_alerts.create_index([("active", 1), ("last_detected_at", -1)])
             await self.db.compliance_sla_alerts.create_index([("severity", 1)])
 
+            # OTP codes - one active per (phone_e164, purpose); TTL and lookup
+            try:
+                await self.db.otp_codes.create_index(
+                    [("phone_e164", 1), ("purpose", 1)],
+                    unique=True,
+                )
+            except Exception:
+                pass
+            await self.db.otp_codes.create_index("expires_at")
+
             # Intake uploads - for migration and list by session
             await self.db.intake_uploads.create_index("intake_session_id")
             await self.db.intake_uploads.create_index([("intake_session_id", 1), ("status", 1)])

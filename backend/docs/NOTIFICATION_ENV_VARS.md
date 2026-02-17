@@ -17,6 +17,11 @@ Verified call sites and safe behavior when missing.
 | **TWILIO_AUTH_TOKEN** | `notification_orchestrator.py:71` | Twilio client init. | Same as SID. |
 | **TWILIO_PHONE_NUMBER** | `notification_orchestrator.py:557` | From number for SMS. | MessageLog set to `BLOCKED_PROVIDER_NOT_CONFIGURED`, audit written — no crash. |
 | | `sms_service.py:22` | Legacy SMS from number. | Used only when SMS sent via sms_service (OTP path). |
+| **TWILIO_MESSAGING_SERVICE_SID** | `sms_service.py:23,119` | Twilio Messaging Service for OTP (no direct From). | OTP send uses `send_sms_via_messaging_service`; if missing, OTP not sent but generic success still returned. |
+| **OTP_PEPPER** | `otp_service.py:24,56,62,187` | SHA256 pepper for OTP and phone-hash (never store raw OTP). | Required for send/verify; if missing, send returns generic success without sending; verify returns generic fail. |
+| **OTP_TTL_SECONDS** | `otp_service.py:25` | OTP validity window. | Default 300. |
+| **OTP_MAX_ATTEMPTS** | `otp_service.py:26` | Max verify attempts per OTP. | Default 5. |
+| **OTP_RESEND_COOLDOWN_SECONDS** | `otp_service.py:27` | Min seconds between send per (phone, purpose). | Default 60. |
 | **OPS_ALERT_EMAIL** | `compliance_sla_monitor.py:22,49,60` | Recipient for compliance SLA alert emails. | If empty: warning logged, `_send_alert_email` returns False — no crash, alert not sent. |
 | **BASE_URL** | `calendar.py:429` | Fallback for request base URL. | Defaults to `request.base_url.scheme + "://" + request.base_url.netloc` — safe. |
 | **POSTMARK_WEBHOOK_TOKEN** | `webhooks.py` | Webhook auth: must match `X-Postmark-Token` header when set. | If env set and header missing/wrong: 401, no DB update. If env not set: no token check (backward compat). |

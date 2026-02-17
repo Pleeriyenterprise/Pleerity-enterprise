@@ -20,6 +20,7 @@ class SMSService:
         self.auth_token = os.getenv("TWILIO_AUTH_TOKEN")
         self.verify_service_sid = os.getenv("TWILIO_VERIFY_SERVICE_SID")
         self.from_number = os.getenv("TWILIO_PHONE_NUMBER")
+        self.messaging_service_sid = os.getenv("TWILIO_MESSAGING_SERVICE_SID")
         
         self.client = None
         if self.account_sid and self.auth_token:
@@ -32,6 +33,10 @@ class SMSService:
     def is_configured(self) -> bool:
         """Check if SMS service is properly configured."""
         return bool(self.client and self.from_number)
+    
+    def is_messaging_service_configured(self) -> bool:
+        """Check if Twilio Messaging Service SID is set (for OTP / no direct From)."""
+        return bool(self.client and self.messaging_service_sid)
     
     def is_enabled(self) -> bool:
         """Check if SMS feature is enabled."""
@@ -92,6 +97,30 @@ class SMSService:
             return {"success": False, "error": str(e.msg), "code": e.code}
         except Exception as e:
             logger.error(f"Error sending SMS: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def send_sms_via_messaging_service(self, to_number: str, body: str) -> dict:
+        """Send SMS using Twilio Messaging Service SID only (no direct From number).
+        Used for OTP and other flows that must not expose a single sender number.
+        """
+        if not self.client or not self.messaging_service_sid:
+            logger.warning("Twilio Messaging Service not configured")
+            return {"success": False, "error": "Messaging service not configured"}
+        if not to_number.startswith("+"):
+            to_number = f"+{to_number}"
+        try:
+            message_obj = self.client.messages.create(
+                body=body,
+                messaging_service_sid=self.messaging_service_sid,
+                to=to_number,
+            )
+            logger.info(f"SMS via Messaging Service to {to_number[:7]}***: {message_obj.sid}")
+            return {"success": True, "message_sid": message_obj.sid, "status": message_obj.status}
+        except TwilioRestException as e:
+            logger.error(f"Twilio error (Messaging Service): {e.code} - {e.msg}")
+            return {"success": False, "error": str(e.msg), "code": e.code}
+        except Exception as e:
+            logger.error(f"Error sending SMS via Messaging Service: {e}")
             return {"success": False, "error": str(e)}
     
     async def send_otp(self, phone_number: str) -> dict:
