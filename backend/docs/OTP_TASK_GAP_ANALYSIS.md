@@ -4,7 +4,7 @@
 
 | Requirement | Status | Notes |
 |-------------|--------|--------|
-| POST /api/sms/otp/send, POST /api/sms/otp/verify | Done | Routes exist |
+| POST /api/otp/send, POST /api/otp/verify | Done | Only OTP API; /api/sms/otp/* and legacy send-otp/verify-otp removed |
 | purpose verify_phone \| step_up | Done | Validated in Pydantic |
 | Twilio Messaging Service SID only | Done | send_sms_via_messaging_service |
 | 6-digit OTP, TTL (expires_at) | Done | OTP_TTL_SECONDS |

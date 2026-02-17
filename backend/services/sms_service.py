@@ -1,5 +1,5 @@
-"""SMS Service - Twilio Integration for Compliance Alerts and OTP Verification
-Feature flagged service for sending SMS notifications.
+"""SMS Service - Twilio Integration for Compliance Alerts and SMS
+Feature flagged service for sending SMS notifications. OTP is via NotificationOrchestrator only (see routes/otp.py).
 """
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
@@ -18,7 +18,6 @@ class SMSService:
     def __init__(self):
         self.account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         self.auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-        self.verify_service_sid = os.getenv("TWILIO_VERIFY_SERVICE_SID")
         self.from_number = os.getenv("TWILIO_PHONE_NUMBER")
         self.messaging_service_sid = os.getenv("TWILIO_MESSAGING_SERVICE_SID")
         
@@ -122,89 +121,7 @@ class SMSService:
         except Exception as e:
             logger.error(f"Error sending SMS via Messaging Service: {e}")
             return {"success": False, "error": str(e)}
-    
-    async def send_otp(self, phone_number: str) -> dict:
-        """Send OTP for phone verification using Twilio Verify.
-        
-        Args:
-            phone_number: Phone number in E.164 format
-        
-        Returns:
-            dict with status
-        """
-        if not self.client or not self.verify_service_sid:
-            logger.warning("Twilio Verify not configured")
-            return {"success": False, "error": "Verify service not configured"}
-        
-        # Validate phone number format
-        if not phone_number.startswith("+"):
-            phone_number = f"+{phone_number}"
-        
-        try:
-            verification = self.client.verify.v2.services(
-                self.verify_service_sid
-            ).verifications.create(
-                to=phone_number,
-                channel="sms"
-            )
-            
-            logger.info(f"OTP sent to {phone_number[:7]}***: {verification.status}")
-            
-            return {
-                "success": True,
-                "status": verification.status
-            }
-        
-        except TwilioRestException as e:
-            logger.error(f"Twilio Verify error: {e.code} - {e.msg}")
-            return {"success": False, "error": str(e.msg), "code": e.code}
-        except Exception as e:
-            logger.error(f"Error sending OTP: {e}")
-            return {"success": False, "error": str(e)}
-    
-    async def verify_otp(self, phone_number: str, code: str) -> dict:
-        """Verify OTP code.
-        
-        Args:
-            phone_number: Phone number in E.164 format
-            code: 6-digit OTP code
-        
-        Returns:
-            dict with valid status
-        """
-        if not self.client or not self.verify_service_sid:
-            logger.warning("Twilio Verify not configured")
-            return {"success": False, "error": "Verify service not configured"}
-        
-        # Validate phone number format
-        if not phone_number.startswith("+"):
-            phone_number = f"+{phone_number}"
-        
-        try:
-            verification_check = self.client.verify.v2.services(
-                self.verify_service_sid
-            ).verification_checks.create(
-                to=phone_number,
-                code=code
-            )
-            
-            is_valid = verification_check.status == "approved"
-            
-            logger.info(f"OTP verification for {phone_number[:7]}***: {verification_check.status}")
-            
-            return {
-                "success": True,
-                "valid": is_valid,
-                "status": verification_check.status
-            }
-        
-        except TwilioRestException as e:
-            logger.error(f"Twilio Verify check error: {e.code} - {e.msg}")
-            return {"success": False, "valid": False, "error": str(e.msg), "code": e.code}
-        except Exception as e:
-            logger.error(f"Error verifying OTP: {e}")
-            return {"success": False, "valid": False, "error": str(e)}
-    
+
     async def send_compliance_alert_sms(
         self,
         phone_number: str,

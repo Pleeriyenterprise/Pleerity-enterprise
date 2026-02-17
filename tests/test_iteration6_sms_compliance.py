@@ -2,8 +2,7 @@
 Test Iteration 6 Features:
 - Compliance Score API /api/client/compliance-score - returns score 0-100 with grade and breakdown
 - SMS Status API /api/sms/status - returns configured status
-- Send OTP API /api/sms/send-otp - sends verification code (dev mode accepts 123456)
-- Verify OTP API /api/sms/verify-otp - marks phone as verified with correct code
+- OTP API POST /api/otp/send, POST /api/otp/verify (single enterprise OTP surface; legacy /api/sms/send-otp, verify-otp removed)
 - NotificationPreferencesPage SMS section with Beta badge
 - After phone verification, SMS section shows Verified badge
 """
@@ -18,7 +17,6 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://order-fulfillment-9.
 # Test credentials
 CLIENT_EMAIL = "test@pleerity.com"
 CLIENT_PASSWORD = "TestClient123!"
-DEV_OTP_CODE = "123456"
 TEST_PHONE = "+447999888777"  # Different phone for testing
 
 
@@ -155,107 +153,50 @@ class TestSMSStatusAPI:
 
 
 class TestSendOTPAPI:
-    """Test /api/sms/send-otp endpoint"""
+    """Test POST /api/otp/send (canonical OTP API)"""
     
-    def test_send_otp_requires_auth(self):
-        """Test that send OTP requires authentication"""
-        # Use fresh session without auth
-        session = requests.Session()
-        session.headers.update({"Content-Type": "application/json"})
-        response = session.post(f"{BASE_URL}/api/sms/send-otp", json={
-            "phone_number": TEST_PHONE
-        })
-        assert response.status_code in [401, 403], f"Expected 401/403 without auth, got {response.status_code}"
-        
-    def test_send_otp_returns_success_dev_mode(self, authenticated_client):
-        """Test that send OTP returns success in dev mode"""
-        response = authenticated_client.post(f"{BASE_URL}/api/sms/send-otp", json={
-            "phone_number": TEST_PHONE
+    def test_send_otp_returns_200_with_ok(self, api_client):
+        """Send OTP returns 200 with ok=true and generic message (no auth required for send)."""
+        response = api_client.post(f"{BASE_URL}/api/otp/send", json={
+            "phone_number": TEST_PHONE,
+            "action": "verify_phone",
         })
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-        
         data = response.json()
-        assert data["success"] == True, "Should return success=True"
-        assert data["status"] == "pending", "Status should be 'pending'"
-        assert "development mode" in data.get("message", "").lower() or "123456" in data.get("message", ""), \
-            "Dev mode message should mention development mode or code 123456"
-            
-    def test_send_otp_validates_phone_format(self, authenticated_client):
-        """Test that send OTP validates phone number format"""
-        response = authenticated_client.post(f"{BASE_URL}/api/sms/send-otp", json={
-            "phone_number": "123"  # Too short
+        assert data.get("ok") is True, "Should return ok=true"
+        assert "message" in data, "Should return generic message"
+
+    def test_send_otp_validates_phone_format(self, api_client):
+        """Send OTP with invalid phone format returns 422."""
+        response = api_client.post(f"{BASE_URL}/api/otp/send", json={
+            "phone_number": "123",
+            "action": "verify_phone",
         })
-        assert response.status_code == 400, f"Expected 400 for invalid phone, got {response.status_code}"
+        assert response.status_code == 422, f"Expected 422 for invalid phone, got {response.status_code}"
 
 
 class TestVerifyOTPAPI:
-    """Test /api/sms/verify-otp endpoint"""
+    """Test POST /api/otp/verify (canonical OTP API)"""
     
-    def test_verify_otp_requires_auth(self):
-        """Test that verify OTP requires authentication"""
-        # Use fresh session without auth
-        session = requests.Session()
-        session.headers.update({"Content-Type": "application/json"})
-        response = session.post(f"{BASE_URL}/api/sms/verify-otp", json={
+    def test_verify_otp_wrong_code_returns_400(self, api_client):
+        """Verify with wrong or expired code returns 400."""
+        response = api_client.post(f"{BASE_URL}/api/otp/verify", json={
             "phone_number": TEST_PHONE,
-            "code": DEV_OTP_CODE
+            "action": "verify_phone",
+            "code": "000000",
         })
-        assert response.status_code in [401, 403], f"Expected 401/403 without auth, got {response.status_code}"
-        
-    def test_verify_otp_full_flow(self, authenticated_client):
-        """Test full OTP verification flow: send -> verify"""
-        # Step 1: Send OTP
-        send_response = authenticated_client.post(f"{BASE_URL}/api/sms/send-otp", json={
-            "phone_number": TEST_PHONE
-        })
-        assert send_response.status_code == 200, f"Send OTP failed: {send_response.text}"
-        
-        # Step 2: Verify with correct code (123456 in dev mode)
-        verify_response = authenticated_client.post(f"{BASE_URL}/api/sms/verify-otp", json={
+        assert response.status_code == 400, f"Expected 400 for wrong code, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert "detail" in data
+
+    def test_verify_otp_invalid_code_format_returns_422(self, api_client):
+        """Verify with non-6-digit code returns 422."""
+        response = api_client.post(f"{BASE_URL}/api/otp/verify", json={
             "phone_number": TEST_PHONE,
-            "code": DEV_OTP_CODE
+            "action": "verify_phone",
+            "code": "12",
         })
-        assert verify_response.status_code == 200, f"Verify OTP failed: {verify_response.text}"
-        
-        data = verify_response.json()
-        assert data["success"] == True, "Should return success=True"
-        assert data["valid"] == True, "Should return valid=True for correct code"
-        
-    def test_verify_otp_wrong_code(self, authenticated_client):
-        """Test that wrong OTP code returns valid=False"""
-        # First send OTP
-        authenticated_client.post(f"{BASE_URL}/api/sms/send-otp", json={
-            "phone_number": TEST_PHONE
-        })
-        
-        # Try to verify with wrong code
-        verify_response = authenticated_client.post(f"{BASE_URL}/api/sms/verify-otp", json={
-            "phone_number": TEST_PHONE,
-            "code": "000000"  # Wrong code
-        })
-        assert verify_response.status_code == 200, f"Verify OTP failed: {verify_response.text}"
-        
-        data = verify_response.json()
-        assert data["valid"] == False, "Should return valid=False for wrong code"
-        
-    def test_verify_otp_updates_notification_preferences(self, authenticated_client):
-        """Test that successful verification updates notification preferences"""
-        # Send and verify OTP
-        authenticated_client.post(f"{BASE_URL}/api/sms/send-otp", json={
-            "phone_number": TEST_PHONE
-        })
-        authenticated_client.post(f"{BASE_URL}/api/sms/verify-otp", json={
-            "phone_number": TEST_PHONE,
-            "code": DEV_OTP_CODE
-        })
-        
-        # Check notification preferences
-        prefs_response = authenticated_client.get(f"{BASE_URL}/api/profile/notifications")
-        assert prefs_response.status_code == 200
-        
-        prefs = prefs_response.json()
-        assert prefs.get("sms_phone_verified") == True, "Phone should be marked as verified"
-        assert prefs.get("sms_phone_number") == TEST_PHONE, f"Phone number should be {TEST_PHONE}"
+        assert response.status_code == 422, f"Expected 422 for invalid code format, got {response.status_code}"
 
 
 class TestHealthAndAuth:

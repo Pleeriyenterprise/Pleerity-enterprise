@@ -102,7 +102,7 @@ Source: plan_registry.get_property_limit(plan_code) → 2, 10, 25.
 
 | Aspect | Email | SMS |
 |--------|--------|-----|
-| **Provider** | Postmark (`postmarker.core.PostmarkClient`). `POSTMARK_SERVER_TOKEN`, `EMAIL_SENDER`. | Twilio (`twilio.rest.Client`). `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, optional `TWILIO_VERIFY_SERVICE_SID`. |
+| **Provider** | Postmark (`postmarker.core.PostmarkClient`). `POSTMARK_SERVER_TOKEN`, `EMAIL_SENDER`. | Twilio (`twilio.rest.Client`). `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, optional `TWILIO_MESSAGING_SERVICE_SID`. OTP via orchestrator only; Twilio Verify removed. |
 | **Config** | email_service.py; dev mode logs only if token unset. | sms_service.py; `SMS_ENABLED` env; is_enabled() = SMS_ENABLED and is_configured(). |
 | **Logging** | MessageLog (DB); postmark_message_id, status, sent_at, error_message. | sms_logs collection: message_sid, to_number, status, client_id, created_at. |
 | **Retry** | No explicit retry in email_service; caller can retry. Jobs log and continue on per-client failure. | No retry in sms_service.send_sms. |

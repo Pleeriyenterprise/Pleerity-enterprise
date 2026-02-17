@@ -46,9 +46,9 @@ All outbound email/SMS must go through `NotificationOrchestrator`. This table li
 | compliance_sla_monitor.py | (alert) | compliance recalc SLA | email | internal (OPS) | PostmarkClient.emails.send | COMPLIANCE_SLA_ALERT | false | false | false | null | alert_id + COMPLIANCE_SLA_ALERT |
 | clearform/routes/auth.py | - | ClearForm signup | email | user | email_service.send_clearform_welcome_email | CLEARFORM_WELCOME | false | false | false | null | clearform_user_id + CLEARFORM_WELCOME |
 | scripts/resend_portal_invite.py | (script) | CLI resend | email | client | email_service.send_password_setup_email | WELCOME_EMAIL | true | false | false | null | client_id + WELCOME_EMAIL + script_run_id |
-| routes/sms.py | send_otp | phone verify OTP | sms | user | sms_service.send_otp | (OTP: keep Twilio Verify path or route via orchestrator with template OTP_VERIFICATION) | false | false | false | null | phone + OTP_VERIFICATION + session |
+| routes/otp.py | otp_send_endpoint | phone verify OTP | sms | user | notification_orchestrator.send(OTP_CODE_SMS) | OTP_CODE_SMS | false | false | false | null | phone_hash + action + window |
 | routes/sms.py | (send_sms) | client SMS | sms | client | sms_service.send_sms | - | true | true | true | sms_reminders | client_id + template + idempotency |
 
 Notes:
 - Sends with no client_id (admin/internal/lead/ops): orchestrator must support optional client_id and recipient from context.
-- OTP (Twilio Verify): may remain as special path or get template_key OTP_VERIFICATION with no client_id.
+- OTP: only via POST /api/otp/send and POST /api/otp/verify (orchestrator OTP_CODE_SMS). Twilio Verify removed.

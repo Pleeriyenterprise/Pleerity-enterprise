@@ -16,7 +16,7 @@ Verified call sites and safe behavior when missing.
 | **TWILIO_ACCOUNT_SID** | `notification_orchestrator.py:70` | Twilio client init. | With SMS_ENABLED=true but SID missing, `_twilio_client` stays None; SMS sends blocked with audit — safe. |
 | **TWILIO_AUTH_TOKEN** | `notification_orchestrator.py:71` | Twilio client init. | Same as SID. |
 | **TWILIO_PHONE_NUMBER** | `notification_orchestrator.py:557` | From number for SMS. | MessageLog set to `BLOCKED_PROVIDER_NOT_CONFIGURED`, audit written — no crash. |
-| | `sms_service.py:22` | Legacy SMS from number. | Used only when SMS sent via sms_service (OTP path). |
+| | `sms_service.py:22` | SMS from number when not using Messaging Service. | Used when SMS sent via sms_service (e.g. compliance alerts). OTP is via orchestrator only. |
 | **TWILIO_MESSAGING_SERVICE_SID** | `notification_orchestrator.py:_send_sms`, `sms_service.py` | Twilio Messaging Service for SMS (OTP and other); preferred over TWILIO_PHONE_NUMBER when set. | If missing and TWILIO_PHONE_NUMBER missing: SMS blocked with BLOCKED_PROVIDER_NOT_CONFIGURED. |
 | **OTP_PEPPER** | `otp_service.py:24,56,62,187` | SHA256 pepper for OTP and phone-hash (never store raw OTP). | Required for send/verify; if missing, send returns generic success without sending; verify returns generic fail. |
 | **OTP_TTL_SECONDS** | `otp_service.py` | OTP validity window. | Default 600 (10 min). |

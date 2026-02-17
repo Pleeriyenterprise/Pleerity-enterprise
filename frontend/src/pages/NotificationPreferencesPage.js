@@ -37,17 +37,15 @@ const SMSNotificationsSection = ({ preferences, setPreferences, handleToggle, se
       toast.error('Please enter a phone number first');
       return;
     }
-    
+
     setSendingOtp(true);
     try {
-      const response = await api.post('/sms/send-otp', {
-        phone_number: preferences.sms_phone_number
+      await api.post('/otp/send', {
+        phone_number: preferences.sms_phone_number,
+        action: 'verify_phone',
       });
-      
-      if (response.data.success) {
-        setOtpSent(true);
-        toast.success('Verification code sent! Check your phone.');
-      }
+      setOtpSent(true);
+      toast.success('Verification code sent! Check your phone.');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to send verification code');
     } finally {
@@ -60,15 +58,16 @@ const SMSNotificationsSection = ({ preferences, setPreferences, handleToggle, se
       toast.error('Please enter the 6-digit code');
       return;
     }
-    
+
     setVerifying(true);
     try {
-      const response = await api.post('/sms/verify-otp', {
+      const response = await api.post('/otp/verify', {
         phone_number: preferences.sms_phone_number,
-        code: otpCode
+        action: 'verify_phone',
+        code: otpCode,
       });
-      
-      if (response.data.valid) {
+
+      if (response.data?.status === 'verified') {
         setPreferences(prev => ({ ...prev, sms_phone_verified: true }));
         toast.success('Phone number verified successfully!');
         setOtpSent(false);

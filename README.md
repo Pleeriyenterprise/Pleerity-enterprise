@@ -447,7 +447,7 @@ Set these for a clean deploy with **no Emergent dependencies**:
 
 2. **OTP & SMS (Twilio Messaging Service):**
    - See `backend/docs/NOTIFICATION_ENV_VARS.md` for `OTP_PEPPER`, `OTP_TTL_SECONDS`, `OTP_MAX_ATTEMPTS`, `OTP_RESEND_COOLDOWN_SECONDS`, `OTP_MAX_SENDS_PER_HOUR`, `STEP_UP_TOKEN_TTL_SECONDS`, and `TWILIO_MESSAGING_SERVICE_SID`.
-   - Endpoints: `POST /api/sms/otp/send`, `POST /api/sms/otp/verify` (step_up verify requires auth).
+   - Endpoints: `POST /api/otp/send`, `POST /api/otp/verify` (step_up verify requires auth).
 
 3. **Stripe Setup:**
    - Test mode: set STRIPE_API_KEY to your Stripe test key

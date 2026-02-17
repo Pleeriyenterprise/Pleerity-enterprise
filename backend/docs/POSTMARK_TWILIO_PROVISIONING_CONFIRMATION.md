@@ -47,9 +47,9 @@ All production email and SMS sends identified above go through `notification_orc
 | Location | Classification | Notes |
 |----------|----------------|------|
 | `notification_orchestrator.py:81–82, 646–648` | **Single pipe** | Twilio Client init and `_twilio_client.messages.create` — used for all orchestrator SMS (OTP_CODE_SMS, COMPLIANCE_EXPIRY_REMINDER_SMS, ADMIN_MANUAL_SMS, etc.). |
-| `sms_service.py:28, 70, 112` | **Legacy – deprecated (410)** | `POST /api/sms/send-otp` and `/api/sms/verify-otp` return **410 Gone** with `LEGACY_OTP_ENDPOINT_DEPRECATED`; callers must use **POST /api/otp/send** and **POST /api/otp/verify**. No production code calls `sms_service.send_otp` or `verify_otp`; OTP is fully orchestrator-based. |
+| `sms_service.py` | **No OTP** | Twilio Verify removed. `send_otp` and `verify_otp` deleted; no `TWILIO_VERIFY_SERVICE_SID`. SMS sending is `send_sms` / `send_sms_via_messaging_service` only (no callers for OTP). OTP is only via orchestrator. |
 
-**Conclusion:** All app/enterprise SMS (including OTP) goes through the orchestrator. Legacy `/api/sms/send-otp` and `/api/sms/verify-otp` return 410 Gone; the only OTP API in use is **POST /api/otp/send** and **POST /api/otp/verify** (orchestrator-only).
+**Conclusion:** All app/enterprise SMS (including OTP) goes through the orchestrator. Legacy `/api/sms/send-otp`, `/api/sms/verify-otp`, and `/api/sms/otp/*` routes **removed** (404). The only OTP API is **POST /api/otp/send** and **POST /api/otp/verify** (orchestrator-only).
 
 ---
 
@@ -92,7 +92,7 @@ Optional / defaults: `POSTMARK_MESSAGE_STREAM` (default `outbound`), `EMAIL_REPL
 | Admin templates + triggers (PROVISIONING_FAILED_ADMIN, STRIPE_WEBHOOK_FAILURE_ADMIN) | **DONE** | Templates seeded; provisioning_runner and webhooks.py wire them. |
 | NOTIFICATION_TEMPLATE_MATRIX.md + env doc | **DONE** | `backend/docs/NOTIFICATION_TEMPLATE_MATRIX.md` and NOTIFICATION_ENV_VARS.md updated. |
 | Mandatory tests (OTP rate limit, lockout, throttling, spike, health, plan gate) | **DONE** | `test_otp_flow.py`, `test_enterprise_notification.py` cover these. |
-| Legacy `/api/sms/send-otp` and verify-otp | **DONE** | Return 410 Gone; canonical OTP is /api/otp/send and /api/otp/verify (orchestrator-only). |
+| Legacy `/api/sms/send-otp`, verify-otp, and `/api/sms/otp/*` | **DONE** | Routes removed (404). OTP only via POST /api/otp/send and POST /api/otp/verify. Twilio Verify code removed from sms_service. |
 | Per-template `rate_limit_window_seconds` in DB | **PARTIAL** | Not in template seed; orchestrator uses fixed 24h for SMS reminder throttle and env-based OTP window. Optional enhancement. |
 | ENTERPRISE_NOTIFICATION_TASK_GAP_ANALYSIS.md | **OUTDATED** | Doc still says “OTP sent via sms_service directly” and “Missing” for several items; implementation is done. Update doc to match current code. |
 
@@ -112,4 +112,4 @@ TODOs in repo (unrelated to notifications): `lead_service.py:470` (notify admin)
 
 ## G) One-sentence conclusion
 
-**SAFE FOR E2E TESTING? YES.** All production email and SMS (including OTP) go through NotificationOrchestrator. Legacy `/api/sms/send-otp` and `/api/sms/verify-otp` return 410 Gone; the only OTP API is **POST /api/otp/send** and **POST /api/otp/verify**. WELCOME_EMAIL/PASSWORD_RESET are gated on PROVISIONED; admin resend returns 403 when not PROVISIONED; missing Postmark/Twilio env blocks sends with audit and no crash.
+**SAFE FOR E2E TESTING? YES.** All production email and SMS (including OTP) go through NotificationOrchestrator. Legacy and duplicate OTP routes removed (404); the only OTP API is **POST /api/otp/send** and **POST /api/otp/verify**. Twilio Verify is removed. WELCOME_EMAIL/PASSWORD_RESET are gated on PROVISIONED; admin resend returns 403 when not PROVISIONED; missing Postmark/Twilio env blocks sends with audit and no crash.

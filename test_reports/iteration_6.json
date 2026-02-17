@@ -52,13 +52,13 @@
     },
     "send_otp_api": {
       "status": "PASS",
-      "endpoint": "POST /api/sms/send-otp",
-      "details": "Requires authentication. In dev mode returns success=true, status='pending', message='OTP sent (development mode - use code 123456)'. Validates phone number format (min 10 chars)."
+      "endpoint": "POST /api/otp/send",
+      "details": "Body: phone_number (E.164), action (verify_phone|step_up). Returns 200 with ok=true, message (generic). No auth required for verify_phone."
     },
     "verify_otp_api": {
       "status": "PASS",
-      "endpoint": "POST /api/sms/verify-otp",
-      "details": "Requires authentication. In dev mode accepts code '123456'. Returns success=true, valid=true on correct code. Updates notification_preferences with sms_phone_verified=true and sms_verified_at timestamp."
+      "endpoint": "POST /api/otp/verify",
+      "details": "Body: phone_number, action, code (6 digits). Returns 200 with status=verified on success; 400 with detail on invalid/expired code. step_up requires auth."
     },
     "notification_preferences_sms_section": {
       "status": "PASS",
@@ -72,7 +72,7 @@
   },
   "mocked_apis": {
     "sms_sending": "SMS sending is MOCKED in dev mode - Twilio not configured. Uses code 123456 for verification.",
-    "note": "To enable real SMS, set SMS_ENABLED=true, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, and TWILIO_VERIFY_SERVICE_SID in backend/.env"
+    "note": "To enable real SMS/OTP, set SMS_ENABLED=true, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER or TWILIO_MESSAGING_SERVICE_SID, and OTP_PEPPER in backend/.env. Twilio Verify removed; OTP via orchestrator only."
   },
   "notes": {
     "compliance_score_calculation": "Score is calculated based on: Requirement status (40% weight), Days until next expiry (30% weight), Document upload rate (15% weight), Overdue items penalty (15% weight).",

@@ -8,7 +8,7 @@ This document compares the codebase to the full enterprise notification task (OT
 
 | Rule | Status |
 |------|--------|
-| All outbound email/SMS via NotificationOrchestrator | **Partial** — OTP sends via `sms_service.send_sms_via_messaging_service` directly; all other app email/SMS should go through orchestrator (some legacy paths may remain per NOTIFICATION_SEND_INVENTORY). |
+| All outbound email/SMS via NotificationOrchestrator | **Implemented** — OTP goes through orchestrator (OTP_CODE_SMS); Twilio Verify and legacy /api/sms OTP routes removed. |
 | No access emails before provisioning COMPLETED | **Implemented** — Orchestrator gates on `requires_provisioned`; WELCOME_EMAIL, PASSWORD_RESET templates have `requires_provisioned: True`. |
 | Stripe = billing source of truth; billing only from webhooks | **Implemented** — `stripe_webhook_service` triggers PAYMENT_FAILED, SUBSCRIPTION_CONFIRMED, SUBSCRIPTION_CANCELED via orchestrator with idempotency. |
 | Server-side gating (plan_registry + subscription + entitlement) | **Implemented** — Orchestrator checks template flags and plan_registry. |
@@ -29,9 +29,9 @@ This document compares the codebase to the full enterprise notification task (OT
 | Lockout 15 min after max attempts | ❌ | Current: lockout until `expires_at` (TTL), no separate 15-min lockout. |
 | Rate limit: max 3 OTP sends per 30 min per phone | ❌ | Current: `OTP_MAX_SENDS_PER_HOUR` (5) and `OTP_RESEND_COOLDOWN_SECONDS` (60). Task: 3 per 30 min. |
 | Action values: PHONE_VERIFY, SENSITIVE_ACTION | ❌ | Current: `purpose`: `verify_phone`, `step_up`. Task: `action`: PHONE_VERIFY, SENSITIVE_ACTION. |
-| **Endpoints** POST /api/otp/send, POST /api/otp/verify | ❌ | Current: POST /api/sms/otp/send, /api/sms/otp/verify. Task: /api/otp/... |
+| **Endpoints** POST /api/otp/send, POST /api/otp/verify | ✅ | Only OTP API; /api/sms/otp/* and legacy routes removed. |
 | Request body `phone_number`, `action` | ❌ | Current: `phone_e164`, `purpose`. |
-| **SMS routing** via NotificationOrchestrator template_key=OTP_CODE_SMS | ❌ | OTP sent via `sms_service.send_sms_via_messaging_service` directly. |
+| **SMS routing** via NotificationOrchestrator template_key=OTP_CODE_SMS | ✅ | OTP via orchestrator; Twilio Verify removed. |
 | Twilio Messaging Service SID preferred | ✅ | Used when set. |
 | **Audits** OTP_SEND_REQUESTED, OTP_SENT, OTP_VERIFY_SUCCESS, OTP_VERIFY_FAILED, OTP_RATE_LIMITED, OTP_LOCKED_OUT | ❌ | No OTP_* audit actions in `AuditAction`; no audit writes in OTP flow. |
 | **MessageLog** channel=SMS, template_key=OTP_CODE_SMS, metadata action/phone_hash/attempt_count | ❌ | OTP path does not write MessageLog. |
