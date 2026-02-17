@@ -378,6 +378,21 @@ async def run_compliance_recalc_sla_monitor():
         raise
 
 
+async def run_notification_failure_spike_monitor():
+    """Notification failure spike: count FAILED in last 15 min; if >= WARN/CRIT threshold, send OPS alert (cooldown applied)."""
+    try:
+        from services.notification_failure_spike_monitor import run_notification_failure_spike_monitor as _run
+        result = await _run()
+        if result.get("breached"):
+            logger.info(
+                f"Notification failure spike: {result.get('severity')} ({result.get('failed_count')} failures), alert_sent={result.get('alert_sent')}"
+            )
+        return result
+    except Exception as e:
+        logger.error(f"Notification failure spike monitor failed: {e}")
+        raise
+
+
 async def run_notification_retry_worker():
     """Process notification retry queue (outbox pattern). Picks items with next_run_at <= now and re-attempts send."""
     from database import database
@@ -422,5 +437,6 @@ JOB_RUNNERS = {
     "lead_followup_processing": run_lead_followup_processing,
     "lead_sla_check": run_lead_sla_check,
     "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
+    "notification_failure_spike_monitor": run_notification_failure_spike_monitor,
     "notification_retry_worker": run_notification_retry_worker,
 }

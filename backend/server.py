@@ -86,6 +86,7 @@ from job_runner import (
     run_abandoned_intake_detection,
     run_lead_followup_processing,
     run_lead_sla_check,
+    run_notification_failure_spike_monitor,
     run_notification_retry_worker,
 )
 
@@ -354,6 +355,15 @@ async def lifespan(app: FastAPI):
         CronTrigger(minute="*/5"),
         id="compliance_recalc_sla_monitor",
         name="Compliance Recalc SLA Monitor",
+        replace_existing=True
+    )
+    
+    # Notification failure spike monitor - every 5 minutes
+    scheduler.add_job(
+        run_notification_failure_spike_monitor,
+        CronTrigger(minute="*/5"),
+        id="notification_failure_spike_monitor",
+        name="Notification Failure Spike Monitor",
         replace_existing=True
     )
     

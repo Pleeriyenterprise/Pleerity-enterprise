@@ -1760,7 +1760,7 @@ async def list_message_logs_delivery(
     client_id: Optional[str] = Query(None),
     channel: Optional[str] = Query(None),
     template_key: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
     status_prefix: Optional[str] = Query(None, description="e.g. BLOCKED for any BLOCKED_*"),
     from_: Optional[str] = Query(None, alias="from", description="ISO datetime (created_at >= from)"),
     to: Optional[str] = Query(None, description="ISO datetime (created_at <= to)"),
@@ -1851,6 +1851,122 @@ async def get_message_log_by_id(request: Request, message_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load message log",
+        )
+
+
+@router.get("/notification-health/summary", dependencies=[Depends(require_owner_or_admin)])
+async def get_notification_health_summary(
+    request: Request,
+    window_minutes: int = Query(60, ge=1, le=10080),
+):
+    """Admin notification health: aggregate counts and top failures in window."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        since = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
+        match = {"created_at": {"$gte": since}}
+        sent_email = await db.message_logs.count_documents({**match, "channel": "EMAIL", "status": "SENT"})
+        failed_email = await db.message_logs.count_documents({**match, "channel": "EMAIL", "status": "FAILED"})
+        sent_sms = await db.message_logs.count_documents({**match, "channel": "SMS", "status": "SENT"})
+        failed_sms = await db.message_logs.count_documents({**match, "channel": "SMS", "status": "FAILED"})
+        throttled_count = await db.message_logs.count_documents({**match, "status": "DEFERRED_THROTTLED"})
+        top_failed = []
+        async for doc in db.message_logs.aggregate([
+            {"$match": {**match, "status": "FAILED"}},
+            {"$group": {"_id": "$template_key", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 10},
+        ]):
+            top_failed.append({"template_key": doc["_id"] or "unknown", "count": doc["count"]})
+        top_reasons = []
+        async for doc in db.message_logs.aggregate([
+            {"$match": {**match, "status": "FAILED", "error_message": {"$exists": True, "$ne": ""}}},
+            {"$group": {"_id": {"$substr": ["$error_message", 0, 120]}, "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 10},
+        ]):
+            top_reasons.append({"reason": doc["_id"], "count": doc["count"]})
+        return {
+            "window_minutes": window_minutes,
+            "sent_email_count": sent_email,
+            "failed_email_count": failed_email,
+            "sent_sms_count": sent_sms,
+            "failed_sms_count": failed_sms,
+            "throttled_count": throttled_count,
+            "top_failed_templates": top_failed,
+            "top_failure_reasons": top_reasons,
+        }
+    except Exception as e:
+        logger.error(f"Notification health summary error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load notification health summary",
+        )
+
+
+@router.get("/notification-health/timeseries", dependencies=[Depends(require_owner_or_admin)])
+async def get_notification_health_timeseries(
+    request: Request,
+    window_minutes: int = Query(240, ge=1, le=10080),
+    bucket_minutes: int = Query(15, ge=1, le=120),
+):
+    """Admin notification health: time buckets with sent/failed per channel."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        since = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
+        buckets = []
+        bucket_sec = bucket_minutes * 60
+        t = since.replace(minute=(since.minute // bucket_minutes) * bucket_minutes, second=0, microsecond=0)
+        while t < datetime.now(timezone.utc):
+            bucket_end = t + timedelta(minutes=bucket_minutes)
+            match = {"created_at": {"$gte": t, "$lt": bucket_end}}
+            sent_email = await db.message_logs.count_documents({**match, "channel": "EMAIL", "status": "SENT"})
+            failed_email = await db.message_logs.count_documents({**match, "channel": "EMAIL", "status": "FAILED"})
+            sent_sms = await db.message_logs.count_documents({**match, "channel": "SMS", "status": "SENT"})
+            failed_sms = await db.message_logs.count_documents({**match, "channel": "SMS", "status": "FAILED"})
+            buckets.append({
+                "bucket_start": t.isoformat(),
+                "bucket_end": bucket_end.isoformat(),
+                "sent_email_count": sent_email,
+                "failed_email_count": failed_email,
+                "sent_sms_count": sent_sms,
+                "failed_sms_count": failed_sms,
+            })
+            t = bucket_end
+        return {"window_minutes": window_minutes, "bucket_minutes": bucket_minutes, "buckets": buckets}
+    except Exception as e:
+        logger.error(f"Notification health timeseries error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load notification health timeseries",
+        )
+
+
+@router.get("/notification-health/recent", dependencies=[Depends(require_owner_or_admin)])
+async def get_notification_health_recent(
+    request: Request,
+    limit: int = Query(100, ge=1, le=500),
+):
+    """Admin notification health: recent message_logs with status, template_key, recipient, error, timestamps."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        cursor = db.message_logs.find(
+            {},
+            {"_id": 0, "message_id": 1, "template_key": 1, "channel": 1, "status": 1, "recipient": 1, "error_message": 1, "created_at": 1, "sent_at": 1},
+        ).sort("created_at", -1).limit(limit)
+        items = await cursor.to_list(limit)
+        for it in items:
+            for k in ("created_at", "sent_at"):
+                if it.get(k) and hasattr(it[k], "isoformat"):
+                    it[k] = it[k].isoformat()
+        return {"items": items, "limit": limit}
+    except Exception as e:
+        logger.error(f"Notification health recent error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load recent message logs",
         )
 
 

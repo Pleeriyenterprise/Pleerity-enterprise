@@ -1,9 +1,10 @@
 """
-Enterprise OTP flow: send and verify using Twilio Messaging Service.
+Enterprise OTP flow: send via NotificationOrchestrator (template OTP_CODE_SMS), verify in DB.
 - OTP stored as SHA-256 hash: sha256(code + ":" + OTP_PEPPER). Never store raw OTP.
 - DB stores phone_hash only (unique index phone_hash + purpose). Never store raw phone.
-- TTL, cooldown, OTP_MAX_SENDS_PER_HOUR, OTP_MAX_ATTEMPTS; lockout until expires_at.
-- Generic responses only. Step-up: issue short-lived token (not JWT) on verify success.
+- TTL 10 min default; lockout 15 min after max attempts (independent of TTL).
+- Rate limit: OTP_MAX_SENDS_PER_WINDOW per OTP_SEND_LIMIT_WINDOW_SECONDS (default 3 per 30 min).
+- Generic responses only. Step-up: issue short-lived token on verify success.
 """
 import hashlib
 import logging
@@ -13,16 +14,19 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple
 
 from database import database
-from services.sms_service import sms_service
+from models import AuditAction
+from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
 
 OTP_PEPPER = (os.getenv("OTP_PEPPER") or "").strip()
-OTP_TTL_SECONDS = int(os.getenv("OTP_TTL_SECONDS", "300"))
+OTP_TTL_SECONDS = int(os.getenv("OTP_TTL_SECONDS", "600"))
 OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", "5"))
+OTP_LOCKOUT_SECONDS = int(os.getenv("OTP_LOCKOUT_SECONDS", "900"))
+OTP_SEND_LIMIT_WINDOW_SECONDS = int(os.getenv("OTP_SEND_LIMIT_WINDOW_SECONDS", "1800"))
+OTP_MAX_SENDS_PER_WINDOW = int(os.getenv("OTP_MAX_SENDS_PER_WINDOW", "3"))
 OTP_RESEND_COOLDOWN_SECONDS = int(os.getenv("OTP_RESEND_COOLDOWN_SECONDS", "60"))
-OTP_MAX_SENDS_PER_HOUR = int(os.getenv("OTP_MAX_SENDS_PER_HOUR", "5"))
-STEP_UP_TOKEN_TTL_SECONDS = int(os.getenv("STEP_UP_TOKEN_TTL_SECONDS", "300"))  # 5 min
+STEP_UP_TOKEN_TTL_SECONDS = int(os.getenv("STEP_UP_TOKEN_TTL_SECONDS", "300"))
 
 OTP_LENGTH = 6
 SMS_VERIFY_PHONE = "Your Pleerity verification code is {CODE}. It expires in {MINUTES} minutes."
@@ -107,12 +111,29 @@ async def send_otp(
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(seconds=OTP_TTL_SECONDS)
     cooldown_until = now - timedelta(seconds=OTP_RESEND_COOLDOWN_SECONDS)
-    hour_ago = now - timedelta(hours=1)
+    window_seconds = OTP_SEND_LIMIT_WINDOW_SECONDS
+    window_start_dt = now - timedelta(seconds=window_seconds)
 
     existing = await db.otp_codes.find_one(
         {"phone_hash": ph, "purpose": purpose},
-        {"_id": 1, "last_sent_at": 1, "send_count": 1, "send_window_start": 1},
+        {"_id": 1, "last_sent_at": 1, "send_count": 1, "send_window_start": 1, "lockout_until": 1},
     )
+
+    # Lockout: after max verify attempts, block sends for OTP_LOCKOUT_SECONDS
+    if existing:
+        lockout_until = _parse_dt(existing.get("lockout_until"))
+        if lockout_until and now < lockout_until:
+            await create_audit_log(
+                action=AuditAction.OTP_LOCKED_OUT,
+                client_id=None,
+                metadata={"phone_hash": ph[:16], "purpose": purpose, "lockout_until": lockout_until.isoformat()},
+            )
+            logger.info(
+                f"[{correlation_id}] otp_send lockout phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}"
+            )
+            return True
+
+    # Rate limit: max OTP_MAX_SENDS_PER_WINDOW per window
     if existing:
         last_sent = _parse_dt(existing.get("last_sent_at"))
         if last_sent and last_sent > cooldown_until:
@@ -122,12 +143,17 @@ async def send_otp(
             return True
         send_count = existing.get("send_count", 0)
         window_start = _parse_dt(existing.get("send_window_start")) or now
-        if window_start > hour_ago and send_count >= OTP_MAX_SENDS_PER_HOUR:
+        if window_start > window_start_dt and send_count >= OTP_MAX_SENDS_PER_WINDOW:
+            await create_audit_log(
+                action=AuditAction.OTP_RATE_LIMITED,
+                client_id=None,
+                metadata={"phone_hash": ph[:16], "purpose": purpose, "send_count": send_count, "window_seconds": window_seconds},
+            )
             logger.info(
-                f"[{correlation_id}] otp_send max_sends_per_hour phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}"
+                f"[{correlation_id}] otp_send rate_limited phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}"
             )
             return True
-        if window_start <= hour_ago:
+        if window_start <= window_start_dt:
             send_count = 0
             window_start = now
         else:
@@ -135,6 +161,12 @@ async def send_otp(
     else:
         send_count = 1
         window_start = now
+
+    await create_audit_log(
+        action=AuditAction.OTP_SEND_REQUESTED,
+        client_id=None,
+        metadata={"phone_hash": ph[:16], "purpose": purpose, "attempt_count": send_count},
+    )
 
     raw_code = _generate_otp()
     code_hash_val = _code_hash(raw_code)
@@ -149,6 +181,7 @@ async def send_otp(
         "attempts": 0,
         "last_sent_at": now,
         "verified_at": None,
+        "lockout_until": None,
     }
     await db.otp_codes.update_one(
         {"phone_hash": ph, "purpose": purpose},
@@ -156,20 +189,41 @@ async def send_otp(
         upsert=True,
     )
 
-    if not sms_service.is_messaging_service_configured():
-        logger.warning(f"[{correlation_id}] otp_send not_configured phone_hash={_phone_hash_for_log(phone_e164)}")
-        return True
-
     minutes = max(1, OTP_TTL_SECONDS // 60)
     if purpose == "step_up":
         body = SMS_STEP_UP.format(CODE=raw_code, MINUTES=minutes)
     else:
         body = SMS_VERIFY_PHONE.format(CODE=raw_code, MINUTES=minutes)
-    result = await sms_service.send_sms_via_messaging_service(phone_e164, body)
-    if result.get("success"):
+
+    # Send via NotificationOrchestrator (MessageLog + provider config applied)
+    window_ts = int(now.timestamp() // window_seconds) * window_seconds
+    idempotency_key = f"otp_{ph}_{purpose}_{window_ts}"
+    from services.notification_orchestrator import notification_orchestrator
+    result = await notification_orchestrator.send(
+        template_key="OTP_CODE_SMS",
+        client_id=None,
+        context={
+            "recipient": phone_e164,
+            "body": body,
+            "action": purpose,
+            "phone_hash": ph[:16],
+            "attempt_count": send_count,
+        },
+        idempotency_key=idempotency_key,
+        event_type="otp_send",
+    )
+
+    if result.outcome == "sent":
+        await create_audit_log(
+            action=AuditAction.OTP_SENT,
+            client_id=None,
+            metadata={"phone_hash": ph[:16], "purpose": purpose, "message_id": result.message_id},
+        )
         logger.info(f"[{correlation_id}] otp_send success phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}")
-    else:
-        logger.warning(f"[{correlation_id}] otp_send send_failed phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}")
+    elif result.outcome == "blocked":
+        logger.warning(f"[{correlation_id}] otp_send blocked phone_hash={_phone_hash_for_log(phone_e164)} reason={result.block_reason}")
+    elif result.outcome == "failed":
+        logger.warning(f"[{correlation_id}] otp_send failed phone_hash={_phone_hash_for_log(phone_e164)} error={result.error_message}")
     return True
 
 
@@ -220,19 +274,42 @@ async def verify_otp(
         return False, None
 
     attempts = doc.get("attempts", 0)
+    lockout_until = _parse_dt(doc.get("lockout_until"))
+    if lockout_until and now < lockout_until:
+        logger.warning(f"[{correlation_id}] otp_verify lockout phone_hash={_phone_hash_for_log(phone_e164)} attempts={attempts}")
+        await create_audit_log(
+            action=AuditAction.OTP_LOCKED_OUT,
+            client_id=None,
+            metadata={"phone_hash": ph[:16], "purpose": purpose},
+        )
+        return False, None
     if attempts >= OTP_MAX_ATTEMPTS:
         logger.warning(f"[{correlation_id}] otp_verify lockout phone_hash={_phone_hash_for_log(phone_e164)} attempts={attempts}")
         return False, None
 
     if doc.get("code_hash") != expected_hash:
+        new_attempts = attempts + 1
+        update = {"$inc": {"attempts": 1}}
+        if new_attempts >= OTP_MAX_ATTEMPTS:
+            update["$set"] = {"lockout_until": now + timedelta(seconds=OTP_LOCKOUT_SECONDS)}
         await db.otp_codes.update_one(
             {"phone_hash": ph, "purpose": purpose},
-            {"$inc": {"attempts": 1}},
+            update,
         )
-        logger.info(f"[{correlation_id}] otp_verify failed phone_hash={_phone_hash_for_log(phone_e164)} attempt_count={attempts + 1}")
+        await create_audit_log(
+            action=AuditAction.OTP_VERIFY_FAILED,
+            client_id=None,
+            metadata={"phone_hash": ph[:16], "purpose": purpose, "attempt_count": new_attempts},
+        )
+        logger.info(f"[{correlation_id}] otp_verify failed phone_hash={_phone_hash_for_log(phone_e164)} attempt_count={new_attempts}")
         return False, None
 
     await db.otp_codes.delete_one({"phone_hash": ph, "purpose": purpose})
+    await create_audit_log(
+        action=AuditAction.OTP_VERIFY_SUCCESS,
+        client_id=None,
+        metadata={"phone_hash": ph[:16], "purpose": purpose},
+    )
 
     if purpose == "verify_phone":
         await db.notification_preferences.update_many(

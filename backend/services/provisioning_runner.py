@@ -24,6 +24,37 @@ logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 5  # Retry policy: cap attempts for FAILED; email retry can be separate
 LOCK_DURATION_SECONDS = 300  # 5 minutes; expired lock is considered free
+OPS_ALERT_EMAIL = (os.getenv("OPS_ALERT_EMAIL") or "").strip()
+ADMIN_ALERT_EMAILS_RAW = (os.getenv("ADMIN_ALERT_EMAILS") or "").strip()
+
+
+def _admin_alert_recipients() -> list:
+    if ADMIN_ALERT_EMAILS_RAW:
+        return [e.strip() for e in ADMIN_ALERT_EMAILS_RAW.split(",") if e.strip()]
+    return [OPS_ALERT_EMAIL] if OPS_ALERT_EMAIL else []
+
+
+async def _send_provisioning_failed_admin_alert(job_id: str, client_id: Optional[str], error_message: str) -> None:
+    """Send PROVISIONING_FAILED_ADMIN to ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL."""
+    recipients = _admin_alert_recipients()
+    if not recipients:
+        logger.warning("OPS_ALERT_EMAIL / ADMIN_ALERT_EMAILS not set; provisioning failed admin alert not sent")
+        return
+    try:
+        from services.notification_orchestrator import notification_orchestrator
+        subject = f"[Admin] Provisioning failed: job {job_id}" + (f" client {client_id}" if client_id else "")
+        message = f"Job ID: {job_id}\nClient ID: {client_id or 'N/A'}\nError: {error_message[:500]}"
+        for recipient in recipients:
+            idempotency_key = f"PROVISIONING_FAILED_ADMIN_{job_id}_{hash(recipient) % 10**8}"
+            await notification_orchestrator.send(
+                template_key="PROVISIONING_FAILED_ADMIN",
+                client_id=None,
+                context={"recipient": recipient, "subject": subject, "message": message},
+                idempotency_key=idempotency_key,
+                event_type="provisioning_failed_admin",
+            )
+    except Exception as e:
+        logger.exception("Failed to send provisioning failed admin alert: %s", e)
 
 
 def _worker_id() -> str:
@@ -195,6 +226,10 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
             }
         )
         logger.error(f"Job {job_id}: provisioning core failed: {message}")
+        # Admin alert on final failure (attempt_count >= MAX_ATTEMPTS)
+        updated = await db.provisioning_jobs.find_one({"job_id": job_id}, {"_id": 0, "attempt_count": 1})
+        if updated and updated.get("attempt_count", 0) >= MAX_ATTEMPTS:
+            await _send_provisioning_failed_admin_alert(job_id, client_id, message)
         return False
 
     # PROVISIONING_COMPLETED

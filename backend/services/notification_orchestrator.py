@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
@@ -27,6 +28,10 @@ EMAIL_BACKOFFS = [30, 120, 600]
 SMS_BACKOFFS = [60]
 MAX_EMAIL_ATTEMPTS = 3
 MAX_SMS_ATTEMPTS = 2
+
+# Global outbound throttling (per minute, rolling window)
+NOTIFICATION_EMAIL_PER_MINUTE_LIMIT = int(os.getenv("NOTIFICATION_EMAIL_PER_MINUTE_LIMIT", "60"))
+NOTIFICATION_SMS_PER_MINUTE_LIMIT = int(os.getenv("NOTIFICATION_SMS_PER_MINUTE_LIMIT", "30"))
 
 
 @dataclass
@@ -77,6 +82,55 @@ class NotificationOrchestrator:
                     self._twilio_client = Client(sid, token)
                 except Exception as e:
                     logger.warning(f"Twilio client init failed: {e}")
+
+    async def _check_global_throttle(
+        self,
+        db,
+        channel: str,
+        message_id: str,
+        client_id: Optional[str],
+        template_key: str,
+    ) -> Optional[NotificationResult]:
+        """
+        If global per-minute limit for channel is reached: set MessageLog to DEFERRED_THROTTLED,
+        enqueue retry in 30-60s, audit NOTIFICATION_THROTTLED, and return that result.
+        Otherwise return None.
+        """
+        limit = NOTIFICATION_EMAIL_PER_MINUTE_LIMIT if channel == "EMAIL" else NOTIFICATION_SMS_PER_MINUTE_LIMIT
+        since = datetime.now(timezone.utc) - timedelta(minutes=1)
+        count = await db.message_logs.count_documents({
+            "channel": channel,
+            "created_at": {"$gte": since},
+        })
+        if count < limit:
+            return None
+        now = datetime.now(timezone.utc)
+        next_run = now + timedelta(seconds=random.randint(30, 60))
+        await db.message_logs.update_one(
+            {"message_id": message_id},
+            {"$set": {"status": "DEFERRED_THROTTLED", "error_message": f"Global throttle: {channel} limit {limit}/min"}},
+        )
+        await db.notification_retry_queue.insert_one({
+            "message_id": message_id,
+            "template_key": template_key,
+            "client_id": client_id,
+            "channel": channel,
+            "attempt_count": 1,
+            "next_run_at": next_run,
+            "status": "PENDING",
+            "created_at": now,
+        })
+        await create_audit_log(
+            action=AuditAction.NOTIFICATION_THROTTLED,
+            client_id=client_id,
+            metadata={"channel": channel, "limit": limit, "window_minutes": 1, "template_key": template_key, "message_id": message_id},
+        )
+        return NotificationResult(
+            outcome="blocked",
+            block_reason="DEFERRED_THROTTLED",
+            message_id=message_id,
+            details={"channel": channel, "limit": limit},
+        )
 
     async def send(
         self,
@@ -140,6 +194,9 @@ class NotificationOrchestrator:
                     existing = await db.message_logs.find_one({"idempotency_key": idempotency_key}, {"_id": 0, "message_id": 1})
                     return NotificationResult(outcome="duplicate_ignored", message_id=existing.get("message_id") if existing else None, details={"idempotency_key": idempotency_key})
                 raise
+            throttle_result = await self._check_global_throttle(db, channel, message_id, None, template_key)
+            if throttle_result:
+                return throttle_result
             if channel == "EMAIL":
                 result = await self._send_email(template_key, template, client, context, message_id, db, datetime.now(timezone.utc), str(recipient).strip())
             else:
@@ -248,6 +305,10 @@ class NotificationOrchestrator:
                     details={"idempotency_key": idempotency_key},
                 )
             raise
+
+        throttle_result = await self._check_global_throttle(db, channel, message_id, client_id, template_key)
+        if throttle_result:
+            return throttle_result
 
         # Send
         if channel == "EMAIL":
@@ -559,11 +620,12 @@ class NotificationOrchestrator:
             )
             return NotificationResult(outcome="blocked", block_reason="BLOCKED_PROVIDER_NOT_CONFIGURED")
 
-        from_number = os.getenv("TWILIO_PHONE_NUMBER")
-        if not from_number:
+        messaging_service_sid = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "").strip()
+        from_number = os.getenv("TWILIO_PHONE_NUMBER", "").strip() if not messaging_service_sid else None
+        if not messaging_service_sid and not from_number:
             await db.message_logs.update_one(
                 {"message_id": message_id},
-                {"$set": {"status": "BLOCKED_PROVIDER_NOT_CONFIGURED", "error_message": "TWILIO_PHONE_NUMBER not set"}},
+                {"$set": {"status": "BLOCKED_PROVIDER_NOT_CONFIGURED", "error_message": "TWILIO_PHONE_NUMBER or TWILIO_MESSAGING_SERVICE_SID not set"}},
             )
             await create_audit_log(
                 action=AuditAction.NOTIFICATION_PROVIDER_NOT_CONFIGURED,
@@ -580,7 +642,10 @@ class NotificationOrchestrator:
 
         try:
             from twilio.rest import Client
-            msg = self._twilio_client.messages.create(body=body[:1600], from_=from_number, to=recipient)
+            if messaging_service_sid:
+                msg = self._twilio_client.messages.create(body=body[:1600], messaging_service_sid=messaging_service_sid, to=recipient)
+            else:
+                msg = self._twilio_client.messages.create(body=body[:1600], from_=from_number, to=recipient)
             provider_id = msg.sid
             sent_at = datetime.now(timezone.utc)
             await db.message_logs.update_one(
@@ -622,18 +687,27 @@ class NotificationOrchestrator:
         metadata = log.get("metadata") or {}
         context = {k: v for k, v in metadata.items() if k not in ("event_type", "block_reason")}
 
+        throttle_result = await self._check_global_throttle(db, channel, message_id, client_id, template_key)
+        if throttle_result:
+            return throttle_result
+
         template = await db.notification_templates.find_one(
             {"template_key": template_key, "is_active": True},
             {"_id": 0},
         )
         if not template:
             return NotificationResult(outcome="failed", error_message="template not found")
-        client = await db.clients.find_one(
-            {"client_id": client_id},
-            {"_id": 0, "client_id": 1, "email": 1, "contact_email": 1, "full_name": 1, "contact_name": 1},
-        )
-        if not client or not recipient:
-            return NotificationResult(outcome="failed", error_message="client or recipient missing")
+        if not recipient:
+            return NotificationResult(outcome="failed", error_message="recipient missing")
+        if client_id is None:
+            client = {"client_id": None, "email": None, "contact_email": None, "full_name": None, "contact_name": None}
+        else:
+            client = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "client_id": 1, "email": 1, "contact_email": 1, "full_name": 1, "contact_name": 1},
+            )
+            if not client:
+                return NotificationResult(outcome="failed", error_message="client not found")
 
         max_attempts = MAX_SMS_ATTEMPTS if channel == "SMS" else MAX_EMAIL_ATTEMPTS
         backoffs = SMS_BACKOFFS if channel == "SMS" else EMAIL_BACKOFFS

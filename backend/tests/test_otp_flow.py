@@ -16,8 +16,9 @@ if str(backend_root) not in sys.path:
 
 @pytest.mark.asyncio
 async def test_otp_send_returns_sent_and_stores_phone_hash_code_hash_only():
-    """Send returns True (status sent); DB stores phone_hash and code_hash, never raw OTP or phone."""
+    """Send returns True (status sent); DB stores phone_hash and code_hash; orchestrator called; OTP_SENT audit."""
     from services.otp_service import send_otp, _phone_hash, _code_hash
+    from services.notification_orchestrator import NotificationResult
 
     db = MagicMock()
     db.otp_codes.find_one = AsyncMock(return_value=None)
@@ -26,9 +27,9 @@ async def test_otp_send_returns_sent_and_stores_phone_hash_code_hash_only():
     with patch.dict("os.environ", {"OTP_PEPPER": "test-pepper"}, clear=False):
         with patch("services.otp_service.OTP_PEPPER", "test-pepper"):
             with patch("services.otp_service.database.get_db", return_value=db):
-                with patch("services.otp_service.sms_service.is_messaging_service_configured", return_value=True):
-                    with patch("services.otp_service.sms_service.send_sms_via_messaging_service", new_callable=AsyncMock) as send_sms:
-                        send_sms.return_value = {"success": True}
+                with patch("services.otp_service.notification_orchestrator.send", new_callable=AsyncMock) as orch_send:
+                    orch_send.return_value = NotificationResult(outcome="sent", message_id="msg-1")
+                    with patch("services.otp_service.create_audit_log", new_callable=AsyncMock) as audit:
                         result = await send_otp(phone_e164="+447700900123", purpose="verify_phone", correlation_id="cid-1")
     assert result is True
     db.otp_codes.update_one.assert_called_once()
@@ -40,6 +41,10 @@ async def test_otp_send_returns_sent_and_stores_phone_hash_code_hash_only():
     assert len(call_kw["phone_hash"]) == 64
     assert len(call_kw["code_hash"]) == 64
     assert call_kw["send_count"] == 1
+    orch_send.assert_called_once()
+    assert orch_send.call_args[1]["template_key"] == "OTP_CODE_SMS"
+    audit_calls = [c.kwargs.get("action") for c in audit.call_args_list]
+    assert any(getattr(a, "value", str(a)) == "OTP_SENT" for a in audit_calls)
 
 
 @pytest.mark.asyncio
@@ -99,7 +104,8 @@ async def test_otp_verify_valid_code_returns_success():
     with patch.dict("os.environ", {"OTP_PEPPER": pepper}, clear=False):
         with patch("services.otp_service.OTP_PEPPER", pepper):
             with patch("services.otp_service.database.get_db", return_value=db):
-                ok, step_token = await verify_otp(phone_e164=phone_e164, code=raw_code, purpose=purpose, correlation_id="v1")
+                with patch("services.otp_service.create_audit_log", new_callable=AsyncMock):
+                    ok, step_token = await verify_otp(phone_e164=phone_e164, code=raw_code, purpose=purpose, correlation_id="v1")
     assert ok is True
     assert step_token is None
     db.otp_codes.delete_one.assert_called_once()
@@ -126,7 +132,8 @@ async def test_otp_verify_wrong_code_returns_fail_and_increments_attempts():
     with patch.dict("os.environ", {"OTP_PEPPER": pepper}, clear=False):
         with patch("services.otp_service.OTP_PEPPER", pepper):
             with patch("services.otp_service.database.get_db", return_value=db):
-                ok, _ = await verify_otp(phone_e164=phone_e164, code="123456", purpose=purpose, correlation_id="v2")
+                with patch("services.otp_service.create_audit_log", new_callable=AsyncMock):
+                    ok, _ = await verify_otp(phone_e164=phone_e164, code="123456", purpose=purpose, correlation_id="v2")
     assert ok is False
     db.otp_codes.update_one.assert_called_once()
     assert db.otp_codes.update_one.call_args[0][2]["$inc"]["attempts"] == 1
@@ -170,6 +177,7 @@ async def test_otp_verify_purpose_verify_phone_updates_notification_preferences(
         "code_hash": _code_hash(raw_code),
         "attempts": 0,
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5),
+        "lockout_until": None,
     }
     db = MagicMock()
     db.otp_codes.find_one = AsyncMock(return_value=doc)
@@ -180,7 +188,8 @@ async def test_otp_verify_purpose_verify_phone_updates_notification_preferences(
     with patch.dict("os.environ", {"OTP_PEPPER": pepper}, clear=False):
         with patch("services.otp_service.OTP_PEPPER", pepper):
             with patch("services.otp_service.database.get_db", return_value=db):
-                ok, _ = await verify_otp(phone_e164=phone_e164, code=raw_code, purpose="verify_phone", correlation_id="v3")
+                with patch("services.otp_service.create_audit_log", new_callable=AsyncMock):
+                    ok, _ = await verify_otp(phone_e164=phone_e164, code=raw_code, purpose="verify_phone", correlation_id="v3")
     assert ok is True
     db.notification_preferences.update_many.assert_called_once()
     call = db.notification_preferences.update_many.call_args[0]
@@ -212,10 +221,11 @@ async def test_otp_verify_step_up_with_user_id_issues_token():
     with patch.dict("os.environ", {"OTP_PEPPER": pepper}, clear=False):
         with patch("services.otp_service.OTP_PEPPER", pepper):
             with patch("services.otp_service.database.get_db", return_value=db):
-                ok, step_token = await verify_otp(
-                    phone_e164=phone_e164, code=raw_code, purpose="step_up",
-                    correlation_id="v6", user_id=user_id,
-                )
+                with patch("services.otp_service.create_audit_log", new_callable=AsyncMock):
+                    ok, step_token = await verify_otp(
+                        phone_e164=phone_e164, code=raw_code, purpose="step_up",
+                        correlation_id="v6", user_id=user_id,
+                    )
     assert ok is True
     assert step_token is not None
     assert len(step_token) > 0
@@ -224,6 +234,65 @@ async def test_otp_verify_step_up_with_user_id_issues_token():
     assert insert_doc["user_id"] == user_id
     assert "token_hash" in insert_doc
     assert insert_doc["purpose_scope"] == "step_up"
+
+
+@pytest.mark.asyncio
+async def test_otp_rate_limit_triggers_OTP_RATE_LIMITED_audit_and_no_send():
+    """When send_count in window >= OTP_MAX_SENDS_PER_WINDOW, audit OTP_RATE_LIMITED and do not call orchestrator."""
+    from services.otp_service import send_otp, _phone_hash
+
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(seconds=100)
+    db = MagicMock()
+    db.otp_codes.find_one = AsyncMock(return_value={
+        "send_count": 3,
+        "send_window_start": window_start,
+        "lockout_until": None,
+    })
+
+    with patch.dict("os.environ", {"OTP_PEPPER": "p", "OTP_MAX_SENDS_PER_WINDOW": "3", "OTP_SEND_LIMIT_WINDOW_SECONDS": "1800"}, clear=False):
+        with patch("services.otp_service.OTP_PEPPER", "p"):
+            with patch("services.otp_service.OTP_MAX_SENDS_PER_WINDOW", 3):
+                with patch("services.otp_service.OTP_SEND_LIMIT_WINDOW_SECONDS", 1800):
+                    with patch("services.otp_service.database.get_db", return_value=db):
+                        with patch("services.otp_service.notification_orchestrator.send", new_callable=AsyncMock) as orch_send:
+                            with patch("services.otp_service.create_audit_log", new_callable=AsyncMock) as audit:
+                                result = await send_otp(phone_e164="+447700900123", purpose="verify_phone", correlation_id="r")
+    assert result is True
+    orch_send.assert_not_called()
+    audit_calls = [c.kwargs.get("action") for c in audit.call_args_list]
+    assert any(getattr(a, "value", str(a)) == "OTP_RATE_LIMITED" for a in audit_calls)
+
+
+@pytest.mark.asyncio
+async def test_otp_verify_wrong_code_fifth_attempt_sets_lockout_until_and_audits():
+    """Verify wrong code when attempts would become 5: update includes lockout_until, OTP_VERIFY_FAILED audit."""
+    from services.otp_service import verify_otp, _phone_hash, _code_hash
+
+    pepper = "p"
+    phone_e164 = "+447700900777"
+    ph = _phone_hash(phone_e164)
+    correct_hash = _code_hash("123456")
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=5)
+    doc = {"phone_hash": ph, "code_hash": correct_hash, "attempts": 4, "expires_at": expires_at, "lockout_until": None}
+
+    db = MagicMock()
+    db.otp_codes.find_one = AsyncMock(return_value=doc)
+    db.otp_codes.update_one = AsyncMock()
+
+    with patch.dict("os.environ", {"OTP_PEPPER": pepper, "OTP_MAX_ATTEMPTS": "5", "OTP_LOCKOUT_SECONDS": "900"}, clear=False):
+        with patch("services.otp_service.OTP_PEPPER", pepper):
+            with patch("services.otp_service.database.get_db", return_value=db):
+                with patch("services.otp_service.create_audit_log", new_callable=AsyncMock) as audit:
+                    ok, _ = await verify_otp(phone_e164=phone_e164, code="000000", purpose="verify_phone", correlation_id="v")
+    assert ok is False
+    db.otp_codes.update_one.assert_called_once()
+    update_arg = db.otp_codes.update_one.call_args[0][1]
+    assert "$set" in update_arg
+    assert "lockout_until" in update_arg["$set"]
+    audit_calls = [c.kwargs.get("action") for c in audit.call_args_list]
+    assert any(getattr(a, "value", str(a)) == "OTP_VERIFY_FAILED" for a in audit_calls)
 
 
 @pytest.mark.asyncio

@@ -20,6 +20,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["webhooks"])
 
 
+def _stripe_admin_recipients():
+    """Admin recipients for Stripe webhook failure: ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL."""
+    raw = (os.getenv("ADMIN_ALERT_EMAILS") or "").strip()
+    if raw:
+        return [e.strip() for e in raw.split(",") if e.strip()]
+    email = (os.getenv("OPS_ALERT_EMAIL") or "").strip()
+    return [email] if email else []
+
+
+async def _send_stripe_webhook_failure_admin_alert(error_message: str):
+    """Send STRIPE_WEBHOOK_FAILURE_ADMIN to admin list. Call with create_task to avoid blocking webhook response."""
+    recipients = _stripe_admin_recipients()
+    if not recipients:
+        return
+    try:
+        from services.notification_orchestrator import notification_orchestrator
+        subject = "[Admin] Stripe webhook processing failure"
+        message = f"Stripe webhook handler raised an exception.\n\nError: {error_message[:1000]}"
+        for recipient in recipients:
+            idempotency_key = f"STRIPE_WEBHOOK_FAILURE_ADMIN_{hash(error_message[:200] + recipient) % 10**10}"
+            await notification_orchestrator.send(
+                template_key="STRIPE_WEBHOOK_FAILURE_ADMIN",
+                client_id=None,
+                context={"recipient": recipient, "subject": subject, "message": message},
+                idempotency_key=idempotency_key,
+                event_type="stripe_webhook_failure_admin",
+            )
+    except Exception as send_err:
+        logger.warning("Failed to send Stripe webhook failure admin alert: %s", send_err)
+
+
 def _postmark_webhook_token_ok(header_token: str = None) -> bool:
     """Return True if Postmark webhook request is authorized. When POSTMARK_WEBHOOK_TOKEN is set, header must match."""
     configured = os.getenv("POSTMARK_WEBHOOK_TOKEN") or os.getenv("POSTMARK_WEBHOOK_SECRET")
@@ -62,7 +93,10 @@ async def _handle_stripe_webhook(request: Request, stripe_signature: str = None)
             return {"status": "error", "message": message}
     
     except Exception as e:
-        logger.error(f"Stripe webhook error: {e}")
+        logger.exception(f"Stripe webhook error: {e}")
+        # Notify admins (STRIPE_WEBHOOK_FAILURE_ADMIN) fire-and-forget
+        import asyncio
+        asyncio.create_task(_send_stripe_webhook_failure_admin_alert(str(e)))
         # Return 200 to prevent Stripe retries - we've logged the error
         return {"status": "error", "message": str(e)}
 
