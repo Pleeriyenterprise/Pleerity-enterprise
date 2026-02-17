@@ -285,21 +285,16 @@ const IntakePage = () => {
     }
   };
 
-  // Property management with server-side validation
+  // Property management – single add path; cap enforced here (no add when currentCount >= maxProps)
   const addProperty = async () => {
-    const maxProps = PLAN_LIMITS[formData.billing_plan] || 2;
-    const newCount = formData.properties.length + 1;
-    
-    // Clear previous error
-    setPropertyLimitError(null);
-    
-    // First check local limit
-    if (newCount > maxProps) {
-      // Find upgrade plan
+    const maxProps = PLAN_LIMITS[formData.billing_plan] ?? 2;
+    const currentCount = formData.properties.length;
+
+    // Block immediately when at or over cap – no UI path can add beyond cap
+    if (currentCount >= maxProps) {
       let upgradePlan = null;
       let upgradePlanName = null;
       let upgradeLimit = null;
-      
       if (formData.billing_plan === 'PLAN_1_SOLO' || formData.billing_plan === 'PLAN_1') {
         upgradePlan = 'PLAN_2_PORTFOLIO';
         upgradePlanName = 'Portfolio';
@@ -309,20 +304,21 @@ const IntakePage = () => {
         upgradePlanName = 'Professional';
         upgradeLimit = 25;
       }
-      
       setPropertyLimitError({
         currentLimit: maxProps,
-        requestedCount: newCount,
+        requestedCount: currentCount + 1,
         currentPlan: PLAN_NAMES[formData.billing_plan] || formData.billing_plan,
         upgradePlan,
         upgradePlanName,
         upgradeLimit
       });
-      
       toast.error(`You've reached the maximum of ${maxProps} properties for the ${PLAN_NAMES[formData.billing_plan] || 'current'} plan.`);
       return;
     }
-    
+
+    setPropertyLimitError(null);
+    const newCount = currentCount + 1;
+
     // Optionally validate with backend (belt and suspenders)
     try {
       const response = await intakeAPI.validatePropertyCount(formData.billing_plan, newCount);
@@ -553,6 +549,7 @@ const IntakePage = () => {
             setPropertyLimitError={setPropertyLimitError}
             onNext={nextStep}
             onBack={prevStep}
+            goToStep={goToStep}
           />
         )}
 
@@ -811,11 +808,12 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
 // ============================================================================
 // STEP 3: PROPERTIES
 // ============================================================================
-const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, propertyLimitError, setPropertyLimitError, onNext, onBack }) => {
-  const maxProperties = PLAN_LIMITS[formData.billing_plan] || 2;
-  const canAddMore = formData.properties.length < maxProperties;
+const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, propertyLimitError, setPropertyLimitError, onNext, onBack, goToStep }) => {
+  const maxProperties = PLAN_LIMITS[formData.billing_plan] ?? 2;
+  const currentCount = formData.properties.length;
+  const canAddMore = currentCount < maxProperties;
 
-  // Get upgrade plan info
+  // Get upgrade plan info (single source: formData.billing_plan + PLAN_LIMITS)
   const getUpgradePlan = () => {
     const plan = formData.billing_plan;
     if (plan === 'PLAN_1_SOLO' || plan === 'PLAN_1') {
@@ -832,6 +830,7 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
     if (upgradePlan) {
       setFormData({ ...formData, billing_plan: upgradePlan.code });
       setPropertyLimitError(null);
+      if (goToStep) goToStep(2);
     }
   };
 
@@ -884,16 +883,17 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
         />
       ))}
 
-      {/* Add Property Button */}
+      {/* Add Property Button – disabled at cap so no add path can exceed limit */}
       {canAddMore ? (
         <button
           type="button"
           onClick={addProperty}
-          className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-electric-teal hover:text-electric-teal transition-colors flex items-center justify-center gap-2"
+          disabled={!canAddMore}
+          className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-electric-teal hover:text-electric-teal transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
           data-testid="add-property-btn"
         >
           <Plus className="w-5 h-5" />
-          Add Another Property ({formData.properties.length + 1}/{maxProperties})
+          Add Another Property ({currentCount + 1}/{maxProperties})
         </button>
       ) : (
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3" data-testid="property-limit-warning">
