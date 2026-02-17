@@ -252,11 +252,11 @@ class TestIntakeSubmitAPI:
         assert "phone" in response.json()["detail"].lower()
     
     def test_submit_intake_enforces_plan_1_property_limit(self, valid_intake_data):
-        """PLAN_1 allows only 1 property - reject if exceeding"""
+        """PLAN_1 (Solo) allows max 2 properties - reject if exceeding (API returns 403)."""
         valid_intake_data["billing_plan"] = "PLAN_1"
         valid_intake_data["email"] = f"test_limit1_{uuid.uuid4().hex[:8]}@example.com"
         
-        # Add second property
+        # Add 2 more properties (total 3) to exceed Solo limit of 2
         valid_intake_data["properties"].append({
             "nickname": "Second Property",
             "address_line_1": "456 Test Avenue",
@@ -282,13 +282,42 @@ class TestIntakeSubmitAPI:
             "cert_epc": "YES",
             "cert_licence": None
         })
+        valid_intake_data["properties"].append({
+            "nickname": "Third Property",
+            "address_line_1": "789 Limit Road",
+            "address_line_2": "",
+            "city": "Birmingham",
+            "postcode": "B1 1AA",
+            "property_type": "house",
+            "bedrooms": 2,
+            "occupancy": "single_family",
+            "is_hmo": False,
+            "council_name": "Birmingham",
+            "council_code": "E08000025",
+            "licence_required": "NO",
+            "licence_type": None,
+            "licence_status": None,
+            "managed_by": "LANDLORD",
+            "send_reminders_to": "LANDLORD",
+            "agent_name": None,
+            "agent_email": None,
+            "agent_phone": None,
+            "cert_gas_safety": "YES",
+            "cert_eicr": "YES",
+            "cert_epc": "YES",
+            "cert_licence": None
+        })
         
         response = requests.post(f"{BASE_URL}/api/intake/submit", json=valid_intake_data)
-        assert response.status_code == 400
-        assert "maximum" in response.json()["detail"].lower() or "limit" in response.json()["detail"].lower()
+        assert response.status_code == 403, "API bypass: property limit must return 403"
+        detail = response.json().get("detail")
+        if isinstance(detail, dict):
+            assert detail.get("error_code") == "PROPERTY_LIMIT_EXCEEDED"
+        else:
+            assert "maximum" in str(detail).lower() or "limit" in str(detail).lower()
     
     def test_submit_intake_allows_5_properties_for_plan_2_5(self, valid_intake_data):
-        """PLAN_2_5 allows up to 5 properties"""
+        """PLAN_2_5 (Portfolio) allows up to 10 properties; 5 is within limit."""
         valid_intake_data["billing_plan"] = "PLAN_2_5"
         valid_intake_data["email"] = f"test_plan5_{uuid.uuid4().hex[:8]}@example.com"
         
@@ -325,12 +354,12 @@ class TestIntakeSubmitAPI:
         assert "client_id" in response.json()
     
     def test_submit_intake_rejects_6_properties_for_plan_2_5(self, valid_intake_data):
-        """PLAN_2_5 rejects more than 5 properties"""
+        """PLAN_2_5 (Portfolio) rejects more than 10 properties (canonical limit from plan_registry)."""
         valid_intake_data["billing_plan"] = "PLAN_2_5"
         valid_intake_data["email"] = f"test_plan5_exceed_{uuid.uuid4().hex[:8]}@example.com"
         
-        # Add 5 more properties (total 6)
-        for i in range(5):
+        # Add 10 more properties (total 11) to exceed Portfolio limit of 10
+        for i in range(10):
             valid_intake_data["properties"].append({
                 "nickname": f"Property {i+2}",
                 "address_line_1": f"{i+2}00 Test Street",
@@ -358,8 +387,12 @@ class TestIntakeSubmitAPI:
             })
         
         response = requests.post(f"{BASE_URL}/api/intake/submit", json=valid_intake_data)
-        assert response.status_code == 400
-        assert "maximum" in response.json()["detail"].lower() or "limit" in response.json()["detail"].lower()
+        assert response.status_code == 403, "API bypass: property limit must return 403"
+        detail = response.json().get("detail")
+        if isinstance(detail, dict):
+            assert detail.get("error_code") == "PROPERTY_LIMIT_EXCEEDED"
+        else:
+            assert "maximum" in str(detail).lower() or "limit" in str(detail).lower()
     
     def test_submit_intake_validates_consent_data_processing(self, valid_intake_data):
         """consent_data_processing is required"""
@@ -522,13 +555,74 @@ class TestIntakeCheckoutAPI:
         assert "stripe.com" in data["checkout_url"]
     
     def test_checkout_returns_404_for_invalid_client(self):
-        """Checkout returns 404 for non-existent client"""
+        """Checkout returns 404 for non-existent client with structured detail."""
         response = requests.post(
             f"{BASE_URL}/api/intake/checkout",
             params={"client_id": "non-existent-client-id"},
             headers={"origin": "https://order-fulfillment-9.preview.emergentagent.com"}
         )
         assert response.status_code == 404
+        data = response.json()
+        detail = data.get("detail")
+        if isinstance(detail, dict):
+            assert detail.get("error_code") == "CLIENT_NOT_FOUND"
+    
+    def test_checkout_returns_checkout_url_on_success(self):
+        """After submit, checkout endpoint returns 200 with checkout_url (happy path)."""
+        unique_id = str(uuid.uuid4())[:8]
+        intake_data = {
+            "full_name": f"TEST_CheckoutURL_{unique_id}",
+            "email": f"test_checkout_url_{unique_id}@example.com",
+            "phone": "+447700900000",
+            "company_name": None,
+            "client_type": "INDIVIDUAL",
+            "preferred_contact": "EMAIL",
+            "billing_plan": "PLAN_1_SOLO",
+            "document_submission_method": "UPLOAD",
+            "email_upload_consent": False,
+            "consent_data_processing": True,
+            "consent_service_boundary": True,
+            "properties": [
+                {
+                    "nickname": "One",
+                    "address_line_1": "1 Test St",
+                    "address_line_2": "",
+                    "city": "London",
+                    "postcode": "SW1A 1AA",
+                    "property_type": "house",
+                    "bedrooms": 2,
+                    "occupancy": "single_family",
+                    "is_hmo": False,
+                    "council_name": "Westminster",
+                    "council_code": "E09000033",
+                    "licence_required": "NO",
+                    "licence_type": None,
+                    "licence_status": None,
+                    "managed_by": "LANDLORD",
+                    "send_reminders_to": "LANDLORD",
+                    "agent_name": None,
+                    "agent_email": None,
+                    "agent_phone": None,
+                    "cert_gas_safety": "YES",
+                    "cert_eicr": "YES",
+                    "cert_epc": "YES",
+                    "cert_licence": None
+                }
+            ]
+        }
+        submit_response = requests.post(f"{BASE_URL}/api/intake/submit", json=intake_data)
+        assert submit_response.status_code == 200
+        client_id = submit_response.json()["client_id"]
+        checkout_response = requests.post(
+            f"{BASE_URL}/api/intake/checkout",
+            params={"client_id": client_id},
+            headers={"origin": "http://localhost:3000"}
+        )
+        assert checkout_response.status_code == 200
+        data = checkout_response.json()
+        assert "checkout_url" in data
+        assert data["checkout_url"]
+        assert "session_id" in data
 
 
 class TestOnboardingStatusAPI:

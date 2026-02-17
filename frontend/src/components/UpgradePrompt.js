@@ -211,6 +211,10 @@ export const FeatureGate = ({
 
 /**
  * Property Limit Prompt - Specific upgrade prompt for property limits.
+ *
+ * When switchPlanOnly is true (e.g. during intake), clicking upgrade only calls onUpgrade
+ * and does NOT navigate to billing — so the user can switch plan selection and continue intake.
+ * No entitlement is granted until after Stripe payment.
  */
 export const PropertyLimitPrompt = ({
   currentLimit,
@@ -220,6 +224,7 @@ export const PropertyLimitPrompt = ({
   upgradePlanName,
   upgradeLimit,
   onUpgrade = null,
+  switchPlanOnly = false,
   className = '',
 }) => {
   const navigate = useNavigate();
@@ -227,6 +232,9 @@ export const PropertyLimitPrompt = ({
   const handleUpgradeClick = () => {
     if (onUpgrade) {
       onUpgrade();
+    }
+    if (switchPlanOnly) {
+      return; // Intake flow: only change plan selection; no navigation, no entitlement
     }
     navigate(`/app/billing?upgrade_to=${upgradePlan}`);
   };

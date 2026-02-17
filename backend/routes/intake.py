@@ -686,15 +686,14 @@ async def submit_intake(request: Request, data: IntakeFormData):
         )
         
         if not is_allowed:
-            # Log the blocked attempt
+            # Log the blocked attempt (API bypass / server-side enforcement)
             logger.warning(
                 f"Intake property limit exceeded: email={data.email}, "
                 f"plan={plan_str}, requested={len(data.properties)}, "
                 f"limit={error_details.get('current_limit')}"
             )
-            
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "error_code": "PROPERTY_LIMIT_EXCEEDED",
                     "message": error_msg,
@@ -703,7 +702,7 @@ async def submit_intake(request: Request, data: IntakeFormData):
                     "upgrade_required": True,
                     "upgrade_to": error_details.get("upgrade_to"),
                     "upgrade_to_name": error_details.get("upgrade_to_name"),
-                }
+                },
             )
         
         if not data.properties or len(data.properties) == 0:
@@ -1025,49 +1024,72 @@ async def upload_intake_document(
 
 @router.post("/checkout")
 async def create_checkout(request: Request, client_id: str):
-    """Create Stripe checkout session for intake payment."""
+    """Create Stripe checkout session for intake payment.
+    Returns checkout_url for redirect; no entitlement is granted until Stripe payment succeeds.
+    """
     db = database.get_db()
-    
     try:
-        # Get client
-        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "billing_plan": 1, "email": 1, "contact_email": 1},
+        )
         if not client:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Client not found"
+                detail={"error_code": "CLIENT_NOT_FOUND", "message": "Client not found"},
             )
-        
         origin = request.headers.get("origin") or "http://localhost:3000"
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_role="SYSTEM",
             client_id=client_id,
             metadata={
-                "action_type": "PLAN_CHANGE_REQUESTED",
+                "action_type": "INTAKE_CHECKOUT_SESSION_REQUESTED",
                 "target_plan": client.get("billing_plan"),
                 "source": "intake_checkout",
             },
         )
         plan_code = client.get("billing_plan") or "PLAN_1_SOLO"
+        customer_email = client.get("contact_email") or client.get("email")
         session = await stripe_service.create_checkout_session(
             client_id=client_id,
             plan_code=plan_code,
             origin_url=origin,
-            customer_email=client.get("contact_email"),
+            customer_email=customer_email,
         )
-        
+        url = session.get("checkout_url")
+        if not url:
+            logger.error("Stripe session missing checkout_url for client %s", client_id)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "error_code": "CHECKOUT_URL_MISSING",
+                    "message": "Payment provider did not return a checkout URL. Please try again.",
+                },
+            )
         return {
-            "checkout_url": session["checkout_url"],
-            "session_id": session["session_id"],
+            "checkout_url": url,
+            "session_id": session.get("session_id", ""),
         }
-    
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.warning("Checkout validation/Stripe error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error_code": "CHECKOUT_FAILED",
+                "message": str(e) or "Could not create checkout session. Please try again.",
+            },
+        )
     except Exception as e:
-        logger.error(f"Checkout creation error: {e}")
+        logger.exception("Checkout creation error for client %s: %s", client_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create checkout session"
+            detail={
+                "error_code": "CHECKOUT_FAILED",
+                "message": "Failed to create checkout session. Please try again or contact support.",
+            },
         )
 
 

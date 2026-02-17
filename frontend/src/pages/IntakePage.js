@@ -393,38 +393,47 @@ const IntakePage = () => {
   // Submit intake
   const handleSubmit = async () => {
     if (!validateStep(4)) return;
-    
     setLoading(true);
     setError('');
-
     try {
       const submitData = {
         ...formData,
         intake_session_id: intakeSessionId
       };
-      
       const response = await intakeAPI.submit(submitData);
       const { client_id, customer_reference } = response.data;
-      
-      // Store for post-checkout (CRN is assigned after payment confirmation)
       localStorage.setItem('pending_client_id', client_id);
       if (customer_reference) {
         localStorage.setItem('customer_reference', customer_reference);
       } else {
         localStorage.removeItem('customer_reference');
       }
-      
       toast.success(
         customer_reference
           ? `Registration successful! Reference: ${customer_reference}`
           : "Registration successful! You'll receive your Customer Reference Number (CRN) after payment."
       );
-      
-      // Create checkout session and redirect
       const checkoutResponse = await intakeAPI.createCheckout(client_id);
-      window.location.href = checkoutResponse.data.checkout_url;
+      const checkoutUrl = checkoutResponse?.data?.checkout_url;
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+        return;
+      }
+      setError('Payment link was not returned. Please try again or contact support.');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to submit intake form');
+      const detail = err.response?.data?.detail;
+      const message = typeof detail === 'string'
+        ? detail
+        : detail?.message || err.response?.data?.message || 'Failed to submit. Please try again.';
+      const code = typeof detail === 'object' ? detail?.error_code : null;
+      if (code === 'PROPERTY_LIMIT_EXCEEDED') {
+        setError(message || 'Property limit exceeded for your plan. Please reduce properties or choose a higher plan.');
+      } else if (err.response?.status === 402 || code === 'CHECKOUT_FAILED' || code === 'CHECKOUT_URL_MISSING') {
+        setError(message || 'Could not start payment. Please try again.');
+      } else {
+        setError(message);
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -567,6 +576,7 @@ const IntakePage = () => {
             onSubmit={handleSubmit}
             onBack={prevStep}
             loading={loading}
+            intakeSessionId={intakeSessionId}
           />
         )}
       </main>
@@ -857,6 +867,7 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
           upgradePlanName={propertyLimitError.upgradePlanName}
           upgradeLimit={propertyLimitError.upgradeLimit}
           onUpgrade={handleUpgrade}
+          switchPlanOnly
         />
       )}
 
@@ -1652,8 +1663,22 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
 // ============================================================================
 // STEP 5: REVIEW & PAYMENT
 // ============================================================================
-const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading }) => {
+const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading, intakeSessionId }) => {
   const selectedPlan = plans.find(p => p.plan_id === formData.billing_plan);
+  const [stagedFiles, setStagedFiles] = useState([]);
+  const maxProps = PLAN_LIMITS[formData.billing_plan] || 2;
+
+  useEffect(() => {
+    if (formData.document_submission_method !== 'UPLOAD' || !intakeSessionId) {
+      setStagedFiles([]);
+      return;
+    }
+    const apiUrl = process.env.REACT_APP_API_URL || '';
+    fetch(`${apiUrl}/api/intake/uploads/list/${intakeSessionId}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list) => setStagedFiles(Array.isArray(list) ? list : []))
+      .catch(() => setStagedFiles([]));
+  }, [intakeSessionId, formData.document_submission_method]);
 
   const clientTypeLabels = {
     INDIVIDUAL: 'Individual Landlord',
@@ -1747,7 +1772,9 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading }) =
       {/* Properties Summary */}
       <Card>
         <div className="px-6 py-3 bg-gray-50 border-b flex items-center justify-between">
-          <h3 className="font-semibold text-midnight-blue">Properties ({formData.properties.length})</h3>
+          <h3 className="font-semibold text-midnight-blue">
+            Properties ({formData.properties.length} of {maxProps})
+          </h3>
           <button 
             onClick={() => goToStep(3)} 
             className="text-sm text-electric-teal hover:underline"
@@ -1806,6 +1833,15 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading }) =
               </>
             )}
           </div>
+          {formData.document_submission_method === 'UPLOAD' && stagedFiles.length > 0 && (
+            <div className="mt-2 text-sm text-gray-600">
+              <span className="font-medium">Staged uploads:</span>{' '}
+              {stagedFiles.map((f) => f.original_filename || f.file_name || f.upload_id).join(', ')}
+            </div>
+          )}
+          {formData.document_submission_method === 'UPLOAD' && stagedFiles.length === 0 && (
+            <p className="mt-2 text-xs text-gray-500">No files uploaded yet. You can add documents after account setup in your dashboard.</p>
+          )}
           <div className="flex items-center gap-2 mt-2">
             <CheckCircle className="w-4 h-4 text-green-500" />
             <span className="text-sm text-gray-700">GDPR and service terms accepted</span>
