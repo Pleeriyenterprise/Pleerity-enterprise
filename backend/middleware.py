@@ -153,6 +153,29 @@ async def admin_route_guard(request: Request) -> dict:
     user = await require_admin(request)
     return user
 
+async def require_step_up_token(request: Request) -> dict:
+    """
+    For sensitive endpoints: require auth and valid X-Step-Up-Token header.
+    Token is one-time use (consumed on success). Validates user match and expiry.
+    """
+    user = await require_auth(request)
+    user_id = user.get("portal_user_id") or user.get("client_id")
+    token = (request.headers.get("X-Step-Up-Token") or "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Step-up verification required",
+        )
+    from services.otp_service import consume_step_up_token
+    valid = await consume_step_up_token(token, user_id)
+    if not valid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or expired step-up token",
+        )
+    return user
+
+
 async def log_route_guard_redirect(user_id: str, path: str, reason: str):
     """Log route guard redirect for audit."""
     from utils.audit import create_audit_log

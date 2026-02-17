@@ -21,14 +21,14 @@ class SendOTPRequest(BaseModel):
 
 
 class OtpSendRequest(BaseModel):
-    """Enterprise OTP send: generic response only."""
-    phone_number: str = Field(..., min_length=10)
+    """Enterprise OTP send. Request uses phone_e164; response always { status: sent }."""
+    phone_e164: str = Field(..., min_length=10, description="E.164 phone number")
     purpose: str = Field(..., pattern="^(verify_phone|step_up)$")
 
 
 class OtpVerifyRequest(BaseModel):
-    """Enterprise OTP verify: generic response only."""
-    phone_number: str = Field(..., min_length=10)
+    """Enterprise OTP verify. Response 200 { status: verified [, step_up_token ] } or 400 generic."""
+    phone_e164: str = Field(..., min_length=10)
     code: str = Field(..., pattern="^[0-9]{6}$")
     purpose: str = Field(..., pattern="^(verify_phone|step_up)$")
 
@@ -56,37 +56,52 @@ def _correlation_id(request: Request) -> str:
 async def enterprise_otp_send(request: Request, data: OtpSendRequest):
     """
     Send OTP to phone via Twilio Messaging Service.
-    Generic response only; does not reveal whether the phone exists.
+    Always 200 { "status": "sent" } (do not leak existence).
     """
     try:
-        ok, message = await otp_send(
-            phone_number=data.phone_number,
+        await otp_send(
+            phone_e164=data.phone_e164,
             purpose=data.purpose,
             correlation_id=_correlation_id(request),
         )
-        return {"success": ok, "message": message}
+        return {"status": "sent"}
     except Exception as e:
         logger.exception(f"OTP send error: {e}")
-        return {"success": True, "message": "If this number is registered, you will receive a verification code shortly."}
+        return {"status": "sent"}
 
 
 @router.post("/otp/verify")
 async def enterprise_otp_verify(request: Request, data: OtpVerifyRequest):
     """
-    Verify OTP code. On success and purpose=verify_phone, marks phone as verified.
-    Generic response only.
+    Verify OTP. Success: 200 { "status": "verified" } or { "status": "verified", "step_up_token": "..." }.
+    Failure: 400 { "detail": "Invalid or expired code" }. step_up requires auth (user_id for token).
     """
+    cid = _correlation_id(request)
+    user_id = None
+    if data.purpose == "step_up":
+        try:
+            user = await client_route_guard(request)
+            user_id = user.get("portal_user_id") or user.get("client_id")
+        except HTTPException:
+            raise
+        if not user_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     try:
-        ok, message = await otp_verify(
-            phone_number=data.phone_number,
+        ok, step_up_token = await otp_verify(
+            phone_e164=data.phone_e164,
             code=data.code,
             purpose=data.purpose,
-            correlation_id=_correlation_id(request),
+            correlation_id=cid,
+            user_id=user_id,
         )
-        return {"success": ok, "message": message}
+        if ok:
+            out = {"status": "verified"}
+            if step_up_token is not None:
+                out["step_up_token"] = step_up_token
+            return out
     except Exception as e:
         logger.exception(f"OTP verify error: {e}")
-        return {"success": False, "message": "Invalid or expired code. Please try again or request a new code."}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
 
 
 @router.post("/send-otp")

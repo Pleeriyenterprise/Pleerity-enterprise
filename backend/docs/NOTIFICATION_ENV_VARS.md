@@ -22,6 +22,8 @@ Verified call sites and safe behavior when missing.
 | **OTP_TTL_SECONDS** | `otp_service.py:25` | OTP validity window. | Default 300. |
 | **OTP_MAX_ATTEMPTS** | `otp_service.py:26` | Max verify attempts per OTP. | Default 5. |
 | **OTP_RESEND_COOLDOWN_SECONDS** | `otp_service.py:27` | Min seconds between send per (phone, purpose). | Default 60. |
+| **OTP_MAX_SENDS_PER_HOUR** | `otp_service.py:28` | Max OTP sends per (phone_hash, purpose) in a 1-hour window. | Default 5. |
+| **STEP_UP_TOKEN_TTL_SECONDS** | `otp_service.py:29` | Step-up token validity (5–10 min typical). | Default 300. |
 | **OPS_ALERT_EMAIL** | `compliance_sla_monitor.py:22,49,60` | Recipient for compliance SLA alert emails. | If empty: warning logged, `_send_alert_email` returns False — no crash, alert not sent. |
 | **BASE_URL** | `calendar.py:429` | Fallback for request base URL. | Defaults to `request.base_url.scheme + "://" + request.base_url.netloc` — safe. |
 | **POSTMARK_WEBHOOK_TOKEN** | `webhooks.py` | Webhook auth: must match `X-Postmark-Token` header when set. | If env set and header missing/wrong: 401, no DB update. If env not set: no token check (backward compat). |

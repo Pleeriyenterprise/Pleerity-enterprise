@@ -445,16 +445,20 @@ Set these for a clean deploy with **no Emergent dependencies**:
    - Set `POSTMARK_SERVER_TOKEN` in backend/.env
    - Create email templates with specified aliases
 
-2. **Stripe Setup:**
+2. **OTP & SMS (Twilio Messaging Service):**
+   - See `backend/docs/NOTIFICATION_ENV_VARS.md` for `OTP_PEPPER`, `OTP_TTL_SECONDS`, `OTP_MAX_ATTEMPTS`, `OTP_RESEND_COOLDOWN_SECONDS`, `OTP_MAX_SENDS_PER_HOUR`, `STEP_UP_TOKEN_TTL_SECONDS`, and `TWILIO_MESSAGING_SERVICE_SID`.
+   - Endpoints: `POST /api/sms/otp/send`, `POST /api/sms/otp/verify` (step_up verify requires auth).
+
+3. **Stripe Setup:**
    - Test mode: set STRIPE_API_KEY to your Stripe test key
    - For production: Add live keys
    - Configure webhooks to point to `/api/webhook/stripe`
 
-3. **Admin Access:**
+4. **Admin Access:**
    - Use seeded admin credentials
    - Create additional admin users via database
 
-4. **Client Onboarding:**
+5. **Client Onboarding:**
    - Share landing page URL
    - Walk through intake → payment → setup flow
    - Monitor provisioning in audit logs

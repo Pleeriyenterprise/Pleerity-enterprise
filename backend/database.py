@@ -131,15 +131,18 @@ class Database:
             await self.db.compliance_sla_alerts.create_index([("active", 1), ("last_detected_at", -1)])
             await self.db.compliance_sla_alerts.create_index([("severity", 1)])
 
-            # OTP codes - one active per (phone_e164, purpose); TTL and lookup
+            # OTP codes - one active per (phone_hash, purpose); no raw phone stored
             try:
                 await self.db.otp_codes.create_index(
-                    [("phone_e164", 1), ("purpose", 1)],
+                    [("phone_hash", 1), ("purpose", 1)],
                     unique=True,
                 )
             except Exception:
                 pass
             await self.db.otp_codes.create_index("expires_at")
+            # Step-up tokens - one-time use; validate by token_hash + user_id
+            await self.db.step_up_tokens.create_index("token_hash")
+            await self.db.step_up_tokens.create_index([("user_id", 1), ("expires_at", 1)])
 
             # Intake uploads - for migration and list by session
             await self.db.intake_uploads.create_index("intake_session_id")
