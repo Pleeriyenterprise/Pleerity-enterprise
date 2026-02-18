@@ -1041,11 +1041,24 @@ async def create_checkout(request: Request, client_id: str):
             {"_id": 0, "billing_plan": 1, "email": 1, "contact_email": 1},
         )
         if not client:
+            logger.warning("Checkout client not found client_id=%s request_id=%s", client_id, request_id)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=_checkout_error_detail("CLIENT_NOT_FOUND", "Client not found", request_id),
             )
-        origin = request.headers.get("origin") or os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
+        origin = (request.headers.get("origin") or os.getenv("FRONTEND_ORIGIN") or "").strip() or "http://localhost:3000"
+        base = origin.rstrip("/")
+        if not base.startswith("http://") and not base.startswith("https://"):
+            logger.warning("Checkout invalid origin request_id=%s origin=%r", request_id, origin or "(empty)")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=_checkout_error_detail(
+                    "CHECKOUT_FAILED",
+                    "Invalid redirect URL: set Origin header or FRONTEND_ORIGIN env to a valid http(s) base URL.",
+                    request_id,
+                ),
+            )
+        origin = base
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_role="SYSTEM",

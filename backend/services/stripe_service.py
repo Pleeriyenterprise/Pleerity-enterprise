@@ -23,8 +23,8 @@ from models import AuditAction
 
 logger = logging.getLogger(__name__)
 
-# Initialize Stripe
-stripe.api_key = os.getenv("STRIPE_API_KEY", "sk_test_emergent")
+# Initialize Stripe (no placeholder default; missing key fails at checkout with clear error)
+stripe.api_key = (os.getenv("STRIPE_API_KEY") or "").strip()
 
 
 class StripeService:
@@ -53,8 +53,11 @@ class StripeService:
         Returns:
             Dict with checkout_url and session_id
         """
+        if not (stripe.api_key or "").strip():
+            raise ValueError("STRIPE_API_KEY is not set. Configure env and restart.")
+
         db = database.get_db()
-        
+
         # Resolve plan code
         try:
             plan = PlanCode(plan_code)

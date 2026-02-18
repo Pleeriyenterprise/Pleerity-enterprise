@@ -1,13 +1,17 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+// Backend base URL: required in deployed env; fallback to relative /api for same-origin/proxy
+const _raw = process.env.REACT_APP_BACKEND_URL;
+const API_URL = typeof _raw === 'string' && _raw.trim() ? _raw.trim().replace(/\/$/, '') : '';
 
 // Runtime debug: log backend URL once; expose for debug panel
 if (typeof window !== 'undefined') {
-  window.__CVP_BACKEND_URL = API_URL ?? '(not set)';
-  console.log('[CVP] REACT_APP_BACKEND_URL:', window.__CVP_BACKEND_URL);
+  window.__CVP_BACKEND_URL = API_URL || '(not set - using relative /api)';
+  if (process.env.NODE_ENV !== 'production' || window.__CVP_DEBUG) {
+    console.debug('[CVP] REACT_APP_BACKEND_URL:', window.__CVP_BACKEND_URL);
+  }
   if (!API_URL) {
-    console.warn('[CVP] REACT_APP_BACKEND_URL is not set; API calls will fail.');
+    console.warn('[CVP] REACT_APP_BACKEND_URL is not set; API calls use relative /api (ensure proxy or same host).');
   }
 }
 
@@ -28,11 +32,23 @@ function setLastApiError(status, message) {
 }
 
 const apiClient = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_URL ? `${API_URL}/api` : '/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Intake checkout debug: log URL, status, and structured detail (error_code, request_id) when present
+function logIntakeDebug(method, fullUrl, status, data) {
+  if (process.env.NODE_ENV === 'production' && !(typeof window !== 'undefined' && window.__CVP_DEBUG)) return;
+  const detail = data?.detail;
+  const payload = { method, url: fullUrl, status };
+  if (detail && typeof detail === 'object') {
+    if (detail.request_id) payload.request_id = detail.request_id;
+    if (detail.error_code) payload.error_code = detail.error_code;
+  }
+  console.debug('[CVP] Intake', payload);
+}
 
 // Request interceptor: add auth token + dev log first request (endpoint + Authorization)
 let firstRequestLogged = false;
@@ -57,6 +73,10 @@ apiClient.interceptors.response.use(
   (response) => {
     const url = response.config?.url ?? response.config?.baseURL ?? '?';
     logApiRequest(url, response.status);
+    const fullUrl = (response.config?.baseURL || '') + (response.config?.url || '');
+    if (fullUrl.includes('/intake/submit') || fullUrl.includes('/intake/checkout')) {
+      logIntakeDebug(response.config?.method?.toUpperCase() || 'GET', fullUrl, response.status, response.data);
+    }
     return response;
   },
   (error) => {
@@ -66,6 +86,10 @@ apiClient.interceptors.response.use(
     const detail = data?.detail;
     const message = (typeof detail === 'string' ? detail : detail?.message) ?? error.message ?? 'Network error';
     logApiRequest(url, status, message);
+    const fullUrl = (error.config?.baseURL || '') + (error.config?.url || '');
+    if (fullUrl.includes('/intake/submit') || fullUrl.includes('/intake/checkout')) {
+      logIntakeDebug(error.config?.method?.toUpperCase() || 'GET', fullUrl, status, data);
+    }
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
     // Plan-gate 403: attach so UI can show upgrade state instead of crashing
     if (status === 403 && data && (data.upgrade_required === true || data.feature || data.feature_key)) {

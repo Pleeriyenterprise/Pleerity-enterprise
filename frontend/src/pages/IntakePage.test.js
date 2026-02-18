@@ -6,6 +6,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import IntakePage from './IntakePage';
+import { intakeAPI } from '../api/client';
 
 // Mock intake API
 jest.mock('../api/client', () => ({
@@ -222,4 +223,103 @@ describe('IntakePage Step 3 – Property cap enforcement', () => {
       expect(screen.getByText(/10\/10/)).toBeInTheDocument();
     }, 5000);
   }, 25000);
+});
+
+// Advance wizard to step 5 (Review) so "Proceed to Payment" is visible
+async function advanceToStep5() {
+  await advanceToStep4();
+  await waitFor(() => expect(screen.getByTestId('doc-method-email')).toBeInTheDocument());
+  fireEvent.click(screen.getByTestId('doc-method-email'));
+  await waitFor(() => expect(screen.getByTestId('email-consent-checkbox')).toBeInTheDocument());
+  fireEvent.click(screen.getByTestId('email-consent-checkbox'));
+  fireEvent.click(screen.getByTestId('gdpr-consent-checkbox'));
+  fireEvent.click(screen.getByTestId('service-consent-checkbox'));
+  const nextButton = screen.getByTestId('step4-next') || screen.getByRole('button', { name: /Review & Pay/i });
+  fireEvent.click(nextButton);
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: /Proceed to Payment/i }) || screen.getByTestId('submit-payment')).toBeInTheDocument();
+  });
+}
+
+describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch.mockImplementation(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
+    );
+    intakeAPI.submit.mockResolvedValue({
+      data: { client_id: 'test-client', customer_reference: null },
+    });
+    intakeAPI.createCheckout.mockResolvedValue({
+      data: { checkout_url: 'https://checkout.stripe.com/pay', session_id: 'cs_xxx' },
+    });
+  });
+
+  it('on submit then checkout success, redirects to checkout_url', async () => {
+    let hrefSet = '';
+    const origLocation = window.location;
+    delete window.location;
+    window.location = {
+      get href() { return hrefSet; },
+      set href(v) { hrefSet = v; },
+      assign: jest.fn(),
+      replace: jest.fn(),
+    };
+
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>
+    );
+    await advanceToStep5();
+
+    const payButton = screen.getByRole('button', { name: /Proceed to Payment/i }) || screen.getByTestId('submit-payment');
+    fireEvent.click(payButton);
+
+    await waitFor(() => {
+      expect(intakeAPI.submit).toHaveBeenCalled();
+      expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client');
+    });
+    await waitFor(() => {
+      expect(hrefSet).toBe('https://checkout.stripe.com/pay');
+    });
+
+    window.location = origLocation;
+  }, 15000);
+
+  it('on checkout failure with request_id, shows Payment setup failed with Reference', async () => {
+    const requestId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    intakeAPI.createCheckout.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          detail: {
+            error_code: 'CHECKOUT_FAILED',
+            message: 'No subscription price configured',
+            request_id: requestId,
+          },
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>
+    );
+    await advanceToStep5();
+
+    const payButton = screen.getByRole('button', { name: /Proceed to Payment/i }) || screen.getByTestId('submit-payment');
+    fireEvent.click(payButton);
+
+    await waitFor(() => {
+      expect(intakeAPI.submit).toHaveBeenCalled();
+      expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client');
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('intake-error-alert')).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(requestId))).toBeInTheDocument();
+      expect(screen.getByText(/Payment setup failed|Reference:/)).toBeInTheDocument();
+    });
+  }, 15000);
 });

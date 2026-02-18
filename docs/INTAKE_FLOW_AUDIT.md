@@ -94,3 +94,29 @@ Evidence-based audit of the Compliance Vault Pro intake wizard and Stripe checko
 - [x] **C) Document upload** — Optional; review shows staged filenames or "add later" note; intake_uploads migrated to vault on provisioning.
 - [x] **D) Review step** — User details, plan, property count + cap, property list, preferences, staged upload filenames.
 - [x] **E) Stripe checkout** — Backend returns checkout_url; email fallback; structured errors; frontend redirects only when URL present and handles errors without crash.
+
+---
+
+## 7. Debugging “Proceed to Payment” failures (request_id + env)
+
+### Using request_id to match frontend and backend
+
+1. **Browser**: When checkout fails, the Step 5 alert shows “Payment setup failed. Reference: \<request_id\>” (or “Reference: \<request_id\>” in small text). Copy the `request_id` (UUID).
+2. **Backend logs**: Search server logs for that `request_id`. All checkout error responses and log lines include it, e.g.  
+   `Checkout client not found client_id=... request_id=<uuid>`  
+   `Checkout invalid origin request_id=<uuid> origin=...`  
+   `Checkout validation/Stripe error request_id=<uuid>: ...`  
+   `Stripe session missing checkout_url ... request_id=<uuid>`  
+   `Checkout creation error for client ... request_id=<uuid>: ...`
+3. **Frontend (dev only)**: With `NODE_ENV !== 'production'` or `window.__CVP_DEBUG`, the API client logs intake submit/checkout requests and responses to `console.debug` with `method`, `url`, `status`, and when present `error_code` and `request_id`. Use these to see which step failed (submit vs checkout) and the exact status and detail.
+
+### Required environment variables
+
+| Variable | Where | Purpose |
+|----------|--------|---------|
+| **REACT_APP_BACKEND_URL** | Frontend (build) | Backend base URL for API calls. If unset, the app uses relative `/api` (same-origin or proxy). Set in deployed env so the frontend reaches the correct backend. |
+| **FRONTEND_ORIGIN** | Backend | Base URL for Stripe success/cancel redirects when the `Origin` header is missing or invalid (e.g. server-to-server). Example: `https://app.example.com`. |
+| **STRIPE_API_KEY** | Backend | Stripe secret key. If missing or empty, checkout returns 400 CHECKOUT_FAILED with message “STRIPE_API_KEY is not set”. No placeholder default. |
+| **Plan Stripe price IDs** | Backend (plan_registry) | Each plan must have `subscription_price_id` (and optionally `onboarding_price_id`) in the plan registry. Missing price IDs cause Stripe errors and 400 CHECKOUT_FAILED. |
+
+At startup the backend logs: STRIPE_API_KEY set/missing and, per plan, subscription_price_id (and onboarding_price_id) so misconfiguration is visible in logs.

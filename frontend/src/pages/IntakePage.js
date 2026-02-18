@@ -393,13 +393,19 @@ const IntakePage = () => {
     setLoading(true);
     setError('');
     setErrorDetail(null);
+    const isDev = process.env.NODE_ENV !== 'production';
     try {
       const submitData = {
         ...formData,
         intake_session_id: intakeSessionId
       };
+      if (isDev) {
+        const base = typeof window !== 'undefined' && window.__CVP_BACKEND_URL;
+        console.debug('[CVP] Intake submit → POST', base ? `${base}/api/intake/submit` : '/api/intake/submit');
+      }
       const response = await intakeAPI.submit(submitData);
       const { client_id, customer_reference } = response.data;
+      if (isDev) console.debug('[CVP] Intake submit 200 client_id=', client_id);
       localStorage.setItem('pending_client_id', client_id);
       if (customer_reference) {
         localStorage.setItem('customer_reference', customer_reference);
@@ -411,14 +417,20 @@ const IntakePage = () => {
           ? `Registration successful! Reference: ${customer_reference}`
           : "Registration successful! You'll receive your Customer Reference Number (CRN) after payment."
       );
+      if (isDev) {
+        const base = typeof window !== 'undefined' && window.__CVP_BACKEND_URL;
+        console.debug('[CVP] Intake checkout → POST', base ? `${base}/api/intake/checkout` : '/api/intake/checkout', 'client_id=', client_id);
+      }
       const checkoutResponse = await intakeAPI.createCheckout(client_id);
       const checkoutUrl = checkoutResponse?.data?.checkout_url;
       if (checkoutUrl) {
+        if (isDev) console.debug('[CVP] Intake checkout 200 redirect →', checkoutUrl?.slice(0, 50) + '...');
         window.location.href = checkoutUrl;
         return;
       }
-      setError('Payment link was not returned. Please try again or contact support.');
-      setErrorDetail({ error_code: 'CHECKOUT_URL_MISSING', request_id: checkoutResponse?.data?.request_id });
+      const refId = checkoutResponse?.data?.request_id;
+      setErrorDetail({ error_code: 'CHECKOUT_URL_MISSING', request_id: refId });
+      setError(refId ? `Payment setup failed. Reference: ${refId}` : 'Payment setup failed. Please try again or contact support.');
     } catch (err) {
       const detail = err.response?.data?.detail;
       const message = typeof detail === 'string'
@@ -430,9 +442,18 @@ const IntakePage = () => {
       if (code === 'PROPERTY_LIMIT_EXCEEDED') {
         setError(message || 'Property limit exceeded for your plan. Please reduce properties or choose a higher plan.');
       } else if (err.response?.status === 402 || code === 'CHECKOUT_FAILED' || code === 'CHECKOUT_URL_MISSING') {
-        setError(message || 'Could not start payment. Please try again.');
+        setError(requestId
+          ? `Payment setup failed. Reference: ${requestId}`
+          : (message || 'Could not start payment. Please try again.'));
       } else {
-        setError(message);
+        if (requestId) {
+          setError(`Payment setup failed. Reference: ${requestId}`);
+        } else {
+          setError(message);
+        }
+      }
+      if (isDev && err.response?.data) {
+        console.debug('[CVP] Intake error', err.response?.status, detail);
       }
     } finally {
       setLoading(false);
