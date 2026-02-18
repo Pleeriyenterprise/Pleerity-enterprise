@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
@@ -688,6 +688,24 @@ class IntakePropertyData(BaseModel):
     is_hmo: bool = False
     bedrooms: Optional[int] = None
     occupancy: Optional[str] = None  # single_family, multi_family, student, professional
+
+    @field_validator("bedrooms", mode="before")
+    @classmethod
+    def coerce_bedrooms(cls, v: Any) -> Optional[int]:
+        """Accept string from frontend (e.g. '' or '3') and coerce to int or None."""
+        if v is None:
+            return None
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str):
+            s = v.strip()
+            if not s:
+                return None
+            try:
+                return int(s)
+            except ValueError:
+                raise ValueError("bedrooms must be a whole number")
+        return v
     
     # Council
     council_name: Optional[str] = None
