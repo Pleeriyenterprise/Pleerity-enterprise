@@ -692,21 +692,37 @@ class IntakePropertyData(BaseModel):
     @field_validator("bedrooms", mode="before")
     @classmethod
     def coerce_bedrooms(cls, v: Any) -> Optional[int]:
-        """Accept string from frontend (e.g. '' or '3') and coerce to int or None."""
+        """Accept string/float from frontend and coerce to int or None."""
         if v is None:
             return None
         if isinstance(v, int):
             return v
+        if isinstance(v, float):
+            if v != v or v < 0:  # NaN or negative
+                return None
+            return int(v)
         if isinstance(v, str):
             s = v.strip()
             if not s:
                 return None
             try:
-                return int(s)
-            except ValueError:
+                return int(float(s))
+            except (ValueError, TypeError):
                 raise ValueError("bedrooms must be a whole number")
         return v
-    
+
+    @field_validator("council_code", mode="before")
+    @classmethod
+    def coerce_council_code(cls, v: Any) -> Optional[str]:
+        """Accept string or int (e.g. numeric code); coerce to str. Do not drop data."""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return v
+        if isinstance(v, int):
+            return str(v)
+        return str(v) if v != "" else None
+
     # Council
     council_name: Optional[str] = None
     council_code: Optional[str] = None

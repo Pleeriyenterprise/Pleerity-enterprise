@@ -891,7 +891,15 @@ async def submit_intake(request: Request, data: IntakeFormData):
         raise
     except Exception as e:
         request_id = str(uuid.uuid4())
-        logger.exception("Intake submission error request_id=%s: %s", request_id, e)
+        exc_type = type(e).__name__
+        exc_msg = str(e) or "(no message)"
+        logger.error(
+            "Intake submission error request_id=%s exc_type=%s exc_msg=%s",
+            request_id,
+            exc_type,
+            exc_msg,
+        )
+        logger.exception("Intake submission full traceback request_id=%s", request_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={

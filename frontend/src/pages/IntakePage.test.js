@@ -144,6 +144,53 @@ describe('buildIntakeSubmitPayload', () => {
     expect(payload.properties[0].bedrooms).toBeNull();
     expect(typeof payload.properties[0].is_hmo).toBe('boolean');
   });
+
+  it('sends bedrooms as number not string when form has string from input', () => {
+    const formDataWithStringBedrooms = {
+      full_name: 'Test',
+      email: 'test@example.com',
+      client_type: 'INDIVIDUAL',
+      company_name: '',
+      preferred_contact: 'EMAIL',
+      phone: '',
+      billing_plan: 'PLAN_1_SOLO',
+      properties: [
+        {
+          nickname: 'P',
+          postcode: 'SW1A 1AA',
+          address_line_1: '10 St',
+          address_line_2: '',
+          city: 'London',
+          property_type: 'house',
+          is_hmo: false,
+          bedrooms: '2',
+          occupancy: 'single_family',
+          council_name: '',
+          council_code: 'E09000033',
+          licence_required: '',
+          licence_type: '',
+          licence_status: '',
+          managed_by: 'LANDLORD',
+          send_reminders_to: 'LANDLORD',
+          agent_name: '',
+          agent_email: '',
+          agent_phone: '',
+          cert_gas_safety: '',
+          cert_eicr: '',
+          cert_epc: '',
+          cert_licence: '',
+        },
+      ],
+      document_submission_method: 'UPLOAD',
+      email_upload_consent: false,
+      consent_data_processing: true,
+      consent_service_boundary: true,
+    };
+    const payload = buildIntakeSubmitPayload(formDataWithStringBedrooms, null);
+    expect(payload.properties).toHaveLength(1);
+    expect(typeof payload.properties[0].bedrooms).toBe('number');
+    expect(payload.properties[0].bedrooms).toBe(2);
+  });
 });
 
 // Advance wizard to step 4 (Preferences & Consents)
@@ -384,6 +431,11 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
     await waitFor(() => {
       expect(intakeAPI.submit).toHaveBeenCalled();
       expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client');
+    });
+    const submitPayload = intakeAPI.submit.mock.calls[0][0];
+    expect(submitPayload.properties).toBeDefined();
+    submitPayload.properties.forEach((p) => {
+      expect(p.bedrooms === null || typeof p.bedrooms === 'number').toBe(true);
     });
     await waitFor(() => {
       expect(hrefSet).toBe('https://checkout.stripe.com/pay');

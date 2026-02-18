@@ -94,11 +94,13 @@ const LICENCE_STATUSES = [
   { value: 'unknown', label: 'Unknown' }
 ];
 
-// Coerce for API: backend expects int or null for bedrooms
+// Coerce for API: backend expects int or null for bedrooms (input value is always string from <input>)
 function coerceBedrooms(v) {
   if (v === '' || v === null || v === undefined) return null;
   const n = Number(v);
-  return Number.isNaN(n) ? null : n;
+  if (Number.isNaN(n) || n < 0) return null;
+  const intVal = Math.floor(n);
+  return intVal;
 }
 
 // Coerce for API: backend expects boolean
@@ -427,6 +429,8 @@ const IntakePage = () => {
       if (isDev) {
         const base = typeof window !== 'undefined' && window.__CVP_BACKEND_URL;
         console.debug('[CVP] Intake submit → POST', base ? `${base}/api/intake/submit` : '/api/intake/submit');
+        const bedroomTypes = (submitData.properties || []).map((p, i) => ({ i, bedrooms: p.bedrooms, type: typeof p.bedrooms }));
+        console.debug('[CVP] Intake submit payload (bedrooms as number):', { bedroomTypes, fullPayload: submitData });
       }
       const response = await intakeAPI.submit(submitData);
       const { client_id, customer_reference } = response.data;
