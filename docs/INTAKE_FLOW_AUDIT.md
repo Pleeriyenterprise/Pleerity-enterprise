@@ -107,7 +107,10 @@ Evidence-based audit of the Compliance Vault Pro intake wizard and Stripe checko
    `Checkout invalid origin request_id=<uuid> origin=...`  
    `Checkout validation/Stripe error request_id=<uuid>: ...`  
    `Stripe session missing checkout_url ... request_id=<uuid>`  
-   `Checkout creation error for client ... request_id=<uuid>: ...`
+   `Checkout creation error for client ... request_id=<uuid>: ...`  
+   For **422 validation** (e.g. "input should be a valid integer"), the app logs:  
+   `Intake validation failed request_id=<uuid> path=/api/intake/submit errors=[(('body', 'properties', 0, 'bedrooms'), '...', 'int_parsing'), ...]`  
+   so you can identify the exact field path (e.g. `properties.0.bedrooms`). The 422 response body also includes `request_id` at top level for the UI.
 3. **Frontend (dev only)**: With `NODE_ENV !== 'production'` or `window.__CVP_DEBUG`, the API client logs intake submit/checkout requests and responses to `console.debug` with `method`, `url`, `status`, and when present `error_code` and `request_id`. Use these to see which step failed (submit vs checkout) and the exact status and detail.
 
 ### Required environment variables

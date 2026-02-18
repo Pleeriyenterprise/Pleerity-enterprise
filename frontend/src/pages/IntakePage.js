@@ -94,6 +94,34 @@ const LICENCE_STATUSES = [
   { value: 'unknown', label: 'Unknown' }
 ];
 
+// Coerce for API: backend expects int or null for bedrooms
+function coerceBedrooms(v) {
+  if (v === '' || v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
+}
+
+// Coerce for API: backend expects boolean
+function coerceBool(v) {
+  return v === true || v === 'true' || v === 1;
+}
+
+/** Build submit payload with numeric and boolean fields coerced for /api/intake/submit */
+export function buildIntakeSubmitPayload(formData, intakeSessionId) {
+  return {
+    ...formData,
+    intake_session_id: intakeSessionId || null,
+    email_upload_consent: coerceBool(formData.email_upload_consent),
+    consent_data_processing: coerceBool(formData.consent_data_processing),
+    consent_service_boundary: coerceBool(formData.consent_service_boundary),
+    properties: (formData.properties || []).map((p) => ({
+      ...p,
+      bedrooms: coerceBedrooms(p.bedrooms),
+      is_hmo: coerceBool(p.is_hmo),
+    })),
+  };
+}
+
 // Certificate availability options
 const CERT_OPTIONS = [
   { value: 'YES', label: 'Yes, I have it' },
@@ -395,10 +423,7 @@ const IntakePage = () => {
     setErrorDetail(null);
     const isDev = process.env.NODE_ENV !== 'production';
     try {
-      const submitData = {
-        ...formData,
-        intake_session_id: intakeSessionId
-      };
+      const submitData = buildIntakeSubmitPayload(formData, intakeSessionId);
       if (isDev) {
         const base = typeof window !== 'undefined' && window.__CVP_BACKEND_URL;
         console.debug('[CVP] Intake submit → POST', base ? `${base}/api/intake/submit` : '/api/intake/submit');
@@ -453,7 +478,7 @@ const IntakePage = () => {
         message = status ? `Request failed (${status}). Please try again or contact support.` : 'Failed to submit. Please try again.';
       }
       const code = typeof detail === 'object' && !Array.isArray(detail) ? detail?.error_code : null;
-      const requestId = typeof detail === 'object' && !Array.isArray(detail) ? detail?.request_id : null;
+      const requestId = data?.request_id ?? (typeof detail === 'object' && !Array.isArray(detail) ? detail?.request_id : null);
       setErrorDetail(requestId || code ? { error_code: code, request_id: requestId } : null);
       if (code === 'PROPERTY_LIMIT_EXCEEDED') {
         setError(message || 'Property limit exceeded for your plan. Please reduce properties or choose a higher plan.');

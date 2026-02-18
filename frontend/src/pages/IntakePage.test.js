@@ -6,6 +6,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import IntakePage from './IntakePage';
+import { buildIntakeSubmitPayload } from './IntakePage';
 import { intakeAPI } from '../api/client';
 
 // Mock intake API
@@ -40,6 +41,110 @@ jest.mock('../api/client', () => ({
 global.fetch = jest.fn(() =>
   Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
 );
+
+describe('buildIntakeSubmitPayload', () => {
+  it('coerces numeric and boolean fields so submit payload has numbers and booleans', () => {
+    const formData = {
+      full_name: 'Test',
+      email: 'test@example.com',
+      client_type: 'INDIVIDUAL',
+      company_name: '',
+      preferred_contact: 'EMAIL',
+      phone: '',
+      billing_plan: 'PLAN_1_SOLO',
+      properties: [
+        {
+          nickname: 'Prop 1',
+          postcode: 'SW1A 1AA',
+          address_line_1: '10 Street',
+          address_line_2: '',
+          city: 'London',
+          property_type: 'house',
+          is_hmo: 'true',
+          bedrooms: '3',
+          occupancy: 'single_family',
+          council_name: '',
+          council_code: '',
+          licence_required: '',
+          licence_type: '',
+          licence_status: '',
+          managed_by: 'LANDLORD',
+          send_reminders_to: 'LANDLORD',
+          agent_name: '',
+          agent_email: '',
+          agent_phone: '',
+          cert_gas_safety: '',
+          cert_eicr: '',
+          cert_epc: '',
+          cert_licence: '',
+        },
+      ],
+      document_submission_method: 'UPLOAD',
+      email_upload_consent: 'false',
+      consent_data_processing: 'true',
+      consent_service_boundary: true,
+    };
+    const payload = buildIntakeSubmitPayload(formData, 'session-123');
+    expect(payload.intake_session_id).toBe('session-123');
+    expect(payload.properties).toHaveLength(1);
+    expect(typeof payload.properties[0].bedrooms).toBe('number');
+    expect(payload.properties[0].bedrooms).toBe(3);
+    expect(typeof payload.properties[0].is_hmo).toBe('boolean');
+    expect(payload.properties[0].is_hmo).toBe(true);
+    expect(typeof payload.email_upload_consent).toBe('boolean');
+    expect(payload.email_upload_consent).toBe(false);
+    expect(typeof payload.consent_data_processing).toBe('boolean');
+    expect(payload.consent_data_processing).toBe(true);
+    expect(typeof payload.consent_service_boundary).toBe('boolean');
+    expect(payload.consent_service_boundary).toBe(true);
+  });
+
+  it('coerces empty bedrooms to null', () => {
+    const formData = {
+      full_name: 'Test',
+      email: 'test@example.com',
+      client_type: 'INDIVIDUAL',
+      company_name: '',
+      preferred_contact: 'EMAIL',
+      phone: '',
+      billing_plan: 'PLAN_1_SOLO',
+      properties: [
+        {
+          nickname: '',
+          postcode: 'E1 1AA',
+          address_line_1: '1 Road',
+          address_line_2: '',
+          city: 'London',
+          property_type: 'flat',
+          is_hmo: false,
+          bedrooms: '',
+          occupancy: 'single_family',
+          council_name: '',
+          council_code: '',
+          licence_required: '',
+          licence_type: '',
+          licence_status: '',
+          managed_by: 'LANDLORD',
+          send_reminders_to: 'LANDLORD',
+          agent_name: '',
+          agent_email: '',
+          agent_phone: '',
+          cert_gas_safety: '',
+          cert_eicr: '',
+          cert_epc: '',
+          cert_licence: '',
+        },
+      ],
+      document_submission_method: 'EMAIL',
+      email_upload_consent: false,
+      consent_data_processing: true,
+      consent_service_boundary: true,
+    };
+    const payload = buildIntakeSubmitPayload(formData, null);
+    expect(payload.properties[0].bedrooms).toBeNull();
+    expect(typeof payload.properties[0].is_hmo).toBe('boolean');
+  });
+});
 
 // Advance wizard to step 4 (Preferences & Consents)
 async function advanceToStep4() {

@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, intake_uploads
@@ -597,6 +599,25 @@ async def version_info():
         "commit_sha": os.getenv("GIT_COMMIT_SHA", os.getenv("BUILD_SHA", "unknown")),
         "environment": os.getenv("ENVIRONMENT", "development"),
     }
+
+# Validation error handler: log request_id + full errors (loc path) for intake submit debugging
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    request_id = str(uuid.uuid4())
+    errors = exc.errors()
+    path = getattr(request, "url", None) and getattr(request.url, "path", "") or ""
+    if "intake" in path and "submit" in path:
+        logger.warning(
+            "Intake validation failed request_id=%s path=%s errors=%s",
+            request_id,
+            path,
+            [(e.get("loc"), e.get("msg"), e.get("type")) for e in errors],
+        )
+    return JSONResponse(
+        status_code=422,
+        content={"detail": errors, "request_id": request_id},
+    )
+
 
 # Global exception handler
 @app.exception_handler(Exception)
