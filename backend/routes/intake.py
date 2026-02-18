@@ -25,6 +25,7 @@ from models import (
 )
 from services.stripe_service import stripe_service
 from services.plan_registry import plan_registry, PlanCode
+from services.crn_service import get_next_crn
 from utils.audit import create_audit_log
 import logging
 import json
@@ -741,9 +742,10 @@ async def submit_intake(request: Request, data: IntakeFormData):
                     )
         
         # =========== CREATE CLIENT ===========
-        # CRN (customer_reference) is assigned on PAYMENT CONFIRMATION only (Stripe webhook), not at intake.
+        # Assign CRN before insert so customer_reference is never null (concurrency-safe via atomic counter).
+        crn = await get_next_crn()
         client = Client(
-            customer_reference=None,
+            customer_reference=crn,
             full_name=data.full_name,
             email=data.email,
             phone=data.phone if data.phone else None,
@@ -883,7 +885,7 @@ async def submit_intake(request: Request, data: IntakeFormData):
         return {
             "message": "Intake submitted successfully",
             "client_id": client.client_id,
-            "customer_reference": None,
+            "customer_reference": crn,
             "next_step": "checkout"
         }
     

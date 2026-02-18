@@ -78,11 +78,13 @@ def test_submit_accepts_cert_licence_returns_200(client):
     payload = _minimal_intake_payload({"cert_licence": "YES"}, email="test_cert_licence_primary@example.com")
     with patch("routes.intake.database.get_db", return_value=_make_db()):
         with patch("routes.intake.create_audit_log", new_callable=AsyncMock):
-            response = client.post("/api/intake/submit", json=payload)
+            with patch("routes.intake.get_next_crn", new_callable=AsyncMock, return_value="PLE-CVP-2026-000001"):
+                response = client.post("/api/intake/submit", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert "client_id" in data
     assert data.get("next_step") == "checkout"
+    assert data.get("customer_reference") == "PLE-CVP-2026-000001"
 
 
 def test_submit_accepts_cert_lincence_typo_returns_200(client):
@@ -90,11 +92,13 @@ def test_submit_accepts_cert_lincence_typo_returns_200(client):
     payload = _minimal_intake_payload({"cert_lincence": "YES"}, email="test_cert_lincence_alias@example.com")
     with patch("routes.intake.database.get_db", return_value=_make_db()):
         with patch("routes.intake.create_audit_log", new_callable=AsyncMock):
-            response = client.post("/api/intake/submit", json=payload)
+            with patch("routes.intake.get_next_crn", new_callable=AsyncMock, return_value="PLE-CVP-2026-000002"):
+                response = client.post("/api/intake/submit", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert "client_id" in data
     assert data.get("next_step") == "checkout"
+    assert data.get("customer_reference") == "PLE-CVP-2026-000002"
 
 
 # Exact production payload that previously caused 500 SUBMIT_FAILED (integer validation).
@@ -149,8 +153,28 @@ def test_submit_exact_production_payload_returns_200(client):
     payload["email"] = "test_production_payload@example.com"
     with patch("routes.intake.database.get_db", return_value=_make_db()):
         with patch("routes.intake.create_audit_log", new_callable=AsyncMock):
-            response = client.post("/api/intake/submit", json=payload)
+            with patch("routes.intake.get_next_crn", new_callable=AsyncMock, return_value="PLE-CVP-2026-000003"):
+                response = client.post("/api/intake/submit", json=payload)
     assert response.status_code == 200, response.text
     data = response.json()
     assert "client_id" in data
     assert data.get("next_step") == "checkout"
+    assert data.get("customer_reference") == "PLE-CVP-2026-000003"
+
+
+def test_submit_sets_customer_reference_before_insert(client):
+    """customer_reference is set before client insert and returned in response (never null)."""
+    payload = _minimal_intake_payload(email="test_crn_insert@example.com")
+    mock_db = _make_db()
+    with patch("routes.intake.database.get_db", return_value=mock_db):
+        with patch("routes.intake.create_audit_log", new_callable=AsyncMock):
+            with patch("routes.intake.get_next_crn", new_callable=AsyncMock, return_value="PLE-CVP-2026-000099"):
+                response = client.post("/api/intake/submit", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("customer_reference") == "PLE-CVP-2026-000099"
+    # Client document inserted must contain customer_reference
+    insert_calls = mock_db.clients.insert_one.call_args_list
+    assert len(insert_calls) >= 1
+    inserted_doc = insert_calls[0][0][0]
+    assert inserted_doc.get("customer_reference") == "PLE-CVP-2026-000099"

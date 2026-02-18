@@ -2,11 +2,12 @@
 CRN (Customer Reference Number) service.
 
 Business rules:
-- CRN is generated ON PAYMENT CONFIRMATION only (Stripe verified).
+- CRN is assigned at intake (before client insert) so customer_reference is never null.
+- Also ensured on payment confirmation via ensure_client_crn (idempotent: if already set, returns it).
 - Stored only on clients.customer_reference (single source of truth).
 - Format: PLE-CVP-YYYY-NNNNNN (6-digit zero-padded sequence per year).
 - Idempotent: once set on a client, never change.
-- Concurrency-safe: atomic counter in MongoDB.
+- Concurrency-safe: atomic counter in MongoDB (get_next_crn).
 """
 import logging
 from datetime import datetime, timezone

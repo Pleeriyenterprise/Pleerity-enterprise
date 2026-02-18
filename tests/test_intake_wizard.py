@@ -194,7 +194,7 @@ class TestIntakeSubmitAPI:
         }
     
     def test_submit_intake_creates_client_with_customer_reference(self, valid_intake_data):
-        """Submit intake creates client; CRN is assigned on payment confirmation (so may be null here)."""
+        """Submit intake creates client with CRN set before insert (customer_reference never null)."""
         response = requests.post(f"{BASE_URL}/api/intake/submit", json=valid_intake_data)
         assert response.status_code == 200
         
@@ -203,13 +203,12 @@ class TestIntakeSubmitAPI:
         assert "customer_reference" in data
         assert "next_step" in data
         assert data["next_step"] == "checkout"
-        # CRN is generated on payment confirmation only; intake returns null
         ref = data.get("customer_reference")
-        if ref:
-            pattern = r"^PLE-CVP-\d{4}-[A-Z0-9]{5,6}$"
-            assert re.match(pattern, ref), f"Customer reference {ref} doesn't match expected format"
-            year = datetime.now().year
-            assert f"-{year}-" in ref
+        assert ref is not None, "customer_reference must be set at intake"
+        pattern = r"^PLE-CVP-\d{4}-\d{6}$"
+        assert re.match(pattern, ref), f"Customer reference {ref} doesn't match PLE-CVP-YYYY-NNNNNN"
+        year = datetime.now().year
+        assert f"-{year}-" in ref
     
     def test_submit_intake_validates_company_name_for_company_type(self, valid_intake_data):
         """Company name required when client_type is COMPANY"""
@@ -716,10 +715,10 @@ class TestOnboardingStatusAPI:
 
 
 class TestCustomerReferenceFormat:
-    """Test customer reference format: PLE-CVP-YYYY-XXXXX"""
+    """Test customer reference format: PLE-CVP-YYYY-NNNNNN (6-digit sequence)."""
     
     def test_customer_reference_format_validation(self):
-        """Verify customer reference follows PLE-CVP-YYYY-XXXXX format"""
+        """Verify customer reference follows PLE-CVP-YYYY-NNNNNN format and is never null."""
         unique_id = str(uuid.uuid4())[:8]
         intake_data = {
             "full_name": f"TEST_Ref_{unique_id}",
@@ -766,22 +765,16 @@ class TestCustomerReferenceFormat:
         assert response.status_code == 200
         
         ref = response.json()["customer_reference"]
+        assert ref is not None, "customer_reference must never be null"
         
-        # Verify format
+        # Verify format: PLE-CVP-YYYY-NNNNNN (6-digit zero-padded sequence)
         parts = ref.split("-")
         assert len(parts) == 4
         assert parts[0] == "PLE"
         assert parts[1] == "CVP"
         assert parts[2] == str(datetime.now().year)
-        assert len(parts[3]) == 5
-        
-        # Verify no confusing characters (O, 0, I, 1, L)
-        suffix = parts[3]
-        assert "O" not in suffix
-        assert "0" not in suffix
-        assert "I" not in suffix
-        assert "1" not in suffix
-        assert "L" not in suffix
+        assert len(parts[3]) == 6, "Sequence must be 6 digits"
+        assert parts[3].isdigit(), "Sequence must be numeric"
 
 
 if __name__ == "__main__":
