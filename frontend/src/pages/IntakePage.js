@@ -432,28 +432,44 @@ const IntakePage = () => {
       setErrorDetail({ error_code: 'CHECKOUT_URL_MISSING', request_id: refId });
       setError(refId ? `Payment setup failed. Reference: ${refId}` : 'Payment setup failed. Please try again or contact support.');
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      const message = typeof detail === 'string'
-        ? detail
-        : detail?.message || err.response?.data?.message || 'Failed to submit. Please try again.';
-      const code = typeof detail === 'object' ? detail?.error_code : null;
-      const requestId = typeof detail === 'object' ? detail?.request_id : null;
+      const status = err.response?.status;
+      const data = err.response?.data;
+      const detail = data?.detail;
+      // Parse message: string detail, object with .message, or 422 validation array (first error)
+      let message;
+      if (typeof detail === 'string') {
+        message = detail;
+      } else if (detail && typeof detail === 'object' && detail.message) {
+        message = detail.message;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        const first = detail[0];
+        const msg = first?.msg ?? first?.message ?? JSON.stringify(first);
+        message = `Validation failed: ${msg}`;
+      } else if (data?.message) {
+        message = data.message;
+      } else if (!err.response) {
+        message = 'Connection error. Please check your connection and try again.';
+      } else {
+        message = status ? `Request failed (${status}). Please try again or contact support.` : 'Failed to submit. Please try again.';
+      }
+      const code = typeof detail === 'object' && !Array.isArray(detail) ? detail?.error_code : null;
+      const requestId = typeof detail === 'object' && !Array.isArray(detail) ? detail?.request_id : null;
       setErrorDetail(requestId || code ? { error_code: code, request_id: requestId } : null);
       if (code === 'PROPERTY_LIMIT_EXCEEDED') {
         setError(message || 'Property limit exceeded for your plan. Please reduce properties or choose a higher plan.');
-      } else if (err.response?.status === 402 || code === 'CHECKOUT_FAILED' || code === 'CHECKOUT_URL_MISSING') {
+      } else if (status === 402 || code === 'CHECKOUT_FAILED' || code === 'CHECKOUT_URL_MISSING') {
         setError(requestId
           ? `Payment setup failed. Reference: ${requestId}`
           : (message || 'Could not start payment. Please try again.'));
       } else {
         if (requestId) {
-          setError(`Payment setup failed. Reference: ${requestId}`);
+          setError(message ? `${message} Reference: ${requestId}` : `Request failed. Reference: ${requestId}`);
         } else {
           setError(message);
         }
       }
-      if (isDev && err.response?.data) {
-        console.debug('[CVP] Intake error', err.response?.status, detail);
+      if (isDev && (err.response?.data || !err.response)) {
+        console.debug('[CVP] Intake error', status, detail ?? (err.response ? data : err.message));
       }
     } finally {
       setLoading(false);

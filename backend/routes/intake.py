@@ -890,10 +890,15 @@ async def submit_intake(request: Request, data: IntakeFormData):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Intake submission error: {e}")
+        request_id = str(uuid.uuid4())
+        logger.exception("Intake submission error request_id=%s: %s", request_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process intake"
+            detail={
+                "message": "Failed to process intake. Please try again or contact support.",
+                "error_code": "SUBMIT_FAILED",
+                "request_id": request_id,
+            },
         )
 
 
