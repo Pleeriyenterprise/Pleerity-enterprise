@@ -555,7 +555,7 @@ class TestIntakeCheckoutAPI:
         assert "stripe.com" in data["checkout_url"]
     
     def test_checkout_returns_404_for_invalid_client(self):
-        """Checkout returns 404 for non-existent client with structured detail."""
+        """Checkout returns 404 for non-existent client with structured detail (error_code, message, request_id)."""
         response = requests.post(
             f"{BASE_URL}/api/intake/checkout",
             params={"client_id": "non-existent-client-id"},
@@ -564,8 +564,12 @@ class TestIntakeCheckoutAPI:
         assert response.status_code == 404
         data = response.json()
         detail = data.get("detail")
-        if isinstance(detail, dict):
-            assert detail.get("error_code") == "CLIENT_NOT_FOUND"
+        assert isinstance(detail, dict), "Detail must be a dict for correlation"
+        assert detail.get("error_code") == "CLIENT_NOT_FOUND"
+        assert detail.get("message")
+        request_id = detail.get("request_id")
+        assert request_id, "request_id required for correlation"
+        assert len(request_id) == 36 and request_id.count("-") == 4, "request_id should be UUID format"
     
     def test_checkout_returns_checkout_url_on_success(self):
         """After submit, checkout endpoint returns 200 with checkout_url (happy path)."""

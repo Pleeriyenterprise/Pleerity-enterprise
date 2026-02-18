@@ -97,6 +97,27 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Compliance Vault Pro API")
     await database.connect()
 
+    # Stripe config validation (intake checkout and billing)
+    try:
+        stripe_key = os.environ.get("STRIPE_API_KEY", "").strip()
+        if not stripe_key:
+            logger.error("STRIPE_API_KEY is not set. Intake checkout and billing will fail.")
+        elif stripe_key.startswith("sk_test_") and "CVP_PROD" in os.environ.get("ENV", "").upper():
+            logger.warning("STRIPE_API_KEY looks like test key but ENV suggests production. Verify key.")
+        else:
+            logger.info("STRIPE_API_KEY is set (key prefix: %s...)", stripe_key[:12] if len(stripe_key) >= 12 else "***")
+        from services.plan_registry import plan_registry, PlanCode
+        for plan in PlanCode:
+            ids = plan_registry.get_stripe_price_ids(plan)
+            sub_id = ids.get("subscription_price_id")
+            onb_id = ids.get("onboarding_price_id")
+            if not sub_id:
+                logger.error("Stripe subscription price ID missing for plan %s. Check plan_registry.", plan.value)
+            else:
+                logger.debug("Plan %s subscription_price_id=%s onboarding_price_id=%s", plan.value, sub_id, onb_id or "none")
+    except Exception as e:
+        logger.warning("Stripe config check failed: %s", e)
+
     # Idempotent OWNER bootstrap: when BOOTSTRAP_ENABLED=true OR when email+password env are set (Render)
     bootstrap_enabled = os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true"
     bootstrap_email = (os.environ.get("BOOTSTRAP_OWNER_EMAIL") or "").strip()

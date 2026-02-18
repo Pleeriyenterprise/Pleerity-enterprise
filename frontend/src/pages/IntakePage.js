@@ -106,6 +106,7 @@ const IntakePage = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorDetail, setErrorDetail] = useState(null);
   const [plans, setPlans] = useState([]);
   const [intakeSessionId] = useState(() => uuidv4());
 
@@ -386,11 +387,12 @@ const IntakePage = () => {
     setFormData({ ...formData, properties: updated });
   };
 
-  // Submit intake
+  // Submit intake (submit then checkout; button stays disabled until request completes)
   const handleSubmit = async () => {
     if (!validateStep(4)) return;
     setLoading(true);
     setError('');
+    setErrorDetail(null);
     try {
       const submitData = {
         ...formData,
@@ -416,12 +418,15 @@ const IntakePage = () => {
         return;
       }
       setError('Payment link was not returned. Please try again or contact support.');
+      setErrorDetail({ error_code: 'CHECKOUT_URL_MISSING', request_id: checkoutResponse?.data?.request_id });
     } catch (err) {
       const detail = err.response?.data?.detail;
       const message = typeof detail === 'string'
         ? detail
         : detail?.message || err.response?.data?.message || 'Failed to submit. Please try again.';
       const code = typeof detail === 'object' ? detail?.error_code : null;
+      const requestId = typeof detail === 'object' ? detail?.request_id : null;
+      setErrorDetail(requestId || code ? { error_code: code, request_id: requestId } : null);
       if (code === 'PROPERTY_LIMIT_EXCEEDED') {
         setError(message || 'Property limit exceeded for your plan. Please reduce properties or choose a higher plan.');
       } else if (err.response?.status === 402 || code === 'CHECKOUT_FAILED' || code === 'CHECKOUT_URL_MISSING') {
@@ -511,9 +516,17 @@ const IntakePage = () => {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
         {error && (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive" className="mb-6" data-testid="intake-error-alert">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              <span>{error}</span>
+              {errorDetail?.request_id && (
+                <p className="mt-2 text-xs opacity-90">Reference: {errorDetail.request_id}</p>
+              )}
+              {errorDetail?.error_code && !errorDetail?.request_id && (
+                <p className="mt-2 text-xs opacity-90">Code: {errorDetail.error_code}</p>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 

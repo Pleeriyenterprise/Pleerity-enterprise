@@ -71,6 +71,14 @@ class StripeService:
         if not subscription_price_id:
             raise ValueError(f"No subscription price configured for plan {plan_code}")
         
+        # Validate origin_url for success/cancel redirects (must be http(s) base URL)
+        base = (origin_url or "").strip().rstrip("/")
+        if not base.startswith("http://") and not base.startswith("https://"):
+            raise ValueError(
+                "Invalid redirect base URL: origin must be http or https. "
+                "Set Origin header or FRONTEND_ORIGIN env."
+            )
+        
         # Build line items
         line_items = [
             {
@@ -91,9 +99,9 @@ class StripeService:
                 "quantity": 1,
             })
         
-        # Success and cancel URLs
-        success_url = f"{origin_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}"
-        cancel_url = f"{origin_url}/checkout/cancel"
+        # Success and cancel URLs (base already stripped trailing slash)
+        success_url = f"{base}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{base}/checkout/cancel"
         
         # Create checkout session
         try:

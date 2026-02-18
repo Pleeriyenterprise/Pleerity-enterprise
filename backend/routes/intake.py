@@ -1022,11 +1022,18 @@ async def upload_intake_document(
         )
 
 
+def _checkout_error_detail(error_code: str, message: str, request_id: str) -> dict:
+    """Structured error detail for checkout responses (error_code, message, request_id)."""
+    return {"error_code": error_code, "message": message, "request_id": request_id}
+
+
 @router.post("/checkout")
 async def create_checkout(request: Request, client_id: str):
     """Create Stripe checkout session for intake payment.
     Returns checkout_url for redirect; no entitlement is granted until Stripe payment succeeds.
+    All error responses include error_code, message, and request_id for correlation.
     """
+    request_id = str(uuid.uuid4())
     db = database.get_db()
     try:
         client = await db.clients.find_one(
@@ -1036,9 +1043,9 @@ async def create_checkout(request: Request, client_id: str):
         if not client:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error_code": "CLIENT_NOT_FOUND", "message": "Client not found"},
+                detail=_checkout_error_detail("CLIENT_NOT_FOUND", "Client not found", request_id),
             )
-        origin = request.headers.get("origin") or "http://localhost:3000"
+        origin = request.headers.get("origin") or os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_role="SYSTEM",
@@ -1047,6 +1054,7 @@ async def create_checkout(request: Request, client_id: str):
                 "action_type": "INTAKE_CHECKOUT_SESSION_REQUESTED",
                 "target_plan": client.get("billing_plan"),
                 "source": "intake_checkout",
+                "request_id": request_id,
             },
         )
         plan_code = client.get("billing_plan") or "PLAN_1_SOLO"
@@ -1059,13 +1067,14 @@ async def create_checkout(request: Request, client_id: str):
         )
         url = session.get("checkout_url")
         if not url:
-            logger.error("Stripe session missing checkout_url for client %s", client_id)
+            logger.error("Stripe session missing checkout_url for client %s request_id=%s", client_id, request_id)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={
-                    "error_code": "CHECKOUT_URL_MISSING",
-                    "message": "Payment provider did not return a checkout URL. Please try again.",
-                },
+                detail=_checkout_error_detail(
+                    "CHECKOUT_URL_MISSING",
+                    "Payment provider did not return a checkout URL. Please try again.",
+                    request_id,
+                ),
             )
         return {
             "checkout_url": url,
@@ -1074,22 +1083,24 @@ async def create_checkout(request: Request, client_id: str):
     except HTTPException:
         raise
     except ValueError as e:
-        logger.warning("Checkout validation/Stripe error: %s", e)
+        logger.warning("Checkout validation/Stripe error request_id=%s: %s", request_id, e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error_code": "CHECKOUT_FAILED",
-                "message": str(e) or "Could not create checkout session. Please try again.",
-            },
+            detail=_checkout_error_detail(
+                "CHECKOUT_FAILED",
+                str(e) or "Could not create checkout session. Please try again.",
+                request_id,
+            ),
         )
     except Exception as e:
-        logger.exception("Checkout creation error for client %s: %s", client_id, e)
+        logger.exception("Checkout creation error for client %s request_id=%s: %s", client_id, request_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error_code": "CHECKOUT_FAILED",
-                "message": "Failed to create checkout session. Please try again or contact support.",
-            },
+            detail=_checkout_error_detail(
+                "CHECKOUT_FAILED",
+                "Failed to create checkout session. Please try again or contact support.",
+                request_id,
+            ),
         )
 
 
