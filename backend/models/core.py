@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, AliasChoices
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
@@ -727,7 +727,10 @@ class IntakePropertyData(BaseModel):
     cert_gas_safety: Optional[str] = None  # YES, NO, UNSURE
     cert_eicr: Optional[str] = None
     cert_epc: Optional[str] = None
-    cert_licence: Optional[str] = None  # Only applicable if licence_required = YES
+    cert_licence: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("cert_licence", "cert_lincence"),  # Primary + typo alias
+    )  # Only applicable if licence_required = YES
 
 
 class IntakeFormData(BaseModel):
