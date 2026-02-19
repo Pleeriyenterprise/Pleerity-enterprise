@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard } from 'lucide-react';
 import api, { API_URL } from '../api/client';
+import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
 
 const ClientDashboard = () => {
@@ -262,7 +263,7 @@ const ClientDashboard = () => {
             <AlertDescription>
               <span className="font-medium text-amber-900">Access restricted by plan.</span>
               <span className="block mt-1 text-amber-800">This feature or area is not included in your current plan. Contact support or upgrade to access it.</span>
-              <a href="mailto:support@pleerity.com" className="inline-block mt-2 text-sm font-medium text-electric-teal hover:underline">Contact support</a>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-block mt-2 text-sm font-medium text-electric-teal hover:underline">Contact support</a>
             </AlertDescription>
           </Alert>
         )}
@@ -274,7 +275,7 @@ const ClientDashboard = () => {
             <AlertDescription>
               <span className="font-medium text-amber-900">Account not provisioned properly.</span>
               <span className="block mt-1 text-amber-800">Your account is missing plan or entitlement information. Please contact support to complete setup.</span>
-              <a href="mailto:support@pleerity.com" className="inline-block mt-2 text-sm font-medium text-electric-teal hover:underline">Contact support</a>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-block mt-2 text-sm font-medium text-electric-teal hover:underline">Contact support</a>
             </AlertDescription>
           </Alert>
         )}

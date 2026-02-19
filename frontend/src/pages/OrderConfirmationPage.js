@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import client from '../api/client';
+import { SUPPORT_EMAIL } from '../config';
 
 export default function OrderConfirmationPage() {
   const navigate = useNavigate();
@@ -163,7 +164,7 @@ export default function OrderConfirmationPage() {
                 </Button>
                 <Button
                   className="bg-teal-600 hover:bg-teal-700"
-                  onClick={() => window.location.href = 'mailto:support@pleerity.com'}
+                  onClick={() => window.location.href = `mailto:${SUPPORT_EMAIL}`}
                 >
                   Contact Support
                 </Button>

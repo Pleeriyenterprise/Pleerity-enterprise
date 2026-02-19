@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -12,10 +12,16 @@ import {
   Loader2,
   ArrowRight,
   Building2,
-  FileText
+  FileText,
+  Copy
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import api from '../api/client';
+import { SUPPORT_EMAIL } from '../config';
+import { toast } from 'sonner';
+
+const POLL_INTERVAL_MS = 7000;
+const POLL_DURATION_MS = 120000;
 
 const OnboardingStatusPage = () => {
   const [searchParams] = useSearchParams();
@@ -25,6 +31,8 @@ const OnboardingStatusPage = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pollStatus, setPollStatus] = useState(null);
+  const pollStartRef = useRef(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -38,21 +46,50 @@ const OnboardingStatusPage = () => {
     }
   }, [clientId]);
 
+  const fetchPollStatus = useCallback(async () => {
+    if (!clientId) return;
+    try {
+      const res = await api.get('/onboarding/status', { params: { client_id: clientId } });
+      setPollStatus(res.data);
+    } catch {
+      // Non-fatal; keep polling
+    }
+  }, [clientId]);
+
+  const handleCopyCRN = useCallback(() => {
+    const crn = status?.customer_reference || pollStatus?.customer_reference;
+    if (!crn) return;
+    navigator.clipboard.writeText(crn).then(() => toast.success('CRN copied to clipboard')).catch(() => toast.error('Copy failed'));
+  }, [status?.customer_reference, pollStatus?.customer_reference]);
+
   useEffect(() => {
     if (clientId) {
       fetchStatus();
-      // Poll for updates every 5 seconds while not complete
-      const interval = setInterval(() => {
-        if (!status?.is_complete) {
-          fetchStatus();
-        }
-      }, 5000);
-      return () => clearInterval(interval);
+      fetchPollStatus();
+      pollStartRef.current = Date.now();
     } else {
       setError('No client ID provided');
       setLoading(false);
     }
-  }, [clientId, status?.is_complete, fetchStatus]);
+  }, [clientId, fetchStatus, fetchPollStatus]);
+
+  useEffect(() => {
+    if (!clientId) return;
+    const t0 = Date.now();
+    const prevRef = { current: null };
+    const interval = setInterval(async () => {
+      if (Date.now() - t0 >= POLL_DURATION_MS) return;
+      const poll = await api.get('/onboarding/status', { params: { client_id: clientId } }).then(r => r.data).catch(() => null);
+      if (poll) {
+        const prev = prevRef.current;
+        prevRef.current = poll;
+        setPollStatus(poll);
+        const changed = !prev || poll.payment_status !== prev.payment_status || poll.portal_user_exists !== prev.portal_user_exists || poll.password_set !== prev.password_set;
+        if (changed) fetchStatus();
+      }
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [clientId, fetchStatus]);
 
   const getStepIcon = (step) => {
     const icons = {
@@ -105,7 +142,22 @@ const OnboardingStatusPage = () => {
     }
   };
 
-  const getStatusLabel = (stepStatus) => {
+  const getStatusLabel = (stepStatus, stepNum) => {
+    const isPaymentStep = stepNum === 2;
+    const subActive = ['ACTIVE', 'PAID'].includes((status?.subscription_status || pollStatus?.subscription_status || '').toUpperCase());
+    const fromStripeRedirect = !!sessionStorage.getItem('pleerity_stripe_redirect');
+    let createdWithin2Min = false;
+    const createdStr = pollStatus?.created_at || status?.created_at;
+    if (createdStr) {
+      try {
+        const created = new Date(createdStr).getTime();
+        createdWithin2Min = Date.now() - created < 120000;
+      } catch {}
+    }
+    if (isPaymentStep && subActive) sessionStorage.removeItem('pleerity_stripe_redirect');
+    const isConfirming = isPaymentStep && !subActive && (fromStripeRedirect || createdWithin2Min);
+
+    if (isConfirming) return 'Confirming…';
     switch (stepStatus) {
       case 'complete': return 'Complete';
       case 'in_progress': return 'In Progress';
@@ -145,8 +197,23 @@ const OnboardingStatusPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100" data-testid="onboarding-status-page">
       {/* Header */}
       <header className="bg-midnight-blue text-white py-4">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-4xl mx-auto px-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-bold">Compliance Vault Pro</h1>
+          {(status?.customer_reference || pollStatus?.customer_reference) && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-300">Your CRN:</span>
+              <span className="font-mono font-semibold">{status?.customer_reference || pollStatus?.customer_reference}</span>
+              <button
+                type="button"
+                onClick={handleCopyCRN}
+                className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-sm"
+                title="Copy CRN"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -240,7 +307,7 @@ const OnboardingStatusPage = () => {
                       <div className="flex items-center gap-3 mb-1">
                         <h4 className={`font-semibold ${styles.text}`}>{step.name}</h4>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${styles.badge}`}>
-                          {getStatusLabel(step.status)}
+                          {getStatusLabel(step.status, step.step)}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600">{step.description}</p>
@@ -302,8 +369,8 @@ const OnboardingStatusPage = () => {
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500">
             Need help? Contact us at{' '}
-            <a href="mailto:support@pleerity.com" className="text-electric-teal hover:underline">
-              support@pleerity.com
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-electric-teal hover:underline">
+              {SUPPORT_EMAIL}
             </a>
           </p>
         </div>

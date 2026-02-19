@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { SUPPORT_EMAIL } from '../config';
 import { Card, CardContent } from '../components/ui/card';
 import { Shield, FileCheck, Bell, BarChart3 } from 'lucide-react';
 
@@ -169,7 +170,7 @@ const LandingPage = () => {
             </div>
             <div>
               <h5 className="text-lg font-semibold mb-4">Support</h5>
-              <p className="text-gray-300">Email: support@pleerity.com</p>
+              <p className="text-gray-300">Email: {SUPPORT_EMAIL}</p>
               <p className="text-gray-300 mt-2">Monday-Friday, 9am-5pm GMT</p>
             </div>
           </div>

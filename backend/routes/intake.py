@@ -1252,6 +1252,10 @@ async def get_onboarding_status(client_id: str):
         # Current step (first non-complete step)
         current_step = next((s["step"] for s in steps if s["status"] != "complete"), 5)
         
+        created_at = client.get("created_at")
+        if hasattr(created_at, "isoformat"):
+            created_at = created_at.isoformat()
+
         return {
             "client_id": client["client_id"],
             "customer_reference": client.get("customer_reference"),
@@ -1259,6 +1263,7 @@ async def get_onboarding_status(client_id: str):
             "email": client["email"],
             "onboarding_status": onboarding_status,
             "subscription_status": subscription_status,
+            "created_at": created_at,
             "steps": steps,
             "current_step": current_step,
             "progress_percent": progress_percent,

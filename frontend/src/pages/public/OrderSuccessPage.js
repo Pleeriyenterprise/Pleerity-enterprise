@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
+import { SUPPORT_EMAIL } from '../../config';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -159,8 +160,8 @@ const OrderSuccessPage = () => {
                   {/* Support Info */}
                   <p className="text-center text-sm text-gray-500 pt-4">
                     Questions about your order? Email us at{' '}
-                    <a href="mailto:support@pleerity.com" className="text-electric-teal hover:underline">
-                      support@pleerity.com
+                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-electric-teal hover:underline">
+                      {SUPPORT_EMAIL}
                     </a>
                   </p>
                 </>

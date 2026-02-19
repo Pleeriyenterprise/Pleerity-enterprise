@@ -69,11 +69,10 @@ const CheckoutSuccessRedirect = () => {
   
   // Extract client_id from session or redirect to onboarding
   React.useEffect(() => {
-    // For now, redirect to a generic success page
-    // The webhook will handle the actual provisioning
     const storedClientId = localStorage.getItem('pending_client_id');
     if (storedClientId) {
       localStorage.removeItem('pending_client_id');
+      sessionStorage.setItem('pleerity_stripe_redirect', Date.now().toString());
       window.location.href = `/onboarding-status?client_id=${storedClientId}`;
     } else {
       window.location.href = '/';
