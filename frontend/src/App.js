@@ -118,6 +118,7 @@ import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminAssistantPage from './pages/AdminAssistantPage';
 import AdminBillingPage from './pages/AdminBillingPage';
+import AdminPendingPaymentsPage from './pages/AdminPendingPaymentsPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminServiceCataloguePage from './pages/AdminServiceCataloguePage';
 import AdminNotificationPreferencesPage from './pages/AdminNotificationPreferencesPage';
@@ -550,6 +551,7 @@ function App() {
               } 
             />
             <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeadsPage /></ProtectedRoute>} />
+            <Route path="/admin/pending-payments" element={<ProtectedRoute requireAdmin><AdminPendingPaymentsPage /></ProtectedRoute>} />
             <Route path="/admin/talent-pool" element={<ProtectedRoute requireAdmin><AdminTalentPoolPage /></ProtectedRoute>} />
             <Route path="/admin/partnership-enquiries" element={<ProtectedRoute requireAdmin><AdminPartnershipEnquiriesPage /></ProtectedRoute>} />
             <Route path="/admin/inbox/enquiries" element={<ProtectedRoute requireAdmin><AdminContactEnquiriesPage /></ProtectedRoute>} />

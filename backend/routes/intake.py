@@ -24,7 +24,7 @@ from models import (
     Document, DocumentStatus, ClientType, PreferredContact
 )
 from services.stripe_service import stripe_service
-from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError
+from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError, StripeModeMismatchError
 from services.crn_service import get_next_crn
 from utils.audit import create_audit_log
 import logging
@@ -1110,6 +1110,16 @@ async def create_checkout(request: Request, client_id: str):
         }
     except HTTPException:
         raise
+    except StripeModeMismatchError as e:
+        logger.warning("Checkout Stripe mode mismatch request_id=%s: %s", request_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_checkout_error_detail(
+                "STRIPE_MODE_MISMATCH",
+                str(e) or "Stripe key mode does not match price configuration. Contact support.",
+                request_id,
+            ),
+        )
     except PriceConfigMissingError as e:
         logger.error("Checkout price config missing request_id=%s: %s", request_id, e)
         raise HTTPException(

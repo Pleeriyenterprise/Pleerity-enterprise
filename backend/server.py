@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 import uuid
 from contextlib import asynccontextmanager
 from database import database
-from routes import auth, intake, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, intake_uploads
+from routes import auth, intake, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, intake_uploads
 
 # ClearForm - Separate Product Routes
 from clearform.routes import auth as clearform_auth
@@ -90,6 +90,7 @@ from job_runner import (
     run_lead_sla_check,
     run_notification_failure_spike_monitor,
     run_notification_retry_worker,
+    run_pending_payment_lifecycle,
 )
 
 # Lifespan context manager for startup/shutdown
@@ -110,7 +111,7 @@ async def lifespan(app: FastAPI):
             logger.info("STRIPE_MODE = %s (from Stripe key prefix)", stripe_mode)
             if stripe_mode == "test" and "CVP_PROD" in os.environ.get("ENV", "").upper():
                 logger.warning("STRIPE_API_KEY looks like test key but ENV suggests production. Verify key.")
-        from services.plan_registry import plan_registry, PlanCode, get_stripe_price_mappings, PriceConfigMissingError
+        from services.plan_registry import plan_registry, PlanCode, get_stripe_price_mappings, StripeModeMismatchError
         try:
             config = get_stripe_price_mappings()
             for plan in PlanCode:
@@ -121,8 +122,8 @@ async def lifespan(app: FastAPI):
                     "Stripe price IDs plan=%s subscription_price_id=%s onboarding_price_id=%s",
                     plan.value, sub_id or "(missing)", onb_id or "(none)"
                 )
-        except PriceConfigMissingError as e:
-            logger.error("Stripe price config missing: %s. Set env and restart. Checkout will return 500 until fixed.", e)
+        except StripeModeMismatchError as e:
+            logger.error("Stripe mode mismatch: %s. Set STRIPE_TEST_PRICE_* or STRIPE_LIVE_PRICE_* env vars for current key mode.", e)
     except Exception as e:
         logger.warning("Stripe config check failed: %s", e)
 
@@ -464,6 +465,15 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
+    # Pending payment lifecycle - daily at 3:00 AM UTC
+    scheduler.add_job(
+        run_pending_payment_lifecycle,
+        CronTrigger(hour=3, minute=0),
+        id="pending_payment_lifecycle",
+        name="Pending Payment Lifecycle (abandoned/archived)",
+        replace_existing=True
+    )
+    
     # Lead SLA breach check - runs every hour
     scheduler.add_job(
         run_lead_sla_check,
@@ -534,6 +544,7 @@ app.include_router(public_services_v2.router)
 app.include_router(orchestration.router)
 app.include_router(intake_wizard.router)
 app.include_router(admin_intake_schema.router)
+app.include_router(admin_pending_payments.router)
 app.include_router(analytics.router)
 app.include_router(support.public_router)
 app.include_router(support.client_router)

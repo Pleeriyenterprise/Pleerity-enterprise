@@ -79,27 +79,36 @@ def subscription_allows_feature_access(subscription_status: Optional[str]) -> bo
 # ============================================================================
 # STRIPE PRICE ID MAPPINGS - Loaded from environment (never hardcoded)
 # ============================================================================
-# Env var names: STRIPE_PRICE_<PLAN_CODE>_MONTHLY, STRIPE_PRICE_<PLAN_CODE>_ONBOARDING
-# e.g. STRIPE_PRICE_PLAN_1_SOLO_MONTHLY, STRIPE_PRICE_PLAN_1_SOLO_ONBOARDING
-_STRIPE_PRICE_CACHE: Optional[Dict[str, Any]] = None
+# Two sets: STRIPE_TEST_PRICE_* (test mode) and STRIPE_LIVE_PRICE_* (live mode).
+# Mode determined by STRIPE_SECRET_KEY prefix: sk_test_ => test, sk_live_ => live.
+_STRIPE_PRICE_CACHE: Dict[str, Dict[str, Any]] = {}  # key: "test" | "live"
 
 
-def _load_stripe_prices_from_env() -> Dict[str, Any]:
+def _get_stripe_mode() -> str:
+    """Return 'test' or 'live' from STRIPE_SECRET_KEY or STRIPE_API_KEY prefix."""
+    key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
+    if not key:
+        return "test"  # default for missing key
+    return "test" if key.startswith("sk_test_") else "live"
+
+
+def _load_stripe_prices_for_mode(mode: str) -> Dict[str, Any]:
     """
-    Load Stripe price IDs from environment. Raises PriceConfigMissingError if any required var is missing.
-    Returns dict with keys: mappings, subscription_price_to_plan, onboarding_price_to_plan.
+    Load Stripe price IDs for given mode (test|live).
+    TEST: STRIPE_TEST_PRICE_PLAN_*_MONTHLY, STRIPE_TEST_PRICE_PLAN_*_ONBOARDING
+    LIVE: STRIPE_LIVE_PRICE_PLAN_*_MONTHLY, STRIPE_LIVE_PRICE_PLAN_*_ONBOARDING
+    Raises PriceConfigMissingError if any required var is missing.
     """
-    global _STRIPE_PRICE_CACHE
+    prefix = "STRIPE_TEST_PRICE_" if mode == "test" else "STRIPE_LIVE_PRICE_"
     mappings = {}
     for plan in PlanCode:
-        monthly_key = f"STRIPE_PRICE_{plan.value}_MONTHLY"
-        onb_key = f"STRIPE_PRICE_{plan.value}_ONBOARDING"
+        monthly_key = f"{prefix}{plan.value}_MONTHLY"
+        onb_key = f"{prefix}{plan.value}_ONBOARDING"
         monthly = (os.environ.get(monthly_key) or "").strip()
         onb = (os.environ.get(onb_key) or "").strip() or None
         if not monthly:
-            raise PriceConfigMissingError(
-                f"Missing required Stripe price env: {monthly_key}. Set test/live price ID for this plan.",
-                missing_var=monthly_key,
+            raise StripeModeMismatchError(
+                f"Stripe key is {mode} mode but {monthly_key} is not set. Configure STRIPE_{mode.upper()}_PRICE_* env vars."
             )
         mappings[plan.value] = {
             "subscription_price_id": monthly,
@@ -113,20 +122,31 @@ def _load_stripe_prices_from_env() -> Dict[str, Any]:
         for k in mappings
         if mappings[k].get("onboarding_price_id")
     }
-    _STRIPE_PRICE_CACHE = {
+    return {
         "mappings": mappings,
         "subscription_price_to_plan": subscription_price_to_plan,
         "onboarding_price_to_plan": onboarding_price_to_plan,
     }
-    return _STRIPE_PRICE_CACHE
 
 
-def get_stripe_price_mappings() -> Dict[str, Any]:
-    """Return cached Stripe price config (mappings + reverse lookups). Raises PriceConfigMissingError if env incomplete."""
-    global _STRIPE_PRICE_CACHE
-    if _STRIPE_PRICE_CACHE is None:
-        _load_stripe_prices_from_env()
-    return _STRIPE_PRICE_CACHE
+class StripeModeMismatchError(Exception):
+    """Raised when Stripe key mode (test/live) does not match price ID configuration."""
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+def get_stripe_price_mappings(mode: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Return Stripe price config for given mode. If mode is None, uses current key prefix.
+    Raises StripeModeMismatchError when mode's price env vars are missing.
+    """
+    if mode is None:
+        mode = _get_stripe_mode()
+    if mode not in ("test", "live"):
+        raise ValueError(f"Invalid stripe mode: {mode}")
+    if mode not in _STRIPE_PRICE_CACHE:
+        _STRIPE_PRICE_CACHE[mode] = _load_stripe_prices_for_mode(mode)
+    return _STRIPE_PRICE_CACHE[mode]
 
 
 # ============================================================================

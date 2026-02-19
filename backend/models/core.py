@@ -347,6 +347,14 @@ class Client(BaseModel):
     consent_data_processing: bool = False
     consent_service_boundary: bool = False  # "Does not provide legal advice" acknowledgment
     last_invite_error: Optional[str] = None  # Set when portal invite email fails (so support can retry)
+    # Pending payment recovery
+    lifecycle_status: str = "pending_payment"  # pending_payment | abandoned | archived | active_customer
+    latest_checkout_session_id: Optional[str] = None
+    latest_checkout_url: Optional[str] = None
+    checkout_link_sent_at: Optional[datetime] = None
+    last_checkout_error_code: Optional[str] = None
+    last_checkout_error_message: Optional[str] = None
+    last_checkout_attempt_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 

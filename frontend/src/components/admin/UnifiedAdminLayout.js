@@ -36,6 +36,7 @@ import {
   Briefcase,
   Handshake,
   Activity,
+  Clock,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -75,6 +76,7 @@ const navSections = [
       { href: '/admin/services', label: 'Service Catalogue', icon: Package },
       { href: '/admin/intake-schema', label: 'Intake Schema', icon: PenTool },
       { href: '/admin/billing', label: 'Pricing & Billing', icon: CreditCard },
+      { href: '/admin/pending-payments', label: 'Pending Payments', icon: Clock },
     ],
   },
   {

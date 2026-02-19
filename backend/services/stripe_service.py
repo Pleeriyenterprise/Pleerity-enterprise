@@ -17,14 +17,17 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 
 from database import database
-from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
+from services.plan_registry import (
+    plan_registry, PlanCode, EntitlementStatus,
+    get_stripe_price_mappings, _get_stripe_mode, StripeModeMismatchError,
+)
 from utils.audit import create_audit_log
 from models import AuditAction
 
 logger = logging.getLogger(__name__)
 
 # Initialize Stripe (no placeholder default; missing key fails at checkout with clear error)
-stripe.api_key = (os.getenv("STRIPE_API_KEY") or "").strip()
+stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
 
 
 class StripeService:
@@ -54,25 +57,33 @@ class StripeService:
             Dict with checkout_url and session_id
         """
         if not (stripe.api_key or "").strip():
-            raise ValueError("STRIPE_API_KEY is not set. Configure env and restart.")
+            raise ValueError("STRIPE_SECRET_KEY or STRIPE_API_KEY is not set. Configure env and restart.")
 
         db = database.get_db()
+
+        # Stripe mode safety: determine mode from key, fetch prices for that mode only
+        mode = _get_stripe_mode()
+        try:
+            config = get_stripe_price_mappings(mode)
+        except StripeModeMismatchError as e:
+            raise  # Re-raise for route to return 400 STRIPE_MODE_MISMATCH
 
         # Resolve plan code
         try:
             plan = PlanCode(plan_code)
         except ValueError:
             plan = plan_registry._resolve_plan_code(plan_code)
-        
-        # Get plan definition with Stripe prices
+
+        # Get plan definition and prices for current mode
         plan_def = plan_registry.get_plan(plan)
-        stripe_prices = plan_registry.get_stripe_price_ids(plan)
-        
-        subscription_price_id = stripe_prices.get("subscription_price_id")
-        onboarding_price_id = stripe_prices.get("onboarding_price_id")
-        
+        prices = config["mappings"].get(plan.value, {})
+        subscription_price_id = prices.get("subscription_price_id")
+        onboarding_price_id = prices.get("onboarding_price_id")
+
         if not subscription_price_id:
-            raise ValueError(f"No subscription price configured for plan {plan_code}")
+            raise StripeModeMismatchError(
+                f"No {mode} subscription price configured for plan {plan_code}. Set STRIPE_{mode.upper()}_PRICE_{plan.value}_MONTHLY."
+            )
         
         # Validate origin_url for success/cancel redirects (must be http(s) base URL)
         base = (origin_url or "").strip().rstrip("/")

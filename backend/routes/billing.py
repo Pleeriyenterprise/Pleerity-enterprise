@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from typing import Optional
 from database import database
 from services.stripe_service import stripe_service
-from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError
+from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError, StripeModeMismatchError
 from middleware import client_route_guard
 from utils.audit import create_audit_log
 from models import AuditAction
@@ -81,6 +81,12 @@ async def create_checkout(request: Request, body: CheckoutRequest):
             origin_url=origin
         )
         return result
+    except StripeModeMismatchError as e:
+        logger.warning("Checkout Stripe mode mismatch: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error_code": "STRIPE_MODE_MISMATCH", "message": str(e) or "Stripe key mode does not match price configuration. Contact support."}
+        )
     except PriceConfigMissingError as e:
         logger.error("Checkout price config missing: %s", e)
         raise HTTPException(

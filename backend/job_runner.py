@@ -418,6 +418,52 @@ async def run_notification_retry_worker():
         raise
 
 
+async def run_pending_payment_lifecycle():
+    """
+    Daily task: mark lifecycle_status pending_payment -> abandoned if created_at older than 14 days
+    and still no active subscription. Optionally abandoned -> archived after 90 days.
+    No deletions. No PII wiping.
+    """
+    try:
+        from database import database
+        db = database.get_db()
+        now = datetime.now(timezone.utc)
+        cutoff_14d = now - timedelta(days=14)
+        cutoff_90d = now - timedelta(days=90)
+
+        # pending_payment -> abandoned: created_at older than 14 days, no active subscription
+        r1 = await db.clients.update_many(
+            {
+                "lifecycle_status": "pending_payment",
+                "created_at": {"$lt": cutoff_14d},
+                "$or": [
+                    {"subscription_status": {"$nin": ["active", "trialing", "ACTIVE", "TRIALING"]}},
+                    {"subscription_status": {"$exists": False}},
+                    {"stripe_subscription_id": {"$in": [None, ""]}},
+                ],
+            },
+            {"$set": {"lifecycle_status": "abandoned", "updated_at": now}},
+        )
+
+        # abandoned -> archived: optional, after 90 days (using checkout_link_sent_at or created_at as proxy for "abandoned since")
+        r2 = await db.clients.update_many(
+            {
+                "lifecycle_status": "abandoned",
+                "$or": [
+                    {"checkout_link_sent_at": {"$lt": cutoff_90d}},
+                    {"checkout_link_sent_at": {"$exists": False}, "created_at": {"$lt": cutoff_90d}},
+                ],
+            },
+            {"$set": {"lifecycle_status": "archived", "updated_at": now}},
+        )
+
+        logger.info("Pending payment lifecycle: %s -> abandoned, %s -> archived", r1.modified_count, r2.modified_count)
+        return {"message": f"Lifecycle: {r1.modified_count} abandoned, {r2.modified_count} archived", "abandoned": r1.modified_count, "archived": r2.modified_count}
+    except Exception as e:
+        logger.error("Pending payment lifecycle job failed: %s", e)
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -439,4 +485,5 @@ JOB_RUNNERS = {
     "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
     "notification_failure_spike_monitor": run_notification_failure_spike_monitor,
     "notification_retry_worker": run_notification_retry_worker,
+    "pending_payment_lifecycle": run_pending_payment_lifecycle,
 }
