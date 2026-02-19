@@ -41,39 +41,48 @@ def _is_provisioned(client: dict) -> bool:
 
 
 @router.get("/pending-payments", dependencies=[Depends(require_owner_or_admin)])
-async def get_pending_payments(request: Request):
+async def get_pending_payments(request: Request, q: str = None):
     """
     Return clients where lifecycle_status in (pending_payment, abandoned, archived)
     OR (subscription not active AND not PROVISIONED).
+    Optional search: q filters by CRN or email (case-insensitive substring).
     """
     await admin_route_guard(request)
     db = database.get_db()
     lifecycle_in = ["pending_payment", "abandoned", "archived"]
+    match_filter = {
+        "$or": [
+            {"lifecycle_status": {"$in": lifecycle_in}},
+            {
+                "onboarding_status": {"$ne": "PROVISIONED"},
+                "$or": [
+                    {"subscription_status": {"$nin": ["active", "trialing", "ACTIVE", "TRIALING"]}},
+                    {"subscription_status": {"$exists": False}},
+                    {"subscription_status": None},
+                    {"stripe_subscription_id": {"$in": [None, ""]}},
+                    {"stripe_subscription_id": {"$exists": False}},
+                ],
+            },
+        ]
+    }
+    if q and (q := (q or "").strip()):
+        search_regex = {"$regex": q, "$options": "i"}
+        match_filter = {"$and": [match_filter, {"$or": [{"customer_reference": search_regex}, {"email": search_regex}, {"full_name": search_regex}]}]}
     cursor = db.clients.find(
-        {
-            "$or": [
-                {"lifecycle_status": {"$in": lifecycle_in}},
-                {
-                    "onboarding_status": {"$ne": "PROVISIONED"},
-                    "$or": [
-                        {"subscription_status": {"$nin": ["active", "trialing", "ACTIVE", "TRIALING"]}},
-                        {"subscription_status": {"$exists": False}},
-                        {"subscription_status": None},
-                        {"stripe_subscription_id": {"$in": [None, ""]}},
-                        {"stripe_subscription_id": {"$exists": False}},
-                    ],
-                },
-            ]
-        },
+        match_filter,
         {
             "_id": 0,
             "client_id": 1,
             "customer_reference": 1,
             "email": 1,
+            "full_name": 1,
             "billing_plan": 1,
             "created_at": 1,
             "lifecycle_status": 1,
+            "subscription_status": 1,
+            "onboarding_status": 1,
             "latest_checkout_url": 1,
+            "checkout_link_sent_at": 1,
             "last_checkout_error_code": 1,
             "last_checkout_error_message": 1,
             "last_checkout_attempt_at": 1,
@@ -85,14 +94,26 @@ async def get_pending_payments(request: Request):
     for c in items:
         if _is_paid_or_active(c) and _is_provisioned(c):
             continue
+        last_err = None
+        if c.get("last_checkout_error_code") or c.get("last_checkout_error_message"):
+            last_err = {
+                "code": c.get("last_checkout_error_code"),
+                "message": c.get("last_checkout_error_message"),
+                "occurred_at": c.get("last_checkout_attempt_at"),
+            }
         result.append({
             "client_id": c.get("client_id"),
             "customer_reference": c.get("customer_reference"),
             "email": c.get("email"),
+            "full_name": c.get("full_name"),
             "billing_plan": c.get("billing_plan"),
             "created_at": c.get("created_at"),
             "lifecycle_status": c.get("lifecycle_status", "pending_payment"),
+            "subscription_status": c.get("subscription_status"),
+            "onboarding_status": c.get("onboarding_status"),
             "latest_checkout_url": c.get("latest_checkout_url"),
+            "checkout_link_sent_at": c.get("checkout_link_sent_at"),
+            "last_checkout_error": last_err,
             "last_checkout_error_code": c.get("last_checkout_error_code"),
             "last_checkout_error_message": c.get("last_checkout_error_message"),
             "last_checkout_attempt_at": c.get("last_checkout_attempt_at"),
@@ -164,6 +185,7 @@ async def send_payment_link(request: Request, client_id: str):
             plan_code=plan_code,
             origin_url=origin,
             customer_email=customer_email,
+            customer_reference=(client.get("customer_reference") or "").strip() or None,
         )
     except StripeModeMismatchError as e:
         logger.warning("Send payment link Stripe mode mismatch client_id=%s request_id=%s: %s", client_id, request_id, e)

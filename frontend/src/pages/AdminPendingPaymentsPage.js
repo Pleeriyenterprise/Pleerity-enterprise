@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   RefreshCw,
   Send,
   Copy,
   Loader2,
   AlertCircle,
-  Clock,
-  Mail,
+  Search,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -17,11 +16,13 @@ const AdminPendingPaymentsPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchPendingPayments = async () => {
+  const fetchPendingPayments = useCallback(async (q) => {
     setLoading(true);
     try {
-      const response = await api.get('/admin/intake/pending-payments');
+      const params = q && q.trim() ? { q: q.trim() } : {};
+      const response = await api.get('/admin/intake/pending-payments', { params });
       setItems(response.data?.items || []);
     } catch (error) {
       console.error('Failed to fetch pending payments:', error);
@@ -29,11 +30,12 @@ const AdminPendingPaymentsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchPendingPayments();
-  }, []);
+    const timer = setTimeout(() => fetchPendingPayments(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, fetchPendingPayments]);
 
   const handleSendPaymentLink = async (clientId) => {
     setSending(clientId);
@@ -44,7 +46,7 @@ const AdminPendingPaymentsPage = () => {
       if (!email_sent && checkout_url) {
         toast.info('Email not configured. Use Copy link to share.');
       }
-      await fetchPendingPayments();
+      await fetchPendingPayments(searchQuery);
     } catch (error) {
       const detail = error.response?.data?.detail;
       const msg = typeof detail === 'object' ? detail?.message : detail || 'Failed to send payment link';
@@ -82,8 +84,18 @@ const AdminPendingPaymentsPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-end mb-4">
-            <Button onClick={fetchPendingPayments} variant="outline" disabled={loading}>
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by CRN, email, or name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-3 py-2 w-full border rounded-md text-sm"
+              />
+            </div>
+            <Button onClick={() => fetchPendingPayments(searchQuery)} variant="outline" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               Refresh
             </Button>
@@ -101,9 +113,11 @@ const AdminPendingPaymentsPage = () => {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2 font-medium">CRN</th>
+                    <th className="text-left py-2 font-medium">Name</th>
                     <th className="text-left py-2 font-medium">Email</th>
                     <th className="text-left py-2 font-medium">Plan</th>
                     <th className="text-left py-2 font-medium">Created</th>
+                    <th className="text-left py-2 font-medium">Last link sent</th>
                     <th className="text-left py-2 font-medium">Lifecycle</th>
                     <th className="text-left py-2 font-medium">Last error</th>
                     <th className="text-left py-2 font-medium">Actions</th>
@@ -113,9 +127,11 @@ const AdminPendingPaymentsPage = () => {
                   {items.map((item) => (
                     <tr key={item.client_id} className="border-b hover:bg-muted/50">
                       <td className="py-2">{item.customer_reference || '—'}</td>
+                      <td className="py-2">{item.full_name || '—'}</td>
                       <td className="py-2">{item.email || '—'}</td>
                       <td className="py-2">{item.billing_plan || '—'}</td>
                       <td className="py-2">{formatDate(item.created_at)}</td>
+                      <td className="py-2">{formatDate(item.checkout_link_sent_at)}</td>
                       <td className="py-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
                           item.lifecycle_status === 'abandoned' ? 'bg-amber-100 text-amber-800' :

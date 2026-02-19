@@ -55,19 +55,73 @@ def test_recovery_endpoint_does_not_change_subscription_status(client):
     }
     mock_db = _make_db()
     mock_db.clients.find_one = AsyncMock(return_value=mock_client)
-    mock_db.clients.update_one = AsyncMock()
+    update_calls = []
+
+    async def capture_update(*args, **kwargs):
+        update_calls.append(args[1] if len(args) > 1 else kwargs)
+
+    mock_db.clients.update_one = AsyncMock(side_effect=capture_update)
 
     with patch("routes.admin_pending_payments.database.get_db", return_value=mock_db):
         with patch("routes.admin_pending_payments.admin_route_guard", new_callable=AsyncMock, return_value={"role": "ROLE_ADMIN"}):
             with patch("routes.admin_pending_payments.stripe_service.create_checkout_session", new_callable=AsyncMock) as mock_checkout:
                 mock_checkout.return_value = {"checkout_url": "https://checkout.stripe.com/xxx", "session_id": "cs_xxx"}
                 with patch("routes.admin_pending_payments.require_owner_or_admin", return_value=None):
-                    # Would need auth - skip actual call, just verify update_one doesn't set subscription/onboarding
-                    pass
+                    response = client.post(
+                        "/api/admin/intake/c1/send-payment-link",
+                        headers={"Authorization": "Bearer mock-admin-token", "Origin": "https://example.com"},
+                    )
 
-    # The update in send_payment_link only sets: latest_checkout_session_id, latest_checkout_url,
-    # checkout_link_sent_at, last_checkout_error_*, last_checkout_attempt_at. Never subscription_status or onboarding_status.
-    # Verified by code review - the $set in the route never includes those fields.
+    assert response.status_code == 200
+    for call_update in update_calls:
+        if isinstance(call_update, dict) and "$set" in call_update:
+            s = call_update["$set"]
+            assert "subscription_status" not in s, "Recovery must not update subscription_status"
+            assert "onboarding_status" not in s, "Recovery must not update onboarding_status"
+
+
+def test_get_pending_payments_returns_new_fields(client):
+    """GET pending-payments returns full_name, subscription_status, onboarding_status, checkout_link_sent_at, last_checkout_error."""
+    mock_item = {
+        "client_id": "c1",
+        "customer_reference": "PLE-CVP-2026-000099",
+        "email": "pending@example.com",
+        "full_name": "Jane Doe",
+        "billing_plan": "PLAN_1_SOLO",
+        "created_at": "2026-01-15T10:00:00Z",
+        "lifecycle_status": "pending_payment",
+        "subscription_status": "PENDING",
+        "onboarding_status": "INTAKE_PENDING",
+        "checkout_link_sent_at": "2026-01-16T09:00:00Z",
+        "last_checkout_error_code": "STRIPE_MODE_MISMATCH",
+        "last_checkout_error_message": "Test message",
+        "last_checkout_attempt_at": "2026-01-16T09:05:00Z",
+    }
+    mock_db = _make_db()
+    mock_cursor = MagicMock()
+    mock_cursor.to_list = AsyncMock(return_value=[mock_item])
+    mock_db.clients.find = MagicMock(return_value=MagicMock(sort=MagicMock(return_value=mock_cursor)))
+
+    with patch("routes.admin_pending_payments.database.get_db", return_value=mock_db):
+        with patch("routes.admin_pending_payments.admin_route_guard", new_callable=AsyncMock, return_value={"role": "ROLE_ADMIN"}):
+            with patch("routes.admin_pending_payments.require_owner_or_admin", return_value=None):
+                response = client.get(
+                    "/api/admin/intake/pending-payments",
+                    headers={"Authorization": "Bearer mock-admin-token"},
+                )
+
+    assert response.status_code == 200
+    data = response.json()
+    items = data.get("items", [])
+    assert len(items) == 1
+    item = items[0]
+    assert item.get("full_name") == "Jane Doe"
+    assert item.get("subscription_status") == "PENDING"
+    assert item.get("onboarding_status") == "INTAKE_PENDING"
+    assert item.get("checkout_link_sent_at") == "2026-01-16T09:00:00Z"
+    assert item.get("last_checkout_error") is not None
+    assert item["last_checkout_error"].get("code") == "STRIPE_MODE_MISMATCH"
+    assert item["last_checkout_error"].get("message") == "Test message"
 
 
 def test_stripe_mode_mismatch_returns_400_from_intake_checkout():

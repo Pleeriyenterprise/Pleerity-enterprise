@@ -49,7 +49,8 @@ import {
   ClipboardCheck,
   ExternalLink,
   Sparkles,
-  CreditCard
+  CreditCard,
+  Copy
 } from 'lucide-react';
 
 // Global Search Component
@@ -184,6 +185,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [triggeringProvision, setTriggeringProvision] = useState(false);
   const [resendingPassword, setResendingPassword] = useState(false);
+  const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState(null);
   const [scoreHistoryData, setScoreHistoryData] = useState(null);
   const [scoreHistoryLoading, setScoreHistoryLoading] = useState(false);
@@ -292,6 +294,30 @@ const ClientDetailModal = ({ clientId, onClose }) => {
       setResendingPassword(false);
     }
   };
+
+  const handleSendPaymentLink = async () => {
+    setSendingPaymentLink(true);
+    try {
+      const res = await api.post(`/admin/intake/${clientId}/send-payment-link`);
+      toast.success(res?.data?.checkout_url ? 'Payment link created' : 'Payment link sent');
+      fetchClientData();
+    } catch (error) {
+      const detail = error.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : detail?.message || 'Failed to send payment link';
+      toast.error(msg);
+    } finally {
+      setSendingPaymentLink(false);
+    }
+  };
+
+  const handleCopyPaymentLink = () => {
+    const url = client?.client?.latest_checkout_url;
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => toast.success('Link copied to clipboard')).catch(() => toast.error('Copy failed'));
+  };
+
+  const paymentCompleteItem = readiness?.checklist?.find((i) => i.item === 'payment_complete');
+  const showPaymentLinkActions = paymentCompleteItem?.status !== 'complete';
 
   const fetchComplianceScoreHistory = useCallback(async (propertyId, limit = 20) => {
     if (!propertyId) return null;
@@ -685,6 +711,35 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                     {resendingPassword ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
                     Resend Password Link
                   </button>
+                  {showPaymentLinkActions && (
+                    <div className="col-span-2 flex flex-col gap-2">
+                      <button
+                        onClick={handleSendPaymentLink}
+                        disabled={sendingPaymentLink}
+                        className="flex items-center justify-center gap-2 p-4 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                        data-testid="send-payment-link-btn"
+                      >
+                        {sendingPaymentLink ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
+                        {c.checkout_link_sent_at ? 'Resend Payment Link' : 'Send Payment Link'}
+                      </button>
+                      {c.checkout_link_sent_at && (
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                          <span>Last sent: {new Date(c.checkout_link_sent_at).toLocaleString()}</span>
+                          {c.latest_checkout_url && (
+                            <button
+                              type="button"
+                              onClick={handleCopyPaymentLink}
+                              className="flex items-center gap-1 text-electric-teal hover:underline"
+                              title="Copy payment link"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              Copy link
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

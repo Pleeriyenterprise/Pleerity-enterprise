@@ -12,12 +12,12 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
     env:
-      STRIPE_TEST_PRICE_PLAN_1_SOLO_MONTHLY: ${{ secrets.STRIPE_TEST_PRICE_PLAN_1_SOLO_MONTHLY }}
-      STRIPE_TEST_PRICE_PLAN_1_SOLO_ONBOARDING: ${{ secrets.STRIPE_TEST_PRICE_PLAN_1_SOLO_ONBOARDING }}
-      STRIPE_TEST_PRICE_PLAN_2_PORTFOLIO_MONTHLY: ${{ secrets.STRIPE_TEST_PRICE_PLAN_2_PORTFOLIO_MONTHLY }}
-      STRIPE_TEST_PRICE_PLAN_2_PORTFOLIO_ONBOARDING: ${{ secrets.STRIPE_TEST_PRICE_PLAN_2_PORTFOLIO_ONBOARDING }}
-      STRIPE_TEST_PRICE_PLAN_3_PRO_MONTHLY: ${{ secrets.STRIPE_TEST_PRICE_PLAN_3_PRO_MONTHLY }}
-      STRIPE_TEST_PRICE_PLAN_3_PRO_ONBOARDING: ${{ secrets.STRIPE_TEST_PRICE_PLAN_3_PRO_ONBOARDING }}
+      STRIPE_TEST_PRICE_PLAN_1_SOLO_MONTHLY: ${{ secrets.STRIPE_TEST_PRICE_PLAN_1_SOLO_MONTHLY || 'price_test_dummy_1' }}
+      STRIPE_TEST_PRICE_PLAN_1_SOLO_ONBOARDING: ${{ secrets.STRIPE_TEST_PRICE_PLAN_1_SOLO_ONBOARDING || 'price_test_dummy_onboard_1' }}
+      STRIPE_TEST_PRICE_PLAN_2_PORTFOLIO_MONTHLY: ${{ secrets.STRIPE_TEST_PRICE_PLAN_2_PORTFOLIO_MONTHLY || 'price_test_dummy_2' }}
+      STRIPE_TEST_PRICE_PLAN_2_PORTFOLIO_ONBOARDING: ${{ secrets.STRIPE_TEST_PRICE_PLAN_2_PORTFOLIO_ONBOARDING || 'price_test_dummy_onboard_2' }}
+      STRIPE_TEST_PRICE_PLAN_3_PRO_MONTHLY: ${{ secrets.STRIPE_TEST_PRICE_PLAN_3_PRO_MONTHLY || 'price_test_dummy_3' }}
+      STRIPE_TEST_PRICE_PLAN_3_PRO_ONBOARDING: ${{ secrets.STRIPE_TEST_PRICE_PLAN_3_PRO_ONBOARDING || 'price_test_dummy_onboard_3' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,3 +39,6 @@ jobs:
 
       - name: Run plan registry gating tests
         run: python -m pytest backend/tests/test_plan_registry_gating.py -v
+
+      - name: Run pending payment recovery tests
+        run: python -m pytest backend/tests/test_pending_payment_recovery.py -v
