@@ -5,7 +5,7 @@ This is the AUTHORITATIVE source for:
 - Property limits
 - Pricing (monthly + onboarding)
 - Feature entitlements
-- Stripe price ID mappings
+- Stripe price ID mappings (loaded from env; never hardcoded)
 
 NON-NEGOTIABLE RULES:
 1. Backend is authoritative - all entitlement checks happen server-side
@@ -16,15 +16,28 @@ NON-NEGOTIABLE RULES:
 
 Plan Structure (January 2026):
 - PLAN_1_SOLO: Solo Landlord (2 properties, £19/mo, £49 onboarding)
-- PLAN_2_PORTFOLIO: Portfolio Landlord / Small Agent (10 properties, £39/mo, £79 onboarding)  
+- PLAN_2_PORTFOLIO: Portfolio Landlord / Small Agent (10 properties, £39/mo, £79 onboarding)
 - PLAN_3_PRO: Professional / Agent / HMO (25 properties, £79/mo, £149 onboarding)
+
+Stripe price IDs are loaded from environment variables (no hardcoding):
+  STRIPE_PRICE_PLAN_1_SOLO_MONTHLY, STRIPE_PRICE_PLAN_1_SOLO_ONBOARDING,
+  STRIPE_PRICE_PLAN_2_PORTFOLIO_MONTHLY, STRIPE_PRICE_PLAN_2_PORTFOLIO_ONBOARDING,
+  STRIPE_PRICE_PLAN_3_PRO_MONTHLY, STRIPE_PRICE_PLAN_3_PRO_ONBOARDING.
 """
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any
+import os
 from database import database
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class PriceConfigMissingError(Exception):
+    """Raised when a required Stripe price env var is missing. Use error_code PRICE_CONFIG_MISSING in HTTP 500."""
+    def __init__(self, message: str, missing_var: Optional[str] = None):
+        super().__init__(message)
+        self.missing_var = missing_var
 
 
 # ============================================================================
@@ -64,31 +77,56 @@ def subscription_allows_feature_access(subscription_status: Optional[str]) -> bo
 
 
 # ============================================================================
-# STRIPE PRICE ID MAPPINGS - Production Price IDs (from owner)
+# STRIPE PRICE ID MAPPINGS - Loaded from environment (never hardcoded)
 # ============================================================================
-STRIPE_PRICE_MAPPINGS = {
-    "PLAN_1_SOLO": {
-        "subscription_price_id": "price_1Ss7qNCF0O5oqdUzHUdjy27g",
-        "onboarding_price_id": "price_1Ss7xICF0O5oqdUzGikCKHjQ",
-    },
-    "PLAN_2_PORTFOLIO": {
-        "subscription_price_id": "price_1Ss6JPCF0O5oqdUzaBhJv239",
-        "onboarding_price_id": "price_1Ss80uCF0O5oqdUzbluYNTD9",
-    },
-    "PLAN_3_PRO": {
-        "subscription_price_id": "price_1Ss6uoCF0O5oqdUzGwmumLiD",
-        "onboarding_price_id": "price_1Ss844CF0O5oqdUzM0AWrBG5",
-    },
-}
+# Env var names: STRIPE_PRICE_<PLAN_CODE>_MONTHLY, STRIPE_PRICE_<PLAN_CODE>_ONBOARDING
+# e.g. STRIPE_PRICE_PLAN_1_SOLO_MONTHLY, STRIPE_PRICE_PLAN_1_SOLO_ONBOARDING
+_STRIPE_PRICE_CACHE: Optional[Dict[str, Any]] = None
 
-# Reverse lookup: price_id -> plan_code
-SUBSCRIPTION_PRICE_TO_PLAN = {
-    v["subscription_price_id"]: k for k, v in STRIPE_PRICE_MAPPINGS.items()
-}
 
-ONBOARDING_PRICE_TO_PLAN = {
-    v["onboarding_price_id"]: k for k, v in STRIPE_PRICE_MAPPINGS.items()
-}
+def _load_stripe_prices_from_env() -> Dict[str, Any]:
+    """
+    Load Stripe price IDs from environment. Raises PriceConfigMissingError if any required var is missing.
+    Returns dict with keys: mappings, subscription_price_to_plan, onboarding_price_to_plan.
+    """
+    global _STRIPE_PRICE_CACHE
+    mappings = {}
+    for plan in PlanCode:
+        monthly_key = f"STRIPE_PRICE_{plan.value}_MONTHLY"
+        onb_key = f"STRIPE_PRICE_{plan.value}_ONBOARDING"
+        monthly = (os.environ.get(monthly_key) or "").strip()
+        onb = (os.environ.get(onb_key) or "").strip() or None
+        if not monthly:
+            raise PriceConfigMissingError(
+                f"Missing required Stripe price env: {monthly_key}. Set test/live price ID for this plan.",
+                missing_var=monthly_key,
+            )
+        mappings[plan.value] = {
+            "subscription_price_id": monthly,
+            "onboarding_price_id": onb,
+        }
+    subscription_price_to_plan = {
+        mappings[k]["subscription_price_id"]: k for k in mappings
+    }
+    onboarding_price_to_plan = {
+        mappings[k]["onboarding_price_id"]: k
+        for k in mappings
+        if mappings[k].get("onboarding_price_id")
+    }
+    _STRIPE_PRICE_CACHE = {
+        "mappings": mappings,
+        "subscription_price_to_plan": subscription_price_to_plan,
+        "onboarding_price_to_plan": onboarding_price_to_plan,
+    }
+    return _STRIPE_PRICE_CACHE
+
+
+def get_stripe_price_mappings() -> Dict[str, Any]:
+    """Return cached Stripe price config (mappings + reverse lookups). Raises PriceConfigMissingError if env incomplete."""
+    global _STRIPE_PRICE_CACHE
+    if _STRIPE_PRICE_CACHE is None:
+        _load_stripe_prices_from_env()
+    return _STRIPE_PRICE_CACHE
 
 
 # ============================================================================
@@ -110,9 +148,7 @@ PLAN_DEFINITIONS = {
         # Limits
         "max_properties": 2,
         
-        # Stripe IDs - Production
-        "stripe_subscription_price_id": "price_1Ss7qNCF0O5oqdUzHUdjy27g",
-        "stripe_onboarding_price_id": "price_1Ss7xICF0O5oqdUzGikCKHjQ",
+        # Stripe IDs - loaded from env (STRIPE_PRICE_PLAN_1_SOLO_MONTHLY / ONBOARDING)
         
         # UI
         "color": "#6B7280",  # Gray
@@ -134,9 +170,7 @@ PLAN_DEFINITIONS = {
         # Limits
         "max_properties": 10,
         
-        # Stripe IDs - Production
-        "stripe_subscription_price_id": "price_1Ss6JPCF0O5oqdUzaBhJv239",
-        "stripe_onboarding_price_id": "price_1Ss80uCF0O5oqdUzbluYNTD9",
+        # Stripe IDs - loaded from env (STRIPE_PRICE_PLAN_2_PORTFOLIO_MONTHLY / ONBOARDING)
         
         # UI
         "color": "#00B8A9",  # Electric Teal
@@ -159,9 +193,7 @@ PLAN_DEFINITIONS = {
         # Limits
         "max_properties": 25,
         
-        # Stripe IDs - Production
-        "stripe_subscription_price_id": "price_1Ss6uoCF0O5oqdUzGwmumLiD",
-        "stripe_onboarding_price_id": "price_1Ss844CF0O5oqdUzM0AWrBG5",
+        # Stripe IDs - loaded from env (STRIPE_PRICE_PLAN_3_PRO_MONTHLY / ONBOARDING)
         
         # UI
         "color": "#0B1D3A",  # Midnight Blue
@@ -423,13 +455,24 @@ class PlanRegistryService:
     # -------------------------------------------------------------------------
     
     def get_plan(self, plan_code: PlanCode) -> Dict[str, Any]:
-        """Get complete plan definition."""
-        return PLAN_DEFINITIONS.get(plan_code, PLAN_DEFINITIONS[PlanCode.PLAN_1_SOLO]).copy()
+        """Get complete plan definition. Stripe price IDs are merged from env (get_stripe_price_mappings)."""
+        base = PLAN_DEFINITIONS.get(plan_code, PLAN_DEFINITIONS[PlanCode.PLAN_1_SOLO]).copy()
+        config = get_stripe_price_mappings()
+        prices = config["mappings"].get(plan_code.value, {})
+        base["stripe_subscription_price_id"] = prices.get("subscription_price_id")
+        base["stripe_onboarding_price_id"] = prices.get("onboarding_price_id")
+        return base
     
     def get_all_plans(self) -> List[Dict[str, Any]]:
-        """Get all plans for display."""
+        """Get all plans for display (includes Stripe price IDs from env)."""
+        config = get_stripe_price_mappings()
         return [
-            {**plan, "code": code.value}
+            {
+                **plan,
+                "code": code.value,
+                "stripe_subscription_price_id": config["mappings"].get(code.value, {}).get("subscription_price_id"),
+                "stripe_onboarding_price_id": config["mappings"].get(code.value, {}).get("onboarding_price_id"),
+            }
             for code, plan in PLAN_DEFINITIONS.items()
         ]
     
@@ -787,32 +830,37 @@ class PlanRegistryService:
         Derive plan code from Stripe subscription price_id.
         This is the ONLY valid way to determine plan from Stripe.
         """
-        plan_str = SUBSCRIPTION_PRICE_TO_PLAN.get(price_id)
+        config = get_stripe_price_mappings()
+        plan_str = config["subscription_price_to_plan"].get(price_id)
         if plan_str:
             return self.resolve_plan_code(plan_str)
         return None
 
     def get_plan_from_onboarding_price_id(self, price_id: str) -> Optional[PlanCode]:
         """Check if a price_id is a valid onboarding fee."""
-        plan_str = ONBOARDING_PRICE_TO_PLAN.get(price_id)
+        config = get_stripe_price_mappings()
+        plan_str = config["onboarding_price_to_plan"].get(price_id)
         if plan_str:
             return self.resolve_plan_code(plan_str)
         return None
-    
+
     def is_valid_subscription_price(self, price_id: str) -> bool:
         """Check if a price_id is a recognized subscription price."""
-        return price_id in SUBSCRIPTION_PRICE_TO_PLAN
-    
+        config = get_stripe_price_mappings()
+        return price_id in config["subscription_price_to_plan"]
+
     def is_valid_onboarding_price(self, price_id: str) -> bool:
         """Check if a price_id is a recognized onboarding price."""
-        return price_id in ONBOARDING_PRICE_TO_PLAN
-    
+        config = get_stripe_price_mappings()
+        return price_id in config["onboarding_price_to_plan"]
+
     def get_stripe_price_ids(self, plan_code: PlanCode) -> Dict[str, str]:
-        """Get Stripe price IDs for a plan."""
-        plan_def = self.get_plan(plan_code)
+        """Get Stripe price IDs for a plan (from env). Raises PriceConfigMissingError if config missing."""
+        config = get_stripe_price_mappings()
+        prices = config["mappings"].get(plan_code.value, {})
         return {
-            "subscription_price_id": plan_def.get("stripe_subscription_price_id"),
-            "onboarding_price_id": plan_def.get("stripe_onboarding_price_id"),
+            "subscription_price_id": prices.get("subscription_price_id"),
+            "onboarding_price_id": prices.get("onboarding_price_id"),
         }
     
     # -------------------------------------------------------------------------

@@ -23,12 +23,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Tuple
 from database import database
-from services.plan_registry import (
-    plan_registry, 
-    PlanCode, 
-    EntitlementStatus,
-    SUBSCRIPTION_PRICE_TO_PLAN
-)
+from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
 from utils.audit import create_audit_log
 from models import AuditAction, ProvisioningJob, ProvisioningJobStatus
 

@@ -99,24 +99,30 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Compliance Vault Pro API")
     await database.connect()
 
-    # Stripe config validation (intake checkout and billing)
+    # Stripe config: log mode (test/live) from key prefix and which price IDs are in use (no secret keys)
     try:
-        stripe_key = os.environ.get("STRIPE_API_KEY", "").strip()
+        stripe_key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
         if not stripe_key:
-            logger.error("STRIPE_API_KEY is not set. Intake checkout and billing will fail.")
-        elif stripe_key.startswith("sk_test_") and "CVP_PROD" in os.environ.get("ENV", "").upper():
-            logger.warning("STRIPE_API_KEY looks like test key but ENV suggests production. Verify key.")
+            logger.error("STRIPE_API_KEY / STRIPE_SECRET_KEY is not set. Intake checkout and billing will fail.")
+            stripe_mode = "unknown"
         else:
-            logger.info("STRIPE_API_KEY is set (key prefix: %s...)", stripe_key[:12] if len(stripe_key) >= 12 else "***")
-        from services.plan_registry import plan_registry, PlanCode
-        for plan in PlanCode:
-            ids = plan_registry.get_stripe_price_ids(plan)
-            sub_id = ids.get("subscription_price_id")
-            onb_id = ids.get("onboarding_price_id")
-            if not sub_id:
-                logger.error("Stripe subscription price ID missing for plan %s. Check plan_registry.", plan.value)
-            else:
-                logger.debug("Plan %s subscription_price_id=%s onboarding_price_id=%s", plan.value, sub_id, onb_id or "none")
+            stripe_mode = "test" if stripe_key.startswith("sk_test_") else "live"
+            logger.info("STRIPE_MODE = %s (from Stripe key prefix)", stripe_mode)
+            if stripe_mode == "test" and "CVP_PROD" in os.environ.get("ENV", "").upper():
+                logger.warning("STRIPE_API_KEY looks like test key but ENV suggests production. Verify key.")
+        from services.plan_registry import plan_registry, PlanCode, get_stripe_price_mappings, PriceConfigMissingError
+        try:
+            config = get_stripe_price_mappings()
+            for plan in PlanCode:
+                prices = config["mappings"].get(plan.value, {})
+                sub_id = prices.get("subscription_price_id")
+                onb_id = prices.get("onboarding_price_id")
+                logger.info(
+                    "Stripe price IDs plan=%s subscription_price_id=%s onboarding_price_id=%s",
+                    plan.value, sub_id or "(missing)", onb_id or "(none)"
+                )
+        except PriceConfigMissingError as e:
+            logger.error("Stripe price config missing: %s. Set env and restart. Checkout will return 500 until fixed.", e)
     except Exception as e:
         logger.warning("Stripe config check failed: %s", e)
 

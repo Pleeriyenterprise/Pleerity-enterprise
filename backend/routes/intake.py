@@ -24,7 +24,7 @@ from models import (
     Document, DocumentStatus, ClientType, PreferredContact
 )
 from services.stripe_service import stripe_service
-from services.plan_registry import plan_registry, PlanCode
+from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError
 from services.crn_service import get_next_crn
 from utils.audit import create_audit_log
 import logging
@@ -1110,6 +1110,16 @@ async def create_checkout(request: Request, client_id: str):
         }
     except HTTPException:
         raise
+    except PriceConfigMissingError as e:
+        logger.error("Checkout price config missing request_id=%s: %s", request_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=_checkout_error_detail(
+                "PRICE_CONFIG_MISSING",
+                str(e) or "Stripe price configuration is missing. Contact support.",
+                request_id,
+            ),
+        )
     except ValueError as e:
         logger.warning("Checkout validation/Stripe error request_id=%s: %s", request_id, e)
         raise HTTPException(

@@ -28,7 +28,7 @@ from database import database
 from middleware import admin_route_guard
 from models import AuditAction, EmailTemplateAlias, UserRole
 from utils.audit import create_audit_log
-from services.plan_registry import plan_registry, PlanCode, EntitlementStatus, SUBSCRIPTION_PRICE_TO_PLAN
+from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
 from services.provisioning import provisioning_service
 
 logger = logging.getLogger(__name__)

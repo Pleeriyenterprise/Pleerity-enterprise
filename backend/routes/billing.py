@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from typing import Optional
 from database import database
 from services.stripe_service import stripe_service
-from services.plan_registry import plan_registry, PlanCode
+from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError
 from middleware import client_route_guard
 from utils.audit import create_audit_log
 from models import AuditAction
@@ -80,9 +80,13 @@ async def create_checkout(request: Request, body: CheckoutRequest):
             new_plan_code=body.plan_code,
             origin_url=origin
         )
-        
         return result
-        
+    except PriceConfigMissingError as e:
+        logger.error("Checkout price config missing: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error_code": "PRICE_CONFIG_MISSING", "message": str(e) or "Stripe price configuration is missing. Contact support."}
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
