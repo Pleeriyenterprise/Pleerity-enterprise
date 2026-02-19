@@ -290,16 +290,19 @@ def _load_councils():
 
 
 @router.get("/plans")
-async def get_plans():
+async def get_plans(request: Request):
     """Get available billing plans with property limits and features.
     
     Returns the new plan structure:
     - PLAN_1_SOLO: 2 properties, £19/mo, £49 setup
     - PLAN_2_PORTFOLIO: 10 properties, £39/mo, £79 setup
     - PLAN_3_PRO: 25 properties, £79/mo, £149 setup
+    
+    When Stripe price env vars are missing, still returns plans (with null stripe IDs).
+    Checkout will fail with 400 STRIPE_MODE_MISMATCH until env is configured.
     """
-    # Use plan_registry as single source of truth
-    all_plans = plan_registry.get_all_plans()
+    request_id = str(uuid.uuid4())
+    all_plans = plan_registry.get_all_plans(_request_id=request_id)
     
     plans = []
     for plan in all_plans:

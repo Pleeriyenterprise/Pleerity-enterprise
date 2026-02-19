@@ -19,10 +19,10 @@ Plan Structure (January 2026):
 - PLAN_2_PORTFOLIO: Portfolio Landlord / Small Agent (10 properties, £39/mo, £79 onboarding)
 - PLAN_3_PRO: Professional / Agent / HMO (25 properties, £79/mo, £149 onboarding)
 
-Stripe price IDs are loaded from environment variables (no hardcoding):
-  STRIPE_PRICE_PLAN_1_SOLO_MONTHLY, STRIPE_PRICE_PLAN_1_SOLO_ONBOARDING,
-  STRIPE_PRICE_PLAN_2_PORTFOLIO_MONTHLY, STRIPE_PRICE_PLAN_2_PORTFOLIO_ONBOARDING,
-  STRIPE_PRICE_PLAN_3_PRO_MONTHLY, STRIPE_PRICE_PLAN_3_PRO_ONBOARDING.
+Stripe price IDs are loaded from environment variables (mode-prefixed, no hardcoding):
+  TEST: STRIPE_TEST_PRICE_PLAN_*_MONTHLY, STRIPE_TEST_PRICE_PLAN_*_ONBOARDING
+  LIVE: STRIPE_LIVE_PRICE_PLAN_*_MONTHLY, STRIPE_LIVE_PRICE_PLAN_*_ONBOARDING
+  See _get_stripe_mode() and _load_stripe_prices_for_mode() for exact names.
 """
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any
@@ -108,7 +108,9 @@ def _load_stripe_prices_for_mode(mode: str) -> Dict[str, Any]:
         onb = (os.environ.get(onb_key) or "").strip() or None
         if not monthly:
             raise StripeModeMismatchError(
-                f"Stripe key is {mode} mode but {monthly_key} is not set. Configure STRIPE_{mode.upper()}_PRICE_* env vars."
+                f"Stripe key is {mode} mode but {monthly_key} is not set. Configure STRIPE_{mode.upper()}_PRICE_* env vars.",
+                missing_var=monthly_key,
+                stripe_mode=mode,
             )
         mappings[plan.value] = {
             "subscription_price_id": monthly,
@@ -131,8 +133,10 @@ def _load_stripe_prices_for_mode(mode: str) -> Dict[str, Any]:
 
 class StripeModeMismatchError(Exception):
     """Raised when Stripe key mode (test/live) does not match price ID configuration."""
-    def __init__(self, message: str):
+    def __init__(self, message: str, missing_var: Optional[str] = None, stripe_mode: Optional[str] = None):
         super().__init__(message)
+        self.missing_var = missing_var
+        self.stripe_mode = stripe_mode
 
 
 def get_stripe_price_mappings(mode: Optional[str] = None) -> Dict[str, Any]:
@@ -483,18 +487,36 @@ class PlanRegistryService:
         base["stripe_onboarding_price_id"] = prices.get("onboarding_price_id")
         return base
     
-    def get_all_plans(self) -> List[Dict[str, Any]]:
-        """Get all plans for display (includes Stripe price IDs from env)."""
-        config = get_stripe_price_mappings()
+    def get_all_plans_for_display(self) -> List[Dict[str, Any]]:
+        """Get all plans with static metadata; Stripe IDs are None. Use when Stripe env is missing."""
         return [
-            {
-                **plan,
-                "code": code.value,
-                "stripe_subscription_price_id": config["mappings"].get(code.value, {}).get("subscription_price_id"),
-                "stripe_onboarding_price_id": config["mappings"].get(code.value, {}).get("onboarding_price_id"),
-            }
+            {**plan, "code": code.value, "stripe_subscription_price_id": None, "stripe_onboarding_price_id": None}
             for code, plan in PLAN_DEFINITIONS.items()
         ]
+
+    def get_all_plans(self, _request_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get all plans for display (includes Stripe price IDs from env when configured).
+        When Stripe price env vars are missing, returns plans with null stripe IDs instead of raising.
+        Checkout creation still requires Stripe and will return 400 STRIPE_MODE_MISMATCH.
+        """
+        try:
+            config = get_stripe_price_mappings()
+            return [
+                {
+                    **plan,
+                    "code": code.value,
+                    "stripe_subscription_price_id": config["mappings"].get(code.value, {}).get("subscription_price_id"),
+                    "stripe_onboarding_price_id": config["mappings"].get(code.value, {}).get("onboarding_price_id"),
+                }
+                for code, plan in PLAN_DEFINITIONS.items()
+            ]
+        except StripeModeMismatchError as e:
+            rid = _request_id or "N/A"
+            logger.warning(
+                "get_all_plans stripe config missing request_id=%s stripe_mode=%s missing_var=%s msg=%s",
+                rid, getattr(e, "stripe_mode", "?"), getattr(e, "missing_var", "?"), e,
+            )
+            return self.get_all_plans_for_display()
     
     def get_plan_by_code_string(self, code_str: str) -> Optional[Dict[str, Any]]:
         """Get plan by string code (handles legacy codes)."""
