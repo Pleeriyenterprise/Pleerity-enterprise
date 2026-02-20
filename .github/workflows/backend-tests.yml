@@ -37,8 +37,7 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r backend/requirements.txt
 
-      - name: Run plan registry gating tests
-        run: python -m pytest backend/tests/test_plan_registry_gating.py -v
-
-      - name: Run pending payment recovery tests
-        run: python -m pytest backend/tests/test_pending_payment_recovery.py -v
+      - name: Run backend tests
+        run: |
+          cd backend
+          PYTHONPATH=. python -m pytest tests -v

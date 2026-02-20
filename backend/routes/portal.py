@@ -10,7 +10,7 @@ from middleware import get_current_user
 
 router = APIRouter(prefix="/api/portal", tags=["portal"])
 
-PAID_SUBSCRIPTION_STATUSES = frozenset({"ACTIVE", "PAID", "active", "paid", "trialing"})
+PAID_SUBSCRIPTION_STATUSES = frozenset({"ACTIVE", "PAID", "TRIALING"})
 PROVISIONING_RUNNING_STATUSES = frozenset({
     "PROVISIONING_STARTED", "PROVISIONING_COMPLETED", "WELCOME_EMAIL_SENT",
     "PAYMENT_CONFIRMED",

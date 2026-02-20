@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 import uuid
 from contextlib import asynccontextmanager
 from database import database
-from routes import auth, intake, onboarding, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, intake_uploads
+from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, intake_uploads
 
 # ClearForm - Separate Product Routes
 from clearform.routes import auth as clearform_auth
@@ -515,6 +515,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(intake.router)
 app.include_router(onboarding.router)
+app.include_router(portal.router)
 app.include_router(webhooks.router)
 app.include_router(client.router)
 app.include_router(admin.router)

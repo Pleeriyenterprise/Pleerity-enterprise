@@ -119,15 +119,15 @@ const OnboardingStatusPage = () => {
   }, [clientId]);
 
   const handleRefresh = useCallback(() => {
-    if (!clientId) return;
+    if (!status?.client_id && !clientId) return;
     setTimedOut(false);
     pollStartRef.current = Date.now();
     fetchSetupStatus();
-  }, [clientId, fetchSetupStatus]);
+  }, [status?.client_id, clientId, fetchSetupStatus]);
 
   useEffect(() => {
     if (status?.payment_state === 'PAID') sessionStorage.removeItem('pleerity_stripe_redirect');
-  }, [status?.payment_state]);
+  }, [status]);
 
   const handleCopyCRN = useCallback(() => {
     const crn = status?.customer_reference;
@@ -142,6 +142,7 @@ const OnboardingStatusPage = () => {
     });
   }, [fetchSetupStatus]);
 
+  // Polling: status in deps satisfies exhaustive-deps; cleanup + shouldStopPolling prevent infinite loop.
   useEffect(() => {
     if (!pollStartRef.current) return;
     const cid = status?.client_id || clientId;
@@ -172,7 +173,7 @@ const OnboardingStatusPage = () => {
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, [clientId, status?.client_id, status?.payment_state, status?.next_action, paymentSuccess, fromStripeRedirect]);
+  }, [clientId, status, paymentSuccess, fromStripeRedirect]);
 
   const getStepIcon = (step) => {
     const icons = { 'clipboard-check': ClipboardCheck, 'credit-card': CreditCard, 'settings': Settings, 'key': Key, 'check-circle': CheckCircle };
