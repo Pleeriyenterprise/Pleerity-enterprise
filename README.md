@@ -188,14 +188,14 @@ All sends logged to `MessageLog` collection.
 ### Environment Variables
 
 **How to configure env vars (activation links and API):**
-- **PUBLIC_APP_URL** — Public frontend base URL used for activation/set-password links in emails (e.g. `https://your-frontend-domain.com`). Must be https in production; no trailing slash. Fallback: `FRONTEND_URL`, then `VERCEL_URL`/`RENDER_EXTERNAL_URL` if set. *Required for production activation emails.*
+- **FRONTEND_PUBLIC_URL** (preferred) or **PUBLIC_APP_URL** — Public frontend base URL used for ALL activation/set-password links in emails (e.g. `https://pleerity-enterprise-9jjg.vercel.app` or `https://portal.pleerityenterprise.co.uk`). Must be https in production; no trailing slash. Backend fallback order: FRONTEND_PUBLIC_URL → PUBLIC_APP_URL → FRONTEND_URL → VERCEL_URL/RENDER_EXTERNAL_URL. *Required for production activation emails.*
 - **REACT_APP_BACKEND_URL** — Frontend build-time: backend API base URL (e.g. `https://your-backend.onrender.com`). Set on Vercel so the app calls the correct API.
 - **BACKEND_URL** — Backend base URL for scripts and health checks. Keep Stripe vars (`STRIPE_API_KEY`, webhook secret) unchanged.
 
 **Where to set env vars:** Backend (Render): Dashboard → Service → Environment. Frontend (Vercel): Project → Settings → Environment Variables. Recommended future domain: `https://portal.pleerityenterprise.co.uk`.
 
 **If activation links still go to localhost or don’t work after deploy:**  
-1. **Backend (Render):** Set `PUBLIC_APP_URL=https://<your-actual-frontend-domain>` (no trailing slash). Set `ENVIRONMENT=production` so production rejects localhost. Save and **redeploy** the backend.  
+1. **Backend (Render):** Set `FRONTEND_PUBLIC_URL=https://<your-actual-frontend-domain>` (or `PUBLIC_APP_URL`; no trailing slash). Set `ENVIRONMENT=production` so production rejects localhost. Save and **redeploy** the backend.  
 2. **Frontend (Vercel):** Set `REACT_APP_BACKEND_URL=https://<your-backend-url>`. Trigger a **new deploy** (env vars are baked in at build time).  
 3. Ensure `CORS_ORIGINS` on the backend includes your frontend origin.
 
@@ -209,6 +209,7 @@ JWT_ALGORITHM=HS256
 JWT_EXPIRATION_HOURS=24
 STRIPE_API_KEY=sk_live_xxx
 POSTMARK_SERVER_TOKEN=
+FRONTEND_PUBLIC_URL=https://your-app.vercel.app
 PUBLIC_APP_URL=https://your-app.vercel.app
 FRONTEND_URL=https://your-app.vercel.app
 UNSUBSCRIBE_URL=https://your-app.vercel.app/unsubscribe

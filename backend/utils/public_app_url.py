@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 def get_public_app_url(for_email_links: bool = False) -> str:
     """
     Return normalized public frontend base URL (no trailing slash).
-    Fallback order: PUBLIC_APP_URL, FRONTEND_URL, VERCEL_URL (as https), RENDER_EXTERNAL_URL.
+    Single source of truth for ALL email links (activation, set-password); never backend host or localhost in production.
+    Fallback order: FRONTEND_PUBLIC_URL, PUBLIC_APP_URL, FRONTEND_URL, VERCEL_URL (as https), RENDER_EXTERNAL_URL.
 
     Rules:
     - Result is stripped and trailing slash removed.
@@ -23,7 +24,8 @@ def get_public_app_url(for_email_links: bool = False) -> str:
         Base URL, e.g. https://app.example.com
     """
     raw = (
-        (os.getenv("PUBLIC_APP_URL") or "").strip()
+        (os.getenv("FRONTEND_PUBLIC_URL") or "").strip()
+        or (os.getenv("PUBLIC_APP_URL") or "").strip()
         or (os.getenv("FRONTEND_URL") or "").strip()
         or ""
     )
@@ -35,8 +37,8 @@ def get_public_app_url(for_email_links: bool = False) -> str:
     if not raw:
         if for_email_links:
             raise ValueError(
-                "PUBLIC_APP_URL or FRONTEND_URL must be set for activation email links. "
-                "Set PUBLIC_APP_URL=https://<your-frontend-domain> (no trailing slash)."
+                "FRONTEND_PUBLIC_URL or PUBLIC_APP_URL or FRONTEND_URL must be set for activation email links. "
+                "Set FRONTEND_PUBLIC_URL=https://<your-frontend-domain> (no trailing slash)."
             )
         return "http://localhost:3000"
     if raw.startswith("http://") and "localhost" not in raw:
@@ -45,10 +47,10 @@ def get_public_app_url(for_email_links: bool = False) -> str:
         env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or "").strip().lower()
         if env in ("production", "prod"):
             raise ValueError(
-                "PUBLIC_APP_URL must be your public frontend URL in production (no localhost). "
-                "Set PUBLIC_APP_URL=https://<your-frontend-domain>"
+                "FRONTEND_PUBLIC_URL (or PUBLIC_APP_URL) must be your public frontend URL in production (no localhost). "
+                "Set FRONTEND_PUBLIC_URL=https://<your-frontend-domain>"
             )
         logger.warning(
-            "get_public_app_url(for_email_links=True): using localhost; set PUBLIC_APP_URL for production emails."
+            "get_public_app_url(for_email_links=True): using localhost; set FRONTEND_PUBLIC_URL for production emails."
         )
     return raw

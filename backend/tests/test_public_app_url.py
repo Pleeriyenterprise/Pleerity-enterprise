@@ -4,6 +4,24 @@ import pytest
 from unittest.mock import patch
 
 
+def test_get_public_app_url_prefers_frontend_public_url():
+    """When FRONTEND_PUBLIC_URL is set, activation link base uses it (single source of truth for emails)."""
+    from utils.public_app_url import get_public_app_url
+
+    with patch.dict(
+        os.environ,
+        {
+            "FRONTEND_PUBLIC_URL": "https://pleerity-enterprise-9jjg.vercel.app",
+            "PUBLIC_APP_URL": "https://other.example.com",
+        },
+        clear=False,
+    ):
+        url = get_public_app_url(for_email_links=True)
+    assert url.startswith("https://pleerity-enterprise-9jjg.vercel.app")
+    assert "other.example.com" not in url
+    assert url.rstrip("/") == url
+
+
 def test_get_public_app_url_uses_public_app_url_when_set():
     """When PUBLIC_APP_URL is set, returned URL contains that domain (no localhost)."""
     from utils.public_app_url import get_public_app_url

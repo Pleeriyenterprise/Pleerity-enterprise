@@ -56,7 +56,7 @@ function buildSteps(data) {
   } else if (!portalUserExists) {
     step4Label = 'Waiting';
   } else if (actEmail === 'SENT') {
-    step4Label = 'Email sent';
+    step4Label = 'Email sent (Waiting for user)';
   } else if (actEmail === 'FAILED') {
     step4Status = 'failed';
     step4Label = 'Email failed';
@@ -440,14 +440,15 @@ const OnboardingStatusPage = () => {
                 )}
                 {!passwordSet && (
                   <>
-                    <Button variant="outline" onClick={() => navigate('/set-password')} className="border-teal-300 text-teal-700" data-testid="set-password-link-btn">
-                      Set password
-                    </Button>
+                    {/* Do not link to /set-password without token — user must use the link from the activation email. */}
                     {(status?.portal_user_exists && (status?.activation_email_status === 'SENT' || status?.activation_email_status === 'FAILED' || status?.next_action === 'set_password')) && (
-                      <Button variant="outline" className="border-teal-300 text-teal-700" onClick={handleResendActivation} disabled={resending} data-testid="resend-activation-btn">
+                      <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleResendActivation} disabled={resending} data-testid="resend-activation-btn">
                         {resending ? 'Sending…' : 'Resend activation email'}
                       </Button>
                     )}
+                    <Button variant="outline" size="sm" onClick={handleRefresh} className="border-teal-300 text-teal-700" data-testid="refresh-status-cta-btn">
+                      <RefreshCw className="w-4 h-4 mr-2" /> Refresh status
+                    </Button>
                   </>
                 )}
               </div>
