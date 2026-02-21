@@ -187,6 +187,10 @@ All sends logged to `MessageLog` collection.
 
 ### Environment Variables
 
+**How to configure env vars (activation links and API):**
+- **PUBLIC_APP_URL** — Public frontend base URL used for activation/set-password links in emails (e.g. `https://your-frontend-domain.com`). Must be https in production; no trailing slash. Fallback: `FRONTEND_URL`, then `VERCEL_URL`/`RENDER_EXTERNAL_URL` if set.
+- **BACKEND_URL** — Backend base URL (e.g. `https://your-backend.onrender.com`). Used by scripts and health checks. Keep Stripe vars (`STRIPE_API_KEY`, webhook secret) unchanged.
+
 **Backend (Render / local `.env`):**
 ```bash
 MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net/DB_NAME
@@ -197,6 +201,7 @@ JWT_ALGORITHM=HS256
 JWT_EXPIRATION_HOURS=24
 STRIPE_API_KEY=sk_live_xxx
 POSTMARK_SERVER_TOKEN=
+PUBLIC_APP_URL=https://your-app.vercel.app
 FRONTEND_URL=https://your-app.vercel.app
 UNSUBSCRIBE_URL=https://your-app.vercel.app/unsubscribe
 LLM_API_KEY=

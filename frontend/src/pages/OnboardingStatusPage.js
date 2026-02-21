@@ -56,7 +56,7 @@ function buildSteps(data) {
   } else if (!portalUserExists) {
     step4Label = 'Waiting';
   } else if (actEmail === 'SENT') {
-    step4Label = 'Email sent';
+    step4Label = 'Email sent (Waiting for user)';
   } else if (actEmail === 'FAILED') {
     step4Status = 'failed';
     step4Label = 'Email failed';
@@ -87,9 +87,11 @@ function progressPercent(steps) {
 /** Should polling stop? */
 function shouldStopPolling(data) {
   if (!data) return false;
-  const na = data.next_action || '';
+  if (data.password_set === true) return true;
   const vs = data.provisioning_status || data.provisioning_state || '';
-  return na === 'set_password' || na === 'go_to_dashboard' || String(vs).toUpperCase() === 'FAILED';
+  if (String(vs).toUpperCase() === 'FAILED') return true;
+  const na = data.next_action || '';
+  return na === 'set_password' || na === 'go_to_dashboard';
 }
 
 /** Should we show the early "payment received" banner? */
@@ -156,10 +158,10 @@ const OnboardingStatusPage = () => {
     if ((status?.payment_state || '').toLowerCase() === 'paid') sessionStorage.removeItem('pleerity_stripe_redirect');
   }, [status]);
 
-  // Auto-redirect to login when password_set (Ready to Use) after 2s
+  // Auto-redirect to client dashboard when password_set (Ready to Use) after 2s
   useEffect(() => {
     if (status?.password_set !== true) return;
-    const t = setTimeout(() => navigate('/login'), 2000);
+    const t = setTimeout(() => navigate('/app/dashboard'), 2000);
     return () => clearTimeout(t);
   }, [status?.password_set, navigate]);
 
@@ -414,10 +416,18 @@ const OnboardingStatusPage = () => {
               <div>
                 <h3 className={`font-semibold ${isComplete ? 'text-green-800' : 'text-teal-800'}`}>{isComplete ? '🎉 All Set!' : 'Next Step'}</h3>
                 <p className={`mt-1 ${isComplete ? 'text-green-700' : 'text-teal-700'}`}>{nextActionMsg}</p>
+                {!passwordSet && (status?.activation_email_status === 'SENT') && (status?.activation_email_to_masked || status?.masked_email) && (
+                  <p className="mt-2 text-sm text-teal-700">
+                    Activation email sent to: {status?.masked_email ?? status?.activation_email_to_masked}
+                    {status?.activation_email_sent_at || status?.activation_email_last_sent_at
+                      ? ` at ${new Date(status?.activation_email_last_sent_at ?? status?.activation_email_sent_at).toLocaleString()}`
+                      : ''}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {passwordSet && (
-                  <Button onClick={() => navigate('/login')} className="bg-green-600 hover:bg-green-700" data-testid="go-to-portal-btn">
+                  <Button onClick={() => navigate('/app/dashboard')} className="bg-green-600 hover:bg-green-700" data-testid="go-to-portal-btn">
                     Go to Dashboard <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 )}
