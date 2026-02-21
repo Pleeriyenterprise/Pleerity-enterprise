@@ -25,33 +25,51 @@ const POLL_DURATION_MS = 180000;
 const BANNER_EARLY_SEC = 20;
 const BANNER_LATE_CONFIRMING_SEC = 30;
 
-/** Build steps array from setup-status response. Backend returns payment_state; provisioning_status; activation_email_status; password_state; next_action. */
+/** Build steps from backend truth flags only. payment_state: unpaid | pending_webhook | paid; provisioning_status: NOT_STARTED | IN_PROGRESS | COMPLETED | FAILED; activation_email_status: NOT_SENT | SENT | FAILED; password_set: bool; portal_user_exists: bool. */
 function buildSteps(data) {
   if (!data) return [];
-  const ps = data.payment_state || 'unpaid';
-  const provStatus = (data.provisioning_status || data.provisioning_state || 'NOT_STARTED').toUpperCase();
-  const vs = data.provisioning_state || 'not_started';
-  const pw = data.password_state || 'not_sent';
-  const actEmail = (data.activation_email_status || '').toUpperCase();
-  const activationSent = actEmail === 'SENT' || data.password_reset_sent === true;
-  const na = data.next_action || 'pay';
+  const intakeSubmitted = data.intake_submitted === true;
+  const paymentState = (data.payment_state || 'unpaid').toLowerCase();
+  const provStatus = (data.provisioning_status || 'NOT_STARTED').toUpperCase();
+  const portalUserExists = data.portal_user_exists === true;
+  const actEmail = (data.activation_email_status || 'NOT_SENT').toUpperCase();
+  const passwordSet = data.password_set === true;
 
-  const step2Status = ps === 'paid' ? 'complete' : ps === 'confirming' ? 'in_progress' : 'pending';
-  const step2Label = ps === 'paid' ? 'Payment complete' : ps === 'confirming' ? 'Confirming…' : 'Action required';
+  // Step 1 Intake: complete iff intake_submitted
+  const step1Status = intakeSubmitted ? 'complete' : 'pending';
+  const step1Label = intakeSubmitted ? 'Complete' : 'Pending';
 
-  // Portal Setup: "In progress" only when provisioning_status === IN_PROGRESS
-  const step3Status = provStatus === 'COMPLETED' || vs === 'completed' ? 'complete' : provStatus === 'FAILED' || vs === 'failed' ? 'failed' : provStatus === 'IN_PROGRESS' ? 'in_progress' : 'pending';
-  const step3Label = provStatus === 'COMPLETED' || vs === 'completed' ? 'Complete' : provStatus === 'FAILED' || vs === 'failed' ? 'Failed' : provStatus === 'IN_PROGRESS' ? 'In progress' : vs === 'queued' ? 'Queued' : 'Portal setup waiting…';
+  // Step 2 Payment: unpaid -> Action Required; pending_webhook -> Confirming…; paid -> Complete. Never show Action Required after Stripe success (pending_webhook is post-success).
+  const step2Status = paymentState === 'paid' ? 'complete' : paymentState === 'pending_webhook' ? 'in_progress' : 'pending';
+  const step2Label = paymentState === 'paid' ? 'Complete' : paymentState === 'pending_webhook' ? 'Confirming…' : 'Action required';
 
-  // Account Activation: "Complete" when password set; "Waiting" until activation_email_status SENT (email sent); else "Waiting"
-  const step4Status = pw === 'set' ? 'complete' : 'pending';
-  const step4Label = pw === 'set' ? 'Complete' : activationSent ? 'Email sent – set your password' : 'Waiting';
+  // Step 3 Portal Setup: depends only on provisioning_status
+  const step3Status = provStatus === 'COMPLETED' ? 'complete' : provStatus === 'FAILED' ? 'failed' : provStatus === 'IN_PROGRESS' ? 'in_progress' : 'pending';
+  const step3Label = provStatus === 'COMPLETED' ? 'Complete' : provStatus === 'FAILED' ? 'Failed' : provStatus === 'IN_PROGRESS' ? 'In progress' : 'Waiting';
 
-  const step5Status = na === 'go_to_dashboard' ? 'complete' : 'pending';
-  const step5Label = na === 'go_to_dashboard' ? 'Complete' : 'Waiting';
+  // Step 4 Account Activation: only portal_user_exists, activation_email_status, password_set
+  let step4Status = 'pending';
+  let step4Label = 'Waiting';
+  if (passwordSet) {
+    step4Status = 'complete';
+    step4Label = 'Complete';
+  } else if (!portalUserExists) {
+    step4Label = 'Waiting';
+  } else if (actEmail === 'SENT') {
+    step4Label = 'Email sent';
+  } else if (actEmail === 'FAILED') {
+    step4Status = 'failed';
+    step4Label = 'Email failed';
+  } else {
+    step4Label = 'Waiting';
+  }
+
+  // Step 5 Ready to Use: complete iff password_set
+  const step5Status = passwordSet ? 'complete' : 'pending';
+  const step5Label = passwordSet ? 'Complete' : 'Waiting';
 
   return [
-    { step: 1, name: 'Intake Form', description: 'Submit your details and property information', status: 'complete', icon: 'clipboard-check', label: 'Complete' },
+    { step: 1, name: 'Intake Form', description: 'Submit your details and property information', status: step1Status, icon: 'clipboard-check', label: step1Label },
     { step: 2, name: 'Payment', description: 'Complete subscription payment', status: step2Status, icon: 'credit-card', label: step2Label },
     { step: 3, name: 'Portal Setup', description: 'We provision your compliance portal', status: step3Status, icon: 'settings', label: step3Label },
     { step: 4, name: 'Account Activation', description: 'Set your password from the email we sent', status: step4Status, icon: 'key', label: step4Label },
@@ -70,19 +88,20 @@ function progressPercent(steps) {
 function shouldStopPolling(data) {
   if (!data) return false;
   const na = data.next_action || '';
-  const vs = data.provisioning_state || '';
-  return na === 'set_password' || na === 'go_to_dashboard' || vs === 'failed';
+  const vs = data.provisioning_status || data.provisioning_state || '';
+  return na === 'set_password' || na === 'go_to_dashboard' || String(vs).toUpperCase() === 'FAILED';
 }
 
 /** Should we show the early "payment received" banner? */
 function showEarlyBanner(data, elapsedSec) {
   if (!data) return false;
-  return (data.payment_state === 'confirming' || data.next_action === 'wait_provisioning') && elapsedSec < BANNER_EARLY_SEC;
+  const ps = (data.payment_state || '').toLowerCase();
+  return (ps === 'pending_webhook' || data.next_action === 'wait_provisioning') && elapsedSec < BANNER_EARLY_SEC;
 }
 
 /** Should we show the "still confirming" banner? */
 function showLateConfirmingBanner(data, elapsedSec) {
-  return data?.payment_state === 'confirming' && elapsedSec >= BANNER_LATE_CONFIRMING_SEC;
+  return (data?.payment_state || '').toLowerCase() === 'pending_webhook' && elapsedSec >= BANNER_LATE_CONFIRMING_SEC;
 }
 
 const SUPPORT_EMAIL_FALLBACK = 'info@pleerityenterprise.co.uk';
@@ -134,8 +153,15 @@ const OnboardingStatusPage = () => {
   }, [status?.client_id, clientId, fetchSetupStatus]);
 
   useEffect(() => {
-    if (status?.payment_state === 'paid') sessionStorage.removeItem('pleerity_stripe_redirect');
+    if ((status?.payment_state || '').toLowerCase() === 'paid') sessionStorage.removeItem('pleerity_stripe_redirect');
   }, [status]);
+
+  // Auto-redirect to login when password_set (Ready to Use) after 2s
+  useEffect(() => {
+    if (status?.password_set !== true) return;
+    const t = setTimeout(() => navigate('/login'), 2000);
+    return () => clearTimeout(t);
+  }, [status?.password_set, navigate]);
 
   const handleCopyCRN = useCallback(() => {
     const crn = status?.customer_reference;
@@ -189,7 +215,7 @@ const OnboardingStatusPage = () => {
       }
     };
 
-    const shouldStartPolling = () => paymentSuccess || fromStripeRedirect || status?.payment_state === 'confirming' || status?.next_action === 'wait_provisioning';
+    const shouldStartPolling = () => paymentSuccess || fromStripeRedirect || (status?.payment_state || '').toLowerCase() === 'pending_webhook' || status?.next_action === 'wait_provisioning';
     if (shouldStartPolling() && !shouldStopPolling(status)) {
       pollIntervalRef.current = setInterval(runPoll, POLL_INTERVAL_MS);
     }
@@ -221,11 +247,13 @@ const OnboardingStatusPage = () => {
 
   const steps = buildSteps(status);
   const progressPercentVal = progressPercent(steps);
-  const isComplete = status?.next_action === 'go_to_dashboard';
+  const passwordSet = status?.password_set === true;
+  const isComplete = passwordSet;
   const elapsedSec = pollStartRef.current ? Math.floor((Date.now() - pollStartRef.current) / 1000) : 0;
   const showEarly = showEarlyBanner(status, elapsedSec);
   const showLateConfirming = showLateConfirmingBanner(status, elapsedSec);
-  const provisioningFailed = (status?.provisioning_status || status?.provisioning_state) === 'FAILED' || status?.provisioning_state === 'failed';
+  const provisioningFailed = String(status?.provisioning_status || status?.provisioning_state || '').toUpperCase() === 'FAILED';
+  const activationEmailFailed = (status?.activation_email_status || '').toUpperCase() === 'FAILED';
   const nextActionMsg = NEXT_ACTION_MESSAGES[status?.next_action] || status?.next_action;
 
   if (loading && !status) {
@@ -290,6 +318,13 @@ const OnboardingStatusPage = () => {
         {provisioningFailed && (
           <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800">
             <p className="font-medium">Setup encountered an issue. Contact support with CRN {status?.customer_reference || '—'}.</p>
+            {status?.last_error?.message && <p className="mt-1 text-sm">{status.last_error.message}</p>}
+          </div>
+        )}
+        {activationEmailFailed && !provisioningFailed && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+            <p className="font-medium">Activation email could not be sent. Use &quot;Resend activation email&quot; below or contact support with CRN {status?.customer_reference || '—'}.</p>
+            {status?.last_error?.message && <p className="mt-1 text-sm">{status.last_error.message}</p>}
           </div>
         )}
 
@@ -372,24 +407,33 @@ const OnboardingStatusPage = () => {
           </div>
         </div>
 
-        {/* Next Action Card */}
-        {status?.next_action && (
+        {/* Next Action Card / CTA */}
+        {(status?.next_action || status?.client_id) && (
           <div className={`rounded-xl shadow-sm border-2 p-6 ${isComplete ? 'bg-green-50 border-green-200' : 'bg-teal-50 border-teal-200'}`}>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className={`font-semibold ${isComplete ? 'text-green-800' : 'text-teal-800'}`}>{isComplete ? '🎉 All Set!' : 'Next Step'}</h3>
                 <p className={`mt-1 ${isComplete ? 'text-green-700' : 'text-teal-700'}`}>{nextActionMsg}</p>
               </div>
-              {isComplete && (
-                <Button onClick={() => navigate('/login')} className="bg-green-600 hover:bg-green-700" data-testid="go-to-portal-btn">
-                  Go to Portal <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              )}
-              {status.next_action === 'set_password' && (
-                <Button variant="outline" className="border-teal-300 text-teal-700" onClick={handleResendActivation} disabled={resending} data-testid="resend-activation-btn">
-                  {resending ? 'Sending…' : 'Resend activation email'}
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {passwordSet && (
+                  <Button onClick={() => navigate('/login')} className="bg-green-600 hover:bg-green-700" data-testid="go-to-portal-btn">
+                    Go to Dashboard <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
+                {!passwordSet && (
+                  <>
+                    <Button variant="outline" onClick={() => navigate('/set-password')} className="border-teal-300 text-teal-700" data-testid="set-password-link-btn">
+                      Set password
+                    </Button>
+                    {(status?.portal_user_exists && (status?.activation_email_status === 'SENT' || status?.activation_email_status === 'FAILED' || status?.next_action === 'set_password')) && (
+                      <Button variant="outline" className="border-teal-300 text-teal-700" onClick={handleResendActivation} disabled={resending} data-testid="resend-activation-btn">
+                        {resending ? 'Sending…' : 'Resend activation email'}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}

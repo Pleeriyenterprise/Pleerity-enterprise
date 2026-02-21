@@ -44,13 +44,13 @@ def _parse_created(created) -> float | None:
 
 
 def _payment_state(client: dict, job_exists: bool) -> str:
-    """Returns: unpaid | confirming | paid | failed. paid only from webhook-driven subscription_status."""
+    """Returns: unpaid | pending_webhook | paid. paid only from webhook-driven subscription_status. pending_webhook = awaiting Stripe webhook."""
     sub = (client.get("subscription_status") or "").strip().upper()
     if sub in PAID_SUBSCRIPTION_STATUSES:
         return "paid"
     age_sec = _parse_created(client.get("created_at"))
     if age_sec is not None and (job_exists or (0 <= age_sec < 600)):
-        return "confirming"
+        return "pending_webhook"
     return "unpaid"
 
 
@@ -84,7 +84,7 @@ def _next_action(payment_state: str, provisioning_state: str, password_state: st
     """Returns: pay | wait_provisioning | set_password | go_to_dashboard."""
     if payment_state == "unpaid":
         return "pay"
-    if payment_state == "confirming":
+    if payment_state == "pending_webhook":
         return "wait_provisioning"
     if provisioning_state == "failed":
         return "wait_provisioning"  # retry possible; do not show set_password
@@ -170,32 +170,55 @@ async def get_setup_status(
     if not provisioning_status:
         provisioning_status = "NOT_STARTED"
 
-    # portal_user_created: True if at least one portal_user exists for this client
-    portal_user_created = portal_user is not None
-    # password_reset_sent: True if welcome/setup email was sent (job reached WELCOME_EMAIL_SENT or activation_email_status SENT)
-    password_reset_sent = bool(job and (job.get("status") or "").strip() == "WELCOME_EMAIL_SENT") or (client.get("activation_email_status") or "").strip() == "SENT"
-    activation_email_status = (client.get("activation_email_status") or "").strip() or None
+    # Authoritative flags (exact state mapping)
+    portal_user_exists = portal_user is not None
+    password_set = (portal_user or {}).get("password_status") == "SET"
+    act_raw = (client.get("activation_email_status") or "").strip().upper()
+    if act_raw in ("SENT", "FAILED"):
+        activation_email_status_api = act_raw
+    elif act_raw == "NOT_CONFIGURED":
+        activation_email_status_api = "FAILED"
+    else:
+        activation_email_status_api = "NOT_SENT"
     activation_email_sent_at = client.get("activation_email_sent_at")
     if hasattr(activation_email_sent_at, "isoformat"):
         activation_email_sent_at = activation_email_sent_at.isoformat()
     portal_user_created_at = client.get("portal_user_created_at")
     if hasattr(portal_user_created_at, "isoformat"):
         portal_user_created_at = portal_user_created_at.isoformat()
+    # Masked email for activation recipient (e.g. "abc***@xy***")
+    def _mask_email(addr):
+        if not addr or "@" not in str(addr):
+            return None
+        local, domain = str(addr).split("@", 1)
+        return f"{local[:3]}***@{domain[:2]}***" if len(local) >= 3 else "***@***"
+    activation_email_to_masked = _mask_email(client.get("email")) if (activation_email_status_api == "SENT" or client.get("activation_email_sent_at")) else None
+    if last_error is None and activation_email_status_api == "FAILED" and client.get("activation_email_error"):
+        last_error = {"code": "ACTIVATION_EMAIL_FAILED", "message": str(client.get("activation_email_error"))[:500]}
+
+    # Legacy / backward compat
+    provisioning_state = _provisioning_state(client, job)
+    password_reset_sent = bool(job and (job.get("status") or "").strip() == "WELCOME_EMAIL_SENT") or activation_email_status_api == "SENT"
+    password_state = "set" if password_set else "not_sent"
 
     return {
         "client_id": client["client_id"],
         "customer_reference": client.get("customer_reference"),
         "client_name": client.get("full_name"),
         "billing_plan": client.get("billing_plan"),
+        "intake_submitted": True,
         "payment_state": payment_state,
         "subscription_status": (client.get("subscription_status") or "").strip() or None,
-        "provisioning_state": provisioning_state,
         "provisioning_status": provisioning_status,
-        "portal_user_created": portal_user_created,
+        "provisioning_state": provisioning_state,
+        "portal_user_exists": portal_user_exists,
+        "portal_user_created": portal_user_exists,
         "portal_user_created_at": portal_user_created_at,
-        "activation_email_status": activation_email_status,
+        "activation_email_status": activation_email_status_api,
         "activation_email_sent_at": activation_email_sent_at,
+        "activation_email_to_masked": activation_email_to_masked,
         "activation_email_error": (client.get("activation_email_error") or "").strip() or None,
+        "password_set": password_set,
         "password_reset_sent": password_reset_sent,
         "password_state": password_state,
         "next_action": next_action,

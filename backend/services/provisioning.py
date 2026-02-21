@@ -558,6 +558,12 @@ class ProvisioningService:
             idempotency_key=idempotency_key,
             event_type="provisioning_welcome",
         )
+        def _mask_email(addr: str) -> str:
+            if not addr or "@" not in addr:
+                return "***"
+            local, domain = addr.split("@", 1)
+            return f"{local[:3]}***@{domain[:2]}***" if len(local) >= 3 else "***@***"
+
         if result.outcome in ("sent", "duplicate_ignored"):
             await create_audit_log(
                 action=AuditAction.PASSWORD_TOKEN_GENERATED,
@@ -565,11 +571,44 @@ class ProvisioningService:
                 actor_id=user_id,
                 metadata={"email": email}
             )
+            provider_message_id = (result.details or {}).get("provider_message_id") or getattr(result, "message_id", None)
+            await create_audit_log(
+                action=AuditAction.ACTIVATION_EMAIL_SENT,
+                client_id=client_id,
+                actor_id=user_id,
+                metadata={
+                    "provider": "postmark",
+                    "template_key": "WELCOME_EMAIL",
+                    "recipient_masked": _mask_email(email),
+                    "message_id": result.message_id,
+                    "provider_message_id": provider_message_id,
+                }
+            )
+            logger.info(
+                "ACTIVATION_EMAIL_SENT client_id=%s provider=postmark template=WELCOME_EMAIL recipient_masked=%s message_id=%s",
+                client_id, _mask_email(email), result.message_id,
+            )
             return True, "SENT", None
         if result.outcome == "blocked" and (result.block_reason or "").strip() == "BLOCKED_PROVIDER_NOT_CONFIGURED":
+            err_msg = (result.error_message or result.block_reason or "POSTMARK_SERVER_TOKEN not set")[:500]
             logger.warning("Activation email not sent: Postmark not configured (BLOCKED_PROVIDER_NOT_CONFIGURED)")
-            return False, "NOT_CONFIGURED", (result.error_message or result.block_reason or "POSTMARK_SERVER_TOKEN not set")[:500]
+            await create_audit_log(
+                action=AuditAction.ACTIVATION_EMAIL_FAILED,
+                client_id=client_id,
+                metadata={"error_message": err_msg, "provider": "postmark", "provider_response": "not_configured"},
+            )
+            return False, "NOT_CONFIGURED", err_msg
         err = (result.error_message or result.block_reason or result.outcome or "unknown")[:500]
+        await create_audit_log(
+            action=AuditAction.ACTIVATION_EMAIL_FAILED,
+            client_id=client_id,
+            metadata={
+                "error_message": err,
+                "provider": "postmark",
+                "provider_response_code": getattr(result, "status_code", None),
+            },
+        )
+        logger.warning("ACTIVATION_EMAIL_FAILED client_id=%s error=%s provider_response_code=%s", client_id, err, getattr(result, "status_code", None))
         return False, "FAILED", err
     
     async def _fail_provisioning(self, client_id: str, reason: str):

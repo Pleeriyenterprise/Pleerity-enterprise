@@ -84,6 +84,31 @@ async def get_admin_dashboard(request: Request):
         )
 
 
+@router.get("/email/health", dependencies=[Depends(require_owner_or_admin)])
+async def get_email_health(request: Request):
+    """
+    Admin-only: verify email delivery config (Postmark).
+    Returns configured, provider, from_address, templates_present.
+    """
+    await admin_route_guard(request)
+    postmark_token = (os.getenv("POSTMARK_SERVER_TOKEN") or "").strip()
+    from_address = (os.getenv("EMAIL_SENDER") or "info@pleerityenterprise.co.uk").strip()
+    configured = bool(postmark_token)
+    provider = "postmark" if configured else "none"
+    db = database.get_db()
+    welcome = await db.notification_templates.find_one(
+        {"template_key": "WELCOME_EMAIL", "is_active": True},
+        {"_id": 1},
+    )
+    templates_present = welcome is not None
+    return {
+        "configured": configured,
+        "provider": provider,
+        "from_address": from_address,
+        "templates_present": templates_present,
+    }
+
+
 @router.get("/documents/pending-verification", dependencies=[Depends(require_owner_or_admin)])
 async def list_pending_verification_documents(
     request: Request,

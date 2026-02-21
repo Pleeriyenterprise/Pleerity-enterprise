@@ -80,7 +80,7 @@ def test_setup_status_next_action_wait_provisioning(client):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["payment_state"] in ("confirming", "paid")  # depends on time
+    assert data["payment_state"] in ("pending_webhook", "paid")  # depends on time
     assert data["provisioning_state"] == "queued"  # PAYMENT_CONFIRMED -> queued
     assert data["next_action"] == "wait_provisioning"
 
@@ -143,10 +143,13 @@ def test_setup_status_next_action_dashboard(client):
     assert data["provisioning_status"] == "COMPLETED"
     assert data["portal_user_created"] is True
     assert data["password_reset_sent"] is True
+    assert data["password_set"] is True
     assert data["password_state"] == "set"
     assert data["next_action"] == "go_to_dashboard"
     assert data["properties_count"] == 2
     assert data["requirements_count"] == 5
+    assert data["intake_submitted"] is True
+    assert data["portal_user_exists"] is True
 
 
 def test_setup_status_provisioning_failed(client):
@@ -268,6 +271,108 @@ def test_resend_activation_200_does_not_alter_subscription(client):
     assert "onboarding_status" not in set_payload
     assert "provisioning_status" not in set_payload
     assert set_payload.get("activation_email_status") == "SENT"
+
+
+def test_setup_status_payment_state_mapping(client):
+    """payment_state is unpaid | pending_webhook | paid only."""
+    mock_client = {"client_id": "c1", "subscription_status": "PENDING", "onboarding_status": "INTAKE_COMPLETE", "created_at": "2025-01-01T00:00:00Z"}
+    mock_db = _make_db(client=mock_client)
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.get("/api/portal/setup-status", params={"client_id": "c1"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["payment_state"] == "unpaid"
+
+    mock_client["subscription_status"] = "ACTIVE"
+    mock_db.clients.find_one = AsyncMock(return_value=mock_client)
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response2 = client.get("/api/portal/setup-status", params={"client_id": "c1"})
+    assert response2.json()["payment_state"] == "paid"
+
+
+def test_setup_status_provisioning_status_mapping(client):
+    """provisioning_status returned as NOT_STARTED | IN_PROGRESS | COMPLETED | FAILED."""
+    mock_client = {"client_id": "c1", "subscription_status": "ACTIVE", "onboarding_status": "PROVISIONED", "provisioning_status": "COMPLETED", "created_at": "2026-01-01T00:00:00Z"}
+    mock_db = _make_db(client=mock_client, portal_user={})
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        r = client.get("/api/portal/setup-status", params={"client_id": "c1"})
+    assert r.status_code == 200
+    assert r.json().get("provisioning_status") == "COMPLETED"
+
+    mock_client["provisioning_status"] = "FAILED"
+    mock_client["onboarding_status"] = "FAILED"
+    mock_db.clients.find_one = AsyncMock(return_value=mock_client)
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        r2 = client.get("/api/portal/setup-status", params={"client_id": "c1"})
+    assert r2.json().get("provisioning_status") == "FAILED"
+
+
+def test_setup_status_activation_email_failed_has_last_error(client):
+    """When activation_email_status is FAILED, last_error is set and resend is available (UI); setup-status returns FAILED."""
+    mock_client = {
+        "client_id": "c1",
+        "subscription_status": "ACTIVE",
+        "onboarding_status": "PROVISIONED",
+        "provisioning_status": "COMPLETED",
+        "activation_email_status": "FAILED",
+        "activation_email_error": "Postmark error",
+        "email": "user@example.com",
+        "created_at": "2026-01-01T00:00:00Z",
+    }
+    mock_portal = {"password_status": "NOT_SET"}
+    mock_db = _make_db(client=mock_client, portal_user=mock_portal)
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.get("/api/portal/setup-status", params={"client_id": "c1"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["activation_email_status"] == "FAILED"
+    assert data["portal_user_exists"] is True
+    assert data["password_set"] is False
+    assert data.get("last_error") is not None
+    assert "Postmark" in str(data.get("last_error", {}).get("message", ""))
+
+
+def test_setup_status_password_set_complete(client):
+    """password_set true -> next_action go_to_dashboard and flags indicate complete."""
+    mock_client = {"client_id": "c1", "subscription_status": "ACTIVE", "onboarding_status": "PROVISIONED", "provisioning_status": "COMPLETED", "created_at": "2026-01-01T00:00:00Z"}
+    mock_portal = {"password_status": "SET"}
+    mock_db = _make_db(client=mock_client, portal_user=mock_portal)
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.get("/api/portal/setup-status", params={"client_id": "c1"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["password_set"] is True
+    assert data["next_action"] == "go_to_dashboard"
+
+
+def test_admin_email_health_returns_config(client):
+    """GET /api/admin/email/health returns configured, provider, from_address, templates_present."""
+    from routes.admin import get_email_health
+    from fastapi import Request
+
+    async def mock_admin(_request):
+        return {"role": "ROLE_ADMIN"}
+
+    request = MagicMock(spec=Request)
+    request.state = MagicMock()
+    db = MagicMock()
+    db.notification_templates = MagicMock()
+    db.notification_templates.find_one = AsyncMock(return_value={"template_key": "WELCOME_EMAIL"})
+    with patch("routes.admin.admin_route_guard", side_effect=mock_admin), \
+         patch("routes.admin.database.get_db", return_value=db):
+        import asyncio
+        result = asyncio.run(get_email_health(request))
+    assert "configured" in result
+    assert result["provider"] in ("postmark", "none")
+    assert "from_address" in result
+    assert "templates_present" in result
+    assert result["templates_present"] is True
 
 
 def test_send_password_setup_link_returns_not_configured_when_blocked():
