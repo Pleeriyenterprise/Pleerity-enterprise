@@ -339,13 +339,16 @@ class StripeWebhookService:
         This is the existing subscription logic moved to a separate method.
         """
         db = database.get_db()
-        
-        # Extract required data
+        checkout_session_id = session.get("id")
         stripe_customer_id = session.get("customer")
         stripe_subscription_id = session.get("subscription")
-        metadata = session.get("metadata", {})
+        metadata = session.get("metadata", {}) or {}
         client_id = metadata.get("client_id")
-        
+        plan_code_meta = metadata.get("plan_code")
+        logger.info(
+            "HANDLER_START event.type=checkout.session.completed stripe_customer_id=%s subscription_id=%s checkout_session_id=%s metadata.client_id=%s metadata.plan_code=%s computed_client_id=%s",
+            stripe_customer_id, stripe_subscription_id, checkout_session_id, metadata.get("client_id"), plan_code_meta, client_id,
+        )
         if not client_id:
             logger.error(f"No client_id in checkout metadata: {session.get('id')}")
             raise ValueError("MANDATORY: client_id missing from session.metadata")
@@ -593,6 +596,10 @@ class StripeWebhookService:
         except Exception as e:
             logger.warning(f"SUBSCRIPTION_CONFIRMED notification: {e}")
         
+        logger.info(
+            "HANDLER_END event.type=checkout.session.completed client_id=%s db_updated=subscription_status=%s billing_plan=%s entitlement_status=%s onboarding_status=(unchanged) provisioning_triggered=%s",
+            client_id, subscription_status.upper(), plan_code.value, entitlement_status.value, provisioning_triggered,
+        )
         return {
             "handled": True,
             "client_id": client_id,
@@ -610,11 +617,14 @@ class StripeWebhookService:
         Updates entitlements immediately on plan changes.
         """
         db = database.get_db()
-        
         stripe_customer_id = subscription.get("customer")
         stripe_subscription_id = subscription.get("id")
         subscription_status = subscription.get("status", "unknown")
-        
+        event_type = (event or {}).get("type", "customer.subscription.updated")
+        logger.info(
+            "HANDLER_START event.type=%s stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) metadata.plan_code=(from_items) computed_client_id=(lookup)",
+            event_type, stripe_customer_id, stripe_subscription_id,
+        )
         # Find client by customer_id
         billing = await db.client_billing.find_one(
             {"stripe_customer_id": stripe_customer_id},
@@ -687,18 +697,22 @@ class StripeWebhookService:
         entitlements_version = (billing_after or {}).get("entitlements_version", 1)
 
         # Update client record
+        sub_status_set = "ACTIVE" if subscription_status in ("active", "trialing") else subscription_status.upper()
         await db.clients.update_one(
             {"client_id": client_id},
             {
                 "$set": {
                     "billing_plan": new_plan_code.value,
-                    "subscription_status": "ACTIVE" if subscription_status in ("active", "trialing") else subscription_status.upper(),
+                    "subscription_status": sub_status_set,
                     "entitlement_status": entitlement_status.value,
                     "entitlements_version": entitlements_version,
                 }
             }
         )
-        
+        logger.info(
+            "HANDLER_END event.type=%s client_id=%s db_updated=subscription_status=%s billing_plan=%s entitlement_status=%s",
+            event_type, client_id, sub_status_set, new_plan_code.value, entitlement_status.value,
+        )
         # Detect upgrade/downgrade
         plan_changed = old_plan != new_plan_code.value
         is_upgrade = False
@@ -797,10 +811,12 @@ class StripeWebhookService:
     async def _handle_subscription_deleted(self, subscription: Dict, event: Dict) -> Dict:
         """Handle customer.subscription.deleted - subscription canceled."""
         db = database.get_db()
-        
         stripe_customer_id = subscription.get("customer")
         stripe_subscription_id = subscription.get("id")
-        
+        logger.info(
+            "HANDLER_START event.type=customer.subscription.deleted stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) computed_client_id=(lookup)",
+            stripe_customer_id, stripe_subscription_id,
+        )
         # Find billing record
         billing = await db.client_billing.find_one(
             {"stripe_subscription_id": stripe_subscription_id},
@@ -898,8 +914,10 @@ class StripeWebhookService:
             }
         )
         
-        logger.info(f"Subscription canceled for client {client_id} - entitlement DISABLED")
-        
+        logger.info(
+            "HANDLER_END event.type=customer.subscription.deleted client_id=%s db_updated=subscription_status=CANCELED entitlement_status=DISABLED",
+            client_id,
+        )
         return {
             "handled": True,
             "client_id": client_id,
@@ -910,14 +928,14 @@ class StripeWebhookService:
     async def _handle_invoice_paid(self, invoice: Dict, event: Dict) -> Dict:
         """Handle invoice.paid - payment successful."""
         db = database.get_db()
-        
         stripe_customer_id = invoice.get("customer")
         subscription_id = invoice.get("subscription")
-        
+        logger.info(
+            "HANDLER_START event.type=invoice.paid stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) computed_client_id=(lookup)",
+            stripe_customer_id, subscription_id,
+        )
         if not subscription_id:
-            # One-off invoice, not subscription-related
             return {"handled": False, "reason": "not_subscription_invoice"}
-        
         # Find billing record
         billing = await db.client_billing.find_one(
             {"stripe_customer_id": stripe_customer_id},
@@ -979,8 +997,10 @@ class StripeWebhookService:
             }
         )
         
-        logger.info(f"Invoice paid for client {client_id} - status: {new_status}")
-        
+        logger.info(
+            "HANDLER_END event.type=invoice.paid client_id=%s db_updated=subscription_status=%s entitlement_status=%s",
+            client_id, new_status.upper(), entitlement_status.value,
+        )
         return {
             "handled": True,
             "client_id": client_id,
@@ -996,23 +1016,21 @@ class StripeWebhookService:
         Immediately restrict side-effect actions.
         """
         db = database.get_db()
-        
         stripe_customer_id = invoice.get("customer")
         subscription_id = invoice.get("subscription")
-        
+        logger.info(
+            "HANDLER_START event.type=invoice.payment_failed stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) computed_client_id=(lookup)",
+            stripe_customer_id, subscription_id,
+        )
         if not subscription_id:
             return {"handled": False, "reason": "not_subscription_invoice"}
-        
-        # Find billing record
         billing = await db.client_billing.find_one(
             {"stripe_customer_id": stripe_customer_id},
             {"_id": 0}
         )
-        
         if not billing:
             logger.warning(f"No billing record for customer {stripe_customer_id}")
             return {"handled": False, "reason": "no_billing_record"}
-        
         client_id = billing.get("client_id")
         
         # Fetch current subscription status from Stripe
@@ -1094,8 +1112,10 @@ class StripeWebhookService:
             }
         )
         
-        logger.warning(f"Payment failed for client {client_id} - entitlement LIMITED, side effects blocked")
-        
+        logger.info(
+            "HANDLER_END event.type=invoice.payment_failed client_id=%s db_updated=subscription_status=%s entitlement_status=%s",
+            client_id, new_status.upper(), entitlement_status.value,
+        )
         return {
             "handled": True,
             "client_id": client_id,
@@ -1119,13 +1139,29 @@ class StripeWebhookService:
         }
 
 
+PROVISIONING_BACKGROUND_TIMEOUT_SECONDS = 300  # 5 minutes hard timeout
+
 async def _run_provisioning_after_webhook(job_id: str) -> None:
     """Background task: run one provisioning job after webhook (no separate worker required)."""
+    import asyncio
     try:
         from services.provisioning_runner import run_provisioning_job
-        await run_provisioning_job(job_id)
+        await asyncio.wait_for(
+            run_provisioning_job(job_id),
+            timeout=PROVISIONING_BACKGROUND_TIMEOUT_SECONDS,
+        )
+        logger.info("Background provisioning job %s finished successfully", job_id)
+    except asyncio.TimeoutError:
+        logger.error(
+            "Background provisioning job %s timed out after %s seconds (poller can retry)",
+            job_id, PROVISIONING_BACKGROUND_TIMEOUT_SECONDS,
+        )
     except Exception as e:
-        logger.warning("Background provisioning job %s failed: %s (poller can retry)", job_id, e)
+        logger.warning(
+            "Background provisioning job %s failed: %s (poller can retry)",
+            job_id, e,
+            exc_info=True,
+        )
 
 
 # Singleton instance

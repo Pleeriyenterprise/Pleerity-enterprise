@@ -25,10 +25,11 @@ const POLL_DURATION_MS = 180000;
 const BANNER_EARLY_SEC = 20;
 const BANNER_LATE_CONFIRMING_SEC = 30;
 
-/** Build steps array from setup-status response. Backend returns lowercase: paid, confirming, unpaid; completed, queued, running, failed, not_started; set, not_sent; go_to_dashboard, wait_provisioning, set_password, pay. */
+/** Build steps array from setup-status response. Backend returns payment_state; provisioning_status (NOT_STARTED|IN_PROGRESS|COMPLETED|FAILED); provisioning_state (legacy); password_state; next_action. */
 function buildSteps(data) {
   if (!data) return [];
   const ps = data.payment_state || 'unpaid';
+  const provStatus = (data.provisioning_status || data.provisioning_state || 'NOT_STARTED').toUpperCase();
   const vs = data.provisioning_state || 'not_started';
   const pw = data.password_state || 'not_sent';
   const na = data.next_action || 'pay';
@@ -36,8 +37,9 @@ function buildSteps(data) {
   const step2Status = ps === 'paid' ? 'complete' : ps === 'confirming' ? 'in_progress' : 'pending';
   const step2Label = ps === 'paid' ? 'Payment complete' : ps === 'confirming' ? 'Confirming…' : 'Action required';
 
-  const step3Status = vs === 'completed' ? 'complete' : vs === 'failed' ? 'failed' : (vs === 'queued' || vs === 'running') ? 'in_progress' : 'pending';
-  const step3Label = vs === 'completed' ? 'Complete' : vs === 'failed' ? 'Failed' : vs === 'running' ? 'In progress' : vs === 'queued' ? 'Queued' : 'Portal setup waiting…';
+  // Portal Setup: show "In progress" only when provisioning_status === IN_PROGRESS
+  const step3Status = provStatus === 'COMPLETED' || vs === 'completed' ? 'complete' : provStatus === 'FAILED' || vs === 'failed' ? 'failed' : provStatus === 'IN_PROGRESS' ? 'in_progress' : 'pending';
+  const step3Label = provStatus === 'COMPLETED' || vs === 'completed' ? 'Complete' : provStatus === 'FAILED' || vs === 'failed' ? 'Failed' : provStatus === 'IN_PROGRESS' ? 'In progress' : vs === 'queued' ? 'Queued' : 'Portal setup waiting…';
 
   const step4Status = pw === 'set' ? 'complete' : 'pending';
   const step4Label = pw === 'set' ? 'Complete' : 'Waiting';
@@ -203,7 +205,7 @@ const OnboardingStatusPage = () => {
   const elapsedSec = pollStartRef.current ? Math.floor((Date.now() - pollStartRef.current) / 1000) : 0;
   const showEarly = showEarlyBanner(status, elapsedSec);
   const showLateConfirming = showLateConfirmingBanner(status, elapsedSec);
-  const provisioningFailed = status?.provisioning_state === 'failed';
+  const provisioningFailed = (status?.provisioning_status || status?.provisioning_state) === 'FAILED' || status?.provisioning_state === 'failed';
   const nextActionMsg = NEXT_ACTION_MESSAGES[status?.next_action] || status?.next_action;
 
   if (loading && !status) {

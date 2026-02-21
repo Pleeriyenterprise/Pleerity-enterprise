@@ -76,6 +76,8 @@ def _next_action(payment_state: str, provisioning_state: str, password_state: st
         return "pay"
     if payment_state == "confirming":
         return "wait_provisioning"
+    if provisioning_state == "failed":
+        return "wait_provisioning"  # retry possible; do not show set_password
     if provisioning_state not in ("completed", "failed"):
         return "wait_provisioning"
     if password_state != "set":
@@ -108,7 +110,8 @@ async def get_setup_status(
     client = await db.clients.find_one(
         {"client_id": resolved_client_id},
         {"_id": 0, "client_id": 1, "customer_reference": 1, "billing_plan": 1,
-         "subscription_status": 1, "onboarding_status": 1, "created_at": 1, "full_name": 1},
+         "subscription_status": 1, "onboarding_status": 1, "created_at": 1, "full_name": 1,
+         "provisioning_status": 1, "provisioning_started_at": 1, "provisioning_completed_at": 1, "last_provisioning_error": 1},
     )
     if not client:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
@@ -136,6 +139,30 @@ async def get_setup_status(
     last_error = None
     if job and job.get("last_error"):
         last_error = {"code": "PROVISIONING_FAILED", "message": str(job["last_error"])}
+    elif client.get("last_provisioning_error"):
+        last_error = {"code": "PROVISIONING_FAILED", "message": str(client["last_provisioning_error"])}
+
+    # provisioning_status on client: NOT_STARTED | IN_PROGRESS | COMPLETED | FAILED
+    provisioning_status = (client.get("provisioning_status") or "NOT_STARTED").strip()
+    if not provisioning_status and job:
+        js = (job.get("status") or "").strip()
+        if js == "PAYMENT_CONFIRMED":
+            provisioning_status = "NOT_STARTED"
+        elif js in ("PROVISIONING_STARTED", "PROVISIONING_COMPLETED"):
+            provisioning_status = "IN_PROGRESS"
+        elif js == "WELCOME_EMAIL_SENT":
+            provisioning_status = "COMPLETED"
+        elif js == "FAILED":
+            provisioning_status = "FAILED"
+        else:
+            provisioning_status = "NOT_STARTED"
+    if not provisioning_status:
+        provisioning_status = "NOT_STARTED"
+
+    # portal_user_created: True if at least one portal_user exists for this client
+    portal_user_created = portal_user is not None
+    # password_reset_sent: True if welcome/setup email was sent (job reached WELCOME_EMAIL_SENT)
+    password_reset_sent = bool(job and (job.get("status") or "").strip() == "WELCOME_EMAIL_SENT")
 
     return {
         "client_id": client["client_id"],
@@ -143,7 +170,11 @@ async def get_setup_status(
         "client_name": client.get("full_name"),
         "billing_plan": client.get("billing_plan"),
         "payment_state": payment_state,
+        "subscription_status": (client.get("subscription_status") or "").strip() or None,
         "provisioning_state": provisioning_state,
+        "provisioning_status": provisioning_status,
+        "portal_user_created": portal_user_created,
+        "password_reset_sent": password_reset_sent,
         "password_state": password_state,
         "next_action": next_action,
         "last_error": last_error,

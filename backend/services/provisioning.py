@@ -127,9 +127,17 @@ class ProvisioningService:
             env = os.getenv("ENVIRONMENT", "development")
             if env == "production" and client["subscription_status"] != SubscriptionStatus.ACTIVE.value:
                 return False, "Subscription not active", None
+            now_utc = datetime.now(timezone.utc)
             await db.clients.update_one(
                 {"client_id": client_id},
-                {"$set": {"onboarding_status": OnboardingStatus.PROVISIONING.value}, "$unset": {"last_invite_error": ""}}
+                {
+                    "$set": {
+                        "onboarding_status": OnboardingStatus.PROVISIONING.value,
+                        "provisioning_status": "IN_PROGRESS",
+                        "provisioning_started_at": now_utc,
+                    },
+                    "$unset": {"last_invite_error": "", "last_provisioning_error": ""},
+                }
             )
             await create_audit_log(action=AuditAction.PROVISIONING_STARTED, client_id=client_id)
             properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(100)
@@ -169,9 +177,17 @@ class ProvisioningService:
                 user_id = portal_user.portal_user_id
             else:
                 user_id = existing_user["portal_user_id"]
+            now_utc = datetime.now(timezone.utc)
             await db.clients.update_one(
                 {"client_id": client_id},
-                {"$set": {"onboarding_status": OnboardingStatus.PROVISIONED.value}}
+                {
+                    "$set": {
+                        "onboarding_status": OnboardingStatus.PROVISIONED.value,
+                        "provisioning_status": "COMPLETED",
+                        "provisioning_completed_at": now_utc,
+                    },
+                    "$unset": {"last_provisioning_error": ""},
+                }
             )
             await create_audit_log(
                 action=AuditAction.PROVISIONING_COMPLETE,
@@ -192,7 +208,7 @@ class ProvisioningService:
                 logger.warning(f"Failed to emit enablement event: {enable_err}")
             return True, "OK", user_id
         except Exception as e:
-            logger.error(f"Provisioning core failed for client {client_id}: {e}")
+            logger.error(f"Provisioning core failed for client {client_id}: {e}", exc_info=True)
             await self._fail_provisioning(client_id, str(e))
             return False, str(e), None
 
@@ -524,10 +540,16 @@ class ProvisioningService:
     async def _fail_provisioning(self, client_id: str, reason: str):
         """Mark provisioning as failed."""
         db = database.get_db()
-        
+        now_utc = datetime.now(timezone.utc)
         await db.clients.update_one(
             {"client_id": client_id},
-            {"$set": {"onboarding_status": OnboardingStatus.FAILED.value}}
+            {
+                "$set": {
+                    "onboarding_status": OnboardingStatus.FAILED.value,
+                    "provisioning_status": "FAILED",
+                    "last_provisioning_error": (reason or "")[:1000],
+                }
+            }
         )
         
         await create_audit_log(

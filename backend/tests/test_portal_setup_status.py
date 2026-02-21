@@ -116,16 +116,20 @@ def test_setup_status_next_action_dashboard(client):
         "customer_reference": "PLE-CVP-2026-00001",
         "subscription_status": "ACTIVE",
         "onboarding_status": "PROVISIONED",
+        "provisioning_status": "COMPLETED",
         "created_at": "2026-01-01T00:00:00Z",
     }
     mock_portal = {"password_status": "SET"}
+    mock_job = {"status": "WELCOME_EMAIL_SENT"}
     mock_db = _make_db(
         client=mock_client,
         portal_user=mock_portal,
+        job=mock_job,
         properties_count=2,
         property_items=[{"property_id": "p1"}, {"property_id": "p2"}],
     )
     mock_db.requirements.count_documents = AsyncMock(return_value=5)
+    mock_db.provisioning_jobs.find_one = AsyncMock(return_value=mock_job)
 
     with patch("routes.portal.database.get_db", return_value=mock_db), \
          patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
@@ -134,7 +138,11 @@ def test_setup_status_next_action_dashboard(client):
     assert response.status_code == 200
     data = response.json()
     assert data["payment_state"] == "paid"
+    assert data["subscription_status"] == "ACTIVE"
     assert data["provisioning_state"] == "completed"
+    assert data["provisioning_status"] == "COMPLETED"
+    assert data["portal_user_created"] is True
+    assert data["password_reset_sent"] is True
     assert data["password_state"] == "set"
     assert data["next_action"] == "go_to_dashboard"
     assert data["properties_count"] == 2
