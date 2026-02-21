@@ -185,6 +185,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [triggeringProvision, setTriggeringProvision] = useState(false);
   const [resendingPassword, setResendingPassword] = useState(false);
+  const [lastResendActivationLink, setLastResendActivationLink] = useState(null);
   const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState(null);
   const [scoreHistoryData, setScoreHistoryData] = useState(null);
@@ -229,6 +230,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
       setScoreHistoryData(null);
       setScoreHistoryError(null);
       setFullHistoryModal(null);
+      setLastResendActivationLink(null);
     }
   }, [clientId, fetchClientData]);
 
@@ -284,15 +286,29 @@ const ClientDetailModal = ({ clientId, onClose }) => {
     if (!window.confirm('Resend password setup link? This will revoke any existing tokens.')) return;
     
     setResendingPassword(true);
+    setLastResendActivationLink(null);
     try {
-      await api.post(`/admin/clients/${clientId}/resend-password-setup`);
+      const res = await api.post(`/admin/clients/${clientId}/resend-password-setup`);
       toast.success('Password setup link resent');
+      if (res?.data?.activation_link) {
+        setLastResendActivationLink(res.data.activation_link);
+      }
       fetchClientData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to resend password link');
+      const detail = error.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (detail?.message || 'Failed to resend password link');
+      toast.error(msg);
     } finally {
       setResendingPassword(false);
     }
+  };
+
+  const handleCopyActivationLink = () => {
+    if (!lastResendActivationLink) return;
+    navigator.clipboard.writeText(lastResendActivationLink).then(
+      () => toast.success('Activation link copied to clipboard'),
+      () => toast.error('Copy failed')
+    );
   };
 
   const handleSendPaymentLink = async () => {
@@ -702,15 +718,28 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                     {triggeringProvision ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
                     Trigger Provisioning
                   </button>
-                  <button
-                    onClick={handleResendPassword}
-                    disabled={resendingPassword}
-                    className="flex items-center justify-center gap-2 p-4 bg-midnight-blue text-white rounded-lg hover:bg-blue-900 disabled:opacity-50 transition-colors"
-                    data-testid="resend-password-btn"
-                  >
-                    {resendingPassword ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
-                    Resend Password Link
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={handleResendPassword}
+                      disabled={resendingPassword}
+                      className="flex items-center justify-center gap-2 p-4 bg-midnight-blue text-white rounded-lg hover:bg-blue-900 disabled:opacity-50 transition-colors"
+                      data-testid="resend-password-btn"
+                    >
+                      {resendingPassword ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
+                      Resend Password Link
+                    </button>
+                    {lastResendActivationLink && (
+                      <button
+                        type="button"
+                        onClick={handleCopyActivationLink}
+                        className="flex items-center justify-center gap-2 p-2 text-sm text-electric-teal hover:underline border border-electric-teal/50 rounded-lg"
+                        data-testid="copy-activation-link-btn"
+                      >
+                        <Copy className="w-4 h-4" />
+                        Copy link (fallback if email did not arrive)
+                      </button>
+                    )}
+                  </div>
                   {showPaymentLinkActions && (
                     <div className="col-span-2 flex flex-col gap-2">
                       <button

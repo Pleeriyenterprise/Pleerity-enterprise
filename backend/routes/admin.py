@@ -10,6 +10,7 @@ import logging
 import uuid
 import json
 import os
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
@@ -1123,10 +1124,12 @@ async def resend_password_setup(request: Request, client_id: str):
             base_url = get_frontend_base_url()
         except ValueError as e:
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={"error_code": "APP_URL_NOT_CONFIGURED", "message": str(e)},
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"error_code": "FRONTEND_PUBLIC_URL_MISSING", "message": str(e)},
             )
         setup_link = f"{base_url}/set-password?token={raw_token}"
+        activation_link_domain = urlparse(setup_link).netloc or ""
+        client_email = (client.get("email") or portal_user.get("auth_email") or "").strip()
         if not setup_link:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1157,24 +1160,115 @@ async def resend_password_setup(request: Request, client_id: str):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=result.details or {"error_code": "ACCOUNT_NOT_READY", "message": result.block_reason or "Blocked"},
             )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        audit_meta_base = {
+            "client_id": client_id,
+            "portal_user_id": portal_user["portal_user_id"],
+            "email": client_email[:3] + "***@***" if len(client_email) > 6 else "***",
+            "activation_link_domain": activation_link_domain,
+            "status": None,
+        }
+
+        if result.outcome == "blocked":
+            err_msg = result.block_reason or "Email send blocked (e.g. provider not configured)."
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {
+                    "$set": {
+                        "activation_email_status": "FAILED",
+                        "activation_email_sent_at": now_iso,
+                        "activation_email_error": err_msg[:1000],
+                        "activation_link_last_url": setup_link,
+                    }
+                },
+            )
+            await create_audit_log(
+                action=AuditAction.ACTIVATION_EMAIL_RESEND,
+                actor_id=user["portal_user_id"],
+                client_id=client_id,
+                metadata={**audit_meta_base, "status": "FAILED", "error": err_msg},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"error_code": "EMAIL_NOT_CONFIGURED", "message": err_msg},
+            )
         if result.outcome == "failed":
+            err_msg = (result.error_message or "Send failed")[:1000]
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {
+                    "$set": {
+                        "activation_email_status": "FAILED",
+                        "activation_email_sent_at": now_iso,
+                        "activation_email_error": err_msg,
+                        "activation_link_last_url": setup_link,
+                    }
+                },
+            )
+            await create_audit_log(
+                action=AuditAction.ACTIVATION_EMAIL_RESEND,
+                actor_id=user["portal_user_id"],
+                client_id=client_id,
+                metadata={
+                    **audit_meta_base,
+                    "status": "FAILED",
+                    "error": err_msg,
+                    "provider_message_id": result.message_id,
+                },
+            )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail={
-                    "error_code": "EMAIL_SEND_FAILED",
-                    "template": EmailTemplateAlias.PASSWORD_SETUP.value,
-                    "message_id": result.message_id,
+                    "error_code": "EMAIL_PROVIDER_REJECTED",
+                    "message": result.error_message or err_msg,
                 },
             )
-        
+        if result.outcome not in ("sent", "duplicate_ignored"):
+            err_msg = "Unexpected outcome"
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {"$set": {"activation_email_status": "FAILED", "activation_email_sent_at": now_iso, "activation_email_error": err_msg, "activation_link_last_url": setup_link}},
+            )
+            await create_audit_log(
+                action=AuditAction.ACTIVATION_EMAIL_RESEND,
+                actor_id=user["portal_user_id"],
+                client_id=client_id,
+                metadata={**audit_meta_base, "status": "FAILED", "error": err_msg},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"error_code": "EMAIL_SEND_FAILED", "message": err_msg},
+            )
+
+        # Success (sent or duplicate_ignored)
+        await db.clients.update_one(
+            {"client_id": client_id},
+            {
+                "$set": {
+                    "activation_email_status": "SENT",
+                    "activation_email_sent_at": now_iso,
+                    "activation_link_last_url": setup_link,
+                },
+                "$unset": {"activation_email_error": ""},
+            },
+        )
+        provider_message_id = (result.details or {}).get("provider_message_id") or result.message_id
         await create_audit_log(
-            action=AuditAction.PORTAL_INVITE_RESENT,
+            action=AuditAction.ACTIVATION_EMAIL_RESEND,
             actor_id=user["portal_user_id"],
             client_id=client_id,
-            metadata={"admin_email": user["email"]}
+            metadata={
+                **audit_meta_base,
+                "status": "SUCCESS",
+                "provider_message_id": provider_message_id,
+            },
         )
-        
-        return {"message": "Password setup link resent"}
+        return {
+            "message": "Password setup link resent",
+            "activation_link": setup_link,
+            "provider_message_id": provider_message_id,
+        }
     
     except HTTPException:
         raise

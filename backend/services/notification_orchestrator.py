@@ -489,9 +489,10 @@ class NotificationOrchestrator:
         recipient: str,
     ) -> NotificationResult:
         if not self._postmark_client:
+            err_msg = "POSTMARK_SERVER_TOKEN not set"
             await db.message_logs.update_one(
                 {"message_id": message_id},
-                {"$set": {"status": "BLOCKED_PROVIDER_NOT_CONFIGURED", "error_message": "POSTMARK_SERVER_TOKEN not set"}},
+                {"$set": {"status": "FAILED", "error_message": err_msg}},
             )
             await create_audit_log(
                 action=AuditAction.NOTIFICATION_PROVIDER_NOT_CONFIGURED,
