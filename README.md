@@ -194,6 +194,11 @@ All sends logged to `MessageLog` collection.
 
 **Where to set env vars:** Backend (Render): Dashboard → Service → Environment. Frontend (Vercel): Project → Settings → Environment Variables. Recommended future domain: `https://portal.pleerityenterprise.co.uk`.
 
+**If activation links still go to localhost or don’t work after deploy:**  
+1. **Backend (Render):** Set `PUBLIC_APP_URL=https://<your-actual-frontend-domain>` (no trailing slash). Set `ENVIRONMENT=production` so production rejects localhost. Save and **redeploy** the backend.  
+2. **Frontend (Vercel):** Set `REACT_APP_BACKEND_URL=https://<your-backend-url>`. Trigger a **new deploy** (env vars are baked in at build time).  
+3. Ensure `CORS_ORIGINS` on the backend includes your frontend origin.
+
 **Backend (Render / local `.env`):**
 ```bash
 MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net/DB_NAME
