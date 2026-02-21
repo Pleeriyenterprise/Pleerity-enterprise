@@ -1,11 +1,20 @@
 """
 Canonical public frontend base URL for activation/reset links and redirects.
-Use get_public_app_url() so emails never point to localhost in production.
+Use get_frontend_base_url() for ALL email links (set-password, activation). No other code should build frontend links directly.
 """
 import os
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def get_frontend_base_url() -> str:
+    """
+    Single helper for frontend base URL used in email links (set-password, activation).
+    Reads FRONTEND_PUBLIC_URL (then PUBLIC_APP_URL, FRONTEND_URL, VERCEL_URL, RENDER_EXTERNAL_URL).
+    Strips trailing slash. Raises clear error if missing when building email links (except local dev).
+    """
+    return get_public_app_url(for_email_links=True)
 
 
 def get_public_app_url(for_email_links: bool = False) -> str:

@@ -194,6 +194,12 @@ All sends logged to `MessageLog` collection.
 
 **Where to set env vars:** Backend (Render): Dashboard → Service → Environment. Frontend (Vercel): Project → Settings → Environment Variables. Recommended future domain: `https://portal.pleerityenterprise.co.uk`.
 
+**Env checklist (activation links + API):**
+| Platform | Variable | Required |
+|----------|----------|----------|
+| **Render** (backend) | `FRONTEND_PUBLIC_URL` | Must be set so activation/reset links use your frontend domain (not localhost or backend). |
+| **Vercel** (frontend) | `REACT_APP_BACKEND_URL` | Must be set so the app calls the correct API; rebuild after changing. |
+
 **If activation links still go to localhost or don’t work after deploy:**  
 1. **Backend (Render):** Set `FRONTEND_PUBLIC_URL=https://<your-actual-frontend-domain>` (or `PUBLIC_APP_URL`; no trailing slash). Set `ENVIRONMENT=production` so production rejects localhost. Save and **redeploy** the backend.  
 2. **Frontend (Vercel):** Set `REACT_APP_BACKEND_URL=https://<your-backend-url>`. Trigger a **new deploy** (env vars are baked in at build time).  

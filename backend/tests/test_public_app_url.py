@@ -4,6 +4,27 @@ import pytest
 from unittest.mock import patch
 
 
+def test_get_frontend_base_url_uses_frontend_public_url():
+    """Generated activation link base must start with FRONTEND_PUBLIC_URL when set."""
+    from utils.public_app_url import get_frontend_base_url
+
+    with patch.dict(
+        os.environ,
+        {
+            "FRONTEND_PUBLIC_URL": "https://pleerity-enterprise-9jjg.vercel.app",
+            "PUBLIC_APP_URL": "https://other.example.com",
+        },
+        clear=False,
+    ):
+        base = get_frontend_base_url()
+    assert base.startswith("https://pleerity-enterprise-9jjg.vercel.app")
+    assert "other.example.com" not in base
+    assert base.rstrip("/") == base
+    # Simulated link format
+    link = f"{base}/set-password?token=***"
+    assert link.startswith("https://pleerity-enterprise-9jjg.vercel.app")
+
+
 def test_get_public_app_url_prefers_frontend_public_url():
     """When FRONTEND_PUBLIC_URL is set, activation link base uses it (single source of truth for emails)."""
     from utils.public_app_url import get_public_app_url

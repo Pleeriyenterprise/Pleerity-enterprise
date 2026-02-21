@@ -310,7 +310,7 @@ async def resend_activation(
     await db.clients.update_one({"client_id": resolved_client_id}, payload)
     if not ok:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=act_err or act_status or "Failed to send activation email",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error_code": "EMAIL_SEND_FAILED", "message": act_err or act_status or "Failed to send activation email"},
         )
     return {"message": "Activation email sent"}

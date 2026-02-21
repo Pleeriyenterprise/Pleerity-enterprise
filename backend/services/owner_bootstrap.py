@@ -187,8 +187,8 @@ async def run_bootstrap_owner() -> dict:
         }
         await db.password_tokens.insert_one(token_doc)
         try:
-            from utils.public_app_url import get_public_app_url
-            base_url = get_public_app_url(for_email_links=True)
+            from utils.public_app_url import get_frontend_base_url
+            base_url = get_frontend_base_url()
             setup_link = f"{base_url}/set-password?token={raw_token}"
         except ValueError as e:
             logger.warning("Bootstrap owner: skipping invite email (no public app URL): %s", e)

@@ -543,13 +543,14 @@ class ProvisioningService:
 
         await db.password_tokens.insert_one(doc)
 
-        from utils.public_app_url import get_public_app_url
+        from utils.public_app_url import get_frontend_base_url
         try:
-            base_url = get_public_app_url(for_email_links=True)
+            base_url = get_frontend_base_url()
         except ValueError as e:
             logger.error("Activation link not sent: %s", e)
             return False, "FAILED", str(e)[:500]
         setup_link = f"{base_url.rstrip('/')}/set-password?token={raw_token}"
+        logger.info("Activation email link generated base=%s path=/set-password?token=***", base_url.rstrip("/"))
 
         client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "customer_reference": 1})
         crn = (client or {}).get("customer_reference") or ""

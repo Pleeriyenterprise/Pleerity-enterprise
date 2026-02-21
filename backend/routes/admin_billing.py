@@ -635,7 +635,7 @@ async def resend_password_setup(request: Request, client_id: str):
             )
 
         from auth import generate_secure_token, hash_token
-        from utils.public_app_url import get_public_app_url
+        from utils.public_app_url import get_frontend_base_url
 
         # Use same token flow as /set-password: store hashed token in password_tokens
         await db.password_tokens.update_many(
@@ -660,7 +660,7 @@ async def resend_password_setup(request: Request, client_id: str):
         await db.password_tokens.insert_one(doc)
 
         try:
-            base_url = get_public_app_url(for_email_links=True)
+            base_url = get_frontend_base_url()
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
