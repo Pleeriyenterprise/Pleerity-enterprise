@@ -18,6 +18,7 @@ const SetPasswordPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorIsFromServer, setErrorIsFromServer] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const validatePassword = () => {
@@ -42,15 +43,18 @@ const SetPasswordPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setErrorIsFromServer(false);
 
     const validationError = validatePassword();
     if (validationError) {
       setError(validationError);
+      setErrorIsFromServer(false);
       return;
     }
 
     if (!token) {
       setError('Invalid password setup link');
+      setErrorIsFromServer(false);
       return;
     }
 
@@ -69,6 +73,7 @@ const SetPasswordPage = () => {
       }, 1500);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to set password');
+      setErrorIsFromServer(true);
     } finally {
       setLoading(false);
     }
@@ -129,10 +134,12 @@ const SetPasswordPage = () => {
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
-                <p className="text-sm text-gray-600 mt-2">
-                  Need a new link? <Link to="/onboarding/status" className="text-electric-teal hover:underline">Go to onboarding status</Link> to resend the activation email, or contact support at{' '}
-                  <a href="mailto:info@pleerityenterprise.co.uk" className="text-electric-teal hover:underline">info@pleerityenterprise.co.uk</a>.
-                </p>
+                {errorIsFromServer && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Need a new link? <Link to="/onboarding/status" className="text-electric-teal hover:underline">Go to onboarding status</Link> to resend the activation email, or contact support at{' '}
+                    <a href="mailto:info@pleerityenterprise.co.uk" className="text-electric-teal hover:underline">info@pleerityenterprise.co.uk</a>.
+                  </p>
+                )}
               </>
             )}
 
