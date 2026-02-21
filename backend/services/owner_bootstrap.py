@@ -186,23 +186,29 @@ async def run_bootstrap_owner() -> dict:
             "created_at": now,
         }
         await db.password_tokens.insert_one(token_doc)
-        frontend_url = os.getenv("FRONTEND_URL", "")
-        setup_link = f"{frontend_url}/set-password?token={raw_token}" if frontend_url else ""
+        try:
+            from utils.public_app_url import get_public_app_url
+            base_url = get_public_app_url(for_email_links=True)
+            setup_link = f"{base_url}/set-password?token={raw_token}"
+        except ValueError as e:
+            logger.warning("Bootstrap owner: skipping invite email (no public app URL): %s", e)
+            setup_link = ""
         try:
             from services.notification_orchestrator import notification_orchestrator
-            await notification_orchestrator.send(
-                template_key="ADMIN_INVITE",
-                client_id=None,
-                context={
-                    "recipient": email,
-                    "admin_name": email.split("@")[0],
-                    "inviter_name": "System",
-                    "setup_link": setup_link,
-                    "company_name": "Pleerity Enterprise Ltd",
-                },
-                idempotency_key=f"{portal_user_id}_ADMIN_INVITE",
-                event_type="owner_bootstrap",
-            )
+            if setup_link:
+                await notification_orchestrator.send(
+                    template_key="ADMIN_INVITE",
+                    client_id=None,
+                    context={
+                        "recipient": email,
+                        "admin_name": email.split("@")[0],
+                        "inviter_name": "System",
+                        "setup_link": setup_link,
+                        "company_name": "Pleerity Enterprise Ltd",
+                    },
+                    idempotency_key=f"{portal_user_id}_ADMIN_INVITE",
+                    event_type="owner_bootstrap",
+                )
         except Exception as e:
             logger.warning("Bootstrap owner: could not send invite email: %s", e)
 

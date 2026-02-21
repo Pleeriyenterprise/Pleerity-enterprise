@@ -81,8 +81,9 @@ async def resend_invite(email: str) -> bool:
     await db.password_tokens.insert_one(doc)
 
     from services.notification_orchestrator import notification_orchestrator
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    setup_link = f"{frontend_url}/set-password?token={raw_token}"
+    from utils.public_app_url import get_public_app_url
+    base_url = get_public_app_url(for_email_links=True)
+    setup_link = f"{base_url}/set-password?token={raw_token}"
     idempotency_key = f"{client_id}_WELCOME_EMAIL_script_{raw_token[:16]}"
     await notification_orchestrator.send(
         template_key="WELCOME_EMAIL",

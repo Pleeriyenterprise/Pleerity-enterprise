@@ -562,13 +562,12 @@ async def create_billing_portal_link(request: Request, client_id: str):
                 detail="Client has no Stripe customer ID"
             )
         
-        # Get return URL
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        
-        # Create portal session
+        # Get return URL (public frontend base)
+        from utils.public_app_url import get_public_app_url
+        base_url = get_public_app_url(for_email_links=False)
         portal_session = stripe.billing_portal.Session.create(
             customer=stripe_customer_id,
-            return_url=f"{frontend_url}/app/billing",
+            return_url=f"{base_url}/app/billing",
         )
         
         # Audit log
@@ -649,8 +648,15 @@ async def resend_password_setup(request: Request, client_id: str):
             }
         )
         
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        setup_url = f"{frontend_url}/setup-password?token={setup_token}"
+        from utils.public_app_url import get_public_app_url
+        try:
+            base_url = get_public_app_url(for_email_links=True)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"error_code": "APP_URL_NOT_CONFIGURED", "message": str(e)},
+            )
+        setup_url = f"{base_url}/set-password?token={setup_token}"
         user_email = (portal_user.get("auth_email") or portal_user.get("email") or "").strip()
         if not user_email or not setup_url:
             raise HTTPException(

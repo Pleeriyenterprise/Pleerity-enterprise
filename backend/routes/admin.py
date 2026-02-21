@@ -1118,9 +1118,15 @@ async def resend_password_setup(request: Request, client_id: str):
                 doc[key] = doc[key].isoformat()
         
         await db.password_tokens.insert_one(doc)
-        
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        setup_link = f"{frontend_url}/set-password?token={raw_token}"
+        from utils.public_app_url import get_public_app_url
+        try:
+            base_url = get_public_app_url(for_email_links=True)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"error_code": "APP_URL_NOT_CONFIGURED", "message": str(e)},
+            )
+        setup_link = f"{base_url}/set-password?token={raw_token}"
         if not setup_link:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -2560,12 +2566,10 @@ async def get_password_setup_link(request: Request, client_id: str, generate_new
                 detail="Portal user not found - client may not be provisioned"
             )
         
-        import os
         from auth import generate_secure_token, hash_token
         from models import PasswordToken
-        
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        
+        from utils.public_app_url import get_public_app_url
+        base_url = get_public_app_url(for_email_links=False)
         # Check for existing valid token (not used, not revoked, not expired)
         existing_token = None
         if not generate_new:
@@ -2630,9 +2634,7 @@ async def get_password_setup_link(request: Request, client_id: str, generate_new
                 doc[key] = doc[key].isoformat()
         
         await db.password_tokens.insert_one(doc)
-        
-        setup_link = f"{frontend_url}/set-password?token={raw_token}"
-        
+        setup_link = f"{base_url}/set-password?token={raw_token}"
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
@@ -2868,9 +2870,12 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
         logger.info(f"Generated password token for admin: {invite_data.email}")
         
         from services.notification_orchestrator import notification_orchestrator
-        import os
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        setup_link = f"{frontend_url}/set-password?token={raw_token}"
+        from utils.public_app_url import get_public_app_url
+        try:
+            base_url = get_public_app_url(for_email_links=True)
+        except ValueError as e:
+            raise HTTPException(status_code=503, detail={"error_code": "APP_URL_NOT_CONFIGURED", "message": str(e)})
+        setup_link = f"{base_url}/set-password?token={raw_token}"
         idempotency_key = f"{portal_user_id}_ADMIN_INVITE"
         await notification_orchestrator.send(
             template_key="ADMIN_INVITE",
@@ -3143,10 +3148,13 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
         
         await db.password_tokens.insert_one(token_doc)
         
-        import os
         from services.notification_orchestrator import notification_orchestrator
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        setup_link = f"{frontend_url}/set-password?token={raw_token}"
+        from utils.public_app_url import get_public_app_url
+        try:
+            base_url = get_public_app_url(for_email_links=True)
+        except ValueError as e:
+            raise HTTPException(status_code=503, detail={"error_code": "APP_URL_NOT_CONFIGURED", "message": str(e)})
+        setup_link = f"{base_url}/set-password?token={raw_token}"
         admin_name = target_admin.get("full_name", target_admin.get("auth_email", "Admin"))
         idempotency_key = f"{portal_user_id}_ADMIN_INVITE"
         await notification_orchestrator.send(

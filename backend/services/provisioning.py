@@ -542,8 +542,13 @@ class ProvisioningService:
 
         await db.password_tokens.insert_one(doc)
 
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        setup_link = f"{frontend_url}/set-password?token={raw_token}"
+        from utils.public_app_url import get_public_app_url
+        try:
+            base_url = get_public_app_url(for_email_links=True)
+        except ValueError as e:
+            logger.error("Activation link not sent: %s", e)
+            return False, "FAILED", str(e)[:500]
+        setup_link = f"{base_url.rstrip('/')}/set-password?token={raw_token}"
 
         from services.notification_orchestrator import notification_orchestrator
         result = await notification_orchestrator.send(

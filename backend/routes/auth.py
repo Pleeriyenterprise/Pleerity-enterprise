@@ -175,30 +175,40 @@ async def login(request: Request, credentials: LoginRequest):
             detail="Login failed"
         )
 
+def _request_id(request: Request) -> str:
+    return getattr(request.state, "request_id", None) or __import__("uuid").uuid4().hex[:12]
+
+
 @router.post("/set-password")
 async def set_password(request: Request, data: SetPasswordRequest):
     """Set password using token (production-safe)."""
     db = database.get_db()
-    
+    request_id = _request_id(request)
+    token_prefix = (data.token[:6] if data.token and len(data.token) >= 6 else "short")
+
     try:
         # Hash the provided token
         token_hash_value = hash_token(data.token)
-        
+
         # Find token
         password_token = await db.password_tokens.find_one(
             {"token_hash": token_hash_value},
             {"_id": 0}
         )
-        
+
         if not password_token:
+            logger.warning(
+                "set_password invalid token request_id=%s token_prefix=%s reason=unknown",
+                request_id, token_prefix
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired password setup link"
             )
-        
+
         # Validate token
         now = datetime.now(timezone.utc)
-        
+
         # Handle both string and datetime objects, ensure timezone-aware
         expires_at_raw = password_token["expires_at"]
         if isinstance(expires_at_raw, str):
@@ -211,20 +221,32 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 expires_at = expires_at_raw
         else:
             expires_at = expires_at_raw
-        
+
         if password_token.get("used_at"):
+            logger.warning(
+                "set_password invalid token request_id=%s token_prefix=%s reason=used",
+                request_id, token_prefix
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="This password setup link has already been used"
             )
-        
+
         if password_token.get("revoked_at"):
+            logger.warning(
+                "set_password invalid token request_id=%s token_prefix=%s reason=revoked",
+                request_id, token_prefix
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="This password setup link has been revoked"
             )
-        
+
         if now > expires_at:
+            logger.warning(
+                "set_password invalid token request_id=%s token_prefix=%s reason=expired",
+                request_id, token_prefix
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="This password setup link has expired"
