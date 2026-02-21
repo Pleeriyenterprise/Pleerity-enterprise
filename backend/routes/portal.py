@@ -34,51 +34,53 @@ def _parse_created(created) -> float | None:
 
 
 def _payment_state(client: dict, job_exists: bool) -> str:
-    """UNPAID | CONFIRMING | PAID."""
+    """Returns: unpaid | confirming | paid | failed. paid only from webhook-driven subscription_status."""
     sub = (client.get("subscription_status") or "").strip().upper()
     if sub in PAID_SUBSCRIPTION_STATUSES:
-        return "PAID"
+        return "paid"
     age_sec = _parse_created(client.get("created_at"))
     if age_sec is not None and (job_exists or (0 <= age_sec < 600)):
-        return "CONFIRMING"
-    return "UNPAID"
+        return "confirming"
+    return "unpaid"
 
 
 def _provisioning_state(client: dict, job: dict | None) -> str:
-    """NOT_STARTED | RUNNING | PROVISIONED | FAILED."""
+    """Returns: not_started | queued | running | completed | failed."""
     onb = (client.get("onboarding_status") or "").strip()
     if onb == "PROVISIONED":
-        return "PROVISIONED"
+        return "completed"
     if onb == "FAILED":
-        return "FAILED"
+        return "failed"
     if job:
         js = (job.get("status") or "").strip()
         if js == "FAILED":
-            return "FAILED"
+            return "failed"
+        if js == "PAYMENT_CONFIRMED":
+            return "queued"
         if js in PROVISIONING_RUNNING_STATUSES or onb == "PROVISIONING":
-            return "RUNNING"
-    return "NOT_STARTED"
+            return "running"
+    return "not_started"
 
 
 def _password_state(portal_user: dict | None) -> str:
-    """NOT_SET | SET."""
+    """Returns: not_sent | sent | set."""
     if not portal_user:
-        return "NOT_SET"
+        return "not_sent"
     ps = (portal_user.get("password_status") or "").strip().upper()
-    return "SET" if ps == "SET" else "NOT_SET"
+    return "set" if ps == "SET" else "not_sent"
 
 
 def _next_action(payment_state: str, provisioning_state: str, password_state: str) -> str:
-    """PAYMENT | WAIT_PROVISIONING | SET_PASSWORD | DASHBOARD."""
-    if payment_state == "UNPAID":
-        return "PAYMENT"
-    if payment_state == "CONFIRMING":
-        return "WAIT_PROVISIONING"
-    if provisioning_state != "PROVISIONED":
-        return "WAIT_PROVISIONING"
-    if password_state == "NOT_SET":
-        return "SET_PASSWORD"
-    return "DASHBOARD"
+    """Returns: pay | wait_provisioning | set_password | go_to_dashboard."""
+    if payment_state == "unpaid":
+        return "pay"
+    if payment_state == "confirming":
+        return "wait_provisioning"
+    if provisioning_state not in ("completed", "failed"):
+        return "wait_provisioning"
+    if password_state != "set":
+        return "set_password"
+    return "go_to_dashboard"
 
 
 @router.get("/setup-status")

@@ -36,7 +36,7 @@ def client():
 
 
 def test_setup_status_next_action_payment(client):
-    """UNPAID -> next_action PAYMENT."""
+    """unpaid -> next_action pay."""
     mock_client = {
         "client_id": "c1",
         "customer_reference": "PLE-CVP-2026-00001",
@@ -54,15 +54,15 @@ def test_setup_status_next_action_payment(client):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["payment_state"] == "UNPAID"
-    assert data["next_action"] == "PAYMENT"
+    assert data["payment_state"] == "unpaid"
+    assert data["next_action"] == "pay"
     assert data["client_name"] == "Test Client"
     assert data["properties_count"] == 0
     assert data["requirements_count"] == 0
 
 
 def test_setup_status_next_action_wait_provisioning(client):
-    """CONFIRMING / not yet provisioned -> next_action WAIT_PROVISIONING."""
+    """confirming / not yet provisioned -> next_action wait_provisioning; job PAYMENT_CONFIRMED -> queued."""
     mock_client = {
         "client_id": "c1",
         "customer_reference": "PLE-CVP-2026-00001",
@@ -80,13 +80,13 @@ def test_setup_status_next_action_wait_provisioning(client):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["payment_state"] in ("CONFIRMING", "PAID")  # depends on time
-    assert data["provisioning_state"] == "RUNNING"
-    assert data["next_action"] == "WAIT_PROVISIONING"
+    assert data["payment_state"] in ("confirming", "paid")  # depends on time
+    assert data["provisioning_state"] == "queued"  # PAYMENT_CONFIRMED -> queued
+    assert data["next_action"] == "wait_provisioning"
 
 
 def test_setup_status_next_action_set_password(client):
-    """Provisioned but password NOT_SET -> next_action SET_PASSWORD."""
+    """Provisioned but password not set -> next_action set_password."""
     mock_client = {
         "client_id": "c1",
         "customer_reference": "PLE-CVP-2026-00001",
@@ -103,14 +103,14 @@ def test_setup_status_next_action_set_password(client):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["payment_state"] == "PAID"
-    assert data["provisioning_state"] == "PROVISIONED"
-    assert data["password_state"] == "NOT_SET"
-    assert data["next_action"] == "SET_PASSWORD"
+    assert data["payment_state"] == "paid"
+    assert data["provisioning_state"] == "completed"
+    assert data["password_state"] == "not_sent"
+    assert data["next_action"] == "set_password"
 
 
 def test_setup_status_next_action_dashboard(client):
-    """Provisioned and password SET -> next_action DASHBOARD."""
+    """Provisioned and password set -> next_action go_to_dashboard."""
     mock_client = {
         "client_id": "c1",
         "customer_reference": "PLE-CVP-2026-00001",
@@ -133,16 +133,16 @@ def test_setup_status_next_action_dashboard(client):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["payment_state"] == "PAID"
-    assert data["provisioning_state"] == "PROVISIONED"
-    assert data["password_state"] == "SET"
-    assert data["next_action"] == "DASHBOARD"
+    assert data["payment_state"] == "paid"
+    assert data["provisioning_state"] == "completed"
+    assert data["password_state"] == "set"
+    assert data["next_action"] == "go_to_dashboard"
     assert data["properties_count"] == 2
     assert data["requirements_count"] == 5
 
 
 def test_setup_status_provisioning_failed(client):
-    """provisioning_state FAILED -> last_error present when job has last_error."""
+    """provisioning_state failed -> last_error present when job has last_error."""
     mock_client = {
         "client_id": "c1",
         "subscription_status": "ACTIVE",
@@ -159,8 +159,8 @@ def test_setup_status_provisioning_failed(client):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["provisioning_state"] == "FAILED"
-    assert data["next_action"] == "WAIT_PROVISIONING"  # still wait (retry possible)
+    assert data["provisioning_state"] == "failed"
+    assert data["next_action"] == "wait_provisioning"  # still wait (retry possible)
     assert data.get("last_error") is not None
     assert "PROVISIONING_FAILED" in str(data.get("last_error", {}))
 

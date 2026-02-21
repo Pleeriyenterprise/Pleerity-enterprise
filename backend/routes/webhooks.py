@@ -78,19 +78,20 @@ async def _handle_stripe_webhook(request: Request, stripe_signature: str = None)
     """
     try:
         payload = await request.body()
-        
+
         success, message, details = await stripe_webhook_service.process_webhook(
             payload=payload,
             signature=stripe_signature or ""
         )
-        
+
         if success:
             return {"status": "received", "message": message, "details": details}
-        else:
-            # Still return 200 to prevent Stripe retries
-            # Errors are logged internally
-            logger.error(f"Webhook processing failed: {message}")
-            return {"status": "error", "message": message}
+        if message == "Invalid signature":
+            logger.error("Stripe webhook rejected: invalid signature (STRIPE_WEBHOOK_SECRET vs key mode mismatch?)")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook signature")
+        # Other errors (e.g. invalid payload) - return 200 to avoid Stripe retries; logged internally
+        logger.error("Webhook processing failed: %s", message)
+        return {"status": "error", "message": message}
     
     except Exception as e:
         logger.exception(f"Stripe webhook error: {e}")

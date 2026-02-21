@@ -25,25 +25,25 @@ const POLL_DURATION_MS = 180000;
 const BANNER_EARLY_SEC = 20;
 const BANNER_LATE_CONFIRMING_SEC = 30;
 
-/** Build steps array from setup-status response. */
+/** Build steps array from setup-status response. Backend returns lowercase: paid, confirming, unpaid; completed, queued, running, failed, not_started; set, not_sent; go_to_dashboard, wait_provisioning, set_password, pay. */
 function buildSteps(data) {
   if (!data) return [];
-  const ps = data.payment_state || 'UNPAID';
-  const vs = data.provisioning_state || 'NOT_STARTED';
-  const pw = data.password_state || 'NOT_SET';
-  const na = data.next_action || 'PAYMENT';
+  const ps = data.payment_state || 'unpaid';
+  const vs = data.provisioning_state || 'not_started';
+  const pw = data.password_state || 'not_sent';
+  const na = data.next_action || 'pay';
 
-  const step2Status = ps === 'PAID' ? 'complete' : ps === 'CONFIRMING' ? 'in_progress' : 'pending';
-  const step2Label = ps === 'PAID' ? 'Complete' : ps === 'CONFIRMING' ? 'Confirming…' : 'Action required';
+  const step2Status = ps === 'paid' ? 'complete' : ps === 'confirming' ? 'in_progress' : 'pending';
+  const step2Label = ps === 'paid' ? 'Payment complete' : ps === 'confirming' ? 'Confirming…' : 'Action required';
 
-  const step3Status = vs === 'PROVISIONED' ? 'complete' : vs === 'FAILED' ? 'failed' : 'in_progress';
-  const step3Label = vs === 'PROVISIONED' ? 'Complete' : vs === 'FAILED' ? 'Failed' : vs === 'RUNNING' ? 'In progress' : 'Waiting';
+  const step3Status = vs === 'completed' ? 'complete' : vs === 'failed' ? 'failed' : (vs === 'queued' || vs === 'running') ? 'in_progress' : 'pending';
+  const step3Label = vs === 'completed' ? 'Complete' : vs === 'failed' ? 'Failed' : vs === 'running' ? 'In progress' : vs === 'queued' ? 'Queued' : 'Portal setup waiting…';
 
-  const step4Status = pw === 'SET' ? 'complete' : 'pending';
-  const step4Label = pw === 'SET' ? 'Complete' : 'Waiting';
+  const step4Status = pw === 'set' ? 'complete' : 'pending';
+  const step4Label = pw === 'set' ? 'Complete' : 'Waiting';
 
-  const step5Status = na === 'DASHBOARD' ? 'complete' : 'pending';
-  const step5Label = na === 'DASHBOARD' ? 'Complete' : 'Waiting';
+  const step5Status = na === 'go_to_dashboard' ? 'complete' : 'pending';
+  const step5Label = na === 'go_to_dashboard' ? 'Complete' : 'Waiting';
 
   return [
     { step: 1, name: 'Intake Form', description: 'Submit your details and property information', status: 'complete', icon: 'clipboard-check', label: 'Complete' },
@@ -66,25 +66,27 @@ function shouldStopPolling(data) {
   if (!data) return false;
   const na = data.next_action || '';
   const vs = data.provisioning_state || '';
-  return na === 'SET_PASSWORD' || na === 'DASHBOARD' || vs === 'FAILED';
+  return na === 'set_password' || na === 'go_to_dashboard' || vs === 'failed';
 }
 
 /** Should we show the early "payment received" banner? */
 function showEarlyBanner(data, elapsedSec) {
   if (!data) return false;
-  return (data.payment_state === 'CONFIRMING' || data.next_action === 'WAIT_PROVISIONING') && elapsedSec < BANNER_EARLY_SEC;
+  return (data.payment_state === 'confirming' || data.next_action === 'wait_provisioning') && elapsedSec < BANNER_EARLY_SEC;
 }
 
 /** Should we show the "still confirming" banner? */
 function showLateConfirmingBanner(data, elapsedSec) {
-  return data?.payment_state === 'CONFIRMING' && elapsedSec >= BANNER_LATE_CONFIRMING_SEC;
+  return data?.payment_state === 'confirming' && elapsedSec >= BANNER_LATE_CONFIRMING_SEC;
 }
 
+const SUPPORT_EMAIL_FALLBACK = 'info@pleerityenterprise.co.uk';
+
 const NEXT_ACTION_MESSAGES = {
-  PAYMENT: 'Complete your payment to continue.',
-  WAIT_PROVISIONING: "We're setting up your portal. This usually takes under a minute.",
-  SET_PASSWORD: 'Check your email for the account activation link to set your password.',
-  DASHBOARD: 'All set! You can now access your compliance portal.',
+  pay: 'Complete your payment to continue.',
+  wait_provisioning: "We're setting up your portal. This usually takes under a minute.",
+  set_password: 'Check your email for the account activation link to set your password.',
+  go_to_dashboard: 'All set! You can now access your compliance portal.',
 };
 
 const OnboardingStatusPage = () => {
@@ -126,7 +128,7 @@ const OnboardingStatusPage = () => {
   }, [status?.client_id, clientId, fetchSetupStatus]);
 
   useEffect(() => {
-    if (status?.payment_state === 'PAID') sessionStorage.removeItem('pleerity_stripe_redirect');
+    if (status?.payment_state === 'paid') sessionStorage.removeItem('pleerity_stripe_redirect');
   }, [status]);
 
   const handleCopyCRN = useCallback(() => {
@@ -165,7 +167,7 @@ const OnboardingStatusPage = () => {
       }
     };
 
-    const shouldStartPolling = () => paymentSuccess || fromStripeRedirect || status?.payment_state === 'CONFIRMING' || status?.next_action === 'WAIT_PROVISIONING';
+    const shouldStartPolling = () => paymentSuccess || fromStripeRedirect || status?.payment_state === 'confirming' || status?.next_action === 'wait_provisioning';
     if (shouldStartPolling() && !shouldStopPolling(status)) {
       pollIntervalRef.current = setInterval(runPoll, POLL_INTERVAL_MS);
     }
@@ -197,11 +199,11 @@ const OnboardingStatusPage = () => {
 
   const steps = buildSteps(status);
   const progressPercentVal = progressPercent(steps);
-  const isComplete = status?.next_action === 'DASHBOARD';
+  const isComplete = status?.next_action === 'go_to_dashboard';
   const elapsedSec = pollStartRef.current ? Math.floor((Date.now() - pollStartRef.current) / 1000) : 0;
   const showEarly = showEarlyBanner(status, elapsedSec);
   const showLateConfirming = showLateConfirmingBanner(status, elapsedSec);
-  const provisioningFailed = status?.provisioning_state === 'FAILED';
+  const provisioningFailed = status?.provisioning_state === 'failed';
   const nextActionMsg = NEXT_ACTION_MESSAGES[status?.next_action] || status?.next_action;
 
   if (loading && !status) {
@@ -259,7 +261,8 @@ const OnboardingStatusPage = () => {
         )}
         {timedOut && (
           <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-            <p className="font-medium">We&apos;re still setting things up. Please refresh in a moment. If it continues, contact support with your CRN.</p>
+            <p className="font-medium">We&apos;re still setting things up. Please use <strong>Refresh status</strong> below, or contact support with your CRN: <strong>{status?.customer_reference || '—'}</strong></p>
+            <p className="mt-2 text-sm">Email: <a href={`mailto:${SUPPORT_EMAIL_FALLBACK}`} className="underline">{SUPPORT_EMAIL_FALLBACK}</a></p>
           </div>
         )}
         {provisioningFailed && (
@@ -360,7 +363,7 @@ const OnboardingStatusPage = () => {
                   Go to Portal <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               )}
-              {status.next_action === 'SET_PASSWORD' && (
+              {status.next_action === 'set_password' && (
                 <Button variant="outline" className="border-teal-300 text-teal-700">Check Your Email</Button>
               )}
             </div>

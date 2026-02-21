@@ -29,9 +29,35 @@ from models import AuditAction, ProvisioningJob, ProvisioningJobStatus
 
 logger = logging.getLogger(__name__)
 
-# Initialize Stripe
-stripe.api_key = os.getenv("STRIPE_API_KEY", "sk_test_emergent")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+# Initialize Stripe (prefer STRIPE_SECRET_KEY; fallback STRIPE_API_KEY)
+_stripe_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+stripe.api_key = _stripe_key
+
+# Webhook secret: support test vs live. If STRIPE_WEBHOOK_SECRET is set, use it; else choose by key prefix.
+def _get_webhook_secret() -> str:
+    explicit = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
+    if explicit:
+        return explicit
+    key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+    if key.startswith("sk_live_"):
+        return (os.getenv("STRIPE_WEBHOOK_SECRET_LIVE") or "").strip()
+    if key.startswith("sk_test_"):
+        return (os.getenv("STRIPE_WEBHOOK_SECRET_TEST") or "").strip()
+    return ""
+
+
+def _extract_webhook_context(event: Dict) -> Dict[str, Any]:
+    """Extract safe fields for structured logging (event_id, event_type, livemode, client_id, subscription_id, checkout_session_id)."""
+    obj = event.get("data", {}).get("object", {}) or {}
+    metadata = obj.get("metadata", {}) or {}
+    return {
+        "event_id": event.get("id"),
+        "event_type": event.get("type"),
+        "livemode": event.get("livemode"),
+        "client_id": metadata.get("client_id") or obj.get("customer"),
+        "subscription_id": obj.get("subscription") if isinstance(obj.get("subscription"), str) else (obj.get("subscription", {}).get("id") if isinstance(obj.get("subscription"), dict) else None),
+        "checkout_session_id": obj.get("id") if event.get("type") == "checkout.session.completed" else None,
+    }
 
 
 class StripeWebhookService:
@@ -52,11 +78,12 @@ class StripeWebhookService:
         Returns:
             (success, message, details)
         """
-        # Step 1: Verify signature
+        # Step 1: Verify signature (use test/live secret by key or explicit STRIPE_WEBHOOK_SECRET)
+        webhook_secret = _get_webhook_secret()
         try:
-            if STRIPE_WEBHOOK_SECRET:
+            if webhook_secret:
                 event = stripe.Webhook.construct_event(
-                    payload, signature, STRIPE_WEBHOOK_SECRET
+                    payload, signature, webhook_secret
                 )
             else:
                 # Development mode - parse without verification
@@ -64,18 +91,21 @@ class StripeWebhookService:
                 event = stripe.Event.construct_from(
                     json.loads(payload), stripe.api_key
                 )
-                logger.warning("STRIPE_WEBHOOK_SECRET not set - skipping signature verification")
+                logger.warning("STRIPE_WEBHOOK_SECRET (or _TEST/_LIVE) not set - skipping signature verification")
         except stripe.error.SignatureVerificationError as e:
-            logger.error(f"Webhook signature verification failed: {e}")
+            logger.error("Webhook signature verification failed: %s (check STRIPE_WEBHOOK_SECRET vs Stripe key mode)", e)
             return False, "Invalid signature", {"error": str(e)}
         except Exception as e:
             logger.error(f"Webhook parse error: {e}")
             return False, "Invalid payload", {"error": str(e)}
-        
+
         event_id = event.get("id")
         event_type = event.get("type")
-        
-        logger.info(f"Processing Stripe webhook: {event_type} ({event_id})")
+        ctx = _extract_webhook_context(event)
+        logger.info(
+            "WEBHOOK_RECEIVED event_id=%s event_type=%s livemode=%s client_id=%s subscription_id=%s checkout_session_id=%s",
+            event_id, event_type, ctx.get("livemode"), ctx.get("client_id"), ctx.get("subscription_id"), ctx.get("checkout_session_id"),
+        )
         
         # Step 2: Idempotency check
         db = database.get_db()
@@ -128,13 +158,19 @@ class StripeWebhookService:
                     }
                 }
             )
-            
-            logger.info(f"Event {event_id} processed successfully")
+
+            logger.info(
+                "WEBHOOK_PROCESSED_OK event_id=%s event_type=%s client_id=%s",
+                event_id, event_type, result.get("client_id"),
+            )
             return True, "Processed", result
-            
+
         except Exception as e:
-            logger.error(f"Event {event_id} processing failed: {e}")
-            
+            logger.error(
+                "WEBHOOK_PROCESSING_FAILED event_id=%s event_type=%s error=%s",
+                event_id, event_type, str(e),
+            )
+
             await db.stripe_events.update_one(
                 {"event_id": event_id},
                 {
@@ -433,7 +469,14 @@ class StripeWebhookService:
                         {"$set": {"needs_run": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
                     )
                     provisioning_triggered = True
-                    logger.info(f"Checkout {checkout_session_id} job {existing_job.get('job_id')} marked needs_run (re-dispatch)")
+                    job_id = existing_job.get("job_id")
+                    logger.info("PROVISIONING_ENQUEUED client_id=%s job_id=%s checkout_session_id=%s (re-dispatch)", client_id, job_id, checkout_session_id)
+                    if job_id:
+                        try:
+                            import asyncio
+                            asyncio.create_task(_run_provisioning_after_webhook(job_id))
+                        except Exception as bg_err:
+                            logger.warning("In-process provisioning trigger failed: %s", bg_err)
                 else:
                     logger.info(f"Checkout {checkout_session_id} already has job {existing_job.get('job_id')} status={existing_status}")
             else:
@@ -458,7 +501,14 @@ class StripeWebhookService:
                 try:
                     await db.provisioning_jobs.insert_one(doc)
                     provisioning_triggered = True
-                    logger.info(f"Job {doc['job_id']} created for client {client_id} (poller will process)")
+                    job_id = doc["job_id"]
+                    logger.info("PROVISIONING_ENQUEUED client_id=%s job_id=%s checkout_session_id=%s", client_id, job_id, checkout_session_id)
+                    # In-process trigger: run job in background so provisioning can complete without a separate worker
+                    try:
+                        import asyncio
+                        asyncio.create_task(_run_provisioning_after_webhook(job_id))
+                    except Exception as bg_err:
+                        logger.warning("In-process provisioning trigger failed (poller will pick up): %s", bg_err)
                 except Exception as e:
                     if "duplicate key" in str(e).lower() or "E11000" in str(e):
                         await db.provisioning_jobs.update_one(
@@ -466,7 +516,18 @@ class StripeWebhookService:
                             {"$set": {"needs_run": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
                         )
                         provisioning_triggered = True
-                        logger.info(f"Job already exists for checkout {checkout_session_id} - marked needs_run")
+                        existing_job = await db.provisioning_jobs.find_one(
+                            {"checkout_session_id": checkout_session_id},
+                            {"_id": 0, "job_id": 1}
+                        )
+                        job_id = (existing_job or {}).get("job_id")
+                        logger.info("PROVISIONING_ENQUEUED client_id=%s job_id=%s checkout_session_id=%s (re-dispatch)", client_id, job_id, checkout_session_id)
+                        if job_id:
+                            try:
+                                import asyncio
+                                asyncio.create_task(_run_provisioning_after_webhook(job_id))
+                            except Exception as bg_err:
+                                logger.warning("In-process provisioning trigger failed: %s", bg_err)
                     else:
                         logger.error(f"Failed to create provisioning job: {e}")
                         raise
@@ -1056,6 +1117,15 @@ class StripeWebhookService:
             "object_id": event.get("data", {}).get("object", {}).get("id"),
             "object_type": event.get("data", {}).get("object", {}).get("object"),
         }
+
+
+async def _run_provisioning_after_webhook(job_id: str) -> None:
+    """Background task: run one provisioning job after webhook (no separate worker required)."""
+    try:
+        from services.provisioning_runner import run_provisioning_job
+        await run_provisioning_job(job_id)
+    except Exception as e:
+        logger.warning("Background provisioning job %s failed: %s (poller can retry)", job_id, e)
 
 
 # Singleton instance

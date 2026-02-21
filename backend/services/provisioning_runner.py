@@ -211,6 +211,7 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
             "$inc": {"attempt_count": 1},
         }
     )
+    logger.info("PROVISIONING_STARTED job_id=%s client_id=%s", job_id, client_id)
 
     success, message, user_id = await provisioning_service.provision_client_portal_core(client_id)
     if not success:
@@ -282,7 +283,7 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
                 }
             }
         )
-        logger.info(f"Job {job_id}: WELCOME_EMAIL_SENT")
+        logger.info("PROVISIONING_COMPLETED job_id=%s client_id=%s", job_id, client_id)
         return True
     except Exception as email_err:
         err_msg = str(email_err)[:500]
