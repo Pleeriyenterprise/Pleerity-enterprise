@@ -10,12 +10,8 @@ Features tested:
 - Audit log
 - Archive functionality
 """
-import pytest
-import requests
-import os
 import time
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+import pytest
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -24,18 +20,18 @@ ADMIN_PASSWORD = "Admin123!"
 
 class TestPromptManagerAuth:
     """Test authentication for Prompt Manager endpoints"""
-    
-    @pytest.fixture(scope="class")
-    def auth_token(self):
+
+    @pytest.fixture
+    def auth_token(self, client):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         assert response.status_code == 200, f"Login failed: {response.text}"
         return response.json()["access_token"]
-    
-    def test_endpoints_require_auth(self):
+
+    def test_endpoints_require_auth(self, client):
         """Verify all prompt manager endpoints require authentication"""
         endpoints = [
             ("GET", "/api/admin/prompts"),
@@ -44,16 +40,15 @@ class TestPromptManagerAuth:
             ("GET", "/api/admin/prompts/reference/service-codes"),
             ("GET", "/api/admin/prompts/reference/doc-types"),
         ]
-        
         for method, endpoint in endpoints:
             if method == "GET":
-                response = requests.get(f"{BASE_URL}{endpoint}")
+                response = client.get(endpoint)
             assert response.status_code in [401, 403], f"{endpoint} should require auth"
-    
-    def test_admin_can_access(self, auth_token):
+
+    def test_admin_can_access(self, client, auth_token):
         """Verify admin can access prompt manager"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts",
+        response = client.get(
+            "/api/admin/prompts",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200
@@ -61,23 +56,23 @@ class TestPromptManagerAuth:
 
 class TestPromptTemplatesCRUD:
     """Test CRUD operations for prompt templates"""
-    
-    @pytest.fixture(scope="class")
-    def auth_token(self):
+
+    @pytest.fixture
+    def auth_token(self, client):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
-    
-    @pytest.fixture(scope="class")
+
+    @pytest.fixture
     def headers(self, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_list_templates(self, headers):
+    def test_list_templates(self, client, headers):
         """Test listing prompt templates"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts", headers=headers)
+        response = client.get("/api/admin/prompts", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert "prompts" in data
@@ -85,32 +80,32 @@ class TestPromptTemplatesCRUD:
         assert "page" in data
         assert "page_size" in data
     
-    def test_get_stats_overview(self, headers):
+    def test_get_stats_overview(self, client, headers):
         """Test getting stats overview"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/stats/overview", headers=headers)
+        response = client.get("/api/admin/prompts/stats/overview", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert "total_templates" in data
         assert "by_status" in data
         assert "tests_last_24h" in data
     
-    def test_get_service_codes(self, headers):
+    def test_get_service_codes(self, client, headers):
         """Test getting service codes reference"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/reference/service-codes", headers=headers)
+        response = client.get("/api/admin/prompts/reference/service-codes", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert "service_codes" in data
         assert len(data["service_codes"]) > 0
     
-    def test_get_doc_types(self, headers):
+    def test_get_doc_types(self, client, headers):
         """Test getting document types reference"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/reference/doc-types", headers=headers)
+        response = client.get("/api/admin/prompts/reference/doc-types", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert "doc_types" in data
         assert len(data["doc_types"]) > 0
     
-    def test_create_template(self, headers):
+    def test_create_template(self, client, headers):
         """Test creating a new prompt template"""
         payload = {
             "service_code": "RISK_ASSESSMENT",
@@ -133,7 +128,7 @@ class TestPromptTemplatesCRUD:
             }
         }
         
-        response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        response = client.post("/api/admin/prompts", headers=headers, json=payload)
         assert response.status_code == 200, f"Create failed: {response.text}"
         
         data = response.json()
@@ -145,7 +140,7 @@ class TestPromptTemplatesCRUD:
         
         return data["template_id"]
     
-    def test_create_template_requires_injection_pattern(self, headers):
+    def test_create_template_requires_injection_pattern(self, client, headers):
         """Test that template creation requires {{INPUT_DATA_JSON}} pattern"""
         payload = {
             "service_code": "RISK_ASSESSMENT",
@@ -165,10 +160,10 @@ class TestPromptTemplatesCRUD:
             }
         }
         
-        response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        response = client.post("/api/admin/prompts", headers=headers, json=payload)
         assert response.status_code == 422, "Should reject template without {{INPUT_DATA_JSON}}"
     
-    def test_get_template_by_id(self, headers):
+    def test_get_template_by_id(self, client, headers):
         """Test getting a specific template by ID"""
         # First create a template
         payload = {
@@ -189,17 +184,17 @@ class TestPromptTemplatesCRUD:
             }
         }
         
-        create_response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        create_response = client.post("/api/admin/prompts", headers=headers, json=payload)
         template_id = create_response.json()["template_id"]
         
         # Get by ID
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/{template_id}", headers=headers)
+        response = client.get(f"/api/admin/prompts/{template_id}", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["template_id"] == template_id
         assert data["name"] == payload["name"]
     
-    def test_update_draft_template(self, headers):
+    def test_update_draft_template(self, client, headers):
         """Test updating a DRAFT template"""
         # Create template
         payload = {
@@ -220,7 +215,7 @@ class TestPromptTemplatesCRUD:
             }
         }
         
-        create_response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        create_response = client.post("/api/admin/prompts", headers=headers, json=payload)
         template_id = create_response.json()["template_id"]
         
         # Update
@@ -229,25 +224,25 @@ class TestPromptTemplatesCRUD:
             "description": "Updated description"
         }
         
-        response = requests.put(f"{BASE_URL}/api/admin/prompts/{template_id}", headers=headers, json=update_payload)
+        response = client.put(f"/api/admin/prompts/{template_id}", headers=headers, json=update_payload)
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == update_payload["name"]
         assert data["description"] == update_payload["description"]
         assert data["version"] == 1  # DRAFT updates in place
     
-    def test_list_with_filters(self, headers):
+    def test_list_with_filters(self, client, headers):
         """Test listing templates with filters"""
         # Filter by status
-        response = requests.get(f"{BASE_URL}/api/admin/prompts?status=DRAFT", headers=headers)
+        response = client.get("/api/admin/prompts?status=DRAFT", headers=headers)
         assert response.status_code == 200
         
         # Filter by service_code
-        response = requests.get(f"{BASE_URL}/api/admin/prompts?service_code=COMPLIANCE_AUDIT", headers=headers)
+        response = client.get("/api/admin/prompts?service_code=COMPLIANCE_AUDIT", headers=headers)
         assert response.status_code == 200
         
         # Search
-        response = requests.get(f"{BASE_URL}/api/admin/prompts?search=TEST_", headers=headers)
+        response = client.get("/api/admin/prompts?search=TEST_", headers=headers)
         assert response.status_code == 200
 
 
@@ -257,18 +252,18 @@ class TestPromptPlayground:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
     
     @pytest.fixture(scope="class")
-    def headers(self, auth_token):
+    def headers(self, client, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
     @pytest.fixture(scope="class")
-    def test_template(self, headers):
+    def test_template(self, client, headers):
         """Create a template for testing"""
         payload = {
             "service_code": "DATA_EXTRACTION",
@@ -288,7 +283,7 @@ class TestPromptPlayground:
             }
         }
         
-        response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        response = client.post("/api/admin/prompts", headers=headers, json=payload)
         return response.json()
     
     def test_execute_test(self, headers, test_template):
@@ -301,8 +296,8 @@ class TestPromptPlayground:
             }
         }
         
-        response = requests.post(
-            f"{BASE_URL}/api/admin/prompts/test",
+        response = client.post(
+            "/api/admin/prompts/test",
             headers=headers,
             json=payload,
             timeout=60  # LLM calls can take time
@@ -319,8 +314,8 @@ class TestPromptPlayground:
     
     def test_get_test_results(self, headers, test_template):
         """Test getting test results for a template"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/test/{test_template['template_id']}/results",
+        response = client.get(
+            f"/api/admin/prompts/test/{test_template['template_id']}/results",
             headers=headers
         )
         assert response.status_code == 200
@@ -335,17 +330,17 @@ class TestPromptLifecycle:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
     
     @pytest.fixture(scope="class")
-    def headers(self, auth_token):
+    def headers(self, client, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_full_lifecycle(self, headers):
+    def test_full_lifecycle(self, client, headers):
         """Test complete lifecycle: Create -> Test -> Mark Tested -> Activate"""
         # 1. Create template
         payload = {
@@ -366,7 +361,7 @@ class TestPromptLifecycle:
             }
         }
         
-        create_response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        create_response = client.post("/api/admin/prompts", headers=headers, json=payload)
         assert create_response.status_code == 200
         template = create_response.json()
         template_id = template["template_id"]
@@ -378,8 +373,8 @@ class TestPromptLifecycle:
             "test_input_data": {"task": "test workflow"}
         }
         
-        test_response = requests.post(
-            f"{BASE_URL}/api/admin/prompts/test",
+        test_response = client.post(
+            "/api/admin/prompts/test",
             headers=headers,
             json=test_payload,
             timeout=60
@@ -389,14 +384,14 @@ class TestPromptLifecycle:
         
         # 3. Mark as tested (only if test passed)
         if test_result["status"] == "PASSED":
-            mark_response = requests.post(
-                f"{BASE_URL}/api/admin/prompts/{template_id}/mark-tested",
+            mark_response = client.post(
+                f"/api/admin/prompts/{template_id}/mark-tested",
                 headers=headers
             )
             assert mark_response.status_code == 200
             
             # Verify status changed
-            get_response = requests.get(f"{BASE_URL}/api/admin/prompts/{template_id}", headers=headers)
+            get_response = client.get(f"/api/admin/prompts/{template_id}", headers=headers)
             assert get_response.json()["status"] == "TESTED"
             
             # 4. Activate
@@ -405,8 +400,8 @@ class TestPromptLifecycle:
                 "activation_reason": "Lifecycle test - validated and ready for production"
             }
             
-            activate_response = requests.post(
-                f"{BASE_URL}/api/admin/prompts/{template_id}/activate",
+            activate_response = client.post(
+                f"/api/admin/prompts/{template_id}/activate",
                 headers=headers,
                 json=activate_payload
             )
@@ -416,10 +411,10 @@ class TestPromptLifecycle:
             assert activate_data["status"] == "ACTIVE"
             
             # Verify final status
-            final_response = requests.get(f"{BASE_URL}/api/admin/prompts/{template_id}", headers=headers)
+            final_response = client.get(f"/api/admin/prompts/{template_id}", headers=headers)
             assert final_response.json()["status"] == "ACTIVE"
     
-    def test_cannot_activate_without_test(self, headers):
+    def test_cannot_activate_without_test(self, client, headers):
         """Test that activation requires passing test"""
         # Create template
         payload = {
@@ -440,12 +435,12 @@ class TestPromptLifecycle:
             }
         }
         
-        create_response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        create_response = client.post("/api/admin/prompts", headers=headers, json=payload)
         template_id = create_response.json()["template_id"]
         
         # Try to mark as tested without running test
-        mark_response = requests.post(
-            f"{BASE_URL}/api/admin/prompts/{template_id}/mark-tested",
+        mark_response = client.post(
+            f"/api/admin/prompts/{template_id}/mark-tested",
             headers=headers
         )
         assert mark_response.status_code == 400, "Should not mark as tested without passing test"
@@ -457,27 +452,27 @@ class TestAuditLog:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
     
     @pytest.fixture(scope="class")
-    def headers(self, auth_token):
+    def headers(self, client, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_get_audit_log(self, headers):
+    def test_get_audit_log(self, client, headers):
         """Test getting audit log entries"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/audit/log", headers=headers)
+        response = client.get("/api/admin/prompts/audit/log", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert "entries" in data
         assert "total" in data
     
-    def test_audit_log_has_required_fields(self, headers):
+    def test_audit_log_has_required_fields(self, client, headers):
         """Test that audit log entries have required fields"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/audit/log?limit=5", headers=headers)
+        response = client.get("/api/admin/prompts/audit/log?limit=5", headers=headers)
         data = response.json()
         
         if data["entries"]:
@@ -488,16 +483,16 @@ class TestAuditLog:
             assert "performed_by" in entry
             assert "performed_at" in entry
     
-    def test_filter_audit_by_template(self, headers):
+    def test_filter_audit_by_template(self, client, headers):
         """Test filtering audit log by template ID"""
         # First get a template ID
-        list_response = requests.get(f"{BASE_URL}/api/admin/prompts", headers=headers)
+        list_response = client.get("/api/admin/prompts", headers=headers)
         templates = list_response.json()["prompts"]
         
         if templates:
             template_id = templates[0]["template_id"]
-            response = requests.get(
-                f"{BASE_URL}/api/admin/prompts/audit/log?template_id={template_id}",
+            response = client.get(
+                "/api/admin/prompts/audit/log?template_id={template_id}",
                 headers=headers
             )
             assert response.status_code == 200
@@ -509,17 +504,17 @@ class TestArchiveTemplate:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
     
     @pytest.fixture(scope="class")
-    def headers(self, auth_token):
+    def headers(self, client, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_archive_draft_template(self, headers):
+    def test_archive_draft_template(self, client, headers):
         """Test archiving a DRAFT template"""
         # Create template
         payload = {
@@ -540,11 +535,11 @@ class TestArchiveTemplate:
             }
         }
         
-        create_response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        create_response = client.post("/api/admin/prompts", headers=headers, json=payload)
         template_id = create_response.json()["template_id"]
         
         # Archive
-        response = requests.delete(f"{BASE_URL}/api/admin/prompts/{template_id}", headers=headers)
+        response = client.delete(f"/api/admin/prompts/{template_id}", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True

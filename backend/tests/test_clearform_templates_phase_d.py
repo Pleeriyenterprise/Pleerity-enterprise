@@ -4,28 +4,24 @@ Tests for system templates, rule packs, and Smart Profile pre-fill functionality
 """
 
 import pytest
-import requests
-import os
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://order-fulfillment-9.preview.emergentagent.com')
 
 # Test credentials
 TEST_USER_EMAIL = "demo2@clearform.com"
 TEST_USER_PASSWORD = "DemoPass123!"
 
 
-@pytest.fixture(scope="module")
-def auth_token():
+@pytest.fixture
+def auth_token(client):
     """Get authentication token for ClearForm user."""
-    response = requests.post(
-        f"{BASE_URL}/api/clearform/auth/login",
+    response = client.post(
+        "/api/clearform/auth/login",
         json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
     )
     assert response.status_code == 200, f"Login failed: {response.text}"
     return response.json()["access_token"]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def auth_headers(auth_token):
     """Get headers with auth token."""
     return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
@@ -34,10 +30,10 @@ def auth_headers(auth_token):
 class TestSystemTemplatesAPI:
     """Tests for GET /api/clearform/templates/system endpoint."""
     
-    def test_get_all_system_templates(self, auth_headers):
+    def test_get_all_system_templates(self, client, auth_headers):
         """Test fetching all system templates."""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/templates/system",
+        response = client.get(
+            "/api/clearform/templates/system",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -60,10 +56,10 @@ class TestSystemTemplatesAPI:
             assert "credit_cost" in template
             assert "has_rule_pack" in template
     
-    def test_get_templates_filtered_by_document_type(self, auth_headers):
+    def test_get_templates_filtered_by_document_type(self, client, auth_headers):
         """Test filtering templates by document type."""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/templates/system?document_type=complaint_letter",
+        response = client.get(
+            "/api/clearform/templates/system?document_type=complaint_letter",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -73,10 +69,10 @@ class TestSystemTemplatesAPI:
         for template in data["templates"]:
             assert template["document_type"] == "complaint_letter"
     
-    def test_get_templates_for_formal_letter(self, auth_headers):
+    def test_get_templates_for_formal_letter(self, client, auth_headers):
         """Test getting templates for formal letter type."""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/templates/system?document_type=formal_letter",
+        response = client.get(
+            "/api/clearform/templates/system?document_type=formal_letter",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -91,10 +87,10 @@ class TestSystemTemplatesAPI:
 class TestTemplatePreFillAPI:
     """Tests for POST /api/clearform/templates/system/prefill endpoint."""
     
-    def test_prefill_complaint_template(self, auth_headers):
+    def test_prefill_complaint_template(self, client, auth_headers):
         """Test getting prefilled template data."""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/templates/system/prefill",
+        response = client.post(
+            "/api/clearform/templates/system/prefill",
             headers=auth_headers,
             json={"template_id": "TPL-COMPLAINT-01"}
         )
@@ -128,10 +124,10 @@ class TestTemplatePreFillAPI:
                 assert "field_type" in placeholder
                 assert "required" in placeholder
     
-    def test_prefill_formal_letter_template(self, auth_headers):
+    def test_prefill_formal_letter_template(self, client, auth_headers):
         """Test getting prefilled formal letter template."""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/templates/system/prefill",
+        response = client.post(
+            "/api/clearform/templates/system/prefill",
             headers=auth_headers,
             json={"template_id": "TPL-FORMAL-01"}
         )
@@ -141,10 +137,10 @@ class TestTemplatePreFillAPI:
         assert data["template_id"] == "TPL-FORMAL-01"
         assert data["document_type"] == "formal_letter"
     
-    def test_prefill_invalid_template(self, auth_headers):
+    def test_prefill_invalid_template(self, client, auth_headers):
         """Test prefill with invalid template ID."""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/templates/system/prefill",
+        response = client.post(
+            "/api/clearform/templates/system/prefill",
             headers=auth_headers,
             json={"template_id": "INVALID-TEMPLATE"}
         )
@@ -154,10 +150,10 @@ class TestTemplatePreFillAPI:
 class TestSmartProfilesAPI:
     """Tests for GET /api/clearform/templates/profiles endpoint."""
     
-    def test_get_profiles(self, auth_headers):
+    def test_get_profiles(self, client, auth_headers):
         """Test fetching user's smart profiles."""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/templates/profiles",
+        response = client.get(
+            "/api/clearform/templates/profiles",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -172,10 +168,10 @@ class TestSmartProfilesAPI:
 class TestRulePacksAPI:
     """Tests for rule packs endpoints."""
     
-    def test_get_all_rule_packs(self, auth_headers):
+    def test_get_all_rule_packs(self, client, auth_headers):
         """Test fetching all rule packs."""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/templates/rule-packs",
+        response = client.get(
+            "/api/clearform/templates/rule-packs",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -198,10 +194,10 @@ class TestRulePacksAPI:
             assert "section_count" in pack
             assert "rule_count" in pack
     
-    def test_get_rule_packs_filtered(self, auth_headers):
+    def test_get_rule_packs_filtered(self, client, auth_headers):
         """Test filtering rule packs by document type."""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/templates/rule-packs?document_type=complaint_letter",
+        response = client.get(
+            "/api/clearform/templates/rule-packs?document_type=complaint_letter",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -211,10 +207,10 @@ class TestRulePacksAPI:
         for pack in data["rule_packs"]:
             assert "complaint_letter" in pack["document_types"]
     
-    def test_get_rule_pack_details(self, auth_headers):
+    def test_get_rule_pack_details(self, client, auth_headers):
         """Test getting specific rule pack details."""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/templates/rule-packs/RP-COMPLAINT-01",
+        response = client.get(
+            "/api/clearform/templates/rule-packs/RP-COMPLAINT-01",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -231,10 +227,10 @@ class TestRulePacksAPI:
 class TestDocumentTypesAPI:
     """Tests for document types endpoint."""
     
-    def test_get_document_types(self, auth_headers):
+    def test_get_document_types(self, client, auth_headers):
         """Test fetching document types."""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/types",
+        response = client.get(
+            "/api/clearform/documents/types",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -255,38 +251,38 @@ class TestDocumentTypesAPI:
 class TestMarketingPages:
     """Tests for marketing website pages."""
     
-    def test_homepage_loads(self):
+    def test_homepage_loads(self, client):
         """Test homepage returns 200."""
-        response = requests.get(f"{BASE_URL}/")
+        response = client.get("/")
         assert response.status_code == 200
-    
-    def test_about_page_loads(self):
+
+    def test_about_page_loads(self, client):
         """Test about page returns 200."""
-        response = requests.get(f"{BASE_URL}/about")
+        response = client.get("/about")
         assert response.status_code == 200
-    
-    def test_services_page_loads(self):
+
+    def test_services_page_loads(self, client):
         """Test services page returns 200."""
-        response = requests.get(f"{BASE_URL}/services")
+        response = client.get("/services")
         assert response.status_code == 200
-    
-    def test_pricing_page_loads(self):
+
+    def test_pricing_page_loads(self, client):
         """Test pricing page returns 200."""
-        response = requests.get(f"{BASE_URL}/pricing")
+        response = client.get("/pricing")
         assert response.status_code == 200
-    
-    def test_contact_page_loads(self):
+
+    def test_contact_page_loads(self, client):
         """Test contact page returns 200."""
-        response = requests.get(f"{BASE_URL}/contact")
+        response = client.get("/contact")
         assert response.status_code == 200
 
 
 class TestDocumentPackServices:
     """Tests for Document Pack services."""
     
-    def test_get_document_pack_services(self):
+    def test_get_document_pack_services(self, client):
         """Test fetching document pack services."""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services?category=document_pack")
+        response = client.get("/api/public/v2/services?category=document_pack")
         assert response.status_code == 200
         data = response.json()
         
@@ -300,9 +296,9 @@ class TestDocumentPackServices:
             assert "service_name" in service
             assert "base_price" in service
     
-    def test_get_essential_pack_details(self):
+    def test_get_essential_pack_details(self, client):
         """Test getting Essential pack details."""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services/DOC_PACK_ESSENTIAL")
+        response = client.get("/api/public/v2/services/DOC_PACK_ESSENTIAL")
         assert response.status_code == 200
         data = response.json()
         
@@ -313,18 +309,18 @@ class TestDocumentPackServices:
 class TestIntakeWizardServices:
     """Tests for intake wizard service endpoints."""
     
-    def test_get_all_services(self):
+    def test_get_all_services(self, client):
         """Test fetching all services for intake wizard."""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services")
+        response = client.get("/api/public/v2/services")
         assert response.status_code == 200
         data = response.json()
         
         assert "services" in data
         assert len(data["services"]) >= 1
     
-    def test_get_intake_schema(self):
+    def test_get_intake_schema(self, client):
         """Test getting intake schema for a service."""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services/DOC_PACK_ESSENTIAL/intake-schema")
+        response = client.get("/api/public/v2/services/DOC_PACK_ESSENTIAL/intake-schema")
         # May return 200 or 404 depending on schema availability
         assert response.status_code in [200, 404]
 

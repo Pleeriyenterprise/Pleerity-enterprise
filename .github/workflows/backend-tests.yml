@@ -38,6 +38,8 @@ jobs:
         run: pip install -r backend/requirements.txt
 
       - name: Run backend tests
+        env:
+          PYTEST_RUNNING: "1"
         run: |
           cd backend
           PYTHONPATH=. python -m pytest tests -v

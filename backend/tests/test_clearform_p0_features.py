@@ -7,10 +7,6 @@ Tests for:
 """
 
 import pytest
-import requests
-import os
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 TEST_USER_EMAIL = "demo2@clearform.com"
@@ -19,10 +15,10 @@ TEST_USER_PASSWORD = "DemoPass123!"
 
 class TestClearFormServiceCatalogue:
     """Test CLEARFORM service exists in service catalogue V2"""
-    
-    def test_clearform_service_exists_in_catalogue(self):
+
+    def test_clearform_service_exists_in_catalogue(self, client):
         """Verify CLEARFORM service is in the service catalogue"""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services?category=clearform")
+        response = client.get("/api/public/v2/services?category=clearform")
         assert response.status_code == 200
         
         data = response.json()
@@ -41,9 +37,9 @@ class TestClearFormServiceCatalogue:
         assert clearform_service["category"] == "clearform"
         print(f"CLEARFORM service found: {clearform_service['service_name']}")
     
-    def test_clearform_service_details(self):
+    def test_clearform_service_details(self, client):
         """Verify CLEARFORM service has correct details"""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services/CLEARFORM")
+        response = client.get("/api/public/v2/services/CLEARFORM")
         assert response.status_code == 200
         
         service = response.json()
@@ -67,10 +63,10 @@ class TestClearFormServiceCatalogue:
 class TestClearFormAuth:
     """Test ClearForm authentication"""
     
-    def test_login_success(self):
+    def test_login_success(self, client):
         """Test successful login"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
         )
         assert response.status_code == 200
@@ -81,10 +77,10 @@ class TestClearFormAuth:
         assert data["user"]["email"] == TEST_USER_EMAIL
         print(f"Login successful for {TEST_USER_EMAIL}")
     
-    def test_login_invalid_credentials(self):
+    def test_login_invalid_credentials(self, client):
         """Test login with invalid credentials"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": "invalid@test.com", "password": "wrongpassword"}
         )
         assert response.status_code in [401, 404]
@@ -94,20 +90,20 @@ class TestClearFormCredits:
     """Test ClearForm credits and Stripe checkout"""
     
     @pytest.fixture
-    def auth_token(self):
+    def auth_token(self, client):
         """Get authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
         )
         if response.status_code == 200:
             return response.json().get("access_token")
         pytest.skip("Authentication failed")
-    
-    def test_get_wallet(self, auth_token):
+
+    def test_get_wallet(self, client, auth_token):
         """Test getting user wallet"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/credits/wallet",
+        response = client.get(
+            "/api/clearform/credits/wallet",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200
@@ -118,10 +114,10 @@ class TestClearFormCredits:
         assert "purchased_credits" in wallet
         print(f"Wallet balance: {wallet['total_balance']} credits")
     
-    def test_purchase_credits_creates_stripe_checkout(self, auth_token):
+    def test_purchase_credits_creates_stripe_checkout(self, client, auth_token):
         """Test that purchasing credits creates a Stripe checkout session"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/credits/purchase",
+        response = client.post(
+            "/api/clearform/credits/purchase",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={"package_id": "credits_10"}
         )
@@ -133,10 +129,10 @@ class TestClearFormCredits:
         assert "stripe.com" in data["checkout_url"] or "checkout.stripe.com" in data["checkout_url"]
         print(f"Stripe checkout URL created: {data['checkout_url'][:50]}...")
     
-    def test_purchase_credits_25(self, auth_token):
+    def test_purchase_credits_25(self, client, auth_token):
         """Test purchasing 25 credits package"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/credits/purchase",
+        response = client.post(
+            "/api/clearform/credits/purchase",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={"package_id": "credits_25"}
         )
@@ -147,10 +143,10 @@ class TestClearFormCredits:
         assert "session_id" in data
         print("25 credits package checkout created successfully")
     
-    def test_purchase_credits_50(self, auth_token):
+    def test_purchase_credits_50(self, client, auth_token):
         """Test purchasing 50 credits package"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/credits/purchase",
+        response = client.post(
+            "/api/clearform/credits/purchase",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={"package_id": "credits_50"}
         )
@@ -161,10 +157,10 @@ class TestClearFormCredits:
         assert "session_id" in data
         print("50 credits package checkout created successfully")
     
-    def test_purchase_credits_100(self, auth_token):
+    def test_purchase_credits_100(self, client, auth_token):
         """Test purchasing 100 credits package"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/credits/purchase",
+        response = client.post(
+            "/api/clearform/credits/purchase",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={"package_id": "credits_100"}
         )
@@ -179,9 +175,9 @@ class TestClearFormCredits:
 class TestClearFormSubscriptions:
     """Test ClearForm subscription plans"""
     
-    def test_get_subscription_plans(self):
+    def test_get_subscription_plans(self, client):
         """Test getting subscription plans"""
-        response = requests.get(f"{BASE_URL}/api/clearform/subscriptions/plans")
+        response = client.get("/api/clearform/subscriptions/plans")
         assert response.status_code == 200
         
         plans = response.json()
@@ -193,20 +189,20 @@ class TestClearFormSubscriptions:
         print(f"Found {len(plans)} subscription plans: {plan_names}")
     
     @pytest.fixture
-    def auth_token(self):
+    def auth_token(self, client):
         """Get authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
         )
         if response.status_code == 200:
             return response.json().get("access_token")
         pytest.skip("Authentication failed")
-    
-    def test_get_current_subscription(self, auth_token):
+
+    def test_get_current_subscription(self, client, auth_token):
         """Test getting current subscription"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/subscriptions/current",
+        response = client.get(
+            "/api/clearform/subscriptions/current",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200
@@ -220,29 +216,29 @@ class TestClearFormDocuments:
     """Test ClearForm document functionality"""
     
     @pytest.fixture
-    def auth_token(self):
+    def auth_token(self, client):
         """Get authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
         )
         if response.status_code == 200:
             return response.json().get("access_token")
         pytest.skip("Authentication failed")
-    
-    def test_get_document_types(self):
+
+    def test_get_document_types(self, client):
         """Test getting document types"""
-        response = requests.get(f"{BASE_URL}/api/clearform/documents/types")
+        response = client.get("/api/clearform/documents/types")
         assert response.status_code == 200
         
         types = response.json()
         assert isinstance(types, list) or isinstance(types, dict)
         print(f"Document types available: {len(types) if isinstance(types, list) else 'dict format'}")
     
-    def test_get_document_vault(self, auth_token):
+    def test_get_document_vault(self, client, auth_token):
         """Test getting document vault"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/vault",
+        response = client.get(
+            "/api/clearform/documents/vault",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200
@@ -252,24 +248,24 @@ class TestClearFormDocuments:
         assert "total" in vault
         print(f"Document vault has {vault['total']} documents")
     
-    def test_get_specific_document(self, auth_token):
+    def test_get_specific_document(self, client, auth_token):
         """Test getting a specific document"""
         # First get vault to find a document
-        vault_response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/vault",
+        vault_response = client.get(
+            "/api/clearform/documents/vault",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert vault_response.status_code == 200
-        
+
         vault = vault_response.json()
         if vault["total"] == 0:
             pytest.skip("No documents in vault to test")
-        
+
         document_id = vault["items"][0]["document_id"]
-        
+
         # Get specific document
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/{document_id}",
+        response = client.get(
+            f"/api/clearform/documents/{document_id}",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200
@@ -280,30 +276,30 @@ class TestClearFormDocuments:
         assert "status" in doc
         print(f"Document {document_id} retrieved successfully, status: {doc['status']}")
     
-    def test_download_document_pdf(self, auth_token):
+    def test_download_document_pdf(self, client, auth_token):
         """Test downloading document as PDF"""
         # First get vault to find a completed document
-        vault_response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/vault",
+        vault_response = client.get(
+            "/api/clearform/documents/vault",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert vault_response.status_code == 200
-        
+
         vault = vault_response.json()
         completed_doc = None
         for item in vault["items"]:
             if item["status"] == "COMPLETED":
                 completed_doc = item
                 break
-        
+
         if not completed_doc:
             pytest.skip("No completed documents to test PDF download")
-        
+
         document_id = completed_doc["document_id"]
-        
+
         # Download as PDF
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/{document_id}/download?format=pdf",
+        response = client.get(
+            f"/api/clearform/documents/{document_id}/download?format=pdf",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200

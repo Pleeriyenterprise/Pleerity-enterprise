@@ -7,13 +7,9 @@ Tests for ClearForm Phase 1:
 - Subscriptions (plans, current)
 """
 
-import pytest
-import requests
-import os
 import time
 import uuid
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+import pytest
 
 # Test credentials
 TEST_EMAIL = "demo2@clearform.com"
@@ -22,10 +18,10 @@ TEST_PASSWORD = "DemoPass123!"
 
 class TestClearFormPublicEndpoints:
     """Test public endpoints (no auth required)"""
-    
-    def test_get_document_types(self):
+
+    def test_get_document_types(self, client):
         """GET /api/clearform/documents/types - Get available document types"""
-        response = requests.get(f"{BASE_URL}/api/clearform/documents/types")
+        response = client.get("/api/clearform/documents/types")
         assert response.status_code == 200
         
         data = response.json()
@@ -47,9 +43,9 @@ class TestClearFormPublicEndpoints:
         assert "cv_resume" in type_names
         print(f"✓ Found {len(data)} document types")
     
-    def test_get_credit_packages(self):
+    def test_get_credit_packages(self, client):
         """GET /api/clearform/credits/packages - Get available credit packages"""
-        response = requests.get(f"{BASE_URL}/api/clearform/credits/packages")
+        response = client.get("/api/clearform/credits/packages")
         assert response.status_code == 200
         
         data = response.json()
@@ -68,9 +64,9 @@ class TestClearFormPublicEndpoints:
         
         print(f"✓ Found {len(data)} credit packages")
     
-    def test_get_subscription_plans(self):
+    def test_get_subscription_plans(self, client):
         """GET /api/clearform/subscriptions/plans - Get available subscription plans"""
-        response = requests.get(f"{BASE_URL}/api/clearform/subscriptions/plans")
+        response = client.get("/api/clearform/subscriptions/plans")
         assert response.status_code == 200
         
         data = response.json()
@@ -98,10 +94,10 @@ class TestClearFormPublicEndpoints:
 class TestClearFormAuth:
     """Test authentication endpoints"""
     
-    def test_login_success(self):
+    def test_login_success(self, client):
         """POST /api/clearform/auth/login - Login with valid credentials"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
         )
         assert response.status_code == 200
@@ -114,10 +110,10 @@ class TestClearFormAuth:
         assert isinstance(data["user"]["credit_balance"], int)
         print(f"✓ Login successful, user has {data['user']['credit_balance']} credits")
     
-    def test_login_invalid_credentials(self):
+    def test_login_invalid_credentials(self, client):
         """POST /api/clearform/auth/login - Login with invalid credentials"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": "wrong@email.com", "password": "wrongpassword"}
         )
         assert response.status_code == 401
@@ -125,10 +121,10 @@ class TestClearFormAuth:
         assert "detail" in data
         print("✓ Invalid login correctly rejected")
     
-    def test_register_duplicate_email(self):
+    def test_register_duplicate_email(self, client):
         """POST /api/clearform/auth/register - Register with existing email"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/register",
+        response = client.post(
+            "/api/clearform/auth/register",
             json={
                 "email": TEST_EMAIL,
                 "password": "TestPass123!",
@@ -140,9 +136,9 @@ class TestClearFormAuth:
         assert "detail" in data
         print("✓ Duplicate email registration correctly rejected")
     
-    def test_get_me_without_auth(self):
+    def test_get_me_without_auth(self, client):
         """GET /api/clearform/auth/me - Get user without auth"""
-        response = requests.get(f"{BASE_URL}/api/clearform/auth/me")
+        response = client.get("/api/clearform/auth/me")
         assert response.status_code == 401
         print("✓ Unauthenticated /me request correctly rejected")
 
@@ -153,18 +149,18 @@ class TestClearFormCredits:
     @pytest.fixture(autouse=True)
     def setup(self):
         """Get auth token before each test"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
         )
         assert response.status_code == 200
         self.token = response.json()["access_token"]
         self.headers = {"Authorization": f"Bearer {self.token}"}
     
-    def test_get_wallet(self):
+    def test_get_wallet(self, client):
         """GET /api/clearform/credits/wallet - Get wallet details"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/credits/wallet",
+        response = client.get(
+            "/api/clearform/credits/wallet",
             headers=self.headers
         )
         assert response.status_code == 200
@@ -178,10 +174,10 @@ class TestClearFormCredits:
         assert isinstance(data["total_balance"], int)
         print(f"✓ Wallet balance: {data['total_balance']} credits")
     
-    def test_get_balance(self):
+    def test_get_balance(self, client):
         """GET /api/clearform/credits/balance - Get simple balance"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/credits/balance",
+        response = client.get(
+            "/api/clearform/credits/balance",
             headers=self.headers
         )
         assert response.status_code == 200
@@ -192,10 +188,10 @@ class TestClearFormCredits:
         assert isinstance(data["credit_balance"], int)
         print(f"✓ Balance: {data['credit_balance']} credits")
     
-    def test_get_history(self):
+    def test_get_history(self, client):
         """GET /api/clearform/credits/history - Get transaction history"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/credits/history",
+        response = client.get(
+            "/api/clearform/credits/history",
             headers=self.headers
         )
         assert response.status_code == 200
@@ -217,9 +213,9 @@ class TestClearFormCredits:
         
         print(f"✓ Found {len(data['transactions'])} transactions")
     
-    def test_get_wallet_without_auth(self):
+    def test_get_wallet_without_auth(self, client):
         """GET /api/clearform/credits/wallet - Without auth"""
-        response = requests.get(f"{BASE_URL}/api/clearform/credits/wallet")
+        response = client.get("/api/clearform/credits/wallet")
         assert response.status_code == 401
         print("✓ Unauthenticated wallet request correctly rejected")
 
@@ -230,8 +226,8 @@ class TestClearFormDocuments:
     @pytest.fixture(autouse=True)
     def setup(self):
         """Get auth token before each test"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
         )
         assert response.status_code == 200
@@ -239,10 +235,10 @@ class TestClearFormDocuments:
         self.headers = {"Authorization": f"Bearer {self.token}"}
         self.initial_balance = response.json()["user"]["credit_balance"]
     
-    def test_get_vault(self):
+    def test_get_vault(self, client):
         """GET /api/clearform/documents/vault - Get document vault"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/vault",
+        response = client.get(
+            "/api/clearform/documents/vault",
             headers=self.headers
         )
         assert response.status_code == 200
@@ -266,11 +262,11 @@ class TestClearFormDocuments:
         
         print(f"✓ Vault contains {data['total']} documents")
     
-    def test_generate_formal_letter(self):
+    def test_generate_formal_letter(self, client):
         """POST /api/clearform/documents/generate - Generate formal letter"""
         # Check balance first
-        balance_response = requests.get(
-            f"{BASE_URL}/api/clearform/credits/balance",
+        balance_response = client.get(
+            "/api/clearform/credits/balance",
             headers=self.headers
         )
         initial_balance = balance_response.json()["credit_balance"]
@@ -278,8 +274,8 @@ class TestClearFormDocuments:
         if initial_balance < 1:
             pytest.skip("Insufficient credits for test")
         
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/documents/generate",
+        response = client.post(
+            "/api/clearform/documents/generate",
             headers=self.headers,
             json={
                 "document_type": "formal_letter",
@@ -309,8 +305,8 @@ class TestClearFormDocuments:
         time.sleep(5)
         
         # Verify document was generated
-        doc_response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/{document_id}",
+        doc_response = client.get(
+            f"/api/clearform/documents/{document_id}",
             headers=self.headers
         )
         assert doc_response.status_code == 200
@@ -330,8 +326,8 @@ class TestClearFormDocuments:
             print(f"✓ Document still generating (status: {doc_data['status']})")
         
         # Verify credit was deducted
-        new_balance_response = requests.get(
-            f"{BASE_URL}/api/clearform/credits/balance",
+        new_balance_response = client.get(
+            "/api/clearform/credits/balance",
             headers=self.headers
         )
         new_balance = new_balance_response.json()["credit_balance"]
@@ -341,10 +337,10 @@ class TestClearFormDocuments:
             assert new_balance < initial_balance
             print(f"✓ Credit deducted: {initial_balance} -> {new_balance}")
     
-    def test_generate_without_intent(self):
+    def test_generate_without_intent(self, client):
         """POST /api/clearform/documents/generate - Without required intent"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/documents/generate",
+        response = client.post(
+            "/api/clearform/documents/generate",
             headers=self.headers,
             json={
                 "document_type": "formal_letter"
@@ -355,18 +351,18 @@ class TestClearFormDocuments:
         assert response.status_code == 422
         print("✓ Missing intent correctly rejected")
     
-    def test_get_document_not_found(self):
+    def test_get_document_not_found(self, client):
         """GET /api/clearform/documents/{id} - Non-existent document"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/documents/nonexistent-doc-id",
+        response = client.get(
+            "/api/clearform/documents/nonexistent-doc-id",
             headers=self.headers
         )
         assert response.status_code == 404
         print("✓ Non-existent document correctly returns 404")
     
-    def test_vault_without_auth(self):
+    def test_vault_without_auth(self, client):
         """GET /api/clearform/documents/vault - Without auth"""
-        response = requests.get(f"{BASE_URL}/api/clearform/documents/vault")
+        response = client.get("/api/clearform/documents/vault")
         assert response.status_code == 401
         print("✓ Unauthenticated vault request correctly rejected")
 
@@ -377,18 +373,18 @@ class TestClearFormSubscriptions:
     @pytest.fixture(autouse=True)
     def setup(self):
         """Get auth token before each test"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/login",
+        response = client.post(
+            "/api/clearform/auth/login",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
         )
         assert response.status_code == 200
         self.token = response.json()["access_token"]
         self.headers = {"Authorization": f"Bearer {self.token}"}
     
-    def test_get_current_subscription(self):
+    def test_get_current_subscription(self, client):
         """GET /api/clearform/subscriptions/current - Get current subscription"""
-        response = requests.get(
-            f"{BASE_URL}/api/clearform/subscriptions/current",
+        response = client.get(
+            "/api/clearform/subscriptions/current",
             headers=self.headers
         )
         assert response.status_code == 200
@@ -403,10 +399,10 @@ class TestClearFormSubscriptions:
         
         print(f"✓ Has subscription: {data['has_subscription']}")
     
-    def test_subscribe_to_free_plan(self):
+    def test_subscribe_to_free_plan(self, client):
         """POST /api/clearform/subscriptions/subscribe - Subscribe to free plan (should fail)"""
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/subscriptions/subscribe",
+        response = client.post(
+            "/api/clearform/subscriptions/subscribe",
             headers=self.headers,
             json={"plan": "free"}
         )
@@ -418,12 +414,12 @@ class TestClearFormSubscriptions:
 class TestClearFormNewUserRegistration:
     """Test new user registration flow with welcome credits"""
     
-    def test_register_new_user_gets_welcome_credits(self):
+    def test_register_new_user_gets_welcome_credits(self, client):
         """POST /api/clearform/auth/register - New user gets 5 welcome credits"""
         unique_email = f"test_{uuid.uuid4().hex[:8]}@clearform-test.com"
         
-        response = requests.post(
-            f"{BASE_URL}/api/clearform/auth/register",
+        response = client.post(
+            "/api/clearform/auth/register",
             json={
                 "email": unique_email,
                 "password": "TestPass123!",
@@ -443,8 +439,8 @@ class TestClearFormNewUserRegistration:
         
         # Verify credits in wallet
         token = data["access_token"]
-        wallet_response = requests.get(
-            f"{BASE_URL}/api/clearform/credits/wallet",
+        wallet_response = client.get(
+            "/api/clearform/credits/wallet",
             headers={"Authorization": f"Bearer {token}"}
         )
         assert wallet_response.status_code == 200
@@ -452,8 +448,8 @@ class TestClearFormNewUserRegistration:
         assert wallet["total_balance"] >= 5  # At least 5 credits
         
         # Verify welcome bonus transaction in history
-        history_response = requests.get(
-            f"{BASE_URL}/api/clearform/credits/history",
+        history_response = client.get(
+            "/api/clearform/credits/history",
             headers={"Authorization": f"Bearer {token}"}
         )
         assert history_response.status_code == 200

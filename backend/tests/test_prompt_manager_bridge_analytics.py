@@ -8,10 +8,6 @@ Tests for:
 - Analytics API endpoints return correct data structure
 """
 import pytest
-import requests
-import os
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -20,32 +16,30 @@ ADMIN_PASSWORD = "Admin123!"
 
 class TestPromptManagerBridgeIntegration:
     """Test PromptManagerBridge integration with document orchestrator"""
-    
-    @pytest.fixture(scope="class")
-    def auth_token(self):
+
+    @pytest.fixture
+    def auth_token(self, client):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         assert response.status_code == 200, f"Login failed: {response.text}"
         return response.json()["access_token"]
-    
-    @pytest.fixture(scope="class")
+
+    @pytest.fixture
     def headers(self, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
-    
-    def test_bridge_service_exists(self, headers):
+
+    def test_bridge_service_exists(self, client, headers):
         """Verify the prompt manager bridge service is accessible via API"""
-        # The bridge is used internally by document orchestrator
-        # We verify it exists by checking the analytics endpoint which uses it
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/analytics/performance",
+        response = client.get(
+            "/api/admin/prompts/analytics/performance",
             headers=headers
         )
         assert response.status_code == 200, f"Analytics endpoint failed: {response.text}"
     
-    def test_active_prompt_lookup(self, headers):
+    def test_active_prompt_lookup(self, client, headers):
         """Test that active prompt lookup works for service/doc_type"""
         # First create and activate a prompt
         payload = {
@@ -67,7 +61,7 @@ class TestPromptManagerBridgeIntegration:
         }
         
         # Create template
-        create_response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        create_response = client.post("/api/admin/prompts", headers=headers, json=payload)
         assert create_response.status_code == 200
         template_id = create_response.json()["template_id"]
         
@@ -76,8 +70,8 @@ class TestPromptManagerBridgeIntegration:
             "template_id": template_id,
             "test_input_data": {"test": "data"}
         }
-        test_response = requests.post(
-            f"{BASE_URL}/api/admin/prompts/test",
+        test_response = client.post(
+            "/api/admin/prompts/test",
             headers=headers,
             json=test_payload,
             timeout=60
@@ -85,18 +79,18 @@ class TestPromptManagerBridgeIntegration:
         
         if test_response.status_code == 200 and test_response.json().get("status") == "PASSED":
             # Mark as tested
-            requests.post(f"{BASE_URL}/api/admin/prompts/{template_id}/mark-tested", headers=headers)
+            client.post(f"/api/admin/prompts/{template_id}/mark-tested", headers=headers)
             
             # Activate
             activate_payload = {
                 "template_id": template_id,
                 "activation_reason": "Bridge integration test"
             }
-            requests.post(f"{BASE_URL}/api/admin/prompts/{template_id}/activate", headers=headers, json=activate_payload)
+            client.post(f"/api/admin/prompts/{template_id}/activate", headers=headers, json=activate_payload)
             
             # Now test the active prompt lookup
-            response = requests.get(
-                f"{BASE_URL}/api/admin/prompts/active/TEST_BRIDGE_SERVICE/GENERAL_DOCUMENT",
+            response = client.get(
+                "/api/admin/prompts/active/TEST_BRIDGE_SERVICE/GENERAL_DOCUMENT",
                 headers=headers
             )
             assert response.status_code == 200
@@ -111,8 +105,8 @@ class TestAnalyticsPerformanceEndpoint:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -121,10 +115,10 @@ class TestAnalyticsPerformanceEndpoint:
     def headers(self, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_performance_analytics_structure(self, headers):
+    def test_performance_analytics_structure(self, client, headers):
         """Test that performance analytics returns correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/analytics/performance",
+        response = client.get(
+            "/api/admin/prompts/analytics/performance",
             headers=headers
         )
         assert response.status_code == 200
@@ -148,31 +142,31 @@ class TestAnalyticsPerformanceEndpoint:
         assert isinstance(data["total_tokens_used"], int)
         assert isinstance(data["by_prompt"], list)
     
-    def test_performance_analytics_with_days_filter(self, headers):
+    def test_performance_analytics_with_days_filter(self, client, headers):
         """Test performance analytics with different day ranges"""
         for days in [7, 14, 30, 90]:
-            response = requests.get(
-                f"{BASE_URL}/api/admin/prompts/analytics/performance?days={days}",
+            response = client.get(
+                "/api/admin/prompts/analytics/performance?days={days}",
                 headers=headers
             )
             assert response.status_code == 200
             data = response.json()
             assert data["period_days"] == days
     
-    def test_performance_analytics_with_template_filter(self, headers):
+    def test_performance_analytics_with_template_filter(self, client, headers):
         """Test performance analytics filtered by template_id"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/analytics/performance?template_id=PT-TEST",
+        response = client.get(
+            "/api/admin/prompts/analytics/performance?template_id=PT-TEST",
             headers=headers
         )
         assert response.status_code == 200
         data = response.json()
         assert "total_executions" in data
     
-    def test_performance_analytics_with_service_filter(self, headers):
+    def test_performance_analytics_with_service_filter(self, client, headers):
         """Test performance analytics filtered by service_code"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/analytics/performance?service_code=AI_WF_BLUEPRINT",
+        response = client.get(
+            "/api/admin/prompts/analytics/performance?service_code=AI_WF_BLUEPRINT",
             headers=headers
         )
         assert response.status_code == 200
@@ -186,8 +180,8 @@ class TestAnalyticsTopPromptsEndpoint:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -196,10 +190,10 @@ class TestAnalyticsTopPromptsEndpoint:
     def headers(self, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_top_prompts_structure(self, headers):
+    def test_top_prompts_structure(self, client, headers):
         """Test that top prompts returns correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/analytics/top-prompts",
+        response = client.get(
+            "/api/admin/prompts/analytics/top-prompts",
             headers=headers
         )
         assert response.status_code == 200
@@ -224,22 +218,22 @@ class TestAnalyticsTopPromptsEndpoint:
             for field in expected_fields:
                 assert field in prompt, f"Missing field: {field}"
     
-    def test_top_prompts_sort_options(self, headers):
+    def test_top_prompts_sort_options(self, client, headers):
         """Test top prompts with different sort options"""
         for sort_by in ["executions", "success_rate", "tokens"]:
-            response = requests.get(
-                f"{BASE_URL}/api/admin/prompts/analytics/top-prompts?sort_by={sort_by}",
+            response = client.get(
+                "/api/admin/prompts/analytics/top-prompts?sort_by={sort_by}",
                 headers=headers
             )
             assert response.status_code == 200
             data = response.json()
             assert data["sort_by"] == sort_by
     
-    def test_top_prompts_limit(self, headers):
+    def test_top_prompts_limit(self, client, headers):
         """Test top prompts with different limits"""
         for limit in [5, 10, 20]:
-            response = requests.get(
-                f"{BASE_URL}/api/admin/prompts/analytics/top-prompts?limit={limit}",
+            response = client.get(
+                "/api/admin/prompts/analytics/top-prompts?limit={limit}",
                 headers=headers
             )
             assert response.status_code == 200
@@ -254,8 +248,8 @@ class TestAnalyticsExecutionTimelineEndpoint:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -264,10 +258,10 @@ class TestAnalyticsExecutionTimelineEndpoint:
     def headers(self, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_execution_timeline_structure(self, headers):
+    def test_execution_timeline_structure(self, client, headers):
         """Test that execution timeline returns correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/analytics/execution-timeline",
+        response = client.get(
+            "/api/admin/prompts/analytics/execution-timeline",
             headers=headers
         )
         assert response.status_code == 200
@@ -291,11 +285,11 @@ class TestAnalyticsExecutionTimelineEndpoint:
             for field in expected_fields:
                 assert field in entry, f"Missing field: {field}"
     
-    def test_execution_timeline_days_filter(self, headers):
+    def test_execution_timeline_days_filter(self, client, headers):
         """Test execution timeline with different day ranges"""
         for days in [7, 14, 30]:
-            response = requests.get(
-                f"{BASE_URL}/api/admin/prompts/analytics/execution-timeline?days={days}",
+            response = client.get(
+                "/api/admin/prompts/analytics/execution-timeline?days={days}",
                 headers=headers
             )
             assert response.status_code == 200
@@ -309,8 +303,8 @@ class TestPromptVersionUsedTracking:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -319,7 +313,7 @@ class TestPromptVersionUsedTracking:
     def headers(self, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_prompt_version_info_structure(self, headers):
+    def test_prompt_version_info_structure(self, client, headers):
         """Test that ManagedPromptInfo structure is correct in API responses"""
         # Create a template and verify its structure includes version info
         payload = {
@@ -340,7 +334,7 @@ class TestPromptVersionUsedTracking:
             }
         }
         
-        response = requests.post(f"{BASE_URL}/api/admin/prompts", headers=headers, json=payload)
+        response = client.post("/api/admin/prompts", headers=headers, json=payload)
         assert response.status_code == 200
         data = response.json()
         
@@ -358,17 +352,17 @@ class TestAnalyticsAuthRequired:
     
     def test_performance_requires_auth(self):
         """Test that performance analytics requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/analytics/performance")
+        response = client.get("/api/admin/prompts/analytics/performance")
         assert response.status_code in [401, 403]
     
     def test_top_prompts_requires_auth(self):
         """Test that top prompts requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/analytics/top-prompts")
+        response = client.get("/api/admin/prompts/analytics/top-prompts")
         assert response.status_code in [401, 403]
     
     def test_execution_timeline_requires_auth(self):
         """Test that execution timeline requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/prompts/analytics/execution-timeline")
+        response = client.get("/api/admin/prompts/analytics/execution-timeline")
         assert response.status_code in [401, 403]
 
 
@@ -378,8 +372,8 @@ class TestAnalyticsDataIntegrity:
     @pytest.fixture(scope="class")
     def auth_token(self):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -388,10 +382,10 @@ class TestAnalyticsDataIntegrity:
     def headers(self, auth_token):
         return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
     
-    def test_success_rate_calculation(self, headers):
+    def test_success_rate_calculation(self, client, headers):
         """Test that success rate is calculated correctly"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/analytics/performance",
+        response = client.get(
+            "/api/admin/prompts/analytics/performance",
             headers=headers
         )
         assert response.status_code == 200
@@ -409,10 +403,10 @@ class TestAnalyticsDataIntegrity:
             expected_rate = round((successful / total) * 100, 2)
             assert abs(data["overall_success_rate"] - expected_rate) < 0.1
     
-    def test_by_prompt_aggregation(self, headers):
+    def test_by_prompt_aggregation(self, client, headers):
         """Test that by_prompt aggregation is correct"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/prompts/analytics/performance",
+        response = client.get(
+            "/api/admin/prompts/analytics/performance",
             headers=headers
         )
         assert response.status_code == 200

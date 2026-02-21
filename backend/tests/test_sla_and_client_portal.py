@@ -9,11 +9,7 @@ Tests features implemented in iteration 44:
 6. Admin Notification Preferences API
 """
 import pytest
-import requests
-import os
 from datetime import datetime, timezone, timedelta
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -102,11 +98,11 @@ class TestSLAConfiguration:
         assert sla_fallback["target_hours"] == 48, "Should fallback to category SLA"
 
 
-@pytest.fixture(scope="module")
-def admin_token():
+@pytest.fixture
+def admin_token(client):
     """Get admin authentication token"""
-    response = requests.post(
-        f"{BASE_URL}/api/auth/login",
+    response = client.post(
+        "/api/auth/login",
         json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
     )
     if response.status_code == 200:
@@ -114,11 +110,11 @@ def admin_token():
     pytest.skip(f"Admin login failed: {response.status_code} - {response.text}")
 
 
-@pytest.fixture(scope="module")
-def client_token():
+@pytest.fixture
+def client_token(client):
     """Get client authentication token"""
-    response = requests.post(
-        f"{BASE_URL}/api/auth/login",
+    response = client.post(
+        "/api/auth/login",
         json={"email": CLIENT_EMAIL, "password": CLIENT_PASSWORD}
     )
     if response.status_code == 200:
@@ -129,15 +125,15 @@ def client_token():
 class TestAdminNotificationPreferences:
     """Test admin notification preferences API"""
     
-    def test_get_notification_preferences_requires_auth(self):
+    def test_get_notification_preferences_requires_auth(self, client):
         """GET /api/admin/notifications/preferences should require authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/notifications/preferences")
+        response = client.get("/api/admin/notifications/preferences")
         assert response.status_code == 401, "Should return 401 without auth"
     
-    def test_get_notification_preferences_success(self, admin_token):
+    def test_get_notification_preferences_success(self, client, admin_token):
         """GET /api/admin/notifications/preferences should return preferences"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/notifications/preferences",
+        response = client.get(
+            "/api/admin/notifications/preferences",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200, f"Should return 200, got {response.status_code}: {response.text}"
@@ -147,15 +143,15 @@ class TestAdminNotificationPreferences:
         assert "email_enabled" in data or data.get("email_enabled") is not None or "email_enabled" in str(data), \
             f"Response should contain email_enabled field: {data}"
     
-    def test_update_notification_preferences_requires_auth(self):
+    def test_update_notification_preferences_requires_auth(self, client):
         """PUT /api/admin/notifications/preferences should require authentication"""
-        response = requests.put(
-            f"{BASE_URL}/api/admin/notifications/preferences",
+        response = client.put(
+            "/api/admin/notifications/preferences",
             json={"email_enabled": True}
         )
         assert response.status_code == 401, "Should return 401 without auth"
     
-    def test_update_notification_preferences_success(self, admin_token):
+    def test_update_notification_preferences_success(self, client, admin_token):
         """PUT /api/admin/notifications/preferences should update preferences"""
         # Update preferences
         update_payload = {
@@ -163,8 +159,8 @@ class TestAdminNotificationPreferences:
             "sms_enabled": False,
             "in_app_enabled": True,
         }
-        response = requests.put(
-            f"{BASE_URL}/api/admin/notifications/preferences",
+        response = client.put(
+            "/api/admin/notifications/preferences",
             headers={"Authorization": f"Bearer {admin_token}"},
             json=update_payload
         )
@@ -173,10 +169,10 @@ class TestAdminNotificationPreferences:
         data = response.json()
         assert data.get("success") == True, "Should return success: true"
     
-    def test_get_admin_profile(self, admin_token):
+    def test_get_admin_profile(self, client, admin_token):
         """GET /api/admin/notifications/profile should return admin profile"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/notifications/profile",
+        response = client.get(
+            "/api/admin/notifications/profile",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200, f"Should return 200, got {response.status_code}: {response.text}"
@@ -185,10 +181,10 @@ class TestAdminNotificationPreferences:
         # Should have email field
         assert "email" in data or "auth_email" in data, f"Profile should contain email: {data}"
     
-    def test_list_notifications(self, admin_token):
+    def test_list_notifications(self, client, admin_token):
         """GET /api/admin/notifications/ should return notifications list"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/notifications/",
+        response = client.get(
+            "/api/admin/notifications/",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200, f"Should return 200, got {response.status_code}: {response.text}"
@@ -197,10 +193,10 @@ class TestAdminNotificationPreferences:
         assert "notifications" in data, "Should return notifications array"
         assert "unread_count" in data, "Should return unread_count"
     
-    def test_get_unread_count(self, admin_token):
+    def test_get_unread_count(self, client, admin_token):
         """GET /api/admin/notifications/unread-count should return count"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/notifications/unread-count",
+        response = client.get(
+            "/api/admin/notifications/unread-count",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200, f"Should return 200, got {response.status_code}: {response.text}"
@@ -213,15 +209,15 @@ class TestAdminNotificationPreferences:
 class TestClientOrdersAPI:
     """Test client orders API endpoints"""
     
-    def test_list_client_orders_requires_auth(self):
+    def test_list_client_orders_requires_auth(self, client):
         """GET /api/client/orders/ should require authentication"""
-        response = requests.get(f"{BASE_URL}/api/client/orders/")
+        response = client.get("/api/client/orders/")
         assert response.status_code == 401, "Should return 401 without auth"
     
-    def test_list_client_orders_success(self, client_token):
+    def test_list_client_orders_success(self, client, client_token):
         """GET /api/client/orders/ should return client's orders"""
-        response = requests.get(
-            f"{BASE_URL}/api/client/orders/",
+        response = client.get(
+            "/api/client/orders/",
             headers={"Authorization": f"Bearer {client_token}"}
         )
         assert response.status_code == 200, f"Should return 200, got {response.status_code}: {response.text}"
@@ -232,10 +228,10 @@ class TestClientOrdersAPI:
         assert "action_required" in data, "Should return action_required count"
         assert isinstance(data["orders"], list), "orders should be a list"
     
-    def test_list_client_orders_with_status_filter(self, client_token):
+    def test_list_client_orders_with_status_filter(self, client, client_token):
         """GET /api/client/orders/?status=COMPLETED should filter by status"""
-        response = requests.get(
-            f"{BASE_URL}/api/client/orders/?status=COMPLETED",
+        response = client.get(
+            "/api/client/orders/?status=COMPLETED",
             headers={"Authorization": f"Bearer {client_token}"}
         )
         assert response.status_code == 200, f"Should return 200, got {response.status_code}: {response.text}"
@@ -245,10 +241,10 @@ class TestClientOrdersAPI:
         for order in data.get("orders", []):
             assert order.get("status") == "COMPLETED", f"Order should be COMPLETED: {order.get('status')}"
     
-    def test_get_client_order_not_found(self, client_token):
+    def test_get_client_order_not_found(self, client, client_token):
         """GET /api/client/orders/{order_id} should return 404 for non-existent order"""
-        response = requests.get(
-            f"{BASE_URL}/api/client/orders/NONEXISTENT_ORDER_123",
+        response = client.get(
+            "/api/client/orders/NONEXISTENT_ORDER_123",
             headers={"Authorization": f"Bearer {client_token}"}
         )
         assert response.status_code == 404, f"Should return 404, got {response.status_code}"
@@ -257,23 +253,23 @@ class TestClientOrdersAPI:
 class TestClientDocumentsAPI:
     """Test client document download API endpoints"""
     
-    def test_get_documents_requires_auth(self):
+    def test_get_documents_requires_auth(self, client):
         """GET /api/client/orders/{order_id}/documents should require authentication"""
-        response = requests.get(f"{BASE_URL}/api/client/orders/TEST_ORDER/documents")
+        response = client.get("/api/client/orders/TEST_ORDER/documents")
         assert response.status_code == 401, "Should return 401 without auth"
     
-    def test_get_documents_order_not_found(self, client_token):
+    def test_get_documents_order_not_found(self, client, client_token):
         """GET /api/client/orders/{order_id}/documents should return 404 for non-existent order"""
-        response = requests.get(
-            f"{BASE_URL}/api/client/orders/NONEXISTENT_ORDER_123/documents",
+        response = client.get(
+            "/api/client/orders/NONEXISTENT_ORDER_123/documents",
             headers={"Authorization": f"Bearer {client_token}"}
         )
         assert response.status_code == 404, f"Should return 404, got {response.status_code}"
     
-    def test_download_document_requires_auth(self):
+    def test_download_document_requires_auth(self, client):
         """GET /api/client/orders/{order_id}/documents/{version}/download should require auth"""
-        response = requests.get(
-            f"{BASE_URL}/api/client/orders/TEST_ORDER/documents/1/download?format=pdf"
+        response = client.get(
+            "/api/client/orders/TEST_ORDER/documents/1/download?format=pdf"
         )
         assert response.status_code == 401, "Should return 401 without auth"
 

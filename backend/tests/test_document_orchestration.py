@@ -16,21 +16,17 @@ Features tested:
 - AUTHORITATIVE_FRAMEWORK guardrails
 """
 import pytest
-import requests
-import os
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
 ADMIN_PASSWORD = "Admin123!"
 
 
-@pytest.fixture(scope="module")
-def admin_token():
+@pytest.fixture
+def admin_token(client):
     """Get admin authentication token."""
-    response = requests.post(
-        f"{BASE_URL}/api/auth/login",
+    response = client.post(
+        "/api/auth/login",
         json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
     )
     if response.status_code == 200:
@@ -56,8 +52,8 @@ class TestOrchestrationValidateEndpoint:
     
     def test_validate_ai_wf_blueprint_returns_prompt_info(self, admin_headers):
         """GET /api/orchestration/validate/AI_WF_BLUEPRINT returns prompt info."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/AI_WF_BLUEPRINT",
+        response = client.get(
+            "/api/orchestration/validate/AI_WF_BLUEPRINT",
             headers=admin_headers
         )
         
@@ -83,8 +79,8 @@ class TestOrchestrationValidateEndpoint:
     
     def test_validate_mr_basic_returns_prompt_info(self, admin_headers):
         """GET /api/orchestration/validate/MR_BASIC returns prompt info."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/MR_BASIC",
+        response = client.get(
+            "/api/orchestration/validate/MR_BASIC",
             headers=admin_headers
         )
         
@@ -106,8 +102,8 @@ class TestOrchestrationValidateEndpoint:
     
     def test_validate_comp_hmo_returns_prompt_info(self, admin_headers):
         """GET /api/orchestration/validate/COMP_HMO returns prompt info."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/COMP_HMO",
+        response = client.get(
+            "/api/orchestration/validate/COMP_HMO",
             headers=admin_headers
         )
         
@@ -129,8 +125,8 @@ class TestOrchestrationValidateEndpoint:
     
     def test_validate_doc_pack_pro_returns_orchestrator(self, admin_headers):
         """GET /api/orchestration/validate/DOC_PACK_PRO returns orchestrator prompt."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/DOC_PACK_PRO",
+        response = client.get(
+            "/api/orchestration/validate/DOC_PACK_PRO",
             headers=admin_headers
         )
         
@@ -147,10 +143,10 @@ class TestOrchestrationValidateEndpoint:
         for field in expected_fields:
             assert field in data["required_fields"], f"Missing required field: {field}"
     
-    def test_validate_requires_admin_auth(self):
+    def test_validate_requires_admin_auth(self, client):
         """GET /api/orchestration/validate/{service_code} requires admin auth."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/AI_WF_BLUEPRINT",
+        response = client.get(
+            "/api/orchestration/validate/AI_WF_BLUEPRINT",
             headers={"Content-Type": "application/json"}
         )
         
@@ -158,8 +154,8 @@ class TestOrchestrationValidateEndpoint:
     
     def test_validate_invalid_service_returns_404(self, admin_headers):
         """GET /api/orchestration/validate/{invalid} returns 404."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/INVALID_SERVICE_CODE",
+        response = client.get(
+            "/api/orchestration/validate/INVALID_SERVICE_CODE",
             headers=admin_headers
         )
         
@@ -175,8 +171,8 @@ class TestOrchestrationStatsEndpoint:
     
     def test_stats_returns_execution_statistics(self, admin_headers):
         """GET /api/orchestration/stats returns execution statistics."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/stats",
+        response = client.get(
+            "/api/orchestration/stats",
             headers=admin_headers
         )
         
@@ -195,10 +191,10 @@ class TestOrchestrationStatsEndpoint:
         assert isinstance(data["by_status"], dict)
         assert isinstance(data["by_service"], list)
     
-    def test_stats_requires_admin_auth(self):
+    def test_stats_requires_admin_auth(self, client):
         """GET /api/orchestration/stats requires admin auth."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/stats",
+        response = client.get(
+            "/api/orchestration/stats",
             headers={"Content-Type": "application/json"}
         )
         
@@ -214,8 +210,8 @@ class TestOrchestrationValidateDataEndpoint:
     
     def test_validate_data_returns_missing_fields(self, admin_headers):
         """POST /api/orchestration/validate-data returns missing fields correctly."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/validate-data?service_code=AI_WF_BLUEPRINT",
+        response = client.post(
+            "/api/orchestration/validate-data?service_code=AI_WF_BLUEPRINT",
             headers=admin_headers,
             json={
                 "business_description": "Test business",
@@ -237,8 +233,8 @@ class TestOrchestrationValidateDataEndpoint:
     
     def test_validate_data_returns_valid_when_all_fields_present(self, admin_headers):
         """POST /api/orchestration/validate-data returns valid when all fields present."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/validate-data?service_code=AI_WF_BLUEPRINT",
+        response = client.post(
+            "/api/orchestration/validate-data?service_code=AI_WF_BLUEPRINT",
             headers=admin_headers,
             json={
                 "business_description": "Test business",
@@ -261,8 +257,8 @@ class TestOrchestrationValidateDataEndpoint:
     
     def test_validate_data_for_doc_pack_uses_orchestrator(self, admin_headers):
         """POST /api/orchestration/validate-data for DOC_PACK uses orchestrator validation."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/validate-data?service_code=DOC_PACK_PRO",
+        response = client.post(
+            "/api/orchestration/validate-data?service_code=DOC_PACK_PRO",
             headers=admin_headers,
             json={
                 "pack_type": "DOC_PACK_PRO",
@@ -279,10 +275,10 @@ class TestOrchestrationValidateDataEndpoint:
         assert "landlord_name" in data["missing_fields"]
         assert "doc_tenant_full_name" in data["missing_fields"]
     
-    def test_validate_data_requires_admin_auth(self):
+    def test_validate_data_requires_admin_auth(self, client):
         """POST /api/orchestration/validate-data requires admin auth."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/validate-data?service_code=AI_WF_BLUEPRINT",
+        response = client.post(
+            "/api/orchestration/validate-data?service_code=AI_WF_BLUEPRINT",
             headers={"Content-Type": "application/json"},
             json={"business_description": "Test"}
         )
@@ -309,8 +305,8 @@ class TestGPTPromptRegistry:
     ])
     def test_all_8_services_have_prompts_defined(self, admin_headers, service_code, expected_prompt_id):
         """All 8 services have prompts defined in the registry."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/{service_code}",
+        response = client.get(
+            f"/api/orchestration/validate/{service_code}",
             headers=admin_headers
         )
         
@@ -323,8 +319,8 @@ class TestGPTPromptRegistry:
     def test_doc_pack_orchestrator_prompt_exists(self, admin_headers):
         """DOC_PACK_ORCHESTRATOR prompt exists for document packs."""
         # Test via DOC_PACK_PRO which should use the orchestrator
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/DOC_PACK_PRO",
+        response = client.get(
+            "/api/orchestration/validate/DOC_PACK_PRO",
             headers=admin_headers
         )
         
@@ -343,8 +339,8 @@ class TestGPTPromptRegistry:
         ]
         
         for service_code in service_codes:
-            response = requests.get(
-                f"{BASE_URL}/api/orchestration/validate/{service_code}",
+            response = client.get(
+                f"/api/orchestration/validate/{service_code}",
                 headers=admin_headers
             )
             
@@ -363,8 +359,8 @@ class TestGPTPromptRegistry:
         ]
         
         for service_code in service_codes:
-            response = requests.get(
-                f"{BASE_URL}/api/orchestration/validate/{service_code}",
+            response = client.get(
+                f"/api/orchestration/validate/{service_code}",
                 headers=admin_headers
             )
             
@@ -382,9 +378,9 @@ class TestGPTPromptRegistry:
 class TestServiceCatalogueV2Integration:
     """Tests for Service Catalogue V2 integration with orchestration."""
     
-    def test_all_12_services_accessible_via_public_v2(self):
+    def test_all_12_services_accessible_via_public_v2(self, client):
         """All 12 services (11 public + 1 CVP) are accessible via /api/public/v2/services."""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services")
+        response = client.get("/api/public/v2/services")
         
         assert response.status_code == 200
         data = response.json()
@@ -406,8 +402,8 @@ class TestServiceCatalogueV2Integration:
     
     def test_admin_v2_returns_all_12_services(self, admin_headers):
         """Admin V2 endpoint returns all 12 services including CVP."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/services/v2/",
+        response = client.get(
+            "/api/admin/services/v2/",
             headers=admin_headers
         )
         
@@ -428,49 +424,49 @@ class TestServiceCatalogueV2Integration:
 class TestOrchestrationAdminAuth:
     """Tests for admin authentication requirements on orchestration endpoints."""
     
-    def test_generate_requires_admin_auth(self):
+    def test_generate_requires_admin_auth(self, client):
         """POST /api/orchestration/generate requires admin auth."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/generate",
+        response = client.post(
+            "/api/orchestration/generate",
             headers={"Content-Type": "application/json"},
             json={"order_id": "test", "intake_data": {}}
         )
         
         assert response.status_code in [401, 403]
     
-    def test_regenerate_requires_admin_auth(self):
+    def test_regenerate_requires_admin_auth(self, client):
         """POST /api/orchestration/regenerate requires admin auth."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/regenerate",
+        response = client.post(
+            "/api/orchestration/regenerate",
             headers={"Content-Type": "application/json"},
             json={"order_id": "test", "intake_data": {}, "regeneration_notes": "test"}
         )
         
         assert response.status_code in [401, 403]
     
-    def test_review_requires_admin_auth(self):
+    def test_review_requires_admin_auth(self, client):
         """POST /api/orchestration/review requires admin auth."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/review",
+        response = client.post(
+            "/api/orchestration/review",
             headers={"Content-Type": "application/json"},
             json={"order_id": "test", "approved": True}
         )
         
         assert response.status_code in [401, 403]
     
-    def test_history_requires_admin_auth(self):
+    def test_history_requires_admin_auth(self, client):
         """GET /api/orchestration/history/{order_id} requires admin auth."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/history/test-order",
+        response = client.get(
+            "/api/orchestration/history/test-order",
             headers={"Content-Type": "application/json"}
         )
         
         assert response.status_code in [401, 403]
     
-    def test_latest_requires_admin_auth(self):
+    def test_latest_requires_admin_auth(self, client):
         """GET /api/orchestration/latest/{order_id} requires admin auth."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/latest/test-order",
+        response = client.get(
+            "/api/orchestration/latest/test-order",
             headers={"Content-Type": "application/json"}
         )
         
@@ -487,8 +483,8 @@ class TestPromptConfiguration:
     def test_ai_services_have_appropriate_temperature(self, admin_headers):
         """AI automation services have temperature 0.3."""
         for service_code in ["AI_WF_BLUEPRINT", "AI_PROC_MAP", "AI_TOOLS"]:
-            response = requests.get(
-                f"{BASE_URL}/api/orchestration/validate/{service_code}",
+            response = client.get(
+                f"/api/orchestration/validate/{service_code}",
                 headers=admin_headers
             )
             
@@ -501,8 +497,8 @@ class TestPromptConfiguration:
     def test_compliance_services_have_low_temperature(self, admin_headers):
         """Compliance services have low temperature (0.2) for accuracy."""
         for service_code in ["COMP_HMO", "COMP_FULL_AUDIT", "COMP_MOVEOUT"]:
-            response = requests.get(
-                f"{BASE_URL}/api/orchestration/validate/{service_code}",
+            response = client.get(
+                f"/api/orchestration/validate/{service_code}",
                 headers=admin_headers
             )
             
@@ -521,8 +517,8 @@ class TestPromptConfiguration:
         ]
         
         for service_code in service_codes:
-            response = requests.get(
-                f"{BASE_URL}/api/orchestration/validate/{service_code}",
+            response = client.get(
+                f"/api/orchestration/validate/{service_code}",
                 headers=admin_headers
             )
             

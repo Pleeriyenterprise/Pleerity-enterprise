@@ -11,13 +11,9 @@ Tests for:
 7. Admin Intake Schema Manager - Version history, draft/publish workflow, rollback
 8. HIGH intent notification - Verify HIGH intent leads trigger admin notifications
 """
-import pytest
-import requests
-import os
 import uuid
 from datetime import datetime, timezone, timedelta
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+import pytest
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -26,20 +22,20 @@ ADMIN_PASSWORD = "Admin123!"
 
 class TestAuthSetup:
     """Authentication setup for admin tests."""
-    
-    @pytest.fixture(scope="class")
-    def admin_token(self):
+
+    @pytest.fixture
+    def admin_token(self, client):
         """Get admin authentication token."""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         assert response.status_code == 200, f"Admin login failed: {response.text}"
         data = response.json()
         assert "access_token" in data, "No access_token in response"
         return data["access_token"]
-    
-    @pytest.fixture(scope="class")
+
+    @pytest.fixture
     def admin_headers(self, admin_token):
         """Get headers with admin auth token."""
         return {
@@ -51,12 +47,12 @@ class TestAuthSetup:
 class TestLeadCaptureAPI(TestAuthSetup):
     """Test lead capture from chatbot endpoint."""
     
-    def test_capture_chatbot_lead_basic(self):
+    def test_capture_chatbot_lead_basic(self, client):
         """Test basic lead capture from chatbot."""
         unique_email = f"TEST_lead_{uuid.uuid4().hex[:8]}@example.com"
         
-        response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Lead User",
@@ -76,12 +72,12 @@ class TestLeadCaptureAPI(TestAuthSetup):
         
         print(f"✓ Created lead: {data['lead_id']}")
     
-    def test_capture_chatbot_lead_with_service_interest(self):
+    def test_capture_chatbot_lead_with_service_interest(self, client):
         """Test lead capture with service interest mapping."""
         unique_email = f"TEST_cvp_{uuid.uuid4().hex[:8]}@example.com"
         
-        response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST CVP Interest",
@@ -99,12 +95,12 @@ class TestLeadCaptureAPI(TestAuthSetup):
         
         print(f"✓ Created lead with CVP interest: {data['lead_id']}")
     
-    def test_capture_chatbot_lead_high_intent(self):
+    def test_capture_chatbot_lead_high_intent(self, client):
         """Test lead capture with HIGH intent keywords triggers correct scoring."""
         unique_email = f"TEST_high_{uuid.uuid4().hex[:8]}@example.com"
         
-        response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST High Intent Lead",
@@ -124,12 +120,12 @@ class TestLeadCaptureAPI(TestAuthSetup):
         print(f"✓ Created HIGH intent lead: {data['lead_id']}")
         return data["lead_id"]
     
-    def test_capture_chatbot_lead_with_utm(self):
+    def test_capture_chatbot_lead_with_utm(self, client):
         """Test lead capture with UTM tracking parameters."""
         unique_email = f"TEST_utm_{uuid.uuid4().hex[:8]}@example.com"
         
-        response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST UTM Lead",
@@ -147,13 +143,13 @@ class TestLeadCaptureAPI(TestAuthSetup):
         assert data.get("success") is True
         print(f"✓ Created lead with UTM: {data['lead_id']}")
     
-    def test_capture_duplicate_lead(self):
+    def test_capture_duplicate_lead(self, client):
         """Test duplicate lead detection."""
         unique_email = f"test_dup_{uuid.uuid4().hex[:8]}@example.com"  # Use lowercase for consistent dedup
         
         # Create first lead
-        response1 = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        response1 = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST First Lead",
@@ -164,8 +160,8 @@ class TestLeadCaptureAPI(TestAuthSetup):
         first_lead_id = response1.json()["lead_id"]
         
         # Try to create duplicate with same email
-        response2 = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        response2 = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Duplicate Lead",
@@ -183,10 +179,10 @@ class TestLeadCaptureAPI(TestAuthSetup):
 class TestLeadListingAPI(TestAuthSetup):
     """Test admin lead listing endpoint."""
     
-    def test_list_leads_basic(self, admin_headers):
+    def test_list_leads_basic(self, client, admin_headers):
         """Test basic lead listing."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads",
+        response = client.get(
+            "/api/admin/leads",
             headers=admin_headers
         )
         
@@ -205,10 +201,10 @@ class TestLeadListingAPI(TestAuthSetup):
         
         print(f"✓ Listed {len(data['leads'])} leads (total: {data['total']})")
     
-    def test_list_leads_with_stats(self, admin_headers):
+    def test_list_leads_with_stats(self, client, admin_headers):
         """Test lead listing includes stats."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads",
+        response = client.get(
+            "/api/admin/leads",
             headers=admin_headers
         )
         
@@ -220,10 +216,10 @@ class TestLeadListingAPI(TestAuthSetup):
         
         print(f"✓ Lead stats returned: {list(stats.keys())}")
     
-    def test_list_leads_filter_by_intent(self, admin_headers):
+    def test_list_leads_filter_by_intent(self, client, admin_headers):
         """Test lead listing with intent score filter."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads?intent_score=HIGH",
+        response = client.get(
+            "/api/admin/leads?intent_score=HIGH",
             headers=admin_headers
         )
         
@@ -237,10 +233,10 @@ class TestLeadListingAPI(TestAuthSetup):
         
         print(f"✓ Filtered by HIGH intent: {len(data['leads'])} leads")
     
-    def test_list_leads_filter_by_source(self, admin_headers):
+    def test_list_leads_filter_by_source(self, client, admin_headers):
         """Test lead listing with source platform filter."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads?source_platform=WEB_CHAT",
+        response = client.get(
+            "/api/admin/leads?source_platform=WEB_CHAT",
             headers=admin_headers
         )
         
@@ -252,10 +248,10 @@ class TestLeadListingAPI(TestAuthSetup):
         
         print(f"✓ Filtered by WEB_CHAT source: {len(data['leads'])} leads")
     
-    def test_list_leads_search(self, admin_headers):
+    def test_list_leads_search(self, client, admin_headers):
         """Test lead listing with search."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads?search=TEST",
+        response = client.get(
+            "/api/admin/leads?search=TEST",
             headers=admin_headers
         )
         
@@ -264,10 +260,10 @@ class TestLeadListingAPI(TestAuthSetup):
         
         print(f"✓ Search for 'TEST': {len(data['leads'])} leads found")
     
-    def test_list_leads_pagination(self, admin_headers):
+    def test_list_leads_pagination(self, client, admin_headers):
         """Test lead listing pagination."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads?page=1&limit=5",
+        response = client.get(
+            "/api/admin/leads?page=1&limit=5",
             headers=admin_headers
         )
         
@@ -280,9 +276,9 @@ class TestLeadListingAPI(TestAuthSetup):
         
         print(f"✓ Pagination working: page {data['page']}, limit {data['limit']}")
     
-    def test_list_leads_requires_auth(self):
+    def test_list_leads_requires_auth(self, client):
         """Test lead listing requires authentication."""
-        response = requests.get(f"{BASE_URL}/api/admin/leads")
+        response = client.get("/api/admin/leads")
         
         assert response.status_code in [401, 403], f"Expected auth error, got {response.status_code}"
         print("✓ Lead listing requires authentication")
@@ -291,10 +287,10 @@ class TestLeadListingAPI(TestAuthSetup):
 class TestLeadNotificationsAPI(TestAuthSetup):
     """Test admin lead notifications endpoint."""
     
-    def test_get_notifications(self, admin_headers):
+    def test_get_notifications(self, client, admin_headers):
         """Test getting lead notifications."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads/notifications",
+        response = client.get(
+            "/api/admin/leads/notifications",
             headers=admin_headers
         )
         
@@ -316,10 +312,10 @@ class TestLeadNotificationsAPI(TestAuthSetup):
         print(f"  - SLA breaches: {len(data['sla_breach_alerts'])}")
         print(f"  - Recent leads: {len(data['recent_leads'])}")
     
-    def test_notifications_structure(self, admin_headers):
+    def test_notifications_structure(self, client, admin_headers):
         """Test notification alert structure."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads/notifications",
+        response = client.get(
+            "/api/admin/leads/notifications",
             headers=admin_headers
         )
         
@@ -347,9 +343,9 @@ class TestLeadNotificationsAPI(TestAuthSetup):
         
         print("✓ Notification structure verified")
     
-    def test_notifications_requires_auth(self):
+    def test_notifications_requires_auth(self, client):
         """Test notifications requires authentication."""
-        response = requests.get(f"{BASE_URL}/api/admin/leads/notifications")
+        response = client.get("/api/admin/leads/notifications")
         
         assert response.status_code in [401, 403]
         print("✓ Notifications requires authentication")
@@ -358,10 +354,10 @@ class TestLeadNotificationsAPI(TestAuthSetup):
 class TestFollowUpQueueProcessing(TestAuthSetup):
     """Test follow-up queue processing endpoint."""
     
-    def test_process_followup_queue(self, admin_headers):
+    def test_process_followup_queue(self, client, admin_headers):
         """Test manual follow-up queue processing."""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/leads/test/followup-queue",
+        response = client.post(
+            "/api/admin/leads/test/followup-queue",
             headers=admin_headers
         )
         
@@ -373,9 +369,9 @@ class TestFollowUpQueueProcessing(TestAuthSetup):
         
         print(f"✓ Follow-up queue processed: {data['message']}")
     
-    def test_followup_queue_requires_auth(self):
+    def test_followup_queue_requires_auth(self, client):
         """Test follow-up queue requires authentication."""
-        response = requests.post(f"{BASE_URL}/api/admin/leads/test/followup-queue")
+        response = client.post("/api/admin/leads/test/followup-queue")
         
         assert response.status_code in [401, 403]
         print("✓ Follow-up queue requires authentication")
@@ -384,10 +380,10 @@ class TestFollowUpQueueProcessing(TestAuthSetup):
 class TestSLABreachDetection(TestAuthSetup):
     """Test SLA breach detection endpoint."""
     
-    def test_sla_check_default(self, admin_headers):
+    def test_sla_check_default(self, client, admin_headers):
         """Test SLA breach check with default 24 hours."""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/leads/test/sla-check",
+        response = client.post(
+            "/api/admin/leads/test/sla-check",
             headers=admin_headers
         )
         
@@ -400,10 +396,10 @@ class TestSLABreachDetection(TestAuthSetup):
         
         print(f"✓ SLA check completed: {data['breaches_detected']} breaches detected")
     
-    def test_sla_check_custom_hours(self, admin_headers):
+    def test_sla_check_custom_hours(self, client, admin_headers):
         """Test SLA breach check with custom hours."""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/leads/test/sla-check?sla_hours=1",
+        response = client.post(
+            "/api/admin/leads/test/sla-check?sla_hours=1",
             headers=admin_headers
         )
         
@@ -413,9 +409,9 @@ class TestSLABreachDetection(TestAuthSetup):
         assert data.get("success") is True
         print(f"✓ SLA check with 1 hour: {data['breaches_detected']} breaches")
     
-    def test_sla_check_requires_auth(self):
+    def test_sla_check_requires_auth(self, client):
         """Test SLA check requires authentication."""
-        response = requests.post(f"{BASE_URL}/api/admin/leads/test/sla-check")
+        response = client.post("/api/admin/leads/test/sla-check")
         
         assert response.status_code in [401, 403]
         print("✓ SLA check requires authentication")
@@ -424,10 +420,10 @@ class TestSLABreachDetection(TestAuthSetup):
 class TestAbandonedIntakeDetection(TestAuthSetup):
     """Test abandoned intake detection endpoint."""
     
-    def test_abandoned_intake_detection(self, admin_headers):
+    def test_abandoned_intake_detection(self, client, admin_headers):
         """Test manual abandoned intake detection."""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/leads/test/abandoned-intake",
+        response = client.post(
+            "/api/admin/leads/test/abandoned-intake",
             headers=admin_headers
         )
         
@@ -442,9 +438,9 @@ class TestAbandonedIntakeDetection(TestAuthSetup):
         
         print(f"✓ Abandoned intake detection: {data['leads_created']} leads created")
     
-    def test_abandoned_intake_requires_auth(self):
+    def test_abandoned_intake_requires_auth(self, client):
         """Test abandoned intake requires authentication."""
-        response = requests.post(f"{BASE_URL}/api/admin/leads/test/abandoned-intake")
+        response = client.post("/api/admin/leads/test/abandoned-intake")
         
         assert response.status_code in [401, 403]
         print("✓ Abandoned intake requires authentication")
@@ -453,13 +449,13 @@ class TestAbandonedIntakeDetection(TestAuthSetup):
 class TestHighIntentNotification(TestAuthSetup):
     """Test HIGH intent notification endpoint."""
     
-    def test_high_intent_notification(self, admin_headers):
+    def test_high_intent_notification(self, client, admin_headers):
         """Test HIGH intent notification for existing lead."""
         # First create a lead
         unique_email = f"TEST_notify_{uuid.uuid4().hex[:8]}@example.com"
         
-        create_response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        create_response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Notification Lead",
@@ -471,8 +467,8 @@ class TestHighIntentNotification(TestAuthSetup):
         lead_id = create_response.json()["lead_id"]
         
         # Test notification endpoint
-        response = requests.post(
-            f"{BASE_URL}/api/admin/leads/test/high-intent-notification?test_lead_id={lead_id}",
+        response = client.post(
+            "/api/admin/leads/test/high-intent-notification?test_lead_id={lead_id}",
             headers=admin_headers
         )
         
@@ -484,10 +480,10 @@ class TestHighIntentNotification(TestAuthSetup):
         
         print(f"✓ HIGH intent notification sent for lead: {lead_id}")
     
-    def test_high_intent_notification_not_found(self, admin_headers):
+    def test_high_intent_notification_not_found(self, client, admin_headers):
         """Test HIGH intent notification for non-existent lead."""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/leads/test/high-intent-notification?test_lead_id=LEAD-NONEXISTENT",
+        response = client.post(
+            "/api/admin/leads/test/high-intent-notification?test_lead_id=LEAD-NONEXISTENT",
             headers=admin_headers
         )
         
@@ -498,10 +494,10 @@ class TestHighIntentNotification(TestAuthSetup):
 class TestAdminIntakeSchemaManager(TestAuthSetup):
     """Test Admin Intake Schema Manager endpoints."""
     
-    def test_list_configurable_services(self, admin_headers):
+    def test_list_configurable_services(self, client, admin_headers):
         """Test listing configurable services."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         
@@ -521,11 +517,11 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
             assert "field_count" in service
             print(f"  - First service: {service['service_code']} ({service['field_count']} fields)")
     
-    def test_get_schema_for_editing(self, admin_headers):
+    def test_get_schema_for_editing(self, client, admin_headers):
         """Test getting schema for editing."""
         # First get list of services
-        list_response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        list_response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         assert list_response.status_code == 200
@@ -536,8 +532,8 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
         
         service_code = services[0]["service_code"]
         
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/{service_code}",
+        response = client.get(
+            "/api/admin/intake-schema/{service_code}",
             headers=admin_headers
         )
         
@@ -551,11 +547,11 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
         
         print(f"✓ Got schema for {service_code}: {len(data['fields'])} fields")
     
-    def test_save_schema_draft(self, admin_headers):
+    def test_save_schema_draft(self, client, admin_headers):
         """Test saving schema as draft."""
         # Get a service
-        list_response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        list_response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         services = list_response.json().get("services", [])
@@ -566,8 +562,8 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
         service_code = services[0]["service_code"]
         
         # Save draft with a test override
-        response = requests.put(
-            f"{BASE_URL}/api/admin/intake-schema/{service_code}",
+        response = client.put(
+            "/api/admin/intake-schema/{service_code}",
             headers=admin_headers,
             json={
                 "service_code": service_code,
@@ -591,10 +587,10 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
         
         print(f"✓ Saved draft for {service_code}, version: {data['schema_version']}")
     
-    def test_get_version_history(self, admin_headers):
+    def test_get_version_history(self, client, admin_headers):
         """Test getting version history."""
-        list_response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        list_response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         services = list_response.json().get("services", [])
@@ -604,8 +600,8 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
         
         service_code = services[0]["service_code"]
         
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/{service_code}/versions",
+        response = client.get(
+            "/api/admin/intake-schema/{service_code}/versions",
             headers=admin_headers
         )
         
@@ -618,10 +614,10 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
         
         print(f"✓ Got {len(data['versions'])} versions for {service_code}")
     
-    def test_preview_schema(self, admin_headers):
+    def test_preview_schema(self, client, admin_headers):
         """Test previewing customized schema."""
-        list_response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        list_response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         services = list_response.json().get("services", [])
@@ -631,8 +627,8 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
         
         service_code = services[0]["service_code"]
         
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/{service_code}/preview",
+        response = client.get(
+            "/api/admin/intake-schema/{service_code}/preview",
             headers=admin_headers
         )
         
@@ -644,9 +640,9 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
         
         print(f"✓ Preview schema for {service_code}: {len(data['fields'])} fields")
     
-    def test_schema_manager_requires_auth(self):
+    def test_schema_manager_requires_auth(self, client):
         """Test schema manager requires authentication."""
-        response = requests.get(f"{BASE_URL}/api/admin/intake-schema/services")
+        response = client.get("/api/admin/intake-schema/services")
         
         assert response.status_code in [401, 403]
         print("✓ Schema manager requires authentication")
@@ -655,10 +651,10 @@ class TestAdminIntakeSchemaManager(TestAuthSetup):
 class TestLeadSources(TestAuthSetup):
     """Test lead sources endpoint."""
     
-    def test_get_lead_sources(self, admin_headers):
+    def test_get_lead_sources(self, client, admin_headers):
         """Test getting available lead sources."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads/sources",
+        response = client.get(
+            "/api/admin/leads/sources",
             headers=admin_headers
         )
         
@@ -684,10 +680,10 @@ class TestLeadSources(TestAuthSetup):
 class TestLeadStats(TestAuthSetup):
     """Test lead statistics endpoint."""
     
-    def test_get_lead_stats(self, admin_headers):
+    def test_get_lead_stats(self, client, admin_headers):
         """Test getting lead statistics."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads/stats",
+        response = client.get(
+            "/api/admin/leads/stats",
             headers=admin_headers
         )
         
@@ -703,13 +699,13 @@ class TestLeadStats(TestAuthSetup):
 class TestLeadCRUD(TestAuthSetup):
     """Test lead CRUD operations."""
     
-    def test_get_single_lead(self, admin_headers):
+    def test_get_single_lead(self, client, admin_headers):
         """Test getting a single lead."""
         # First create a lead
         unique_email = f"TEST_single_{uuid.uuid4().hex[:8]}@example.com"
         
-        create_response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        create_response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Single Lead",
@@ -720,8 +716,8 @@ class TestLeadCRUD(TestAuthSetup):
         lead_id = create_response.json()["lead_id"]
         
         # Get the lead
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads/{lead_id}",
+        response = client.get(
+            "/api/admin/leads/{lead_id}",
             headers=admin_headers
         )
         
@@ -734,13 +730,13 @@ class TestLeadCRUD(TestAuthSetup):
         
         print(f"✓ Got lead {lead_id} with audit log")
     
-    def test_update_lead(self, admin_headers):
+    def test_update_lead(self, client, admin_headers):
         """Test updating a lead."""
         # First create a lead
         unique_email = f"TEST_update_{uuid.uuid4().hex[:8]}@example.com"
         
-        create_response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        create_response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Update Lead",
@@ -751,8 +747,8 @@ class TestLeadCRUD(TestAuthSetup):
         lead_id = create_response.json()["lead_id"]
         
         # Update the lead
-        response = requests.put(
-            f"{BASE_URL}/api/admin/leads/{lead_id}?name=TEST%20Updated%20Name&intent_score=HIGH",
+        response = client.put(
+            "/api/admin/leads/{lead_id}?name=TEST%20Updated%20Name&intent_score=HIGH",
             headers=admin_headers
         )
         
@@ -765,13 +761,13 @@ class TestLeadCRUD(TestAuthSetup):
         
         print(f"✓ Updated lead {lead_id}")
     
-    def test_assign_lead(self, admin_headers):
+    def test_assign_lead(self, client, admin_headers):
         """Test assigning a lead."""
         # First create a lead
         unique_email = f"TEST_assign_{uuid.uuid4().hex[:8]}@example.com"
         
-        create_response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        create_response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Assign Lead",
@@ -782,8 +778,8 @@ class TestLeadCRUD(TestAuthSetup):
         lead_id = create_response.json()["lead_id"]
         
         # Assign the lead
-        response = requests.post(
-            f"{BASE_URL}/api/admin/leads/{lead_id}/assign?admin_id={ADMIN_EMAIL}",
+        response = client.post(
+            "/api/admin/leads/{lead_id}/assign?admin_id={ADMIN_EMAIL}",
             headers=admin_headers
         )
         
@@ -795,13 +791,13 @@ class TestLeadCRUD(TestAuthSetup):
         
         print(f"✓ Assigned lead {lead_id} to {ADMIN_EMAIL}")
     
-    def test_log_contact(self, admin_headers):
+    def test_log_contact(self, client, admin_headers):
         """Test logging a contact with a lead."""
         # First create a lead
         unique_email = f"TEST_contact_{uuid.uuid4().hex[:8]}@example.com"
         
-        create_response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        create_response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Contact Lead",
@@ -812,8 +808,8 @@ class TestLeadCRUD(TestAuthSetup):
         lead_id = create_response.json()["lead_id"]
         
         # Log contact
-        response = requests.post(
-            f"{BASE_URL}/api/admin/leads/{lead_id}/contact?contact_method=email&notes=TEST%20contact&outcome=interested",
+        response = client.post(
+            "/api/admin/leads/{lead_id}/contact?contact_method=email&notes=TEST%20contact&outcome=interested",
             headers=admin_headers
         )
         
@@ -824,13 +820,13 @@ class TestLeadCRUD(TestAuthSetup):
         
         print(f"✓ Logged contact for lead {lead_id}")
     
-    def test_get_lead_audit_log(self, admin_headers):
+    def test_get_lead_audit_log(self, client, admin_headers):
         """Test getting lead audit log."""
         # First create a lead
         unique_email = f"TEST_audit_{uuid.uuid4().hex[:8]}@example.com"
         
-        create_response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        create_response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Audit Lead",
@@ -841,8 +837,8 @@ class TestLeadCRUD(TestAuthSetup):
         lead_id = create_response.json()["lead_id"]
         
         # Get audit log
-        response = requests.get(
-            f"{BASE_URL}/api/admin/leads/{lead_id}/audit-log",
+        response = client.get(
+            "/api/admin/leads/{lead_id}/audit-log",
             headers=admin_headers
         )
         
@@ -859,12 +855,12 @@ class TestLeadCRUD(TestAuthSetup):
 class TestContactFormCapture:
     """Test contact form lead capture."""
     
-    def test_capture_contact_form_lead(self):
+    def test_capture_contact_form_lead(self, client):
         """Test lead capture from contact form."""
         unique_email = f"TEST_form_{uuid.uuid4().hex[:8]}@example.com"
         
-        response = requests.post(
-            f"{BASE_URL}/api/leads/capture/contact-form",
+        response = client.post(
+            "/api/leads/capture/contact-form",
             json={
                 "email": unique_email,
                 "name": "TEST Contact Form User",
@@ -885,12 +881,12 @@ class TestContactFormCapture:
 class TestDocumentServiceCapture:
     """Test document service lead capture."""
     
-    def test_capture_document_service_lead(self):
+    def test_capture_document_service_lead(self, client):
         """Test lead capture from document service."""
         unique_email = f"TEST_doc_{uuid.uuid4().hex[:8]}@example.com"
         
-        response = requests.post(
-            f"{BASE_URL}/api/leads/capture/document-service",
+        response = client.post(
+            "/api/leads/capture/document-service",
             json={
                 "email": unique_email,
                 "service_code": "TENANCY_PACK",
@@ -911,13 +907,13 @@ class TestDocumentServiceCapture:
 class TestUnsubscribe:
     """Test lead unsubscribe functionality."""
     
-    def test_unsubscribe_lead(self):
+    def test_unsubscribe_lead(self, client):
         """Test unsubscribing a lead."""
         # First create a lead with marketing consent
         unique_email = f"TEST_unsub_{uuid.uuid4().hex[:8]}@example.com"
         
-        create_response = requests.post(
-            f"{BASE_URL}/api/leads/capture/chatbot",
+        create_response = client.post(
+            "/api/leads/capture/chatbot",
             json={
                 "email": unique_email,
                 "name": "TEST Unsubscribe Lead",
@@ -928,7 +924,7 @@ class TestUnsubscribe:
         lead_id = create_response.json()["lead_id"]
         
         # Unsubscribe
-        response = requests.post(f"{BASE_URL}/api/leads/unsubscribe/{lead_id}")
+        response = client.post("/api/leads/unsubscribe/{lead_id}")
         
         assert response.status_code == 200, f"Unsubscribe failed: {response.text}"
         data = response.json()
@@ -938,9 +934,9 @@ class TestUnsubscribe:
         
         print(f"✓ Unsubscribed lead {lead_id}")
     
-    def test_unsubscribe_nonexistent_lead(self):
+    def test_unsubscribe_nonexistent_lead(self, client):
         """Test unsubscribing non-existent lead."""
-        response = requests.post(f"{BASE_URL}/api/leads/unsubscribe/LEAD-NONEXISTENT")
+        response = client.post("/api/leads/unsubscribe/LEAD-NONEXISTENT")
         
         assert response.status_code == 404
         print("✓ Unsubscribe returns 404 for non-existent lead")

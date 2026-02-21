@@ -7,30 +7,26 @@ Tests for Admin Site Builder CMS functionality:
 - Revision history
 - Media library
 """
-import pytest
-import requests
-import os
 import uuid
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+import pytest
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
 ADMIN_PASSWORD = "Admin123!"
 
 
-@pytest.fixture(scope="module")
-def admin_token():
+@pytest.fixture
+def admin_token(client):
     """Get admin authentication token"""
-    response = requests.post(
-        f"{BASE_URL}/api/auth/login",
+    response = client.post(
+        "/api/auth/login",
         json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
     )
     assert response.status_code == 200, f"Admin login failed: {response.text}"
     return response.json()["access_token"]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def admin_headers(admin_token):
     """Headers with admin auth token"""
     return {
@@ -41,11 +37,11 @@ def admin_headers(admin_token):
 
 class TestCMSPageManagement:
     """Test CMS Page CRUD operations"""
-    
-    def test_list_pages(self, admin_headers):
+
+    def test_list_pages(self, client, admin_headers):
         """Test listing CMS pages"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/cms/pages",
+        response = client.get(
+            "/api/admin/cms/pages",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Failed to list pages: {response.text}"
@@ -55,13 +51,13 @@ class TestCMSPageManagement:
         assert isinstance(data["pages"], list)
         print(f"✓ Listed {len(data['pages'])} pages, total: {data['total']}")
     
-    def test_list_pages_requires_auth(self):
+    def test_list_pages_requires_auth(self, client):
         """Test that listing pages requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/pages")
+        response = client.get("/api/admin/cms/pages")
         assert response.status_code in [401, 403], "Should require auth"
         print("✓ List pages requires authentication")
     
-    def test_create_page(self, admin_headers):
+    def test_create_page(self, client, admin_headers):
         """Test creating a new CMS page"""
         unique_slug = f"test-page-{uuid.uuid4().hex[:8]}"
         payload = {
@@ -69,8 +65,8 @@ class TestCMSPageManagement:
             "title": "TEST Page Title",
             "description": "Test page description for CMS testing"
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json=payload
         )
@@ -83,47 +79,47 @@ class TestCMSPageManagement:
         print(f"✓ Created page with ID: {data['page_id']}")
         return data["page_id"]
     
-    def test_create_page_duplicate_slug(self, admin_headers):
+    def test_create_page_duplicate_slug(self, client, admin_headers):
         """Test that duplicate slugs are rejected"""
         # First create a page
         unique_slug = f"test-dup-{uuid.uuid4().hex[:8]}"
         payload = {"slug": unique_slug, "title": "First Page"}
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201
         
         # Try to create another with same slug
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 400, "Should reject duplicate slug"
         print("✓ Duplicate slug correctly rejected")
     
-    def test_create_page_invalid_slug(self, admin_headers):
+    def test_create_page_invalid_slug(self, client, admin_headers):
         """Test that invalid slugs are rejected"""
         payload = {
             "slug": "Invalid Slug With Spaces!",
             "title": "Test Page"
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 422, f"Should reject invalid slug, got {response.status_code}"
         print("✓ Invalid slug correctly rejected")
     
-    def test_get_page_by_id(self, admin_headers):
+    def test_get_page_by_id(self, client, admin_headers):
         """Test getting a page by ID"""
         # First create a page
         unique_slug = f"test-get-{uuid.uuid4().hex[:8]}"
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        create_response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json={"slug": unique_slug, "title": "Get Test Page"}
         )
@@ -131,8 +127,8 @@ class TestCMSPageManagement:
         page_id = create_response.json()["page_id"]
         
         # Get the page
-        response = requests.get(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}",
+        response = client.get(
+            f"/api/admin/cms/pages/{page_id}",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Failed to get page: {response.text}"
@@ -141,21 +137,21 @@ class TestCMSPageManagement:
         assert data["slug"] == unique_slug
         print(f"✓ Retrieved page: {data['title']}")
     
-    def test_get_page_not_found(self, admin_headers):
+    def test_get_page_not_found(self, client, admin_headers):
         """Test getting a non-existent page"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/cms/pages/PG-NONEXISTENT123",
+        response = client.get(
+            "/api/admin/cms/pages/PG-NONEXISTENT123",
             headers=admin_headers
         )
         assert response.status_code == 404, "Should return 404 for non-existent page"
         print("✓ Non-existent page returns 404")
     
-    def test_update_page(self, admin_headers):
+    def test_update_page(self, client, admin_headers):
         """Test updating a page"""
         # Create a page
         unique_slug = f"test-update-{uuid.uuid4().hex[:8]}"
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        create_response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json={"slug": unique_slug, "title": "Original Title"}
         )
@@ -167,8 +163,8 @@ class TestCMSPageManagement:
             "title": "Updated Title",
             "description": "Updated description"
         }
-        response = requests.put(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}",
+        response = client.put(
+            f"/api/admin/cms/pages/{page_id}",
             headers=admin_headers,
             json=update_payload
         )
@@ -178,12 +174,12 @@ class TestCMSPageManagement:
         assert data["description"] == "Updated description"
         print(f"✓ Updated page title to: {data['title']}")
     
-    def test_delete_page(self, admin_headers):
+    def test_delete_page(self, client, admin_headers):
         """Test archiving a page"""
         # Create a page
         unique_slug = f"test-delete-{uuid.uuid4().hex[:8]}"
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        create_response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json={"slug": unique_slug, "title": "To Be Deleted"}
         )
@@ -191,15 +187,15 @@ class TestCMSPageManagement:
         page_id = create_response.json()["page_id"]
         
         # Delete (archive) the page
-        response = requests.delete(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}",
+        response = client.delete(
+            f"/api/admin/cms/pages/{page_id}",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Failed to delete page: {response.text}"
         
         # Verify page is archived
-        get_response = requests.get(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}",
+        get_response = client.get(
+            f"/api/admin/cms/pages/{page_id}",
             headers=admin_headers
         )
         assert get_response.status_code == 200
@@ -211,18 +207,18 @@ class TestCMSBlockManagement:
     """Test CMS Block operations"""
     
     @pytest.fixture
-    def test_page(self, admin_headers):
+    def test_page(self, client, admin_headers):
         """Create a test page for block operations"""
         unique_slug = f"test-blocks-{uuid.uuid4().hex[:8]}"
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json={"slug": unique_slug, "title": "Block Test Page"}
         )
         assert response.status_code == 201
         return response.json()["page_id"]
     
-    def test_add_hero_block(self, admin_headers, test_page):
+    def test_add_hero_block(self, client, admin_headers, test_page):
         """Test adding a HERO block"""
         payload = {
             "block_type": "HERO",
@@ -234,8 +230,8 @@ class TestCMSBlockManagement:
                 "alignment": "center"
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
@@ -247,7 +243,7 @@ class TestCMSBlockManagement:
         print(f"✓ Added HERO block: {data['block_id']}")
         return data["block_id"]
     
-    def test_add_text_block(self, admin_headers, test_page):
+    def test_add_text_block(self, client, admin_headers, test_page):
         """Test adding a TEXT_BLOCK"""
         payload = {
             "block_type": "TEXT_BLOCK",
@@ -257,8 +253,8 @@ class TestCMSBlockManagement:
                 "alignment": "left"
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
@@ -267,7 +263,7 @@ class TestCMSBlockManagement:
         assert data["block_type"] == "TEXT_BLOCK"
         print(f"✓ Added TEXT_BLOCK: {data['block_id']}")
     
-    def test_add_cta_block(self, admin_headers, test_page):
+    def test_add_cta_block(self, client, admin_headers, test_page):
         """Test adding a CTA block"""
         payload = {
             "block_type": "CTA",
@@ -279,15 +275,15 @@ class TestCMSBlockManagement:
                 "style": "primary"
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201, f"Failed to add CTA block: {response.text}"
         print("✓ Added CTA block")
     
-    def test_add_faq_block(self, admin_headers, test_page):
+    def test_add_faq_block(self, client, admin_headers, test_page):
         """Test adding a FAQ block"""
         payload = {
             "block_type": "FAQ",
@@ -299,15 +295,15 @@ class TestCMSBlockManagement:
                 ]
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201, f"Failed to add FAQ block: {response.text}"
         print("✓ Added FAQ block")
     
-    def test_add_block_invalid_content(self, admin_headers, test_page):
+    def test_add_block_invalid_content(self, client, admin_headers, test_page):
         """Test that invalid block content is rejected"""
         payload = {
             "block_type": "HERO",
@@ -316,15 +312,15 @@ class TestCMSBlockManagement:
                 "subheadline": "Only subheadline"
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 400, f"Should reject invalid content, got {response.status_code}"
         print("✓ Invalid block content correctly rejected")
     
-    def test_add_video_embed_youtube(self, admin_headers, test_page):
+    def test_add_video_embed_youtube(self, client, admin_headers, test_page):
         """Test adding a VIDEO_EMBED block with YouTube URL"""
         payload = {
             "block_type": "VIDEO_EMBED",
@@ -335,15 +331,15 @@ class TestCMSBlockManagement:
                 "autoplay": False
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201, f"Failed to add video block: {response.text}"
         print("✓ Added VIDEO_EMBED block with YouTube URL")
     
-    def test_add_video_embed_invalid_url(self, admin_headers, test_page):
+    def test_add_video_embed_invalid_url(self, client, admin_headers, test_page):
         """Test that non-YouTube/Vimeo URLs are rejected"""
         payload = {
             "block_type": "VIDEO_EMBED",
@@ -353,19 +349,19 @@ class TestCMSBlockManagement:
                 "autoplay": False
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 400, f"Should reject non-YouTube/Vimeo URL, got {response.status_code}"
         print("✓ Non-YouTube/Vimeo URL correctly rejected")
     
-    def test_update_block(self, admin_headers, test_page):
+    def test_update_block(self, client, admin_headers, test_page):
         """Test updating a block"""
         # Add a block first
-        add_response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        add_response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json={
                 "block_type": "HERO",
@@ -379,8 +375,8 @@ class TestCMSBlockManagement:
         update_payload = {
             "content": {"headline": "Updated Headline", "alignment": "left"}
         }
-        response = requests.put(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks/{block_id}",
+        response = client.put(
+            f"/api/admin/cms/pages/{test_page}/blocks/{block_id}",
             headers=admin_headers,
             json=update_payload
         )
@@ -389,11 +385,11 @@ class TestCMSBlockManagement:
         assert data["content"]["headline"] == "Updated Headline"
         print("✓ Block updated successfully")
     
-    def test_toggle_block_visibility(self, admin_headers, test_page):
+    def test_toggle_block_visibility(self, client, admin_headers, test_page):
         """Test toggling block visibility"""
         # Add a block
-        add_response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        add_response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json={
                 "block_type": "TEXT_BLOCK",
@@ -405,8 +401,8 @@ class TestCMSBlockManagement:
         assert add_response.json()["visible"] == True
         
         # Toggle visibility off
-        response = requests.put(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks/{block_id}",
+        response = client.put(
+            f"/api/admin/cms/pages/{test_page}/blocks/{block_id}",
             headers=admin_headers,
             json={"visible": False}
         )
@@ -414,11 +410,11 @@ class TestCMSBlockManagement:
         assert response.json()["visible"] == False
         print("✓ Block visibility toggled successfully")
     
-    def test_delete_block(self, admin_headers, test_page):
+    def test_delete_block(self, client, admin_headers, test_page):
         """Test deleting a block"""
         # Add a block
-        add_response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        add_response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json={
                 "block_type": "SPACER",
@@ -429,20 +425,20 @@ class TestCMSBlockManagement:
         block_id = add_response.json()["block_id"]
         
         # Delete the block
-        response = requests.delete(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks/{block_id}",
+        response = client.delete(
+            f"/api/admin/cms/pages/{test_page}/blocks/{block_id}",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Failed to delete block: {response.text}"
         print("✓ Block deleted successfully")
     
-    def test_reorder_blocks(self, admin_headers, test_page):
+    def test_reorder_blocks(self, client, admin_headers, test_page):
         """Test reordering blocks"""
         # Add multiple blocks
         block_ids = []
         for i in range(3):
-            response = requests.post(
-                f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+            response = client.post(
+                f"/api/admin/cms/pages/{test_page}/blocks",
                 headers=admin_headers,
                 json={
                     "block_type": "TEXT_BLOCK",
@@ -454,8 +450,8 @@ class TestCMSBlockManagement:
         
         # Reorder: reverse the order
         reversed_order = list(reversed(block_ids))
-        response = requests.put(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks/reorder",
+        response = client.put(
+            f"/api/admin/cms/pages/{test_page}/blocks/reorder",
             headers=admin_headers,
             json={"block_order": reversed_order}
         )
@@ -469,12 +465,12 @@ class TestCMSPublishingWorkflow:
     """Test CMS publishing and revision workflow"""
     
     @pytest.fixture
-    def test_page_with_blocks(self, admin_headers):
+    def test_page_with_blocks(self, client, admin_headers):
         """Create a test page with blocks for publishing tests"""
         unique_slug = f"test-publish-{uuid.uuid4().hex[:8]}"
         # Create page
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json={"slug": unique_slug, "title": "Publish Test Page"}
         )
@@ -482,8 +478,8 @@ class TestCMSPublishingWorkflow:
         page_id = response.json()["page_id"]
         
         # Add a block
-        requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}/blocks",
+        client.post(
+            f"/api/admin/cms/pages/{page_id}/blocks",
             headers=admin_headers,
             json={
                 "block_type": "HERO",
@@ -492,10 +488,10 @@ class TestCMSPublishingWorkflow:
         )
         return page_id
     
-    def test_publish_page(self, admin_headers, test_page_with_blocks):
+    def test_publish_page(self, client, admin_headers, test_page_with_blocks):
         """Test publishing a page"""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page_with_blocks}/publish",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page_with_blocks}/publish",
             headers=admin_headers,
             json={"notes": "Initial publish for testing"}
         )
@@ -506,18 +502,18 @@ class TestCMSPublishingWorkflow:
         assert data["published_at"] is not None
         print(f"✓ Page published, version: {data['current_version']}")
     
-    def test_publish_creates_revision(self, admin_headers, test_page_with_blocks):
+    def test_publish_creates_revision(self, client, admin_headers, test_page_with_blocks):
         """Test that publishing creates a revision"""
         # Publish the page
-        requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page_with_blocks}/publish",
+        client.post(
+            f"/api/admin/cms/pages/{test_page_with_blocks}/publish",
             headers=admin_headers,
             json={"notes": "First publish"}
         )
         
         # Get revisions
-        response = requests.get(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page_with_blocks}/revisions",
+        response = client.get(
+            f"/api/admin/cms/pages/{test_page_with_blocks}/revisions",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Failed to get revisions: {response.text}"
@@ -528,18 +524,18 @@ class TestCMSPublishingWorkflow:
         assert revisions[0]["version"] >= 1
         print(f"✓ Revision created, found {len(revisions)} revision(s)")
     
-    def test_edit_published_page_creates_draft(self, admin_headers, test_page_with_blocks):
+    def test_edit_published_page_creates_draft(self, client, admin_headers, test_page_with_blocks):
         """Test that editing a published page reverts to draft"""
         # Publish first
-        requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page_with_blocks}/publish",
+        client.post(
+            f"/api/admin/cms/pages/{test_page_with_blocks}/publish",
             headers=admin_headers,
             json={}
         )
         
         # Edit the page
-        response = requests.put(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page_with_blocks}",
+        response = client.put(
+            f"/api/admin/cms/pages/{test_page_with_blocks}",
             headers=admin_headers,
             json={"title": "Modified Title"}
         )
@@ -547,32 +543,32 @@ class TestCMSPublishingWorkflow:
         assert response.json()["status"] == "DRAFT"
         print("✓ Editing published page creates draft state")
     
-    def test_rollback_to_revision(self, admin_headers, test_page_with_blocks):
+    def test_rollback_to_revision(self, client, admin_headers, test_page_with_blocks):
         """Test rolling back to a previous revision"""
         page_id = test_page_with_blocks
         
         # Publish version 1
-        requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}/publish",
+        client.post(
+            f"/api/admin/cms/pages/{page_id}/publish",
             headers=admin_headers,
             json={"notes": "Version 1"}
         )
         
         # Modify and publish version 2
-        requests.put(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}",
+        client.put(
+            f"/api/admin/cms/pages/{page_id}",
             headers=admin_headers,
             json={"title": "Version 2 Title"}
         )
-        requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}/publish",
+        client.post(
+            f"/api/admin/cms/pages/{page_id}/publish",
             headers=admin_headers,
             json={"notes": "Version 2"}
         )
         
         # Get revisions
-        revisions_response = requests.get(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}/revisions",
+        revisions_response = client.get(
+            f"/api/admin/cms/pages/{page_id}/revisions",
             headers=admin_headers
         )
         data = revisions_response.json()
@@ -584,8 +580,8 @@ class TestCMSPublishingWorkflow:
         v1_revision = next((r for r in revisions if r["version"] == 1), None)
         assert v1_revision is not None
         
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{page_id}/rollback",
+        response = client.post(
+            f"/api/admin/cms/pages/{page_id}/rollback",
             headers=admin_headers,
             json={"revision_id": v1_revision["revision_id"], "notes": "Rolling back to v1"}
         )
@@ -598,10 +594,10 @@ class TestCMSPublishingWorkflow:
 class TestCMSMediaLibrary:
     """Test CMS Media Library operations"""
     
-    def test_list_media(self, admin_headers):
+    def test_list_media(self, client, admin_headers):
         """Test listing media items"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/cms/media",
+        response = client.get(
+            "/api/admin/cms/media",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Failed to list media: {response.text}"
@@ -610,9 +606,9 @@ class TestCMSMediaLibrary:
         assert "total" in data
         print(f"✓ Listed {len(data['media'])} media items")
     
-    def test_list_media_requires_auth(self):
+    def test_list_media_requires_auth(self, client):
         """Test that media listing requires auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/media")
+        response = client.get("/api/admin/cms/media")
         assert response.status_code in [401, 403]
         print("✓ Media listing requires authentication")
 
@@ -620,10 +616,10 @@ class TestCMSMediaLibrary:
 class TestExistingTestPage:
     """Test operations on the existing 'homepage' test page"""
     
-    def test_get_existing_homepage(self, admin_headers):
+    def test_get_existing_homepage(self, client, admin_headers):
         """Test getting the existing homepage"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/cms/pages/PG-314F2A5B4B67",
+        response = client.get(
+            "/api/admin/cms/pages/PG-314F2A5B4B67",
             headers=admin_headers
         )
         if response.status_code == 200:
@@ -633,10 +629,10 @@ class TestExistingTestPage:
         else:
             print(f"Note: Existing homepage not found (status {response.status_code})")
     
-    def test_get_published_page_public(self, admin_headers):
+    def test_get_published_page_public(self, client, admin_headers):
         """Test getting published page content for public rendering"""
-        response = requests.get(
-            f"{BASE_URL}/api/cms/pages/homepage",
+        response = client.get(
+            "/api/cms/pages/homepage",
             headers={"Content-Type": "application/json"}  # No auth needed for public
         )
         if response.status_code == 200:
@@ -650,18 +646,18 @@ class TestBlockTypes:
     """Test all available block types"""
     
     @pytest.fixture
-    def test_page(self, admin_headers):
+    def test_page(self, client, admin_headers):
         """Create a test page for block type tests"""
         unique_slug = f"test-blocktypes-{uuid.uuid4().hex[:8]}"
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages",
+        response = client.post(
+            "/api/admin/cms/pages",
             headers=admin_headers,
             json={"slug": unique_slug, "title": "Block Types Test"}
         )
         assert response.status_code == 201
         return response.json()["page_id"]
     
-    def test_add_pricing_table_block(self, admin_headers, test_page):
+    def test_add_pricing_table_block(self, client, admin_headers, test_page):
         """Test adding PRICING_TABLE block"""
         payload = {
             "block_type": "PRICING_TABLE",
@@ -690,15 +686,15 @@ class TestBlockTypes:
                 ]
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201, f"Failed: {response.text}"
         print("✓ Added PRICING_TABLE block")
     
-    def test_add_features_grid_block(self, admin_headers, test_page):
+    def test_add_features_grid_block(self, client, admin_headers, test_page):
         """Test adding FEATURES_GRID block"""
         payload = {
             "block_type": "FEATURES_GRID",
@@ -712,15 +708,15 @@ class TestBlockTypes:
                 "columns": 3
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201, f"Failed: {response.text}"
         print("✓ Added FEATURES_GRID block")
     
-    def test_add_testimonials_block(self, admin_headers, test_page):
+    def test_add_testimonials_block(self, client, admin_headers, test_page):
         """Test adding TESTIMONIALS block"""
         payload = {
             "block_type": "TESTIMONIALS",
@@ -738,15 +734,15 @@ class TestBlockTypes:
                 "style": "cards"
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201, f"Failed: {response.text}"
         print("✓ Added TESTIMONIALS block")
     
-    def test_add_contact_form_block(self, admin_headers, test_page):
+    def test_add_contact_form_block(self, client, admin_headers, test_page):
         """Test adding CONTACT_FORM block"""
         payload = {
             "block_type": "CONTACT_FORM",
@@ -757,15 +753,15 @@ class TestBlockTypes:
                 "success_message": "Thanks for reaching out!"
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201, f"Failed: {response.text}"
         print("✓ Added CONTACT_FORM block")
     
-    def test_add_stats_bar_block(self, admin_headers, test_page):
+    def test_add_stats_bar_block(self, client, admin_headers, test_page):
         """Test adding STATS_BAR block"""
         payload = {
             "block_type": "STATS_BAR",
@@ -777,22 +773,22 @@ class TestBlockTypes:
                 ]
             }
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )
         assert response.status_code == 201, f"Failed: {response.text}"
         print("✓ Added STATS_BAR block")
     
-    def test_add_spacer_block(self, admin_headers, test_page):
+    def test_add_spacer_block(self, client, admin_headers, test_page):
         """Test adding SPACER block"""
         payload = {
             "block_type": "SPACER",
             "content": {"height": "lg"}
         }
-        response = requests.post(
-            f"{BASE_URL}/api/admin/cms/pages/{test_page}/blocks",
+        response = client.post(
+            f"/api/admin/cms/pages/{test_page}/blocks",
             headers=admin_headers,
             json=payload
         )

@@ -13,11 +13,6 @@ Tests for:
 - POST /api/admin/support/lookup-by-crn - Admin CRN lookup
 """
 import pytest
-import requests
-import os
-import time
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -29,10 +24,10 @@ CLIENT_PASSWORD = "TestClient123!"
 class TestSupportPublicEndpoints:
     """Test public support endpoints (no auth required)"""
     
-    def test_chat_creates_conversation_and_returns_response(self):
+    def test_chat_creates_conversation_and_returns_response(self, client):
         """POST /api/support/chat - creates conversation and returns AI response"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response = client.post(
+            "/api/support/chat",
             json={
                 "message": "Hello, I need help with Document Packs",
                 "channel": "web"
@@ -52,19 +47,19 @@ class TestSupportPublicEndpoints:
         print(f"SUCCESS: Chat created conversation {data['conversation_id']}")
         return data["conversation_id"]
     
-    def test_chat_continues_existing_conversation(self):
+    def test_chat_continues_existing_conversation(self, client):
         """POST /api/support/chat - continues existing conversation"""
         # First message
-        response1 = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response1 = client.post(
+            "/api/support/chat",
             json={"message": "What services do you offer?", "channel": "web"}
         )
         assert response1.status_code == 200
         conv_id = response1.json()["conversation_id"]
         
         # Second message in same conversation
-        response2 = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response2 = client.post(
+            "/api/support/chat",
             json={
                 "message": "Tell me more about CVP",
                 "conversation_id": conv_id,
@@ -78,10 +73,10 @@ class TestSupportPublicEndpoints:
         assert data["conversation_id"] == conv_id, "Conversation ID changed unexpectedly"
         print(f"SUCCESS: Continued conversation {conv_id}")
     
-    def test_chat_triggers_human_handoff(self):
+    def test_chat_triggers_human_handoff(self, client):
         """POST /api/support/chat - triggers handoff when user requests human"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response = client.post(
+            "/api/support/chat",
             json={
                 "message": "I want to speak to a human agent please",
                 "channel": "web"
@@ -103,10 +98,10 @@ class TestSupportPublicEndpoints:
         
         print(f"SUCCESS: Handoff triggered with 3 options")
     
-    def test_chat_refuses_legal_advice(self):
+    def test_chat_refuses_legal_advice(self, client):
         """POST /api/support/chat - refuses legal advice requests"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response = client.post(
+            "/api/support/chat",
             json={
                 "message": "Is it legal for my landlord to evict me without notice?",
                 "channel": "web"
@@ -136,10 +131,10 @@ class TestSupportPublicEndpoints:
         
         print("SUCCESS: Legal advice request refused appropriately")
     
-    def test_chat_answers_service_questions(self):
+    def test_chat_answers_service_questions(self, client):
         """POST /api/support/chat - answers questions about services"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response = client.post(
+            "/api/support/chat",
             json={
                 "message": "What is included in the Essential Document Pack?",
                 "channel": "web"
@@ -153,10 +148,10 @@ class TestSupportPublicEndpoints:
         assert len(data["response"]) > 50, "Response too short"
         print(f"SUCCESS: Got service info response ({len(data['response'])} chars)")
     
-    def test_lookup_with_invalid_crn(self):
+    def test_lookup_with_invalid_crn(self, client):
         """POST /api/support/lookup - returns not verified for invalid CRN"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/lookup",
+        response = client.post(
+            "/api/support/lookup",
             json={
                 "crn": "PLE-CVP-2026-INVALID",
                 "email": "nonexistent@example.com"
@@ -170,10 +165,10 @@ class TestSupportPublicEndpoints:
         assert "message" in data, "Missing message"
         print("SUCCESS: Invalid CRN lookup handled correctly")
     
-    def test_create_ticket(self):
+    def test_create_ticket(self, client):
         """POST /api/support/ticket - creates support ticket"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/ticket",
+        response = client.post(
+            "/api/support/ticket",
             json={
                 "subject": "TEST_Ticket - Need help with billing",
                 "description": "I have a question about my recent invoice. The amount seems incorrect.",
@@ -195,18 +190,18 @@ class TestSupportPublicEndpoints:
         print(f"SUCCESS: Created ticket {data['ticket_id']}")
         return data["ticket_id"]
     
-    def test_create_ticket_with_conversation_link(self):
+    def test_create_ticket_with_conversation_link(self, client):
         """POST /api/support/ticket - creates ticket linked to conversation"""
         # First create a conversation
-        chat_response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        chat_response = client.post(
+            "/api/support/chat",
             json={"message": "I need to create a ticket", "channel": "web"}
         )
         conv_id = chat_response.json()["conversation_id"]
         
         # Create ticket linked to conversation
-        response = requests.post(
-            f"{BASE_URL}/api/support/ticket",
+        response = client.post(
+            "/api/support/ticket",
             json={
                 "subject": "TEST_Ticket from chat",
                 "description": "Following up from chat conversation",
@@ -228,10 +223,10 @@ class TestSupportAdminEndpoints:
     """Test admin support endpoints (auth required)"""
     
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self, client):
         """Get admin auth token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code != 200:
@@ -240,10 +235,10 @@ class TestSupportAdminEndpoints:
         self.token = response.json().get("access_token")
         self.headers = {"Authorization": f"Bearer {self.token}"}
     
-    def test_get_support_stats(self):
+    def test_get_support_stats(self, client):
         """GET /api/admin/support/stats - returns conversation/ticket stats"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/stats",
+        response = client.get(
+            "/api/admin/support/stats",
             headers=self.headers
         )
         
@@ -267,10 +262,10 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Stats - {conv_stats['total']} conversations, {ticket_stats['total']} tickets")
     
-    def test_list_conversations(self):
+    def test_list_conversations(self, client):
         """GET /api/admin/support/conversations - lists all conversations"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/conversations",
+        response = client.get(
+            "/api/admin/support/conversations",
             headers=self.headers
         )
         
@@ -289,10 +284,10 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Listed {len(data['conversations'])} conversations (total: {data['total']})")
     
-    def test_list_conversations_with_filters(self):
+    def test_list_conversations_with_filters(self, client):
         """GET /api/admin/support/conversations - filters by status"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/conversations?status=open",
+        response = client.get(
+            "/api/admin/support/conversations?status=open",
             headers=self.headers
         )
         
@@ -305,10 +300,10 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Filtered to {len(data['conversations'])} open conversations")
     
-    def test_list_tickets(self):
+    def test_list_tickets(self, client):
         """GET /api/admin/support/tickets - lists all tickets"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/tickets",
+        response = client.get(
+            "/api/admin/support/tickets",
             headers=self.headers
         )
         
@@ -327,10 +322,10 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Listed {len(data['tickets'])} tickets (total: {data['total']})")
     
-    def test_list_tickets_with_filters(self):
+    def test_list_tickets_with_filters(self, client):
         """GET /api/admin/support/tickets - filters by priority"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/tickets?priority=high",
+        response = client.get(
+            "/api/admin/support/tickets?priority=high",
             headers=self.headers
         )
         
@@ -343,18 +338,18 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Filtered to {len(data['tickets'])} high priority tickets")
     
-    def test_get_conversation_detail(self):
+    def test_get_conversation_detail(self, client):
         """GET /api/admin/support/conversation/{id} - returns full transcript"""
         # First create a conversation with messages
-        chat_response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        chat_response = client.post(
+            "/api/support/chat",
             json={"message": "Test message for transcript", "channel": "web"}
         )
         conv_id = chat_response.json()["conversation_id"]
         
         # Get conversation detail
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/conversation/{conv_id}",
+        response = client.get(
+            f"/api/admin/support/conversation/{conv_id}",
             headers=self.headers
         )
         
@@ -377,18 +372,18 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Got transcript with {len(data['messages'])} messages")
     
-    def test_admin_reply_to_conversation(self):
+    def test_admin_reply_to_conversation(self, client):
         """POST /api/admin/support/conversation/{id}/reply - admin can reply"""
         # First create a conversation
-        chat_response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        chat_response = client.post(
+            "/api/support/chat",
             json={"message": "I need admin help", "channel": "web"}
         )
         conv_id = chat_response.json()["conversation_id"]
         
         # Admin reply
-        response = requests.post(
-            f"{BASE_URL}/api/admin/support/conversation/{conv_id}/reply",
+        response = client.post(
+            f"/api/admin/support/conversation/{conv_id}/reply",
             headers=self.headers,
             json={"message": "Hello, this is admin support. How can I help?"}
         )
@@ -402,11 +397,11 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Admin replied to conversation {conv_id}")
     
-    def test_admin_crn_lookup(self):
+    def test_admin_crn_lookup(self, client):
         """POST /api/admin/support/lookup-by-crn - admin CRN lookup"""
         # This will likely return 404 if no client with this CRN exists
-        response = requests.post(
-            f"{BASE_URL}/api/admin/support/lookup-by-crn",
+        response = client.post(
+            "/api/admin/support/lookup-by-crn",
             headers=self.headers,
             json={"crn": "PLE-CVP-2026-TEST123"}
         )
@@ -421,11 +416,11 @@ class TestSupportAdminEndpoints:
         else:
             print("SUCCESS: CRN lookup returned 404 (client not found - expected)")
     
-    def test_get_ticket_detail(self):
+    def test_get_ticket_detail(self, client):
         """GET /api/admin/support/ticket/{id} - returns ticket details"""
         # First create a ticket
-        ticket_response = requests.post(
-            f"{BASE_URL}/api/support/ticket",
+        ticket_response = client.post(
+            "/api/support/ticket",
             json={
                 "subject": "TEST_Detail ticket",
                 "description": "Testing ticket detail endpoint",
@@ -437,8 +432,8 @@ class TestSupportAdminEndpoints:
         ticket_id = ticket_response.json()["ticket_id"]
         
         # Get ticket detail
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/ticket/{ticket_id}",
+        response = client.get(
+            f"/api/admin/support/ticket/{ticket_id}",
             headers=self.headers
         )
         
@@ -451,11 +446,11 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Got ticket detail for {ticket_id}")
     
-    def test_update_ticket_status(self):
+    def test_update_ticket_status(self, client):
         """PUT /api/admin/support/ticket/{id}/status - updates ticket status"""
         # First create a ticket
-        ticket_response = requests.post(
-            f"{BASE_URL}/api/support/ticket",
+        ticket_response = client.post(
+            "/api/support/ticket",
             json={
                 "subject": "TEST_Status update ticket",
                 "description": "Testing status update",
@@ -467,8 +462,8 @@ class TestSupportAdminEndpoints:
         ticket_id = ticket_response.json()["ticket_id"]
         
         # Update status
-        response = requests.put(
-            f"{BASE_URL}/api/admin/support/ticket/{ticket_id}/status?status=open",
+        response = client.put(
+            f"/api/admin/support/ticket/{ticket_id}/status?status=open",
             headers=self.headers
         )
         
@@ -480,11 +475,11 @@ class TestSupportAdminEndpoints:
         
         print(f"SUCCESS: Updated ticket {ticket_id} status to open")
     
-    def test_add_ticket_note(self):
+    def test_add_ticket_note(self, client):
         """POST /api/admin/support/ticket/{id}/note - adds internal note"""
         # First create a ticket
-        ticket_response = requests.post(
-            f"{BASE_URL}/api/support/ticket",
+        ticket_response = client.post(
+            "/api/support/ticket",
             json={
                 "subject": "TEST_Note ticket",
                 "description": "Testing note addition",
@@ -496,8 +491,8 @@ class TestSupportAdminEndpoints:
         ticket_id = ticket_response.json()["ticket_id"]
         
         # Add note
-        response = requests.post(
-            f"{BASE_URL}/api/admin/support/ticket/{ticket_id}/note",
+        response = client.post(
+            f"/api/admin/support/ticket/{ticket_id}/note",
             headers=self.headers,
             json={"message": "Internal note: Customer called back"}
         )
@@ -513,10 +508,10 @@ class TestSupportAdminEndpoints:
 class TestSupportChatbotBehavior:
     """Test AI chatbot specific behaviors"""
     
-    def test_chatbot_greeting_response(self):
+    def test_chatbot_greeting_response(self, client):
         """Chatbot responds to greeting"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response = client.post(
+            "/api/support/chat",
             json={"message": "Hello!", "channel": "web"}
         )
         
@@ -527,10 +522,10 @@ class TestSupportChatbotBehavior:
         assert len(data["response"]) > 20, "Response too short for greeting"
         print("SUCCESS: Chatbot responded to greeting")
     
-    def test_chatbot_cvp_question(self):
+    def test_chatbot_cvp_question(self, client):
         """Chatbot answers CVP questions"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response = client.post(
+            "/api/support/chat",
             json={"message": "What is Compliance Vault Pro?", "channel": "web"}
         )
         
@@ -544,10 +539,10 @@ class TestSupportChatbotBehavior:
         
         print("SUCCESS: Chatbot answered CVP question")
     
-    def test_chatbot_billing_question(self):
+    def test_chatbot_billing_question(self, client):
         """Chatbot answers billing questions"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response = client.post(
+            "/api/support/chat",
             json={"message": "How do I cancel my subscription?", "channel": "web"}
         )
         
@@ -558,10 +553,10 @@ class TestSupportChatbotBehavior:
         assert len(data["response"]) > 50, "Response too short"
         print("SUCCESS: Chatbot answered billing question")
     
-    def test_chatbot_detects_service_area(self):
+    def test_chatbot_detects_service_area(self, client):
         """Chatbot detects service area from message"""
-        response = requests.post(
-            f"{BASE_URL}/api/support/chat",
+        response = client.post(
+            "/api/support/chat",
             json={"message": "I need help with my document pack order", "channel": "web"}
         )
         
@@ -581,10 +576,10 @@ class TestCleanup:
     """Cleanup TEST_ prefixed data"""
     
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self, client):
         """Get admin auth token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:
@@ -593,14 +588,14 @@ class TestCleanup:
         else:
             self.headers = {}
     
-    def test_cleanup_test_tickets(self):
+    def test_cleanup_test_tickets(self, client):
         """Cleanup TEST_ prefixed tickets"""
         if not self.headers:
             pytest.skip("No auth token")
         
         # Get all tickets
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/tickets?limit=200",
+        response = client.get(
+            "/api/admin/support/tickets?limit=200",
             headers=self.headers
         )
         

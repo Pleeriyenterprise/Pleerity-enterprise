@@ -7,10 +7,6 @@ Tests the 4 new features implemented in iteration 47:
 4. Toast error fix verification (via API status codes)
 """
 import pytest
-import requests
-import os
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -19,10 +15,10 @@ CLIENT_EMAIL = "test@pleerity.com"
 CLIENT_PASSWORD = "TestClient123!"
 
 
-@pytest.fixture(scope="module")
-def admin_token():
+@pytest.fixture
+def admin_token(client):
     """Get admin authentication token"""
-    response = requests.post(f"{BASE_URL}/api/auth/login", json={
+    response = client.post("/api/auth/login", json={
         "email": ADMIN_EMAIL,
         "password": ADMIN_PASSWORD
     })
@@ -31,10 +27,10 @@ def admin_token():
     pytest.skip(f"Admin authentication failed: {response.status_code}")
 
 
-@pytest.fixture(scope="module")
-def client_token():
+@pytest.fixture
+def client_token(client):
     """Get client authentication token"""
-    response = requests.post(f"{BASE_URL}/api/auth/login", json={
+    response = client.post("/api/auth/login", json={
         "email": CLIENT_EMAIL,
         "password": CLIENT_PASSWORD
     })
@@ -68,10 +64,10 @@ def client_headers(client_token):
 class TestAnalyticsSummary:
     """Test GET /api/admin/analytics/summary endpoint"""
     
-    def test_summary_returns_200(self, admin_headers):
+    def test_summary_returns_200(self, client, admin_headers):
         """Summary endpoint returns 200 with valid admin token"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/summary?period=30d",
+        response = client.get(
+            "/api/admin/analytics/summary?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -84,10 +80,10 @@ class TestAnalyticsSummary:
         assert "completion_rate" in data
         assert "status_breakdown" in data
     
-    def test_summary_revenue_structure(self, admin_headers):
+    def test_summary_revenue_structure(self, client, admin_headers):
         """Revenue data has correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/summary?period=30d",
+        response = client.get(
+            "/api/admin/analytics/summary?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -100,10 +96,10 @@ class TestAnalyticsSummary:
         assert "trend" in revenue
         assert revenue["trend"] in ["up", "down", "flat"]
     
-    def test_summary_orders_structure(self, admin_headers):
+    def test_summary_orders_structure(self, client, admin_headers):
         """Orders data has correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/summary?period=30d",
+        response = client.get(
+            "/api/admin/analytics/summary?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -115,10 +111,10 @@ class TestAnalyticsSummary:
         assert "change_percent" in orders
         assert "trend" in orders
     
-    def test_summary_aov_structure(self, admin_headers):
+    def test_summary_aov_structure(self, client, admin_headers):
         """Average order value has correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/summary?period=30d",
+        response = client.get(
+            "/api/admin/analytics/summary?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -129,10 +125,10 @@ class TestAnalyticsSummary:
         assert "formatted" in aov
         assert "change_percent" in aov
     
-    def test_summary_completion_rate_structure(self, admin_headers):
+    def test_summary_completion_rate_structure(self, client, admin_headers):
         """Completion rate has correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/summary?period=30d",
+        response = client.get(
+            "/api/admin/analytics/summary?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -143,32 +139,32 @@ class TestAnalyticsSummary:
         assert "completed" in completion
         assert "total" in completion
     
-    def test_summary_different_periods(self, admin_headers):
+    def test_summary_different_periods(self, client, admin_headers):
         """Summary works with different period values"""
         periods = ["today", "7d", "30d", "90d", "ytd", "all"]
         
         for period in periods:
-            response = requests.get(
-                f"{BASE_URL}/api/admin/analytics/summary?period={period}",
+            response = client.get(
+                f"/api/admin/analytics/summary?period={period}",
                 headers=admin_headers
             )
             assert response.status_code == 200, f"Failed for period: {period}"
             data = response.json()
             assert data["period"] == period
     
-    def test_summary_requires_admin(self):
+    def test_summary_requires_admin(self, client):
         """Summary endpoint requires admin authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/analytics/summary")
+        response = client.get("/api/admin/analytics/summary")
         assert response.status_code in [401, 403]
 
 
 class TestAnalyticsServices:
     """Test GET /api/admin/analytics/services endpoint"""
     
-    def test_services_returns_200(self, admin_headers):
+    def test_services_returns_200(self, client, admin_headers):
         """Services endpoint returns 200"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/services?period=30d",
+        response = client.get(
+            "/api/admin/analytics/services?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -178,10 +174,10 @@ class TestAnalyticsServices:
         assert "total_services" in data
         assert isinstance(data["services"], list)
     
-    def test_services_structure(self, admin_headers):
+    def test_services_structure(self, client, admin_headers):
         """Service items have correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/services?period=30d",
+        response = client.get(
+            "/api/admin/analytics/services?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -199,10 +195,10 @@ class TestAnalyticsServices:
 class TestAnalyticsConversionFunnel:
     """Test GET /api/admin/analytics/conversion-funnel endpoint"""
     
-    def test_funnel_returns_200(self, admin_headers):
+    def test_funnel_returns_200(self, client, admin_headers):
         """Conversion funnel endpoint returns 200"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/conversion-funnel?period=30d",
+        response = client.get(
+            "/api/admin/analytics/conversion-funnel?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -212,10 +208,10 @@ class TestAnalyticsConversionFunnel:
         assert "overall_conversion" in data
         assert isinstance(data["funnel"], list)
     
-    def test_funnel_stages(self, admin_headers):
+    def test_funnel_stages(self, client, admin_headers):
         """Funnel has expected stages"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/conversion-funnel?period=30d",
+        response = client.get(
+            "/api/admin/analytics/conversion-funnel?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -231,10 +227,10 @@ class TestAnalyticsConversionFunnel:
 class TestAnalyticsSLA:
     """Test GET /api/admin/analytics/sla-performance endpoint"""
     
-    def test_sla_returns_200(self, admin_headers):
+    def test_sla_returns_200(self, client, admin_headers):
         """SLA performance endpoint returns 200"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/sla-performance?period=30d",
+        response = client.get(
+            "/api/admin/analytics/sla-performance?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -245,10 +241,10 @@ class TestAnalyticsSLA:
         assert "breached" in data
         assert "health_score" in data
     
-    def test_sla_structure(self, admin_headers):
+    def test_sla_structure(self, client, admin_headers):
         """SLA data has correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/sla-performance?period=30d",
+        response = client.get(
+            "/api/admin/analytics/sla-performance?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -263,10 +259,10 @@ class TestAnalyticsSLA:
 class TestAnalyticsCustomers:
     """Test GET /api/admin/analytics/customers endpoint"""
     
-    def test_customers_returns_200(self, admin_headers):
+    def test_customers_returns_200(self, client, admin_headers):
         """Customers endpoint returns 200"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/customers?period=30d",
+        response = client.get(
+            "/api/admin/analytics/customers?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -281,10 +277,10 @@ class TestAnalyticsCustomers:
 class TestAnalyticsAddons:
     """Test GET /api/admin/analytics/addons endpoint"""
     
-    def test_addons_returns_200(self, admin_headers):
+    def test_addons_returns_200(self, client, admin_headers):
         """Addons endpoint returns 200"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/addons?period=30d",
+        response = client.get(
+            "/api/admin/analytics/addons?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -294,10 +290,10 @@ class TestAnalyticsAddons:
         assert "printed_copy" in data
         assert "total_addon_revenue" in data
     
-    def test_addons_structure(self, admin_headers):
+    def test_addons_structure(self, client, admin_headers):
         """Addon data has correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/analytics/addons?period=30d",
+        response = client.get(
+            "/api/admin/analytics/addons?period=30d",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -317,10 +313,10 @@ class TestAnalyticsAddons:
 class TestIntakeSchemaServices:
     """Test GET /api/admin/intake-schema/services endpoint"""
     
-    def test_services_list_returns_200(self, admin_headers):
+    def test_services_list_returns_200(self, client, admin_headers):
         """Services list endpoint returns 200"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -330,10 +326,10 @@ class TestIntakeSchemaServices:
         assert "total" in data
         assert isinstance(data["services"], list)
     
-    def test_services_list_has_11_services(self, admin_headers):
+    def test_services_list_has_11_services(self, client, admin_headers):
         """Services list returns 11 services"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -342,10 +338,10 @@ class TestIntakeSchemaServices:
         # Should have 11 services based on requirements
         assert data["total"] >= 11, f"Expected at least 11 services, got {data['total']}"
     
-    def test_services_have_field_counts(self, admin_headers):
+    def test_services_have_field_counts(self, client, admin_headers):
         """Each service has field_count"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -361,10 +357,10 @@ class TestIntakeSchemaServices:
 class TestIntakeSchemaEditor:
     """Test GET /api/admin/intake-schema/{service_code} endpoint"""
     
-    def test_schema_editor_returns_200(self, admin_headers):
+    def test_schema_editor_returns_200(self, client, admin_headers):
         """Schema editor endpoint returns 200 for valid service"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/DOC_PACK_ESSENTIAL",
+        response = client.get(
+            "/api/admin/intake-schema/DOC_PACK_ESSENTIAL",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -374,10 +370,10 @@ class TestIntakeSchemaEditor:
         assert "fields" in data
         assert data["service_code"] == "DOC_PACK_ESSENTIAL"
     
-    def test_schema_editor_fields_structure(self, admin_headers):
+    def test_schema_editor_fields_structure(self, client, admin_headers):
         """Schema fields have correct structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/DOC_PACK_ESSENTIAL",
+        response = client.get(
+            "/api/admin/intake-schema/DOC_PACK_ESSENTIAL",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -394,10 +390,10 @@ class TestIntakeSchemaEditor:
         assert "label" in base
         assert "type" in base
     
-    def test_schema_editor_404_for_invalid_service(self, admin_headers):
+    def test_schema_editor_404_for_invalid_service(self, client, admin_headers):
         """Schema editor returns 404 for invalid service"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/INVALID_SERVICE_CODE",
+        response = client.get(
+            "/api/admin/intake-schema/INVALID_SERVICE_CODE",
             headers=admin_headers
         )
         assert response.status_code == 404
@@ -410,9 +406,9 @@ class TestIntakeSchemaEditor:
 class TestServiceDetailV2:
     """Test GET /api/public/v2/services/{service_code} endpoint"""
     
-    def test_service_detail_returns_200(self):
+    def test_service_detail_returns_200(self, client):
         """Service detail V2 endpoint returns 200 for valid service"""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services/AI_WF_BLUEPRINT")
+        response = client.get("/api/public/v2/services/AI_WF_BLUEPRINT")
         assert response.status_code == 200
         data = response.json()
         
@@ -420,9 +416,9 @@ class TestServiceDetailV2:
         assert "service_name" in data
         assert "description" in data
     
-    def test_service_detail_has_pricing(self):
+    def test_service_detail_has_pricing(self, client):
         """Service detail includes pricing information"""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services/AI_WF_BLUEPRINT")
+        response = client.get("/api/public/v2/services/AI_WF_BLUEPRINT")
         assert response.status_code == 200
         data = response.json()
         
@@ -430,21 +426,21 @@ class TestServiceDetailV2:
         assert "base_price" in data
         assert "price_currency" in data
     
-    def test_service_detail_has_slug(self):
+    def test_service_detail_has_slug(self, client):
         """Service detail includes slug for URL"""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services/AI_WF_BLUEPRINT")
+        response = client.get("/api/public/v2/services/AI_WF_BLUEPRINT")
         assert response.status_code == 200
         data = response.json()
         
         # V2 API uses learn_more_slug
         assert "learn_more_slug" in data
     
-    def test_service_detail_404_for_invalid(self):
+    def test_service_detail_404_for_invalid(self, client):
         """Service detail returns 404 for invalid service code"""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services/INVALID_CODE")
+        response = client.get("/api/public/v2/services/INVALID_CODE")
         assert response.status_code == 404
     
-    def test_multiple_services_accessible(self):
+    def test_multiple_services_accessible(self, client):
         """Multiple services are accessible via V2 API"""
         service_codes = [
             "AI_WF_BLUEPRINT",
@@ -452,12 +448,12 @@ class TestServiceDetailV2:
         ]
         
         for code in service_codes:
-            response = requests.get(f"{BASE_URL}/api/public/v2/services/{code}")
+            response = client.get(f"/api/public/v2/services/{code}")
             assert response.status_code == 200, f"Failed for service: {code}"
     
-    def test_service_detail_structure(self):
+    def test_service_detail_structure(self, client):
         """Service detail has complete structure"""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services/AI_WF_BLUEPRINT")
+        response = client.get("/api/public/v2/services/AI_WF_BLUEPRINT")
         assert response.status_code == 200
         data = response.json()
         
@@ -475,19 +471,19 @@ class TestServiceDetailV2:
 class TestAuthErrorHandling:
     """Test that auth errors return proper 401 status"""
     
-    def test_client_orders_returns_401_without_auth(self):
+    def test_client_orders_returns_401_without_auth(self, client):
         """Client orders endpoint returns 401 without auth"""
-        response = requests.get(f"{BASE_URL}/api/client/orders/")
+        response = client.get("/api/client/orders/")
         assert response.status_code in [401, 403]
     
-    def test_admin_analytics_returns_401_without_auth(self):
+    def test_admin_analytics_returns_401_without_auth(self, client):
         """Admin analytics endpoint returns 401 without auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/analytics/summary")
+        response = client.get("/api/admin/analytics/summary")
         assert response.status_code in [401, 403]
     
-    def test_admin_notifications_returns_401_without_auth(self):
+    def test_admin_notifications_returns_401_without_auth(self, client):
         """Admin notifications endpoint returns 401 without auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/notifications/preferences")
+        response = client.get("/api/admin/notifications/preferences")
         assert response.status_code in [401, 403]
 
 

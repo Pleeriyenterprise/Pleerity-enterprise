@@ -7,12 +7,8 @@ Test Suite for Three New Features:
 Iteration 55 - Testing all new endpoints
 """
 import pytest
-import requests
-import os
 import uuid
 from datetime import datetime
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -22,10 +18,10 @@ ADMIN_PASSWORD = "Admin123!"
 class TestSetup:
     """Setup and authentication"""
     
-    @pytest.fixture(scope="class")
-    def auth_token(self):
+    @pytest.fixture
+    def auth_token(self, client):
         """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
+        response = client.post("/api/auth/login", json={
             "email": ADMIN_EMAIL,
             "password": ADMIN_PASSWORD
         })
@@ -34,7 +30,7 @@ class TestSetup:
         assert "access_token" in data, "No access_token in response"
         return data["access_token"]
     
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def auth_headers(self, auth_token):
         """Get headers with auth token"""
         return {
@@ -50,9 +46,9 @@ class TestSetup:
 class TestTeamPermissions(TestSetup):
     """Test Team Permissions API - 13 permission categories, 5 built-in roles"""
     
-    def test_get_all_permissions(self, auth_headers):
+    def test_get_all_permissions(self, client, auth_headers):
         """GET /api/admin/team/permissions - Returns 13 permission categories"""
-        response = requests.get(f"{BASE_URL}/api/admin/team/permissions", headers=auth_headers)
+        response = client.get("/api/admin/team/permissions", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -69,9 +65,9 @@ class TestTeamPermissions(TestSetup):
         
         print(f"✓ Found {len(data['categories'])} permission categories")
     
-    def test_list_roles(self, auth_headers):
+    def test_list_roles(self, client, auth_headers):
         """GET /api/admin/team/roles - Returns 5 built-in roles"""
-        response = requests.get(f"{BASE_URL}/api/admin/team/roles", headers=auth_headers)
+        response = client.get("/api/admin/team/roles", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -93,10 +89,10 @@ class TestTeamPermissions(TestSetup):
         
         print(f"✓ Found {len(data['roles'])} roles including 5 built-in")
     
-    def test_get_role_details(self, auth_headers):
+    def test_get_role_details(self, client, auth_headers):
         """GET /api/admin/team/roles/{role_id} - Get role details"""
         # Test built-in role
-        response = requests.get(f"{BASE_URL}/api/admin/team/roles/manager", headers=auth_headers)
+        response = client.get("/api/admin/team/roles/manager", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -107,7 +103,7 @@ class TestTeamPermissions(TestSetup):
         
         print(f"✓ Manager role has {len(data['permissions'])} permission categories")
     
-    def test_create_custom_role(self, auth_headers):
+    def test_create_custom_role(self, client, auth_headers):
         """POST /api/admin/team/roles - Create custom role"""
         unique_id = uuid.uuid4().hex[:8]
         role_data = {
@@ -121,7 +117,7 @@ class TestTeamPermissions(TestSetup):
             }
         }
         
-        response = requests.post(f"{BASE_URL}/api/admin/team/roles", json=role_data, headers=auth_headers)
+        response = client.post("/api/admin/team/roles", json=role_data, headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -135,7 +131,7 @@ class TestTeamPermissions(TestSetup):
         print(f"✓ Created custom role: {data['role_id']}")
         return data["role_id"]
     
-    def test_update_custom_role(self, auth_headers):
+    def test_update_custom_role(self, client, auth_headers):
         """PUT /api/admin/team/roles/{id} - Update custom role"""
         role_id = getattr(self.__class__, 'created_role_id', None)
         if not role_id:
@@ -151,45 +147,45 @@ class TestTeamPermissions(TestSetup):
             }
         }
         
-        response = requests.put(f"{BASE_URL}/api/admin/team/roles/{role_id}", json=update_data, headers=auth_headers)
+        response = client.put(f"/api/admin/team/roles/{role_id}", json=update_data, headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
         assert data["success"] == True
         print(f"✓ Updated custom role: {role_id}")
     
-    def test_cannot_update_builtin_role(self, auth_headers):
+    def test_cannot_update_builtin_role(self, client, auth_headers):
         """PUT /api/admin/team/roles/{id} - Cannot modify built-in roles"""
-        response = requests.put(
-            f"{BASE_URL}/api/admin/team/roles/super_admin",
+        response = client.put(
+            "/api/admin/team/roles/super_admin",
             json={"name": "Hacked Admin"},
             headers=auth_headers
         )
         assert response.status_code == 400, f"Should fail: {response.text}"
         print("✓ Built-in roles cannot be modified")
     
-    def test_delete_custom_role(self, auth_headers):
+    def test_delete_custom_role(self, client, auth_headers):
         """DELETE /api/admin/team/roles/{id} - Delete custom role"""
         role_id = getattr(self.__class__, 'created_role_id', None)
         if not role_id:
             pytest.skip("No custom role created")
         
-        response = requests.delete(f"{BASE_URL}/api/admin/team/roles/{role_id}", headers=auth_headers)
+        response = client.delete(f"/api/admin/team/roles/{role_id}", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
         assert data["success"] == True
         print(f"✓ Deleted custom role: {role_id}")
     
-    def test_cannot_delete_builtin_role(self, auth_headers):
+    def test_cannot_delete_builtin_role(self, client, auth_headers):
         """DELETE /api/admin/team/roles/{id} - Cannot delete built-in roles"""
-        response = requests.delete(f"{BASE_URL}/api/admin/team/roles/manager", headers=auth_headers)
+        response = client.delete("/api/admin/team/roles/manager", headers=auth_headers)
         assert response.status_code == 400, f"Should fail: {response.text}"
         print("✓ Built-in roles cannot be deleted")
     
-    def test_list_admin_users(self, auth_headers):
+    def test_list_admin_users(self, client, auth_headers):
         """GET /api/admin/team/users - List admin users"""
-        response = requests.get(f"{BASE_URL}/api/admin/team/users", headers=auth_headers)
+        response = client.get("/api/admin/team/users", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -205,7 +201,7 @@ class TestTeamPermissions(TestSetup):
         
         print(f"✓ Found {data['total']} admin users")
     
-    def test_create_admin_user(self, auth_headers):
+    def test_create_admin_user(self, client, auth_headers):
         """POST /api/admin/team/users - Create new admin user"""
         unique_id = uuid.uuid4().hex[:8]
         user_data = {
@@ -215,7 +211,7 @@ class TestTeamPermissions(TestSetup):
             "send_invite": False
         }
         
-        response = requests.post(f"{BASE_URL}/api/admin/team/users", json=user_data, headers=auth_headers)
+        response = client.post("/api/admin/team/users", json=user_data, headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -227,7 +223,7 @@ class TestTeamPermissions(TestSetup):
         self.__class__.created_user_id = data["portal_user_id"]
         print(f"✓ Created admin user: {data['portal_user_id']}")
     
-    def test_update_admin_user(self, auth_headers):
+    def test_update_admin_user(self, client, auth_headers):
         """PUT /api/admin/team/users/{id} - Update admin user role"""
         user_id = getattr(self.__class__, 'created_user_id', None)
         if not user_id:
@@ -238,16 +234,16 @@ class TestTeamPermissions(TestSetup):
             "role_id": "support_agent"
         }
         
-        response = requests.put(f"{BASE_URL}/api/admin/team/users/{user_id}", json=update_data, headers=auth_headers)
+        response = client.put(f"/api/admin/team/users/{user_id}", json=update_data, headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
         assert data["success"] == True
         print(f"✓ Updated admin user role to support_agent")
     
-    def test_get_my_permissions(self, auth_headers):
+    def test_get_my_permissions(self, client, auth_headers):
         """GET /api/admin/team/me/permissions - Get current user's permissions"""
-        response = requests.get(f"{BASE_URL}/api/admin/team/me/permissions", headers=auth_headers)
+        response = client.get("/api/admin/team/me/permissions", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -265,9 +261,9 @@ class TestTeamPermissions(TestSetup):
 class TestCMSTemplates(TestSetup):
     """Test CMS Templates API - 4 pre-built page templates"""
     
-    def test_list_templates(self, auth_headers):
+    def test_list_templates(self, client, auth_headers):
         """GET /api/admin/cms/templates - Returns 4 templates"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/templates", headers=auth_headers)
+        response = client.get("/api/admin/cms/templates", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -288,9 +284,9 @@ class TestCMSTemplates(TestSetup):
         
         print(f"✓ Found {len(data['templates'])} templates: {template_ids}")
     
-    def test_get_template_details_landing(self, auth_headers):
+    def test_get_template_details_landing(self, client, auth_headers):
         """GET /api/admin/cms/templates/landing_page - Get landing page template"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/templates/landing_page", headers=auth_headers)
+        response = client.get("/api/admin/cms/templates/landing_page", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -301,9 +297,9 @@ class TestCMSTemplates(TestSetup):
         
         print(f"✓ Landing page template has {len(data['blocks'])} blocks")
     
-    def test_get_template_details_about(self, auth_headers):
+    def test_get_template_details_about(self, client, auth_headers):
         """GET /api/admin/cms/templates/about_us - Get about us template"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/templates/about_us", headers=auth_headers)
+        response = client.get("/api/admin/cms/templates/about_us", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -312,9 +308,9 @@ class TestCMSTemplates(TestSetup):
         
         print(f"✓ About Us template has {len(data['blocks'])} blocks")
     
-    def test_get_template_details_contact(self, auth_headers):
+    def test_get_template_details_contact(self, client, auth_headers):
         """GET /api/admin/cms/templates/contact_us - Get contact us template"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/templates/contact_us", headers=auth_headers)
+        response = client.get("/api/admin/cms/templates/contact_us", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -323,9 +319,9 @@ class TestCMSTemplates(TestSetup):
         
         print(f"✓ Contact Us template has {len(data['blocks'])} blocks")
     
-    def test_get_template_details_pricing(self, auth_headers):
+    def test_get_template_details_pricing(self, client, auth_headers):
         """GET /api/admin/cms/templates/pricing_page - Get pricing page template"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/templates/pricing_page", headers=auth_headers)
+        response = client.get("/api/admin/cms/templates/pricing_page", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -334,9 +330,9 @@ class TestCMSTemplates(TestSetup):
         
         print(f"✓ Pricing page template has {len(data['blocks'])} blocks")
     
-    def test_get_template_preview(self, auth_headers):
+    def test_get_template_preview(self, client, auth_headers):
         """GET /api/admin/cms/templates/{id}/preview - Get template preview data"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/templates/landing_page/preview", headers=auth_headers)
+        response = client.get("/api/admin/cms/templates/landing_page/preview", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -353,7 +349,7 @@ class TestCMSTemplates(TestSetup):
         
         print(f"✓ Template preview has {len(data['blocks'])} blocks with preview IDs")
     
-    def test_apply_template_create_page(self, auth_headers):
+    def test_apply_template_create_page(self, client, auth_headers):
         """POST /api/admin/cms/templates/apply - Apply template to create new page"""
         unique_id = uuid.uuid4().hex[:8]
         apply_data = {
@@ -363,7 +359,7 @@ class TestCMSTemplates(TestSetup):
             "replace_existing": False
         }
         
-        response = requests.post(f"{BASE_URL}/api/admin/cms/templates/apply", json=apply_data, headers=auth_headers)
+        response = client.post("/api/admin/cms/templates/apply", json=apply_data, headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -376,13 +372,13 @@ class TestCMSTemplates(TestSetup):
         self.__class__.created_page_slug = apply_data["page_slug"]
         print(f"✓ Created page from template: {data['page_id']}")
     
-    def test_verify_created_page_has_blocks(self, auth_headers):
+    def test_verify_created_page_has_blocks(self, client, auth_headers):
         """Verify the page created from template has blocks"""
         page_id = getattr(self.__class__, 'created_page_id', None)
         if not page_id:
             pytest.skip("No page created")
         
-        response = requests.get(f"{BASE_URL}/api/admin/cms/pages/{page_id}", headers=auth_headers)
+        response = client.get(f"/api/admin/cms/pages/{page_id}", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -391,17 +387,17 @@ class TestCMSTemplates(TestSetup):
         
         print(f"✓ Created page has {len(data['blocks'])} blocks from template")
     
-    def test_template_not_found(self, auth_headers):
+    def test_template_not_found(self, client, auth_headers):
         """GET /api/admin/cms/templates/{id} - Template not found"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/templates/nonexistent_template", headers=auth_headers)
+        response = client.get("/api/admin/cms/templates/nonexistent_template", headers=auth_headers)
         assert response.status_code == 404, f"Should return 404: {response.text}"
         print("✓ Non-existent template returns 404")
     
-    def test_cleanup_created_page(self, auth_headers):
+    def test_cleanup_created_page(self, client, auth_headers):
         """Cleanup: Delete the test page"""
         page_id = getattr(self.__class__, 'created_page_id', None)
         if page_id:
-            response = requests.delete(f"{BASE_URL}/api/admin/cms/pages/{page_id}", headers=auth_headers)
+            response = client.delete(f"/api/admin/cms/pages/{page_id}", headers=auth_headers)
             print(f"✓ Cleaned up test page: {page_id}")
 
 
@@ -412,7 +408,7 @@ class TestCMSTemplates(TestSetup):
 class TestReportSharing(TestSetup):
     """Test Report Sharing API - Public time-limited URLs"""
     
-    def test_create_share_link(self, auth_headers):
+    def test_create_share_link(self, client, auth_headers):
         """POST /api/admin/reports/share - Create shareable report link"""
         share_data = {
             "name": f"TEST Share Link {uuid.uuid4().hex[:8]}",
@@ -422,7 +418,7 @@ class TestReportSharing(TestSetup):
             "expires_in_days": 7
         }
         
-        response = requests.post(f"{BASE_URL}/api/admin/reports/share", json=share_data, headers=auth_headers)
+        response = client.post("/api/admin/reports/share", json=share_data, headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -434,9 +430,9 @@ class TestReportSharing(TestSetup):
         self.__class__.created_share_id = data["share_id"]
         print(f"✓ Created share link: {data['share_id']}")
     
-    def test_list_share_links(self, auth_headers):
+    def test_list_share_links(self, client, auth_headers):
         """GET /api/admin/reports/shares - List all share links"""
-        response = requests.get(f"{BASE_URL}/api/admin/reports/shares", headers=auth_headers)
+        response = client.get("/api/admin/reports/shares", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -453,14 +449,14 @@ class TestReportSharing(TestSetup):
         
         print(f"✓ Found {len(data['shares'])} share links")
     
-    def test_get_public_shared_report_info(self):
+    def test_get_public_shared_report_info(self, client):
         """GET /api/public/reports/shared/{id} - Get public shared report info (no auth)"""
         share_id = getattr(self.__class__, 'created_share_id', None)
         if not share_id:
             pytest.skip("No share link created")
         
         # This endpoint should NOT require authentication
-        response = requests.get(f"{BASE_URL}/api/public/reports/shared/{share_id}")
+        response = client.get(f"/api/public/reports/shared/{share_id}")
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
@@ -471,14 +467,14 @@ class TestReportSharing(TestSetup):
         
         print(f"✓ Public report info accessible without auth: {data['name']}")
     
-    def test_download_public_shared_report(self):
+    def test_download_public_shared_report(self, client):
         """GET /api/public/reports/shared/{id}/download - Download shared report (no auth)"""
         share_id = getattr(self.__class__, 'created_share_id', None)
         if not share_id:
             pytest.skip("No share link created")
         
         # This endpoint should NOT require authentication
-        response = requests.get(f"{BASE_URL}/api/public/reports/shared/{share_id}/download")
+        response = client.get(f"/api/public/reports/shared/{share_id}/download")
         assert response.status_code == 200, f"Failed: {response.text}"
         
         # Should return file content
@@ -490,35 +486,35 @@ class TestReportSharing(TestSetup):
         
         print(f"✓ Public report download works without auth, size: {len(response.content)} bytes")
     
-    def test_expired_share_link_rejected(self):
+    def test_expired_share_link_rejected(self, client):
         """Test that expired share links are rejected"""
         # Try to access a non-existent share ID
         fake_share_id = f"SHARE-{uuid.uuid4().hex[:12].upper()}"
-        response = requests.get(f"{BASE_URL}/api/public/reports/shared/{fake_share_id}")
+        response = client.get(f"/api/public/reports/shared/{fake_share_id}")
         assert response.status_code in [404, 400], f"Should fail: {response.text}"
         print("✓ Invalid/expired share links are rejected")
     
-    def test_revoke_share_link(self, auth_headers):
+    def test_revoke_share_link(self, client, auth_headers):
         """DELETE /api/admin/reports/shares/{id} - Revoke share link"""
         share_id = getattr(self.__class__, 'created_share_id', None)
         if not share_id:
             pytest.skip("No share link created")
         
-        response = requests.delete(f"{BASE_URL}/api/admin/reports/shares/{share_id}", headers=auth_headers)
+        response = client.delete(f"/api/admin/reports/shares/{share_id}", headers=auth_headers)
         assert response.status_code == 200, f"Failed: {response.text}"
         
         data = response.json()
         assert data["success"] == True
         print(f"✓ Revoked share link: {share_id}")
     
-    def test_revoked_share_link_inaccessible(self):
+    def test_revoked_share_link_inaccessible(self, client):
         """Test that revoked share links cannot be accessed"""
         share_id = getattr(self.__class__, 'created_share_id', None)
         if not share_id:
             pytest.skip("No share link created")
         
         # Try to access revoked share
-        response = requests.get(f"{BASE_URL}/api/public/reports/shared/{share_id}")
+        response = client.get(f"/api/public/reports/shared/{share_id}")
         assert response.status_code in [404, 400, 410], f"Should fail: {response.text}"
         print("✓ Revoked share links are inaccessible")
 
@@ -530,33 +526,33 @@ class TestReportSharing(TestSetup):
 class TestAuthenticationRequired:
     """Test that all admin endpoints require authentication"""
     
-    def test_team_permissions_requires_auth(self):
+    def test_team_permissions_requires_auth(self, client):
         """Team permissions endpoint requires auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/team/permissions")
+        response = client.get("/api/admin/team/permissions")
         assert response.status_code in [401, 403], f"Should require auth: {response.text}"
         print("✓ /api/admin/team/permissions requires auth")
     
-    def test_team_roles_requires_auth(self):
+    def test_team_roles_requires_auth(self, client):
         """Team roles endpoint requires auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/team/roles")
+        response = client.get("/api/admin/team/roles")
         assert response.status_code in [401, 403], f"Should require auth: {response.text}"
         print("✓ /api/admin/team/roles requires auth")
     
-    def test_team_users_requires_auth(self):
+    def test_team_users_requires_auth(self, client):
         """Team users endpoint requires auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/team/users")
+        response = client.get("/api/admin/team/users")
         assert response.status_code in [401, 403], f"Should require auth: {response.text}"
         print("✓ /api/admin/team/users requires auth")
     
-    def test_cms_templates_requires_auth(self):
+    def test_cms_templates_requires_auth(self, client):
         """CMS templates endpoint requires auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/cms/templates")
+        response = client.get("/api/admin/cms/templates")
         assert response.status_code in [401, 403], f"Should require auth: {response.text}"
         print("✓ /api/admin/cms/templates requires auth")
     
-    def test_report_shares_requires_auth(self):
+    def test_report_shares_requires_auth(self, client):
         """Report shares endpoint requires auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/reports/shares")
+        response = client.get("/api/admin/reports/shares")
         assert response.status_code in [401, 403], f"Should require auth: {response.text}"
         print("✓ /api/admin/reports/shares requires auth")
 

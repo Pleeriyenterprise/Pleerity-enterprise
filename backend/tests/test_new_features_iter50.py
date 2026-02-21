@@ -7,12 +7,8 @@ Test Suite for Iteration 50 Features:
 
 Run: pytest /app/backend/tests/test_new_features_iter50.py -v --tb=short
 """
-import pytest
-import requests
-import os
 import time
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+import pytest
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -23,19 +19,19 @@ CLIENT_PASSWORD = "TestClient123!"
 
 class TestSetup:
     """Setup and authentication tests"""
-    
-    @pytest.fixture(scope="class")
-    def admin_token(self):
+
+    @pytest.fixture
+    def admin_token(self, client):
         """Get admin authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
+        response = client.post("/api/auth/login", json={
             "email": ADMIN_EMAIL,
             "password": ADMIN_PASSWORD
         })
         if response.status_code == 200:
             return response.json().get("access_token")
         pytest.skip(f"Admin login failed: {response.status_code}")
-    
-    @pytest.fixture(scope="class")
+
+    @pytest.fixture
     def admin_headers(self, admin_token):
         """Get admin headers with auth token"""
         return {
@@ -51,9 +47,9 @@ class TestSetup:
 class TestWhatsAppHandoffAudit:
     """Test WhatsApp handoff audit logging endpoint"""
     
-    def test_whatsapp_handoff_audit_endpoint_exists(self):
+    def test_whatsapp_handoff_audit_endpoint_exists(self, client):
         """Test that the WhatsApp audit endpoint exists"""
-        response = requests.post(f"{BASE_URL}/api/support/audit/whatsapp-handoff", json={
+        response = client.post("/api/support/audit/whatsapp-handoff", json={
             "conversation_id": "test-conv-123",
             "user_role": "anonymous",
             "client_id": None,
@@ -63,9 +59,9 @@ class TestWhatsAppHandoffAudit:
         # Should return 200 (success) or 422 (validation error), not 404
         assert response.status_code in [200, 422], f"Endpoint should exist, got {response.status_code}"
     
-    def test_whatsapp_handoff_audit_logs_event(self):
+    def test_whatsapp_handoff_audit_logs_event(self, client):
         """Test that WhatsApp handoff click is logged"""
-        response = requests.post(f"{BASE_URL}/api/support/audit/whatsapp-handoff", json={
+        response = client.post("/api/support/audit/whatsapp-handoff", json={
             "conversation_id": "TEST_conv_whatsapp_001",
             "user_role": "anonymous",
             "client_id": None,
@@ -78,9 +74,9 @@ class TestWhatsAppHandoffAudit:
         # Verify the event type is correct
         assert data.get("event") == "SUPPORT_WHATSAPP_HANDOFF_CLICKED"
     
-    def test_whatsapp_handoff_audit_with_authenticated_user(self):
+    def test_whatsapp_handoff_audit_with_authenticated_user(self, client):
         """Test audit logging for authenticated user"""
-        response = requests.post(f"{BASE_URL}/api/support/audit/whatsapp-handoff", json={
+        response = client.post("/api/support/audit/whatsapp-handoff", json={
             "conversation_id": "TEST_conv_whatsapp_002",
             "user_role": "authenticated",
             "client_id": "client-123",
@@ -97,10 +93,10 @@ class TestWhatsAppHandoffAudit:
 class TestAdminIntakeSchemaManager(TestSetup):
     """Test Admin Intake Schema Manager APIs"""
     
-    def test_get_services_list(self, admin_headers):
+    def test_get_services_list(self, client, admin_headers):
         """GET /api/admin/intake-schema/services returns list of services"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -117,11 +113,11 @@ class TestAdminIntakeSchemaManager(TestSetup):
             assert "service_code" in service
             assert "field_count" in service
     
-    def test_get_schema_for_editing(self, admin_headers):
+    def test_get_schema_for_editing(self, client, admin_headers):
         """GET /api/admin/intake-schema/{service_code} returns schema for editing"""
         # First get list of services
-        services_response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        services_response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         services = services_response.json().get("services", [])
@@ -131,8 +127,8 @@ class TestAdminIntakeSchemaManager(TestSetup):
         
         service_code = services[0]["service_code"]
         
-        response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/{service_code}",
+        response = client.get(
+            "/api/admin/intake-schema/{service_code}",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
@@ -143,11 +139,11 @@ class TestAdminIntakeSchemaManager(TestSetup):
         assert "customizations_meta" in data
         assert data["service_code"] == service_code
     
-    def test_save_draft_schema(self, admin_headers):
+    def test_save_draft_schema(self, client, admin_headers):
         """PUT /api/admin/intake-schema/{service_code} saves draft"""
         # Get a service code
-        services_response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        services_response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         services = services_response.json().get("services", [])
@@ -158,8 +154,8 @@ class TestAdminIntakeSchemaManager(TestSetup):
         service_code = services[0]["service_code"]
         
         # Save draft with a test override
-        response = requests.put(
-            f"{BASE_URL}/api/admin/intake-schema/{service_code}",
+        response = client.put(
+            "/api/admin/intake-schema/{service_code}",
             headers=admin_headers,
             json={
                 "service_code": service_code,
@@ -179,11 +175,11 @@ class TestAdminIntakeSchemaManager(TestSetup):
         assert data.get("success") == True
         assert data.get("is_draft") == True
     
-    def test_publish_schema(self, admin_headers):
+    def test_publish_schema(self, client, admin_headers):
         """POST /api/admin/intake-schema/{service_code}/publish publishes draft"""
         # Get a service code
-        services_response = requests.get(
-            f"{BASE_URL}/api/admin/intake-schema/services",
+        services_response = client.get(
+            "/api/admin/intake-schema/services",
             headers=admin_headers
         )
         services = services_response.json().get("services", [])
@@ -194,8 +190,8 @@ class TestAdminIntakeSchemaManager(TestSetup):
         service_code = services[0]["service_code"]
         
         # First save a draft
-        requests.put(
-            f"{BASE_URL}/api/admin/intake-schema/{service_code}",
+        client.put(
+            "/api/admin/intake-schema/{service_code}",
             headers=admin_headers,
             json={
                 "service_code": service_code,
@@ -211,8 +207,8 @@ class TestAdminIntakeSchemaManager(TestSetup):
         )
         
         # Now publish
-        response = requests.post(
-            f"{BASE_URL}/api/admin/intake-schema/{service_code}/publish",
+        response = client.post(
+            "/api/admin/intake-schema/{service_code}/publish",
             headers=admin_headers
         )
         # May return 200 (success) or 400 (no draft to publish)
@@ -220,7 +216,7 @@ class TestAdminIntakeSchemaManager(TestSetup):
     
     def test_schema_requires_admin(self):
         """Test that schema endpoints require admin authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/intake-schema/services")
+        response = client.get("/api/admin/intake-schema/services")
         assert response.status_code in [401, 403], "Should require authentication"
 
 
@@ -231,10 +227,10 @@ class TestAdminIntakeSchemaManager(TestSetup):
 class TestAdminCannedResponses(TestSetup):
     """Test Admin Canned Responses CRUD APIs"""
     
-    def test_list_canned_responses(self, admin_headers):
+    def test_list_canned_responses(self, client, admin_headers):
         """GET /api/admin/support/responses returns list"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/responses",
+        response = client.get(
+            "/api/admin/support/responses",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -246,10 +242,10 @@ class TestAdminCannedResponses(TestSetup):
         assert "channels" in data
         assert isinstance(data["responses"], list)
     
-    def test_create_canned_response(self, admin_headers):
+    def test_create_canned_response(self, client, admin_headers):
         """POST /api/admin/support/responses creates new response with audit"""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/support/responses",
+        response = client.post(
+            "/api/admin/support/responses",
             headers=admin_headers,
             json={
                 "label": "TEST Response Label",
@@ -277,11 +273,11 @@ class TestAdminCannedResponses(TestSetup):
         # Store for cleanup
         return data["response_id"]
     
-    def test_get_single_response(self, admin_headers):
+    def test_get_single_response(self, client, admin_headers):
         """GET /api/admin/support/responses/{id} returns single response"""
         # First create a response
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/support/responses",
+        create_response = client.post(
+            "/api/admin/support/responses",
             headers=admin_headers,
             json={
                 "label": "TEST Get Single Response",
@@ -295,8 +291,8 @@ class TestAdminCannedResponses(TestSetup):
         response_id = create_response.json().get("response_id")
         
         # Get the response
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/responses/{response_id}",
+        response = client.get(
+            "/api/admin/support/responses/{response_id}",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -304,11 +300,11 @@ class TestAdminCannedResponses(TestSetup):
         assert data["response_id"] == response_id
         assert data["label"] == "TEST Get Single Response"
     
-    def test_update_canned_response(self, admin_headers):
+    def test_update_canned_response(self, client, admin_headers):
         """PUT /api/admin/support/responses/{id} updates response"""
         # First create a response
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/support/responses",
+        create_response = client.post(
+            "/api/admin/support/responses",
             headers=admin_headers,
             json={
                 "label": "TEST Update Response Original",
@@ -321,8 +317,8 @@ class TestAdminCannedResponses(TestSetup):
         response_id = create_response.json().get("response_id")
         
         # Update the response
-        response = requests.put(
-            f"{BASE_URL}/api/admin/support/responses/{response_id}",
+        response = client.put(
+            "/api/admin/support/responses/{response_id}",
             headers=admin_headers,
             json={
                 "label": "TEST Update Response Modified",
@@ -334,11 +330,11 @@ class TestAdminCannedResponses(TestSetup):
         assert data.get("success") == True
         assert data["response"]["label"] == "TEST Update Response Modified"
     
-    def test_soft_delete_canned_response(self, admin_headers):
+    def test_soft_delete_canned_response(self, client, admin_headers):
         """DELETE soft deletes (sets is_active=false)"""
         # First create a response
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/support/responses",
+        create_response = client.post(
+            "/api/admin/support/responses",
             headers=admin_headers,
             json={
                 "label": "TEST Delete Response",
@@ -351,8 +347,8 @@ class TestAdminCannedResponses(TestSetup):
         response_id = create_response.json().get("response_id")
         
         # Delete (soft)
-        response = requests.delete(
-            f"{BASE_URL}/api/admin/support/responses/{response_id}",
+        response = client.delete(
+            "/api/admin/support/responses/{response_id}",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -360,18 +356,18 @@ class TestAdminCannedResponses(TestSetup):
         assert data.get("success") == True
         
         # Verify it's deactivated (not hard deleted)
-        get_response = requests.get(
-            f"{BASE_URL}/api/admin/support/responses/{response_id}",
+        get_response = client.get(
+            "/api/admin/support/responses/{response_id}",
             headers=admin_headers
         )
         assert get_response.status_code == 200
         assert get_response.json()["is_active"] == False
     
-    def test_reactivate_canned_response(self, admin_headers):
+    def test_reactivate_canned_response(self, client, admin_headers):
         """POST /api/admin/support/responses/{id}/reactivate reactivates"""
         # Create and deactivate a response
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/support/responses",
+        create_response = client.post(
+            "/api/admin/support/responses",
             headers=admin_headers,
             json={
                 "label": "TEST Reactivate Response",
@@ -384,28 +380,28 @@ class TestAdminCannedResponses(TestSetup):
         response_id = create_response.json().get("response_id")
         
         # Deactivate
-        requests.delete(
-            f"{BASE_URL}/api/admin/support/responses/{response_id}",
+        client.delete(
+            "/api/admin/support/responses/{response_id}",
             headers=admin_headers
         )
         
         # Reactivate
-        response = requests.post(
-            f"{BASE_URL}/api/admin/support/responses/{response_id}/reactivate",
+        response = client.post(
+            "/api/admin/support/responses/{response_id}/reactivate",
             headers=admin_headers
         )
         assert response.status_code == 200
         
         # Verify it's active again
-        get_response = requests.get(
-            f"{BASE_URL}/api/admin/support/responses/{response_id}",
+        get_response = client.get(
+            "/api/admin/support/responses/{response_id}",
             headers=admin_headers
         )
         assert get_response.json()["is_active"] == True
     
     def test_canned_responses_requires_admin(self):
         """Test that canned responses endpoints require admin auth"""
-        response = requests.get(f"{BASE_URL}/api/admin/support/responses")
+        response = client.get("/api/admin/support/responses")
         assert response.status_code in [401, 403]
 
 
@@ -418,7 +414,7 @@ class TestKnowledgeBasePublic:
     
     def test_get_categories(self):
         """GET /api/kb/categories returns 9 default categories"""
-        response = requests.get(f"{BASE_URL}/api/kb/categories")
+        response = client.get("/api/kb/categories")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         
@@ -436,7 +432,7 @@ class TestKnowledgeBasePublic:
     
     def test_get_featured_articles(self):
         """GET /api/kb/featured returns popular and recent articles"""
-        response = requests.get(f"{BASE_URL}/api/kb/featured")
+        response = client.get("/api/kb/featured")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         data = response.json()
         
@@ -447,7 +443,7 @@ class TestKnowledgeBasePublic:
     
     def test_search_articles(self):
         """GET /api/kb/articles with search parameter"""
-        response = requests.get(f"{BASE_URL}/api/kb/articles?search=test")
+        response = client.get("/api/kb/articles?search=test")
         assert response.status_code == 200
         data = response.json()
         
@@ -456,7 +452,7 @@ class TestKnowledgeBasePublic:
     
     def test_get_articles_by_category(self):
         """GET /api/kb/articles with category filter"""
-        response = requests.get(f"{BASE_URL}/api/kb/articles?category=getting-started")
+        response = client.get("/api/kb/articles?category=getting-started")
         assert response.status_code == 200
         data = response.json()
         
@@ -470,10 +466,10 @@ class TestKnowledgeBasePublic:
 class TestKnowledgeBaseAdmin(TestSetup):
     """Test Knowledge Base admin APIs"""
     
-    def test_create_article(self, admin_headers):
+    def test_create_article(self, client, admin_headers):
         """POST /api/admin/kb/articles creates article with audit"""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/kb/articles",
+        response = client.post(
+            "/api/admin/kb/articles",
             headers=admin_headers,
             json={
                 "title": "TEST Article for Automated Testing",
@@ -490,11 +486,11 @@ class TestKnowledgeBaseAdmin(TestSetup):
         assert data.get("success") == True or "article_id" in data
         assert "article_id" in data or "article" in data
     
-    def test_publish_article(self, admin_headers):
+    def test_publish_article(self, client, admin_headers):
         """POST /api/admin/kb/articles/{id}/publish publishes article"""
         # First create a draft article
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/kb/articles",
+        create_response = client.post(
+            "/api/admin/kb/articles",
             headers=admin_headers,
             json={
                 "title": "TEST Article to Publish",
@@ -512,18 +508,18 @@ class TestKnowledgeBaseAdmin(TestSetup):
             pytest.skip("Could not create article to publish")
         
         # Publish the article
-        response = requests.post(
-            f"{BASE_URL}/api/admin/kb/articles/{article_id}/publish",
+        response = client.post(
+            "/api/admin/kb/articles/{article_id}/publish",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data.get("success") == True
     
-    def test_get_analytics(self, admin_headers):
+    def test_get_analytics(self, client, admin_headers):
         """GET /api/admin/kb/analytics returns search analytics"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/kb/analytics",
+        response = client.get(
+            "/api/admin/kb/analytics",
             headers=admin_headers
         )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
@@ -532,10 +528,10 @@ class TestKnowledgeBaseAdmin(TestSetup):
         # Should have analytics data
         assert "top_searches" in data or "total_searches" in data or "analytics" in data
     
-    def test_list_admin_articles(self, admin_headers):
+    def test_list_admin_articles(self, client, admin_headers):
         """GET /api/admin/kb/articles returns all articles including drafts"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/kb/articles",
+        response = client.get(
+            "/api/admin/kb/articles",
             headers=admin_headers
         )
         assert response.status_code == 200
@@ -546,10 +542,10 @@ class TestKnowledgeBaseAdmin(TestSetup):
     
     def test_kb_admin_requires_auth(self):
         """Test that KB admin endpoints require authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/kb/articles")
+        response = client.get("/api/admin/kb/articles")
         assert response.status_code in [401, 403]
         
-        response = requests.post(f"{BASE_URL}/api/admin/kb/articles", json={})
+        response = client.post("/api/admin/kb/articles", json={})
         assert response.status_code in [401, 403, 422]
 
 
@@ -563,7 +559,7 @@ class TestIntegration(TestSetup):
     def test_support_chat_with_handoff_options(self):
         """Test that chat endpoint returns handoff options with WhatsApp link"""
         # Send a message requesting human help
-        response = requests.post(f"{BASE_URL}/api/support/chat", json={
+        response = client.post("/api/support/chat", json={
             "message": "I need to speak to a human agent please",
             "channel": "web"
         })
@@ -580,7 +576,7 @@ class TestIntegration(TestSetup):
     
     def test_quick_action_speak_to_human(self):
         """Test speak_to_human quick action returns handoff options"""
-        response = requests.post(f"{BASE_URL}/api/support/quick-action/speak_to_human")
+        response = client.post("/api/support/quick-action/speak_to_human")
         assert response.status_code == 200
         data = response.json()
         
@@ -601,10 +597,10 @@ class TestIntegration(TestSetup):
 class TestCleanup(TestSetup):
     """Cleanup test data"""
     
-    def test_cleanup_test_responses(self, admin_headers):
+    def test_cleanup_test_responses(self, client, admin_headers):
         """Clean up TEST_ prefixed canned responses"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/support/responses?include_inactive=true&limit=200",
+        response = client.get(
+            "/api/admin/support/responses?include_inactive=true&limit=200",
             headers=admin_headers
         )
         if response.status_code == 200:
@@ -612,8 +608,8 @@ class TestCleanup(TestSetup):
             for resp in responses:
                 if resp.get("label", "").startswith("TEST"):
                     # Hard delete would be ideal, but soft delete is fine
-                    requests.delete(
-                        f"{BASE_URL}/api/admin/support/responses/{resp['response_id']}",
+                    client.delete(
+                        "/api/admin/support/responses/{resp['response_id']}",
                         headers=admin_headers
                     )
         print("Cleanup completed for TEST_ prefixed responses")

@@ -98,6 +98,10 @@ from job_runner import (
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Compliance Vault Pro API")
+    if os.environ.get("PYTEST_RUNNING") == "1":
+        logger.info("PYTEST_RUNNING=1: skipping database, scheduler, and heavy startup")
+        yield
+        return
     await database.connect()
 
     # Stripe config: log mode (test/live) from key prefix and which price IDs are in use (no secret keys)

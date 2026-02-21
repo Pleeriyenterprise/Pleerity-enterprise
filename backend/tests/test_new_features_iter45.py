@@ -7,10 +7,6 @@ Tests:
 4. Enhanced compliance score (requirement type weighting, breakdown)
 """
 import pytest
-import requests
-import os
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -112,22 +108,22 @@ class TestFastTrackQueuePriority:
 
 class TestPostalTrackingEndpoints:
     """Test postal tracking endpoints for printed copies"""
-    
-    @pytest.fixture(scope="class")
-    def admin_token(self):
+
+    @pytest.fixture
+    def admin_token(self, client):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if response.status_code == 200:
             return response.json().get("access_token")
         pytest.skip("Admin authentication failed")
-    
-    def test_get_pending_postal_orders_endpoint_exists(self, admin_token):
+
+    def test_get_pending_postal_orders_endpoint_exists(self, client, admin_token):
         """Test GET /api/admin/orders/postal/pending endpoint"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/orders/postal/pending",
+        response = client.get(
+            "/api/admin/orders/postal/pending",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
         
@@ -143,17 +139,17 @@ class TestPostalTrackingEndpoints:
         
         print(f"PASS: GET /postal/pending returns correct structure with {data['total']} orders")
     
-    def test_get_pending_postal_orders_requires_auth(self):
+    def test_get_pending_postal_orders_requires_auth(self, client):
         """Test that postal pending endpoint requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/orders/postal/pending")
+        response = client.get("/api/admin/orders/postal/pending")
         assert response.status_code == 401, "Should require authentication"
         print("PASS: GET /postal/pending requires authentication")
     
-    def test_postal_status_update_endpoint_exists(self, admin_token):
+    def test_postal_status_update_endpoint_exists(self, client, admin_token):
         """Test POST /api/admin/orders/{id}/postal/status endpoint structure"""
         # Test with a non-existent order to verify endpoint exists
-        response = requests.post(
-            f"{BASE_URL}/api/admin/orders/TEST_NONEXISTENT/postal/status",
+        response = client.post(
+            "/api/admin/orders/TEST_NONEXISTENT/postal/status",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"status": "PRINTED"}
         )
@@ -164,10 +160,10 @@ class TestPostalTrackingEndpoints:
         
         print("PASS: POST /postal/status endpoint exists and validates order")
     
-    def test_postal_address_endpoint_exists(self, admin_token):
+    def test_postal_address_endpoint_exists(self, client, admin_token):
         """Test POST /api/admin/orders/{id}/postal/address endpoint structure"""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/orders/TEST_NONEXISTENT/postal/address",
+        response = client.post(
+            "/api/admin/orders/TEST_NONEXISTENT/postal/address",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={
                 "delivery_address": "123 Test Street",
@@ -402,21 +398,21 @@ class TestWorkflowAutomationPostalFlags:
 class TestComplianceScoreAPI:
     """Test compliance score API endpoint"""
     
-    @pytest.fixture(scope="class")
-    def client_token(self):
+    @pytest.fixture
+    def client_token(self, client):
         """Get client authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": CLIENT_EMAIL, "password": CLIENT_PASSWORD}
         )
         if response.status_code == 200:
             return response.json().get("access_token")
         pytest.skip("Client authentication failed")
     
-    def test_compliance_score_endpoint_exists(self, client_token):
+    def test_compliance_score_endpoint_exists(self, client, client_token):
         """Test compliance score endpoint returns data"""
-        response = requests.get(
-            f"{BASE_URL}/api/compliance/score",
+        response = client.get(
+            "/api/compliance/score",
             headers={"Authorization": f"Bearer {client_token}"}
         )
         

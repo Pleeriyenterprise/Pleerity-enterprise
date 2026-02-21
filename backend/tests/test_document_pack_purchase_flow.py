@@ -14,12 +14,7 @@ Note: Since we cannot complete actual Stripe payments in test environment,
 we simulate webhook events to test the orchestrator flow.
 """
 import pytest
-import requests
-import os
-import json
 from datetime import datetime, timezone
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -28,11 +23,11 @@ CLIENT_EMAIL = "test@pleerity.com"
 CLIENT_PASSWORD = "TestClient123!"
 
 
-@pytest.fixture(scope="module")
-def admin_token():
+@pytest.fixture
+def admin_token(client):
     """Get admin authentication token."""
-    response = requests.post(
-        f"{BASE_URL}/api/auth/login",
+    response = client.post(
+        "/api/auth/login",
         json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
     )
     if response.status_code == 200:
@@ -56,10 +51,10 @@ def admin_headers(admin_token):
 class TestCheckoutValidationAPI:
     """Tests for POST /api/checkout/validate"""
     
-    def test_validate_doc_pack_essential_returns_valid(self):
+    def test_validate_doc_pack_essential_returns_valid(self, client):
         """POST /api/checkout/validate for DOC_PACK_ESSENTIAL returns valid response."""
-        response = requests.post(
-            f"{BASE_URL}/api/checkout/validate",
+        response = client.post(
+            "/api/checkout/validate",
             json={
                 "service_code": "DOC_PACK_ESSENTIAL",
                 "selected_documents": [
@@ -83,10 +78,10 @@ class TestCheckoutValidationAPI:
         assert data["currency"] == "gbp"
         assert len(data["errors"]) == 0
     
-    def test_validate_doc_pack_plus_returns_valid(self):
+    def test_validate_doc_pack_plus_returns_valid(self, client):
         """POST /api/checkout/validate for DOC_PACK_PLUS returns valid response."""
-        response = requests.post(
-            f"{BASE_URL}/api/checkout/validate",
+        response = client.post(
+            "/api/checkout/validate",
             json={
                 "service_code": "DOC_PACK_PLUS",
                 "selected_documents": [
@@ -105,10 +100,10 @@ class TestCheckoutValidationAPI:
         assert data["pack_tier"] == "PLUS"
         assert data["is_document_pack"] == True
     
-    def test_validate_doc_pack_pro_returns_valid(self):
+    def test_validate_doc_pack_pro_returns_valid(self, client):
         """POST /api/checkout/validate for DOC_PACK_PRO returns valid response."""
-        response = requests.post(
-            f"{BASE_URL}/api/checkout/validate",
+        response = client.post(
+            "/api/checkout/validate",
             json={
                 "service_code": "DOC_PACK_PRO",
                 "selected_documents": [
@@ -126,10 +121,10 @@ class TestCheckoutValidationAPI:
         assert data["service_code"] == "DOC_PACK_PRO"
         assert data["pack_tier"] == "PRO"
     
-    def test_validate_fast_track_variant(self):
+    def test_validate_fast_track_variant(self, client):
         """POST /api/checkout/validate with fast_track variant returns correct pricing."""
-        response = requests.post(
-            f"{BASE_URL}/api/checkout/validate",
+        response = client.post(
+            "/api/checkout/validate",
             json={
                 "service_code": "DOC_PACK_ESSENTIAL",
                 "selected_documents": ["doc_rent_arrears_letter_template"],
@@ -144,10 +139,10 @@ class TestCheckoutValidationAPI:
         assert data["variant_code"] == "fast_track"
         assert data["price_amount"] == 4900  # £49.00 (£29 + £20 fast track)
     
-    def test_validate_invalid_service_code_returns_error(self):
+    def test_validate_invalid_service_code_returns_error(self, client):
         """POST /api/checkout/validate with invalid service_code returns valid=false."""
-        response = requests.post(
-            f"{BASE_URL}/api/checkout/validate",
+        response = client.post(
+            "/api/checkout/validate",
             json={
                 "service_code": "INVALID_SERVICE",
                 "selected_documents": [],
@@ -161,10 +156,10 @@ class TestCheckoutValidationAPI:
         assert data["valid"] == False
         assert len(data["errors"]) > 0
     
-    def test_validate_returns_checkout_metadata(self):
+    def test_validate_returns_checkout_metadata(self, client):
         """POST /api/checkout/validate returns checkout_metadata for Stripe."""
-        response = requests.post(
-            f"{BASE_URL}/api/checkout/validate",
+        response = client.post(
+            "/api/checkout/validate",
             json={
                 "service_code": "DOC_PACK_ESSENTIAL",
                 "selected_documents": ["doc_rent_arrears_letter_template"],
@@ -189,9 +184,9 @@ class TestCheckoutValidationAPI:
 class TestServiceInfoAPI:
     """Tests for GET /api/checkout/service-info/{code}"""
     
-    def test_get_doc_pack_essential_info(self):
+    def test_get_doc_pack_essential_info(self, client):
         """GET /api/checkout/service-info/DOC_PACK_ESSENTIAL returns pack info."""
-        response = requests.get(f"{BASE_URL}/api/checkout/service-info/DOC_PACK_ESSENTIAL")
+        response = client.get("/api/checkout/service-info/DOC_PACK_ESSENTIAL")
         
         assert response.status_code == 200
         data = response.json()
@@ -210,9 +205,9 @@ class TestServiceInfoAPI:
         assert "display_name" in doc
         assert "canonical_index" in doc
     
-    def test_get_doc_pack_plus_info(self):
+    def test_get_doc_pack_plus_info(self, client):
         """GET /api/checkout/service-info/DOC_PACK_PLUS returns pack info with inheritance."""
-        response = requests.get(f"{BASE_URL}/api/checkout/service-info/DOC_PACK_PLUS")
+        response = client.get("/api/checkout/service-info/DOC_PACK_PLUS")
         
         assert response.status_code == 200
         data = response.json()
@@ -221,9 +216,9 @@ class TestServiceInfoAPI:
         assert data["pack_tier"] == "PLUS"
         assert data["total_documents"] == 10  # 5 Essential + 5 Plus
     
-    def test_get_doc_pack_pro_info(self):
+    def test_get_doc_pack_pro_info(self, client):
         """GET /api/checkout/service-info/DOC_PACK_PRO returns pack info with full inheritance."""
-        response = requests.get(f"{BASE_URL}/api/checkout/service-info/DOC_PACK_PRO")
+        response = client.get("/api/checkout/service-info/DOC_PACK_PRO")
         
         assert response.status_code == 200
         data = response.json()
@@ -240,9 +235,9 @@ class TestServiceInfoAPI:
 class TestDocumentPacksAPI:
     """Tests for GET /api/checkout/document-packs"""
     
-    def test_get_all_document_packs(self):
+    def test_get_all_document_packs(self, client):
         """GET /api/checkout/document-packs returns all 3 pack tiers."""
-        response = requests.get(f"{BASE_URL}/api/checkout/document-packs")
+        response = client.get("/api/checkout/document-packs")
         
         assert response.status_code == 200
         data = response.json()
@@ -258,9 +253,9 @@ class TestDocumentPacksAPI:
         assert "DOC_PACK_PLUS" in pack_codes
         assert "DOC_PACK_PRO" in pack_codes
     
-    def test_document_packs_have_pricing_variants(self):
+    def test_document_packs_have_pricing_variants(self, client):
         """GET /api/checkout/document-packs returns pricing variants for each pack."""
-        response = requests.get(f"{BASE_URL}/api/checkout/document-packs")
+        response = client.get("/api/checkout/document-packs")
         
         assert response.status_code == 200
         data = response.json()
@@ -275,9 +270,9 @@ class TestDocumentPacksAPI:
                 assert "price_amount" in variant
                 assert "stripe_price_id" in variant
     
-    def test_document_packs_have_documents_list(self):
+    def test_document_packs_have_documents_list(self, client):
         """GET /api/checkout/document-packs returns documents list for each pack."""
-        response = requests.get(f"{BASE_URL}/api/checkout/document-packs")
+        response = client.get("/api/checkout/document-packs")
         
         assert response.status_code == 200
         data = response.json()
@@ -298,10 +293,10 @@ class TestDocumentPacksAPI:
 class TestIntakeDraftAPI:
     """Tests for intake draft creation for document packs"""
     
-    def test_create_draft_for_doc_pack_essential(self):
+    def test_create_draft_for_doc_pack_essential(self, client):
         """POST /api/intake/draft creates draft for DOC_PACK_ESSENTIAL."""
-        response = requests.post(
-            f"{BASE_URL}/api/intake/draft",
+        response = client.post(
+            "/api/intake/draft",
             json={
                 "service_code": "DOC_PACK_ESSENTIAL",
                 "category": "document_pack"
@@ -316,10 +311,10 @@ class TestIntakeDraftAPI:
         assert data["service_code"] == "DOC_PACK_ESSENTIAL"
         assert data["status"] == "DRAFT"
     
-    def test_create_draft_for_doc_pack_tenancy(self):
+    def test_create_draft_for_doc_pack_tenancy(self, client):
         """POST /api/intake/draft creates draft for DOC_PACK_TENANCY (intake service code)."""
-        response = requests.post(
-            f"{BASE_URL}/api/intake/draft",
+        response = client.post(
+            "/api/intake/draft",
             json={
                 "service_code": "DOC_PACK_TENANCY",
                 "category": "document_pack"
@@ -331,10 +326,10 @@ class TestIntakeDraftAPI:
         
         assert data["service_code"] == "DOC_PACK_TENANCY"
     
-    def test_create_draft_for_doc_pack_ultimate(self):
+    def test_create_draft_for_doc_pack_ultimate(self, client):
         """POST /api/intake/draft creates draft for DOC_PACK_ULTIMATE (intake service code)."""
-        response = requests.post(
-            f"{BASE_URL}/api/intake/draft",
+        response = client.post(
+            "/api/intake/draft",
             json={
                 "service_code": "DOC_PACK_ULTIMATE",
                 "category": "document_pack"
@@ -354,9 +349,9 @@ class TestIntakeDraftAPI:
 class TestIntakeServicesAPI:
     """Tests for intake services listing"""
     
-    def test_intake_services_includes_doc_packs(self):
+    def test_intake_services_includes_doc_packs(self, client):
         """GET /api/intake/services includes document pack services."""
-        response = requests.get(f"{BASE_URL}/api/intake/services")
+        response = client.get("/api/intake/services")
         
         assert response.status_code == 200
         data = response.json()
@@ -371,9 +366,9 @@ class TestIntakeServicesAPI:
         for code in doc_pack_codes:
             assert code in service_codes, f"Missing {code} in intake services"
     
-    def test_intake_packs_returns_addons(self):
+    def test_intake_packs_returns_addons(self, client):
         """GET /api/intake/packs returns packs and addons."""
-        response = requests.get(f"{BASE_URL}/api/intake/packs")
+        response = client.get("/api/intake/packs")
         
         assert response.status_code == 200
         data = response.json()
@@ -393,13 +388,13 @@ class TestIntakeServicesAPI:
 class TestDocumentPackOrchestrator:
     """Tests for Document Pack Orchestrator functionality"""
     
-    def test_admin_can_create_document_items(self, admin_headers):
+    def test_admin_can_create_document_items(self, client, admin_headers):
         """POST /api/admin/document-packs/items creates document items for an order."""
         # First create a test order ID
         test_order_id = f"TEST_ORDER_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
         
-        response = requests.post(
-            f"{BASE_URL}/api/admin/document-packs/items",
+        response = client.post(
+            "/api/admin/document-packs/items",
             headers=admin_headers,
             json={
                 "order_id": test_order_id,
@@ -428,12 +423,12 @@ class TestDocumentPackOrchestrator:
             print(f"Response status: {response.status_code}")
             print(f"Response body: {response.text}")
     
-    def test_admin_can_get_document_items_for_order(self, admin_headers):
+    def test_admin_can_get_document_items_for_order(self, client, admin_headers):
         """GET /api/admin/document-packs/items/order/{order_id} returns items."""
         test_order_id = "TEST_ORDER_NONEXISTENT"
         
-        response = requests.get(
-            f"{BASE_URL}/api/admin/document-packs/items/order/{test_order_id}",
+        response = client.get(
+            f"/api/admin/document-packs/items/order/{test_order_id}",
             headers=admin_headers
         )
         
@@ -453,11 +448,11 @@ class TestDocumentPackOrchestrator:
 class TestWebhookHandlerSimulation:
     """Tests for simulating webhook events to test orchestrator"""
     
-    def test_webhook_endpoint_exists(self, admin_headers):
+    def test_webhook_endpoint_exists(self, client, admin_headers):
         """Verify webhook endpoint exists."""
         # The actual webhook endpoint is typically at /api/webhooks/stripe
-        response = requests.post(
-            f"{BASE_URL}/api/webhooks/stripe",
+        response = client.post(
+            "/api/webhooks/stripe",
             headers={"Content-Type": "application/json"},
             json={}  # Empty payload should fail validation
         )
@@ -465,10 +460,10 @@ class TestWebhookHandlerSimulation:
         # Should return 400 (bad request) not 404 (not found)
         assert response.status_code != 404, "Webhook endpoint should exist"
     
-    def test_orchestrator_validate_endpoint(self, admin_headers):
+    def test_orchestrator_validate_endpoint(self, client, admin_headers):
         """GET /api/orchestration/validate/DOC_PACK_ESSENTIAL returns orchestrator info."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/validate/DOC_PACK_ESSENTIAL",
+        response = client.get(
+            "/api/orchestration/validate/DOC_PACK_ESSENTIAL",
             headers=admin_headers
         )
         
@@ -486,9 +481,9 @@ class TestWebhookHandlerSimulation:
 class TestStripeAlignment:
     """Tests for Stripe product/price alignment"""
     
-    def test_validate_stripe_alignment_endpoint(self):
+    def test_validate_stripe_alignment_endpoint(self, client):
         """GET /api/checkout/validate-stripe-alignment returns alignment status."""
-        response = requests.get(f"{BASE_URL}/api/checkout/validate-stripe-alignment")
+        response = client.get("/api/checkout/validate-stripe-alignment")
         
         # May return 200 or 404 if not implemented
         if response.status_code == 200:
@@ -506,10 +501,10 @@ class TestStripeAlignment:
 class TestCalculatePriceAPI:
     """Tests for price calculation API"""
     
-    def test_calculate_price_for_doc_pack_essential(self):
+    def test_calculate_price_for_doc_pack_essential(self, client):
         """POST /api/intake/calculate-price returns correct pricing."""
-        response = requests.post(
-            f"{BASE_URL}/api/intake/calculate-price",
+        response = client.post(
+            "/api/intake/calculate-price",
             json={
                 "service_code": "DOC_PACK_ESSENTIAL",
                 "addons": []
@@ -524,10 +519,10 @@ class TestCalculatePriceAPI:
         if "base_price_pence" in data:
             assert data["base_price_pence"] == 2900
     
-    def test_calculate_price_with_fast_track_addon(self):
+    def test_calculate_price_with_fast_track_addon(self, client):
         """POST /api/intake/calculate-price with FAST_TRACK addon."""
-        response = requests.post(
-            f"{BASE_URL}/api/intake/calculate-price",
+        response = client.post(
+            "/api/intake/calculate-price",
             json={
                 "service_code": "DOC_PACK_ESSENTIAL",
                 "addons": ["FAST_TRACK"]
@@ -550,9 +545,9 @@ class TestCalculatePriceAPI:
 class TestCanonicalOrder:
     """Tests for canonical document ordering"""
     
-    def test_essential_pack_canonical_order(self):
+    def test_essential_pack_canonical_order(self, client):
         """DOC_PACK_ESSENTIAL documents are in canonical order."""
-        response = requests.get(f"{BASE_URL}/api/checkout/service-info/DOC_PACK_ESSENTIAL")
+        response = client.get("/api/checkout/service-info/DOC_PACK_ESSENTIAL")
         
         assert response.status_code == 200
         data = response.json()
@@ -568,9 +563,9 @@ class TestCanonicalOrder:
         actual_order = [doc["doc_key"] for doc in data["documents"]]
         assert actual_order == expected_order
     
-    def test_plus_pack_inherits_essential(self):
+    def test_plus_pack_inherits_essential(self, client):
         """DOC_PACK_PLUS inherits all ESSENTIAL documents."""
-        response = requests.get(f"{BASE_URL}/api/checkout/service-info/DOC_PACK_PLUS")
+        response = client.get("/api/checkout/service-info/DOC_PACK_PLUS")
         
         assert response.status_code == 200
         data = response.json()
@@ -589,9 +584,9 @@ class TestCanonicalOrder:
         for doc in essential_docs:
             assert doc in doc_keys, f"PLUS pack should include {doc}"
     
-    def test_pro_pack_inherits_all(self):
+    def test_pro_pack_inherits_all(self, client):
         """DOC_PACK_PRO inherits all ESSENTIAL and PLUS documents."""
-        response = requests.get(f"{BASE_URL}/api/checkout/service-info/DOC_PACK_PRO")
+        response = client.get("/api/checkout/service-info/DOC_PACK_PRO")
         
         assert response.status_code == 200
         data = response.json()
@@ -620,11 +615,11 @@ class TestCanonicalOrder:
 class TestPackTierValidation:
     """Tests for pack tier validation logic"""
     
-    def test_essential_docs_not_allowed_in_wrong_tier(self):
+    def test_essential_docs_not_allowed_in_wrong_tier(self, client):
         """Validation should handle document tier restrictions."""
         # Try to validate with PRO-only docs in ESSENTIAL pack
-        response = requests.post(
-            f"{BASE_URL}/api/checkout/validate",
+        response = client.post(
+            "/api/checkout/validate",
             json={
                 "service_code": "DOC_PACK_ESSENTIAL",
                 "selected_documents": [

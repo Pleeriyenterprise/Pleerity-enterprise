@@ -19,23 +19,19 @@ Features tested:
 - Review approval marks document as FINAL
 """
 import pytest
-import requests
-import os
 import re
 from datetime import datetime
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
 ADMIN_PASSWORD = "Admin123!"
 
 
-@pytest.fixture(scope="module")
-def admin_token():
+@pytest.fixture
+def admin_token(client):
     """Get admin authentication token."""
-    response = requests.post(
-        f"{BASE_URL}/api/auth/login",
+    response = client.post(
+        "/api/auth/login",
         json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
     )
     if response.status_code == 200:
@@ -59,10 +55,10 @@ def admin_headers(admin_token):
 class TestVersionsEndpoint:
     """Tests for GET /api/orchestration/versions/{order_id}"""
     
-    def test_versions_endpoint_returns_empty_for_new_order(self, admin_headers):
+    def test_versions_endpoint_returns_empty_for_new_order(self, client, admin_headers):
         """GET /api/orchestration/versions/{order_id} returns empty for non-existent order."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/versions/NON-EXISTENT-ORDER-123",
+        response = client.get(
+            "/api/orchestration/versions/NON-EXISTENT-ORDER-123",
             headers=admin_headers
         )
         
@@ -73,19 +69,19 @@ class TestVersionsEndpoint:
         assert data["versions"] == []
         assert data["total"] == 0
     
-    def test_versions_endpoint_requires_admin_auth(self):
+    def test_versions_endpoint_requires_admin_auth(self, client):
         """GET /api/orchestration/versions/{order_id} requires admin auth."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/versions/TEST-ORDER-001",
+        response = client.get(
+            "/api/orchestration/versions/TEST-ORDER-001",
             headers={"Content-Type": "application/json"}
         )
         
         assert response.status_code in [401, 403]
     
-    def test_versions_endpoint_returns_version_structure(self, admin_headers):
+    def test_versions_endpoint_returns_version_structure(self, client, admin_headers):
         """GET /api/orchestration/versions/{order_id} returns correct structure."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/versions/TEST-ORDER-001",
+        response = client.get(
+            "/api/orchestration/versions/TEST-ORDER-001",
             headers=admin_headers
         )
         
@@ -103,10 +99,10 @@ class TestVersionsEndpoint:
 class TestSpecificVersionEndpoint:
     """Tests for GET /api/orchestration/versions/{order_id}/{version}"""
     
-    def test_specific_version_returns_404_for_non_existent(self, admin_headers):
+    def test_specific_version_returns_404_for_non_existent(self, client, admin_headers):
         """GET /api/orchestration/versions/{order_id}/{version} returns 404 for non-existent."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/versions/NON-EXISTENT-ORDER/1",
+        response = client.get(
+            "/api/orchestration/versions/NON-EXISTENT-ORDER/1",
             headers=admin_headers
         )
         
@@ -114,10 +110,10 @@ class TestSpecificVersionEndpoint:
         data = response.json()
         assert "not found" in data["detail"].lower()
     
-    def test_specific_version_requires_admin_auth(self):
+    def test_specific_version_requires_admin_auth(self, client):
         """GET /api/orchestration/versions/{order_id}/{version} requires admin auth."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/versions/TEST-ORDER-001/1",
+        response = client.get(
+            "/api/orchestration/versions/TEST-ORDER-001/1",
             headers={"Content-Type": "application/json"}
         )
         
@@ -131,10 +127,10 @@ class TestSpecificVersionEndpoint:
 class TestRegenerateValidation:
     """Tests for POST /api/orchestration/regenerate validation."""
     
-    def test_regenerate_requires_regeneration_notes(self, admin_headers):
+    def test_regenerate_requires_regeneration_notes(self, client, admin_headers):
         """POST /api/orchestration/regenerate requires regeneration_notes."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/regenerate",
+        response = client.post(
+            "/api/orchestration/regenerate",
             headers=admin_headers,
             json={
                 "order_id": "TEST-ORDER-001",
@@ -145,10 +141,10 @@ class TestRegenerateValidation:
         # Should fail validation - missing regeneration_notes
         assert response.status_code == 422  # Pydantic validation error
     
-    def test_regenerate_requires_minimum_10_chars_notes(self, admin_headers):
+    def test_regenerate_requires_minimum_10_chars_notes(self, client, admin_headers):
         """POST /api/orchestration/regenerate requires minimum 10 chars in notes."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/regenerate",
+        response = client.post(
+            "/api/orchestration/regenerate",
             headers=admin_headers,
             json={
                 "order_id": "TEST-ORDER-001",
@@ -161,11 +157,11 @@ class TestRegenerateValidation:
         data = response.json()
         assert "minimum 10 characters" in data["detail"].lower()
     
-    def test_regenerate_accepts_valid_notes(self, admin_headers):
+    def test_regenerate_accepts_valid_notes(self, client, admin_headers):
         """POST /api/orchestration/regenerate accepts valid notes (10+ chars)."""
         # This will fail because order doesn't exist or isn't paid, but validates notes
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/regenerate",
+        response = client.post(
+            "/api/orchestration/regenerate",
             headers=admin_headers,
             json={
                 "order_id": "TEST-ORDER-001",
@@ -188,10 +184,10 @@ class TestRegenerateValidation:
 class TestReviewValidation:
     """Tests for POST /api/orchestration/review validation."""
     
-    def test_review_rejection_requires_notes(self, admin_headers):
+    def test_review_rejection_requires_notes(self, client, admin_headers):
         """POST /api/orchestration/review rejection requires notes."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/review",
+        response = client.post(
+            "/api/orchestration/review",
             headers=admin_headers,
             json={
                 "order_id": "TEST-ORDER-001",
@@ -204,10 +200,10 @@ class TestReviewValidation:
         data = response.json()
         assert "rejection requires" in data["detail"].lower() or "notes" in data["detail"].lower()
     
-    def test_review_rejection_requires_minimum_10_chars_notes(self, admin_headers):
+    def test_review_rejection_requires_minimum_10_chars_notes(self, client, admin_headers):
         """POST /api/orchestration/review rejection requires minimum 10 chars notes."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/review",
+        response = client.post(
+            "/api/orchestration/review",
             headers=admin_headers,
             json={
                 "order_id": "TEST-ORDER-001",
@@ -220,10 +216,10 @@ class TestReviewValidation:
         data = response.json()
         assert "minimum 10 characters" in data["detail"].lower()
     
-    def test_review_approval_does_not_require_notes(self, admin_headers):
+    def test_review_approval_does_not_require_notes(self, client, admin_headers):
         """POST /api/orchestration/review approval does not require notes."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/review",
+        response = client.post(
+            "/api/orchestration/review",
             headers=admin_headers,
             json={
                 "order_id": "TEST-ORDER-001",
@@ -238,10 +234,10 @@ class TestReviewValidation:
         data = response.json()
         assert "no execution found" in data["detail"].lower()
     
-    def test_review_requires_admin_auth(self):
+    def test_review_requires_admin_auth(self, client):
         """POST /api/orchestration/review requires admin auth."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/review",
+        response = client.post(
+            "/api/orchestration/review",
             headers={"Content-Type": "application/json"},
             json={
                 "order_id": "TEST-ORDER-001",
@@ -259,9 +255,9 @@ class TestReviewValidation:
 class TestServiceCatalogueV2:
     """Tests for Service Catalogue V2 - 12 services still accessible."""
     
-    def test_public_v2_returns_11_active_services(self):
+    def test_public_v2_returns_11_active_services(self, client):
         """GET /api/public/v2/services returns 11 active non-CVP services."""
-        response = requests.get(f"{BASE_URL}/api/public/v2/services")
+        response = client.get("/api/public/v2/services")
         
         assert response.status_code == 200
         data = response.json()
@@ -281,10 +277,10 @@ class TestServiceCatalogueV2:
         for code in expected_codes:
             assert code in service_codes, f"Missing service: {code}"
     
-    def test_admin_v2_returns_all_12_services(self, admin_headers):
+    def test_admin_v2_returns_all_12_services(self, client, admin_headers):
         """Admin V2 endpoint returns all 12 services including CVP."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/services/v2/",
+        response = client.get(
+            "/api/admin/services/v2/",
             headers=admin_headers
         )
         
@@ -297,10 +293,10 @@ class TestServiceCatalogueV2:
         service_codes = [s["service_code"] for s in data["services"]]
         assert "CVP_SUBSCRIPTION" in service_codes
     
-    def test_all_12_services_have_correct_categories(self, admin_headers):
+    def test_all_12_services_have_correct_categories(self, client, admin_headers):
         """All 12 services have correct categories."""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/services/v2/",
+        response = client.get(
+            "/api/admin/services/v2/",
             headers=admin_headers
         )
         
@@ -340,10 +336,10 @@ class TestServiceCatalogueV2:
 class TestGenerateEndpoint:
     """Tests for POST /api/orchestration/generate endpoint."""
     
-    def test_generate_requires_admin_auth(self):
+    def test_generate_requires_admin_auth(self, client):
         """POST /api/orchestration/generate requires admin auth."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/generate",
+        response = client.post(
+            "/api/orchestration/generate",
             headers={"Content-Type": "application/json"},
             json={
                 "order_id": "TEST-ORDER-001",
@@ -353,10 +349,10 @@ class TestGenerateEndpoint:
         
         assert response.status_code in [401, 403]
     
-    def test_generate_validates_order_exists(self, admin_headers):
+    def test_generate_validates_order_exists(self, client, admin_headers):
         """POST /api/orchestration/generate validates order exists."""
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/generate",
+        response = client.post(
+            "/api/orchestration/generate",
             headers=admin_headers,
             json={
                 "order_id": "NON-EXISTENT-ORDER-123",
@@ -368,12 +364,12 @@ class TestGenerateEndpoint:
         data = response.json()
         assert "not found" in data["detail"].lower()
     
-    def test_generate_validates_payment_status(self, admin_headers):
+    def test_generate_validates_payment_status(self, client, admin_headers):
         """POST /api/orchestration/generate validates payment status."""
         # This test assumes there's an unpaid order in the system
         # If not, it will fail on "order not found" which is also acceptable
-        response = requests.post(
-            f"{BASE_URL}/api/orchestration/generate",
+        response = client.post(
+            "/api/orchestration/generate",
             headers=admin_headers,
             json={
                 "order_id": "TEST-UNPAID-ORDER",
@@ -451,10 +447,10 @@ class TestSHA256HashValidation:
 class TestOrchestrationStats:
     """Tests for GET /api/orchestration/stats endpoint."""
     
-    def test_stats_returns_execution_statistics(self, admin_headers):
+    def test_stats_returns_execution_statistics(self, client, admin_headers):
         """GET /api/orchestration/stats returns execution statistics."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/stats",
+        response = client.get(
+            "/api/orchestration/stats",
             headers=admin_headers
         )
         
@@ -481,10 +477,10 @@ class TestOrchestrationStats:
 class TestHistoryAndLatestEndpoints:
     """Tests for history and latest endpoints."""
     
-    def test_history_returns_empty_for_new_order(self, admin_headers):
+    def test_history_returns_empty_for_new_order(self, client, admin_headers):
         """GET /api/orchestration/history/{order_id} returns empty for new order."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/history/NON-EXISTENT-ORDER-123",
+        response = client.get(
+            "/api/orchestration/history/NON-EXISTENT-ORDER-123",
             headers=admin_headers
         )
         
@@ -495,10 +491,10 @@ class TestHistoryAndLatestEndpoints:
         assert data["executions"] == []
         assert data["total"] == 0
     
-    def test_latest_returns_404_for_new_order(self, admin_headers):
+    def test_latest_returns_404_for_new_order(self, client, admin_headers):
         """GET /api/orchestration/latest/{order_id} returns 404 for new order."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/latest/NON-EXISTENT-ORDER-123",
+        response = client.get(
+            "/api/orchestration/latest/NON-EXISTENT-ORDER-123",
             headers=admin_headers
         )
         
@@ -506,19 +502,19 @@ class TestHistoryAndLatestEndpoints:
         data = response.json()
         assert "no generation found" in data["detail"].lower()
     
-    def test_history_requires_admin_auth(self):
+    def test_history_requires_admin_auth(self, client):
         """GET /api/orchestration/history/{order_id} requires admin auth."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/history/TEST-ORDER-001",
+        response = client.get(
+            "/api/orchestration/history/TEST-ORDER-001",
             headers={"Content-Type": "application/json"}
         )
         
         assert response.status_code in [401, 403]
     
-    def test_latest_requires_admin_auth(self):
+    def test_latest_requires_admin_auth(self, client):
         """GET /api/orchestration/latest/{order_id} requires admin auth."""
-        response = requests.get(
-            f"{BASE_URL}/api/orchestration/latest/TEST-ORDER-001",
+        response = client.get(
+            "/api/orchestration/latest/TEST-ORDER-001",
             headers={"Content-Type": "application/json"}
         )
         

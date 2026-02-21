@@ -12,13 +12,9 @@ Enablement Categories:
 Delivery Channels: IN_APP, EMAIL, ASSISTANT
 Action Statuses: SUCCESS, FAILED, SUPPRESSED, PENDING
 """
-import pytest
-import requests
-import os
 import json
 from datetime import datetime
-
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+import pytest
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -27,28 +23,28 @@ ADMIN_PASSWORD = "Admin123!"
 
 class TestEnablementEngineSetup:
     """Setup and authentication tests"""
-    
-    @pytest.fixture(scope="class")
-    def admin_token(self):
+
+    @pytest.fixture
+    def admin_token(self, client):
         """Get admin authentication token"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         assert response.status_code == 200, f"Admin login failed: {response.text}"
         data = response.json()
         assert "access_token" in data, "No access_token in response"
         return data["access_token"]
-    
-    @pytest.fixture(scope="class")
+
+    @pytest.fixture
     def auth_headers(self, admin_token):
         """Get authorization headers"""
         return {"Authorization": f"Bearer {admin_token}"}
-    
-    def test_admin_login(self):
+
+    def test_admin_login(self, client):
         """Test admin can login successfully"""
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         assert response.status_code == 200
@@ -59,23 +55,23 @@ class TestEnablementEngineSetup:
 
 class TestEnablementOverview:
     """Test GET /api/admin/enablement/overview endpoint"""
-    
-    @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+
+    @pytest.fixture
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
-    
-    @pytest.fixture(scope="class")
+
+    @pytest.fixture
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
-    
-    def test_get_overview_success(self, auth_headers):
+
+    def test_get_overview_success(self, client, auth_headers):
         """Test overview endpoint returns expected structure"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/overview",
+        response = client.get(
+            "/api/admin/enablement/overview",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -93,9 +89,9 @@ class TestEnablementOverview:
         assert isinstance(data["event_subscribers"], dict)
         assert isinstance(data["recent_actions"], list)
     
-    def test_overview_requires_auth(self):
+    def test_overview_requires_auth(self, client):
         """Test overview endpoint requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/enablement/overview")
+        response = client.get("/api/admin/enablement/overview")
         assert response.status_code in [401, 403]
 
 
@@ -103,9 +99,9 @@ class TestEnablementStats:
     """Test GET /api/admin/enablement/stats endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -114,10 +110,10 @@ class TestEnablementStats:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_get_stats_default_30_days(self, auth_headers):
+    def test_get_stats_default_30_days(self, client, auth_headers):
         """Test stats endpoint with default 30 days"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/stats",
+        response = client.get(
+            "/api/admin/enablement/stats",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -135,19 +131,19 @@ class TestEnablementStats:
         # Verify period
         assert data["period_days"] == 30
     
-    def test_get_stats_custom_days(self, auth_headers):
+    def test_get_stats_custom_days(self, client, auth_headers):
         """Test stats endpoint with custom days parameter"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/stats?days=7",
+        response = client.get(
+            "/api/admin/enablement/stats?days=7",
             headers=auth_headers
         )
         assert response.status_code == 200
         data = response.json()
         assert data["period_days"] == 7
     
-    def test_stats_requires_auth(self):
+    def test_stats_requires_auth(self, client):
         """Test stats endpoint requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/enablement/stats")
+        response = client.get("/api/admin/enablement/stats")
         assert response.status_code in [401, 403]
 
 
@@ -155,9 +151,9 @@ class TestEnablementTemplates:
     """Test GET /api/admin/enablement/templates endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -166,10 +162,10 @@ class TestEnablementTemplates:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_list_templates_success(self, auth_headers):
+    def test_list_templates_success(self, client, auth_headers):
         """Test templates endpoint returns list of templates"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/templates",
+        response = client.get(
+            "/api/admin/enablement/templates",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -182,10 +178,10 @@ class TestEnablementTemplates:
         # Should have 16 active templates as per requirements
         assert data["total"] >= 16, f"Expected at least 16 templates, got {data['total']}"
     
-    def test_templates_have_required_fields(self, auth_headers):
+    def test_templates_have_required_fields(self, client, auth_headers):
         """Test each template has required fields"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/templates",
+        response = client.get(
+            "/api/admin/enablement/templates",
             headers=auth_headers
         )
         data = response.json()
@@ -200,10 +196,10 @@ class TestEnablementTemplates:
             assert "channels" in template
             assert "is_active" in template
     
-    def test_filter_templates_by_category(self, auth_headers):
+    def test_filter_templates_by_category(self, client, auth_headers):
         """Test filtering templates by category"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/templates?category=ONBOARDING_GUIDANCE",
+        response = client.get(
+            "/api/admin/enablement/templates?category=ONBOARDING_GUIDANCE",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -213,9 +209,9 @@ class TestEnablementTemplates:
         for template in data["templates"]:
             assert template["category"] == "ONBOARDING_GUIDANCE"
     
-    def test_templates_requires_auth(self):
+    def test_templates_requires_auth(self, client):
         """Test templates endpoint requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/admin/enablement/templates")
+        response = client.get("/api/admin/enablement/templates")
         assert response.status_code in [401, 403]
 
 
@@ -223,9 +219,9 @@ class TestEnablementEventTypes:
     """Test GET /api/admin/enablement/event-types endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -234,10 +230,10 @@ class TestEnablementEventTypes:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_get_event_types_success(self, auth_headers):
+    def test_get_event_types_success(self, client, auth_headers):
         """Test event-types endpoint returns all enums"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/event-types",
+        response = client.get(
+            "/api/admin/enablement/event-types",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -282,9 +278,9 @@ class TestEnablementSuppressions:
     """Test suppression rules CRUD endpoints"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -293,10 +289,10 @@ class TestEnablementSuppressions:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_list_suppressions_success(self, auth_headers):
+    def test_list_suppressions_success(self, client, auth_headers):
         """Test listing suppression rules"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/suppressions",
+        response = client.get(
+            "/api/admin/enablement/suppressions",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -305,7 +301,7 @@ class TestEnablementSuppressions:
         assert "rules" in data
         assert isinstance(data["rules"], list)
     
-    def test_create_suppression_rule(self, auth_headers):
+    def test_create_suppression_rule(self, client, auth_headers):
         """Test creating a new suppression rule"""
         payload = {
             "client_id": None,
@@ -314,8 +310,8 @@ class TestEnablementSuppressions:
             "reason": "TEST_suppression_rule_for_testing"
         }
         
-        response = requests.post(
-            f"{BASE_URL}/api/admin/enablement/suppressions",
+        response = client.post(
+            "/api/admin/enablement/suppressions",
             headers=auth_headers,
             json=payload
         )
@@ -330,7 +326,7 @@ class TestEnablementSuppressions:
         # Store rule_id for cleanup
         return data["rule_id"]
     
-    def test_create_and_delete_suppression_rule(self, auth_headers):
+    def test_create_and_delete_suppression_rule(self, client, auth_headers):
         """Test creating and then deleting a suppression rule"""
         # Create
         payload = {
@@ -340,8 +336,8 @@ class TestEnablementSuppressions:
             "reason": "TEST_temporary_suppression_for_deletion"
         }
         
-        create_response = requests.post(
-            f"{BASE_URL}/api/admin/enablement/suppressions",
+        create_response = client.post(
+            "/api/admin/enablement/suppressions",
             headers=auth_headers,
             json=payload
         )
@@ -349,14 +345,14 @@ class TestEnablementSuppressions:
         rule_id = create_response.json()["rule_id"]
         
         # Delete
-        delete_response = requests.delete(
-            f"{BASE_URL}/api/admin/enablement/suppressions/{rule_id}",
+        delete_response = client.delete(
+            "/api/admin/enablement/suppressions/{rule_id}",
             headers=auth_headers
         )
         assert delete_response.status_code == 200
         assert delete_response.json()["success"] == True
     
-    def test_create_suppression_requires_reason(self, auth_headers):
+    def test_create_suppression_requires_reason(self, client, auth_headers):
         """Test that reason is required for suppression rule"""
         payload = {
             "client_id": None,
@@ -365,8 +361,8 @@ class TestEnablementSuppressions:
             "reason": ""  # Empty reason
         }
         
-        response = requests.post(
-            f"{BASE_URL}/api/admin/enablement/suppressions",
+        response = client.post(
+            "/api/admin/enablement/suppressions",
             headers=auth_headers,
             json=payload
         )
@@ -374,10 +370,10 @@ class TestEnablementSuppressions:
         # or return 422 if backend validates
         assert response.status_code in [200, 422]
     
-    def test_delete_nonexistent_suppression(self, auth_headers):
+    def test_delete_nonexistent_suppression(self, client, auth_headers):
         """Test deleting a non-existent suppression rule"""
-        response = requests.delete(
-            f"{BASE_URL}/api/admin/enablement/suppressions/SUP-NONEXISTENT123",
+        response = client.delete(
+            "/api/admin/enablement/suppressions/SUP-NONEXISTENT123",
             headers=auth_headers
         )
         assert response.status_code == 404
@@ -387,9 +383,9 @@ class TestEnablementManualTrigger:
     """Test POST /api/admin/enablement/trigger endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -399,11 +395,11 @@ class TestEnablementManualTrigger:
         return {"Authorization": f"Bearer {admin_token}"}
     
     @pytest.fixture(scope="class")
-    def test_client_id(self, auth_headers):
+    def test_client_id(self, client, auth_headers):
         """Get or create a test client for triggering events"""
         # First try to get existing clients
-        response = requests.get(
-            f"{BASE_URL}/api/admin/clients",
+        response = client.get(
+            "/api/admin/clients",
             headers=auth_headers
         )
         if response.status_code == 200:
@@ -413,7 +409,7 @@ class TestEnablementManualTrigger:
                 return clients[0]["client_id"]
         return None
     
-    def test_trigger_event_invalid_client(self, auth_headers):
+    def test_trigger_event_invalid_client(self, client, auth_headers):
         """Test triggering event for non-existent client"""
         payload = {
             "event_type": "FIRST_LOGIN",
@@ -421,8 +417,8 @@ class TestEnablementManualTrigger:
             "context_payload": {}
         }
         
-        response = requests.post(
-            f"{BASE_URL}/api/admin/enablement/trigger",
+        response = client.post(
+            "/api/admin/enablement/trigger",
             headers=auth_headers,
             json=payload
         )
@@ -440,8 +436,8 @@ class TestEnablementManualTrigger:
             "context_payload": {"test": True}
         }
         
-        response = requests.post(
-            f"{BASE_URL}/api/admin/enablement/trigger",
+        response = client.post(
+            "/api/admin/enablement/trigger",
             headers=auth_headers,
             json=payload
         )
@@ -452,7 +448,7 @@ class TestEnablementManualTrigger:
         assert "event_id" in data
         assert "message" in data
     
-    def test_trigger_requires_auth(self):
+    def test_trigger_requires_auth(self, client):
         """Test trigger endpoint requires authentication"""
         payload = {
             "event_type": "FIRST_LOGIN",
@@ -460,8 +456,8 @@ class TestEnablementManualTrigger:
             "context_payload": {}
         }
         
-        response = requests.post(
-            f"{BASE_URL}/api/admin/enablement/trigger",
+        response = client.post(
+            "/api/admin/enablement/trigger",
             json=payload
         )
         assert response.status_code in [401, 403]
@@ -471,9 +467,9 @@ class TestEnablementClientTimeline:
     """Test client timeline endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -482,10 +478,10 @@ class TestEnablementClientTimeline:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_get_client_timeline(self, auth_headers):
+    def test_get_client_timeline(self, client, auth_headers):
         """Test getting timeline for a client"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/clients/test-client-123/timeline",
+        response = client.get(
+            "/api/admin/enablement/clients/test-client-123/timeline",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -500,10 +496,10 @@ class TestEnablementClientTimeline:
         assert data["client_id"] == "test-client-123"
         assert isinstance(data["actions"], list)
     
-    def test_timeline_pagination(self, auth_headers):
+    def test_timeline_pagination(self, client, auth_headers):
         """Test timeline pagination parameters"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/clients/test-client/timeline?limit=10&offset=0",
+        response = client.get(
+            "/api/admin/enablement/clients/test-client/timeline?limit=10&offset=0",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -517,9 +513,9 @@ class TestEnablementActions:
     """Test actions query endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -528,10 +524,10 @@ class TestEnablementActions:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_list_actions(self, auth_headers):
+    def test_list_actions(self, client, auth_headers):
         """Test listing enablement actions"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/actions",
+        response = client.get(
+            "/api/admin/enablement/actions",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -542,10 +538,10 @@ class TestEnablementActions:
         assert "limit" in data
         assert "offset" in data
     
-    def test_filter_actions_by_status(self, auth_headers):
+    def test_filter_actions_by_status(self, client, auth_headers):
         """Test filtering actions by status"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/actions?status=SUCCESS",
+        response = client.get(
+            "/api/admin/enablement/actions?status=SUCCESS",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -555,10 +551,10 @@ class TestEnablementActions:
         for action in data["actions"]:
             assert action["status"] == "SUCCESS"
     
-    def test_filter_actions_by_category(self, auth_headers):
+    def test_filter_actions_by_category(self, client, auth_headers):
         """Test filtering actions by category"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/actions?category=ONBOARDING_GUIDANCE",
+        response = client.get(
+            "/api/admin/enablement/actions?category=ONBOARDING_GUIDANCE",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -572,9 +568,9 @@ class TestEnablementEvents:
     """Test events query endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -583,10 +579,10 @@ class TestEnablementEvents:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_list_events(self, auth_headers):
+    def test_list_events(self, client, auth_headers):
         """Test listing enablement events"""
-        response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/events",
+        response = client.get(
+            "/api/admin/enablement/events",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -602,9 +598,9 @@ class TestEnablementTemplateToggle:
     """Test template toggle endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -613,11 +609,11 @@ class TestEnablementTemplateToggle:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_toggle_template_status(self, auth_headers):
+    def test_toggle_template_status(self, client, auth_headers):
         """Test toggling a template's active status"""
         # First get a template
-        templates_response = requests.get(
-            f"{BASE_URL}/api/admin/enablement/templates",
+        templates_response = client.get(
+            "/api/admin/enablement/templates",
             headers=auth_headers
         )
         templates = templates_response.json()["templates"]
@@ -629,8 +625,8 @@ class TestEnablementTemplateToggle:
         original_status = templates[0]["is_active"]
         
         # Toggle
-        toggle_response = requests.put(
-            f"{BASE_URL}/api/admin/enablement/templates/{template_code}/toggle",
+        toggle_response = client.put(
+            "/api/admin/enablement/templates/{template_code}/toggle",
             headers=auth_headers
         )
         assert toggle_response.status_code == 200
@@ -640,15 +636,15 @@ class TestEnablementTemplateToggle:
         assert data["is_active"] == (not original_status)
         
         # Toggle back to original
-        requests.put(
-            f"{BASE_URL}/api/admin/enablement/templates/{template_code}/toggle",
+        client.put(
+            "/api/admin/enablement/templates/{template_code}/toggle",
             headers=auth_headers
         )
     
-    def test_toggle_nonexistent_template(self, auth_headers):
+    def test_toggle_nonexistent_template(self, client, auth_headers):
         """Test toggling a non-existent template"""
-        response = requests.put(
-            f"{BASE_URL}/api/admin/enablement/templates/nonexistent_template/toggle",
+        response = client.put(
+            "/api/admin/enablement/templates/nonexistent_template/toggle",
             headers=auth_headers
         )
         assert response.status_code == 404
@@ -658,9 +654,9 @@ class TestEnablementTemplateReseed:
     """Test template reseed endpoint"""
     
     @pytest.fixture(scope="class")
-    def admin_token(self):
-        response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+    def admin_token(self, client):
+        response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         return response.json()["access_token"]
@@ -669,10 +665,10 @@ class TestEnablementTemplateReseed:
     def auth_headers(self, admin_token):
         return {"Authorization": f"Bearer {admin_token}"}
     
-    def test_reseed_templates(self, auth_headers):
+    def test_reseed_templates(self, client, auth_headers):
         """Test reseeding templates"""
-        response = requests.post(
-            f"{BASE_URL}/api/admin/enablement/templates/seed",
+        response = client.post(
+            "/api/admin/enablement/templates/seed",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -691,8 +687,8 @@ def cleanup_test_suppressions():
     
     # Login and cleanup
     try:
-        login_response = requests.post(
-            f"{BASE_URL}/api/auth/login",
+        login_response = client.post(
+            "/api/auth/login",
             json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         if login_response.status_code == 200:
@@ -700,16 +696,16 @@ def cleanup_test_suppressions():
             headers = {"Authorization": f"Bearer {token}"}
             
             # Get all suppressions
-            suppressions_response = requests.get(
-                f"{BASE_URL}/api/admin/enablement/suppressions?active_only=false",
+            suppressions_response = client.get(
+                "/api/admin/enablement/suppressions?active_only=false",
                 headers=headers
             )
             if suppressions_response.status_code == 200:
                 rules = suppressions_response.json().get("rules", [])
                 for rule in rules:
                     if "TEST_" in rule.get("reason", ""):
-                        requests.delete(
-                            f"{BASE_URL}/api/admin/enablement/suppressions/{rule['rule_id']}",
+                        client.delete(
+                            "/api/admin/enablement/suppressions/{rule['rule_id']}",
                             headers=headers
                         )
     except Exception as e:
