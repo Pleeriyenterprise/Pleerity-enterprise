@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 const POLL_INTERVAL_MS = 5000;
 const POLL_DURATION_MS = 180000;
 const BANNER_EARLY_SEC = 20;
-const BANNER_LATE_CONFIRMING_SEC = 30;
+const BANNER_LATE_CONFIRMING_SEC = 120; // 2 minutes
 
 /** Build steps from backend truth flags only. payment_state: unpaid | pending_webhook | paid; provisioning_status: NOT_STARTED | IN_PROGRESS | COMPLETED | FAILED; activation_email_status: NOT_SENT | SENT | FAILED; password_set: bool; portal_user_exists: bool. */
 function buildSteps(data) {
@@ -56,7 +56,7 @@ function buildSteps(data) {
   } else if (!portalUserExists) {
     step4Label = 'Waiting';
   } else if (actEmail === 'SENT') {
-    step4Label = 'Email sent (Waiting for user)';
+    step4Label = 'Email sent';
   } else if (actEmail === 'FAILED') {
     step4Status = 'failed';
     step4Label = 'Email failed';
@@ -127,6 +127,7 @@ const OnboardingStatusPage = () => {
   const [error, setError] = useState(null);
   const [timedOut, setTimedOut] = useState(false);
   const [resending, setResending] = useState(false);
+  const [resendError, setResendError] = useState(null);
   const pollStartRef = useRef(null);
   const pollIntervalRef = useRef(null);
 
@@ -136,6 +137,7 @@ const OnboardingStatusPage = () => {
       const res = await api.get('/portal/setup-status', { params });
       setStatus(res.data);
       setError(null);
+      setResendError(null);
       return res.data;
     } catch (err) {
       const msg = err.response?.data?.detail || 'Failed to load setup status';
@@ -175,13 +177,16 @@ const OnboardingStatusPage = () => {
     const cid = status?.client_id || clientId;
     if (!cid) return;
     setResending(true);
+    setResendError(null);
     try {
       await api.post('/portal/resend-activation', null, { params: { client_id: cid } });
       toast.success('Activation email sent');
       await fetchSetupStatus();
     } catch (err) {
       const msg = err.response?.data?.detail || err.message || 'Failed to send activation email';
-      toast.error(typeof msg === 'string' ? msg : msg?.message || 'Failed to send activation email');
+      const msgStr = typeof msg === 'string' ? msg : msg?.message || 'Failed to send activation email';
+      toast.error(msgStr);
+      setResendError(msgStr);
     } finally {
       setResending(false);
     }
@@ -323,10 +328,12 @@ const OnboardingStatusPage = () => {
             {status?.last_error?.message && <p className="mt-1 text-sm">{status.last_error.message}</p>}
           </div>
         )}
-        {activationEmailFailed && !provisioningFailed && (
+        {(activationEmailFailed || resendError) && !provisioningFailed && (
           <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-            <p className="font-medium">Activation email could not be sent. Use &quot;Resend activation email&quot; below or contact support with CRN {status?.customer_reference || '—'}.</p>
-            {status?.last_error?.message && <p className="mt-1 text-sm">{status.last_error.message}</p>}
+            <p className="font-medium">
+              Activation email could not be sent. Use &quot;Resend activation email&quot; below or contact support with your CRN: <strong>{status?.customer_reference || status?.crn || '—'}</strong>
+            </p>
+            {(status?.last_error?.message || resendError) && <p className="mt-1 text-sm">{resendError || status?.last_error?.message}</p>}
           </div>
         )}
 

@@ -576,7 +576,8 @@ class StripeWebhookService:
             )
             client_name = (client_for_email or {}).get("contact_name") or (client_for_email or {}).get("full_name") or "Valued Customer"
             amount = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
-            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            from utils.public_app_url import get_public_app_url
+            base_url = get_public_app_url(for_email_links=False)
             event_id = (event or {}).get("id", "")
             idempotency_key = f"{event_id}_SUBSCRIPTION_CONFIRMED" if event_id else None
             from services.notification_orchestrator import notification_orchestrator
@@ -587,7 +588,7 @@ class StripeWebhookService:
                     "client_name": client_name,
                     "plan_name": plan_def.get("name", plan_code.value),
                     "amount": amount,
-                    "portal_link": f"{frontend_url}/app/dashboard",
+                    "portal_link": f"{base_url}/app/dashboard",
                     "subject": "Payment received - Compliance Vault Pro",
                 },
                 idempotency_key=idempotency_key,
@@ -879,7 +880,8 @@ class StripeWebhookService:
             )
             
             if client and client.get("contact_email"):
-                frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+                from utils.public_app_url import get_public_app_url
+                base_url = get_public_app_url(for_email_links=False)
                 access_end_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
                 event_id = (event or {}).get("id", "")
                 idempotency_key = f"{event_id}_SUBSCRIPTION_CANCELED" if event_id else None
@@ -890,7 +892,7 @@ class StripeWebhookService:
                     context={
                         "client_name": client.get("contact_name", "Valued Customer"),
                         "access_end_date": access_end_date,
-                        "billing_portal_link": f"{frontend_url}/app/billing",
+                        "billing_portal_link": f"{base_url}/app/billing",
                         "company_name": "Pleerity Enterprise Ltd",
                         "support_email": "info@pleerityenterprise.co.uk",
                     },
@@ -1070,7 +1072,8 @@ class StripeWebhookService:
                 {"_id": 0, "contact_name": 1, "full_name": 1},
             )
             client_name = (client_for_name or {}).get("contact_name") or (client_for_name or {}).get("full_name") or "Valued Customer"
-            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            from utils.public_app_url import get_public_app_url
+            base_url = get_public_app_url(for_email_links=False)
             retry_date = None
             if invoice.get("next_payment_attempt"):
                 retry_date = datetime.fromtimestamp(
@@ -1084,7 +1087,7 @@ class StripeWebhookService:
                 client_id=client_id,
                 context={
                     "client_name": client_name,
-                    "billing_portal_link": f"{frontend_url}/app/billing",
+                    "billing_portal_link": f"{base_url}/app/billing",
                     "retry_date": retry_date or "",
                 },
                 idempotency_key=idempotency_key,

@@ -223,6 +223,8 @@ def test_setup_status_returns_activation_fields(client):
     assert data.get("activation_email_sent_at") is not None
     assert data.get("support_email") is not None
     assert data.get("portal_user_created_at") is not None
+    assert data.get("crn") == "PLE-001"
+    assert data.get("customer_reference") == "PLE-001"
 
 
 def test_resend_activation_403_when_not_provisioned(client):
@@ -385,6 +387,7 @@ def test_send_password_setup_link_returns_not_configured_when_blocked():
     db.password_tokens = MagicMock()
     db.password_tokens.insert_one = AsyncMock()
     db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value={"customer_reference": "CRN-1"})
 
     class BlockedResult:
         outcome = "blocked"
@@ -396,6 +399,7 @@ def test_send_password_setup_link_returns_not_configured_when_blocked():
              patch("services.provisioning.generate_secure_token", return_value="tok"), \
              patch("services.provisioning.hash_token", return_value="hash"), \
              patch("services.provisioning.create_audit_log", new_callable=AsyncMock), \
+             patch("utils.public_app_url.get_public_app_url", return_value="https://app.example.com"), \
              patch("services.notification_orchestrator.notification_orchestrator.send", new_callable=AsyncMock, return_value=BlockedResult()):
             return await provisioning_service._send_password_setup_link("c1", "pu1", "c@ex.com", "Test", idempotency_key="k")
 

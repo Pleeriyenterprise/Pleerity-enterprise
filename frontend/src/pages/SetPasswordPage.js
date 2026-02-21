@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../api/client';
 import { Button } from '../components/ui/button';
@@ -124,10 +124,16 @@ const SetPasswordPage = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Alert variant="destructive" data-testid="password-error">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <>
+                <Alert variant="destructive" data-testid="password-error">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+                <p className="text-sm text-gray-600 mt-2">
+                  Need a new link? <Link to="/onboarding/status" className="text-electric-teal hover:underline">Go to onboarding status</Link> to resend the activation email, or contact support at{' '}
+                  <a href="mailto:info@pleerityenterprise.co.uk" className="text-electric-teal hover:underline">info@pleerityenterprise.co.uk</a>.
+                </p>
+              </>
             )}
 
             <div className="space-y-2">

@@ -201,9 +201,11 @@ async def get_setup_status(
     password_reset_sent = bool(job and (job.get("status") or "").strip() == "WELCOME_EMAIL_SENT") or activation_email_status_api == "SENT"
     password_state = "set" if password_set else "not_sent"
 
+    crn = client.get("customer_reference") or ""
     return {
         "client_id": client["client_id"],
-        "customer_reference": client.get("customer_reference"),
+        "customer_reference": crn,
+        "crn": crn,
         "client_name": client.get("full_name"),
         "billing_plan": client.get("billing_plan"),
         "intake_submitted": True,

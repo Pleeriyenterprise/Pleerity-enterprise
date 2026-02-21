@@ -526,11 +526,12 @@ class ProvisioningService:
         token_hash = hash_token(raw_token)
 
         from models import PasswordToken
+        link_expiry_hours = 24
         password_token = PasswordToken(
             token_hash=token_hash,
             portal_user_id=user_id,
             client_id=client_id,
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=link_expiry_hours),
             created_by="SYSTEM",
             send_count=1
         )
@@ -550,6 +551,11 @@ class ProvisioningService:
             return False, "FAILED", str(e)[:500]
         setup_link = f"{base_url.rstrip('/')}/set-password?token={raw_token}"
 
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "customer_reference": 1})
+        crn = (client or {}).get("customer_reference") or ""
+        first_name = (name or "").strip().split()[0] if (name and (name or "").strip()) else "there"
+        support_email = os.getenv("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk") or "info@pleerityenterprise.co.uk"
+
         from services.notification_orchestrator import notification_orchestrator
         result = await notification_orchestrator.send(
             template_key="WELCOME_EMAIL",
@@ -559,6 +565,11 @@ class ProvisioningService:
                 "client_name": name,
                 "company_name": "Pleerity Enterprise Ltd",
                 "tagline": "AI-Driven Solutions & Compliance",
+                "crn": crn,
+                "first_name": first_name,
+                "support_email": support_email,
+                "link_expiry_hours": link_expiry_hours,
+                "if_you_did_not_request": "If you didn't request this link, you can safely ignore this email.",
             },
             idempotency_key=idempotency_key,
             event_type="provisioning_welcome",

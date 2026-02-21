@@ -131,6 +131,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Stripe config check failed: %s", e)
 
+    # Public frontend URL for activation/email links (safe log, no secrets)
+    try:
+        from utils.public_app_url import get_public_app_url
+        _app_url = get_public_app_url(for_email_links=False)
+        logger.info("PUBLIC_APP_URL configured: %s", _app_url)
+    except Exception as e:
+        logger.warning("PUBLIC_APP_URL not configured: %s", e)
+
     # Idempotent OWNER bootstrap: when BOOTSTRAP_ENABLED=true OR when email+password env are set (Render)
     bootstrap_enabled = os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true"
     bootstrap_email = (os.environ.get("BOOTSTRAP_OWNER_EMAIL") or "").strip()

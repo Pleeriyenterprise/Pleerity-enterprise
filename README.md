@@ -188,8 +188,11 @@ All sends logged to `MessageLog` collection.
 ### Environment Variables
 
 **How to configure env vars (activation links and API):**
-- **PUBLIC_APP_URL** — Public frontend base URL used for activation/set-password links in emails (e.g. `https://your-frontend-domain.com`). Must be https in production; no trailing slash. Fallback: `FRONTEND_URL`, then `VERCEL_URL`/`RENDER_EXTERNAL_URL` if set.
-- **BACKEND_URL** — Backend base URL (e.g. `https://your-backend.onrender.com`). Used by scripts and health checks. Keep Stripe vars (`STRIPE_API_KEY`, webhook secret) unchanged.
+- **PUBLIC_APP_URL** — Public frontend base URL used for activation/set-password links in emails (e.g. `https://your-frontend-domain.com`). Must be https in production; no trailing slash. Fallback: `FRONTEND_URL`, then `VERCEL_URL`/`RENDER_EXTERNAL_URL` if set. *Required for production activation emails.*
+- **REACT_APP_BACKEND_URL** — Frontend build-time: backend API base URL (e.g. `https://your-backend.onrender.com`). Set on Vercel so the app calls the correct API.
+- **BACKEND_URL** — Backend base URL for scripts and health checks. Keep Stripe vars (`STRIPE_API_KEY`, webhook secret) unchanged.
+
+**Where to set env vars:** Backend (Render): Dashboard → Service → Environment. Frontend (Vercel): Project → Settings → Environment Variables. Recommended future domain: `https://portal.pleerityenterprise.co.uk`.
 
 **Backend (Render / local `.env`):**
 ```bash
