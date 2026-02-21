@@ -163,15 +163,18 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
         if not client or not portal_user:
             logger.error(f"Job {job_id}: client or portal user missing for email retry")
             return False
-        try:
-            await provisioning_service._send_password_setup_link(
-                client_id,
-                portal_user["portal_user_id"],
-                client["email"],
-                client.get("full_name", "Valued Customer"),
-                idempotency_key=f"{job_id}_welcome",
-            )
-            await db.clients.update_one({"client_id": client_id}, {"$unset": {"last_invite_error": ""}})
+        ok, act_status, act_err = await provisioning_service._send_password_setup_link(
+            client_id,
+            portal_user["portal_user_id"],
+            client["email"],
+            client.get("full_name", "Valued Customer"),
+            idempotency_key=f"{job_id}_welcome",
+        )
+        set_fields = {"activation_email_status": act_status}
+        unset_fields = {}
+        if ok:
+            set_fields["activation_email_sent_at"] = datetime.now(timezone.utc)
+            unset_fields = {"last_invite_error": "", "activation_email_error": ""}
             await db.provisioning_jobs.update_one(
                 {"job_id": job_id},
                 {
@@ -185,19 +188,21 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
                 }
             )
             logger.info(f"Job {job_id}: welcome email sent (retry)")
-            return True
-        except Exception as e:
-            err_msg = str(e)[:500]
-            logger.error(f"Job {job_id}: welcome email retry failed: {e}")
+        else:
+            if act_err:
+                set_fields["activation_email_error"] = act_err[:1000]
+                set_fields["last_invite_error"] = act_err[:500]
+            if act_status == "NOT_CONFIGURED":
+                logger.warning(f"Job {job_id}: activation email NOT_CONFIGURED (Postmark not configured)")
             await db.provisioning_jobs.update_one(
                 {"job_id": job_id},
-                {"$set": {"last_error": err_msg, "updated_at": now_iso}}
+                {"$set": {"last_error": (act_err or act_status)[:500], "updated_at": now_iso}}
             )
-            await db.clients.update_one(
-                {"client_id": client_id},
-                {"$set": {"last_invite_error": err_msg}}
-            )
-            return False
+        payload = {"$set": set_fields}
+        if unset_fields:
+            payload["$unset"] = unset_fields
+        await db.clients.update_one({"client_id": client_id}, payload)
+        return ok
 
     # Transition to PROVISIONING_STARTED and run core
     await db.provisioning_jobs.update_one(
@@ -258,43 +263,49 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
     except Exception as mig_err:
         logger.warning(f"Job {job_id}: intake migration failed: {mig_err}")
 
-    # Send password setup email
+    # Send password setup email (activation email)
     client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "email": 1, "full_name": 1})
     if not client or not user_id:
         logger.error(f"Job {job_id}: client or user_id missing for email")
         return False
-    try:
-        await provisioning_service._send_password_setup_link(
-            client_id,
-            user_id,
-            client["email"],
-            client.get("full_name", "Valued Customer"),
-            idempotency_key=f"{job_id}_welcome",
-        )
-        now3 = datetime.now(timezone.utc).isoformat()
+    ok, act_status, act_err = await provisioning_service._send_password_setup_link(
+        client_id,
+        user_id,
+        client["email"],
+        client.get("full_name", "Valued Customer"),
+        idempotency_key=f"{job_id}_welcome",
+    )
+    now3 = datetime.now(timezone.utc)
+    now3_iso = now3.isoformat()
+    set_fields = {"activation_email_status": act_status}
+    unset_fields = {}
+    if ok:
+        set_fields["activation_email_sent_at"] = now3
+        unset_fields = {"last_invite_error": "", "activation_email_error": ""}
         await db.provisioning_jobs.update_one(
             {"job_id": job_id},
             {
                 "$set": {
                     "status": ProvisioningJobStatus.WELCOME_EMAIL_SENT.value,
-                    "welcome_email_sent_at": now3,
+                    "welcome_email_sent_at": now3_iso,
                     "needs_run": False,
-                    "updated_at": now3,
+                    "updated_at": now3_iso,
                 }
             }
         )
         logger.info("PROVISIONING_COMPLETED job_id=%s client_id=%s", job_id, client_id)
-        return True
-    except Exception as email_err:
-        err_msg = str(email_err)[:500]
-        logger.error(f"Job {job_id}: welcome email failed: {email_err}")
-        await db.clients.update_one(
-            {"client_id": client_id},
-            {"$set": {"last_invite_error": err_msg}}
-        )
+    else:
+        if act_err:
+            set_fields["activation_email_error"] = act_err[:1000]
+            set_fields["last_invite_error"] = act_err[:500]
+        if act_status == "NOT_CONFIGURED":
+            logger.warning("Job %s: activation email NOT_CONFIGURED (Postmark not configured)", job_id)
         await db.provisioning_jobs.update_one(
             {"job_id": job_id},
-            {"$set": {"last_error": err_msg, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"last_error": (act_err or act_status)[:500], "updated_at": now3_iso}}
         )
-        # Do NOT set status to FAILED; remain PROVISIONING_COMPLETED for retry
-        return False
+    payload = {"$set": set_fields}
+    if unset_fields:
+        payload["$unset"] = unset_fields
+    await db.clients.update_one({"client_id": client_id}, payload)
+    return ok

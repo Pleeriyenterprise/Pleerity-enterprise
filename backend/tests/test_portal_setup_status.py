@@ -190,3 +190,111 @@ def test_setup_status_400_no_client_id(client):
         response = client.get("/api/portal/setup-status")
 
     assert response.status_code == 400
+
+
+def test_setup_status_returns_activation_fields(client):
+    """setup-status returns activation_email_status, activation_email_sent_at, support_email."""
+    mock_client = {
+        "client_id": "c1",
+        "customer_reference": "PLE-001",
+        "subscription_status": "ACTIVE",
+        "onboarding_status": "PROVISIONED",
+        "provisioning_status": "COMPLETED",
+        "activation_email_status": "SENT",
+        "activation_email_sent_at": "2026-02-20T12:00:00+00:00",
+        "portal_user_created_at": "2026-02-20T11:59:00+00:00",
+        "created_at": "2026-01-01T00:00:00Z",
+    }
+    mock_portal = {"password_status": "SET"}
+    mock_job = {"status": "WELCOME_EMAIL_SENT"}
+    mock_db = _make_db(client=mock_client, portal_user=mock_portal, job=mock_job)
+    mock_db.provisioning_jobs.find_one = AsyncMock(return_value=mock_job)
+
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.get("/api/portal/setup-status", params={"client_id": "c1"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("activation_email_status") == "SENT"
+    assert data.get("activation_email_sent_at") is not None
+    assert data.get("support_email") is not None
+    assert data.get("portal_user_created_at") is not None
+
+
+def test_resend_activation_403_when_not_provisioned(client):
+    """resend-activation returns 403 when onboarding_status != PROVISIONED."""
+    mock_client = {"client_id": "c1", "onboarding_status": "PROVISIONING", "email": "c@ex.com", "full_name": "Test"}
+    mock_portal = {"portal_user_id": "pu1", "auth_email": "c@ex.com"}
+    mock_db = _make_db(client=mock_client, portal_user=mock_portal)
+    mock_db.portal_users.find_one = AsyncMock(return_value=mock_portal)
+
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.post("/api/portal/resend-activation", params={"client_id": "c1"})
+
+    assert response.status_code == 403
+    assert "provisioning" in (response.json().get("detail") or "").lower() or "complete" in (response.json().get("detail") or "").lower()
+
+
+def test_resend_activation_200_does_not_alter_subscription(client):
+    """resend-activation sends email and does not change subscription or provisioning fields."""
+    mock_client = {
+        "client_id": "c1",
+        "onboarding_status": "PROVISIONED",
+        "email": "c@ex.com",
+        "full_name": "Test",
+        "subscription_status": "ACTIVE",
+        "provisioning_status": "COMPLETED",
+    }
+    mock_portal = {"portal_user_id": "pu1", "auth_email": "c@ex.com"}
+    mock_db = _make_db(client=mock_client, portal_user=mock_portal)
+    mock_db.portal_users.find_one = AsyncMock(return_value=mock_portal)
+    mock_db.clients.update_one = AsyncMock()
+
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None), \
+         patch("services.provisioning.provisioning_service._send_password_setup_link", new_callable=AsyncMock, return_value=(True, "SENT", None)):
+        response = client.post("/api/portal/resend-activation", params={"client_id": "c1"})
+
+    assert response.status_code == 200
+    assert response.json().get("message") == "Activation email sent"
+    # update_one should have been called with client_id c1; payload is second positional arg
+    calls = [c for c in mock_db.clients.update_one.call_args_list if len(c[0]) >= 2 and (c[0][0] or {}).get("client_id") == "c1"]
+    assert len(calls) >= 1
+    payload = calls[0][0][1] if len(calls[0][0]) > 1 else (calls[0][1] or {})
+    set_payload = payload.get("$set", {})
+    assert "subscription_status" not in set_payload
+    assert "onboarding_status" not in set_payload
+    assert "provisioning_status" not in set_payload
+    assert set_payload.get("activation_email_status") == "SENT"
+
+
+def test_send_password_setup_link_returns_not_configured_when_blocked():
+    """When notification orchestrator returns blocked (Postmark not configured), _send_password_setup_link returns (False, NOT_CONFIGURED, ...) and does not raise."""
+    import asyncio
+    from services.provisioning import provisioning_service
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    db = MagicMock()
+    db.password_tokens = MagicMock()
+    db.password_tokens.insert_one = AsyncMock()
+    db.clients = MagicMock()
+
+    class BlockedResult:
+        outcome = "blocked"
+        block_reason = "BLOCKED_PROVIDER_NOT_CONFIGURED"
+        error_message = "POSTMARK_SERVER_TOKEN not set"
+
+    async def run():
+        with patch("services.provisioning.database.get_db", return_value=db), \
+             patch("services.provisioning.generate_secure_token", return_value="tok"), \
+             patch("services.provisioning.hash_token", return_value="hash"), \
+             patch("services.provisioning.create_audit_log", new_callable=AsyncMock), \
+             patch("services.notification_orchestrator.notification_orchestrator.send", new_callable=AsyncMock, return_value=BlockedResult()):
+            return await provisioning_service._send_password_setup_link("c1", "pu1", "c@ex.com", "Test", idempotency_key="k")
+
+    ok, status, err = asyncio.run(run())
+    assert ok is False
+    assert status == "NOT_CONFIGURED"
+    assert err is not None

@@ -1,14 +1,24 @@
 """Portal endpoints - setup status for post-payment onboarding.
 
 GET /api/portal/setup-status - Read-only; JWT optional, client_id query for post-checkout.
+POST /api/portal/resend-activation - Resend activation (password setup) email; same auth as setup-status.
 """
-from fastapi import APIRouter, HTTPException, Request, Query, status
+import os
+from fastapi import APIRouter, HTTPException, Request, Query, Body, status
 from datetime import datetime, timezone
+from pydantic import BaseModel
 
 from database import database
 from middleware import get_current_user
 
 router = APIRouter(prefix="/api/portal", tags=["portal"])
+
+SUPPORT_EMAIL = (os.getenv("SUPPORT_EMAIL") or os.getenv("REACT_APP_SUPPORT_EMAIL") or "info@pleerityenterprise.co.uk").strip()
+
+
+class ResendActivationBody(BaseModel):
+    """Optional email to require match (case-insensitive)."""
+    email: str | None = None
 
 PAID_SUBSCRIPTION_STATUSES = frozenset({"ACTIVE", "PAID", "TRIALING"})
 PROVISIONING_RUNNING_STATUSES = frozenset({
@@ -111,7 +121,8 @@ async def get_setup_status(
         {"client_id": resolved_client_id},
         {"_id": 0, "client_id": 1, "customer_reference": 1, "billing_plan": 1,
          "subscription_status": 1, "onboarding_status": 1, "created_at": 1, "full_name": 1,
-         "provisioning_status": 1, "provisioning_started_at": 1, "provisioning_completed_at": 1, "last_provisioning_error": 1},
+         "provisioning_status": 1, "provisioning_started_at": 1, "provisioning_completed_at": 1, "last_provisioning_error": 1,
+         "portal_user_created_at": 1, "activation_email_status": 1, "activation_email_sent_at": 1, "activation_email_error": 1, "email": 1},
     )
     if not client:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
@@ -161,8 +172,15 @@ async def get_setup_status(
 
     # portal_user_created: True if at least one portal_user exists for this client
     portal_user_created = portal_user is not None
-    # password_reset_sent: True if welcome/setup email was sent (job reached WELCOME_EMAIL_SENT)
-    password_reset_sent = bool(job and (job.get("status") or "").strip() == "WELCOME_EMAIL_SENT")
+    # password_reset_sent: True if welcome/setup email was sent (job reached WELCOME_EMAIL_SENT or activation_email_status SENT)
+    password_reset_sent = bool(job and (job.get("status") or "").strip() == "WELCOME_EMAIL_SENT") or (client.get("activation_email_status") or "").strip() == "SENT"
+    activation_email_status = (client.get("activation_email_status") or "").strip() or None
+    activation_email_sent_at = client.get("activation_email_sent_at")
+    if hasattr(activation_email_sent_at, "isoformat"):
+        activation_email_sent_at = activation_email_sent_at.isoformat()
+    portal_user_created_at = client.get("portal_user_created_at")
+    if hasattr(portal_user_created_at, "isoformat"):
+        portal_user_created_at = portal_user_created_at.isoformat()
 
     return {
         "client_id": client["client_id"],
@@ -174,10 +192,98 @@ async def get_setup_status(
         "provisioning_state": provisioning_state,
         "provisioning_status": provisioning_status,
         "portal_user_created": portal_user_created,
+        "portal_user_created_at": portal_user_created_at,
+        "activation_email_status": activation_email_status,
+        "activation_email_sent_at": activation_email_sent_at,
+        "activation_email_error": (client.get("activation_email_error") or "").strip() or None,
         "password_reset_sent": password_reset_sent,
         "password_state": password_state,
         "next_action": next_action,
         "last_error": last_error,
         "properties_count": properties_count,
         "requirements_count": requirements_count,
+        "support_email": SUPPORT_EMAIL,
     }
+
+
+async def _resolve_portal_client_id(request: Request, client_id: str | None) -> str:
+    """Same resolution as setup-status: JWT client_id or query client_id."""
+    user = await get_current_user(request)
+    if user and user.get("client_id"):
+        return user["client_id"]
+    if client_id:
+        return client_id
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="client_id required (or authenticate with portal JWT)",
+    )
+
+
+@router.post("/resend-activation")
+async def resend_activation(
+    request: Request,
+    client_id: str | None = Query(None, description="Client ID (required when not authenticated)"),
+    body: ResendActivationBody | None = Body(None),
+):
+    """
+    Resend activation (password setup) email. Does NOT provision or change subscription.
+    Requires: portal user exists and client onboarding_status == PROVISIONED.
+    Auth: same as setup-status (JWT or client_id query).
+    """
+    resolved_client_id = await _resolve_portal_client_id(request, client_id)
+    db = database.get_db()
+    client = await db.clients.find_one(
+        {"client_id": resolved_client_id},
+        {"_id": 0, "client_id": 1, "onboarding_status": 1, "email": 1, "full_name": 1},
+    )
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+    if (client.get("onboarding_status") or "").strip() != "PROVISIONED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Provisioning not complete. Activation email can only be sent after portal setup is complete.",
+        )
+    portal_user = await db.portal_users.find_one(
+        {"client_id": resolved_client_id, "role": "ROLE_CLIENT_ADMIN"},
+        {"_id": 0, "portal_user_id": 1, "auth_email": 1},
+    )
+    if not portal_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Portal user not found. Cannot send activation email.",
+        )
+    if body and body.email and (client.get("email") or "").strip().lower() != (body.email or "").strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email does not match.",
+        )
+    from services.provisioning import provisioning_service
+    import time
+    idempotency_key = f"resend_activation_{resolved_client_id}_{int(time.time())}"
+    ok, act_status, act_err = await provisioning_service._send_password_setup_link(
+        resolved_client_id,
+        portal_user["portal_user_id"],
+        client.get("email") or portal_user.get("auth_email") or "",
+        client.get("full_name") or "Valued Customer",
+        idempotency_key=idempotency_key,
+    )
+    now = datetime.now(timezone.utc)
+    set_fields = {"activation_email_status": act_status}
+    unset_fields = {}
+    if ok:
+        set_fields["activation_email_sent_at"] = now
+        unset_fields = {"activation_email_error": "", "last_invite_error": ""}
+    else:
+        if act_err:
+            set_fields["activation_email_error"] = act_err[:1000]
+            set_fields["last_invite_error"] = act_err[:500]
+    payload = {"$set": set_fields}
+    if unset_fields:
+        payload["$unset"] = unset_fields
+    await db.clients.update_one({"client_id": resolved_client_id}, payload)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=act_err or act_status or "Failed to send activation email",
+        )
+    return {"message": "Activation email sent"}

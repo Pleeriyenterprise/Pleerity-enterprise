@@ -25,24 +25,27 @@ const POLL_DURATION_MS = 180000;
 const BANNER_EARLY_SEC = 20;
 const BANNER_LATE_CONFIRMING_SEC = 30;
 
-/** Build steps array from setup-status response. Backend returns payment_state; provisioning_status (NOT_STARTED|IN_PROGRESS|COMPLETED|FAILED); provisioning_state (legacy); password_state; next_action. */
+/** Build steps array from setup-status response. Backend returns payment_state; provisioning_status; activation_email_status; password_state; next_action. */
 function buildSteps(data) {
   if (!data) return [];
   const ps = data.payment_state || 'unpaid';
   const provStatus = (data.provisioning_status || data.provisioning_state || 'NOT_STARTED').toUpperCase();
   const vs = data.provisioning_state || 'not_started';
   const pw = data.password_state || 'not_sent';
+  const actEmail = (data.activation_email_status || '').toUpperCase();
+  const activationSent = actEmail === 'SENT' || data.password_reset_sent === true;
   const na = data.next_action || 'pay';
 
   const step2Status = ps === 'paid' ? 'complete' : ps === 'confirming' ? 'in_progress' : 'pending';
   const step2Label = ps === 'paid' ? 'Payment complete' : ps === 'confirming' ? 'Confirming…' : 'Action required';
 
-  // Portal Setup: show "In progress" only when provisioning_status === IN_PROGRESS
+  // Portal Setup: "In progress" only when provisioning_status === IN_PROGRESS
   const step3Status = provStatus === 'COMPLETED' || vs === 'completed' ? 'complete' : provStatus === 'FAILED' || vs === 'failed' ? 'failed' : provStatus === 'IN_PROGRESS' ? 'in_progress' : 'pending';
   const step3Label = provStatus === 'COMPLETED' || vs === 'completed' ? 'Complete' : provStatus === 'FAILED' || vs === 'failed' ? 'Failed' : provStatus === 'IN_PROGRESS' ? 'In progress' : vs === 'queued' ? 'Queued' : 'Portal setup waiting…';
 
+  // Account Activation: "Complete" when password set; "Waiting" until activation_email_status SENT (email sent); else "Waiting"
   const step4Status = pw === 'set' ? 'complete' : 'pending';
-  const step4Label = pw === 'set' ? 'Complete' : 'Waiting';
+  const step4Label = pw === 'set' ? 'Complete' : activationSent ? 'Email sent – set your password' : 'Waiting';
 
   const step5Status = na === 'go_to_dashboard' ? 'complete' : 'pending';
   const step5Label = na === 'go_to_dashboard' ? 'Complete' : 'Waiting';
@@ -102,6 +105,7 @@ const OnboardingStatusPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timedOut, setTimedOut] = useState(false);
+  const [resending, setResending] = useState(false);
   const pollStartRef = useRef(null);
   const pollIntervalRef = useRef(null);
 
@@ -138,6 +142,22 @@ const OnboardingStatusPage = () => {
     if (!crn) return;
     navigator.clipboard.writeText(crn).then(() => toast.success('CRN copied to clipboard')).catch(() => toast.error('Copy failed'));
   }, [status?.customer_reference]);
+
+  const handleResendActivation = useCallback(async () => {
+    const cid = status?.client_id || clientId;
+    if (!cid) return;
+    setResending(true);
+    try {
+      await api.post('/portal/resend-activation', null, { params: { client_id: cid } });
+      toast.success('Activation email sent');
+      await fetchSetupStatus();
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Failed to send activation email';
+      toast.error(typeof msg === 'string' ? msg : msg?.message || 'Failed to send activation email');
+    } finally {
+      setResending(false);
+    }
+  }, [status?.client_id, clientId, fetchSetupStatus]);
 
   useEffect(() => {
     setLoading(true);
@@ -366,7 +386,9 @@ const OnboardingStatusPage = () => {
                 </Button>
               )}
               {status.next_action === 'set_password' && (
-                <Button variant="outline" className="border-teal-300 text-teal-700">Check Your Email</Button>
+                <Button variant="outline" className="border-teal-300 text-teal-700" onClick={handleResendActivation} disabled={resending} data-testid="resend-activation-btn">
+                  {resending ? 'Sending…' : 'Resend activation email'}
+                </Button>
               )}
             </div>
           </div>

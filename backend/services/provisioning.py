@@ -175,6 +175,11 @@ class ProvisioningService:
                 doc["created_at"] = doc["created_at"].isoformat()
                 await db.portal_users.insert_one(doc)
                 user_id = portal_user.portal_user_id
+                now_utc = datetime.now(timezone.utc)
+                await db.clients.update_one(
+                    {"client_id": client_id},
+                    {"$set": {"portal_user_created_at": now_utc}}
+                )
             else:
                 user_id = existing_user["portal_user_id"]
             now_utc = datetime.now(timezone.utc)
@@ -240,17 +245,39 @@ class ProvisioningService:
         except Exception as mig_err:
             logger.warning(f"Intake upload migration failed for {client_id}: {mig_err}")
         try:
-            await self._send_password_setup_link(client_id, user_id, client["email"], client["full_name"])
+            ok, act_status, act_err = await self._send_password_setup_link(client_id, user_id, client["email"], client.get("full_name", "Valued Customer"))
+            now_act = datetime.now(timezone.utc)
+            set_fields = {"activation_email_status": act_status}
+            unset_fields = {}
+            if ok:
+                set_fields["activation_email_sent_at"] = now_act
+                unset_fields = {"last_invite_error": "", "activation_email_error": ""}
+            else:
+                if act_err:
+                    set_fields["activation_email_error"] = act_err[:1000]
+                    set_fields["last_invite_error"] = act_err[:500]
+            payload = {"$set": set_fields}
+            if unset_fields:
+                payload["$unset"] = unset_fields
+            await db.clients.update_one({"client_id": client_id}, payload)
+            if not ok:
+                await create_audit_log(
+                    action=AuditAction.PORTAL_INVITE_EMAIL_FAILED,
+                    client_id=client_id,
+                    metadata={"error": (act_err or act_status)[:500], "portal_user_id": user_id, "activation_email_status": act_status}
+                )
+                return True, "Provisioning successful but invite email failed; use resend invite to retry"
         except Exception as email_err:
             logger.error(f"Portal invite email failed for client {client_id}: {email_err}")
+            err_msg = str(email_err)[:500]
             await db.clients.update_one(
                 {"client_id": client_id},
-                {"$set": {"last_invite_error": str(email_err)[:500]}}
+                {"$set": {"last_invite_error": err_msg, "activation_email_status": "FAILED", "activation_email_error": err_msg[:1000]}}
             )
             await create_audit_log(
                 action=AuditAction.PORTAL_INVITE_EMAIL_FAILED,
                 client_id=client_id,
-                metadata={"error": str(email_err)[:500], "portal_user_id": user_id}
+                metadata={"error": err_msg, "portal_user_id": user_id}
             )
             return True, "Provisioning successful but invite email failed; use resend invite to retry"
         logger.info(f"Provisioning complete for client {client_id}")
@@ -487,8 +514,12 @@ class ProvisioningService:
         email: str,
         name: str,
         idempotency_key: Optional[str] = None,
-    ):
-        """Generate token and send password setup email via NotificationOrchestrator."""
+    ) -> tuple[bool, str, Optional[str]]:
+        """
+        Generate token and send password setup email via NotificationOrchestrator.
+        Returns (success, status, error_message) where status is SENT | FAILED | NOT_CONFIGURED.
+        Does not raise; callers should persist activation_email_* on client from return value.
+        """
         db = database.get_db()
 
         raw_token = generate_secure_token()
@@ -527,15 +558,19 @@ class ProvisioningService:
             idempotency_key=idempotency_key,
             event_type="provisioning_welcome",
         )
-        if result.outcome not in ("sent", "duplicate_ignored"):
-            raise RuntimeError(result.error_message or result.block_reason or result.outcome)
-
-        await create_audit_log(
-            action=AuditAction.PASSWORD_TOKEN_GENERATED,
-            client_id=client_id,
-            actor_id=user_id,
-            metadata={"email": email}
-        )
+        if result.outcome in ("sent", "duplicate_ignored"):
+            await create_audit_log(
+                action=AuditAction.PASSWORD_TOKEN_GENERATED,
+                client_id=client_id,
+                actor_id=user_id,
+                metadata={"email": email}
+            )
+            return True, "SENT", None
+        if result.outcome == "blocked" and (result.block_reason or "").strip() == "BLOCKED_PROVIDER_NOT_CONFIGURED":
+            logger.warning("Activation email not sent: Postmark not configured (BLOCKED_PROVIDER_NOT_CONFIGURED)")
+            return False, "NOT_CONFIGURED", (result.error_message or result.block_reason or "POSTMARK_SERVER_TOKEN not set")[:500]
+        err = (result.error_message or result.block_reason or result.outcome or "unknown")[:500]
+        return False, "FAILED", err
     
     async def _fail_provisioning(self, client_id: str, reason: str):
         """Mark provisioning as failed."""
