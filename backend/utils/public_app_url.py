@@ -42,7 +42,7 @@ def get_public_app_url(for_email_links: bool = False) -> str:
     if raw.startswith("http://") and "localhost" not in raw:
         raw = "https://" + raw.split("://", 1)[1]
     if for_email_links and "localhost" in raw.lower():
-        env = (os.getenv("ENV") or "").lower()
+        env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or "").strip().lower()
         if env in ("production", "prod"):
             raise ValueError(
                 "PUBLIC_APP_URL must be your public frontend URL in production (no localhost). "

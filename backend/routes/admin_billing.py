@@ -20,13 +20,13 @@ NON-NEGOTIABLE RULES:
 import stripe
 import os
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from pydantic import BaseModel
 from database import database
 from middleware import admin_route_guard
-from models import AuditAction, EmailTemplateAlias, UserRole
+from models import AuditAction, EmailTemplateAlias, UserRole, PasswordToken
 from utils.audit import create_audit_log
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
 from services.provisioning import provisioning_service
@@ -633,22 +633,32 @@ async def resend_password_setup(request: Request, client_id: str):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No portal user found for this client"
             )
-        
-        # Generate new setup token
-        import secrets
-        setup_token = secrets.token_urlsafe(32)
-        
-        await db.portal_users.update_one(
-            {"portal_user_id": portal_user["portal_user_id"]},
-            {
-                "$set": {
-                    "setup_token": setup_token,
-                    "setup_token_created_at": datetime.now(timezone.utc),
-                }
-            }
-        )
-        
+
+        from auth import generate_secure_token, hash_token
         from utils.public_app_url import get_public_app_url
+
+        # Use same token flow as /set-password: store hashed token in password_tokens
+        await db.password_tokens.update_many(
+            {"portal_user_id": portal_user["portal_user_id"], "used_at": None, "revoked_at": None},
+            {"$set": {"revoked_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        raw_token = generate_secure_token()
+        token_hash = hash_token(raw_token)
+        now = datetime.now(timezone.utc)
+        password_token = PasswordToken(
+            token_hash=token_hash,
+            portal_user_id=portal_user["portal_user_id"],
+            client_id=client_id,
+            expires_at=now + timedelta(hours=24),
+            created_by="ADMIN",
+            send_count=0,
+        )
+        doc = password_token.model_dump()
+        for key in ("expires_at", "used_at", "revoked_at", "created_at"):
+            if doc.get(key) and hasattr(doc[key], "isoformat"):
+                doc[key] = doc[key].isoformat()
+        await db.password_tokens.insert_one(doc)
+
         try:
             base_url = get_public_app_url(for_email_links=True)
         except ValueError as e:
@@ -656,7 +666,7 @@ async def resend_password_setup(request: Request, client_id: str):
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={"error_code": "APP_URL_NOT_CONFIGURED", "message": str(e)},
             )
-        setup_url = f"{base_url}/set-password?token={setup_token}"
+        setup_url = f"{base_url}/set-password?token={raw_token}"
         user_email = (portal_user.get("auth_email") or portal_user.get("email") or "").strip()
         if not user_email or not setup_url:
             raise HTTPException(
@@ -671,7 +681,7 @@ async def resend_password_setup(request: Request, client_id: str):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={"error_code": "ACCOUNT_NOT_READY", "message": "Provisioning not completed."},
             )
-        idempotency_key = f"{client_id}_WELCOME_EMAIL_resend_{portal_user.get('portal_user_id', '')}_{setup_token[:8]}"
+        idempotency_key = f"{client_id}_WELCOME_EMAIL_resend_{portal_user.get('portal_user_id', '')}_{raw_token[:8]}"
         try:
             result = await notification_orchestrator.send(
                 template_key="WELCOME_EMAIL",
