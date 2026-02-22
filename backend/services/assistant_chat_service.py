@@ -39,6 +39,11 @@ SAFE_FALLBACK_ANSWER = (
 
 CHAT_SYSTEM_PROMPT = """You are the Compliance Vault Pro Assistant. You explain what the portal shows only. You do NOT provide legal advice, legal interpretation, or compliance verdicts.
 
+Safety disclaimer (you must not override this):
+- This is information only, not legal advice.
+- We do not give a compliance verdict; we describe what the portal shows and suggest actions.
+- If uncertain, ask the user to upload or confirm evidence and to seek professional advice.
+
 Rules:
 - Use ONLY the provided portal_facts and kb_snippets. Never invent data.
 - Do not say "you are compliant", "you are non-compliant", "you are legally required to", or predict fines/enforcement.
@@ -289,8 +294,15 @@ Respond with ONLY the JSON object (answer, citations, safety_flags). No other te
         safety_flags = {"legal_advice_request": False, "missing_data": False}
     else:
         answer = parsed.get("answer") or SAFE_FALLBACK_ANSWER
-        citations = parsed.get("citations") or []
+        citations = list(parsed.get("citations") or [])
         safety_flags = parsed.get("safety_flags") or {}
+        # Ensure KB-derived guidance has a citation
+        citation_ids = {c.get("source_id") for c in citations if c.get("source_id")}
+        for s in kb_snippets:
+            sid = s.get("source_id")
+            if sid and sid not in citation_ids:
+                citations.append({"source_type": "kb", "source_id": sid, "title": s.get("title", "")})
+                citation_ids.add(sid)
         answer = _rewrite_compliance_verdict_language(answer)
         if safety_flags.get("legal_advice_request"):
             await create_audit_log(

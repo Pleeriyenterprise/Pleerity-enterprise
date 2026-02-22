@@ -2,10 +2,10 @@
 Retrieval for Compliance Vault Assistant: portal facts (minimal PII) + knowledge base snippets.
 Used by /api/assistant/chat only. No web scraping; KB from curated markdown under backend/docs/assistant_kb/.
 """
-import os
 import logging
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 from database import database
 from utils import ai_config
@@ -15,13 +15,86 @@ logger = logging.getLogger(__name__)
 # KB directory from ASSISTANT_KB_PATH (default backend/docs/assistant_kb)
 KB_DIR = ai_config.get_assistant_kb_path()
 
-# Snippet shape for KB
-def _snippet(source_id: str, title: str, content: str) -> Dict[str, Any]:
+# Top N snippets returned by ranking (MVP)
+KB_TOP_N = 3
+
+
+class Snippet(TypedDict):
+    """KB snippet with source_id, title, content, and relevance score."""
+    source_id: str
+    title: str
+    content: str
+    score: float
+
+
+# In-memory cache: list of (source_id, title, content) loaded from .md files
+_KB_CACHE: Optional[List[tuple]] = None
+_KB_CACHE_DIR: Optional[Path] = None
+
+
+def _load_kb_into_cache() -> List[tuple]:
+    """Load all .md files from KB_DIR into cache. Returns list of (source_id, title, content)."""
+    global _KB_CACHE, _KB_CACHE_DIR
+    if _KB_CACHE is not None and _KB_CACHE_DIR == KB_DIR:
+        return _KB_CACHE
+    _KB_CACHE_DIR = KB_DIR
+    _KB_CACHE = []
+    if not KB_DIR.is_dir():
+        logger.debug("KB dir not found: %s", KB_DIR)
+        return _KB_CACHE
+    for path in sorted(KB_DIR.glob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace").strip()
+            title = path.stem.replace("_", " ").replace("-", " ").title()
+            for line in text.splitlines():
+                line = line.strip()
+                if line.startswith("# "):
+                    title = line[2:].strip()
+                    break
+            source_id = f"assistant_kb/{path.name}"
+            _KB_CACHE.append((source_id, title, text[:8000]))
+        except Exception as e:
+            logger.warning("Failed to read KB file %s: %s", path, e)
+    return _KB_CACHE
+
+
+def _keyword_overlap_score(query: str, text: str) -> float:
+    """Case-insensitive keyword overlap: number of query words that appear in text."""
+    words = set(re.findall(r"[a-z0-9]+", query.lower()))
+    if not words:
+        return 0.0
+    text_lower = text.lower()
+    matches = sum(1 for w in words if w in text_lower)
+    return float(matches) / len(words) if words else 0.0
+
+
+def load_kb_snippets(query: str) -> List[Snippet]:
+    """
+    Load all .md from backend/docs/assistant_kb/ from cache; rank by keyword overlap with query;
+    return top KB_TOP_N snippets with source_id, title, content (trimmed), score.
+    """
+    raw = _load_kb_into_cache()
+    if not raw:
+        return []
+    scored: List[tuple] = []
+    for source_id, title, content in raw:
+        score = _keyword_overlap_score(query, f"{title} {content}")
+        scored.append((score, source_id, title, content))
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    top = scored[:KB_TOP_N]
+    return [
+        Snippet(source_id=sid, title=t, content=c.strip(), score=sc)
+        for sc, sid, t, c in top
+    ]
+
+
+def _snippet_dict(source_id: str, title: str, content: str, score: float = 0.0) -> Dict[str, Any]:
     return {
         "source_type": "kb",
         "source_id": source_id,
         "title": title,
         "content": content,
+        "score": score,
     }
 
 
@@ -146,27 +219,9 @@ async def get_portal_facts(
 
 def get_kb_snippets(query: str) -> List[Dict[str, Any]]:
     """
-    Return KB snippets from backend/docs/assistant_kb/*.md.
-    For MVP we return all snippets; query can be used later for simple keyword filtering.
+    Return top KB_TOP_N KB snippets ranked by keyword overlap with query.
+    Uses in-memory cache of backend/docs/assistant_kb/*.md. Each item includes
+    source_id, title, content, score for citations.
     """
-    snippets: List[Dict[str, Any]] = []
-    if not KB_DIR.is_dir():
-        logger.debug("KB dir not found: %s", KB_DIR)
-        return snippets
-
-    for path in sorted(KB_DIR.glob("*.md")):
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-            # Title: first # line or filename
-            title = path.stem.replace("_", " ").replace("-", " ").title()
-            for line in text.splitlines():
-                line = line.strip()
-                if line.startswith("# "):
-                    title = line[2:].strip()
-                    break
-            source_id = f"assistant_kb/{path.name}"
-            snippets.append(_snippet(source_id=source_id, title=title, content=text[:8000]))
-        except Exception as e:
-            logger.warning("Failed to read KB file %s: %s", path, e)
-
-    return snippets
+    snippets_list = load_kb_snippets(query)
+    return [_snippet_dict(s["source_id"], s["title"], s["content"], s["score"]) for s in snippets_list]
