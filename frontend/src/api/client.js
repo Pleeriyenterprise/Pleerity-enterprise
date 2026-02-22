@@ -148,6 +148,9 @@ export const clientAPI = {
   getDocuments: () => apiClient.get('/documents'),
   /** Audit Intelligence: portfolio score, risk_level, properties summary */
   getComplianceSummary: () => apiClient.get('/portfolio/compliance-summary'),
+  /** Property compliance detail: matrix, property_score, risk_index, risk_level (catalog-driven when available). */
+  getComplianceDetail: (propertyId) =>
+    apiClient.get(`/portfolio/properties/${propertyId}/compliance-detail`),
   /** Client-scoped audit timeline (read-only). */
   getAuditTimeline: (limit = 50) =>
     apiClient.get('/portfolio/audit-timeline', { params: { limit } }),

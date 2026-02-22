@@ -427,14 +427,25 @@ const ClientDashboard = () => {
           </div>
         )}
 
-        {/* Risk level from Audit Intelligence (if available) */}
+        {/* Risk level and KPIs from compliance summary (catalog-driven when available) */}
         {portfolioSummary?.risk_level && (
           <p className="text-sm text-gray-600 mb-2">
             <span className="font-medium">Risk level:</span> {portfolioSummary.risk_level}
             {portfolioSummary.portfolio_score != null && (
               <span className="ml-2 text-gray-500">(Portfolio score: {portfolioSummary.portfolio_score}/100)</span>
             )}
+            {portfolioSummary.updated_at && (
+              <span className="ml-2 text-gray-400 text-xs">Updated {new Date(portfolioSummary.updated_at).toLocaleString()}</span>
+            )}
           </p>
+        )}
+        {portfolioSummary?.kpis && (
+          <div className="flex flex-wrap gap-4 mb-4 text-sm">
+            <span className="text-red-600 font-medium">Overdue: {portfolioSummary.kpis.overdue ?? 0}</span>
+            <span className="text-amber-600 font-medium">Expiring (30d): {portfolioSummary.kpis.expiring_30 ?? 0}</span>
+            <span className="text-gray-600 font-medium">Missing: {portfolioSummary.kpis.missing ?? 0}</span>
+            <span className="text-green-600 font-medium">Compliant: {portfolioSummary.kpis.compliant ?? 0}</span>
+          </div>
         )}
 
         {/* Compliance Framework explanation (static, no legal advice) */}
@@ -490,11 +501,11 @@ const ClientDashboard = () => {
                       className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                       onClick={() => navigate(`/properties/${p.property_id}`)}
                     >
-                      <td className="p-3 font-medium text-midnight-blue">{p.property_id}</td>
-                      <td className="p-3">{p.property_score}/100</td>
+                      <td className="p-3 font-medium text-midnight-blue">{p.name || p.property_id}</td>
+                      <td className="p-3">{p.property_score ?? p.score ?? 0}/100</td>
                       <td className="p-3">{p.risk_level}</td>
                       <td className="p-3">{p.overdue_count ?? 0}</td>
-                      <td className="p-3">{p.expiring_soon_count ?? 0}</td>
+                      <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
                     </tr>
                   ))}
                 </tbody>

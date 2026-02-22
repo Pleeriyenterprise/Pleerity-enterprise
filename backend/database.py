@@ -160,10 +160,44 @@ class Database:
                 pass
             await self.db.provisioning_jobs.create_index("client_id")
             await self.db.provisioning_jobs.create_index("status")
+            # Requirements catalog (data-driven compliance definitions)
+            await self.db.requirements_catalog.create_index("code", unique=True)
+            await self.db.requirements_catalog.create_index("category")
+            await self.db.requirements_catalog.create_index("criticality")
+            # Requirements (instance state) - ensure efficient lookups
+            await self.db.requirements.create_index([("client_id", 1), ("property_id", 1)])
+            await self.db.requirements.create_index([("property_id", 1), ("requirement_type", 1)])
+            await self._seed_requirements_catalog()
             logger.info("MongoDB indexes created/verified")
         except Exception as e:
             # Indexes may already exist, log but don't fail
             logger.warning(f"Index creation note: {e}")
+
+    async def _seed_requirements_catalog(self):
+        """Seed requirements_catalog for data-driven compliance (idempotent by code)."""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        items = [
+            {"code": "gas_safety", "title": "Gas Safety (CP12)", "description": "Annual gas safety inspection", "category": "SAFETY", "criticality": "HIGH", "weight": 18, "expiry_type": "EXPIRING", "validity_days": 365, "expiring_windows_days": 30, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": {"all": [{"field": "has_gas_supply", "op": "==", "value": True}]}, "default_actions": [], "help_text": "Required for properties with gas.", "updated_at": now},
+            {"code": "eicr", "title": "EICR", "description": "Electrical Installation Condition Report", "category": "ELECTRICAL", "criticality": "HIGH", "weight": 16, "expiry_type": "EXPIRING", "validity_days": 1825, "expiring_windows_days": 60, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Typically every 5 years.", "updated_at": now},
+            {"code": "epc", "title": "EPC", "description": "Energy Performance Certificate", "category": "ENERGY", "criticality": "HIGH", "weight": 8, "expiry_type": "EXPIRING", "validity_days": 3650, "expiring_windows_days": 90, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Minimum E for rental.", "updated_at": now},
+            {"code": "smoke_alarms", "title": "Smoke Alarms", "description": "Smoke alarms required", "category": "FIRE", "criticality": "HIGH", "weight": 8, "expiry_type": "NON_EXPIRING", "validity_days": None, "expiring_windows_days": None, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Smoke alarms on each storey.", "updated_at": now},
+            {"code": "co_alarms", "title": "CO Alarms", "description": "Carbon monoxide alarms where solid fuel", "category": "FIRE", "criticality": "HIGH", "weight": 6, "expiry_type": "NON_EXPIRING", "validity_days": None, "expiring_windows_days": None, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Where applicable.", "updated_at": now},
+            {"code": "deposit_pi", "title": "Deposit Protection", "description": "Deposit in approved scheme", "category": "TENANCY", "criticality": "HIGH", "weight": 10, "expiry_type": "EVENT_BASED", "validity_days": None, "expiring_windows_days": None, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Prescribed information to tenant.", "updated_at": now},
+            {"code": "right_to_rent", "title": "Right to Rent", "description": "Right to rent checks", "category": "TENANCY", "criticality": "HIGH", "weight": 7, "expiry_type": "EVENT_BASED", "validity_days": None, "expiring_windows_days": None, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Check and retain copies.", "updated_at": now},
+            {"code": "how_to_rent", "title": "How to Rent", "description": "How to Rent guide to tenant", "category": "TENANCY", "criticality": "MED", "weight": 5, "expiry_type": "EVENT_BASED", "validity_days": None, "expiring_windows_days": None, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Latest version.", "updated_at": now},
+            {"code": "tenancy_agreement", "title": "Tenancy Agreement", "description": "Written tenancy agreement", "category": "TENANCY", "criticality": "MED", "weight": 6, "expiry_type": "EVENT_BASED", "validity_days": None, "expiring_windows_days": None, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Signed agreement.", "updated_at": now},
+            {"code": "hmo_license", "title": "HMO Licence", "description": "HMO licence where required", "category": "REGULATORY", "criticality": "HIGH", "weight": 18, "expiry_type": "EXPIRING", "validity_days": 1825, "expiring_windows_days": 90, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": {"any": [{"field": "is_hmo", "op": "==", "value": True}, {"field": "licence_required", "op": "==", "value": "YES"}]}, "default_actions": [], "help_text": "Mandatory for licensable HMO.", "updated_at": now},
+            {"code": "fire_risk_assessment", "title": "Fire Risk Assessment", "description": "Fire risk assessment (HMO)", "category": "FIRE", "criticality": "HIGH", "weight": 6, "expiry_type": "EXPIRING", "validity_days": 365, "expiring_windows_days": 30, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": {"field": "is_hmo", "op": "==", "value": True}, "default_actions": [], "help_text": "Required for HMO.", "updated_at": now},
+            {"code": "legionella", "title": "Legionella Risk Assessment", "description": "Legionella risk assessment", "category": "HEALTH", "criticality": "LOW", "weight": 4, "expiry_type": "EXPIRING", "validity_days": 730, "expiring_windows_days": 60, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Water system risk.", "updated_at": now},
+        ]
+        for item in items:
+            await self.db.requirements_catalog.update_one(
+                {"code": item["code"]},
+                {"$set": item},
+                upsert=True,
+            )
+        logger.info("Requirements catalog seeded/updated")
 
     async def _seed_notification_templates(self):
         """Seed notification_templates for orchestrator (idempotent upsert by template_key)."""

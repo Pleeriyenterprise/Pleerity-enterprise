@@ -1,19 +1,22 @@
 """
 Portfolio compliance summary for Audit Intelligence Platform.
-GET /api/portfolio/compliance-summary returns portfolio_score, risk_level, and per-property summary.
-Uses task-defined requirement-level points (VALID=100, EXPIRING_SOON=70, MISSING=30, OVERDUE=0)
-and portfolio weighting by requirement count. Does not replace existing /client/compliance-score.
+GET /api/portfolio/compliance-summary: catalog-driven when catalog present, else legacy.
+GET /api/portfolio/properties/{id}/compliance-detail: matrix, score, risk (catalog-driven).
 """
-from fastapi import APIRouter, Request, Depends, status
+from fastapi import APIRouter, Request, Depends, status, HTTPException
 from database import database
 from middleware import client_route_guard
 from utils.risk_bands import score_to_risk_level
+from services.catalog_compliance import (
+    get_property_compliance_detail,
+    get_portfolio_compliance_from_catalog,
+)
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"], dependencies=[Depends(client_route_guard)])
 
-# Task-defined requirement status -> points (no legal certification implied)
 REQUIREMENT_POINTS = {
     "VALID": 100,
     "COMPLIANT": 100,
@@ -28,14 +31,38 @@ REQUIREMENT_POINTS = {
 @router.get("/compliance-summary")
 async def get_compliance_summary(request: Request):
     """
-    Portfolio compliance summary for Audit Intelligence views.
-    Returns portfolio_score, risk_level, and per-property summary.
-    Evidence-based status only; not legal advice or certification.
+    Portfolio compliance summary. Uses catalog-driven scoring when requirements_catalog is populated;
+    otherwise falls back to legacy (equal weight, fixed points). Returns portfolio_score, risk_level,
+    and when catalog-driven: updated_at, kpis, properties with name, score, risk_level, overdue_count,
+    expiring_30_count, missing_count.
     """
     user = await client_route_guard(request)
     client_id = user["client_id"]
+    catalog_result = await get_portfolio_compliance_from_catalog(client_id)
+    if catalog_result:
+        return {
+            "portfolio_score": catalog_result["portfolio_score"],
+            "risk_level": catalog_result["risk_level"],
+            "portfolio_risk_level": catalog_result.get("portfolio_risk_level", catalog_result["risk_level"]),
+            "updated_at": catalog_result.get("updated_at", datetime.now(timezone.utc).isoformat()),
+            "kpis": catalog_result.get("kpis", {}),
+            "properties": [
+                {
+                    "property_id": p["property_id"],
+                    "name": p.get("name"),
+                    "property_score": p.get("score"),
+                    "score": p.get("score"),
+                    "risk_level": p["risk_level"],
+                    "overdue_count": p.get("overdue_count", 0),
+                    "expiring_soon_count": p.get("expiring_30_count", 0),
+                    "expiring_30_count": p.get("expiring_30_count", 0),
+                    "missing_count": p.get("missing_count", 0),
+                }
+                for p in catalog_result.get("properties", [])
+            ],
+        }
+    # Legacy path
     db = database.get_db()
-
     properties = await db.properties.find(
         {"client_id": client_id},
         {"_id": 0, "property_id": 1, "address_line_1": 1, "postcode": 1, "nickname": 1},
@@ -46,24 +73,18 @@ async def get_compliance_summary(request: Request):
             "risk_level": "Low Risk",
             "properties": [],
         }
-
     requirements = await db.requirements.find(
         {"client_id": client_id},
         {"_id": 0, "property_id": 1, "status": 1},
     ).to_list(1000)
-
-    # Per-property: requirement-level points -> weighted average = property score
-    # (Equal weight per requirement as per task: "weighted average of requirement scores".)
     total_weighted_score = 0.0
     total_requirements = 0
     property_summaries = []
-
     for prop in properties:
         pid = prop["property_id"]
         prop_reqs = [r for r in requirements if r.get("property_id") == pid]
         overdue_count = sum(1 for r in prop_reqs if r.get("status") in ("OVERDUE", "EXPIRED"))
         expiring_soon_count = sum(1 for r in prop_reqs if r.get("status") == "EXPIRING_SOON")
-
         if not prop_reqs:
             property_score = 100
         else:
@@ -74,30 +95,94 @@ async def get_compliance_summary(request: Request):
                 points.append(pt)
             property_score = round(sum(points) / len(points))
             property_score = max(0, min(100, property_score))
-
         risk_level = score_to_risk_level(property_score)
         total_weighted_score += property_score * len(prop_reqs)
         total_requirements += len(prop_reqs)
+        name = prop.get("nickname") or prop.get("address_line_1") or pid
         property_summaries.append({
             "property_id": pid,
+            "name": name,
             "property_score": property_score,
             "risk_level": risk_level,
             "overdue_count": overdue_count,
             "expiring_soon_count": expiring_soon_count,
         })
-
-    # Portfolio score: weighted average across properties by requirement count
     if total_requirements == 0:
         portfolio_score = 100
     else:
         portfolio_score = round(total_weighted_score / total_requirements)
         portfolio_score = max(0, min(100, portfolio_score))
     portfolio_risk = score_to_risk_level(portfolio_score)
-
     return {
         "portfolio_score": portfolio_score,
         "risk_level": portfolio_risk,
         "properties": property_summaries,
+    }
+
+
+@router.get("/properties/{property_id}/compliance-detail")
+async def get_property_compliance_detail_route(request: Request, property_id: str):
+    """
+    Property-level compliance detail: requirement matrix (from catalog + state), property_score,
+    risk_index, risk_level. Evidence-based status only; not legal advice.
+    """
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    detail = await get_property_compliance_detail(client_id, property_id)
+    if detail is not None:
+        return detail
+    # Fallback: no catalog or no applicable; return minimal from requirements
+    requirements = await db.requirements.find(
+        {"client_id": client_id, "property_id": property_id},
+        {"_id": 0, "requirement_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1},
+    ).to_list(200)
+    from services.catalog_compliance import _days_to_expiry, _requirement_numeric_score
+    matrix = []
+    for r in requirements:
+        due = r.get("due_date")
+        days = _days_to_expiry(due)
+        matrix.append({
+            "requirement_code": r.get("requirement_type"),
+            "title": r.get("description") or r.get("requirement_type"),
+            "status": r.get("status") or "PENDING",
+            "numeric_score": _requirement_numeric_score(r.get("status"), due),
+            "criticality": "MED",
+            "weight": 1,
+            "expiry_date": due.isoformat() if hasattr(due, "isoformat") else due,
+            "days_to_expiry": days,
+            "evidence_doc_id": None,
+            "requirement_id": r.get("requirement_id"),
+        })
+    if not matrix:
+        property_score = 100
+    else:
+        property_score = round(sum(m["numeric_score"] for m in matrix) / len(matrix))
+    kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
+    for m in matrix:
+        s = (m.get("status") or "PENDING").upper()
+        if s in ("OVERDUE", "EXPIRED"):
+            kpis["overdue"] += 1
+        elif s == "EXPIRING_SOON" and (m.get("days_to_expiry") or 0) <= 30:
+            kpis["expiring_30"] += 1
+        elif s in ("PENDING", "MISSING"):
+            kpis["missing"] += 1
+        else:
+            kpis["compliant"] += 1
+    return {
+        "property_id": property_id,
+        "property_name": prop.get("nickname") or prop.get("address_line_1") or property_id,
+        "matrix": matrix,
+        "property_score": property_score,
+        "risk_index": 0.0,
+        "risk_level": score_to_risk_level(property_score),
+        "kpis": kpis,
     }
 
 

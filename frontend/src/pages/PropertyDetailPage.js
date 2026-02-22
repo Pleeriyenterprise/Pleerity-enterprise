@@ -32,6 +32,7 @@ export default function PropertyDetailPage() {
   const navigate = useNavigate();
   const [property, setProperty] = useState(null);
   const [requirements, setRequirements] = useState([]);
+  const [complianceDetail, setComplianceDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -40,18 +41,28 @@ export default function PropertyDetailPage() {
     async function load() {
       try {
         setError(null);
-        const [propsRes, reqsRes] = await Promise.all([
-          clientAPI.getProperties(),
-          clientAPI.getPropertyRequirements(propertyId),
-        ]);
+        const propsRes = await clientAPI.getProperties();
         if (cancelled) return;
         const prop = (propsRes.data.properties || []).find((p) => p.property_id === propertyId);
         setProperty(prop || null);
-        setRequirements(reqsRes.data.requirements || []);
+        try {
+          const detailRes = await clientAPI.getComplianceDetail(propertyId);
+          if (!cancelled && detailRes?.data) {
+            setComplianceDetail(detailRes.data);
+            setRequirements(detailRes.data.matrix || []);
+            return;
+          }
+        } catch (_) {
+          /* fallback to requirements list */
+        }
+        const reqsRes = await clientAPI.getPropertyRequirements(propertyId);
+        if (!cancelled) {
+          setRequirements(reqsRes.data?.requirements || []);
+          setComplianceDetail(null);
+        }
       } catch (e) {
         if (!cancelled) {
           setError(e.response?.data?.detail || 'Failed to load property');
-          console.warn('Property/compliance-detail not available, using fallback:', e);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -68,6 +79,11 @@ export default function PropertyDetailPage() {
     const diff = Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24));
     return diff;
   };
+  const isMatrixRow = (r) => r.title != null || r.requirement_code != null;
+  const rowTitle = (r) => r.title || r.requirement_type || r.description || r.name || '—';
+  const rowExpiry = (r) => r.expiry_date || r.due_date;
+  const rowDays = (r) => (r.days_to_expiry != null ? r.days_to_expiry : daysLeft(rowExpiry(r)));
+  const rowReqId = (r) => r.requirement_id || r.id;
 
   if (loading) {
     return (
@@ -118,7 +134,17 @@ export default function PropertyDetailPage() {
         This is an evidence-based status summary. It is not legal advice.
       </p>
 
-      {/* Requirements matrix */}
+      {complianceDetail && (
+        <div className="mb-6 flex flex-wrap gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+          <span className="font-medium text-midnight-blue">Score: {complianceDetail.property_score}/100</span>
+          <span className="font-medium text-midnight-blue">Risk level: {complianceDetail.risk_level}</span>
+          {complianceDetail.risk_index != null && complianceDetail.risk_index > 0 && (
+            <span className="text-gray-600">Risk index: {complianceDetail.risk_index}</span>
+          )}
+        </div>
+      )}
+
+      {/* Requirements matrix (from compliance-detail API when available, else requirements list) */}
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 font-medium text-midnight-blue">
           Requirements
@@ -142,32 +168,44 @@ export default function PropertyDetailPage() {
                   </td>
                 </tr>
               )}
-              {requirements.map((r) => {
+              {requirements.map((r, idx) => {
                 const status = getStatus(r);
                 const Icon = status.icon;
-                const days = daysLeft(r.expiry_date);
+                const days = rowDays(r);
                 return (
-                  <tr key={r.requirement_id || r.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 font-medium text-midnight-blue">{r.requirement_type || r.title || r.name || '—'}</td>
+                  <tr key={rowReqId(r) || r.requirement_code || idx} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="p-3 font-medium text-midnight-blue">{rowTitle(r)}</td>
                     <td className="p-3">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs ${status.className}`}>
                         <Icon className="w-3.5 h-3.5" />
                         {status.text}
                       </span>
                     </td>
-                    <td className="p-3 text-gray-600">{formatDate(r.expiry_date)}</td>
+                    <td className="p-3 text-gray-600">{formatDate(rowExpiry(r))}</td>
                     <td className="p-3">{days != null ? (days < 0 ? `${Math.abs(days)} days overdue` : `${days} days`) : '—'}</td>
                     <td className="p-3">
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-electric-teal border-electric-teal"
-                          onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${r.requirement_id || r.id}`)}
-                        >
-                          <Upload className="w-3.5 h-3.5 mr-1" />
-                          Upload
-                        </Button>
+                        {r.evidence_doc_id ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-electric-teal border-electric-teal"
+                            onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}
+                          >
+                            <FileText className="w-3.5 h-3.5 mr-1" />
+                            View document
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-electric-teal border-electric-teal"
+                            onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}
+                          >
+                            <Upload className="w-3.5 h-3.5 mr-1" />
+                            Upload
+                          </Button>
+                        )}
                         <a
                           href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`}
                           className="text-sm text-gray-500 hover:text-electric-teal"
