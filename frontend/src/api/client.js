@@ -157,6 +157,11 @@ export const clientAPI = {
   /** Generate Evidence Readiness PDF (POST body: { scope: 'portfolio' | 'property', property_id? }). Returns blob. */
   generateEvidenceReadinessReport: (body) =>
     apiClient.post('/reports/generate', body, { responseType: 'blob' }),
+  /** List previous Evidence Readiness report runs (metadata). */
+  listEvidenceReadinessReports: () => apiClient.get('/reports'),
+  /** Download a previous report by id (re-generates PDF). Returns blob. */
+  downloadEvidenceReadinessReport: (reportId) =>
+    apiClient.get(`/reports/${reportId}/download`, { responseType: 'blob' }),
   /** Client-scoped audit timeline (read-only). */
   getAuditTimeline: (limit = 50) =>
     apiClient.get('/portfolio/audit-timeline', { params: { limit } }),

@@ -38,10 +38,12 @@ const ReportsPage = () => {
   const { user } = useAuth();
   const { hasFeature } = useEntitlements();
   const [availableReports, setAvailableReports] = useState([]);
+  const [previousReports, setPreviousReports] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(null);
   const [properties, setProperties] = useState([]);
+  const [selectedPropertyForReport, setSelectedPropertyForReport] = useState('');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [creatingSchedule, setCreatingSchedule] = useState(false);
   const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
@@ -67,14 +69,16 @@ const ReportsPage = () => {
   const fetchData = async () => {
     try {
       setUpgradeRequiredDetail(null);
-      const [reportsRes, propsRes, schedulesRes] = await Promise.all([
+      const [reportsRes, propsRes, schedulesRes, previousRes] = await Promise.all([
         api.get('/reports/available'),
         api.get('/client/properties'),
-        api.get('/reports/schedules')
+        api.get('/reports/schedules'),
+        hasReportsAccess ? api.get('/reports').catch(() => ({ data: { reports: [] } })) : Promise.resolve({ data: { reports: [] } })
       ]);
       setAvailableReports(reportsRes.data.reports || []);
       setProperties(propsRes.data.properties || []);
       setSchedules(schedulesRes.data.schedules || []);
+      setPreviousReports(previousRes?.data?.reports || []);
     } catch (error) {
       if (error.isPlanGateDenied && error.upgradeDetail) {
         setUpgradeRequiredDetail(error.upgradeDetail);
@@ -444,38 +448,154 @@ const ReportsPage = () => {
                 Evidence Readiness Report
               </CardTitle>
               <p className="text-sm text-gray-500 mt-1">
-                PDF with cover, executive summary, portfolio breakdown, property requirement matrix, methodology, and audit snapshot. Not legal advice.
+                PDF with cover, executive summary, portfolio breakdown, property requirement matrix, methodology, and audit snapshot. Risk level and evidence readiness only; not legal advice.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  disabled={generating === 'evidence_readiness_portfolio'}
+                  onClick={async () => {
+                    setGenerating('evidence_readiness_portfolio');
+                    try {
+                      const res = await api.post('/reports/generate', { scope: 'portfolio' }, { responseType: 'blob' });
+                      const url = window.URL.createObjectURL(new Blob([res.data]));
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.setAttribute('download', `evidence_readiness_portfolio_${new Date().toISOString().slice(0, 10)}.pdf`);
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      window.URL.revokeObjectURL(url);
+                      toast.success('Evidence Readiness PDF downloaded');
+                      fetchData();
+                    } catch (err) {
+                      if (err.response?.status === 403) toast.error('Upgrade required for PDF reports');
+                      else toast.error('Failed to generate report');
+                    } finally {
+                      setGenerating(null);
+                    }
+                  }}
+                  className="bg-electric-teal hover:bg-teal-600"
+                  data-testid="generate-evidence-readiness-pdf"
+                >
+                  {generating === 'evidence_readiness_portfolio' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                  Generate portfolio PDF
+                </Button>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedPropertyForReport}
+                    onChange={(e) => setSelectedPropertyForReport(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal text-sm min-w-[200px]"
+                    data-testid="evidence-readiness-property-select"
+                  >
+                    <option value="">Select property…</option>
+                    {properties.map((p) => (
+                      <option key={p.property_id} value={p.property_id}>
+                        {p.address_line_1 || p.nickname || p.property_id}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    disabled={!selectedPropertyForReport || generating === 'evidence_readiness_property'}
+                    onClick={async () => {
+                      setGenerating('evidence_readiness_property');
+                      try {
+                        const res = await api.post('/reports/generate', { scope: 'property', property_id: selectedPropertyForReport }, { responseType: 'blob' });
+                        const url = window.URL.createObjectURL(new Blob([res.data]));
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', `evidence_readiness_property_${selectedPropertyForReport}_${new Date().toISOString().slice(0, 10)}.pdf`);
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        window.URL.revokeObjectURL(url);
+                        toast.success('Evidence Readiness PDF downloaded');
+                        fetchData();
+                      } catch (err) {
+                        if (err.response?.status === 403) toast.error('Upgrade required for PDF reports');
+                        else toast.error('Failed to generate report');
+                      } finally {
+                        setGenerating(null);
+                      }
+                    }}
+                    variant="outline"
+                    data-testid="generate-evidence-readiness-property-pdf"
+                  >
+                    {generating === 'evidence_readiness_property' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                    Generate property PDF
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {/* Previous Evidence Readiness reports */}
+        {hasReportsAccess && previousReports.length > 0 && (
+          <Card className="mb-6" data-testid="previous-reports-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Previous reports
+              </CardTitle>
+              <p className="text-sm text-gray-500 mt-1">
+                Download a copy (re-generated with current data).
               </p>
             </CardHeader>
             <CardContent>
-              <Button
-                disabled={generating === 'evidence_readiness'}
-                onClick={async () => {
-                  setGenerating('evidence_readiness');
-                  try {
-                    const res = await api.post('/reports/generate', { scope: 'portfolio' }, { responseType: 'blob' });
-                    const url = window.URL.createObjectURL(new Blob([res.data]));
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.setAttribute('download', `evidence_readiness_portfolio_${new Date().toISOString().slice(0, 10)}.pdf`);
-                    document.body.appendChild(link);
-                    link.click();
-                    link.remove();
-                    window.URL.revokeObjectURL(url);
-                    toast.success('Evidence Readiness PDF downloaded');
-                  } catch (err) {
-                    if (err.response?.status === 403) toast.error('Upgrade required for PDF reports');
-                    else toast.error('Failed to generate report');
-                  } finally {
-                    setGenerating(null);
-                  }
-                }}
-                className="bg-electric-teal hover:bg-teal-600"
-                data-testid="generate-evidence-readiness-pdf"
-              >
-                {generating === 'evidence_readiness' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-                Generate PDF
-              </Button>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 font-medium">Date</th>
+                      <th className="text-left py-2 font-medium">Scope</th>
+                      <th className="text-left py-2 font-medium">Property</th>
+                      <th className="text-left py-2 font-medium">Score / Risk</th>
+                      <th className="text-right py-2 font-medium">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previousReports.map((r) => (
+                      <tr key={r.report_id} className="border-b border-gray-100" data-testid={`previous-report-${r.report_id}`}>
+                        <td className="py-2">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                        <td className="py-2">{r.scope === 'property' ? 'Property' : 'Portfolio'}</td>
+                        <td className="py-2">{r.property_id ? (properties.find(p => p.property_id === r.property_id)?.address_line_1 || r.property_id) : '—'}</td>
+                        <td className="py-2">{r.score_at_time != null ? `${r.score_at_time}` : '—'} / {r.risk_level_at_time || '—'}</td>
+                        <td className="py-2 text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={generating === `download_${r.report_id}`}
+                            onClick={async () => {
+                              setGenerating(`download_${r.report_id}`);
+                              try {
+                                const res = await api.get(`/reports/${r.report_id}/download`, { responseType: 'blob' });
+                                const url = window.URL.createObjectURL(new Blob([res.data]));
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.setAttribute('download', `evidence_readiness_${r.scope}_${r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : 'report'}.pdf`);
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+                                window.URL.revokeObjectURL(url);
+                                toast.success('Report downloaded');
+                              } catch (err) {
+                                toast.error('Download failed');
+                              } finally {
+                                setGenerating(null);
+                              }
+                            }}
+                            data-testid={`download-report-${r.report_id}`}
+                          >
+                            {generating === `download_${r.report_id}` ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            Download
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         )}

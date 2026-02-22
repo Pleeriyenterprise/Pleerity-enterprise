@@ -1,16 +1,21 @@
 """Reporting Routes - Generate and download compliance reports."""
+import asyncio
+import io
+import logging
+from datetime import datetime, timezone
+from typing import Optional, List
+
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
 from database import database
 from middleware import client_route_guard, admin_route_guard
 from models import AuditAction
 from utils.audit import create_audit_log
 from services.reporting_service import reporting_service
-from typing import Optional, List
-from pydantic import BaseModel
-from datetime import datetime
-import io
-import logging
+from services.pdf_report_builder import build_portfolio_report, build_property_report
+from services.report_service import load_evidence_readiness_data
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -31,15 +36,24 @@ class GenerateReportRequest(BaseModel):
     property_id: Optional[str] = None
 
 
+def _score_and_risk_from_report_data(report_data: dict) -> tuple:
+    """Extract portfolio score and risk level for reports collection metadata."""
+    properties = report_data.get("properties") or []
+    scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
+    score_at_time = round(sum(scores) / len(scores)) if scores else None
+    risk_levels = [p.get("risk_level") for p in properties if p.get("risk_level")]
+    risk_level_at_time = risk_levels[0] if risk_levels else None
+    return score_at_time, risk_level_at_time
+
+
 @router.post("/generate")
 async def generate_evidence_readiness_report(request: Request, body: GenerateReportRequest):
     """
-    Generate Evidence Readiness PDF report.
+    Generate Evidence Readiness PDF report (deterministic template).
     Body: { scope: "portfolio" | "property", property_id?: string }.
-    Returns PDF file. Plan-gated by reports_pdf.
+    Returns application/pdf. Stores metadata in reports collection. Plan-gated by reports_pdf.
     """
     from services.plan_registry import plan_registry
-    from services.report_service import generate_evidence_readiness_pdf
 
     user = await client_route_guard(request)
     allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
@@ -51,21 +65,46 @@ async def generate_evidence_readiness_report(request: Request, body: GenerateRep
     if body.scope == "property" and not body.property_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id required when scope is property")
     try:
-        pdf_buffer = await generate_evidence_readiness_pdf(
+        report_data = await load_evidence_readiness_data(
             client_id=user["client_id"],
             scope=body.scope,
             property_id=body.property_id,
         )
+        if body.scope == "portfolio":
+            pdf_bytes = await asyncio.to_thread(build_portfolio_report, user["client_id"], report_data)
+        else:
+            pdf_bytes = await asyncio.to_thread(
+                build_property_report, user["client_id"], body.property_id, report_data
+            )
+        score_at_time, risk_level_at_time = _score_and_risk_from_report_data(report_data)
+        now = datetime.now(timezone.utc)
+        db = database.get_db()
+        doc = {
+            "client_id": user["client_id"],
+            "scope": body.scope,
+            "property_id": body.property_id,
+            "created_at": now,
+            "score_at_time": score_at_time,
+            "risk_level_at_time": risk_level_at_time,
+            "storage_url": None,
+        }
+        ins = await db.reports.insert_one(doc)
+        report_id = str(ins.inserted_id)
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user.get("portal_user_id"),
             client_id=user["client_id"],
             resource_type="report",
-            metadata={"report_type": "evidence_readiness", "scope": body.scope, "property_id": body.property_id},
+            metadata={
+                "report_type": "evidence_readiness",
+                "scope": body.scope,
+                "property_id": body.property_id,
+                "report_id": report_id,
+            },
         )
-        filename = f"evidence_readiness_{body.scope}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        filename = f"evidence_readiness_{body.scope}_{now.strftime('%Y%m%d_%H%M')}.pdf"
         return StreamingResponse(
-            pdf_buffer,
+            io.BytesIO(pdf_bytes),
             media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -74,6 +113,70 @@ async def generate_evidence_readiness_report(request: Request, body: GenerateRep
     except Exception as e:
         logger.exception("Evidence Readiness PDF error: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate report")
+
+
+@router.get("")
+@router.get("/list")
+async def list_reports(request: Request):
+    """List previous Evidence Readiness report runs for the client (metadata only)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    cursor = db.reports.find(
+        {"client_id": user["client_id"]},
+        {"_id": 1, "scope": 1, "property_id": 1, "created_at": 1, "score_at_time": 1, "risk_level_at_time": 1},
+    ).sort("created_at", -1).limit(100)
+    items = []
+    async for row in cursor:
+        items.append({
+            "report_id": str(row["_id"]),
+            "scope": row.get("scope"),
+            "property_id": row.get("property_id"),
+            "created_at": row.get("created_at").isoformat() if row.get("created_at") else None,
+            "score_at_time": row.get("score_at_time"),
+            "risk_level_at_time": row.get("risk_level_at_time"),
+        })
+    return {"reports": items}
+
+
+@router.get("/{report_id}/download")
+async def download_report_by_id(request: Request, report_id: str):
+    """Re-generate and download PDF for a previous report run (same scope/property_id, current data)."""
+    from services.plan_registry import plan_registry
+
+    user = await client_route_guard(request)
+    allowed, _, _ = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Upgrade required for PDF reports")
+    db = database.get_db()
+    from bson import ObjectId
+    try:
+        oid = ObjectId(report_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    row = await db.reports.find_one({"_id": oid, "client_id": user["client_id"]})
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    scope = row.get("scope") or "portfolio"
+    property_id = row.get("property_id")
+    try:
+        report_data = await load_evidence_readiness_data(
+            client_id=user["client_id"], scope=scope, property_id=property_id
+        )
+        if scope == "portfolio":
+            pdf_bytes = await asyncio.to_thread(build_portfolio_report, user["client_id"], report_data)
+        else:
+            pdf_bytes = await asyncio.to_thread(
+                build_property_report, user["client_id"], property_id, report_data
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    created = row.get("created_at") or datetime.now(timezone.utc)
+    filename = f"evidence_readiness_{scope}_{created.strftime('%Y%m%d_%H%M')}.pdf"
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 @router.get("/compliance-summary")

@@ -2,6 +2,7 @@
 Evidence Readiness PDF report service.
 Enterprise-grade report with cover, executive summary, portfolio breakdown,
 property requirement matrix, methodology, audit snapshot, and disclaimer.
+Data loading is async; PDF build is delegated to pdf_report_builder (sync).
 """
 from database import database
 from datetime import datetime, timezone, timedelta
@@ -227,3 +228,73 @@ async def generate_evidence_readiness_pdf(
     doc.build(elements)
     buffer.seek(0)
     return buffer
+
+
+async def load_evidence_readiness_data(
+    client_id: str,
+    scope: str,
+    property_id: Optional[str] = None,
+) -> dict:
+    """
+    Load all data needed for Evidence Readiness PDF (portfolio or property).
+    Used by route to pass report_data to pdf_report_builder. Returns dict with
+    client, properties, requirements, audit_logs, now_iso, branding; for property
+    scope also score_delta, score_change_summary from latest score_change_log.
+    """
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    query = {"client_id": client_id}
+    if scope == "property" and property_id:
+        query["property_id"] = property_id
+    properties = await db.properties.find(query, {"_id": 0}).to_list(500)
+    if scope == "property" and property_id and not properties:
+        raise ValueError("Property not found")
+
+    client = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "company_name": 1, "full_name": 1, "customer_reference": 1},
+    )
+    company_name = (client or {}).get("company_name") or (client or {}).get("full_name") or "Client"
+    property_ids = [p["property_id"] for p in properties]
+    requirements = await db.requirements.find(
+        {"client_id": client_id, "property_id": {"$in": property_ids}},
+        {"_id": 0, "property_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1},
+    ).to_list(5000)
+    cutoff = (now - timedelta(days=30)).isoformat()
+    audit_logs = await db.audit_logs.find(
+        {"client_id": client_id, "timestamp": {"$gte": cutoff}},
+        {"_id": 0, "action": 1, "resource_type": 1, "resource_id": 1, "timestamp": 1, "metadata": 1},
+    ).sort("timestamp", -1).to_list(500)
+
+    branding = {"primary_color": "#0B1D3A", "secondary_color": "#00B8A9", "company_name": company_name}
+    try:
+        from services.professional_reports import professional_report_generator
+        branding = await professional_report_generator.get_branding(client_id)
+    except Exception:
+        pass
+
+    report_data = {
+        "client": client or {},
+        "properties": properties,
+        "requirements": requirements,
+        "audit_logs": audit_logs,
+        "now_iso": now.isoformat(),
+        "branding": branding,
+    }
+
+    if scope == "property" and property_id:
+        latest_log = await db.score_change_log.find_one(
+            {"client_id": client_id, "property_id": property_id},
+            sort=[("created_at", -1)],
+            projection={"previous_score": 1, "new_score": 1, "delta": 1, "reason": 1},
+        )
+        if latest_log:
+            report_data["score_delta"] = latest_log.get("delta")
+            reason = latest_log.get("reason") or ""
+            d = latest_log.get("delta")
+            if d is not None:
+                report_data["score_change_summary"] = f"Delta {d:+d}. {reason}"[:80]
+            else:
+                report_data["score_change_summary"] = reason[:80] if reason else None
+
+    return report_data
