@@ -43,82 +43,83 @@ class TestStatusFactorMapping:
 
 
 class TestRenormalizationWhenGasNotApplicable:
-    """Gas excluded when has_gas/has_gas_supply false; remaining weights renormalize to 100."""
+    """Gas excluded when cert_gas_safety != 'YES'; remaining weights renormalize to 100 (catalog-based)."""
 
     def test_applicable_weights_with_gas(self):
-        prop = {"has_gas": True, "has_gas_supply": True, "licence_required": "NO"}
+        prop = {"cert_gas_safety": "YES", "licence_required": "NO"}
         w = _applicable_weights(prop)
-        assert "GAS_SAFETY" in w
-        assert w["GAS_SAFETY"] == 30
-        assert "EICR" in w
-        assert "EPC" in w
-        assert "LICENCE" not in w
-        assert "TENANCY_BUNDLE" in w
+        assert "GAS_SAFETY_CERT" in w
+        assert w["GAS_SAFETY_CERT"] == 30
+        assert "EICR_CERT" in w
+        assert "EPC_CERT" in w
+        assert "PROPERTY_LICENCE" not in w
 
     def test_applicable_weights_without_gas(self):
-        prop = {"has_gas": False, "has_gas_supply": False, "licence_required": ""}
+        prop = {"cert_gas_safety": "NO", "licence_required": ""}
         w = _applicable_weights(prop)
-        assert "GAS_SAFETY" not in w
-        assert "EICR" in w
-        assert "EPC" in w
-        assert "TENANCY_BUNDLE" in w
+        assert "GAS_SAFETY_CERT" not in w
+        assert "EICR_CERT" in w
+        assert "EPC_CERT" in w
 
     def test_score_computed_only_from_applicable(self):
+        # cert_gas_safety=NO => no gas; tenancy_active=True => EICR, EPC, TENANCY_AGREEMENT, HOW_TO_RENT applicable
         prop = {
             "property_id": "p1",
-            "has_gas": False,
-            "has_gas_supply": False,
+            "cert_gas_safety": "NO",
             "licence_required": "NO",
             "is_hmo": False,
+            "tenancy_active": True,
         }
         requirements = [
             {"requirement_id": "r1", "requirement_type": "EICR", "status": "COMPLIANT", "due_date": "2026-12-31T00:00:00Z"},
             {"requirement_id": "r2", "requirement_type": "EPC", "status": "COMPLIANT", "due_date": "2026-12-31T00:00:00Z"},
             {"requirement_id": "r3", "requirement_type": "TENANCY_AGREEMENT", "status": "COMPLIANT", "due_date": "2026-12-31T00:00:00Z"},
+            {"requirement_id": "r4", "requirement_type": "HOW_TO_RENT", "status": "COMPLIANT", "due_date": "2026-12-31T00:00:00Z"},
         ]
         documents = [
             {"requirement_id": "r1", "status": "VERIFIED"},
             {"requirement_id": "r2", "status": "VERIFIED"},
             {"requirement_id": "r3", "status": "VERIFIED"},
+            {"requirement_id": "r4", "status": "VERIFIED"},
         ]
         result = compute_property_score(prop, requirements, documents)
         assert result["score_0_100"] == 100
         assert result["risk_level"] == "Low risk"
         keys_in_breakdown = {r["requirement_key"] for r in result["breakdown"]}
-        assert "GAS_SAFETY" not in keys_in_breakdown
-        assert "EICR" in keys_in_breakdown
-        assert "EPC" in keys_in_breakdown
+        assert "GAS_SAFETY_CERT" not in keys_in_breakdown
+        assert "EICR_CERT" in keys_in_breakdown
+        assert "EPC_CERT" in keys_in_breakdown
 
 
 class TestCriticalMissingForcesCritical:
-    """Any critical (Gas, EICR, Licence when required) missing => Critical risk even if score high."""
+    """Any critical (Gas, EICR, Licence when required) missing => Critical risk even if score high (catalog keys)."""
 
     def test_critical_missing_forces_critical(self):
-        applicable = {"GAS_SAFETY": 30, "EICR": 25, "EPC": 15, "TENANCY_BUNDLE": 10}
+        applicable = {"GAS_SAFETY_CERT": 30, "EICR_CERT": 25, "EPC_CERT": 15, "TENANCY_AGREEMENT": 10}
         breakdown = [
-            {"requirement_key": "EICR", "status": "COMPLIANT", "status_factor": 1.0},
-            {"requirement_key": "EPC", "status": "COMPLIANT", "status_factor": 1.0},
-            {"requirement_key": "TENANCY_BUNDLE", "status": "COMPLIANT", "status_factor": 1.0},
-            {"requirement_key": "GAS_SAFETY", "status": "PENDING", "status_factor": 0.0},
+            {"requirement_key": "EICR_CERT", "status": "COMPLIANT", "status_factor": 1.0},
+            {"requirement_key": "EPC_CERT", "status": "COMPLIANT", "status_factor": 1.0},
+            {"requirement_key": "TENANCY_AGREEMENT", "status": "COMPLIANT", "status_factor": 1.0},
+            {"requirement_key": "GAS_SAFETY_CERT", "status": "PENDING", "status_factor": 0.0},
         ]
         risk = _risk_level_from_breakdown(85, breakdown, applicable)
         assert risk == "Critical risk"
 
     def test_critical_overdue_forces_high(self):
-        applicable = {"GAS_SAFETY": 30, "EICR": 25, "EPC": 15}
+        applicable = {"GAS_SAFETY_CERT": 30, "EICR_CERT": 25, "EPC_CERT": 15}
         breakdown = [
-            {"requirement_key": "GAS_SAFETY", "status": "OVERDUE", "status_factor": 0.25},
-            {"requirement_key": "EICR", "status": "COMPLIANT", "status_factor": 1.0},
-            {"requirement_key": "EPC", "status": "COMPLIANT", "status_factor": 1.0},
+            {"requirement_key": "GAS_SAFETY_CERT", "status": "OVERDUE", "status_factor": 0.25},
+            {"requirement_key": "EICR_CERT", "status": "COMPLIANT", "status_factor": 1.0},
+            {"requirement_key": "EPC_CERT", "status": "COMPLIANT", "status_factor": 1.0},
         ]
         risk = _risk_level_from_breakdown(75, breakdown, applicable)
         assert risk == "High risk"
 
     def test_score_under_40_forces_critical(self):
-        applicable = {"EICR": 25, "EPC": 15}
+        applicable = {"EICR_CERT": 25, "EPC_CERT": 15}
         breakdown = [
-            {"requirement_key": "EICR", "status": "OVERDUE", "status_factor": 0.25},
-            {"requirement_key": "EPC", "status": "PENDING", "status_factor": 0.0},
+            {"requirement_key": "EICR_CERT", "status": "OVERDUE", "status_factor": 0.25},
+            {"requirement_key": "EPC_CERT", "status": "PENDING", "status_factor": 0.0},
         ]
         risk = _risk_level_from_breakdown(35, breakdown, applicable)
         assert risk == "Critical risk"

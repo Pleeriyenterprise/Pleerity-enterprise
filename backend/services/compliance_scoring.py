@@ -1,39 +1,45 @@
 """
 Compliance Score v1: evidence-based scoring (no legal verdicts).
 Inputs: property record + linked requirements + linked documents.
-Output: score_0_100, risk_level, breakdown per requirement.
-Used by compliance_scoring_service for persistence; portfolio uses stored scores + portfolio_score_and_risk().
+Applicable requirements from requirement_catalog.get_applicable_requirements(); only those are scored; weights renormalize to 100.
 """
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-# Requirement keys and base weights (before applicability)
+from services.requirement_catalog import get_applicable_requirements
+
+# Base weights keyed by canonical catalog key (used only for applicable requirements; renormalized to 100)
 BASE_WEIGHTS = {
-    "GAS_SAFETY": 30,
-    "EICR": 25,
-    "EPC": 15,
-    "LICENCE": 20,
-    "TENANCY_BUNDLE": 10,
+    "GAS_SAFETY_CERT": 30,
+    "EICR_CERT": 25,
+    "EPC_CERT": 15,
+    "PROPERTY_LICENCE": 20,
+    "TENANCY_AGREEMENT": 10,
+    "HOW_TO_RENT": 5,
+    "DEPOSIT_PRESCRIBED_INFO": 10,
 }
-
 # Critical for risk: any missing/overdue forces at least High/Critical
-CRITICAL_KEYS = {"GAS_SAFETY", "EICR", "LICENCE"}
+CRITICAL_KEYS = {"GAS_SAFETY_CERT", "EICR_CERT", "PROPERTY_LICENCE"}
 
-# Map requirement_type (lower) to our key; Licence applies only when licence_required
+# Map requirement_type (from DB) to canonical catalog key for scoring
 def _req_type_to_key(requirement_type: str) -> Optional[str]:
     if not requirement_type:
         return None
     t = (requirement_type or "").strip().upper().replace("-", "_")
-    if t in ("GAS_SAFETY", "GAS_SAFETY_CERTIFICATE", "CP12"):
-        return "GAS_SAFETY"
-    if t in ("EICR", "ELECTRICAL_INSTALLATION"):
-        return "EICR"
-    if t in ("EPC", "ENERGY_PERFORMANCE"):
-        return "EPC"
-    if t in ("HMO_LICENCE", "HMO_LICENSE", "LICENCE", "LICENSE"):
-        return "LICENCE"
-    if t in ("TENANCY_AGREEMENT", "INVENTORY", "HOW_TO_RENT", "TENANCY_BUNDLE", "DEPOSIT_PROTECTION", "RIGHT_TO_RENT"):
-        return "TENANCY_BUNDLE"
+    if t in ("GAS_SAFETY", "GAS_SAFETY_CERTIFICATE", "CP12", "GAS_SAFETY_CERT"):
+        return "GAS_SAFETY_CERT"
+    if t in ("EICR", "ELECTRICAL_INSTALLATION", "EICR_CERT"):
+        return "EICR_CERT"
+    if t in ("EPC", "ENERGY_PERFORMANCE", "EPC_CERT"):
+        return "EPC_CERT"
+    if t in ("HMO_LICENCE", "HMO_LICENSE", "LICENCE", "LICENSE", "PROPERTY_LICENCE"):
+        return "PROPERTY_LICENCE"
+    if t in ("TENANCY_AGREEMENT", "INVENTORY", "TENANCY_BUNDLE"):
+        return "TENANCY_AGREEMENT"
+    if t in ("HOW_TO_RENT",):
+        return "HOW_TO_RENT"
+    if t in ("DEPOSIT_PROTECTION", "DEPOSIT_PRESCRIBED_INFO", "RIGHT_TO_RENT"):
+        return "DEPOSIT_PRESCRIBED_INFO"
     return None
 
 
@@ -94,18 +100,9 @@ def status_factor(
 
 
 def _applicable_weights(property_doc: Dict[str, Any]) -> Dict[str, float]:
-    """Base weights for applicable requirements only (gas if has_gas, licence if licence_required)."""
-    has_gas = bool(property_doc.get("has_gas", property_doc.get("has_gas_supply", True)))
-    licence_required = (property_doc.get("licence_required") or "").strip().upper() in ("YES", "TRUE", "1")
-    w = {}
-    if has_gas:
-        w["GAS_SAFETY"] = float(BASE_WEIGHTS["GAS_SAFETY"])
-    w["EICR"] = float(BASE_WEIGHTS["EICR"])
-    w["EPC"] = float(BASE_WEIGHTS["EPC"])
-    if licence_required:
-        w["LICENCE"] = float(BASE_WEIGHTS["LICENCE"])
-    w["TENANCY_BUNDLE"] = float(BASE_WEIGHTS["TENANCY_BUNDLE"])
-    return w
+    """Base weights for applicable requirements only (from requirement_catalog; renormalized to 100 in score)."""
+    applicable = get_applicable_requirements(property_doc)
+    return {k: float(BASE_WEIGHTS[k]) for k in applicable if k in BASE_WEIGHTS}
 
 
 def _multiplier(
@@ -114,16 +111,16 @@ def _multiplier(
     occupancy: Optional[str],
     bedrooms: Optional[int],
 ) -> float:
-    """M(r): HMO and occupancy/bedrooms multipliers."""
+    """M(r): HMO and occupancy/bedrooms multipliers (catalog keys)."""
     m = 1.0
     if is_hmo:
-        if key == "GAS_SAFETY":
+        if key == "GAS_SAFETY_CERT":
             m *= 1.10
-        if key == "EICR":
+        if key == "EICR_CERT":
             m *= 1.15
-        if key == "LICENCE":
+        if key == "PROPERTY_LICENCE":
             m *= 1.25
-    if key == "LICENCE" and ((occupancy or "").strip().lower() != "single_family" or (bedrooms or 0) >= 5):
+    if key == "PROPERTY_LICENCE" and ((occupancy or "").strip().lower() != "single_family" or (bedrooms or 0) >= 5):
         m *= 1.10
     return m
 

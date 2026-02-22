@@ -56,7 +56,8 @@ async def calculate_property_compliance(
     property_doc = await db.properties.find_one(
         {"property_id": property_id},
         {"_id": 0, "property_id": 1, "client_id": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
-         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1}
+         "licence_required": 1, "licence_type": 1, "cert_gas_safety": 1, "cert_licence": 1,
+         "has_gas_supply": 1, "has_gas": 1, "tenancy_active": 1, "deposit_taken": 1}
     )
     if not property_doc:
         return {
