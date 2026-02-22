@@ -146,6 +146,11 @@ export const clientAPI = {
   getPropertyRequirements: (propertyId) => apiClient.get(`/client/properties/${propertyId}/requirements`),
   getRequirements: () => apiClient.get('/client/requirements'),
   getDocuments: () => apiClient.get('/documents'),
+  /** Audit Intelligence: portfolio score, risk_level, properties summary */
+  getComplianceSummary: () => apiClient.get('/portfolio/compliance-summary'),
+  /** Client-scoped audit timeline (read-only). */
+  getAuditTimeline: (limit = 50) =>
+    apiClient.get('/portfolio/audit-timeline', { params: { limit } }),
 };
 
 export const adminAPI = {

@@ -22,6 +22,8 @@ const ClientDashboard = () => {
   const [complianceScore, setComplianceScore] = useState(null);
   const [scoreTrend, setScoreTrend] = useState(null);
   const [showScoreExplanation, setShowScoreExplanation] = useState(false);
+  const [portfolioSummary, setPortfolioSummary] = useState(null);
+  const [showComplianceFramework, setShowComplianceFramework] = useState(false);
   // Explicit UI states instead of blank screen (Goal C)
   const [restrictReason, setRestrictReason] = useState(null); // 'plan' | 'not_provisioned' | 'provisioning_incomplete' | null
   const [redirectPath, setRedirectPath] = useState(null); // from 403 X-Redirect header
@@ -40,6 +42,7 @@ const ClientDashboard = () => {
     fetchNotificationPrefs();
     fetchComplianceScore();
     fetchScoreTrend();
+    fetchPortfolioSummary();
     // Intentionally depend only on role/client_id; fetch functions are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClientUser, user?.role, user?.client_id]);
@@ -104,6 +107,15 @@ const ClientDashboard = () => {
       setScoreTrend(response.data);
     } catch (err) {
       console.log('Could not load score trend');
+    }
+  };
+
+  const fetchPortfolioSummary = async () => {
+    try {
+      const response = await clientAPI.getComplianceSummary();
+      setPortfolioSummary(response.data);
+    } catch (err) {
+      if (err.response?.status !== 404) console.warn('Portfolio compliance-summary not available:', err);
     }
   };
 
@@ -182,10 +194,10 @@ const ClientDashboard = () => {
           </Alert>
         )}
 
-        {/* Welcome */}
+        {/* Welcome – Compliance Command Centre */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-2">Welcome, {data?.client?.full_name}</h2>
-          <p className="text-gray-600">Here&apos;s your compliance overview</p>
+          <h2 className="text-3xl font-bold text-midnight-blue mb-2">Compliance Command Centre</h2>
+          <p className="text-gray-600">Welcome, {data?.client?.full_name}. Here&apos;s your compliance overview.</p>
           <p className="text-xs text-gray-500 mt-2">This is an evidence-based status summary. It is not legal advice.</p>
         </div>
 
@@ -411,6 +423,82 @@ const ClientDashboard = () => {
                   <p className="text-xs text-gray-500">Days to Next Expiry</p>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Risk level from Audit Intelligence (if available) */}
+        {portfolioSummary?.risk_level && (
+          <p className="text-sm text-gray-600 mb-2">
+            <span className="font-medium">Risk level:</span> {portfolioSummary.risk_level}
+            {portfolioSummary.portfolio_score != null && (
+              <span className="ml-2 text-gray-500">(Portfolio score: {portfolioSummary.portfolio_score}/100)</span>
+            )}
+          </p>
+        )}
+
+        {/* Compliance Framework explanation (static, no legal advice) */}
+        <div className="mb-8 rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowComplianceFramework(!showComplianceFramework)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-medium text-midnight-blue hover:bg-gray-50"
+          >
+            <span className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-electric-teal" />
+              Compliance Framework – how scoring works
+            </span>
+            {showComplianceFramework ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showComplianceFramework && (
+            <div className="px-4 pb-4 pt-0 text-sm text-gray-600 border-t border-gray-100">
+              <p className="mb-2">Evidence status is used to derive requirement-level points:</p>
+              <ul className="list-disc pl-5 space-y-1 mb-3">
+                <li>Valid evidence: 100</li>
+                <li>Expiring soon: 70</li>
+                <li>Missing evidence: 30</li>
+                <li>Overdue: 0</li>
+              </ul>
+              <p className="mb-2">Property score is the average of requirement scores for that property. Portfolio score is the average across all properties weighted by requirement count.</p>
+              <p className="mb-2">Risk levels: 80–100 = Low Risk; 60–79 = Moderate Risk; 40–59 = High Risk; 0–39 = Critical Risk.</p>
+              <p className="text-gray-500 italic">This is an evidence-based status summary. It is not legal advice and does not constitute legal certification.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Portfolio summary table (Audit Intelligence) */}
+        {portfolioSummary?.properties?.length > 0 && (
+          <div className="mb-8 rounded-xl border border-gray-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 font-medium text-midnight-blue">
+              Portfolio summary
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-gray-600">
+                    <th className="p-3">Property</th>
+                    <th className="p-3">Score</th>
+                    <th className="p-3">Risk level</th>
+                    <th className="p-3">Overdue</th>
+                    <th className="p-3">Expiring soon</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {portfolioSummary.properties.map((p) => (
+                    <tr
+                      key={p.property_id}
+                      className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => navigate(`/properties/${p.property_id}`)}
+                    >
+                      <td className="p-3 font-medium text-midnight-blue">{p.property_id}</td>
+                      <td className="p-3">{p.property_score}/100</td>
+                      <td className="p-3">{p.risk_level}</td>
+                      <td className="p-3">{p.overdue_count ?? 0}</td>
+                      <td className="p-3">{p.expiring_soon_count ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

@@ -88,6 +88,7 @@ class JobScheduler:
                 }, {"_id": 0}).to_list(100)
                 
                 expiring_requirements = []
+                properties_status_changed = set()
                 
                 for req in requirements:
                     due_date = datetime.fromisoformat(req["due_date"]) if isinstance(req["due_date"], str) else req["due_date"]
@@ -107,6 +108,7 @@ class JobScheduler:
                                 {"requirement_id": req["requirement_id"]},
                                 {"$set": {"status": "EXPIRING_SOON"}}
                             )
+                            properties_status_changed.add(req.get("property_id"))
                 
                 # Check for overdue
                 overdue_requirements = []
@@ -123,6 +125,24 @@ class JobScheduler:
                         await self.db.requirements.update_one(
                             {"requirement_id": req["requirement_id"]},
                             {"$set": {"status": "OVERDUE"}}
+                        )
+                        properties_status_changed.add(req.get("property_id"))
+                
+                # Enqueue compliance recalc for properties whose requirement status changed
+                if properties_status_changed:
+                    from services.compliance_recalc_queue import enqueue_compliance_recalc
+                    from services.compliance_recalc_queue import TRIGGER_EXPIRY_JOB, ACTOR_SYSTEM
+                    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    for property_id in properties_status_changed:
+                        if not property_id:
+                            continue
+                        await enqueue_compliance_recalc(
+                            property_id=property_id,
+                            client_id=client["client_id"],
+                            trigger_reason=TRIGGER_EXPIRY_JOB,
+                            actor_type=ACTOR_SYSTEM,
+                            actor_id=None,
+                            correlation_id=f"REMINDER_JOB:{property_id}:{date_str}",
                         )
                 
                 # Send reminder if there are expiring or overdue requirements

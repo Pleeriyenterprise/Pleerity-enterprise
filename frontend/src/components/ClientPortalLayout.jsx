@@ -24,6 +24,7 @@ import {
   CreditCard,
   HelpCircle,
   ChevronDown,
+  History,
 } from 'lucide-react';
 
 const PORTAL_TABS = [
@@ -31,6 +32,7 @@ const PORTAL_TABS = [
   { path: '/properties', label: 'Properties', icon: Building2 },
   { path: '/requirements', label: 'Requirements', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },
+  { path: '/audit-log', label: 'Audit Log', icon: History },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },

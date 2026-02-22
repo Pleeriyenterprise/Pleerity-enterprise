@@ -130,16 +130,15 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             }
         else:
             breakdown = {}
-        if client_score >= 90:
-            grade, color, message = "A", "green", "Excellent compliance health"
-        elif client_score >= 80:
-            grade, color, message = "B", "green", "Good compliance status"
-        elif client_score >= 70:
-            grade, color, message = "C", "amber", "Moderate - some attention needed"
+        # Risk-based messaging (80+ Low, 60-79 Moderate, 40-59 High, 0-39 Critical)
+        if client_score >= 80:
+            grade, color, message = "A" if client_score >= 90 else "B", "green", "Low risk - good standing"
         elif client_score >= 60:
-            grade, color, message = "D", "amber", "Below average - action required"
+            grade, color, message = "C", "amber", "Moderate risk - action required"
+        elif client_score >= 40:
+            grade, color, message = "D", "amber", "High risk - action required"
         else:
-            grade, color, message = "F", "red", "Critical - immediate action needed"
+            grade, color, message = "F", "red", "Critical risk - immediate action needed"
         requirements = await db.requirements.find(
             {"client_id": client_id},
             {"_id": 0, "status": 1}
@@ -410,27 +409,23 @@ async def _calculate_compliance_score_legacy_from_db(client_id: str) -> Dict[str
         
         final_score = round(max(0, min(100, final_score)))
         
-        # Determine grade
-        if final_score >= 90:
-            grade = "A"
+        # Risk-based messaging (80+ Low, 60-79 Moderate, 40-59 High, 0-39 Critical)
+        if final_score >= 80:
+            grade = "A" if final_score >= 90 else "B"
             color = "green"
-            message = "Excellent compliance health"
-        elif final_score >= 80:
-            grade = "B"
-            color = "green"
-            message = "Good compliance status"
-        elif final_score >= 70:
+            message = "Low risk - good standing"
+        elif final_score >= 60:
             grade = "C"
             color = "amber"
-            message = "Moderate - some attention needed"
-        elif final_score >= 60:
+            message = "Moderate risk - action required"
+        elif final_score >= 40:
             grade = "D"
             color = "amber"
-            message = "Below average - action required"
+            message = "High risk - action required"
         else:
             grade = "F"
             color = "red"
-            message = "Critical - immediate action needed"
+            message = "Critical risk - immediate action needed"
         
         # Generate prioritized recommendations
         recommendations = []

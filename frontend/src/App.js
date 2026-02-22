@@ -112,6 +112,7 @@ import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
 import ClientOrdersPage from './pages/ClientOrdersPage';
 import UnifiedIntakeWizard from './pages/UnifiedIntakeWizard';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
+import ClientAuditLogPage from './pages/ClientAuditLogPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
@@ -242,6 +243,7 @@ function App() {
             <Route path="/properties/import" element={<ClientPortal><BulkPropertyImportPage /></ClientPortal>} />
             <Route path="/requirements" element={<ClientPortal><RequirementsPage /></ClientPortal>} />
             <Route path="/documents" element={<ClientPortal><DocumentsPage /></ClientPortal>} />
+            <Route path="/audit-log" element={<ClientPortal><ClientAuditLogPage /></ClientPortal>} />
             <Route path="/documents/bulk-upload" element={<ClientPortal><BulkUploadPage /></ClientPortal>} />
             <Route path="/calendar" element={<ClientPortal><CalendarPage /></ClientPortal>} />
             <Route path="/reports" element={<ClientPortal><ReportsPage /></ClientPortal>} />
@@ -273,6 +275,7 @@ function App() {
             <Route path="/app/compliance-score" element={<Navigate to="/compliance-score" replace />} />
             <Route path="/app/documents" element={<Navigate to="/documents" replace />} />
             <Route path="/app/documents/bulk-upload" element={<Navigate to="/documents/bulk-upload" replace />} />
+            <Route path="/app/audit-log" element={<Navigate to="/audit-log" replace />} />
             <Route path="/app/reports" element={<Navigate to="/reports" replace />} />
             <Route path="/app/tenant" element={<Navigate to="/tenant" replace />} />
             <Route path="/app/tenants" element={<Navigate to="/tenants" replace />} />
