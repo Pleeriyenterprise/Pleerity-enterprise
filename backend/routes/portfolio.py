@@ -124,66 +124,106 @@ async def get_compliance_summary(request: Request):
 async def get_property_compliance_detail_route(request: Request, property_id: str):
     """
     Property-level compliance detail: requirement matrix (from catalog + state), property_score,
-    risk_index, risk_level. Evidence-based status only; not legal advice.
+    risk_index, risk_level, score_delta, score_change_summary, last_updated_at. Evidence-based status only; not legal advice.
     """
     user = await client_route_guard(request)
     client_id = user["client_id"]
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": client_id},
-        {"_id": 0, "property_id": 1},
+        {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "compliance_score": 1, "risk_level": 1, "compliance_last_calculated_at": 1},
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     detail = await get_property_compliance_detail(client_id, property_id)
     if detail is not None:
-        return detail
-    # Fallback: no catalog or no applicable; return minimal from requirements
-    requirements = await db.requirements.find(
-        {"client_id": client_id, "property_id": property_id},
-        {"_id": 0, "requirement_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1},
-    ).to_list(200)
-    from services.catalog_compliance import _days_to_expiry, _requirement_numeric_score
-    matrix = []
-    for r in requirements:
-        due = r.get("due_date")
-        days = _days_to_expiry(due)
-        matrix.append({
-            "requirement_code": r.get("requirement_type"),
-            "title": r.get("description") or r.get("requirement_type"),
-            "status": r.get("status") or "PENDING",
-            "numeric_score": _requirement_numeric_score(r.get("status"), due),
-            "criticality": "MED",
-            "weight": 1,
-            "expiry_date": due.isoformat() if hasattr(due, "isoformat") else due,
-            "days_to_expiry": days,
-            "evidence_doc_id": None,
-            "requirement_id": r.get("requirement_id"),
-        })
-    if not matrix:
-        property_score = 100
+        response = dict(detail)
     else:
-        property_score = round(sum(m["numeric_score"] for m in matrix) / len(matrix))
-    kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
-    for m in matrix:
-        s = (m.get("status") or "PENDING").upper()
-        if s in ("OVERDUE", "EXPIRED"):
-            kpis["overdue"] += 1
-        elif s == "EXPIRING_SOON" and (m.get("days_to_expiry") or 0) <= 30:
-            kpis["expiring_30"] += 1
-        elif s in ("PENDING", "MISSING"):
-            kpis["missing"] += 1
+        # Fallback: no catalog or no applicable; return minimal from requirements
+        requirements = await db.requirements.find(
+            {"client_id": client_id, "property_id": property_id},
+            {"_id": 0, "requirement_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1},
+        ).to_list(200)
+        from services.catalog_compliance import _days_to_expiry, _requirement_numeric_score
+        matrix = []
+        for r in requirements:
+            due = r.get("due_date")
+            days = _days_to_expiry(due)
+            matrix.append({
+                "requirement_code": r.get("requirement_type"),
+                "title": r.get("description") or r.get("requirement_type"),
+                "status": r.get("status") or "PENDING",
+                "numeric_score": _requirement_numeric_score(r.get("status"), due),
+                "criticality": "MED",
+                "weight": 1,
+                "expiry_date": due.isoformat() if hasattr(due, "isoformat") else due,
+                "days_to_expiry": days,
+                "evidence_doc_id": None,
+                "requirement_id": r.get("requirement_id"),
+            })
+        if not matrix:
+            property_score = 100
         else:
-            kpis["compliant"] += 1
-    return {
-        "property_id": property_id,
-        "property_name": prop.get("nickname") or prop.get("address_line_1") or property_id,
-        "matrix": matrix,
-        "property_score": property_score,
-        "risk_index": 0.0,
-        "risk_level": score_to_risk_level(property_score),
-        "kpis": kpis,
-    }
+            property_score = round(sum(m["numeric_score"] for m in matrix) / len(matrix))
+        kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
+        for m in matrix:
+            s = (m.get("status") or "PENDING").upper()
+            if s in ("OVERDUE", "EXPIRED"):
+                kpis["overdue"] += 1
+            elif s == "EXPIRING_SOON" and (m.get("days_to_expiry") or 0) <= 30:
+                kpis["expiring_30"] += 1
+            elif s in ("PENDING", "MISSING"):
+                kpis["missing"] += 1
+            else:
+                kpis["compliant"] += 1
+        response = {
+            "property_id": property_id,
+            "property_name": prop.get("nickname") or prop.get("address_line_1") or property_id,
+            "matrix": matrix,
+            "property_score": property_score,
+            "risk_index": 0.0,
+            "risk_level": score_to_risk_level(property_score),
+            "kpis": kpis,
+        }
+    # Enrich with score change tracking and last updated
+    response.setdefault("score", prop.get("compliance_score"))
+    response.setdefault("risk_level", prop.get("risk_level"))
+    response["last_updated_at"] = prop.get("compliance_last_calculated_at")
+    latest_log = await db.score_change_log.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        sort=[("created_at", -1)],
+        projection={"_id": 0, "delta": 1, "changed_requirements": 1, "created_at": 1},
+    )
+    if latest_log and latest_log.get("delta") is not None:
+        response["score_delta"] = latest_log["delta"]
+        changed = latest_log.get("changed_requirements") or []
+        if changed:
+            response["score_change_summary"] = f"{'Up' if latest_log['delta'] and latest_log['delta'] > 0 else 'Down'} {abs(latest_log['delta'])} pts; {len(changed)} requirement(s) changed"
+        else:
+            response["score_change_summary"] = f"{'Up' if latest_log['delta'] > 0 else 'Down'} {abs(latest_log['delta'])} pts" if latest_log["delta"] else "No change"
+    else:
+        response["score_delta"] = None
+        response["score_change_summary"] = None
+    return response
+
+
+@router.get("/properties/{property_id}/score-history")
+async def get_property_score_history_route(request: Request, property_id: str, limit: int = 20):
+    """Return last N score change log entries for this property (client-scoped)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    limit = min(max(1, limit), 50)
+    entries = await db.score_change_log.find(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "previous_score": 1, "new_score": 1, "delta": 1, "reason": 1, "changed_requirements": 1, "created_at": 1},
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    return {"property_id": property_id, "entries": entries}
 
 
 # Client-visible audit timeline (same event types as admin timeline, excluding admin-only actions)

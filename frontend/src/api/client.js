@@ -151,6 +151,12 @@ export const clientAPI = {
   /** Property compliance detail: matrix, property_score, risk_index, risk_level (catalog-driven when available). */
   getComplianceDetail: (propertyId) =>
     apiClient.get(`/portfolio/properties/${propertyId}/compliance-detail`),
+  /** Score change history for property (score_change_log entries). */
+  getScoreHistory: (propertyId, limit = 20) =>
+    apiClient.get(`/portfolio/properties/${propertyId}/score-history`, { params: { limit } }),
+  /** Generate Evidence Readiness PDF (POST body: { scope: 'portfolio' | 'property', property_id? }). Returns blob. */
+  generateEvidenceReadinessReport: (body) =>
+    apiClient.post('/reports/generate', body, { responseType: 'blob' }),
   /** Client-scoped audit timeline (read-only). */
   getAuditTimeline: (limit = 50) =>
     apiClient.get('/portfolio/audit-timeline', { params: { limit } }),

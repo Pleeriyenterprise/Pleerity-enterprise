@@ -129,7 +129,7 @@ async def recalculate_and_persist(
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id},
-        {"_id": 0, "property_id": 1, "client_id": 1, "compliance_score": 1, "compliance_breakdown": 1}
+        {"_id": 0, "property_id": 1, "client_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "score_breakdown": 1}
     )
     if not prop:
         logger.warning(f"recalculate_and_persist: property not found {property_id}")
@@ -138,6 +138,7 @@ async def recalculate_and_persist(
     client_id = prop["client_id"]
     previous_score = prop.get("compliance_score")
     previous_breakdown = prop.get("compliance_breakdown") or {}
+    previous_score_breakdown = prop.get("score_breakdown") or []
 
     result = await calculate_property_compliance(property_id)
     if result.get("error"):
@@ -185,9 +186,31 @@ async def recalculate_and_persist(
     }
     await db.property_compliance_score_history.insert_one(history_doc)
 
+    delta = (new_score - previous_score) if previous_score is not None else None
+    prev_by_key = {r.get("requirement_key"): r.get("status") for r in previous_score_breakdown if r.get("requirement_key")}
+    new_by_key = {r.get("requirement_key"): r.get("status") for r in score_breakdown if r.get("requirement_key")}
+    changed_requirements = []
+    all_keys = set(prev_by_key) | set(new_by_key)
+    for key in all_keys:
+        prev_s = prev_by_key.get(key)
+        new_s = new_by_key.get(key)
+        if prev_s != new_s:
+            changed_requirements.append({"requirement_key": key, "previous_status": prev_s, "new_status": new_s})
+    score_change_log_doc = {
+        "property_id": property_id,
+        "client_id": client_id,
+        "previous_score": previous_score,
+        "new_score": new_score,
+        "delta": delta,
+        "reason": reason,
+        "changed_requirements": changed_requirements,
+        "created_at": now.isoformat(),
+        "actor": actor,
+    }
+    await db.score_change_log.insert_one(score_change_log_doc)
+
     from models import AuditAction
     from utils.audit import create_audit_log
-    delta = (new_score - previous_score) if previous_score is not None else None
     await create_audit_log(
         action=AuditAction.COMPLIANCE_SCORE_UPDATED,
         actor_id=(actor or {}).get("id") or (actor or {}).get("portal_user_id"),

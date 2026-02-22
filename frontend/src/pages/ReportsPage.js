@@ -435,6 +435,50 @@ const ReportsPage = () => {
             />
           </div>
         )}
+        {/* Evidence Readiness PDF */}
+        {hasReportsAccess && (
+          <Card className="mb-6" data-testid="evidence-readiness-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-electric-teal" />
+                Evidence Readiness Report
+              </CardTitle>
+              <p className="text-sm text-gray-500 mt-1">
+                PDF with cover, executive summary, portfolio breakdown, property requirement matrix, methodology, and audit snapshot. Not legal advice.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <Button
+                disabled={generating === 'evidence_readiness'}
+                onClick={async () => {
+                  setGenerating('evidence_readiness');
+                  try {
+                    const res = await api.post('/reports/generate', { scope: 'portfolio' }, { responseType: 'blob' });
+                    const url = window.URL.createObjectURL(new Blob([res.data]));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `evidence_readiness_portfolio_${new Date().toISOString().slice(0, 10)}.pdf`);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                    toast.success('Evidence Readiness PDF downloaded');
+                  } catch (err) {
+                    if (err.response?.status === 403) toast.error('Upgrade required for PDF reports');
+                    else toast.error('Failed to generate report');
+                  } finally {
+                    setGenerating(null);
+                  }
+                }}
+                className="bg-electric-teal hover:bg-teal-600"
+                data-testid="generate-evidence-readiness-pdf"
+              >
+                {generating === 'evidence_readiness' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                Generate PDF
+              </Button>
+            </CardContent>
+          </Card>
+        )}
         {/* Scheduled Reports Section */}
         {schedules.length > 0 && (
           <Card className="mb-6" data-testid="scheduled-reports-card">

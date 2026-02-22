@@ -76,9 +76,11 @@ class TestRenormalizationWhenGasNotApplicable:
             {"requirement_id": "r3", "requirement_type": "TENANCY_AGREEMENT", "status": "COMPLIANT", "due_date": "2026-12-31T00:00:00Z"},
             {"requirement_id": "r4", "requirement_type": "HOW_TO_RENT", "status": "COMPLIANT", "due_date": "2026-12-31T00:00:00Z"},
         ]
+        # Document-status pipeline expects expiry_date on doc for expiring types; use future date for VALID
+        future_expiry = "2026-12-31T00:00:00Z"
         documents = [
-            {"requirement_id": "r1", "status": "VERIFIED"},
-            {"requirement_id": "r2", "status": "VERIFIED"},
+            {"requirement_id": "r1", "status": "VERIFIED", "expiry_date": future_expiry},
+            {"requirement_id": "r2", "status": "VERIFIED", "expiry_date": future_expiry},
             {"requirement_id": "r3", "status": "VERIFIED"},
             {"requirement_id": "r4", "status": "VERIFIED"},
         ]
@@ -100,7 +102,7 @@ class TestCriticalMissingForcesCritical:
             {"requirement_key": "EICR_CERT", "status": "COMPLIANT", "status_factor": 1.0},
             {"requirement_key": "EPC_CERT", "status": "COMPLIANT", "status_factor": 1.0},
             {"requirement_key": "TENANCY_AGREEMENT", "status": "COMPLIANT", "status_factor": 1.0},
-            {"requirement_key": "GAS_SAFETY_CERT", "status": "PENDING", "status_factor": 0.0},
+            {"requirement_key": "GAS_SAFETY_CERT", "status": "MISSING_EVIDENCE", "status_factor": 0.0},
         ]
         risk = _risk_level_from_breakdown(85, breakdown, applicable)
         assert risk == "Critical risk"
@@ -108,7 +110,7 @@ class TestCriticalMissingForcesCritical:
     def test_critical_overdue_forces_high(self):
         applicable = {"GAS_SAFETY_CERT": 30, "EICR_CERT": 25, "EPC_CERT": 15}
         breakdown = [
-            {"requirement_key": "GAS_SAFETY_CERT", "status": "OVERDUE", "status_factor": 0.25},
+            {"requirement_key": "GAS_SAFETY_CERT", "status": "EXPIRED", "status_factor": 0.1},
             {"requirement_key": "EICR_CERT", "status": "COMPLIANT", "status_factor": 1.0},
             {"requirement_key": "EPC_CERT", "status": "COMPLIANT", "status_factor": 1.0},
         ]
@@ -118,8 +120,8 @@ class TestCriticalMissingForcesCritical:
     def test_score_under_40_forces_critical(self):
         applicable = {"EICR_CERT": 25, "EPC_CERT": 15}
         breakdown = [
-            {"requirement_key": "EICR_CERT", "status": "OVERDUE", "status_factor": 0.25},
-            {"requirement_key": "EPC_CERT", "status": "PENDING", "status_factor": 0.0},
+            {"requirement_key": "EICR_CERT", "status": "EXPIRED", "status_factor": 0.1},
+            {"requirement_key": "EPC_CERT", "status": "MISSING_EVIDENCE", "status_factor": 0.0},
         ]
         risk = _risk_level_from_breakdown(35, breakdown, applicable)
         assert risk == "Critical risk"

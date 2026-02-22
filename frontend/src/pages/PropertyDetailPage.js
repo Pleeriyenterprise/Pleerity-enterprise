@@ -10,6 +10,10 @@ import {
   Upload,
   RefreshCw,
   Mail,
+  TrendingUp,
+  TrendingDown,
+  History,
+  X,
 } from 'lucide-react';
 import { SUPPORT_EMAIL } from '../config';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
@@ -23,6 +27,9 @@ export default function PropertyDetailPage() {
   const [complianceDetail, setComplianceDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [scoreHistoryModal, setScoreHistoryModal] = useState(false);
+  const [scoreHistoryEntries, setScoreHistoryEntries] = useState([]);
+  const [scoreHistoryLoading, setScoreHistoryLoading] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -132,13 +139,91 @@ export default function PropertyDetailPage() {
       </p>
 
       {complianceDetail && (
-        <div className="mb-6 flex flex-wrap gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
-          <span className="font-medium text-midnight-blue">Score: {complianceDetail.property_score}/100</span>
-          <span className="font-medium text-midnight-blue">Risk level: {formatRiskLabel(complianceDetail.risk_level)}</span>
-          {complianceDetail.risk_index != null && complianceDetail.risk_index > 0 && (
-            <span className="text-gray-600">Risk index: {complianceDetail.risk_index}</span>
+        <>
+          <div className="mb-4 flex flex-wrap gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+            <span className="font-medium text-midnight-blue">Evidence readiness score: {(complianceDetail.score != null ? complianceDetail.score : complianceDetail.property_score) ?? '—'}/100</span>
+            <span className="font-medium text-midnight-blue">Risk level: {formatRiskLabel(complianceDetail.risk_level)}</span>
+            {complianceDetail.risk_index != null && complianceDetail.risk_index > 0 && (
+              <span className="text-gray-600">Risk index: {complianceDetail.risk_index}</span>
+            )}
+            {complianceDetail.last_updated_at && (
+              <span className="text-sm text-gray-500">Last updated: {new Date(complianceDetail.last_updated_at).toLocaleString()}</span>
+            )}
+          </div>
+          {(complianceDetail.score_delta != null || complianceDetail.score_change_summary) && (
+            <div className="mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white">
+              {complianceDetail.score_delta != null && complianceDetail.score_delta !== 0 && (
+                <span className={`inline-flex items-center gap-1 font-medium ${complianceDetail.score_delta > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {complianceDetail.score_delta > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  {complianceDetail.score_delta > 0 ? '+' : ''}{complianceDetail.score_delta} pts
+                </span>
+              )}
+              {complianceDetail.score_change_summary && (
+                <span className="text-sm text-gray-600">{complianceDetail.score_change_summary}</span>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-electric-teal border-electric-teal"
+                onClick={async () => {
+                  setScoreHistoryModal(true);
+                  setScoreHistoryLoading(true);
+                  try {
+                    const res = await clientAPI.getScoreHistory(propertyId);
+                    setScoreHistoryEntries(res.data?.entries ?? []);
+                  } catch (_) {
+                    setScoreHistoryEntries([]);
+                  } finally {
+                    setScoreHistoryLoading(false);
+                  }
+                }}
+              >
+                <History className="w-3.5 h-3.5 mr-1" />
+                View change history
+              </Button>
+            </div>
           )}
-        </div>
+          {scoreHistoryModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setScoreHistoryModal(false)}>
+              <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden m-4" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h3 className="font-semibold text-midnight-blue">Score change history</h3>
+                  <button type="button" onClick={() => setScoreHistoryModal(false)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-4 overflow-auto max-h-[60vh]">
+                  {scoreHistoryLoading ? (
+                    <p className="text-gray-500">Loading…</p>
+                  ) : scoreHistoryEntries.length === 0 ? (
+                    <p className="text-gray-500">No score change history yet.</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-gray-600">
+                          <th className="p-2">Date</th>
+                          <th className="p-2">Previous</th>
+                          <th className="p-2">New</th>
+                          <th className="p-2">Delta</th>
+                          <th className="p-2">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scoreHistoryEntries.map((e, i) => (
+                          <tr key={i} className="border-b border-gray-100">
+                            <td className="p-2">{e.created_at ? new Date(e.created_at).toLocaleString() : '—'}</td>
+                            <td className="p-2">{e.previous_score ?? '—'}</td>
+                            <td className="p-2">{e.new_score ?? '—'}</td>
+                            <td className={`p-2 font-medium ${e.delta > 0 ? 'text-green-600' : e.delta < 0 ? 'text-red-600' : ''}`}>{e.delta != null ? (e.delta > 0 ? '+' : '') + e.delta : '—'}</td>
+                            <td className="p-2 text-gray-600">{e.reason ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Requirements matrix (from compliance-detail API when available, else requirements list) */}

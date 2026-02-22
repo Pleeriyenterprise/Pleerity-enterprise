@@ -6,7 +6,13 @@ Applicable requirements from requirement_catalog.get_applicable_requirements(); 
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from services.requirement_catalog import get_applicable_requirements
+from services.requirement_catalog import get_applicable_requirements, REQUIREMENT_KEY_TO_DOCUMENT_TYPE
+from services.document_status_service import (
+    pick_evidence_document,
+    compute_requirement_status,
+    STATUS_TO_FRACTION,
+    EXPIRING_SOON_DAYS,
+)
 
 # Base weights keyed by canonical catalog key (used only for applicable requirements; renormalized to 100)
 BASE_WEIGHTS = {
@@ -167,34 +173,34 @@ def compute_property_score(
             "breakdown": [],
         }
 
-    req_id_to_docs = {}
-    for d in documents:
-        rid = d.get("requirement_id")
-        if rid:
-            req_id_to_docs.setdefault(rid, []).append(d)
-
-    key_to_best: Dict[str, Dict[str, Any]] = {}
+    # requirement_id -> catalog key (for docs linked to that requirement)
+    req_id_to_key: Dict[str, str] = {}
     for r in requirements:
         req_type = r.get("requirement_type") or r.get("requirement_code")
         key = _req_type_to_key(req_type)
-        if key is None or key not in applicable_w:
-            continue
-        due = r.get("due_date")
-        days = _days_to_expiry(due, now) if due else None
-        status = (r.get("status") or "PENDING").upper().strip()
-        rid = r.get("requirement_id") or r.get("id")
-        linked = req_id_to_docs.get(rid, []) if rid else []
-        has_doc = len(linked) > 0
-        needs_review = any(_needs_review(d) for d in linked) if linked else False
-        s = status_factor(status, days, has_doc, needs_review)
-        if key not in key_to_best or key_to_best[key].get("status_factor", -1) < s:
-            key_to_best[key] = {
-                "requirement_key": key,
-                "weight": applicable_w[key],
-                "status": status,
-                "status_factor": s,
-                "days_to_expiry": days,
-            }
+        if key is not None and key in applicable_w:
+            rid = r.get("requirement_id") or r.get("id")
+            if rid:
+                req_id_to_key[rid] = key
+
+    today = now.date()
+    expects_expiry_keys = {"GAS_SAFETY_CERT", "EICR_CERT", "EPC_CERT", "PROPERTY_LICENCE"}
+    key_to_best: Dict[str, Dict[str, Any]] = {}
+    for key in applicable_w:
+        req_ids_for_key = [rid for rid, k in req_id_to_key.items() if k == key]
+        candidate_docs = [d for d in documents if d.get("requirement_id") in req_ids_for_key]
+        document_type = REQUIREMENT_KEY_TO_DOCUMENT_TYPE.get(key, "")
+        evidence_doc = pick_evidence_document(candidate_docs, document_type)
+        expects_expiry = key in expects_expiry_keys
+        status_result = compute_requirement_status(today, evidence_doc, expects_expiry, EXPIRING_SOON_DAYS)
+        fraction = STATUS_TO_FRACTION.get(status_result["status"], 0.0)
+        key_to_best[key] = {
+            "requirement_key": key,
+            "weight": applicable_w[key],
+            "status": status_result["status"],
+            "status_factor": fraction,
+            "days_to_expiry": status_result.get("days_to_expiry"),
+        }
 
     breakdown = []
     We_total = 0.0
@@ -261,7 +267,7 @@ def _risk_level_from_breakdown(
         status = (row.get("status") or "").upper()
         if s <= 0.0:
             critical_missing = True
-        if s == 0.25:
+        if s in (0.25, 0.1) or status in ("EXPIRED", "OVERDUE"):
             critical_overdue = True
 
     if critical_missing:

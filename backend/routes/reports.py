@@ -25,6 +25,57 @@ class ReportRequest(BaseModel):
     actions: Optional[List[str]] = None
 
 
+class GenerateReportRequest(BaseModel):
+    """Evidence Readiness PDF: scope portfolio or single property."""
+    scope: str  # "portfolio" | "property"
+    property_id: Optional[str] = None
+
+
+@router.post("/generate")
+async def generate_evidence_readiness_report(request: Request, body: GenerateReportRequest):
+    """
+    Generate Evidence Readiness PDF report.
+    Body: { scope: "portfolio" | "property", property_id?: string }.
+    Returns PDF file. Plan-gated by reports_pdf.
+    """
+    from services.plan_registry import plan_registry
+    from services.report_service import generate_evidence_readiness_pdf
+
+    user = await client_route_guard(request)
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
+        )
+    if body.scope == "property" and not body.property_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id required when scope is property")
+    try:
+        pdf_buffer = await generate_evidence_readiness_pdf(
+            client_id=user["client_id"],
+            scope=body.scope,
+            property_id=body.property_id,
+        )
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user.get("portal_user_id"),
+            client_id=user["client_id"],
+            resource_type="report",
+            metadata={"report_type": "evidence_readiness", "scope": body.scope, "property_id": body.property_id},
+        )
+        filename = f"evidence_readiness_{body.scope}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.exception("Evidence Readiness PDF error: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate report")
+
+
 @router.get("/compliance-summary")
 async def get_compliance_summary_report(
     request: Request,
