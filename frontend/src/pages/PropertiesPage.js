@@ -108,99 +108,7 @@ const PropertiesPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-midnight-blue text-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold">Compliance Vault Pro</h1>
-                <p className="text-sm text-gray-300">AI-Driven Solutions & Compliance</p>
-              </div>
-              {clientData?.client?.customer_reference && (
-                <span 
-                  className="px-3 py-1 bg-electric-teal/20 text-electric-teal rounded-lg font-mono text-sm"
-                  data-testid="client-crn-badge"
-                >
-                  {clientData.client.customer_reference}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm">{user?.email}</span>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={logout}
-                className="text-white hover:text-electric-teal"
-                data-testid="logout-btn"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/dashboard')}
-              data-testid="nav-dashboard"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Dashboard
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-electric-teal text-electric-teal"
-              data-testid="nav-properties"
-            >
-              <Building2 className="w-4 h-4 mr-2" />
-              Properties
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/documents')}
-              data-testid="nav-documents"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Documents
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/calendar')}
-              data-testid="nav-calendar"
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Calendar
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/reports')}
-              data-testid="nav-reports"
-            >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Reports
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/assistant')}
-              data-testid="nav-assistant"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              AI Assistant
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div>
         {/* Page Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -208,7 +116,7 @@ const PropertiesPage = () => {
             <p className="text-gray-500 mt-1">Manage your property portfolio</p>
           </div>
           <Button
-            onClick={() => navigate('/app/properties/create')}
+            onClick={() => navigate('/properties/create')}
             className="bg-electric-teal hover:bg-teal-600"
             data-testid="add-property-btn"
           >
@@ -322,7 +230,7 @@ const PropertiesPage = () => {
               </p>
               {!searchTerm && filterStatus === 'all' && (
                 <Button
-                  onClick={() => navigate('/app/properties/create')}
+                  onClick={() => navigate('/properties/create')}
                   className="bg-electric-teal hover:bg-teal-600"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -339,7 +247,7 @@ const PropertiesPage = () => {
                 return (
                   <Link
                     key={property.property_id}
-                    to={`/app/property/${property.property_id}`}
+                    to={`/properties/${property.property_id}`}
                     className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                     data-testid={`property-row-${property.property_id}`}
                   >
@@ -391,7 +299,6 @@ const PropertiesPage = () => {
             Showing {filteredProperties.length} of {properties.length} properties
           </div>
         )}
-      </main>
     </div>
   );
 };

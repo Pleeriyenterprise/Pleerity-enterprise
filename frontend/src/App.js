@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { EntitlementsProvider } from './contexts/EntitlementsContext';
@@ -149,6 +149,15 @@ import PublicKnowledgeBasePage from './pages/public/PublicKnowledgeBasePage';
 import CookieBanner from './components/CookieBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import DebugPanel from './components/DebugPanel';
+import ClientPortal from './components/ClientPortal';
+import SettingsLayout from './components/SettingsLayout';
+import HelpPage from './pages/HelpPage';
+import PropertyDetailPage from './pages/PropertyDetailPage';
+
+function RedirectToProperty() {
+  const { propertyId } = useParams();
+  return <Navigate to={propertyId ? `/properties/${propertyId}` : '/properties'} replace />;
+}
 
 function App() {
   return (
@@ -223,175 +232,55 @@ function App() {
               <Route path="/checkout/cancel" element={<Navigate to="/intake/start" replace />} />
 
               {/* ========================================
-                  CLIENT PORTAL ROUTES (Protected)
-                  Existing CVP functionality - DO NOT MODIFY
+                  CLIENT PORTAL ROUTES (Enterprise UI)
+                  /dashboard, /properties, /requirements, etc. + /app/* redirects
                   ======================================== */}
-            <Route 
-              path="/app/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <ClientDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/assistant" 
-              element={
-                <ProtectedRoute>
-                  <AssistantPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/profile" 
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/notifications" 
-              element={
-                <ProtectedRoute>
-                  <NotificationPreferencesPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/calendar" 
-              element={
-                <ProtectedRoute>
-                  <CalendarPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/properties/create" 
-              element={
-                <ProtectedRoute>
-                  <PropertyCreatePage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/properties" 
-              element={
-                <ProtectedRoute>
-                  <PropertiesPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/requirements" 
-              element={
-                <ProtectedRoute>
-                  <RequirementsPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/compliance-score" 
-              element={
-                <ProtectedRoute>
-                  <ComplianceScorePage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/documents" 
-              element={
-                <ProtectedRoute>
-                  <DocumentsPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/documents/bulk-upload" 
-              element={
-                <ProtectedRoute>
-                  <BulkUploadPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/reports" 
-              element={
-                <ProtectedRoute>
-                  <ReportsPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/tenant" 
-              element={
-                <ProtectedRoute>
-                  <TenantDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/tenants" 
-              element={
-                <ProtectedRoute>
-                  <EntitlementProtectedRoute requiredFeature="tenant_portal">
-                    <TenantManagementPage />
-                  </EntitlementProtectedRoute>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/properties/import" 
-              element={
-                <ProtectedRoute>
-                  <BulkPropertyImportPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/integrations" 
-              element={
-                <ProtectedRoute>
-                  <EntitlementProtectedRoute requiredFeature="webhooks">
-                    <IntegrationsPage />
-                  </EntitlementProtectedRoute>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/settings/branding" 
-              element={
-                <ProtectedRoute>
-                  <EntitlementProtectedRoute requiredFeature="white_label_reports">
-                    <BrandingSettingsPage />
-                  </EntitlementProtectedRoute>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/billing" 
-              element={
-                <ProtectedRoute>
-                  <BillingPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/orders/:orderId/provide-info" 
-              element={
-                <ProtectedRoute>
-                  <ClientProvideInfoPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/app/orders" 
-              element={
-                <ProtectedRoute>
-                  <ClientOrdersPage />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/dashboard" element={<ClientPortal><ClientDashboard /></ClientPortal>} />
+            <Route path="/properties" element={<ClientPortal><PropertiesPage /></ClientPortal>} />
+            <Route path="/properties/:propertyId" element={<ClientPortal><PropertyDetailPage /></ClientPortal>} />
+            <Route path="/properties/create" element={<ClientPortal><PropertyCreatePage /></ClientPortal>} />
+            <Route path="/properties/import" element={<ClientPortal><BulkPropertyImportPage /></ClientPortal>} />
+            <Route path="/requirements" element={<ClientPortal><RequirementsPage /></ClientPortal>} />
+            <Route path="/documents" element={<ClientPortal><DocumentsPage /></ClientPortal>} />
+            <Route path="/documents/bulk-upload" element={<ClientPortal><BulkUploadPage /></ClientPortal>} />
+            <Route path="/calendar" element={<ClientPortal><CalendarPage /></ClientPortal>} />
+            <Route path="/reports" element={<ClientPortal><ReportsPage /></ClientPortal>} />
+            <Route path="/compliance-score" element={<ClientPortal><ComplianceScorePage /></ClientPortal>} />
+            <Route path="/assistant" element={<ClientPortal><AssistantPage /></ClientPortal>} />
+            <Route path="/help" element={<ClientPortal><HelpPage /></ClientPortal>} />
+            <Route path="/settings" element={<ClientPortal><SettingsLayout /></ClientPortal>}>
+              <Route index element={<Navigate to="/settings/profile" replace />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="notifications" element={<NotificationPreferencesPage />} />
+              <Route path="billing" element={<BillingPage />} />
+            </Route>
+            <Route path="/tenant" element={<ClientPortal><TenantDashboard /></ClientPortal>} />
+            <Route path="/tenants" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="tenant_portal"><TenantManagementPage /></EntitlementProtectedRoute></ClientPortal>} />
+            <Route path="/integrations" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="webhooks"><IntegrationsPage /></EntitlementProtectedRoute></ClientPortal>} />
+            <Route path="/orders/:orderId/provide-info" element={<ClientPortal><ClientProvideInfoPage /></ClientPortal>} />
+            <Route path="/orders" element={<ClientPortal><ClientOrdersPage /></ClientPortal>} />
+
+            {/* Redirect legacy /app/* to new paths */}
+            <Route path="/app/dashboard" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/app/assistant" element={<Navigate to="/assistant" replace />} />
+            <Route path="/app/profile" element={<Navigate to="/settings/profile" replace />} />
+            <Route path="/app/notifications" element={<Navigate to="/settings/notifications" replace />} />
+            <Route path="/app/calendar" element={<Navigate to="/calendar" replace />} />
+            <Route path="/app/properties/create" element={<Navigate to="/properties/create" replace />} />
+            <Route path="/app/properties" element={<Navigate to="/properties" replace />} />
+            <Route path="/app/property/:propertyId" element={<RedirectToProperty />} />
+            <Route path="/app/requirements" element={<Navigate to="/requirements" replace />} />
+            <Route path="/app/compliance-score" element={<Navigate to="/compliance-score" replace />} />
+            <Route path="/app/documents" element={<Navigate to="/documents" replace />} />
+            <Route path="/app/documents/bulk-upload" element={<Navigate to="/documents/bulk-upload" replace />} />
+            <Route path="/app/reports" element={<Navigate to="/reports" replace />} />
+            <Route path="/app/tenant" element={<Navigate to="/tenant" replace />} />
+            <Route path="/app/tenants" element={<Navigate to="/tenants" replace />} />
+            <Route path="/app/properties/import" element={<Navigate to="/properties/import" replace />} />
+            <Route path="/app/integrations" element={<Navigate to="/integrations" replace />} />
+            <Route path="/app/billing" element={<Navigate to="/settings/billing" replace />} />
+            <Route path="/app/orders/:orderId/provide-info" element={<Navigate to="/orders/:orderId/provide-info" replace />} />
+            <Route path="/app/orders" element={<Navigate to="/orders" replace />} />
 
             {/* ========================================
                   ORDER INTAKE WIZARD (Public)

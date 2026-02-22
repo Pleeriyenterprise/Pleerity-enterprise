@@ -125,130 +125,7 @@ const ClientDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-midnight-blue text-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold">Compliance Vault Pro</h1>
-                <p className="text-sm text-gray-300">AI-Driven Solutions & Compliance</p>
-              </div>
-              {data?.client?.customer_reference && (
-                <span 
-                  className="px-3 py-1 bg-electric-teal/20 text-electric-teal rounded-lg font-mono text-sm"
-                  data-testid="client-crn-badge"
-                  title="Your Customer Reference Number"
-                >
-                  {data.client.customer_reference}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm">{user?.email}</span>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={logout}
-                className="text-white hover:text-electric-teal"
-                data-testid="logout-btn"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-electric-teal text-electric-teal"
-              data-testid="nav-dashboard"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Dashboard
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/properties')}
-              data-testid="nav-properties"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Properties
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/documents')}
-              data-testid="nav-documents"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Documents
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/calendar')}
-              data-testid="nav-calendar"
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Calendar
-            </button>
-            {(hasFeature('reports_pdf') || hasFeature('reports_csv')) && (
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/reports')}
-              data-testid="nav-reports"
-            >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Reports
-            </button>
-            )}
-            {hasFeature('tenant_portal') && (
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/tenants')}
-              data-testid="nav-tenants"
-            >
-              <Users className="w-4 h-4 mr-2" />
-              Tenants
-            </button>
-            )}
-            {hasFeature('webhooks') && (
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/integrations')}
-              data-testid="nav-integrations"
-            >
-              <Webhook className="w-4 h-4 mr-2" />
-              Integrations
-            </button>
-            )}
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/profile')}
-              data-testid="nav-profile"
-            >
-              <User className="w-4 h-4 mr-2" />
-              Profile
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/billing')}
-              data-testid="nav-billing"
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Plans
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="client-dashboard">
+    <div data-testid="client-dashboard">
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -306,19 +183,10 @@ const ClientDashboard = () => {
         )}
 
         {/* Welcome */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-midnight-blue mb-2">Welcome, {data?.client?.full_name}</h2>
-            <p className="text-gray-600">Here's your compliance overview</p>
-          </div>
-          <Button 
-            onClick={() => navigate('/app/assistant')}
-            className="btn-secondary flex items-center gap-2"
-            data-testid="ask-assistant-btn"
-          >
-            <MessageSquare className="w-4 h-4" />
-            Ask Assistant
-          </Button>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-midnight-blue mb-2">Welcome, {data?.client?.full_name}</h2>
+          <p className="text-gray-600">Here&apos;s your compliance overview</p>
+          <p className="text-xs text-gray-500 mt-2">This is an evidence-based status summary. It is not legal advice.</p>
         </div>
 
         {/* Compliance Score Widget */}
@@ -332,7 +200,7 @@ const ClientDashboard = () => {
                 complianceScore.color === 'red' ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:border-red-400' :
                 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 hover:border-gray-400'
               }`}
-              onClick={() => navigate('/app/compliance-score')}
+              onClick={() => navigate('/compliance-score')}
               data-testid="compliance-score-card-clickable"
             >
               <div className="flex items-start justify-between mb-4">
@@ -518,7 +386,7 @@ const ClientDashboard = () => {
               <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-4">
                 <div 
                   className="text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
-                  onClick={() => navigate('/app/requirements')}
+                  onClick={() => navigate('/requirements')}
                   data-testid="stat-requirements"
                 >
                   <p className="text-2xl font-bold text-midnight-blue">{complianceScore.stats?.total_requirements || 0}</p>
@@ -526,7 +394,7 @@ const ClientDashboard = () => {
                 </div>
                 <div 
                   className="text-center cursor-pointer hover:bg-green-50 rounded-lg p-2 transition-colors"
-                  onClick={() => navigate('/app/requirements?status=COMPLIANT')}
+                  onClick={() => navigate('/requirements?status=COMPLIANT')}
                   data-testid="stat-compliant"
                 >
                   <p className="text-2xl font-bold text-green-600">{complianceScore.stats?.compliant || 0}</p>
@@ -534,7 +402,7 @@ const ClientDashboard = () => {
                 </div>
                 <div 
                   className="text-center cursor-pointer hover:bg-amber-50 rounded-lg p-2 transition-colors"
-                  onClick={() => navigate('/app/requirements?window=30&status=DUE_SOON')}
+                  onClick={() => navigate('/requirements?window=30&status=DUE_SOON')}
                   data-testid="stat-expiry"
                 >
                   <p className="text-2xl font-bold text-amber-600">
@@ -551,7 +419,7 @@ const ClientDashboard = () => {
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card 
             className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-electric-teal group"
-            onClick={() => navigate('/app/requirements')}
+            onClick={() => navigate('/requirements')}
             data-testid="tile-total-requirements"
           >
             <CardContent className="pt-6">
@@ -572,7 +440,7 @@ const ClientDashboard = () => {
 
           <Card 
             className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-green-300 group"
-            onClick={() => navigate('/app/properties?status=COMPLIANT')}
+            onClick={() => navigate('/properties?status=COMPLIANT')}
             data-testid="tile-compliant"
           >
             <CardContent className="pt-6">
@@ -593,7 +461,7 @@ const ClientDashboard = () => {
 
           <Card 
             className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-amber-300 group"
-            onClick={() => navigate('/app/requirements?status=DUE_SOON')}
+            onClick={() => navigate('/requirements?status=DUE_SOON')}
             data-testid="tile-expiring-soon"
           >
             <CardContent className="pt-6">
@@ -614,7 +482,7 @@ const ClientDashboard = () => {
 
           <Card 
             className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-red-300 group"
-            onClick={() => navigate('/app/requirements?status=OVERDUE_OR_MISSING')}
+            onClick={() => navigate('/requirements?status=OVERDUE_OR_MISSING')}
             data-testid="tile-overdue"
           >
             <CardContent className="pt-6">
@@ -644,7 +512,7 @@ const ClientDashboard = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate('/app/properties/import')}
+                    onClick={() => navigate('/properties/import')}
                     data-testid="bulk-import-btn"
                   >
                     <FileText className="w-4 h-4 mr-1" />
@@ -657,7 +525,7 @@ const ClientDashboard = () => {
                   <div className="text-center py-6">
                     <p className="text-gray-600 mb-3">No properties found</p>
                     <Button 
-                      onClick={() => navigate('/app/properties/import')}
+                      onClick={() => navigate('/properties/import')}
                       variant="outline"
                       data-testid="import-first-property-btn"
                     >
@@ -752,7 +620,7 @@ const ClientDashboard = () => {
                       variant="outline"
                       size="sm"
                       className="w-full mt-3 border-electric-teal text-electric-teal hover:bg-teal-50"
-                      onClick={() => navigate('/app/notifications')}
+                      onClick={() => navigate('/settings/notifications')}
                       data-testid="manage-notifications-btn"
                     >
                       <Settings className="w-4 h-4 mr-2" />
@@ -767,7 +635,7 @@ const ClientDashboard = () => {
                       variant="outline"
                       size="sm"
                       className="border-electric-teal text-electric-teal hover:bg-teal-50"
-                      onClick={() => navigate('/app/notifications')}
+                      onClick={() => navigate('/settings/notifications')}
                     >
                       Set Up Notifications
                     </Button>
@@ -777,7 +645,6 @@ const ClientDashboard = () => {
             </Card>
           </div>
         </div>
-      </main>
 
       {/* Build stamp for deployment verification */}
       {process.env.REACT_APP_BUILD_SHA && (

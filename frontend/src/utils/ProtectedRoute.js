@@ -10,7 +10,8 @@ export const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const location = useLocation();
   const hasLoggedBlock = useRef(false);
   const pathname = location.pathname;
-  const isClientPath = pathname.startsWith('/app');
+  const clientPathPrefixes = ['/app', '/dashboard', '/properties', '/requirements', '/documents', '/calendar', '/reports', '/settings', '/assistant', '/help', '/compliance-score', '/tenant', '/tenants', '/integrations', '/orders'];
+  const isClientPath = clientPathPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
   const isAdminPath = pathname.startsWith('/admin');
 
   // Log admin route guard blocks (non-staff trying to access admin)
@@ -42,17 +43,17 @@ export const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   // Client role on admin path -> redirect to client dashboard
   if (isAdminPath && !isStaffRole(user.role)) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Admin route protection - allow only OWNER and ADMIN
   if (requireAdmin && !isStaffRole(user.role)) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Tenant routing - redirect to tenant dashboard if not already there
-  if (user.role === 'ROLE_TENANT' && !location.pathname.startsWith('/app/tenant')) {
-    return <Navigate to="/app/tenant" replace />;
+  if (user.role === 'ROLE_TENANT' && !location.pathname.startsWith('/tenant')) {
+    return <Navigate to="/tenant" replace />;
   }
 
   return children;
