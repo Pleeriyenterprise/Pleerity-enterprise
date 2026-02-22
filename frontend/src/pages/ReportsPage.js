@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -62,11 +62,7 @@ const ReportsPage = () => {
   const hasReportsAccess = hasFeature('reports_pdf') || hasFeature('reports_csv');
   const hasScheduledReportsAccess = hasFeature('scheduled_reports');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setUpgradeRequiredDetail(null);
       const [reportsRes, propsRes, schedulesRes, previousRes] = await Promise.all([
@@ -88,7 +84,11 @@ const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hasReportsAccess]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const generatePDF = (reportData, reportType) => {
     const doc = new jsPDF();
