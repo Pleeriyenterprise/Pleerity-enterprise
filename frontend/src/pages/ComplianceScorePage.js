@@ -391,8 +391,9 @@ const ComplianceScorePage = () => {
               <div className="space-y-4">
                 {properties.map((property) => {
                   const contribution = getPropertyScoreContribution(property.property_id);
+                  // Align with backend risk bands: Low >= 80, Moderate/High >= 40, Critical < 40
                   const propertyColor = contribution.score >= 80 ? 'green' :
-                                       contribution.score >= 60 ? 'amber' : 'red';
+                                       contribution.score >= 40 ? 'amber' : 'red';
                   
                   return (
                     <div 

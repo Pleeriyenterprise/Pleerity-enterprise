@@ -7,6 +7,7 @@ and portfolio weighting by requirement count. Does not replace existing /client/
 from fastapi import APIRouter, Request, Depends, status
 from database import database
 from middleware import client_route_guard
+from utils.risk_bands import score_to_risk_level
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,17 +23,6 @@ REQUIREMENT_POINTS = {
     "OVERDUE": 0,
     "EXPIRED": 0,
 }
-
-
-def _score_to_risk_level(score: int) -> str:
-    """80-100 Low, 60-79 Moderate, 40-59 High, 0-39 Critical."""
-    if score >= 80:
-        return "Low Risk"
-    if score >= 60:
-        return "Moderate Risk"
-    if score >= 40:
-        return "High Risk"
-    return "Critical Risk"
 
 
 @router.get("/compliance-summary")
@@ -85,7 +75,7 @@ async def get_compliance_summary(request: Request):
             property_score = round(sum(points) / len(points))
             property_score = max(0, min(100, property_score))
 
-        risk_level = _score_to_risk_level(property_score)
+        risk_level = score_to_risk_level(property_score)
         total_weighted_score += property_score * len(prop_reqs)
         total_requirements += len(prop_reqs)
         property_summaries.append({
@@ -102,7 +92,7 @@ async def get_compliance_summary(request: Request):
     else:
         portfolio_score = round(total_weighted_score / total_requirements)
         portfolio_score = max(0, min(100, portfolio_score))
-    portfolio_risk = _score_to_risk_level(portfolio_score)
+    portfolio_risk = score_to_risk_level(portfolio_score)
 
     return {
         "portfolio_score": portfolio_score,

@@ -15,6 +15,7 @@ from services.compliance_score import (
     REQUIREMENT_TYPE_WEIGHTS,
     DEFAULT_REQUIREMENT_WEIGHT,
 )
+from utils.risk_bands import score_to_grade_color_message
 
 logger = logging.getLogger(__name__)
 
@@ -196,17 +197,7 @@ async def calculate_property_compliance(
         (risk_score * 0.10)
     )
     final_score = round(max(0, min(100, final_score)))
-
-    if final_score >= 90:
-        grade, color = "A", "green"
-    elif final_score >= 80:
-        grade, color = "B", "green"
-    elif final_score >= 70:
-        grade, color = "C", "amber"
-    elif final_score >= 60:
-        grade, color = "D", "amber"
-    else:
-        grade, color = "F", "red"
+    grade, color, _ = score_to_grade_color_message(final_score)
 
     breakdown = {
         "status_score": round(status_score, 1),

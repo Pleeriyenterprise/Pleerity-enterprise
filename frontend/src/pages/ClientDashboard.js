@@ -460,7 +460,7 @@ const ClientDashboard = () => {
                 <li>Overdue: 0</li>
               </ul>
               <p className="mb-2">Property score is the average of requirement scores for that property. Portfolio score is the average across all properties weighted by requirement count.</p>
-              <p className="mb-2">Risk levels: 80–100 = Low Risk; 60–79 = Moderate Risk; 40–59 = High Risk; 0–39 = Critical Risk.</p>
+              <p className="mb-2">Risk levels (aligned with server): 80–100 = Low Risk; 60–79 = Moderate Risk; 40–59 = High Risk; 0–39 = Critical Risk.</p>
               <p className="text-gray-500 italic">This is an evidence-based status summary. It is not legal advice and does not constitute legal certification.</p>
             </div>
           )}

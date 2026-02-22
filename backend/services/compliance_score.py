@@ -19,6 +19,7 @@ Weighting Model:
 from database import database
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
+from utils.risk_bands import score_to_grade_color_message
 import logging
 
 logger = logging.getLogger(__name__)
@@ -130,15 +131,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             }
         else:
             breakdown = {}
-        # Risk-based messaging (80+ Low, 60-79 Moderate, 40-59 High, 0-39 Critical)
-        if client_score >= 80:
-            grade, color, message = "A" if client_score >= 90 else "B", "green", "Low risk - good standing"
-        elif client_score >= 60:
-            grade, color, message = "C", "amber", "Moderate risk - action required"
-        elif client_score >= 40:
-            grade, color, message = "D", "amber", "High risk - action required"
-        else:
-            grade, color, message = "F", "red", "Critical risk - immediate action needed"
+        grade, color, message = score_to_grade_color_message(client_score)
         requirements = await db.requirements.find(
             {"client_id": client_id},
             {"_id": 0, "status": 1}
@@ -408,24 +401,7 @@ async def _calculate_compliance_score_legacy_from_db(client_id: str) -> Dict[str
         )
         
         final_score = round(max(0, min(100, final_score)))
-        
-        # Risk-based messaging (80+ Low, 60-79 Moderate, 40-59 High, 0-39 Critical)
-        if final_score >= 80:
-            grade = "A" if final_score >= 90 else "B"
-            color = "green"
-            message = "Low risk - good standing"
-        elif final_score >= 60:
-            grade = "C"
-            color = "amber"
-            message = "Moderate risk - action required"
-        elif final_score >= 40:
-            grade = "D"
-            color = "amber"
-            message = "High risk - action required"
-        else:
-            grade = "F"
-            color = "red"
-            message = "Critical risk - immediate action needed"
+        grade, color, message = score_to_grade_color_message(final_score)
         
         # Generate prioritized recommendations
         recommendations = []
