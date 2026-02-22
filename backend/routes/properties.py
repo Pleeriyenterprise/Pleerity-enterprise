@@ -144,6 +144,75 @@ async def create_property(request: Request, data: CreatePropertyRequest):
             detail="Failed to create property"
         )
 
+# Fields that affect compliance score applicability (v1); changing any triggers recalc.
+APPLICABILITY_FIELDS = frozenset({"is_hmo", "bedrooms", "occupancy", "licence_required", "has_gas_supply", "has_gas"})
+
+
+class PatchPropertyRequest(BaseModel):
+    """Optional fields for PATCH; only provided keys are updated."""
+    nickname: Optional[str] = None
+    is_hmo: Optional[bool] = None
+    bedrooms: Optional[int] = None
+    occupancy: Optional[str] = None
+    licence_required: Optional[str] = None
+    has_gas_supply: Optional[bool] = None
+    has_gas: Optional[bool] = None
+
+
+@router.patch("/{property_id}")
+async def patch_property(request: Request, property_id: str, data: PatchPropertyRequest):
+    """Update a property. Only provided fields are updated.
+    Changing is_hmo, bedrooms, occupancy, licence_required, has_gas_supply, or has_gas triggers compliance score recalc.
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1, "client_id": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
+         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    update = {}
+    payload = data.model_dump(exclude_none=True)
+    for key, value in payload.items():
+        update[key] = value
+
+    if not update:
+        return {"message": "No updates", "property_id": property_id}
+
+    applicability_changed = any(
+        f in update and prop.get(f) != update[f]
+        for f in APPLICABILITY_FIELDS
+    )
+
+    now = datetime.now(timezone.utc)
+    update["updated_at"] = now.isoformat()
+    await db.properties.update_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"$set": update},
+    )
+
+    if applicability_changed:
+        from services.compliance_recalc_queue import (
+            enqueue_compliance_recalc,
+            TRIGGER_PROPERTY_UPDATED,
+            ACTOR_CLIENT,
+        )
+        await enqueue_compliance_recalc(
+            property_id=property_id,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_PROPERTY_UPDATED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=f"PROPERTY_UPDATED:{property_id}",
+        )
+
+    return {"message": "Property updated", "property_id": property_id}
+
+
 @router.get("/list")
 async def list_properties(request: Request):
     """List all properties for the authenticated client.

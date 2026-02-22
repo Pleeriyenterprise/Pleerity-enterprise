@@ -1,6 +1,7 @@
 """
 Enterprise compliance scoring: single source of truth for property-level score.
 Deterministic, event-driven recalculation, persisted on Property + history + audit.
+Uses Compliance Score v1 (evidence-based, no legal verdicts) from compliance_scoring module.
 
 All score changes must go through recalculate_and_persist(); no route implements
 its own scoring. Dashboard and GET /compliance-score read stored property scores.
@@ -10,11 +11,7 @@ from datetime import datetime, timezone, date, timedelta
 from typing import Dict, Any, Optional, List
 import logging
 
-from services.compliance_score import (
-    get_requirement_weight,
-    REQUIREMENT_TYPE_WEIGHTS,
-    DEFAULT_REQUIREMENT_WEIGHT,
-)
+from services.compliance_scoring import compute_property_score as compute_property_score_v1
 from utils.risk_bands import score_to_grade_color_message
 
 logger = logging.getLogger(__name__)
@@ -48,9 +45,8 @@ async def calculate_property_compliance(
     as_of_date: Optional[date] = None,
 ) -> Dict[str, Any]:
     """
-    Compute compliance score for a single property from current DB state.
+    Compute compliance score for a single property from current DB state (Compliance Score v1).
     Deterministic: same DB state + same as_of_date -> same result.
-    as_of_date defaults to today (UTC); pass explicitly for tests.
     """
     db = database.get_db()
     now = datetime.now(timezone.utc)
@@ -59,7 +55,8 @@ async def calculate_property_compliance(
 
     property_doc = await db.properties.find_one(
         {"property_id": property_id},
-        {"_id": 0, "property_id": 1, "client_id": 1, "is_hmo": 1}
+        {"_id": 0, "property_id": 1, "client_id": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
+         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1}
     )
     if not property_doc:
         return {
@@ -77,147 +74,35 @@ async def calculate_property_compliance(
         {"property_id": property_id},
         {"_id": 0}
     ).to_list(500)
-    verified_documents = [d for d in documents if d.get("status") == "VERIFIED"]
-    is_hmo = property_doc.get("is_hmo", False)
-    hmo_property_ids = [property_id] if is_hmo else []
 
-    if not requirements:
-        return {
-            "score": 100,
-            "grade": "A",
-            "color": "green",
-            "breakdown": {
-                "status_score": 100.0,
-                "expiry_score": 100.0,
-                "document_score": 100.0,
-                "overdue_penalty_score": 100.0,
-                "risk_score": 95.0 if is_hmo else 100.0,
-            },
-            "stats": {
-                "total_requirements": 0,
-                "compliant": 0,
-                "pending": 0,
-                "expiring_soon": 0,
-                "overdue": 0,
-            },
-            "weights_version": WEIGHTS_VERSION,
-        }
+    result = compute_property_score_v1(property_doc, requirements, documents, as_of=now)
+    score = result.get("score_0_100", 0)
+    risk_level = result.get("risk_level", "Low risk")
+    breakdown_v1 = result.get("breakdown", [])
 
-    total_weight = 0
-    weighted_points = 0
-    status_counts = {"COMPLIANT": 0, "PENDING": 0, "EXPIRING_SOON": 0, "OVERDUE": 0, "EXPIRED": 0}
-    critical_overdue = []
-
-    for req in requirements:
-        status = req.get("status", "PENDING")
-        req_type = req.get("requirement_type", "UNKNOWN")
-        weight = get_requirement_weight(req_type)
-        if property_id in hmo_property_ids and req_type.upper() in ["HMO_LICENCE", "FIRE_RISK_ASSESSMENT", "FIRE_DOORS", "EMERGENCY_LIGHTING"]:
-            weight *= 1.2
-        total_weight += weight
-        if status in status_counts:
-            status_counts[status] += 1
-        else:
-            status_counts["PENDING"] += 1
-        if status == "COMPLIANT":
-            weighted_points += weight * 100
-        elif status == "PENDING":
-            weighted_points += weight * 70
-        elif status == "EXPIRING_SOON":
-            weighted_points += weight * 40
-        else:
-            weighted_points += 0
-            if weight >= 1.3:
-                critical_overdue.append({"type": req_type, "property_id": property_id, "weight": weight})
-
-    status_score = (weighted_points / (total_weight * 100)) * 100 if total_weight > 0 else 100
-    total_reqs = len(requirements)
-    compliant_count = status_counts["COMPLIANT"]
-    pending_count = status_counts["PENDING"]
-    expiring_soon_count = status_counts["EXPIRING_SOON"]
-    overdue_count = status_counts["OVERDUE"] + status_counts["EXPIRED"]
-
-    min_days_until_critical = float("inf")
-    min_days_until_any = float("inf")
-    nearest_expiry_type = None
-    for req in requirements:
-        if req.get("status") in ["COMPLIANT", "PENDING", "EXPIRING_SOON"]:
-            due = _parse_due_date(req.get("due_date"))
-            if due:
-                days_until = (due - now).days
-                if days_until < min_days_until_any:
-                    min_days_until_any = days_until
-                    nearest_expiry_type = req.get("requirement_type")
-                if get_requirement_weight(req.get("requirement_type", "UNKNOWN")) >= 1.3 and days_until < min_days_until_critical:
-                    min_days_until_critical = days_until
-    effective_min_days = min_days_until_critical if min_days_until_critical != float("inf") else min_days_until_any
-
-    if effective_min_days == float("inf"):
-        expiry_score = 100
-    elif effective_min_days >= 90:
-        expiry_score = 100
-    elif effective_min_days >= 60:
-        expiry_score = 90
-    elif effective_min_days >= 30:
-        expiry_score = 75
-    elif effective_min_days >= 14:
-        expiry_score = 50
-    elif effective_min_days >= 7:
-        expiry_score = 30
-    elif effective_min_days >= 0:
-        expiry_score = 15
-    else:
-        expiry_score = 0
-
-    requirements_with_verified_docs = set()
-    for doc in verified_documents:
-        if doc.get("requirement_id"):
-            requirements_with_verified_docs.add(doc["requirement_id"])
-    requirements_with_any_docs = set()
-    for doc in documents:
-        if doc.get("requirement_id"):
-            requirements_with_any_docs.add(doc["requirement_id"])
-    verified_doc_rate = (len(requirements_with_verified_docs) / total_reqs * 100) if total_reqs > 0 else 0
-    doc_score = min(verified_doc_rate, 100)
-
-    overdue_penalty_base = 100 - (overdue_count / total_reqs * 100) if total_reqs > 0 else 100
-    critical_penalty = len(critical_overdue) * 10
-    overdue_penalty_score = max(0, overdue_penalty_base - critical_penalty)
-
-    risk_score = 100
-    if is_hmo:
-        risk_score -= 5
-    risk_score = max(0, risk_score)
-
-    final_score = (
-        (status_score * 0.35) +
-        (expiry_score * 0.25) +
-        (doc_score * 0.15) +
-        (overdue_penalty_score * 0.15) +
-        (risk_score * 0.10)
-    )
-    final_score = round(max(0, min(100, final_score)))
-    grade, color, _ = score_to_grade_color_message(final_score)
-
-    breakdown = {
-        "status_score": round(status_score, 1),
-        "expiry_score": round(expiry_score, 1),
-        "document_score": round(doc_score, 1),
-        "overdue_penalty_score": round(overdue_penalty_score, 1),
-        "risk_score": round(risk_score, 1),
+    grade, color, _ = score_to_grade_color_message(score)
+    status_score = score
+    breakdown_legacy = {
+        "status_score": float(score),
+        "expiry_score": float(score),
+        "document_score": float(score),
+        "overdue_penalty_score": float(score),
+        "risk_score": 100.0,
     }
     stats = {
-        "total_requirements": total_reqs,
-        "compliant": compliant_count,
-        "pending": pending_count,
-        "expiring_soon": expiring_soon_count,
-        "overdue": overdue_count,
+        "total_requirements": len(requirements),
+        "compliant": sum(1 for r in requirements if (r.get("status") or "").upper() == "COMPLIANT"),
+        "pending": sum(1 for r in requirements if (r.get("status") or "").upper() == "PENDING"),
+        "expiring_soon": sum(1 for r in requirements if (r.get("status") or "").upper() == "EXPIRING_SOON"),
+        "overdue": sum(1 for r in requirements if (r.get("status") or "").upper() in ("OVERDUE", "EXPIRED")),
     }
     return {
-        "score": final_score,
+        "score": score,
         "grade": grade,
         "color": color,
-        "breakdown": breakdown,
+        "risk_level": risk_level,
+        "score_breakdown": breakdown_v1,
+        "breakdown": breakdown_legacy,
         "stats": stats,
         "weights_version": WEIGHTS_VERSION,
         "weights": {
@@ -260,17 +145,25 @@ async def recalculate_and_persist(
 
     new_score = result["score"]
     new_breakdown = result.get("breakdown", {})
+    risk_level = result.get("risk_level")
+    score_breakdown = result.get("score_breakdown", [])
     now = datetime.now(timezone.utc)
+
+    set_fields = {
+        "compliance_score": new_score,
+        "compliance_breakdown": new_breakdown,
+        "compliance_last_calculated_at": now.isoformat(),
+        "compliance_version": result.get("weights_version", WEIGHTS_VERSION),
+        "compliance_score_pending": False,
+    }
+    if risk_level is not None:
+        set_fields["risk_level"] = risk_level
+    if score_breakdown is not None:
+        set_fields["score_breakdown"] = score_breakdown
 
     await db.properties.update_one(
         {"property_id": property_id},
-        {"$set": {
-            "compliance_score": new_score,
-            "compliance_breakdown": new_breakdown,
-            "compliance_last_calculated_at": now.isoformat(),
-            "compliance_version": result.get("weights_version", WEIGHTS_VERSION),
-            "compliance_score_pending": False,
-        }}
+        {"$set": set_fields}
     )
 
     breakdown_summary = {
