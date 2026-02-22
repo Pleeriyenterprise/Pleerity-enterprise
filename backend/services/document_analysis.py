@@ -4,8 +4,9 @@ IMPORTANT: This service is ASSISTIVE ONLY. Extracted data must be reviewed by us
 before being applied. AI CANNOT mark a requirement as compliant - the deterministic
 compliance engine remains the final authority.
 
-Requires LLM_API_KEY and Google Generative AI for LLM; if not configured,
-analyze_document returns success=False with error "AI extraction unavailable".
+Uses AI when available: if AI_ENABLED=true and OPENAI_API_KEY set (see utils.ai_config),
+extraction runs via OpenAI (text from file). Otherwise uses LLM_API_KEY (Gemini) with
+file upload. If neither is configured, returns success=False with a clear error message.
 """
 from database import database
 from models import AuditAction
@@ -197,36 +198,99 @@ class DocumentAnalysisService:
               before being applied. AI cannot auto-mark compliance.
         """
         db = database.get_db()
-        
+
+        if not os.path.exists(file_path):
+            logger.error(f"Document file not found: {file_path}")
+            return {
+                "success": False,
+                "error": "Document file not found",
+                "extracted_data": None,
+                "requires_review": True,
+            }
+
+        if not doc_type_hint:
+            doc_type_hint = self._detect_document_type_hint(os.path.basename(file_path))
+
+        # Prefer ai_config (OpenAI) when enabled and configured
         try:
-            try:
-                from utils.llm_chat import chat_with_file, _get_api_key
-            except ImportError:
-                logger.warning("utils.llm_chat not available; AI document extraction disabled")
-                return {
-                    "success": False,
-                    "error": "AI extraction unavailable",
-                    "extracted_data": None,
-                    "requires_review": True,
-                }
-            if not _get_api_key():
-                logger.warning("LLM_API_KEY not set; AI document extraction disabled")
-                return {
-                    "success": False,
-                    "error": "AI extraction unavailable",
-                    "extracted_data": None,
-                    "requires_review": True,
-                }
-            if not os.path.exists(file_path):
-                logger.error(f"Document file not found: {file_path}")
-                return {
-                    "success": False,
-                    "error": "Document file not found",
-                    "extracted_data": None,
-                    "requires_review": True
-                }
-            if not doc_type_hint:
-                doc_type_hint = self._detect_document_type_hint(os.path.basename(file_path))
+            from utils import ai_config
+            from services.document_extraction_service import _extract_text_from_file
+            from services.ai_provider import extract_compliance_fields
+        except ImportError:
+            ai_config = None
+            _extract_text_from_file = None
+            extract_compliance_fields = None
+
+        if ai_config and getattr(ai_config, "is_configured", lambda: False)() and _extract_text_from_file and extract_compliance_fields:
+            text = _extract_text_from_file(file_path, mime_type)
+            if text and text.strip():
+                result = extract_compliance_fields(text, os.path.basename(file_path), None)
+                if result.get("success") and result.get("extracted"):
+                    mapped = self._map_ai_provider_to_analysis(result["extracted"])
+                    extracted_data = self._normalize_extraction_data(mapped)
+                    extraction_quality = self._assess_extraction_quality(extracted_data)
+                    await db.documents.update_one(
+                        {"document_id": document_id},
+                        {"$set": {
+                            "ai_extraction": {
+                                "extracted_at": datetime.now(timezone.utc).isoformat(),
+                                "data": extracted_data,
+                                "status": "completed",
+                                "doc_type_hint": doc_type_hint,
+                                "extraction_quality": extraction_quality,
+                                "requires_review": True,
+                                "review_status": "pending",
+                            }
+                        }}
+                    )
+                    await create_audit_log(
+                        action=AuditAction.DOCUMENT_AI_ANALYZED,
+                        actor_id=actor_id,
+                        client_id=client_id,
+                        resource_type="document",
+                        resource_id=document_id,
+                        metadata={
+                            "document_type": extracted_data.get("document_type"),
+                            "doc_type_hint": doc_type_hint,
+                            "overall_confidence": extracted_data.get("confidence_scores", {}).get("overall"),
+                            "extraction_quality": extraction_quality,
+                            "has_expiry_date": extracted_data.get("expiry_date") is not None,
+                            "has_engineer_details": extracted_data.get("engineer_details", {}).get("name") is not None,
+                            "requires_review": True,
+                            "provider": "openai",
+                        }
+                    )
+                    logger.info("Document analyzed successfully via OpenAI: %s (quality: %s)", document_id, extraction_quality)
+                    return {
+                        "success": True,
+                        "extracted_data": extracted_data,
+                        "extraction_quality": extraction_quality,
+                        "requires_review": True,
+                        "error": None,
+                    }
+            # No text or extraction failed; fall through to Gemini if available
+            logger.debug("OpenAI extraction path produced no result; trying Gemini if configured")
+        except Exception as e:
+            logger.warning("OpenAI extraction path failed: %s; falling back to Gemini if configured", e)
+
+        # Gemini path (LLM_API_KEY)
+        try:
+            from utils.llm_chat import chat_with_file, _get_api_key
+        except ImportError:
+            return {
+                "success": False,
+                "error": "AI extraction unavailable. Set AI_ENABLED=true and OPENAI_API_KEY in .env, or set LLM_API_KEY for Gemini.",
+                "extracted_data": None,
+                "requires_review": True,
+            }
+        if not _get_api_key():
+            return {
+                "success": False,
+                "error": "AI extraction unavailable. Set AI_ENABLED=true and OPENAI_API_KEY in .env, or set LLM_API_KEY for Gemini.",
+                "extracted_data": None,
+                "requires_review": True,
+            }
+        try:
             analysis_prompt = self._get_analysis_prompt(doc_type_hint)
             user_text = "Analyze this compliance document and extract all relevant metadata. Focus on the priority fields: expiry date, issue date, certificate number, and engineer/assessor details. Return only the JSON object."
             response = await chat_with_file(
@@ -344,6 +408,47 @@ class DocumentAnalysisService:
                 "requires_review": True
             }
     
+    def _map_ai_provider_to_analysis(self, extracted: Dict[str, Any]) -> Dict[str, Any]:
+        """Map ai_provider normalized output (doc_type, confidence, etc.) to document_analysis format."""
+        doc_type = extracted.get("doc_type") or "UNKNOWN"
+        doc_type_labels = {
+            "GAS_SAFETY": "Gas Safety Certificate",
+            "EICR": "EICR",
+            "EPC": "EPC",
+            "HMO_LICENCE": "HMO Licence",
+            "TENANCY": "Tenancy",
+            "INSURANCE": "Insurance",
+            "UNKNOWN": "Unknown",
+        }
+        confidence = extracted.get("confidence") or {}
+        return {
+            "document_type": doc_type_labels.get(doc_type, doc_type.replace("_", " ").title()),
+            "document_subtype": None,
+            "certificate_number": extracted.get("certificate_number"),
+            "issue_date": extracted.get("issue_date"),
+            "expiry_date": extracted.get("expiry_date"),
+            "property_address": extracted.get("address_line_1") or None,
+            "engineer_details": {
+                "name": None,
+                "registration_number": extracted.get("inspector_id"),
+                "registration_scheme": None,
+                "company_name": extracted.get("inspector_company"),
+            },
+            "result_summary": {"overall_result": None, "rating": None, "score": None},
+            "findings": {"defects": [], "warnings": [], "observations": []},
+            "appliances_or_items": [],
+            "additional_info": {"property_type": None, "floor_area_sqm": None, "number_of_items_tested": None},
+            "confidence_scores": {
+                "document_type": confidence.get("doc_type", 0),
+                "certificate_number": confidence.get("overall", 0),
+                "issue_date": confidence.get("dates", 0),
+                "expiry_date": confidence.get("dates", 0),
+                "engineer_details": confidence.get("overall", 0),
+                "overall": confidence.get("overall", 0),
+            },
+            "extraction_notes": extracted.get("notes"),
+        }
+
     def _normalize_extraction_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize extracted data to ensure consistent structure."""
         # Handle legacy format fields
