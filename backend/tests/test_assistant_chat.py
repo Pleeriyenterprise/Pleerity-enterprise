@@ -104,9 +104,12 @@ def test_messages_saved_with_conversation_id():
             with patch("services.assistant_chat_service.get_portal_facts", AsyncMock(return_value={"client_summary": {"client_id": "c1"}, "properties": [], "requirements_by_property": {}, "documents": [], "property_id_filter": None})):
                 with patch("services.assistant_chat_service.get_kb_snippets", return_value=[]):
                     with patch("services.assistant_chat_service.create_audit_log", AsyncMock()):
-                        with patch("utils.llm_chat._get_api_key", return_value="test-key"):
-                            with patch("utils.llm_chat.chat", AsyncMock(return_value='{"answer": "OK", "citations": [], "safety_flags": {}}')):
-                                result = asyncio.run(chat_turn("c1", "u1", "Hello", None, None, False))
+                        with patch("services.assistant_chat_service.ai_config.AI_ENABLED", True):
+                            with patch("services.assistant_chat_service.ai_config.is_configured", return_value=True):
+                                with patch("services.assistant_chat_service.ai_config.AI_PROVIDER", "openai"):
+                                    with patch("services.assistant_chat_service.ai_config.AI_MODEL", "gpt-4o-mini"):
+                                        with patch("utils.llm_chat.chat_openai", AsyncMock(return_value='{"answer": "OK", "citations": [], "safety_flags": {}}')):
+                                            result = asyncio.run(chat_turn("c1", "u1", "Hello", None, None, False))
     assert "conversation_id" in result
     assert db.assistant_messages.insert_one.call_count == 2  # user + assistant
     conv_id = result["conversation_id"]

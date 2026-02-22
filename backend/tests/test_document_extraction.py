@@ -6,10 +6,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 
 def test_ai_disabled_returns_failed_with_ai_not_configured():
-    """When AI_EXTRACTION_ENABLED=false, extract_compliance_fields returns success=False, error_code AI_NOT_CONFIGURED."""
-    with patch.dict(os.environ, {"AI_EXTRACTION_ENABLED": "false"}, clear=False):
-        from services.ai_provider import extract_compliance_fields
-        result = extract_compliance_fields("some text", "doc.pdf", None)
+    """When AI_ENABLED=false, extract_compliance_fields returns success=False, error_code AI_NOT_CONFIGURED."""
+    with patch.dict(os.environ, {"AI_ENABLED": "false"}, clear=False):
+        import importlib
+        import utils.ai_config as ac
+        importlib.reload(ac)
+        from services import ai_provider
+        importlib.reload(ai_provider)
+        result = ai_provider.extract_compliance_fields("some text", "doc.pdf", None)
     assert result.get("success") is False
     assert result.get("error_code") == "AI_NOT_CONFIGURED"
     assert result.get("extracted") is None

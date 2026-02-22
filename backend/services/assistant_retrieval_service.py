@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from database import database
+from utils import ai_config
 
 logger = logging.getLogger(__name__)
 
-# KB directory relative to backend
-BACKEND_DIR = Path(__file__).resolve().parent.parent
-KB_DIR = BACKEND_DIR / "docs" / "assistant_kb"
+# KB directory from ASSISTANT_KB_PATH (default backend/docs/assistant_kb)
+KB_DIR = ai_config.get_assistant_kb_path()
 
 # Snippet shape for KB
 def _snippet(source_id: str, title: str, content: str) -> Dict[str, Any]:

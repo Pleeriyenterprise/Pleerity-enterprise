@@ -2,6 +2,7 @@
 AI provider for compliance document field extraction only.
 Input: extracted text (no raw binary). Output: strict JSON schema only.
 No legal advice; no compliance verdicts. If uncertain, return nulls and lower confidence.
+Config: utils.ai_config (AI_ENABLED, OPENAI_API_KEY, AI_MODEL, etc.). No env vars required when AI_ENABLED=false.
 """
 import json
 import os
@@ -9,14 +10,12 @@ import re
 import logging
 from typing import Any, Dict, Optional
 
+from utils import ai_config
+
 logger = logging.getLogger(__name__)
 
-# Env (task spec)
-AI_PROVIDER = os.getenv("AI_PROVIDER", "openai")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-AI_MODEL_EXTRACTION = os.getenv("AI_MODEL_EXTRACTION", "gpt-4o-mini")
+# Extraction-specific (optional override); main gate is ai_config.AI_ENABLED
 AI_EXTRACTION_PROMPT_VERSION = os.getenv("AI_EXTRACTION_PROMPT_VERSION", "v1")
-AI_EXTRACTION_ENABLED = os.getenv("AI_EXTRACTION_ENABLED", "true").lower() in ("true", "1", "yes")
 
 # Allowed doc_type values (task enum)
 DOC_TYPES = {"GAS_SAFETY", "EICR", "EPC", "HMO_LICENCE", "TENANCY", "INSURANCE", "UNKNOWN"}
@@ -67,20 +66,22 @@ def _call_openai(text: str, file_name: str, hints: Optional[Dict[str, Any]] = No
         from openai import OpenAI
     except ImportError:
         raise RuntimeError("openai package not installed")
-    if not OPENAI_API_KEY:
+    api_key = ai_config.get_openai_api_key()
+    if not api_key:
         raise ValueError("OPENAI_API_KEY not set")
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = OpenAI(api_key=api_key)
     hint_str = ""
     if hints:
         hint_str = f" Hints: {json.dumps(hints)}."
     user_content = f"Document filename: {file_name}.{hint_str}\n\nExtract fields from this document text:\n\n{text}"
     response = client.chat.completions.create(
-        model=AI_MODEL_EXTRACTION,
+        model=ai_config.AI_MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_content[:30000]},
         ],
-        temperature=0.1,
+        temperature=ai_config.AI_TEMPERATURE,
+        max_tokens=ai_config.AI_MAX_OUTPUT_TOKENS,
     )
     raw_text = (response.choices[0].message.content or "").strip()
     # Strip markdown code block if present
@@ -100,14 +101,14 @@ def extract_compliance_fields(
     Returns dict with: extracted payload (normalized), raw_response_json, model, prompt_version,
     tokens_in, tokens_out (if available). On failure raises or returns error payload.
     """
-    if not AI_EXTRACTION_ENABLED:
+    if not ai_config.is_configured():
         return {
             "success": False,
             "error_code": "AI_NOT_CONFIGURED",
-            "error_message": "AI extraction is disabled (AI_EXTRACTION_ENABLED=false).",
+            "error_message": "AI is disabled (AI_ENABLED=false) or OPENAI_API_KEY not set.",
             "extracted": None,
             "raw_response_json": None,
-            "model": AI_MODEL_EXTRACTION,
+            "model": ai_config.AI_MODEL,
             "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
             "tokens_in": None,
             "tokens_out": None,
@@ -119,19 +120,19 @@ def extract_compliance_fields(
             "error_message": "No text provided for extraction.",
             "extracted": None,
             "raw_response_json": None,
-            "model": AI_MODEL_EXTRACTION,
+            "model": ai_config.AI_MODEL,
             "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
             "tokens_in": None,
             "tokens_out": None,
         }
-    if AI_PROVIDER != "openai":
+    if ai_config.AI_PROVIDER != "openai":
         return {
             "success": False,
             "error_code": "AI_NOT_CONFIGURED",
-            "error_message": f"AI_PROVIDER={AI_PROVIDER} not supported; use openai.",
+            "error_message": f"AI_PROVIDER={ai_config.AI_PROVIDER} not supported; use openai.",
             "extracted": None,
             "raw_response_json": None,
-            "model": AI_MODEL_EXTRACTION,
+            "model": ai_config.AI_MODEL,
             "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
             "tokens_in": None,
             "tokens_out": None,
@@ -146,7 +147,7 @@ def extract_compliance_fields(
             "error_message": str(e),
             "extracted": None,
             "raw_response_json": raw_text if "raw_text" in dir() else None,
-            "model": AI_MODEL_EXTRACTION,
+            "model": ai_config.AI_MODEL,
             "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
             "tokens_in": None,
             "tokens_out": None,
@@ -159,7 +160,7 @@ def extract_compliance_fields(
             "error_message": str(e),
             "extracted": None,
             "raw_response_json": None,
-            "model": AI_MODEL_EXTRACTION,
+            "model": ai_config.AI_MODEL,
             "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
             "tokens_in": None,
             "tokens_out": None,
@@ -174,7 +175,7 @@ def extract_compliance_fields(
         "error_message": None,
         "extracted": extracted,
         "raw_response_json": raw_text,
-        "model": AI_MODEL_EXTRACTION,
+        "model": ai_config.AI_MODEL,
         "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,

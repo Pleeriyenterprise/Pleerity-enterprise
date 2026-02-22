@@ -3741,7 +3741,14 @@ async def admin_assistant_chat(request: Request, data: AdminAssistantChatRequest
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message too long (max 2000 characters)")
 
     from utils.rate_limiter import rate_limiter
+    from utils import ai_config
     from services.assistant_chat_service import chat_turn as assistant_chat_turn
+
+    if ai_config.AI_ENABLED and not ai_config.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error_code": "AI_NOT_CONFIGURED", "detail": "AI service not configured. Set OPENAI_API_KEY when AI_ENABLED=true."},
+        )
 
     admin_id = user.get("portal_user_id") or user.get("auth_email", "")
     allowed, err = await rate_limiter.check_rate_limit(

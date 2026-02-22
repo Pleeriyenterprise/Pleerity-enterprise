@@ -5,7 +5,6 @@ and POST /api/admin/assistant/chat only.
 """
 import json
 import logging
-import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -13,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from database import database
 from models import AuditAction
+from utils import ai_config
 from utils.audit import create_audit_log
 
 from services.assistant_retrieval_service import get_portal_facts, get_kb_snippets
@@ -20,7 +20,6 @@ from services.assistant_retrieval_service import get_portal_facts, get_kb_snippe
 logger = logging.getLogger(__name__)
 
 CHAT_PROMPT_VERSION = "v1"
-MODEL_NAME = os.getenv("ASSISTANT_CHAT_MODEL", "gemini-2.0-flash")
 
 # Phrases that must not appear in assistant output (compliance verdict / legal)
 VERDICT_BLOCK_PATTERNS = [
@@ -169,6 +168,49 @@ async def chat_turn(
         metadata={"message_length": len(message), "property_id": property_id, "is_admin": is_admin},
     )
 
+    # When AI is disabled, return without calling any LLM (no env vars required).
+    if not ai_config.AI_ENABLED:
+        answer = "Assistant is currently disabled. Enable AI in configuration to use the assistant."
+        await create_audit_log(
+            action=AuditAction.ASSISTANT_CHAT_RESPONDED,
+            actor_id=user_id,
+            client_id=client_id,
+            resource_type="assistant_conversation",
+            resource_id=conv_id,
+            metadata={"answer_preview": answer[:200], "ai_disabled": True},
+        )
+        await db.assistant_messages.insert_one({
+            "message_id": f"msg-{uuid.uuid4().hex[:12]}",
+            "conversation_id": conv_id,
+            "client_id": client_id,
+            "user_id": user_id,
+            "role": "assistant",
+            "message": answer,
+            "citations": [],
+            "safety_flags": {"legal_advice_request": False, "missing_data": False},
+            "model": None,
+            "prompt_version": CHAT_PROMPT_VERSION,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        return {"conversation_id": conv_id, "answer": answer, "citations": [], "safety_flags": {"legal_advice_request": False, "missing_data": False}}
+
+    # When AI enabled but not configured (e.g. missing OPENAI_API_KEY), route should 503; guard here too.
+    if not ai_config.is_configured() or ai_config.AI_PROVIDER != "openai":
+        await create_audit_log(
+            action=AuditAction.ASSISTANT_CHAT_ERROR,
+            actor_id=user_id,
+            client_id=client_id,
+            resource_type="assistant_conversation",
+            resource_id=conv_id,
+            metadata={"error": "AI not configured or provider not openai"},
+        )
+        return {
+            "conversation_id": conv_id,
+            "answer": "Assistant is temporarily unavailable.",
+            "citations": [],
+            "safety_flags": {"legal_advice_request": False, "missing_data": False},
+        }
+
     # Retrieval
     portal_facts = await get_portal_facts(client_id, "admin" if is_admin else "client", property_id=property_id)
     if portal_facts.get("error"):
@@ -198,10 +240,11 @@ User message: {message}
 
 Respond with ONLY the JSON object (answer, citations, safety_flags). No other text."""
 
+    model_name = ai_config.AI_MODEL
     try:
-        from utils.llm_chat import chat, _get_api_key
+        from utils.llm_chat import chat_openai
     except ImportError:
-        logger.warning("utils.llm_chat not available")
+        logger.warning("utils.llm_chat chat_openai not available")
         await create_audit_log(
             action=AuditAction.ASSISTANT_CHAT_ERROR,
             actor_id=user_id,
@@ -217,27 +260,10 @@ Respond with ONLY the JSON object (answer, citations, safety_flags). No other te
             "safety_flags": {"legal_advice_request": False, "missing_data": False},
         }
 
-    if not _get_api_key():
-        await create_audit_log(
-            action=AuditAction.ASSISTANT_CHAT_ERROR,
-            actor_id=user_id,
-            client_id=client_id,
-            resource_type="assistant_conversation",
-            resource_id=conv_id,
-            metadata={"error": "LLM_API_KEY not set"},
-        )
-        return {
-            "conversation_id": conv_id,
-            "answer": "Assistant is temporarily unavailable.",
-            "citations": [],
-            "safety_flags": {"legal_advice_request": False, "missing_data": False},
-        }
-
     try:
-        raw = await chat(
+        raw = await chat_openai(
             system_prompt=CHAT_SYSTEM_PROMPT,
             user_text=context,
-            model=MODEL_NAME,
         )
     except Exception as e:
         logger.exception("Assistant chat LLM error: %s", e)
@@ -282,7 +308,7 @@ Respond with ONLY the JSON object (answer, citations, safety_flags). No other te
                 client_id=client_id,
                 resource_type="assistant_conversation",
                 resource_id=conv_id,
-                metadata={"answer_preview": answer[:200], "model": MODEL_NAME, "prompt_version": CHAT_PROMPT_VERSION},
+                metadata={"answer_preview": answer[:200], "model": model_name, "prompt_version": CHAT_PROMPT_VERSION},
             )
 
     # Store assistant message
@@ -295,7 +321,7 @@ Respond with ONLY the JSON object (answer, citations, safety_flags). No other te
         "message": answer,
         "citations": citations,
         "safety_flags": safety_flags,
-        "model": MODEL_NAME,
+        "model": model_name,
         "prompt_version": CHAT_PROMPT_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })

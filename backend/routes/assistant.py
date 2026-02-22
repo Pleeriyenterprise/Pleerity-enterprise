@@ -10,6 +10,7 @@ from middleware import client_route_guard
 from services.assistant_service import assistant_service
 from services.assistant_chat_service import chat_turn as assistant_chat_turn
 from utils.rate_limiter import rate_limiter
+from utils import ai_config
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
@@ -150,6 +151,12 @@ async def post_chat(request: Request, data: ChatRequest):
     )
     if not allowed_client:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_client)
+
+    if ai_config.AI_ENABLED and not ai_config.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error_code": "AI_NOT_CONFIGURED", "detail": "AI service not configured. Set OPENAI_API_KEY when AI_ENABLED=true."},
+        )
 
     result = await assistant_chat_turn(
         client_id=client_id,
