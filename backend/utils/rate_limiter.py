@@ -45,4 +45,16 @@ class RateLimiter:
         self.attempts[key].append(now)
         return True, None
 
+    async def check_rate_limit_daily(
+        self,
+        key: str,
+        max_attempts: int,
+    ) -> tuple[bool, Optional[str]]:
+        """Per-day rate limit. Window = 24 hours."""
+        return await self.check_rate_limit(
+            key=key,
+            max_attempts=max_attempts,
+            window_minutes=24 * 60,
+        )
+
 rate_limiter = RateLimiter()

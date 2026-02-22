@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Send, ArrowLeft, AlertCircle, MessageSquare, Shield, ChevronDown, ChevronUp, FileText, Sparkles, RefreshCw } from 'lucide-react';
+import { Send, ArrowLeft, AlertCircle, Shield, ChevronDown, ChevronUp, FileText, Sparkles, RefreshCw, Building2 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -17,23 +17,38 @@ const AssistantPage = () => {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `Hello! I'm your Compliance Vault Pro assistant. I can explain your compliance data and help you understand your dashboard.`,
-      what_this_is_based_on: [],
-      next_actions: [
-        "Ask about your overall compliance status",
-        "Ask which properties need attention",
-        "Ask about upcoming deadlines"
-      ]
+      content: `Hello! I'm your Compliance Vault Pro assistant. I can explain what your portal shows and suggest actions. Ask about missing or expired items, expiry dates, or where to upload documents.`,
+      citations: [],
+      safety_flags: {},
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [expandedMessages, setExpandedMessages] = useState({});
+  const [conversationId, setConversationId] = useState(null);
+  const [propertyId, setPropertyId] = useState('');
+  const [properties, setProperties] = useState([]);
   const messagesEndRef = useRef(null);
 
+  const fetchProperties = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await axios.get(`${API_URL}/client/properties`, { headers: { Authorization: `Bearer ${token}` } });
+      setProperties(res.data?.properties || []);
+    } catch {
+      setProperties([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -55,53 +70,44 @@ const AssistantPage = () => {
     setInput('');
     setError('');
 
-    // Add user message to chat
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setLoading(true);
 
     try {
       const token = localStorage.getItem('auth_token');
       const response = await axios.post(
-        `${API_URL}/api/assistant/ask`,
-        { question: userMessage },
+        `${API_URL}/api/assistant/chat`,
+        {
+          message: userMessage,
+          conversation_id: conversationId || undefined,
+          property_id: propertyId || undefined,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { 
-        answer, 
-        what_this_is_based_on, 
-        next_actions, 
-        refused, 
-        refusal_reason,
-        correlation_id 
-      } = response.data;
+      const { conversation_id, answer, citations, safety_flags } = response.data;
+      if (conversation_id) setConversationId(conversation_id);
 
-      // Add assistant response
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
           content: answer,
-          what_this_is_based_on: what_this_is_based_on || [],
-          next_actions: next_actions || [],
-          refused: refused,
-          refusal_reason: refusal_reason,
-          correlation_id: correlation_id
+          citations: citations || [],
+          safety_flags: safety_flags || {},
         }
       ]);
     } catch (err) {
       const errorDetail = err.response?.data?.detail || 'Assistant unavailable. Please try again or refresh.';
       setError(errorDetail);
       toast.error(errorDetail);
-      
-      // Add error message to chat
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
           content: 'Assistant unavailable. Please try again or refresh.',
           error: true,
-          next_actions: ['Refresh the page', 'Contact support if the issue persists']
+          citations: [],
         }
       ]);
     } finally {
@@ -158,25 +164,43 @@ const AssistantPage = () => {
         <Alert className="mb-6 bg-yellow-50 border-yellow-200" data-testid="assistant-disclaimer">
           <Shield className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="text-sm text-yellow-800">
-            <strong>Important:</strong> This assistant explains your compliance data only. It does not provide legal advice.
-            For legal guidance, please consult a qualified solicitor.
+            Information only. Not legal advice.
           </AlertDescription>
         </Alert>
 
         {/* Chat Container */}
         <Card className="shadow-lg">
           <CardHeader className="border-b">
-            <CardTitle className="text-midnight-blue flex items-center justify-between">
+            <CardTitle className="text-midnight-blue flex items-center justify-between flex-wrap gap-2">
               <span>Ask About Your Compliance</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.location.reload()}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <RefreshCw className="w-4 h-4 mr-1" />
-                Reset
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-normal text-gray-600 flex items-center gap-1">
+                  <Building2 className="w-4 h-4" />
+                  Scope:
+                </span>
+                <select
+                  value={propertyId}
+                  onChange={(e) => setPropertyId(e.target.value)}
+                  className="text-sm border rounded px-2 py-1 bg-white"
+                  data-testid="assistant-scope"
+                >
+                  <option value="">All properties</option>
+                  {properties.map((p) => (
+                    <option key={p.property_id} value={p.property_id}>
+                      {p.nickname || p.address_line_1 || p.property_id}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                  Reset
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -206,13 +230,18 @@ const AssistantPage = () => {
                   >
                     {message.role === 'assistant' && !message.error ? (
                       <div className="space-y-3">
-                        {/* Main Answer */}
+                        {message.safety_flags?.legal_advice_request && (
+                          <div className="px-4 pt-2 pb-1 rounded bg-amber-50 border border-amber-200" data-testid="assistant-legal-banner">
+                            <p className="text-xs text-amber-800">
+                              I can&apos;t provide legal advice. I can show what your portal currently has and what you can do next.
+                            </p>
+                          </div>
+                        )}
                         <div className="px-4 pt-4 pb-2">
                           <p className="text-sm whitespace-pre-wrap text-gray-800">{message.content}</p>
                         </div>
-                        
-                        {/* What this is based on - Expandable */}
-                        {(message.what_this_is_based_on?.length > 0 || message.next_actions?.length > 0) && (
+                        {/* Sources (citations) */}
+                        {message.citations?.length > 0 && (
                           <div className="border-t border-gray-100">
                             <button
                               onClick={() => toggleMessageDetails(index)}
@@ -220,59 +249,21 @@ const AssistantPage = () => {
                             >
                               <span className="flex items-center gap-1">
                                 <FileText className="w-3 h-3" />
-                                {expandedMessages[index] ? 'Hide details' : 'Show details'}
+                                {expandedMessages[index] ? 'Hide sources' : 'Sources'}
                               </span>
-                              {expandedMessages[index] ? (
-                                <ChevronUp className="w-3 h-3" />
-                              ) : (
-                                <ChevronDown className="w-3 h-3" />
-                              )}
+                              {expandedMessages[index] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </button>
-                            
                             {expandedMessages[index] && (
-                              <div className="px-4 pb-4 space-y-3 text-xs">
-                                {message.what_this_is_based_on?.length > 0 && (
-                                  <div>
-                                    <p className="font-medium text-gray-600 mb-1">What this is based on:</p>
-                                    <ul className="list-disc list-inside text-gray-500 space-y-0.5">
-                                      {message.what_this_is_based_on.map((item, i) => (
-                                        <li key={i}>{item}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                                
-                                {message.next_actions?.length > 0 && (
-                                  <div>
-                                    <p className="font-medium text-gray-600 mb-1">Next actions in portal:</p>
-                                    <ul className="space-y-1">
-                                      {message.next_actions.map((action, i) => (
-                                        <li 
-                                          key={i}
-                                          className="flex items-center gap-1 text-electric-teal"
-                                        >
-                                          <span className="w-1 h-1 bg-electric-teal rounded-full" />
-                                          {action}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                                
-                                {message.correlation_id && (
-                                  <p className="text-gray-400 text-[10px] pt-2 border-t border-gray-100">
-                                    Ref: {message.correlation_id}
-                                  </p>
-                                )}
-                              </div>
+                              <ul className="px-4 pb-4 text-xs space-y-1" data-testid="assistant-sources">
+                                {message.citations.map((c, i) => (
+                                  <li key={i} className="text-gray-600">
+                                    <span className="font-medium">{c.title || c.source_id}</span>
+                                    <span className="text-gray-400 ml-1">({c.source_type})</span>
+                                  </li>
+                                ))}
+                              </ul>
                             )}
                           </div>
-                        )}
-                        
-                        {message.refused && message.refusal_reason && (
-                          <p className="text-xs px-4 pb-3 text-yellow-600">
-                            Note: {message.refusal_reason}
-                          </p>
                         )}
                       </div>
                     ) : (
@@ -324,7 +315,7 @@ const AssistantPage = () => {
                 </Button>
               </form>
               <p className="text-xs text-gray-500 mt-2">
-                {input.length}/500 characters • Rate limited: 10 questions per 10 minutes
+                Information only. Not legal advice. Rate limited.
               </p>
             </div>
           </CardContent>

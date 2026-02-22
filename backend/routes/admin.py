@@ -3462,6 +3462,12 @@ class AdminAssistantRequest(BaseModel):
     question: str
 
 
+class AdminAssistantChatRequest(BaseModel):
+    message: str
+    conversation_id: Optional[str] = None
+    crn: Optional[str] = None
+
+
 # Admin-specific system prompt with elevated access
 ADMIN_ASSISTANT_PROMPT = """You are the Admin Assistant for Compliance Vault Pro (Pleerity Enterprise Ltd).
 You are helping an ADMINISTRATOR review a client's compliance status and data.
@@ -3716,6 +3722,54 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             detail="Failed to process assistant query"
         )
 
+
+@router.post("/assistant/chat", dependencies=[Depends(require_owner_or_admin)])
+async def admin_assistant_chat(request: Request, data: AdminAssistantChatRequest):
+    """
+    Admin assistant chat with optional CRN: when CRN provided, scope to that client.
+    Returns same shape as client /api/assistant/chat (conversation_id, answer, citations, safety_flags).
+    """
+    user = await admin_route_guard(request)
+    if not data.crn or len(data.crn.strip()) < 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="CRN required for admin assistant chat"
+        )
+    if not data.message or len(data.message.strip()) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty")
+    if len(data.message) > 2000:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message too long (max 2000 characters)")
+
+    from utils.rate_limiter import rate_limiter
+    from services.assistant_chat_service import chat_turn as assistant_chat_turn
+
+    admin_id = user.get("portal_user_id") or user.get("auth_email", "")
+    allowed, err = await rate_limiter.check_rate_limit(
+        key=f"admin_assistant_chat_{admin_id}",
+        max_attempts=20,
+        window_minutes=10,
+    )
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err)
+
+    db = database.get_db()
+    client = await db.clients.find_one(
+        {"customer_reference": data.crn.strip().upper()},
+        {"_id": 0, "client_id": 1},
+    )
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No client found with CRN: {data.crn.strip()}")
+
+    client_id = client["client_id"]
+    result = await assistant_chat_turn(
+        client_id=client_id,
+        user_id=admin_id,
+        message=data.message.strip(),
+        conversation_id=data.conversation_id,
+        property_id=None,
+        is_admin=True,
+    )
+    return result
 
 
 @router.get("/assistant/history")

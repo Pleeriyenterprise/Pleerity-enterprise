@@ -1,17 +1,32 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, status
+import os
+import logging
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel
+
 from database import database
 from middleware import client_route_guard
 from services.assistant_service import assistant_service
+from services.assistant_chat_service import chat_turn as assistant_chat_turn
 from utils.rate_limiter import rate_limiter
-from pydantic import BaseModel
-import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 
+# Rate limits: per user 20/10min, per client 100/day (env)
+ASSISTANT_CHAT_PER_USER_PER_10MIN = 20
+ASSISTANT_CHAT_CLIENT_PER_DAY = int(os.getenv("ASSISTANT_RATE_LIMIT_CLIENT_PER_DAY", "100"))
+
 
 class AskQuestionRequest(BaseModel):
     question: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_id: Optional[str] = None
+    property_id: Optional[str] = None
 
 
 class AssistantResponse(BaseModel):
@@ -104,3 +119,44 @@ async def ask_question(request: Request, data: AskQuestionRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Assistant unavailable. Please try again or refresh."
         )
+
+
+@router.post("/chat")
+async def post_chat(request: Request, data: ChatRequest):
+    """
+    Compliance Vault Assistant chat: grounded in portal data + KB, citations, safety_flags.
+    Requires authenticated portal user. CRN in message is ignored; client_id from auth only.
+    """
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    user_id = user.get("portal_user_id") or user.get("client_id", "")
+
+    if not data.message or len(data.message.strip()) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty")
+    if len(data.message) > 2000:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message too long (max 2000 characters)")
+
+    allowed_user, err_user = await rate_limiter.check_rate_limit(
+        key=f"assistant_chat_user_{user_id}",
+        max_attempts=ASSISTANT_CHAT_PER_USER_PER_10MIN,
+        window_minutes=10,
+    )
+    if not allowed_user:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_user)
+
+    allowed_client, err_client = await rate_limiter.check_rate_limit_daily(
+        key=f"assistant_chat_client_{client_id}",
+        max_attempts=ASSISTANT_CHAT_CLIENT_PER_DAY,
+    )
+    if not allowed_client:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_client)
+
+    result = await assistant_chat_turn(
+        client_id=client_id,
+        user_id=user_id,
+        message=data.message.strip(),
+        conversation_id=data.conversation_id,
+        property_id=data.property_id,
+        is_admin=False,
+    )
+    return result

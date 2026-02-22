@@ -167,6 +167,11 @@ class Database:
             # Requirements (instance state) - ensure efficient lookups
             await self.db.requirements.create_index([("client_id", 1), ("property_id", 1)])
             await self.db.requirements.create_index([("property_id", 1), ("requirement_type", 1)])
+            # Assistant chat (Compliance Vault Assistant)
+            await self.db.assistant_conversations.create_index([("client_id", 1), ("last_activity_at", -1)])
+            await self.db.assistant_conversations.create_index("conversation_id", unique=True)
+            await self.db.assistant_messages.create_index([("conversation_id", 1), ("created_at", 1)])
+            await self.db.assistant_messages.create_index([("client_id", 1), ("created_at", -1)])
             await self._seed_requirements_catalog()
             logger.info("MongoDB indexes created/verified")
         except Exception as e:
