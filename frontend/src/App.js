@@ -141,6 +141,7 @@ import AdminSiteBuilderPage from './pages/AdminSiteBuilderPage';
 import AdminEnablementDashboard from './pages/AdminEnablementDashboard';
 import AdminNotificationHealthPage from './pages/AdminNotificationHealthPage';
 import AdminReportingPage from './pages/AdminReportingPage';
+import AdminExtractionQueuePage from './pages/AdminExtractionQueuePage';
 import AdminTeamPage from './pages/AdminTeamPage';
 import AdminPromptManagerPage from './pages/AdminPromptManagerPage';
 import AdminClearFormUsersPage from './pages/AdminClearFormUsersPage';
@@ -414,6 +415,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminSupportPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/extraction-queue" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminExtractionQueuePage />
                 </ProtectedRoute>
               } 
             />

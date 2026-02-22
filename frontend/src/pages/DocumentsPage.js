@@ -142,19 +142,29 @@ const DocumentsPage = () => {
     }
   };
 
-  const openReviewModal = (doc) => {
-    const extraction = doc.ai_extraction?.data || {};
+  const openReviewModal = async (doc) => {
+    let extraction = doc.ai_extraction;
+    if (doc.extraction_id) {
+      try {
+        const res = await api.get(`/documents/${doc.document_id}/extraction`);
+        extraction = res.data?.extraction || null;
+      } catch (e) {
+        toast.error('Failed to load extraction');
+        return;
+      }
+    }
+    const data = extraction?.data || {};
     setEditedData({
-      document_type: extraction.document_type || '',
-      certificate_number: extraction.certificate_number || '',
-      issue_date: extraction.issue_date || '',
-      expiry_date: extraction.expiry_date || '',
-      engineer_name: extraction.engineer_details?.name || extraction.engineer_name || '',
-      engineer_registration: extraction.engineer_details?.registration_number || extraction.engineer_registration || '',
-      company_name: extraction.engineer_details?.company_name || extraction.company_name || '',
-      result: extraction.result_summary?.overall_result || extraction.result || ''
+      document_type: data.document_type || data.doc_type || '',
+      certificate_number: data.certificate_number || '',
+      issue_date: data.issue_date || '',
+      expiry_date: data.expiry_date || '',
+      engineer_name: data.engineer_details?.name || data.inspector_company || data.inspector_id || '',
+      engineer_registration: data.engineer_details?.registration_number || '',
+      company_name: data.engineer_details?.company_name || data.inspector_company || '',
+      result: data.result_summary?.overall_result || data.result || ''
     });
-    setReviewModal(doc);
+    setReviewModal({ ...doc, extraction });
   };
 
   const applyExtraction = async () => {
@@ -245,6 +255,26 @@ const DocumentsPage = () => {
     return (
       <span className={`text-xs px-2 py-0.5 rounded-full ${badge.color}`}>
         {badge.label}
+      </span>
+    );
+  };
+
+  const getExtractionStatusBadge = (doc) => {
+    const status = doc.extraction_status || (doc.ai_extraction?.status === 'completed'
+      ? (doc.ai_extraction?.review_status === 'approved' ? 'CONFIRMED' : doc.ai_extraction?.review_status === 'rejected' ? 'REJECTED' : 'NEEDS_REVIEW')
+      : doc.ai_extraction?.status === 'failed' ? 'FAILED' : 'PENDING');
+    const config = {
+      PENDING: { label: 'Pending', color: 'bg-gray-100 text-gray-700' },
+      EXTRACTED: { label: 'Extracted', color: 'bg-teal-100 text-teal-800' },
+      NEEDS_REVIEW: { label: 'Needs review', color: 'bg-amber-100 text-amber-800' },
+      CONFIRMED: { label: 'Confirmed', color: 'bg-green-100 text-green-800' },
+      REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-800' },
+      FAILED: { label: 'Failed', color: 'bg-red-100 text-red-800' }
+    };
+    const { label, color } = config[status] || config.PENDING;
+    return (
+      <span data-testid={`extraction-status-${(status || '').toLowerCase()}`} className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded ${color}`}>
+        {label}
       </span>
     );
   };
@@ -532,12 +562,13 @@ const DocumentsPage = () => {
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <FileText className="w-5 h-5 text-electric-teal" />
                               <span className="font-medium text-midnight-blue">
                                 {doc.file_name || doc.original_filename || 'Document'}
                               </span>
                               {getStatusBadge(doc.status)}
+                              {(doc.extraction_id || doc.ai_extraction) && getExtractionStatusBadge(doc)}
                             </div>
                             <p className="text-sm text-gray-500 mb-2">
                               Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
@@ -628,11 +659,27 @@ const DocumentsPage = () => {
                               </div>
                             )}
                             
-                            {doc.ai_extraction?.status === 'failed' && (
+                            {(doc.extraction_status === 'EXTRACTED' || doc.extraction_status === 'NEEDS_REVIEW') && (
+                              <div className="mt-3 p-3 bg-teal-50 rounded-lg border border-teal-100">
+                                <p className="text-sm text-teal-800 mb-2">Evidence readiness extraction ready for review.</p>
+                                {hasFeature('ai_review_interface') && (
+                                  <Button size="sm" onClick={() => openReviewModal(doc)} className="w-full" data-testid={`review-extraction-btn-${doc.document_id}`}>
+                                    <FileCheck className="w-4 h-4 mr-2" />
+                                    Review extraction
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            {(doc.extraction_status === 'PENDING') && (
+                              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <span className="text-sm text-gray-600">Extraction pending…</span>
+                              </div>
+                            )}
+                            {(doc.ai_extraction?.status === 'failed' || doc.extraction_status === 'FAILED') && (
                               <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-100">
                                 <div className="flex items-center gap-2 text-red-600">
                                   <AlertTriangle className="w-4 h-4" />
-                                  <span className="text-sm">Analysis failed - try again or enter data manually</span>
+                                  <span className="text-sm">Extraction failed - enter data manually or re-upload</span>
                                 </div>
                               </div>
                             )}

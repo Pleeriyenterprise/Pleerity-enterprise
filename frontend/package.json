@@ -68,6 +68,11 @@
     "build": "craco build",
     "test": "craco test"
   },
+  "jest": {
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
+  },
   "browserslist": {
     "production": [
       ">0.2%",

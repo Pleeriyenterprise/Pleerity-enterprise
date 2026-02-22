@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, Depends, status, Body
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, Depends, status, Body, Query
 from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard, admin_route_guard
@@ -719,7 +719,18 @@ async def upload_document(
         )
         
         logger.info(f"Document uploaded: {document.document_id}")
-        
+
+        try:
+            from services.document_extraction_service import enqueue_extraction
+            await enqueue_extraction(
+                document_id=document.document_id,
+                client_id=user["client_id"],
+                source="vault_upload",
+                property_id=property_id,
+            )
+        except Exception as ext_err:
+            logger.warning("Enqueue extraction after upload failed (non-blocking): %s", ext_err)
+
         return {
             "message": "Document uploaded successfully",
             "document_id": document.document_id
@@ -830,7 +841,19 @@ async def admin_upload_document(
         )
         
         logger.info(f"Admin uploaded document for client {client_id}: {document.document_id}")
-        
+
+        # Enqueue AI extraction (async; do not block or fail upload)
+        try:
+            from services.document_extraction_service import enqueue_extraction
+            await enqueue_extraction(
+                document_id=document.document_id,
+                client_id=client_id,
+                source="vault_upload",
+                property_id=property_id,
+            )
+        except Exception as ext_err:
+            logger.warning("Enqueue extraction after admin upload failed (non-blocking): %s", ext_err)
+
         return {
             "message": "Document uploaded successfully by admin",
             "document_id": document.document_id
@@ -844,6 +867,136 @@ async def admin_upload_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to upload document"
         )
+
+
+@router.get("/admin/extraction-queue")
+async def admin_extraction_queue(
+    request: Request,
+    status_filter: Optional[str] = Query(None, description="Comma-separated: NEEDS_REVIEW, FAILED"),
+):
+    """Admin: list extractions for review (NEEDS_REVIEW, FAILED)."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    statuses = ["NEEDS_REVIEW", "FAILED"]
+    if status_filter:
+        statuses = [s.strip() for s in status_filter.split(",") if s.strip()]
+    cursor = db.extracted_documents.find(
+        {"status": {"$in": statuses}},
+        {"_id": 0, "extraction_id": 1, "document_id": 1, "client_id": 1, "file_name": 1, "status": 1, "extracted": 1, "errors": 1, "source": 1, "audit.updated_at": 1},
+    ).sort("audit.updated_at", -1).limit(200)
+    items = []
+    async for row in cursor:
+        items.append({
+            "extraction_id": row.get("extraction_id"),
+            "document_id": row.get("document_id"),
+            "client_id": row.get("client_id"),
+            "file_name": row.get("file_name"),
+            "status": row.get("status"),
+            "extracted": row.get("extracted"),
+            "errors": row.get("errors"),
+            "source": row.get("source"),
+            "updated_at": row.get("audit", {}).get("updated_at").isoformat() if row.get("audit", {}).get("updated_at") else None,
+        })
+    return {"items": items}
+
+
+class AdminExtractionConfirmBody(BaseModel):
+    document_id: str
+
+
+class AdminExtractionRejectBody(BaseModel):
+    document_id: str
+    reason: Optional[str] = None
+
+
+@router.post("/admin/extraction-queue/confirm")
+async def admin_confirm_extraction(request: Request, body: AdminExtractionConfirmBody):
+    """Admin: apply extraction for a document (sets CONFIRMED, updates requirement)."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    document_id = body.document_id
+    document = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    extraction_id = document.get("extraction_id")
+    if not extraction_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No extraction record for this document")
+    rec = await db.extracted_documents.find_one({"extraction_id": extraction_id}, {"_id": 0, "status": 1, "extracted": 1})
+    if not rec or rec.get("status") not in ("EXTRACTED", "NEEDS_REVIEW"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Extraction not in a state that can be applied")
+    ext = rec.get("extracted") or {}
+    data = {
+        "expiry_date": ext.get("expiry_date"),
+        "issue_date": ext.get("issue_date"),
+        "certificate_number": ext.get("certificate_number"),
+        "document_type": ext.get("doc_type"),
+        "engineer_details": {"name": ext.get("inspector_company") or ext.get("inspector_id"), "company_name": ext.get("inspector_company")},
+    }
+    requirement_id = document.get("requirement_id")
+    if requirement_id and data.get("expiry_date"):
+        try:
+            expiry_dt = _normalize_and_parse_date(data["expiry_date"])
+            now = datetime.now(timezone.utc)
+            update_fields = {"due_date": expiry_dt.isoformat(), "updated_at": now.isoformat()}
+            if expiry_dt < now:
+                update_fields["status"] = "OVERDUE"
+            elif expiry_dt < now + timedelta(days=30):
+                update_fields["status"] = "EXPIRING_SOON"
+            else:
+                update_fields["status"] = "COMPLIANT"
+            await db.requirements.update_one({"requirement_id": requirement_id}, {"$set": update_fields})
+        except ValueError:
+            pass
+    now = datetime.now(timezone.utc)
+    await db.extracted_documents.update_one(
+        {"extraction_id": extraction_id},
+        {"$set": {"status": "CONFIRMED", "audit.updated_at": now}}
+    )
+    await db.documents.update_one(
+        {"document_id": document_id},
+        {"$set": {"extraction_status": "CONFIRMED", "ai_extraction.review_status": "approved", "ai_extraction.applied_data": data, "ai_extracted_data": data}}
+    )
+    await create_audit_log(
+        action=AuditAction.AI_EXTRACTION_APPLIED,
+        actor_id=None,
+        client_id=document["client_id"],
+        resource_type="document",
+        resource_id=document_id,
+        metadata={"admin_confirm": True, "extraction_id": extraction_id},
+    )
+    return {"message": "Extraction applied", "document_id": document_id}
+
+
+@router.post("/admin/extraction-queue/reject")
+async def admin_reject_extraction(request: Request, body: AdminExtractionRejectBody):
+    """Admin: reject extraction (sets REJECTED, no requirement change)."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    document_id = body.document_id
+    document = await db.documents.find_one({"document_id": document_id}, {"_id": 0, "client_id": 1, "extraction_id": 1})
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    extraction_id = document.get("extraction_id")
+    if extraction_id:
+        now = datetime.now(timezone.utc)
+        await db.extracted_documents.update_one(
+            {"extraction_id": extraction_id},
+            {"$set": {"status": "REJECTED", "audit.updated_at": now}}
+        )
+    await db.documents.update_one(
+        {"document_id": document_id},
+        {"$set": {"extraction_status": "REJECTED", "ai_extraction.review_status": "rejected", "ai_extraction.rejection_reason": body.reason or "Admin rejected"}}
+    )
+    await create_audit_log(
+        action=AuditAction.DOCUMENT_AI_ANALYZED,
+        actor_id=None,
+        client_id=document["client_id"],
+        resource_type="document",
+        resource_id=document_id,
+        metadata={"action": "extraction_rejected", "reason": body.reason, "admin_reject": True},
+    )
+    return {"message": "Extraction rejected", "document_id": document_id}
+
 
 @router.post("/verify/{document_id}")
 async def verify_document(request: Request, document_id: str):
@@ -1288,50 +1441,57 @@ async def analyze_document_ai(
 
 @router.get("/{document_id}/extraction")
 async def get_document_extraction(request: Request, document_id: str):
-    """Get AI extraction results for a document."""
+    """Get AI extraction results for a document (from extracted_documents or legacy ai_extraction)."""
     user = await client_route_guard(request)
     db = database.get_db()
-    
     try:
         document = await db.documents.find_one(
             {"document_id": document_id},
-            {"_id": 0}
+            {"_id": 0, "client_id": 1, "extraction_id": 1, "extraction_status": 1, "ai_extraction": 1}
         )
-        
         if not document:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Document not found"
-            )
-        
-        # Verify ownership
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
         if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to view this document"
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
+
+        extraction_id = document.get("extraction_id")
+        if extraction_id:
+            rec = await db.extracted_documents.find_one(
+                {"extraction_id": extraction_id},
+                {"_id": 0, "extraction_id": 1, "status": 1, "extracted": 1, "mapping_suggestion": 1, "errors": 1, "audit": 1}
             )
-        
+            if rec:
+                ext = rec.get("extracted") or {}
+                # Unified shape for frontend (status, data with confidence)
+                extraction = {
+                    "status": rec.get("status"),
+                    "data": {
+                        "document_type": ext.get("doc_type"),
+                        "certificate_number": ext.get("certificate_number"),
+                        "issue_date": ext.get("issue_date"),
+                        "expiry_date": ext.get("expiry_date"),
+                        "inspector_company": ext.get("inspector_company"),
+                        "inspector_id": ext.get("inspector_id"),
+                        "address_line_1": ext.get("address_line_1"),
+                        "postcode": ext.get("postcode"),
+                        "confidence_scores": {"overall": ext.get("overall_confidence")},
+                        "notes": ext.get("notes"),
+                    },
+                    "review_status": "approved" if rec.get("status") == "CONFIRMED" else ("rejected" if rec.get("status") == "REJECTED" else "pending"),
+                    "mapping_suggestion": rec.get("mapping_suggestion"),
+                    "errors": rec.get("errors"),
+                }
+                return {"has_extraction": True, "extraction": extraction}
+
         extraction = document.get("ai_extraction")
-        
         if not extraction:
-            return {
-                "has_extraction": False,
-                "extraction": None
-            }
-        
-        return {
-            "has_extraction": True,
-            "extraction": extraction
-        }
-    
+            return {"has_extraction": False, "extraction": None}
+        return {"has_extraction": True, "extraction": extraction}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Get extraction error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get extraction"
-        )
+        logger.error("Get extraction error: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get extraction")
 
 
 @router.get("")
@@ -1436,18 +1596,37 @@ async def apply_ai_extraction(
                 detail="Not authorized to modify this document. You can only apply extraction to your own documents."
             )
         
-        # Get AI extraction
-        extraction = document.get("ai_extraction", {})
-        extraction_status = extraction.get("status")
-        
-        if extraction_status != "completed":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Document has not been analyzed yet. Current extraction status: {extraction_status or 'none'}"
-            )
-        
-        # Use confirmed_data if provided, otherwise use AI extraction
-        data = confirmed_data if confirmed_data else extraction.get("data", {})
+        # Get AI extraction (from extracted_documents or legacy ai_extraction)
+        extraction_id = document.get("extraction_id")
+        if extraction_id:
+            rec = await db.extracted_documents.find_one({"extraction_id": extraction_id}, {"_id": 0, "status": 1, "extracted": 1})
+            if not rec:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Extraction record not found.")
+            if rec.get("status") not in ("EXTRACTED", "NEEDS_REVIEW"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot apply extraction with status: {rec.get('status')}. Only EXTRACTED or NEEDS_REVIEW can be applied."
+                )
+            if confirmed_data:
+                data = confirmed_data
+            else:
+                ext = rec.get("extracted") or {}
+                data = {
+                    "expiry_date": ext.get("expiry_date"),
+                    "issue_date": ext.get("issue_date"),
+                    "certificate_number": ext.get("certificate_number"),
+                    "document_type": ext.get("doc_type"),
+                    "engineer_details": {"name": ext.get("inspector_company") or ext.get("inspector_id"), "company_name": ext.get("inspector_company")},
+                }
+        else:
+            extraction = document.get("ai_extraction", {})
+            extraction_status = extraction.get("status")
+            if extraction_status != "completed":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Document has not been analyzed yet. Current extraction status: {extraction_status or 'none'}"
+                )
+            data = confirmed_data if confirmed_data else extraction.get("data", {})
         
         if not data:
             raise HTTPException(
@@ -1516,14 +1695,21 @@ async def apply_ai_extraction(
             logger.info(f"No expiry_date in extraction data for document {document_id}")
         
         # Store extracted data in document for reference
+        now_iso = datetime.now(timezone.utc).isoformat()
         document_update = {
             "ai_extraction.review_status": "approved",
-            "ai_extraction.reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "ai_extraction.reviewed_at": now_iso,
             "ai_extraction.reviewed_by": user["portal_user_id"],
             "ai_extraction.applied_data": data,
             "ai_extracted_data": data,  # Legacy field for compatibility
-            "status": DocumentStatus.VERIFIED.value  # Mark document as verified after applying
+            "status": DocumentStatus.VERIFIED.value,
         }
+        if extraction_id:
+            document_update["extraction_status"] = "CONFIRMED"
+            await db.extracted_documents.update_one(
+                {"extraction_id": extraction_id},
+                {"$set": {"status": "CONFIRMED", "audit.updated_at": datetime.now(timezone.utc)}}
+            )
         
         # Add certificate number if available
         cert_number = data.get("certificate_number")
@@ -1687,18 +1873,22 @@ async def reject_ai_extraction(request: Request, document_id: str, reason: str =
                 detail="Not authorized"
             )
         
-        # Update extraction status
-        await db.documents.update_one(
-            {"document_id": document_id},
-            {"$set": {
-                "ai_extraction.review_status": "rejected",
-                "ai_extraction.reviewed_at": datetime.now(timezone.utc).isoformat(),
-                "ai_extraction.reviewed_by": user["portal_user_id"],
-                "ai_extraction.rejection_reason": reason
-            }}
-        )
+        now_iso = datetime.now(timezone.utc).isoformat()
+        doc_update = {
+            "ai_extraction.review_status": "rejected",
+            "ai_extraction.reviewed_at": now_iso,
+            "ai_extraction.reviewed_by": user["portal_user_id"],
+            "ai_extraction.rejection_reason": reason,
+        }
+        extraction_id = document.get("extraction_id")
+        if extraction_id:
+            doc_update["extraction_status"] = "REJECTED"
+            await db.extracted_documents.update_one(
+                {"extraction_id": extraction_id},
+                {"$set": {"status": "REJECTED", "audit.updated_at": datetime.now(timezone.utc)}}
+            )
+        await db.documents.update_one({"document_id": document_id}, {"$set": doc_update})
         
-        # Audit log
         await create_audit_log(
             action=AuditAction.DOCUMENT_AI_ANALYZED,
             actor_id=user["portal_user_id"],

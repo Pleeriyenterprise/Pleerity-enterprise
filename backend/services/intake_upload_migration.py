@@ -107,4 +107,17 @@ async def migrate_intake_uploads_to_vault(client_id: str) -> dict:
         migrated += 1
         logger.info(f"Migrated intake upload {upload_id} -> document {document_id} for client {client_id}")
 
+        # Enqueue AI extraction (async; do not block migration)
+        try:
+            from services.document_extraction_service import enqueue_extraction
+            await enqueue_extraction(
+                document_id=document_id,
+                client_id=client_id,
+                source="intake_upload",
+                property_id=property_id,
+                intake_session_id=intake_session_id,
+            )
+        except Exception as ext_err:
+            logger.warning("Enqueue extraction after intake migration failed (non-blocking): %s", ext_err)
+
     return {"migrated": migrated, "skipped": skipped, "errors": errors}

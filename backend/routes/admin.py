@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status, Query, Body
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from database import database
 from middleware import admin_route_guard, require_owner, require_owner_or_admin
 from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus
@@ -147,6 +147,48 @@ async def list_pending_verification_documents(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to list pending verification documents"
         )
+
+
+@router.get("/extraction-queue", dependencies=[Depends(require_owner_or_admin)])
+async def list_extraction_queue(
+    request: Request,
+    status_filter: Optional[List[str]] = Query(None, alias="status"),
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    skip: int = Query(0, ge=0),
+):
+    """List extracted_documents for review: NEEDS_REVIEW and/or FAILED. Admin can confirm/reject via document apply/reject endpoints."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        query = {}
+        if status_filter:
+            query["status"] = {"$in": status_filter}
+        else:
+            query["status"] = {"$in": ["NEEDS_REVIEW", "FAILED"]}
+        if client_id:
+            query["client_id"] = client_id
+        total = await db.extracted_documents.count_documents(query)
+        cursor = db.extracted_documents.find(
+            query,
+            {"_id": 0, "extraction_id": 1, "document_id": 1, "client_id": 1, "file_name": 1, "status": 1, "extracted": 1, "errors": 1, "source": 1}
+        ).sort("audit.created_at", -1).skip(skip).limit(limit)
+        items = []
+        async for row in cursor:
+            items.append({
+                "extraction_id": row.get("extraction_id"),
+                "document_id": row.get("document_id"),
+                "client_id": row.get("client_id"),
+                "file_name": row.get("file_name"),
+                "status": row.get("status"),
+                "extracted": row.get("extracted"),
+                "errors": row.get("errors"),
+                "source": row.get("source"),
+            })
+        return {"items": items, "total": total, "returned": len(items)}
+    except Exception as e:
+        logger.error("Extraction queue list error: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to list extraction queue")
 
 
 @router.get("/email-delivery", dependencies=[Depends(require_owner_or_admin)])
