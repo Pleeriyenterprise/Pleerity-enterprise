@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+/** Brand colors aligned with src/design-tokens.js (navy, teal). */
 module.exports = {
   darkMode: ["class"],
   content: [

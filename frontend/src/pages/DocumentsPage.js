@@ -4,6 +4,7 @@ import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { UpgradeRequired } from '../components/UpgradePrompt';
+import EmptyState from '../components/EmptyState';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
@@ -51,6 +52,8 @@ const DocumentsPage = () => {
     requirement_id: '',
     file: null
   });
+  const [filterPropertyId, setFilterPropertyId] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -274,6 +277,12 @@ const DocumentsPage = () => {
     r.property_id === uploadForm.property_id
   );
 
+  const filteredDocuments = documents.filter((doc) => {
+    if (filterPropertyId && doc.property_id !== filterPropertyId) return false;
+    if (filterStatus && (doc.status || '').toUpperCase() !== filterStatus.toUpperCase()) return false;
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" data-testid="documents-loading">
@@ -290,7 +299,7 @@ const DocumentsPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => navigate('/app/dashboard')} 
+                onClick={() => navigate('/dashboard')} 
                 className="text-gray-300 hover:text-white"
                 data-testid="back-to-dashboard-btn"
               >
@@ -302,7 +311,7 @@ const DocumentsPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate('/app/documents/bulk-upload')}
+                onClick={() => navigate('/documents/bulk-upload')}
                 className="bg-transparent border-white/30 text-white hover:bg-white/10"
                 data-testid="bulk-upload-nav-btn"
               >
@@ -459,22 +468,63 @@ const DocumentsPage = () => {
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <FileText className="w-5 h-5" />
-                    Your Documents ({documents.length})
+                    Your Documents ({filteredDocuments.length}{filteredDocuments.length !== documents.length ? ` of ${documents.length}` : ''})
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {documents.length === 0 ? (
-                  <div className="text-center py-12" data-testid="no-documents">
-                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No documents uploaded yet</p>
-                    <p className="text-sm text-gray-400 mt-2">
-                      Upload your compliance certificates to get started
-                    </p>
-                  </div>
+                  <EmptyState
+                    icon={FileText}
+                    title="No documents uploaded yet"
+                    description="Upload your compliance certificates to get started"
+                    testId="no-documents"
+                    className="py-12"
+                  />
                 ) : (
+                  <>
+                    <div className="flex flex-wrap gap-3 mb-4">
+                      <select
+                        value={filterPropertyId}
+                        onChange={(e) => setFilterPropertyId(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
+                        data-testid="filter-by-property"
+                      >
+                        <option value="">All properties</option>
+                        {properties.map((p) => (
+                          <option key={p.property_id} value={p.property_id}>
+                            {p.address_line_1 || p.property_id}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
+                        data-testid="filter-by-status"
+                      >
+                        <option value="">All statuses</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="UPLOADED">Uploaded</option>
+                        <option value="VERIFIED">Verified</option>
+                        <option value="REJECTED">Rejected</option>
+                      </select>
+                      {(filterPropertyId || filterStatus) && (
+                        <Button variant="ghost" size="sm" onClick={() => { setFilterPropertyId(''); setFilterStatus(''); }} data-testid="clear-filters">
+                          Clear filters
+                        </Button>
+                      )}
+                    </div>
+                    {filteredDocuments.length === 0 ? (
+                      <EmptyState
+                        title="No documents match"
+                        description="No documents match the current filters."
+                        testId="no-documents-match"
+                        className="py-8"
+                      />
+                    ) : (
                   <div className="space-y-4" data-testid="documents-list">
-                    {documents.map((doc) => (
+                    {filteredDocuments.map((doc) => (
                       <div 
                         key={doc.document_id}
                         className="border border-gray-200 rounded-lg p-4 hover:border-electric-teal transition-colors"
@@ -622,6 +672,8 @@ const DocumentsPage = () => {
                       </div>
                     ))}
                   </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

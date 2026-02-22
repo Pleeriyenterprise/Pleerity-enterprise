@@ -53,29 +53,13 @@ const PropertiesPage = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'GREEN':
-        return { 
-          icon: CheckCircle, 
-          text: 'Compliant', 
-          className: 'bg-green-100 text-green-700 border border-green-200' 
-        };
+        return { icon: CheckCircle, text: 'Valid', className: 'bg-green-100 text-green-700 border border-green-200' };
       case 'AMBER':
-        return { 
-          icon: Clock, 
-          text: 'Attention Needed', 
-          className: 'bg-amber-100 text-amber-700 border border-amber-200' 
-        };
+        return { icon: Clock, text: 'Expiring soon', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
       case 'RED':
-        return { 
-          icon: AlertTriangle, 
-          text: 'Action Required', 
-          className: 'bg-red-100 text-red-700 border border-red-200' 
-        };
+        return { icon: AlertTriangle, text: 'Overdue', className: 'bg-red-100 text-red-700 border border-red-200' };
       default:
-        return { 
-          icon: Clock, 
-          text: 'Pending', 
-          className: 'bg-gray-100 text-gray-700 border border-gray-200' 
-        };
+        return { icon: Clock, text: 'Missing evidence', className: 'bg-gray-100 text-gray-700 border border-gray-200' };
     }
   };
 
@@ -153,7 +137,7 @@ const PropertiesPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">{stats.green}</p>
-                <p className="text-sm text-gray-500">Compliant</p>
+                <p className="text-sm text-gray-500">Valid</p>
               </div>
             </div>
           </div>
@@ -168,7 +152,7 @@ const PropertiesPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-amber-600">{stats.amber}</p>
-                <p className="text-sm text-gray-500">Attention Needed</p>
+                <p className="text-sm text-gray-500">Expiring soon</p>
               </div>
             </div>
           </div>
@@ -183,7 +167,7 @@ const PropertiesPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-red-600">{stats.red}</p>
-                <p className="text-sm text-gray-500">Action Required</p>
+                <p className="text-sm text-gray-500">Overdue</p>
               </div>
             </div>
           </div>

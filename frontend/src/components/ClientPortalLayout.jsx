@@ -32,7 +32,6 @@ const PORTAL_TABS = [
   { path: '/properties', label: 'Properties', icon: Building2 },
   { path: '/requirements', label: 'Requirements', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },
-  { path: '/audit-log', label: 'Audit Log', icon: History },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
@@ -177,17 +176,34 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         {children}
       </main>
 
-      {/* Footer: Support + Help */}
+      {/* Footer: Support email, CRN copy, Audit log, Help */}
       <footer className="border-t border-gray-200 bg-white py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm text-gray-500">Compliance Vault Pro</span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
               className="text-sm text-electric-teal hover:underline"
             >
-              Support
+              {SUPPORT_EMAIL}
             </a>
+            {crn && (
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-gray-600">CRN: {crn}</span>
+                <button
+                  type="button"
+                  onClick={handleCopyCRN}
+                  className="p-0.5 rounded hover:bg-gray-100 text-electric-teal"
+                  title="Copy CRN"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+            <NavLink to="/audit-log" className="text-sm text-electric-teal hover:underline flex items-center gap-1">
+              <History className="w-4 h-4" />
+              Audit log
+            </NavLink>
             <NavLink to="/help" className="text-sm text-electric-teal hover:underline flex items-center gap-1">
               <HelpCircle className="w-4 h-4" />
               Help

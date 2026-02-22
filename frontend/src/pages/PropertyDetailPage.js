@@ -2,30 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
-import { Alert, AlertDescription } from '../components/ui/alert';
+import ErrorBanner from '../components/ErrorBanner';
 import {
   ArrowLeft,
   Building2,
-  CheckCircle,
-  Clock,
-  AlertTriangle,
-  XCircle,
   FileText,
   Upload,
   RefreshCw,
-  AlertCircle,
   Mail,
 } from 'lucide-react';
 import { SUPPORT_EMAIL } from '../config';
-
-const STATUS_CONFIG = {
-  VALID: { icon: CheckCircle, text: 'Valid', className: 'bg-green-100 text-green-700 border-green-200' },
-  EXPIRING_SOON: { icon: Clock, text: 'Expiring soon', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  MISSING: { icon: FileText, text: 'Missing', className: 'bg-gray-100 text-gray-700 border-gray-200' },
-  OVERDUE: { icon: AlertTriangle, text: 'Overdue', className: 'bg-red-100 text-red-700 border-red-200' },
-  FAILED: { icon: XCircle, text: 'Failed', className: 'bg-red-100 text-red-700 border-red-200' },
-  COMPLIANT: { icon: CheckCircle, text: 'Valid', className: 'bg-green-100 text-green-700 border-green-200' },
-};
+import { getEvidenceStatus } from '../utils/evidenceStatus';
+import { formatRiskLabel } from '../utils/riskLabel';
 
 export default function PropertyDetailPage() {
   const { propertyId } = useParams();
@@ -35,6 +23,15 @@ export default function PropertyDetailPage() {
   const [complianceDetail, setComplianceDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    const match = hash && hash.startsWith('#req=') && decodeURIComponent(hash.slice(5)).trim();
+    if (match && requirements.length > 0) {
+      const el = document.querySelector(`[data-req-code="${match}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [requirements]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +69,7 @@ export default function PropertyDetailPage() {
     return () => { cancelled = true; };
   }, [propertyId]);
 
-  const getStatus = (r) => STATUS_CONFIG[r.status] || STATUS_CONFIG.MISSING;
+  const getStatus = (r) => getEvidenceStatus(r.status);
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
   const daysLeft = (d) => {
     if (!d) return null;
@@ -95,13 +92,13 @@ export default function PropertyDetailPage() {
 
   if (error && !property) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate('/properties')}>
-          Back to properties
-        </Button>
-      </Alert>
+      <div>
+        <ErrorBanner
+          message={error}
+          onRetry={() => navigate('/properties')}
+          retryLabel="Back to properties"
+        />
+      </div>
     );
   }
 
@@ -137,7 +134,7 @@ export default function PropertyDetailPage() {
       {complianceDetail && (
         <div className="mb-6 flex flex-wrap gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
           <span className="font-medium text-midnight-blue">Score: {complianceDetail.property_score}/100</span>
-          <span className="font-medium text-midnight-blue">Risk level: {complianceDetail.risk_level}</span>
+          <span className="font-medium text-midnight-blue">Risk level: {formatRiskLabel(complianceDetail.risk_level)}</span>
           {complianceDetail.risk_index != null && complianceDetail.risk_index > 0 && (
             <span className="text-gray-600">Risk index: {complianceDetail.risk_index}</span>
           )}
@@ -173,7 +170,7 @@ export default function PropertyDetailPage() {
                 const Icon = status.icon;
                 const days = rowDays(r);
                 return (
-                  <tr key={rowReqId(r) || r.requirement_code || idx} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={rowReqId(r) || r.requirement_code || idx} className="border-b border-gray-100 hover:bg-gray-50" data-req-code={r.requirement_code || r.requirement_type || ''}>
                     <td className="p-3 font-medium text-midnight-blue">{rowTitle(r)}</td>
                     <td className="p-3">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs ${status.className}`}>

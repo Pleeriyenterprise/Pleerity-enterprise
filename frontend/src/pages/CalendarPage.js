@@ -317,7 +317,7 @@ const CalendarPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>Compliant</span>
+                <span>Valid</span>
               </div>
             </div>
           </div>

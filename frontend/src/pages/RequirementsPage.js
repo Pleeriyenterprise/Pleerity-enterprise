@@ -1,32 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import api from '../api/client';
+import { clientAPI } from '../api/client';
 import { toast } from 'sonner';
 import { 
   FileCheck, 
-  AlertTriangle, 
-  Clock, 
-  CheckCircle,
   Calendar,
   Building2,
   ArrowLeft,
-  Filter,
   Search,
   RefreshCw,
-  LogOut,
-  Home,
   FileText,
-  BarChart3,
-  Sparkles,
   ChevronRight,
-  AlertCircle,
-  XCircle
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { getEvidenceStatus } from '../utils/evidenceStatus';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../components/ui/accordion';
+import EmptyState from '../components/EmptyState';
 
 const RequirementsPage = () => {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [requirements, setRequirements] = useState([]);
@@ -34,6 +30,7 @@ const RequirementsPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [clientData, setClientData] = useState(null);
+  const [groupBy, setGroupBy] = useState('property'); // 'property' | 'requirement'
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -47,12 +44,12 @@ const RequirementsPage = () => {
     setLoading(true);
     try {
       const [dashboardRes, requirementsRes] = await Promise.all([
-        api.get('/client/dashboard'),
-        api.get('/client/requirements')
+        clientAPI.getDashboard().then((r) => r.data),
+        clientAPI.getRequirements().then((r) => r.data)
       ]);
-      setClientData(dashboardRes.data);
-      setProperties(dashboardRes.data.properties || []);
-      setRequirements(requirementsRes.data.requirements || []);
+      setClientData(dashboardRes);
+      setProperties(dashboardRes?.properties || []);
+      setRequirements(requirementsRes?.requirements || []);
     } catch (error) {
       toast.error('Failed to load requirements');
     } finally {
@@ -65,43 +62,10 @@ const RequirementsPage = () => {
   };
 
   const getStatusConfig = (status) => {
-    switch (status) {
-      case 'COMPLIANT':
-        return { 
-          icon: CheckCircle, 
-          text: 'Compliant', 
-          className: 'bg-green-100 text-green-700 border-green-200',
-          color: 'green'
-        };
-      case 'EXPIRING_SOON':
-        return { 
-          icon: Clock, 
-          text: 'Expiring Soon', 
-          className: 'bg-amber-100 text-amber-700 border-amber-200',
-          color: 'amber'
-        };
-      case 'OVERDUE':
-        return { 
-          icon: AlertTriangle, 
-          text: 'Overdue', 
-          className: 'bg-red-100 text-red-700 border-red-200',
-          color: 'red'
-        };
-      case 'PENDING':
-        return { 
-          icon: Clock, 
-          text: 'Pending', 
-          className: 'bg-gray-100 text-gray-700 border-gray-200',
-          color: 'gray'
-        };
-      default:
-        return { 
-          icon: AlertCircle, 
-          text: status || 'Unknown', 
-          className: 'bg-gray-100 text-gray-700 border-gray-200',
-          color: 'gray'
-        };
-    }
+    const config = getEvidenceStatus(status);
+    const colorMap = { green: 'green', amber: 'amber', red: 'red', gray: 'gray', blue: 'blue' };
+    const color = config.className.includes('green') ? 'green' : config.className.includes('amber') ? 'amber' : config.className.includes('red') ? 'red' : config.className.includes('blue') ? 'blue' : 'gray';
+    return { ...config, color };
   };
 
   const getDaysUntilDue = (dueDate) => {
@@ -162,6 +126,46 @@ const RequirementsPage = () => {
     return dateA - dateB;
   });
 
+  const renderRequirementRow = (req) => {
+    const property = getPropertyById(req.property_id);
+    const statusConfig = getStatusConfig(req.status);
+    const StatusIcon = statusConfig.icon;
+    const daysUntil = getDaysUntilDue(req.due_date);
+    return (
+      <div key={req.requirement_id} className="p-4 hover:bg-gray-50 transition-colors" data-testid={`requirement-row-${req.requirement_id}`}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-4 flex-1">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${statusConfig.color === 'green' ? 'bg-green-100' : statusConfig.color === 'amber' ? 'bg-amber-100' : statusConfig.color === 'red' ? 'bg-red-100' : statusConfig.color === 'blue' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+              <StatusIcon className={`w-5 h-5 ${statusConfig.color === 'green' ? 'text-green-600' : statusConfig.color === 'amber' ? 'text-amber-600' : statusConfig.color === 'red' ? 'text-red-600' : statusConfig.color === 'blue' ? 'text-blue-600' : 'text-gray-600'}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold text-midnight-blue">{req.requirement_type?.replace(/_/g, ' ') || 'Unknown Requirement'}</h3>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
+              </div>
+              <p className="text-sm text-gray-600 mt-1 line-clamp-2">{req.description || 'No description available'}</p>
+              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{property.nickname || property.address_line_1 || 'Unknown Property'}</span>
+                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />Due: {formatDate(req.due_date)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 ml-4">
+            {daysUntil !== null && (
+              <div className={`text-right ${daysUntil < 0 ? 'text-red-600' : daysUntil <= 14 ? 'text-amber-600' : daysUntil <= 30 ? 'text-yellow-600' : 'text-gray-600'}`}>
+                <p className="text-lg font-bold">{daysUntil < 0 ? Math.abs(daysUntil) : daysUntil}</p>
+                <p className="text-xs">{daysUntil < 0 ? 'days overdue' : 'days left'}</p>
+              </div>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => navigate(`/documents?property_id=${req.property_id}&requirement_id=${req.requirement_id}`)} className="text-electric-teal hover:text-teal-700" data-testid={`view-documents-${req.requirement_id}`}>
+              View Documents <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Get page title based on filter
   const getPageTitle = () => {
     if (statusFilter === 'DUE_SOON') return 'Attention Needed';
@@ -195,97 +199,13 @@ const RequirementsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-midnight-blue text-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold">Compliance Vault Pro</h1>
-                <p className="text-sm text-gray-300">AI-Driven Solutions & Compliance</p>
-              </div>
-              {clientData?.client?.customer_reference && (
-                <span 
-                  className="px-3 py-1 bg-electric-teal/20 text-electric-teal rounded-lg font-mono text-sm"
-                  data-testid="client-crn-badge"
-                >
-                  {clientData.client.customer_reference}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm">{user?.email}</span>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={logout}
-                className="text-white hover:text-electric-teal"
-                data-testid="logout-btn"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/dashboard')}
-              data-testid="nav-dashboard"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Dashboard
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/properties')}
-              data-testid="nav-properties"
-            >
-              <Building2 className="w-4 h-4 mr-2" />
-              Properties
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-electric-teal text-electric-teal"
-              data-testid="nav-requirements"
-            >
-              <FileCheck className="w-4 h-4 mr-2" />
-              Requirements
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/documents')}
-              data-testid="nav-documents"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Documents
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/app/calendar')}
-              data-testid="nav-calendar"
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Calendar
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="requirements-page">
+    <div data-testid="requirements-page">
         {/* Back Button + Page Header */}
         <div className="mb-6">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/app/dashboard')}
+            onClick={() => navigate('/dashboard')}
             className="text-gray-600 hover:text-midnight-blue mb-4"
             data-testid="back-to-dashboard"
           >
@@ -309,7 +229,7 @@ const RequirementsPage = () => {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${!statusFilter || statusFilter === 'all' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}
-            onClick={() => navigate('/app/requirements')}
+            onClick={() => navigate('/requirements')}
             data-testid="filter-all"
           >
             <p className="text-2xl font-bold text-midnight-blue">{stats.total}</p>
@@ -317,15 +237,15 @@ const RequirementsPage = () => {
           </button>
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${statusFilter === 'COMPLIANT' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}
-            onClick={() => navigate('/app/requirements?status=COMPLIANT')}
+            onClick={() => navigate('/requirements?status=COMPLIANT')}
             data-testid="filter-compliant"
           >
             <p className="text-2xl font-bold text-green-600">{stats.compliant}</p>
-            <p className="text-sm text-gray-500">Compliant</p>
+            <p className="text-sm text-gray-500">Valid</p>
           </button>
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${statusFilter === 'DUE_SOON' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}
-            onClick={() => navigate('/app/requirements?status=DUE_SOON')}
+            onClick={() => navigate('/requirements?status=DUE_SOON')}
             data-testid="filter-due-soon"
           >
             <p className="text-2xl font-bold text-amber-600">{stats.expiringSoon}</p>
@@ -333,7 +253,7 @@ const RequirementsPage = () => {
           </button>
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${statusFilter === 'OVERDUE_OR_MISSING' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}
-            onClick={() => navigate('/app/requirements?status=OVERDUE_OR_MISSING')}
+            onClick={() => navigate('/requirements?status=OVERDUE_OR_MISSING')}
             data-testid="filter-overdue"
           >
             <p className="text-2xl font-bold text-red-600">{stats.overdue + stats.pending}</p>
@@ -341,7 +261,7 @@ const RequirementsPage = () => {
           </button>
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${windowDays === '30' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}
-            onClick={() => navigate('/app/requirements?window=30&status=DUE_SOON')}
+            onClick={() => navigate('/requirements?window=30&status=DUE_SOON')}
             data-testid="filter-30-days"
           >
             <p className="text-2xl font-bold text-blue-600">30</p>
@@ -372,101 +292,91 @@ const RequirementsPage = () => {
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
+            <div className="flex items-center gap-2 border border-gray-200 rounded-lg p-1 bg-gray-50">
+              <button
+                type="button"
+                onClick={() => setGroupBy('property')}
+                className={`px-3 py-1.5 text-sm rounded-md ${groupBy === 'property' ? 'bg-white shadow border border-gray-200 font-medium text-midnight-blue' : 'text-gray-600'}`}
+                data-testid="group-by-property"
+              >
+                Group by property
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupBy('requirement')}
+                className={`px-3 py-1.5 text-sm rounded-md ${groupBy === 'requirement' ? 'bg-white shadow border border-gray-200 font-medium text-midnight-blue' : 'text-gray-600'}`}
+                data-testid="group-by-requirement"
+              >
+                Group by requirement
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Requirements List */}
+        {/* Requirements: accordion by property or grouped by requirement */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {filteredRequirements.length === 0 ? (
-            <div className="p-12 text-center">
-              <FileCheck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No requirements found</h3>
-              <p className="text-gray-500">
-                {searchTerm ? 'Try adjusting your search criteria' : 'No requirements match the current filter'}
-              </p>
-            </div>
+            <EmptyState
+              icon={FileCheck}
+              title="No requirements found"
+              description={searchTerm ? 'Try adjusting your search criteria' : 'No requirements match the current filter'}
+              className="p-12"
+            />
+          ) : groupBy === 'property' ? (
+            <Accordion type="multiple" className="w-full">
+              {(() => {
+                const byProperty = {};
+                filteredRequirements.forEach((req) => {
+                  const pid = req.property_id || 'unknown';
+                  if (!byProperty[pid]) byProperty[pid] = [];
+                  byProperty[pid].push(req);
+                });
+                return Object.entries(byProperty).map(([propertyId, reqs]) => {
+                  const property = getPropertyById(propertyId);
+                  const label = property?.nickname || property?.address_line_1 || `Property ${propertyId}`;
+                  return (
+                    <AccordionItem key={propertyId} value={propertyId} data-testid={`accordion-property-${propertyId}`}>
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                        <span className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-electric-teal" />
+                          {label}
+                        </span>
+                        <span className="text-sm text-gray-500 font-normal ml-2">({reqs.length} requirements)</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <div className="divide-y divide-gray-100">
+                          {reqs.map((req) => renderRequirementRow(req))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                });
+              })()}
+            </Accordion>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {filteredRequirements.map((req) => {
-                const property = getPropertyById(req.property_id);
-                const statusConfig = getStatusConfig(req.status);
-                const StatusIcon = statusConfig.icon;
-                const daysUntil = getDaysUntilDue(req.due_date);
-
-                return (
-                  <div
-                    key={req.requirement_id}
-                    className="p-4 hover:bg-gray-50 transition-colors"
-                    data-testid={`requirement-row-${req.requirement_id}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4 flex-1">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          statusConfig.color === 'green' ? 'bg-green-100' :
-                          statusConfig.color === 'amber' ? 'bg-amber-100' :
-                          statusConfig.color === 'red' ? 'bg-red-100' : 'bg-gray-100'
-                        }`}>
-                          <StatusIcon className={`w-5 h-5 ${
-                            statusConfig.color === 'green' ? 'text-green-600' :
-                            statusConfig.color === 'amber' ? 'text-amber-600' :
-                            statusConfig.color === 'red' ? 'text-red-600' : 'text-gray-600'
-                          }`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-midnight-blue">
-                              {req.requirement_type?.replace(/_/g, ' ') || 'Unknown Requirement'}
-                            </h3>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>
-                              {statusConfig.text}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                            {req.description || 'No description available'}
-                          </p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Building2 className="w-3.5 h-3.5" />
-                              {property.nickname || property.address_line_1 || 'Unknown Property'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" />
-                              Due: {formatDate(req.due_date)}
-                            </span>
-                          </div>
-                        </div>
+            <Accordion type="multiple" className="w-full">
+              {(() => {
+                const byReqType = {};
+                filteredRequirements.forEach((req) => {
+                  const type = req.requirement_type || req.requirement_code || 'Other';
+                  if (!byReqType[type]) byReqType[type] = [];
+                  byReqType[type].push(req);
+                });
+                return Object.entries(byReqType).map(([reqType, reqs]) => (
+                  <AccordionItem key={reqType} value={reqType} data-testid={`accordion-requirement-${reqType}`}>
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                      <span className="font-medium text-midnight-blue">{reqType.replace(/_/g, ' ')}</span>
+                      <span className="text-sm text-gray-500 font-normal ml-2">({reqs.length})</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="divide-y divide-gray-100">
+                        {reqs.map((req) => renderRequirementRow(req))}
                       </div>
-                      <div className="flex items-center gap-4 ml-4">
-                        {daysUntil !== null && (
-                          <div className={`text-right ${
-                            daysUntil < 0 ? 'text-red-600' :
-                            daysUntil <= 14 ? 'text-amber-600' :
-                            daysUntil <= 30 ? 'text-yellow-600' : 'text-gray-600'
-                          }`}>
-                            <p className="text-lg font-bold">
-                              {daysUntil < 0 ? Math.abs(daysUntil) : daysUntil}
-                            </p>
-                            <p className="text-xs">
-                              {daysUntil < 0 ? 'days overdue' : 'days left'}
-                            </p>
-                          </div>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/app/documents?property_id=${req.property_id}&requirement_id=${req.requirement_id}`)}
-                          className="text-electric-teal hover:text-teal-700"
-                          data-testid={`view-documents-${req.requirement_id}`}
-                        >
-                          View Documents
-                          <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ));
+              })()}
+            </Accordion>
           )}
         </div>
 
@@ -476,7 +386,6 @@ const RequirementsPage = () => {
             Showing {filteredRequirements.length} of {requirements.length} requirements
           </div>
         )}
-      </main>
     </div>
   );
 };

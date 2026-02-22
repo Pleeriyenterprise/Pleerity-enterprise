@@ -193,7 +193,7 @@ const ComplianceScorePage = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-3 bg-white/50 rounded-lg">
                   <p className="text-2xl font-bold text-green-600">{scoreData?.stats?.compliant || 0}</p>
-                  <p className="text-xs text-gray-600">Compliant</p>
+                  <p className="text-xs text-gray-600">Valid</p>
                 </div>
                 <div className="text-center p-3 bg-white/50 rounded-lg">
                   <p className="text-2xl font-bold text-amber-600">{scoreData?.stats?.expiring_soon || 0}</p>

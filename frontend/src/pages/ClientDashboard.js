@@ -6,10 +6,13 @@ import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import ErrorBanner from '../components/ErrorBanner';
+import EmptyState from '../components/EmptyState';
 import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard } from 'lucide-react';
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
+import { formatRiskLabel } from '../utils/riskLabel';
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
@@ -23,7 +26,9 @@ const ClientDashboard = () => {
   const [scoreTrend, setScoreTrend] = useState(null);
   const [showScoreExplanation, setShowScoreExplanation] = useState(false);
   const [portfolioSummary, setPortfolioSummary] = useState(null);
+  const [requirementsList, setRequirementsList] = useState([]);
   const [showComplianceFramework, setShowComplianceFramework] = useState(false);
+  const [propertiesSort, setPropertiesSort] = useState({ key: 'score', dir: 'asc' });
   // Explicit UI states instead of blank screen (Goal C)
   const [restrictReason, setRestrictReason] = useState(null); // 'plan' | 'not_provisioned' | 'provisioning_incomplete' | null
   const [redirectPath, setRedirectPath] = useState(null); // from 403 X-Redirect header
@@ -43,6 +48,7 @@ const ClientDashboard = () => {
     fetchComplianceScore();
     fetchScoreTrend();
     fetchPortfolioSummary();
+    fetchRequirements();
     // Intentionally depend only on role/client_id; fetch functions are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClientUser, user?.role, user?.client_id]);
@@ -119,6 +125,15 @@ const ClientDashboard = () => {
     }
   };
 
+  const fetchRequirements = async () => {
+    try {
+      const response = await clientAPI.getRequirements();
+      setRequirementsList(response.data?.requirements || []);
+    } catch (err) {
+      if (err.response?.status !== 404) console.warn('Requirements not available for next actions:', err);
+    }
+  };
+
   const getComplianceColor = (status) => {
     switch (status) {
       case 'GREEN': return 'bg-green-50 text-green-700 border-green-200';
@@ -138,12 +153,7 @@ const ClientDashboard = () => {
 
   return (
     <div data-testid="client-dashboard">
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        <ErrorBanner message={error} onRetry={fetchDashboard} retryLabel="Retry" />
 
         {/* Explicit "Access restricted by plan" UI (no blank screen) */}
         {restrictReason === 'plan' && (
@@ -407,10 +417,10 @@ const ClientDashboard = () => {
                 <div 
                   className="text-center cursor-pointer hover:bg-green-50 rounded-lg p-2 transition-colors"
                   onClick={() => navigate('/requirements?status=COMPLIANT')}
-                  data-testid="stat-compliant"
+                  data-testid="stat-valid"
                 >
                   <p className="text-2xl font-bold text-green-600">{complianceScore.stats?.compliant || 0}</p>
-                  <p className="text-xs text-gray-500">Compliant</p>
+                  <p className="text-xs text-gray-500">Valid</p>
                 </div>
                 <div 
                   className="text-center cursor-pointer hover:bg-amber-50 rounded-lg p-2 transition-colors"
@@ -430,7 +440,7 @@ const ClientDashboard = () => {
         {/* Risk level and KPIs from compliance summary (catalog-driven when available) */}
         {portfolioSummary?.risk_level && (
           <p className="text-sm text-gray-600 mb-2">
-            <span className="font-medium">Risk level:</span> {portfolioSummary.risk_level}
+            <span className="font-medium">Risk level:</span> {formatRiskLabel(portfolioSummary.risk_level)}
             {portfolioSummary.portfolio_score != null && (
               <span className="ml-2 text-gray-500">(Portfolio score: {portfolioSummary.portfolio_score}/100)</span>
             )}
@@ -444,7 +454,7 @@ const ClientDashboard = () => {
             <span className="text-red-600 font-medium">Overdue: {portfolioSummary.kpis.overdue ?? 0}</span>
             <span className="text-amber-600 font-medium">Expiring (30d): {portfolioSummary.kpis.expiring_30 ?? 0}</span>
             <span className="text-gray-600 font-medium">Missing: {portfolioSummary.kpis.missing ?? 0}</span>
-            <span className="text-green-600 font-medium">Compliant: {portfolioSummary.kpis.compliant ?? 0}</span>
+            <span className="text-green-600 font-medium">Valid: {portfolioSummary.kpis.compliant ?? 0}</span>
           </div>
         )}
 
@@ -471,7 +481,7 @@ const ClientDashboard = () => {
                 <li>Overdue: 0</li>
               </ul>
               <p className="mb-2">Property score is the average of requirement scores for that property. Portfolio score is the average across all properties weighted by requirement count.</p>
-              <p className="mb-2">Risk levels (aligned with server): 80–100 = Low Risk; 60–79 = Moderate Risk; 40–59 = High Risk; 0–39 = Critical Risk.</p>
+              <p className="mb-2">Risk levels (evidence-based, not legal advice): 80–100 = Low risk; 60–79 = Medium risk; 40–59 = High risk; 0–39 = Critical risk.</p>
               <p className="text-gray-500 italic">This is an evidence-based status summary. It is not legal advice and does not constitute legal certification.</p>
             </div>
           )}
@@ -503,7 +513,7 @@ const ClientDashboard = () => {
                     >
                       <td className="p-3 font-medium text-midnight-blue">{p.name || p.property_id}</td>
                       <td className="p-3">{p.property_score ?? p.score ?? 0}/100</td>
-                      <td className="p-3">{p.risk_level}</td>
+                      <td className="p-3">{formatRiskLabel(p.risk_level)}</td>
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
                     </tr>
@@ -514,67 +524,28 @@ const ClientDashboard = () => {
           </div>
         )}
 
-        {/* Compliance Summary - Clickable Tiles */}
+        {/* 4 KPI cards: Score+Risk, Overdue, Expiring soon, Missing evidence */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card 
             className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-electric-teal group"
-            onClick={() => navigate('/requirements')}
-            data-testid="tile-total-requirements"
+            onClick={() => navigate('/compliance-score')}
+            data-testid="tile-score-risk"
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Requirements</p>
+                  <p className="text-sm text-gray-600 mb-1">Score &amp; Risk</p>
                   <p className="text-3xl font-bold text-midnight-blue">
-                    {data?.compliance_summary?.total_requirements || 0}
+                    {portfolioSummary?.portfolio_score ?? complianceScore?.score ?? '—'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {portfolioSummary?.risk_level ? formatRiskLabel(portfolioSummary.risk_level) : (complianceScore?.message || 'Portfolio')}
                   </p>
                   <p className="text-xs text-electric-teal opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                    Click to view all →
+                    View score →
                   </p>
                 </div>
                 <Shield className="w-12 h-12 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-green-300 group"
-            onClick={() => navigate('/properties?status=COMPLIANT')}
-            data-testid="tile-compliant"
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Compliant</p>
-                  <p className="text-3xl font-bold text-green-600">
-                    {data?.compliance_summary?.compliant || 0}
-                  </p>
-                  <p className="text-xs text-green-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                    Click to view →
-                  </p>
-                </div>
-                <CheckCircle className="w-12 h-12 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-amber-300 group"
-            onClick={() => navigate('/requirements?status=DUE_SOON')}
-            data-testid="tile-expiring-soon"
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Attention Needed</p>
-                  <p className="text-3xl font-bold text-yellow-600">
-                    {data?.compliance_summary?.expiring_soon || 0}
-                  </p>
-                  <p className="text-xs text-yellow-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                    Click to view →
-                  </p>
-                </div>
-                <Clock className="w-12 h-12 text-yellow-600" />
               </div>
             </CardContent>
           </Card>
@@ -587,21 +558,112 @@ const ClientDashboard = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Action Required</p>
+                  <p className="text-sm text-gray-600 mb-1">Overdue</p>
                   <p className="text-3xl font-bold text-red-600">
-                    {data?.compliance_summary?.overdue || 0}
+                    {portfolioSummary?.kpis?.overdue ?? data?.compliance_summary?.overdue ?? 0}
                   </p>
                   <p className="text-xs text-red-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                    Click to view →
+                    View →
                   </p>
                 </div>
                 <XCircle className="w-12 h-12 text-red-600" />
               </div>
             </CardContent>
           </Card>
+
+          <Card 
+            className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-amber-300 group"
+            onClick={() => navigate('/requirements?status=DUE_SOON')}
+            data-testid="tile-expiring-soon"
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Expiring soon</p>
+                  <p className="text-3xl font-bold text-amber-600">
+                    {portfolioSummary?.kpis?.expiring_30 ?? data?.compliance_summary?.expiring_soon ?? 0}
+                  </p>
+                  <p className="text-xs text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                    View →
+                  </p>
+                </div>
+                <Clock className="w-12 h-12 text-amber-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-gray-300 group"
+            onClick={() => navigate('/requirements?status=OVERDUE_OR_MISSING')}
+            data-testid="tile-missing-evidence"
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Missing evidence</p>
+                  <p className="text-3xl font-bold text-gray-700">
+                    {portfolioSummary?.kpis?.missing ?? 0}
+                  </p>
+                  <p className="text-xs text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                    View →
+                  </p>
+                </div>
+                <FileText className="w-12 h-12 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Properties */}
+        {/* Next Actions: Fix now → /properties/:id#req=code */}
+        {(() => {
+          const actionStatuses = ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON', 'PENDING', 'MISSING'];
+          const nextItems = requirementsList
+            .filter((r) => actionStatuses.includes((r.status || '').toUpperCase()))
+            .map((r) => ({
+              property_id: r.property_id,
+              requirement_code: (r.requirement_code || r.requirement_type || r.requirement_id || '').toString(),
+              status: r.status,
+              description: r.description || r.requirement_type,
+            }))
+            .filter((a) => a.property_id && a.requirement_code)
+            .slice(0, 10);
+          const seen = new Set();
+          const deduped = nextItems.filter((a) => {
+            const key = `${a.property_id}:${a.requirement_code}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          return deduped.length > 0 ? (
+            <Card className="enterprise-card mb-8" data-testid="next-actions-card">
+              <CardHeader>
+                <CardTitle className="text-midnight-blue">Next Actions</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Items that need evidence or are expiring</p>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {deduped.map((a, i) => (
+                    <li key={`${a.property_id}-${a.requirement_code}-${i}`} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                      <span className="text-sm text-gray-700 truncate mr-2">
+                        {a.description || a.requirement_code} · Property {a.property_id}
+                      </span>
+                      <Button
+                        size="sm"
+                        className="bg-electric-teal hover:bg-electric-teal/90 text-white"
+                        onClick={() => navigate(`/properties/${a.property_id}#req=${encodeURIComponent(a.requirement_code)}`)}
+                        data-testid={`fix-now-${a.property_id}-${a.requirement_code}`}
+                      >
+                        Fix now
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ) : null;
+        })()}
+
+        {/* Properties: sortable table */}
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2">
             <Card className="enterprise-card h-full">
@@ -620,42 +682,90 @@ const ClientDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {data?.properties?.length === 0 ? (
-                  <div className="text-center py-6">
-                    <p className="text-gray-600 mb-3">No properties found</p>
-                    <Button 
-                      onClick={() => navigate('/properties/import')}
-                      variant="outline"
-                      data-testid="import-first-property-btn"
-                    >
-                      Import Properties from CSV
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {data?.properties?.map((property) => (
-                      <div 
-                        key={property.property_id}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-smooth"
-                        data-testid="property-card"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-semibold text-midnight-blue mb-1">
-                              {property.address_line_1}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              {property.city}, {property.postcode}
-                            </p>
-                          </div>
-                          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getComplianceColor(property.compliance_status)}`}>
-                            {property.compliance_status}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {(() => {
+                  const tableSource = (portfolioSummary?.properties?.length > 0
+                    ? portfolioSummary.properties.map((p) => ({
+                        property_id: p.property_id,
+                        name: p.name || p.property_id,
+                        address_line_1: p.name || p.property_id,
+                        city: '',
+                        postcode: '',
+                        score: p.property_score ?? p.score ?? 0,
+                        risk_level: p.risk_level,
+                        overdue_count: p.overdue_count ?? 0,
+                        expiring_30_count: p.expiring_30_count ?? p.expiring_soon_count ?? 0,
+                      }))
+                    : (data?.properties || []).map((p) => ({
+                        ...p,
+                        name: p.nickname || p.address_line_1 || p.property_id,
+                        score: null,
+                        risk_level: null,
+                        overdue_count: null,
+                        expiring_30_count: null,
+                      }))
+                  );
+                  if (tableSource.length === 0) {
+                    return (
+                      <EmptyState
+                        icon={FileText}
+                        title="No properties found"
+                        description="Add properties to track compliance."
+                        actionLabel="Import Properties from CSV"
+                        onAction={() => navigate('/properties/import')}
+                        actionTestId="import-first-property-btn"
+                        className="py-6"
+                      />
+                    );
+                  }
+                  const sortKey = propertiesSort.key;
+                  const dir = propertiesSort.dir === 'asc' ? 1 : -1;
+                  const sorted = [...tableSource].sort((a, b) => {
+                    const av = a[sortKey] ?? (sortKey === 'name' ? a.address_line_1 : 0);
+                    const bv = b[sortKey] ?? (sortKey === 'name' ? b.address_line_1 : 0);
+                    if (typeof av === 'string' && typeof bv === 'string') return dir * (av.localeCompare(bv));
+                    return dir * ((Number(av) ?? 0) - (Number(bv) ?? 0));
+                  });
+                  const toggleSort = (key) => {
+                    setPropertiesSort((s) => ({ key, dir: s.key === key && s.dir === 'asc' ? 'desc' : 'asc' }));
+                  };
+                  return (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 text-left text-gray-600">
+                            <th className="p-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('name')}>
+                              Property {propertiesSort.key === 'name' && (propertiesSort.dir === 'asc' ? '↑' : '↓')}
+                            </th>
+                            <th className="p-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('score')}>
+                              Score {propertiesSort.key === 'score' && (propertiesSort.dir === 'asc' ? '↑' : '↓')}
+                            </th>
+                            <th className="p-3 cursor-pointer hover:bg-gray-50">Risk</th>
+                            <th className="p-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('overdue_count')}>
+                              Overdue {propertiesSort.key === 'overdue_count' && (propertiesSort.dir === 'asc' ? '↑' : '↓')}
+                            </th>
+                            <th className="p-3 cursor-pointer hover:bg-gray-50">Expiring soon</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sorted.map((p) => (
+                            <tr
+                              key={p.property_id}
+                              className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                              onClick={() => navigate(`/properties/${p.property_id}`)}
+                              data-testid="property-row"
+                            >
+                              <td className="p-3 font-medium text-midnight-blue">{p.name || p.address_line_1}</td>
+                              <td className="p-3">{p.score != null ? `${p.score}/100` : '—'}</td>
+                              <td className="p-3">{p.risk_level ? formatRiskLabel(p.risk_level) : '—'}</td>
+                              <td className="p-3">{p.overdue_count ?? '—'}</td>
+                              <td className="p-3">{p.expiring_30_count ?? '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>
