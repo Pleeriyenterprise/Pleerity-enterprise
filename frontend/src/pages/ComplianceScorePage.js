@@ -184,7 +184,7 @@ const ComplianceScorePage = () => {
                   </div>
                   <p className="text-lg text-gray-700">{scoreData?.message}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Based on {scoreData?.stats?.total_requirements || 0} requirements across {scoreData?.properties_count || 0} properties
+                    Based on {scoreData?.stats?.total_requirements || 0} tracked items across {scoreData?.properties_count || 0} properties. These may apply depending on your situation.
                   </p>
                 </div>
               </div>
@@ -239,7 +239,7 @@ const ComplianceScorePage = () => {
                         <span className="text-lg font-bold text-blue-700">40%</span>
                       </div>
                       <p className="text-xs text-blue-600">
-                        Based on requirement statuses: COMPLIANT (100pts), PENDING (70pts), EXPIRING_SOON (40pts), OVERDUE (0pts)
+                        Based on tracked item statuses: COMPLIANT (100pts), PENDING (70pts), EXPIRING_SOON (40pts), OVERDUE (0pts)
                       </p>
                       <p className="text-sm font-semibold text-blue-800 mt-2">
                         Your score: {scoreData?.breakdown?.status_score?.toFixed(0)}%
@@ -263,7 +263,7 @@ const ComplianceScorePage = () => {
                         <span className="text-lg font-bold text-teal-700">15%</span>
                       </div>
                       <p className="text-xs text-teal-600">
-                        Percentage of requirements with uploaded documents
+                        Percentage of tracked items with uploaded documents
                       </p>
                       <p className="text-sm font-semibold text-teal-800 mt-2">
                         Your score: {scoreData?.breakdown?.document_score?.toFixed(0)}%
@@ -296,7 +296,7 @@ const ComplianceScorePage = () => {
                       <div>
                         <p className="font-medium">Status Component</p>
                         <p className="text-gray-600">
-                          {scoreData?.stats?.compliant || 0}/{scoreData?.stats?.total_requirements || 0} requirements currently valid
+                          {scoreData?.stats?.compliant || 0}/{scoreData?.stats?.total_requirements || 0} tracked items currently valid
                         </p>
                       </div>
                     </div>
@@ -321,7 +321,7 @@ const ComplianceScorePage = () => {
                         <p className="text-gray-600">
                           {scoreData?.stats?.documents_uploaded || 0} documents uploaded
                           <span className="block text-xs">
-                            {scoreData?.stats?.document_coverage_percent?.toFixed(0)}% requirement coverage
+                            {scoreData?.stats?.document_coverage_percent?.toFixed(0)}% tracked item coverage
                           </span>
                         </p>
                       </div>
@@ -438,7 +438,7 @@ const ComplianceScorePage = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">{contribution.count} requirements</p>
+                          <p className="text-xs text-gray-500 mt-1">{contribution.count} tracked items</p>
                         </div>
                         <div className={`text-2xl font-bold ${
                           propertyColor === 'green' ? 'text-green-600' :

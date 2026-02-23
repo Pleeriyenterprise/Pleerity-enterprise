@@ -200,10 +200,10 @@ async def update_notification_preferences(request: Request, data: NotificationPr
             update_fields["system_announcements"] = data.system_announcements
         if data.reminder_days_before is not None:
             # Validate reminder days
-            if data.reminder_days_before not in [7, 14, 30, 60, 90]:
+            if data.reminder_days_before not in [1, 7, 14, 30, 60, 90]:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="reminder_days_before must be 7, 14, 30, 60, or 90"
+                    detail="reminder_days_before must be 1, 7, 14, 30, 60, or 90"
                 )
             update_fields["reminder_days_before"] = data.reminder_days_before
         if data.quiet_hours_enabled is not None:

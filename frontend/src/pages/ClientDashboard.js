@@ -211,6 +211,20 @@ const ClientDashboard = () => {
           <p className="text-xs text-gray-500 mt-2">This is an evidence-based status summary. It is not legal advice.</p>
         </div>
 
+        {/* UNKNOWN applicability banner: prompt to confirm property details */}
+        {requirementsList.length > 0 && requirementsList.some(r => (r.applicability || 'UNKNOWN') === 'UNKNOWN') && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="unknown-applicability-banner">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <span className="font-medium text-amber-800">Confirm your property details.</span>
+              <span className="text-amber-700 ml-1">Some tracked items depend on your property settings. Update your properties so we can show the right items and dates.</span>
+              <Button variant="outline" size="sm" className="mt-2 border-amber-300 text-amber-800 hover:bg-amber-100" onClick={() => navigate('/requirements')}>
+                Review requirements
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Compliance Score Widget */}
         {complianceScore && (
           <div className="mb-8 grid lg:grid-cols-3 gap-6" data-testid="compliance-score-widget">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
+import api from '../api/client';
 import { toast } from 'sonner';
 import { 
   FileCheck, 
@@ -11,6 +12,8 @@ import {
   RefreshCw,
   FileText,
   ChevronRight,
+  Pencil,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
@@ -20,7 +23,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../components/ui/accordion';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import EmptyState from '../components/EmptyState';
+
+const NOT_REQUIRED_REASONS = [
+  { value: 'no_gas_supply', label: 'No gas supply' },
+  { value: 'exempt', label: 'Exempt' },
+  { value: 'not_applicable', label: 'Not applicable' },
+  { value: 'other', label: 'Other' },
+];
 
 const RequirementsPage = () => {
   const navigate = useNavigate();
@@ -31,6 +42,9 @@ const RequirementsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [clientData, setClientData] = useState(null);
   const [groupBy, setGroupBy] = useState('property'); // 'property' | 'requirement'
+  const [editModal, setEditModal] = useState(null); // { requirement, property } or null
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({ confirmed_expiry_date: '', applicability: '', not_required_reason: '' });
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -84,6 +98,46 @@ const RequirementsPage = () => {
       month: 'short',
       year: 'numeric'
     });
+  };
+
+  const hasUnknownApplicability = requirements.some(r => (r.applicability || 'UNKNOWN') === 'UNKNOWN');
+
+  const openEditModal = (req) => {
+    const due = req.confirmed_expiry_date || req.extracted_expiry_date || req.due_date;
+    const dateStr = due ? (typeof due === 'string' ? due : new Date(due).toISOString()).slice(0, 10) : '';
+    setEditForm({
+      confirmed_expiry_date: dateStr,
+      applicability: req.applicability || 'UNKNOWN',
+      not_required_reason: req.not_required_reason || '',
+    });
+    setEditModal({ requirement: req, property: getPropertyById(req.property_id) });
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editModal) return;
+    const { requirement } = editModal;
+    setEditSaving(true);
+    try {
+      const payload = {};
+      if (editForm.confirmed_expiry_date.trim()) payload.confirmed_expiry_date = editForm.confirmed_expiry_date.trim();
+      if (editForm.applicability) payload.applicability = editForm.applicability;
+      if (editForm.applicability === 'NOT_REQUIRED' && editForm.not_required_reason) payload.not_required_reason = editForm.not_required_reason;
+      if (Object.keys(payload).length === 0) {
+        setEditModal(null);
+        return;
+      }
+      await api.patch(
+        `/properties/${requirement.property_id}/requirements/${requirement.requirement_id}`,
+        payload
+      );
+      toast.success('Requirement updated.');
+      setEditModal(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update requirement');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   // Apply filters
@@ -157,6 +211,9 @@ const RequirementsPage = () => {
                 <p className="text-xs">{daysUntil < 0 ? 'days overdue' : 'days left'}</p>
               </div>
             )}
+            <Button variant="ghost" size="sm" onClick={() => openEditModal(req)} className="text-gray-600 hover:text-midnight-blue" data-testid={`edit-requirement-${req.requirement_id}`}>
+              <Pencil className="w-4 h-4 mr-1" /> Edit
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate(`/documents?property_id=${req.property_id}&requirement_id=${req.requirement_id}`)} className="text-electric-teal hover:text-teal-700" data-testid={`view-documents-${req.requirement_id}`}>
               View Documents <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
@@ -175,10 +232,10 @@ const RequirementsPage = () => {
   };
 
   const getPageDescription = () => {
-    if (statusFilter === 'DUE_SOON') return 'Requirements expiring soon that need attention';
-    if (statusFilter === 'OVERDUE_OR_MISSING') return 'Overdue or missing requirements requiring immediate action';
-    if (windowDays) return `Requirements with deadlines within the next ${windowDays} days`;
-    return 'Manage all compliance requirements across your properties';
+    if (statusFilter === 'DUE_SOON') return 'Tracked items expiring soon that need attention';
+    if (statusFilter === 'OVERDUE_OR_MISSING') return 'Overdue or missing tracked items that need attention';
+    if (windowDays) return `Tracked items with deadlines within the next ${windowDays} days`;
+    return 'Manage tracked items across your properties. These may apply depending on your situation.';
   };
 
   // Stats
@@ -220,10 +277,21 @@ const RequirementsPage = () => {
             <div className="text-right">
               <p className="text-sm text-gray-500">Showing</p>
               <p className="text-2xl font-bold text-midnight-blue">{filteredRequirements.length}</p>
-              <p className="text-sm text-gray-500">requirements</p>
+              <p className="text-sm text-gray-500">tracked items</p>
             </div>
           </div>
         </div>
+
+        {/* UNKNOWN applicability banner */}
+        {hasUnknownApplicability && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="unknown-applicability-banner">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <span className="font-medium text-amber-800">Confirm your property details.</span>
+              <span className="text-amber-700 ml-1">Some tracked items depend on your property settings. Update expiry dates or mark items as not required so we can show the right status.</span>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -318,8 +386,8 @@ const RequirementsPage = () => {
           {filteredRequirements.length === 0 ? (
             <EmptyState
               icon={FileCheck}
-              title="No requirements found"
-              description={searchTerm ? 'Try adjusting your search criteria' : 'No requirements match the current filter'}
+              title="No tracked items found"
+              description={searchTerm ? 'Try adjusting your search criteria' : 'No tracked items match the current filter'}
               className="p-12"
             />
           ) : groupBy === 'property' ? (
@@ -341,7 +409,7 @@ const RequirementsPage = () => {
                           <Building2 className="w-4 h-4 text-electric-teal" />
                           {label}
                         </span>
-                        <span className="text-sm text-gray-500 font-normal ml-2">({reqs.length} requirements)</span>
+                        <span className="text-sm text-gray-500 font-normal ml-2">({reqs.length} tracked)</span>
                       </AccordionTrigger>
                       <AccordionContent className="px-4 pb-4">
                         <div className="divide-y divide-gray-100">
@@ -383,7 +451,66 @@ const RequirementsPage = () => {
         {/* Footer count */}
         {filteredRequirements.length > 0 && (
           <div className="mt-4 text-center text-sm text-gray-500">
-            Showing {filteredRequirements.length} of {requirements.length} requirements
+            Showing {filteredRequirements.length} of {requirements.length} tracked items
+          </div>
+        )}
+
+        {/* Edit requirement modal */}
+        {editModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="edit-requirement-modal">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+              <h3 className="text-lg font-semibold text-midnight-blue mb-4">Edit tracked item</h3>
+              <p className="text-sm text-gray-600 mb-2">
+                {editModal.requirement.requirement_type?.replace(/_/g, ' ')} — {editModal.property?.nickname || editModal.property?.address_line_1 || 'Property'}
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Expiry date</label>
+                  <input
+                    type="date"
+                    value={editForm.confirmed_expiry_date}
+                    onChange={(e) => setEditForm(f => ({ ...f, confirmed_expiry_date: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                    data-testid="edit-expiry-date"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Applies to this property</label>
+                  <select
+                    value={editForm.applicability}
+                    onChange={(e) => setEditForm(f => ({ ...f, applicability: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                    data-testid="edit-applicability"
+                  >
+                    <option value="UNKNOWN">Unknown / not set</option>
+                    <option value="REQUIRED">Yes, required</option>
+                    <option value="NOT_REQUIRED">No, not required</option>
+                  </select>
+                </div>
+                {editForm.applicability === 'NOT_REQUIRED' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                    <select
+                      value={editForm.not_required_reason}
+                      onChange={(e) => setEditForm(f => ({ ...f, not_required_reason: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                      data-testid="edit-not-required-reason"
+                    >
+                      <option value="">Select reason</option>
+                      {NOT_REQUIRED_REASONS.map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Button variant="outline" onClick={() => setEditModal(null)}>Cancel</Button>
+                <Button onClick={handleEditSubmit} disabled={editSaving} data-testid="edit-requirement-submit">
+                  {editSaving ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
           </div>
         )}
     </div>

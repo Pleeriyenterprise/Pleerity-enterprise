@@ -174,7 +174,7 @@ const CalendarPage = () => {
                   <CalendarIcon className="w-6 h-6 text-electric-teal" />
                   Compliance Calendar
                 </h1>
-                <p className="text-sm text-gray-500">Track certificate expirations</p>
+                <p className="text-sm text-gray-500">Track certificate expiry dates. Tracked items may apply depending on your situation.</p>
               </div>
             </div>
             

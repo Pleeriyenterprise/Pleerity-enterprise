@@ -344,6 +344,7 @@ const NotificationPreferencesPage = () => {
   ];
 
   const reminderOptions = [
+    { value: 1, label: '1 day' },
     { value: 7, label: '1 week' },
     { value: 14, label: '2 weeks' },
     { value: 30, label: '1 month' },
@@ -466,7 +467,7 @@ const NotificationPreferencesPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Send reminders before certificates expire:
             </label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               {reminderOptions.map((option) => (
                 <button
                   key={option.value}
