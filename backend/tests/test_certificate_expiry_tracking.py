@@ -151,3 +151,79 @@ class TestReminderWritesReminderTypeAndRefs:
         # and context["reminder_refs"] = json.dumps(reminder_refs) to notification_orchestrator.send,
         # so message_logs get metadata.event_type=REMINDER and metadata.reminder_refs for audit.
         pass
+
+    def test_overdue_requirement_included_in_reminder_refs(self):
+        """When a requirement's effective expiry is in the past (OVERDUE), it is included in reminder_refs."""
+        async def _run():
+            from services.jobs import JobScheduler
+            import os
+            with patch.dict(os.environ, {"MONGO_URL": "mongodb://localhost:27017", "DB_NAME": "test"}):
+                scheduler = JobScheduler()
+                scheduler.db = MagicMock()
+                scheduler.db.clients = MagicMock()
+                scheduler.db.notification_preferences = MagicMock()
+                scheduler.db.requirements = MagicMock()
+                scheduler.db.audit_logs = MagicMock()
+                scheduler.db.properties = MagicMock()
+
+                scheduler.db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+                scheduler.db.notification_preferences.find_one = AsyncMock(
+                    return_value={"expiry_reminders": True, "daily_reminder_enabled": True}
+                )
+                past = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+                reqs = [
+                    {
+                        "requirement_id": "r_overdue",
+                        "client_id": "c1",
+                        "property_id": "p1",
+                        "requirement_type": "GAS_SAFETY_CERT",
+                        "due_date": past,
+                        "applicability": "REQUIRED",
+                    }
+                ]
+                scheduler.db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=reqs)))
+                scheduler.db.requirements.update_one = AsyncMock()
+
+                with patch("services.jobs.JobScheduler._resolve_reminder_recipients", new_callable=AsyncMock, return_value=["u@example.com"]):
+                    with patch("services.jobs.JobScheduler._send_reminder_email", new_callable=AsyncMock) as mock_send:
+                        clients = [{"client_id": "c1", "email": "u@example.com", "subscription_status": "ACTIVE", "entitlement_status": "ENABLED"}]
+                        scheduler.db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=clients)))
+                        with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
+                            with patch("services.plan_registry.plan_registry.enforce_feature", new_callable=AsyncMock, return_value=(False, None, None)):
+                                await scheduler.send_daily_reminders()
+                        mock_send.assert_called()
+                        call_kw = mock_send.call_args[1]
+                        refs = call_kw.get("reminder_refs")
+                        if isinstance(refs, str):
+                            import json
+                            refs = json.loads(refs)
+                        assert isinstance(refs, list)
+                        overdue_refs = [r for r in refs if r.get("requirement_type") == "GAS_SAFETY_CERT" or r.get("property_id") == "p1"]
+                        assert len(overdue_refs) >= 1
+                        assert overdue_refs[0].get("due_date")
+        asyncio.run(_run())
+
+
+class TestNotRequiredExcludedFromScore:
+    """applicability=NOT_REQUIRED excludes requirement from score penalty (status_factor 1.0)."""
+
+    def test_not_required_gas_safety_gets_full_score_for_key(self):
+        from services.compliance_scoring import compute_property_score
+
+        property_doc = {"property_id": "p1", "client_id": "c1", "cert_gas_safety": "YES"}
+        requirements = [
+            {
+                "requirement_id": "r1",
+                "property_id": "p1",
+                "requirement_type": "GAS_SAFETY_CERT",
+                "applicability": "NOT_REQUIRED",
+            }
+        ]
+        documents = []
+        result = compute_property_score(property_doc, requirements, documents)
+        assert "breakdown" in result
+        gas_row = next((r for r in result["breakdown"] if r.get("requirement_key") == "GAS_SAFETY_CERT"), None)
+        assert gas_row is not None
+        assert gas_row.get("status") == "NOT_REQUIRED"
+        assert gas_row.get("status_factor") == 1.0
+        # NOT_REQUIRED key is excluded from penalty (full score for that key); other keys may still reduce total

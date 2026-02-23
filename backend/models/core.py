@@ -575,6 +575,8 @@ class Requirement(BaseModel):
     expiry_source: Optional[ExpirySource] = ExpirySource.NONE
     extraction_confidence: Optional[float] = None  # 0-1
     not_required_reason: Optional[str] = None  # When applicability=NOT_REQUIRED, controlled list
+    issue_date: Optional[datetime] = None  # From document extraction or user confirmation
+    certificate_number: Optional[str] = None  # From document extraction or user confirmation
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from database import database
 from middleware import client_route_guard
 from models import Property, ComplianceStatus, AuditAction, UserRole
-from utils.expiry_utils import get_effective_expiry_date, is_included_for_calendar
+from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
 from utils.audit import create_audit_log
 from pydantic import BaseModel
 from typing import Optional, List
@@ -245,8 +245,10 @@ NOT_REQUIRED_REASONS = ["no_gas_supply", "exempt", "not_applicable", "other"]
 
 
 class PatchRequirementRequest(BaseModel):
-    """Update expiry or applicability for a property requirement."""
+    """Update expiry, applicability, or certificate fields for a property requirement."""
     confirmed_expiry_date: Optional[str] = None  # ISO date
+    issue_date: Optional[str] = None  # ISO date
+    certificate_number: Optional[str] = None
     applicability: Optional[str] = None  # REQUIRED | NOT_REQUIRED | UNKNOWN
     not_required_reason: Optional[str] = None  # Required when applicability=NOT_REQUIRED; one of NOT_REQUIRED_REASONS
 
@@ -300,8 +302,26 @@ async def patch_requirement(
                 )
             update["not_required_reason"] = reason or None
 
+    if data.issue_date is not None:
+        try:
+            parsed = datetime.fromisoformat(data.issue_date.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            update["issue_date"] = parsed.isoformat()
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid issue_date format; use YYYY-MM-DD or ISO datetime",
+            )
+    if data.certificate_number is not None:
+        update["certificate_number"] = (data.certificate_number or "").strip() or None
+
     if len(update) <= 1:
         return {"message": "No updates", "requirement_id": requirement_id}
+
+    # Set status from deterministic rule when expiry or applicability changed
+    merged = {**req, **update}
+    update["status"] = get_computed_status(merged)
 
     await db.requirements.update_one(
         {"requirement_id": requirement_id, "property_id": property_id, "client_id": user["client_id"]},

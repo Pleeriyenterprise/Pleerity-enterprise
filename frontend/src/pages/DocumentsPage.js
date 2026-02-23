@@ -56,11 +56,29 @@ const DocumentsPage = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [confirmDetailsModal, setConfirmDetailsModal] = useState(null);
   const [confirmExpiryDate, setConfirmExpiryDate] = useState('');
+  const [confirmIssueDate, setConfirmIssueDate] = useState('');
+  const [confirmCertificateNumber, setConfirmCertificateNumber] = useState('');
   const [confirmDetailsSaving, setConfirmDetailsSaving] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Pre-fill confirm modal from extraction when document_id is available (e.g. after upload)
+  useEffect(() => {
+    if (!confirmDetailsModal?.document_id) return;
+    let cancelled = false;
+    api.get(`/documents/${confirmDetailsModal.document_id}/extraction`)
+      .then((res) => {
+        if (cancelled) return;
+        const ext = res.data?.extraction?.data || res.data?.extraction?.extracted || {};
+        if (ext.expiry_date) setConfirmExpiryDate(String(ext.expiry_date).slice(0, 10));
+        if (ext.issue_date) setConfirmIssueDate(String(ext.issue_date).slice(0, 10));
+        if (ext.certificate_number) setConfirmCertificateNumber(ext.certificate_number);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [confirmDetailsModal?.document_id]);
 
   const fetchData = async () => {
     try {
@@ -100,20 +118,24 @@ const DocumentsPage = () => {
       formData.append('property_id', uploadForm.property_id);
       formData.append('requirement_id', uploadForm.requirement_id);
 
-      await api.post('/documents/upload', formData, {
+      const res = await api.post('/documents/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       toast.success('Document uploaded successfully');
+      const documentId = res.data?.document_id;
       const prop = properties.find(p => p.property_id === uploadForm.property_id);
       const req = requirements.find(r => r.requirement_id === uploadForm.requirement_id);
       setConfirmDetailsModal({
         property_id: uploadForm.property_id,
         property_name: prop ? `${prop.address_line_1 || ''}, ${prop.city || ''}`.trim() || prop.property_id : uploadForm.property_id,
         requirement_id: uploadForm.requirement_id,
-        requirement_type: req?.description || req?.requirement_type || uploadForm.requirement_id
+        requirement_type: req?.description || req?.requirement_type || uploadForm.requirement_id,
+        document_id: documentId
       });
       setConfirmExpiryDate('');
+      setConfirmIssueDate('');
+      setConfirmCertificateNumber('');
       setUploadForm({ property_id: '', requirement_id: '', file: null });
       fetchData();
     } catch (error) {
@@ -236,21 +258,31 @@ const DocumentsPage = () => {
 
   const handleConfirmDetailsSubmit = async () => {
     if (!confirmDetailsModal) return;
-    setConfirmDetailsSaving(true);
-    try {
-      if (confirmExpiryDate.trim()) {
-        const dateStr = confirmExpiryDate.trim();
-        await api.patch(
-          `/properties/${confirmDetailsModal.property_id}/requirements/${confirmDetailsModal.requirement_id}`,
-          { confirmed_expiry_date: dateStr }
-        );
-        toast.success('Expiry date saved. Calendar and reminders will use this date.');
-      }
+    const payload = {};
+    if (confirmExpiryDate.trim()) payload.confirmed_expiry_date = confirmExpiryDate.trim();
+    if (confirmIssueDate.trim()) payload.issue_date = confirmIssueDate.trim();
+    if (confirmCertificateNumber.trim()) payload.certificate_number = confirmCertificateNumber.trim();
+    if (Object.keys(payload).length === 0) {
       setConfirmDetailsModal(null);
       setConfirmExpiryDate('');
+      setConfirmIssueDate('');
+      setConfirmCertificateNumber('');
+      return;
+    }
+    setConfirmDetailsSaving(true);
+    try {
+      await api.patch(
+        `/properties/${confirmDetailsModal.property_id}/requirements/${confirmDetailsModal.requirement_id}`,
+        payload
+      );
+      toast.success('Details saved. Calendar and reminders will use the confirmed date.');
+      setConfirmDetailsModal(null);
+      setConfirmExpiryDate('');
+      setConfirmIssueDate('');
+      setConfirmCertificateNumber('');
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to save expiry date');
+      toast.error(error.response?.data?.detail || 'Failed to save details');
     } finally {
       setConfirmDetailsSaving(false);
     }
@@ -259,6 +291,8 @@ const DocumentsPage = () => {
   const handleConfirmDetailsSkip = () => {
     setConfirmDetailsModal(null);
     setConfirmExpiryDate('');
+    setConfirmIssueDate('');
+    setConfirmCertificateNumber('');
   };
 
   const getStatusBadge = (status) => {
@@ -945,7 +979,7 @@ const DocumentsPage = () => {
                 </button>
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                Optionally set the certificate expiry date so the calendar and reminders use it.
+                Confirm or edit the certificate details so the calendar and reminders use the correct date.
               </p>
               <div className="space-y-3 mb-6">
                 <div>
@@ -965,7 +999,28 @@ const DocumentsPage = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
                     data-testid="confirm-expiry-date-input"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Used for calendar and reminders</p>
+                  <p className="text-xs text-gray-500 mt-1">Required for calendar and reminders</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Issue date</label>
+                  <input
+                    type="date"
+                    value={confirmIssueDate}
+                    onChange={(e) => setConfirmIssueDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    data-testid="confirm-issue-date-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Certificate number</label>
+                  <input
+                    type="text"
+                    value={confirmCertificateNumber}
+                    onChange={(e) => setConfirmCertificateNumber(e.target.value)}
+                    placeholder="Optional"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    data-testid="confirm-certificate-number-input"
+                  />
                 </div>
               </div>
               <div className="flex gap-3">

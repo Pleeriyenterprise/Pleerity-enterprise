@@ -1,5 +1,6 @@
 """
 Tests: upload/verify updates requirement and score; delete updates requirement and score; admin actions behave identically.
+Upload no longer marks requirement as satisfied (regenerate_requirement_due_date removed); user confirms via modal or apply-extraction.
 Uses mocked DB; asserts code paths and requirement/score consistency.
 """
 import pytest
@@ -17,9 +18,10 @@ class TestUploadVerifyUpdatesRequirementAndScore:
     """Upload + verify: document VERIFIED, requirement COMPLIANT, score reflects on next fetch."""
 
     @pytest.mark.asyncio
-    async def test_upload_calls_regenerate_and_property_compliance(self):
+    async def test_upload_does_not_mark_requirement_satisfied(self):
+        """Upload must NOT call regenerate_requirement_due_date; requirement stays unchanged until user confirms expiry."""
         from routes.documents import upload_document
-        from fastapi import Request, UploadFile
+        from fastapi import UploadFile
 
         req = MagicMock()
         req.state = MagicMock()
@@ -33,7 +35,6 @@ class TestUploadVerifyUpdatesRequirementAndScore:
                 db.requirements.find_one = AsyncMock(return_value={"requirement_id": "r1", "client_id": "c1", "frequency_days": 365})
                 db.documents.insert_one = AsyncMock()
                 db.requirements.update_one = AsyncMock()
-                db.properties.update_one = AsyncMock()
                 with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock) as regen:
                     with patch("routes.documents.provisioning_service") as prov:
                         prov._update_property_compliance = AsyncMock()
@@ -45,13 +46,15 @@ class TestUploadVerifyUpdatesRequirementAndScore:
                             file.filename = "cert.pdf"
                             file.read = AsyncMock(return_value=b"x")
                             file.content_type = "application/pdf"
-                            try:
-                                await upload_document(req, file=file, property_id="p1", requirement_id="r1")
-                            except Exception as e:
-                                if "client_route_guard" in str(e) or "state" in str(e):
-                                    pytest.skip("Request state setup skipped")
-                                raise
-                regen.assert_called_once_with("r1", "c1")
+                            with patch("routes.documents.create_audit_log", new_callable=AsyncMock), \
+                                 patch("routes.documents.enqueue_compliance_recalc", new_callable=AsyncMock):
+                                try:
+                                    await upload_document(req, file=file, property_id="p1", requirement_id="r1")
+                                except Exception as e:
+                                    if "client_route_guard" in str(e) or "state" in str(e):
+                                        pytest.skip("Request state setup skipped")
+                                    raise
+                regen.assert_not_called()
                 prov._update_property_compliance.assert_called_once_with("p1")
 
 

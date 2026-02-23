@@ -262,12 +262,7 @@ async def bulk_upload_documents(
                                             {"document_id": document.document_id},
                                             {"$set": {"requirement_id": matched_requirement}}
                                         )
-                                        
-                                        # Update requirement due date
-                                        await regenerate_requirement_due_date(
-                                            matched_requirement, 
-                                            user["client_id"]
-                                        )
+                                        # Do not mark requirement satisfied on upload; user confirms via modal or apply-extraction
                                         break
                                 break
                 except Exception as e:
@@ -562,11 +557,7 @@ async def upload_zip_archive(
                                                     {"document_id": document.document_id},
                                                     {"$set": {"requirement_id": matched_requirement}}
                                                 )
-                                                
-                                                await regenerate_requirement_due_date(
-                                                    matched_requirement, 
-                                                    user["client_id"]
-                                                )
+                                                # Do not mark requirement satisfied on upload; user confirms via modal or apply-extraction
                                                 break
                                         break
                         except Exception as e:
@@ -715,8 +706,7 @@ async def upload_document(
         
         await db.documents.insert_one(doc)
         
-        # Update requirement status and regenerate due date
-        await regenerate_requirement_due_date(requirement_id, user["client_id"])
+        # Do not mark requirement as satisfied on upload; user confirms expiry in modal or via apply-extraction
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
         from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
@@ -836,8 +826,7 @@ async def admin_upload_document(
         
         await db.documents.insert_one(doc)
         
-        # Update requirement status and regenerate due date
-        await regenerate_requirement_due_date(requirement_id, client_id)
+        # Do not mark requirement as satisfied on upload; user/admin confirms via apply-extraction or modal
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
         from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_ADMIN_UPLOAD, ACTOR_ADMIN
