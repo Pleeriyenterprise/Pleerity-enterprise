@@ -1,5 +1,6 @@
 // Public Pages - Index Export
 export { default as HomePage } from './HomePage';
+export { default as DemoPage } from './DemoPage';
 export { default as CVPLandingPage } from './CVPLandingPage';
 export { default as ServicesHubPage } from './ServicesHubPage';
 export { default as ServiceDetailPage } from './ServiceDetailPage';

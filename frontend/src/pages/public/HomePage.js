@@ -9,265 +9,393 @@ import {
   FileCheck,
   Bell,
   BarChart3,
-  Sparkles,
   Building2,
-  ClipboardCheck,
   ArrowRight,
   CheckCircle2,
+  AlertTriangle,
+  Users,
+  Home,
 } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../../components/ui/accordion';
 
 const HomePage = () => {
-  const features = [
-    {
-      icon: Shield,
-      title: 'Compliance Tracking',
-      description: 'Monitor all requirements across your property portfolio with real-time status updates.',
-    },
+  const trustBullets = [
+    'Expiry reminders',
+    'Evidence vault',
+    'Portfolio view',
+    'PDF reports (plan-based)',
+    'Not legal advice',
+  ];
+
+  const pillars = [
     {
       icon: FileCheck,
-      title: 'Document Vault',
-      description: 'Securely store all compliance certificates and documents in one central location.',
+      title: 'Track evidence and expiries',
+      description: 'Securely store Gas Safety (CP12), EICR, EPC, HMO licences and supporting documents. Track issue and expiry dates in one organised portal.',
+    },
+    {
+      icon: Shield,
+      title: 'Compliance score (risk indicator)',
+      description: 'See a clear risk indicator per property and across your portfolio based on evidence and expiry status. Transparency over what’s valid, expiring, or missing.',
     },
     {
       icon: Bell,
-      title: 'Smart Reminders',
-      description: 'Never miss a deadline with automated email and SMS reminders before expiry.',
+      title: 'Reminders',
+      description: 'Receive email and SMS reminders before deadlines (plan-based) so you can renew in good time.',
     },
     {
       icon: BarChart3,
-      title: 'Compliance Reports',
-      description: 'Generate audit-ready compliance packs and monthly digest reports instantly.',
+      title: 'Reports and exports',
+      description: 'Generate structured PDF and CSV reports (plan-based) for internal reviews or professional consultation.',
     },
   ];
 
-  const services = [
+  const segments = [
     {
-      href: '/services/ai-automation',
-      icon: Sparkles,
-      title: 'AI & Automation',
-      description: 'Automate repetitive property management tasks with intelligent workflows.',
+      icon: Home,
+      title: 'Solo landlords',
+      description: 'Keep your compliance documentation organised and monitored from day one.',
     },
     {
-      href: '/services/market-research',
       icon: Building2,
-      title: 'Market Research',
-      description: 'Get comprehensive property market insights for informed decisions.',
+      title: 'Portfolio landlords',
+      description: 'Track multiple properties with structured oversight and centralised reporting.',
     },
     {
-      href: '/services/compliance-audits',
-      icon: ClipboardCheck,
-      title: 'Compliance Audits',
-      description: 'Professional HMO and full property compliance audits.',
+      icon: Users,
+      title: 'HMO / managed properties',
+      description: 'Monitor licensing, renewals, and property-level documentation clearly.',
     },
   ];
 
-  const trustPoints = [
-    'GDPR Compliant',
-    'UK-Based Company',
-    'Bank-Level Security',
-    '24/7 System Monitoring',
+  const steps = [
+    { title: 'Add your properties', body: 'Enter your property details to create your portfolio dashboard.' },
+    { title: 'Upload evidence', body: 'Store documents securely. You can upload at intake or later.' },
+    { title: 'Confirm key dates', body: 'Confirm expiry and issue dates when needed so tracking is accurate.' },
+    { title: 'Track status and reminders', body: 'View compliance status per property and receive reminders before deadlines.' },
+    { title: 'Generate reports', body: 'Produce structured compliance reports (plan-based) when you need them.' },
+  ];
+
+  const faqs = [
+    {
+      q: 'Is this legal advice?',
+      a: 'No. Compliance Vault Pro is a tracking and organisation tool. It helps you see expiry dates and evidence in one place. It does not provide legal advice or regulatory determination. For legal or regulatory questions, please consult a qualified professional.',
+    },
+    {
+      q: 'What happens if I downgrade?',
+      a: 'You can upgrade or downgrade your plan at any time. Your data remains secure. Features that are part of higher tiers (e.g. PDF reports, SMS reminders) may no longer be available on a lower tier, but your stored documents and property data are retained.',
+    },
+    {
+      q: 'Does it support HMO?',
+      a: 'Yes. You can track HMO licensing and property-level documentation, including renewal dates and supporting evidence, so HMO operators can monitor compliance in one place.',
+    },
+    {
+      q: 'Do you send expiry reminders?',
+      a: 'Yes. We send email reminders before certificates expire (plan-dependent). Some plans also include SMS reminders. You can manage notification preferences in your account.',
+    },
+    {
+      q: 'Can I export reports?',
+      a: 'Yes. Depending on your plan, you can generate PDF and CSV reports for your portfolio. These are structured for internal use or to share with advisers.',
+    },
+    {
+      q: 'Is my data secure?',
+      a: 'We use secure storage and encryption for your documents and data. Access is controlled and we do not use your data for purposes other than providing the service. See our Privacy Policy for details.',
+    },
   ];
 
   return (
     <PublicLayout>
+      {/* A) SEO meta */}
       <SEOHead
-        title="AI-Powered Landlord Compliance & Workflow Automation"
-        description="Streamline UK landlord compliance with Compliance Vault Pro. AI-powered document management, automated reminders, and professional audit services."
+        title="UK Landlord Compliance Software | Track Gas Safety, EICR & EPC Expiry"
+        description="Compliance Vault Pro helps UK landlords track certificate expiry dates, monitor property compliance visibility, and generate structured reports across their portfolio. HMO compliance tracking UK. Gas safety certificate expiry tracking. EICR expiry reminders."
         canonicalUrl="/"
         schema={organizationSchema}
       />
 
-      {/* Hero Section */}
+      {/* B) HERO */}
       <section className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-electric-teal/10 text-electric-teal text-sm font-medium mb-6">
-                <Sparkles className="w-4 h-4 mr-2" />
-                AI-Powered Compliance Platform
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-midnight-blue leading-tight mb-6">
-                UK Landlord Compliance{' '}
-                <span className="text-electric-teal">Made Simple</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-midnight-blue leading-tight mb-6">
+                Compliance Vault Pro –{' '}
+                <span className="text-electric-teal">Compliance Vault & Audit Intelligence</span>
               </h1>
               <p className="text-lg text-gray-600 mb-8 max-w-xl">
-                Manage all your property compliance requirements in one secure platform. 
-                Stay audit-ready with automated reminders and intelligent document tracking.
+                A structured compliance tracking platform for UK landlords. Monitor certificate expiry dates, 
+                get automated reminders, and generate audit-ready reports across your portfolio.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   size="lg"
                   className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
                   asChild
-                  data-testid="hero-get-started"
+                  data-testid="hero-cta-primary"
                 >
                   <Link to="/intake/start">
-                    Get Started
+                    Start Your Setup
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Link>
                 </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-electric-teal text-electric-teal hover:bg-electric-teal/5"
+                  asChild
+                  data-testid="hero-cta-demo"
+                >
+                  <Link to="/demo">View Platform Demo</Link>
+                </Button>
               </div>
-
-              {/* Trust Points */}
-              <div className="mt-10 flex flex-wrap gap-4">
-                {trustPoints.map((point) => (
-                  <div key={point} className="flex items-center text-sm text-gray-600">
-                    <CheckCircle2 className="w-4 h-4 text-electric-teal mr-2" />
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
+                {trustBullets.map((point) => (
+                  <span key={point} className="flex items-center">
+                    <CheckCircle2 className="w-4 h-4 text-electric-teal mr-2 shrink-0" />
                     {point}
-                  </div>
+                  </span>
                 ))}
               </div>
             </div>
-
-            {/* Hero Visual */}
+            {/* Dashboard preview placeholder */}
             <div className="relative hidden lg:block">
-              <div className="relative bg-white rounded-2xl shadow-2xl p-6 border border-gray-200">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-electric-teal/10 rounded-lg flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-electric-teal" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-midnight-blue">Compliance Score</div>
-                      <div className="text-sm text-gray-500">Portfolio Overview</div>
-                    </div>
-                  </div>
-                  <div className="text-3xl font-bold text-electric-teal">94%</div>
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { label: 'Gas Safety Certificates', status: 'Compliant', color: 'bg-green-500' },
-                    { label: 'EICR Reports', status: 'Compliant', color: 'bg-green-500' },
-                    { label: 'EPC Ratings', status: '1 Expiring Soon', color: 'bg-amber-500' },
-                    { label: 'HMO Licences', status: 'Compliant', color: 'bg-green-500' },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-700">{item.label}</span>
-                      <div className="flex items-center">
-                        <div className={`w-2 h-2 rounded-full ${item.color} mr-2`} />
-                        <span className="text-sm text-gray-600">{item.status}</span>
-                      </div>
-                    </div>
-                  ))}
+              {/* TODO: Replace with dashboard preview image; e.g. src="/images/dashboard-preview.png" */}
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden aspect-video flex items-center justify-center text-gray-400 bg-gray-50">
+                <div className="text-center p-6">
+                  <Shield className="w-16 h-16 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-medium">Dashboard preview</p>
+                  <p className="text-xs mt-1">Add image: dashboard-preview.png</p>
                 </div>
               </div>
-              {/* Decorative elements */}
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-electric-teal/10 rounded-full blur-2xl" />
-              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-midnight-blue/5 rounded-full blur-2xl" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Main Product Section */}
-      <section className="py-20 bg-white">
+      {/* Dashboard preview — portfolio in one view */}
+      <section className="py-16 lg:py-20 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-midnight-blue mb-4">
-              Everything You Need for Compliance
-            </h2>
-            <p className="text-lg text-gray-600">
-              Compliance Vault Pro brings all your property compliance requirements into one 
-              intelligent platform that works for you.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+            See Your Entire Portfolio in One View
+          </h2>
+          <p className="text-center text-gray-600 mb-10 max-w-2xl mx-auto">
+            Instantly see expiry risk, expiring documents, and compliance visibility across every property you manage.
+          </p>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <ul className="space-y-3 text-gray-700">
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Portfolio compliance score</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Property-level breakdown</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Expiring soon indicator</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Overdue alert example</li>
+            </ul>
+            <div className="relative">
+              {/* TODO: Replace with dashboard or calendar screenshot; e.g. src="/images/calendar-preview.png" or dashboard-preview.png */}
+              <div className="bg-gray-100 rounded-xl border border-gray-200 aspect-video flex items-center justify-center text-gray-500">
+                <div className="text-center p-4">
+                  <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Dashboard / calendar preview</p>
+                  <p className="text-xs mt-1">Add image when available</p>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-center">
+                <Button className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+                  <Link to="/intake/start">Generate Report</Link>
+                </Button>
+              </div>
+            </div>
           </div>
+        </div>
+      </section>
 
+      {/* C) THE PROBLEM */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-6 text-center">
+            Compliance Is Easy to Forget — Until It&apos;s Too Late
+          </h2>
+          <div className="max-w-3xl mx-auto space-y-4 text-gray-600 text-center mb-8">
+            <p>Certificates buried in inboxes. Expiry dates lost in spreadsheets. No clear overview across properties.</p>
+            <p>When documentation is scattered, visibility disappears — and deadlines get missed.</p>
+            <p className="text-midnight-blue font-medium">Compliance Vault Pro gives you structured oversight so nothing critical slips through.</p>
+          </div>
+          <div className="flex justify-center">
+            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+              <Link to="/intake/start">Start Your Setup</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* D) FOUR PILLARS */}
+      <section className="py-16 lg:py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+            All Your Compliance Tracking in One Structured Dashboard
+          </h2>
+          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+            Track evidence, see risk indicators, get reminders, and generate reports. No legal claims — just structured tracking.
+          </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature) => (
-              <Card key={feature.title} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+            {pillars.map((item) => (
+              <Card key={item.title} className="border-0 shadow-lg hover:shadow-xl transition-shadow h-full">
                 <CardContent className="pt-6">
                   <div className="w-12 h-12 bg-electric-teal/10 rounded-xl flex items-center justify-center mb-4">
-                    <feature.icon className="w-6 h-6 text-electric-teal" />
+                    <item.icon className="w-6 h-6 text-electric-teal" />
                   </div>
-                  <h3 className="text-xl font-semibold text-midnight-blue mb-2">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
+                  <h3 className="text-lg font-semibold text-midnight-blue mb-2">{item.title}</h3>
+                  <p className="text-gray-600 text-sm">{item.description}</p>
                 </CardContent>
               </Card>
             ))}
           </div>
+        </div>
+      </section>
 
+      {/* E) SEGMENTATION */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+            Built for Modern UK Landlords
+          </h2>
+          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+            Works for solo landlords, portfolio landlords, and HMO operators. Also suitable for managing agents overseeing landlord portfolios.
+          </p>
+          <div className="grid md:grid-cols-3 gap-8">
+            {segments.map((seg) => (
+              <Card key={seg.title} className="border border-gray-200 shadow-sm h-full">
+                <CardContent className="pt-6">
+                  <div className="w-12 h-12 bg-midnight-blue/10 rounded-xl flex items-center justify-center mb-4">
+                    <seg.icon className="w-6 h-6 text-midnight-blue" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-midnight-blue mb-2">{seg.title}</h3>
+                  <p className="text-gray-600 text-sm">{seg.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* F) HOW IT WORKS */}
+      <section className="py-16 lg:py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+            Get Set Up in Minutes, Not Hours
+          </h2>
+          <div className="max-w-3xl mx-auto space-y-6 mt-12">
+            {steps.map((step, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="w-10 h-10 rounded-full bg-electric-teal text-white flex items-center justify-center font-semibold shrink-0">
+                  {i + 1}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-midnight-blue">{step.title}</h3>
+                  <p className="text-gray-600 text-sm mt-1">{step.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
           <div className="text-center mt-12">
+            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+              <Link to="/intake/start">Start Tracking Today</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* G) COMPLIANCE SCORE TRANSPARENCY */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-6 text-center">
+            How the Compliance Score Works
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Each property gets a structured tracking score based on confirmed evidence and recorded expiry dates. 
+            Your dashboard also shows a portfolio-level summary for overall visibility.
+          </p>
+          <p className="text-gray-600 mb-4">
+            For example: valid certificates and no overdue items support a stronger score; expiring or missing items reduce it. 
+            It&apos;s a risk indicator to help you prioritise — not a legal verdict.
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800">
+              <strong>Disclaimer:</strong> The compliance score is an informational tracking indicator and does not constitute legal advice or regulatory determination.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* H) PRICING FRAMING */}
+      <section className="py-16 lg:py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+            Simple, Transparent Pricing
+          </h2>
+          <p className="text-center text-gray-600 mb-8 max-w-xl mx-auto">
+            Choose the plan that fits the size of your portfolio. Solo, Portfolio, or Professional — upgrade or downgrade anytime. Your data remains secure.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+              <Link to="/pricing">View plans</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal" asChild>
+              <Link to="/intake/start">Start Your Setup</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* I) FAQ */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-8 text-center">
+            Frequently Asked Questions
+          </h2>
+          <Accordion type="single" collapsible className="w-full">
+            {faqs.map((faq, i) => (
+              <AccordionItem key={i} value={`faq-${i}`}>
+                <AccordionTrigger className="text-left font-medium text-midnight-blue">
+                  {faq.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">{faq.a}</AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
+      {/* J) FINAL CTA */}
+      <section className="py-16 lg:py-20 bg-midnight-blue">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+            Take Control of Your Property Compliance
+          </h2>
+          <p className="text-lg text-gray-300 mb-8">
+            Start your structured compliance tracking today.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              size="lg"
+              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+              asChild
+            >
+              <Link to="/intake/start">Start Your Setup</Link>
+            </Button>
             <Button
               size="lg"
               variant="outline"
-              className="border-electric-teal text-electric-teal hover:bg-electric-teal hover:text-white"
+              className="border-white text-white hover:bg-white/10"
               asChild
             >
-              <Link to="/compliance-vault-pro">
-                Learn More About Compliance Vault Pro
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+              <Link to="/demo">View Demo</Link>
             </Button>
           </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-midnight-blue mb-4">
-              Professional Property Services
-            </h2>
-            <p className="text-lg text-gray-600">
-              Beyond compliance management, we offer a range of professional services 
-              to support your property business.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {services.map((service) => (
-              <Link
-                key={service.href}
-                to={service.href}
-                className="group"
-                data-testid={`service-link-${service.title.toLowerCase().replace(/\s+/g, '-')}`}
-              >
-                <Card className="h-full border-0 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
-                  <CardContent className="pt-6">
-                    <div className="w-12 h-12 bg-midnight-blue/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-electric-teal/10 transition-colors">
-                      <service.icon className="w-6 h-6 text-midnight-blue group-hover:text-electric-teal transition-colors" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-midnight-blue mb-2">{service.title}</h3>
-                    <p className="text-gray-600 mb-4">{service.description}</p>
-                    <span className="inline-flex items-center text-electric-teal font-medium">
-                      Learn more
-                      <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <Button size="lg" variant="outline" asChild>
-              <Link to="/services">View All Services</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-midnight-blue">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
-            Ready to Simplify Your Compliance?
-          </h2>
-          <p className="text-lg text-gray-300 mb-8 max-w-2xl mx-auto">
-            Join hundreds of UK landlords and letting agents who trust Compliance Vault Pro 
-            to manage their property compliance.
-          </p>
-          <Button
-            size="lg"
-            className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
-            asChild
-          >
-            <Link to="/intake/start">
-              Get Started
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Link>
-          </Button>
         </div>
       </section>
     </PublicLayout>
