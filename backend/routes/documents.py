@@ -1777,53 +1777,61 @@ async def apply_ai_extraction(
                 correlation_id=f"AI_APPLIED:{document_id}",
             )
         
-        # Send email notification to the client via orchestrator
+        # Send email notification to the client via orchestrator (respect document_updates preference)
         try:
-            # Get client details for email
-            client = await db.clients.find_one(
+            prefs = await db.notification_preferences.find_one(
                 {"client_id": document["client_id"]},
-                {"_id": 0, "email": 1, "full_name": 1, "customer_reference": 1}
+                {"_id": 0, "document_updates": 1},
             )
-            
-            # Get property address for email
-            property_doc = await db.properties.find_one(
-                {"property_id": document.get("property_id")},
-                {"_id": 0, "nickname": 1, "address_line_1": 1, "postcode": 1}
-            )
-            
-            if client and client.get("email"):
-                property_address = property_doc.get("nickname") or property_doc.get("address_line_1", "N/A") if property_doc else "N/A"
-                if property_doc and property_doc.get("postcode"):
-                    property_address += f", {property_doc.get('postcode')}"
-                
-                # Format expiry date for email
-                expiry_display = "N/A"
-                if update_fields.get("due_date"):
-                    try:
-                        expiry_dt = datetime.fromisoformat(update_fields["due_date"].replace('Z', '+00:00'))
-                        expiry_display = expiry_dt.strftime("%d %B %Y")
-                    except (ValueError, AttributeError):
-                        expiry_display = update_fields.get("due_date", "N/A")
-                
-                from services.notification_orchestrator import notification_orchestrator
-                result = await notification_orchestrator.send(
-                    template_key="AI_EXTRACTION_APPLIED",
-                    client_id=document["client_id"],
-                    context={
-                        "client_name": client.get("full_name", "there"),
-                        "customer_reference": client.get("customer_reference", ""),
-                        "property_address": property_address,
-                        "document_type": data.get("document_type") or document.get("file_name", "Certificate"),
-                        "certificate_number": cert_number or "N/A",
-                        "expiry_date": expiry_display,
-                        "requirement_status": after_state.get("status", "UPDATED"),
-                        "portal_link": os.getenv("FRONTEND_URL", "https://compliance-vault-pro.pleerity.com") + "/app/dashboard",
-                    },
-                    idempotency_key=f"{document_id}_AI_EXTRACTION_APPLIED",
-                    event_type="ai_extraction_applied",
+            document_updates_enabled = prefs.get("document_updates", True) if prefs else True
+            if not document_updates_enabled:
+                logger.info("Skipping AI extraction applied email for client %s - document_updates disabled", document["client_id"])
+            else:
+                # Get client details for email
+                client = await db.clients.find_one(
+                    {"client_id": document["client_id"]},
+                    {"_id": 0, "email": 1, "full_name": 1, "customer_reference": 1}
                 )
-                if result.outcome in ("sent", "duplicate_ignored"):
-                    logger.info(f"AI extraction email sent to {client['email']}")
+                
+                # Get property address for email
+                property_doc = await db.properties.find_one(
+                    {"property_id": document.get("property_id")},
+                    {"_id": 0, "nickname": 1, "address_line_1": 1, "postcode": 1}
+                )
+                
+                if client and client.get("email"):
+                    property_address = property_doc.get("nickname") or property_doc.get("address_line_1", "N/A") if property_doc else "N/A"
+                    if property_doc and property_doc.get("postcode"):
+                        property_address += f", {property_doc.get('postcode')}"
+                    
+                    # Format expiry date for email
+                    expiry_display = "N/A"
+                    if update_fields.get("due_date"):
+                        try:
+                            expiry_dt = datetime.fromisoformat(update_fields["due_date"].replace('Z', '+00:00'))
+                            expiry_display = expiry_dt.strftime("%d %B %Y")
+                        except (ValueError, AttributeError):
+                            expiry_display = update_fields.get("due_date", "N/A")
+                    
+                    from services.notification_orchestrator import notification_orchestrator
+                    result = await notification_orchestrator.send(
+                        template_key="AI_EXTRACTION_APPLIED",
+                        client_id=document["client_id"],
+                        context={
+                            "client_name": client.get("full_name", "there"),
+                            "customer_reference": client.get("customer_reference", ""),
+                            "property_address": property_address,
+                            "document_type": data.get("document_type") or document.get("file_name", "Certificate"),
+                            "certificate_number": cert_number or "N/A",
+                            "expiry_date": expiry_display,
+                            "requirement_status": after_state.get("status", "UPDATED"),
+                            "portal_link": os.getenv("FRONTEND_URL", "https://compliance-vault-pro.pleerity.com") + "/app/dashboard",
+                        },
+                        idempotency_key=f"{document_id}_AI_EXTRACTION_APPLIED",
+                        event_type="ai_extraction_applied",
+                    )
+                    if result.outcome in ("sent", "duplicate_ignored"):
+                        logger.info(f"AI extraction email sent to {client['email']}")
         except Exception as email_err:
             # Don't fail the extraction if email fails
             logger.warning(f"Failed to send AI extraction email: {email_err}")

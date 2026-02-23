@@ -75,9 +75,16 @@ class JobScheduler:
                 # Default to enabled if no preferences set
                 reminders_enabled = prefs.get("expiry_reminders", True) if prefs else True
                 reminder_days = prefs.get("reminder_days_before", 30) if prefs else 30
+                daily_reminder_enabled = prefs.get("daily_reminder_enabled", True) if prefs else True
                 
                 if not reminders_enabled:
                     logger.info(f"Skipping reminders for {client['email']} - disabled in preferences")
+                    continue
+                if not daily_reminder_enabled:
+                    logger.info(f"Skipping reminders for {client['email']} - daily reminder disabled in preferences")
+                    continue
+                if self._is_in_quiet_hours(prefs):
+                    logger.info(f"Skipping reminders for {client['email']} - within quiet hours")
                     continue
                 
                 # Get requirements expiring in next N days (based on preferences)
@@ -147,24 +154,36 @@ class JobScheduler:
                 
                 # Send reminder if there are expiring or overdue requirements
                 if expiring_requirements or overdue_requirements:
-                    await self._send_reminder_email(
-                        client,
-                        expiring_requirements,
-                        overdue_requirements
-                    )
-                    reminder_count += 1
+                    reminder_recipients = await self._resolve_reminder_recipients(client)
+                    for recipient_email in reminder_recipients:
+                        await self._send_reminder_email(
+                            client,
+                            expiring_requirements,
+                            overdue_requirements,
+                            recipient_email=recipient_email,
+                        )
+                    if reminder_recipients:
+                        reminder_count += 1
                     # Professional only: runtime plan gating before SMS (survives downgrade/cancel)
                     from services.plan_registry import plan_registry
                     sms_allowed, _sms_err, _sms_details = await plan_registry.enforce_feature(
                         client["client_id"], "sms_reminders"
                     )
                     if sms_allowed:
-                        await self._maybe_send_reminder_sms(
-                            client,
-                            prefs,
-                            expiring_requirements,
-                            overdue_requirements
-                        )
+                        # Only send SMS for urgent (overdue) when sms_urgent_alerts_only is True
+                        sms_urgent_only = prefs.get("sms_urgent_alerts_only", True) if prefs else True
+                        if sms_urgent_only and not overdue_requirements:
+                            logger.info("Skipping SMS reminder for client %s - sms_urgent_alerts_only and no overdue items", client["client_id"])
+                        else:
+                            sms_recipients = await self._resolve_reminder_sms_recipients(client, prefs)
+                            for recipient_phone in sms_recipients:
+                                await self._maybe_send_reminder_sms(
+                                    client,
+                                    prefs,
+                                    expiring_requirements,
+                                    overdue_requirements,
+                                    recipient_phone=recipient_phone,
+                                )
                     else:
                         logger.info(
                             "Skipping SMS reminder for client %s - plan/subscription does not allow sms_reminders",
@@ -213,6 +232,9 @@ class JobScheduler:
                 if not monthly_digest_enabled:
                     logger.info(f"Skipping monthly digest for {client['email']} - disabled in preferences")
                     continue
+                if self._is_in_quiet_hours(prefs):
+                    logger.info(f"Skipping monthly digest for {client['email']} - within quiet hours")
+                    continue
                 
                 # Calculate digest period (last 30 days)
                 period_end = datetime.now(timezone.utc)
@@ -250,6 +272,14 @@ class JobScheduler:
                     "expiring_soon": expiring,
                     "documents_uploaded": len(recent_documents)
                 }
+                # Section flags from preferences (default True for backward compatibility)
+                digest_content["include_compliance_summary"] = prefs.get("digest_compliance_summary", True) if prefs else True
+                digest_content["include_action_items"] = prefs.get("digest_action_items", True) if prefs else True
+                digest_content["include_upcoming_expiries"] = prefs.get("digest_upcoming_expiries", True) if prefs else True
+                digest_content["include_property_breakdown"] = prefs.get("digest_property_breakdown", True) if prefs else True
+                digest_content["include_recent_documents"] = prefs.get("digest_recent_documents", True) if prefs else True
+                digest_content["include_recommendations"] = prefs.get("digest_recommendations", True) if prefs else True
+                digest_content["include_audit_summary"] = prefs.get("digest_audit_summary", False) if prefs else False
                 
                 # Send digest email (skip and audit if no recipient)
                 sent = await self._send_digest_email(client, digest_content)
@@ -274,54 +304,118 @@ class JobScheduler:
             logger.error(f"Monthly digest job error: {e}")
             return 0
     
-    async def _send_reminder_email(self, client, expiring, overdue):
-        """Send reminder email via NotificationOrchestrator."""
+    async def _resolve_reminder_recipients(self, client) -> list:
+        """
+        Resolve reminder email recipients from client + properties.
+        Uses property send_reminders_to (LANDLORD / AGENT / BOTH) and agent_email.
+        Returns list of distinct email addresses to send the daily reminder to.
+        """
+        client_email = (client.get("email") or client.get("contact_email") or "").strip()
+        properties = await self.db.properties.find(
+            {"client_id": client["client_id"]},
+            {"_id": 0, "send_reminders_to": 1, "agent_email": 1}
+        ).to_list(500)
+        send_to_landlord = False
+        agent_emails = set()
+        for prop in properties:
+            to_whom = (prop.get("send_reminders_to") or "LANDLORD").upper()
+            if to_whom in ("LANDLORD", "BOTH"):
+                send_to_landlord = True
+            if to_whom in ("AGENT", "BOTH"):
+                ae = (prop.get("agent_email") or "").strip()
+                if ae:
+                    agent_emails.add(ae)
+        recipients = []
+        if send_to_landlord and client_email:
+            recipients.append(client_email)
+        for ae in agent_emails:
+            if ae and ae not in recipients:
+                recipients.append(ae)
+        if not recipients and client_email:
+            recipients = [client_email]
+        return recipients
+
+    async def _resolve_reminder_sms_recipients(self, client, prefs) -> list:
+        """
+        Resolve SMS reminder recipients: client phone + agent phones when send_reminders_to is AGENT/BOTH.
+        Returns list of phone numbers (only if SMS is enabled in prefs for client; agent phones included by property setting).
+        """
+        phones = []
+        client_phone = (prefs.get("sms_phone_number") if prefs else None) or client.get("sms_phone_number") or ""
+        client_phone = (client_phone or "").strip()
+        if prefs and prefs.get("sms_enabled") and client_phone:
+            phones.append(client_phone)
+        properties = await self.db.properties.find(
+            {"client_id": client["client_id"]},
+            {"_id": 0, "send_reminders_to": 1, "agent_phone": 1}
+        ).to_list(500)
+        for prop in properties:
+            to_whom = (prop.get("send_reminders_to") or "LANDLORD").upper()
+            if to_whom in ("AGENT", "BOTH"):
+                ap = (prop.get("agent_phone") or "").strip()
+                if ap and ap not in phones:
+                    phones.append(ap)
+        return phones
+
+    async def _send_reminder_email(self, client, expiring, overdue, recipient_email=None):
+        """Send reminder email via NotificationOrchestrator. If recipient_email is set, send to that address (agent); otherwise to client email."""
         try:
             from services.notification_orchestrator import notification_orchestrator
             from services.webhook_service import fire_reminder_sent
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}"
+            to_addr = (recipient_email or client.get("email") or client.get("contact_email") or "").strip()
+            if not to_addr:
+                return
+            key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
+            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}"
             portal_link = os.environ.get("FRONTEND_URL", "https://app.pleerity.co.uk") + "/app/dashboard"
+            context = {
+                "client_name": client.get("full_name", "Valued Customer"),
+                "expiring_count": len(expiring),
+                "overdue_count": len(overdue),
+                "portal_link": portal_link,
+            }
+            if recipient_email:
+                context["recipient"] = recipient_email
             await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER",
                 client_id=client["client_id"],
-                context={
-                    "client_name": client.get("full_name", "Valued Customer"),
-                    "expiring_count": len(expiring),
-                    "overdue_count": len(overdue),
-                    "portal_link": portal_link,
-                },
+                context=context,
                 idempotency_key=idempotency_key,
                 event_type="daily_reminder",
             )
-            logger.info(f"Sending reminder to {client['email']}: {len(expiring)} expiring, {len(overdue)} overdue")
+            logger.info(f"Sending reminder to {to_addr}: {len(expiring)} expiring, {len(overdue)} overdue")
             try:
-                await fire_reminder_sent(client_id=client["client_id"], recipient=client["email"], expiring_count=len(expiring), overdue_count=len(overdue))
+                await fire_reminder_sent(client_id=client["client_id"], recipient=to_addr, expiring_count=len(expiring), overdue_count=len(overdue))
             except Exception as webhook_err:
                 logger.error(f"Webhook error for reminder: {webhook_err}")
             audit_log = {
                 "audit_id": str(datetime.now(timezone.utc).timestamp()),
                 "action": "REMINDER_SENT",
                 "client_id": client["client_id"],
-                "metadata": {"expiring_count": len(expiring), "overdue_count": len(overdue)},
+                "metadata": {"expiring_count": len(expiring), "overdue_count": len(overdue), "recipient": to_addr},
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             await self.db.audit_logs.insert_one(audit_log)
         except Exception as e:
             logger.error(f"Failed to send reminder email: {e}")
 
-    async def _maybe_send_reminder_sms(self, client, prefs, expiring, overdue):
-        """Send SMS reminder via NotificationOrchestrator (plan-gated, 24h throttle inside orchestrator)."""
+    async def _maybe_send_reminder_sms(self, client, prefs, expiring, overdue, recipient_phone=None):
+        """Send SMS reminder via NotificationOrchestrator (plan-gated, 24h throttle inside orchestrator). If recipient_phone is set, send to that number (e.g. agent)."""
         try:
             from services.notification_orchestrator import notification_orchestrator
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}"
+            key_suffix = (recipient_phone or "").replace("+", "").replace(" ", "")[:20] if recipient_phone else "client"
+            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}_{key_suffix}"
             portal_link = os.environ.get("PORTAL_BASE_URL", "https://app.pleerity.co.uk") + "/app/dashboard"
             total = len(expiring) + len(overdue)
+            context = {"count": total, "portal_link": portal_link}
+            if recipient_phone:
+                context["recipient"] = recipient_phone
             await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER_SMS",
                 client_id=client["client_id"],
-                context={"count": total, "portal_link": portal_link},
+                context=context,
                 idempotency_key=idempotency_key,
                 event_type="daily_reminder_sms",
             )
@@ -369,6 +463,10 @@ class JobScheduler:
                 "tagline": "AI-Driven Solutions & Compliance",
                 "subject": "Monthly Compliance Digest",
             }
+            for key in ("include_compliance_summary", "include_action_items", "include_upcoming_expiries",
+                       "include_property_breakdown", "include_recent_documents", "include_recommendations", "include_audit_summary"):
+                if key in content:
+                    template_model[key] = content[key]
             from services.notification_orchestrator import notification_orchestrator
             result = await notification_orchestrator.send(
                 template_key="MONTHLY_DIGEST",
@@ -499,6 +597,10 @@ class JobScheduler:
                 # Default to enabled if no preferences set
                 status_alerts_enabled = prefs.get("status_change_alerts", True) if prefs else True
                 
+                if self._is_in_quiet_hours(prefs):
+                    logger.info(f"Skipping compliance alert for {client['email']} - within quiet hours")
+                    status_alerts_enabled = False  # skip send for this client
+                
                 # Get all properties for this client
                 properties = await self.db.properties.find(
                     {"client_id": client["client_id"]},
@@ -613,6 +715,26 @@ class JobScheduler:
         except Exception as e:
             logger.error(f"Compliance status check error: {e}")
             return 0
+    
+    def _is_in_quiet_hours(self, prefs) -> bool:
+        """True if quiet hours are enabled and current UTC time is within the window (e.g. 22:00-08:00)."""
+        if not prefs or not prefs.get("quiet_hours_enabled"):
+            return False
+        try:
+            start_str = (prefs.get("quiet_hours_start") or "22:00").strip()
+            end_str = (prefs.get("quiet_hours_end") or "08:00").strip()
+            start_parts = start_str.split(":")
+            end_parts = end_str.split(":")
+            start_min = int(start_parts[0]) * 60 + (int(start_parts[1]) if len(start_parts) > 1 else 0)
+            end_min = int(end_parts[0]) * 60 + (int(end_parts[1]) if len(end_parts) > 1 else 0)
+            now = datetime.now(timezone.utc)
+            now_min = now.hour * 60 + now.minute
+            # Window crosses midnight (e.g. 22:00-08:00): in window if now_min >= start_min or now_min < end_min
+            if start_min > end_min:
+                return now_min >= start_min or now_min < end_min
+            return start_min <= now_min < end_min
+        except (ValueError, IndexError, TypeError):
+            return False
     
     def _calculate_property_compliance(self, requirements):
         """Calculate overall compliance status for a property based on its requirements."""

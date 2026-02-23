@@ -539,6 +539,26 @@ class EmailService:
             </html>
             """
         elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
+            include_summary = model.get("include_compliance_summary", True)
+            include_actions = model.get("include_action_items", True)
+            include_expiries = model.get("include_upcoming_expiries", True)
+            include_docs = model.get("include_recent_documents", True)
+            items = []
+            if include_summary:
+                items.extend([
+                    f"<li><strong>Properties:</strong> {model.get('properties_count', 0)}</li>",
+                    f"<li><strong>Total requirements:</strong> {model.get('total_requirements', 0)}</li>",
+                    f"<li><strong>Compliant:</strong> {model.get('compliant', 0)}</li>",
+                ])
+            if include_actions:
+                items.append(f"<li><strong>Overdue:</strong> {model.get('overdue', 0)}</li>")
+            if include_expiries:
+                items.append(f"<li><strong>Expiring soon:</strong> {model.get('expiring_soon', 0)}</li>")
+            if include_docs:
+                items.append(f"<li><strong>Documents uploaded (period):</strong> {model.get('documents_uploaded', 0)}</li>")
+            if not items:
+                items = ["<li>No sections enabled in your digest preferences.</li>"]
+            list_html = "\n                        ".join(items)
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -548,12 +568,7 @@ class EmailService:
                 <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
                     <p>Summary for the period (counts only):</p>
                     <ul>
-                        <li><strong>Properties:</strong> {model.get('properties_count', 0)}</li>
-                        <li><strong>Total requirements:</strong> {model.get('total_requirements', 0)}</li>
-                        <li><strong>Compliant:</strong> {model.get('compliant', 0)}</li>
-                        <li><strong>Overdue:</strong> {model.get('overdue', 0)}</li>
-                        <li><strong>Expiring soon:</strong> {model.get('expiring_soon', 0)}</li>
-                        <li><strong>Documents uploaded (period):</strong> {model.get('documents_uploaded', 0)}</li>
+                        {list_html}
                     </ul>
                     <p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p>
                 </div>
@@ -746,18 +761,33 @@ Review the admin dashboard pending-verification list to process these documents.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
+            include_summary = model.get("include_compliance_summary", True)
+            include_actions = model.get("include_action_items", True)
+            include_expiries = model.get("include_upcoming_expiries", True)
+            include_docs = model.get("include_recent_documents", True)
+            lines = []
+            if include_summary:
+                lines.extend([
+                    f"- Properties: {model.get('properties_count', 0)}",
+                    f"- Total requirements: {model.get('total_requirements', 0)}",
+                    f"- Compliant: {model.get('compliant', 0)}",
+                ])
+            if include_actions:
+                lines.append(f"- Overdue: {model.get('overdue', 0)}")
+            if include_expiries:
+                lines.append(f"- Expiring soon: {model.get('expiring_soon', 0)}")
+            if include_docs:
+                lines.append(f"- Documents uploaded (period): {model.get('documents_uploaded', 0)}")
+            if not lines:
+                lines = ["- No sections enabled in your digest preferences."]
+            body_lines = "\n".join(lines)
             return f"""
 MONTHLY COMPLIANCE DIGEST
 ========================
 
 Summary for the period (counts only):
 
-- Properties: {model.get('properties_count', 0)}
-- Total requirements: {model.get('total_requirements', 0)}
-- Compliant: {model.get('compliant', 0)}
-- Overdue: {model.get('overdue', 0)}
-- Expiring soon: {model.get('expiring_soon', 0)}
-- Documents uploaded (period): {model.get('documents_uploaded', 0)}
+{body_lines}
 
 Period: {model.get('period_start', '')} to {model.get('period_end', '')}
 {footer}
