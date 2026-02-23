@@ -260,6 +260,19 @@ const CalendarPage = () => {
               </div>
             )}
 
+            {/* Empty state: no events — explain data source and how to populate */}
+            {!loading && (!calendarData?.summary || calendarData.summary.total_events === 0) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-800">No expiry events this month</p>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Events appear when requirements have an expiry date (from uploaded documents or manual entry). Upload documents and confirm expiry dates in <button type="button" onClick={() => navigate('/documents')} className="underline font-medium text-amber-900 hover:text-amber-950">Documents</button> or set dates in <button type="button" onClick={() => navigate('/requirements')} className="underline font-medium text-amber-900 hover:text-amber-950">Requirements</button>.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Calendar Grid */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               {loading ? (
@@ -294,22 +307,25 @@ const CalendarPage = () => {
                               {dayInfo.day}
                             </div>
                             
-                            {/* Event Dots */}
+                            {/* Event Dots — clickable: go to Documents filtered by this requirement */}
                             {dayInfo.events.length > 0 && (
                               <div className="space-y-1">
                                 {dayInfo.events.slice(0, 3).map((event, idx) => (
-                                  <div
+                                  <button
                                     key={idx}
-                                    className={`text-xs px-1.5 py-0.5 rounded truncate ${
-                                      event.status_color === 'red' ? 'bg-red-100 text-red-700' :
-                                      event.status_color === 'amber' ? 'bg-amber-100 text-amber-700' :
-                                      event.status_color === 'green' ? 'bg-green-100 text-green-700' :
-                                      'bg-blue-100 text-blue-700'
+                                    type="button"
+                                    onClick={() => navigate(`/documents?property_id=${event.property_id || ''}&requirement_id=${event.requirement_id || ''}`)}
+                                    className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:ring-1 hover:ring-offset-0 ${
+                                      event.status_color === 'red' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
+                                      event.status_color === 'amber' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' :
+                                      event.status_color === 'green' ? 'bg-green-100 text-green-700 hover:bg-green-200' :
+                                      'bg-blue-100 text-blue-700 hover:bg-blue-200'
                                     }`}
-                                    title={`${event.description} - ${event.property_name || event.property_address}`}
+                                    title={`${event.description} - ${event.property_name || event.property_address}. Click to view documents.`}
+                                    data-testid={`calendar-event-${event.requirement_id}-${idx}`}
                                   >
                                     {event.description.split(' ')[0]}
-                                  </div>
+                                  </button>
                                 ))}
                                 {dayInfo.events.length > 3 && (
                                   <div className="text-xs text-gray-500">
@@ -385,9 +401,11 @@ const CalendarPage = () => {
             ) : (
               <div className="space-y-3">
                 {upcomingData?.upcoming?.map((item) => (
-                  <div
+                  <button
+                    type="button"
                     key={item.requirement_id}
-                    className={`bg-white rounded-xl p-4 border-2 ${getUrgencyColor(item.urgency)}`}
+                    onClick={() => navigate(`/documents?property_id=${item.property_id || ''}&requirement_id=${item.requirement_id || ''}`)}
+                    className={`w-full text-left bg-white rounded-xl p-4 border-2 transition-colors hover:ring-2 hover:ring-electric-teal hover:ring-offset-2 ${getUrgencyColor(item.urgency)}`}
                     data-testid={`upcoming-item-${item.requirement_id}`}
                   >
                     <div className="flex items-start justify-between">
@@ -424,7 +442,7 @@ const CalendarPage = () => {
                         <p className="text-xs text-gray-500">days left</p>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
