@@ -160,10 +160,10 @@ const OnboardingStatusPage = () => {
     if ((status?.payment_state || '').toLowerCase() === 'paid') sessionStorage.removeItem('pleerity_stripe_redirect');
   }, [status]);
 
-  // Auto-redirect to client dashboard when password_set (Ready to Use) after 2s
+  // Auto-redirect to client dashboard when password_set (Ready to Use) after 2s; use first_login=1 for guided setup
   useEffect(() => {
     if (status?.password_set !== true) return;
-    const t = setTimeout(() => navigate('/app/dashboard'), 2000);
+    const t = setTimeout(() => navigate('/dashboard?first_login=1'), 2000);
     return () => clearTimeout(t);
   }, [status?.password_set, navigate]);
 
@@ -434,7 +434,7 @@ const OnboardingStatusPage = () => {
               </div>
               <div className="flex flex-wrap gap-2">
                 {passwordSet && (
-                  <Button onClick={() => navigate('/app/dashboard')} className="bg-green-600 hover:bg-green-700" data-testid="go-to-portal-btn">
+                  <Button onClick={() => navigate('/dashboard?first_login=1')} className="bg-green-600 hover:bg-green-700" data-testid="go-to-portal-btn">
                     Go to Dashboard <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 )}

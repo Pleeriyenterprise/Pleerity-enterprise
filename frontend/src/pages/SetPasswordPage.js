@@ -69,7 +69,7 @@ const SetPasswordPage = () => {
 
       setSuccess(true);
       setTimeout(() => {
-        navigate('/app/dashboard');
+        navigate('/dashboard?first_login=1');
       }, 1500);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to set password');
@@ -109,7 +109,7 @@ const SetPasswordPage = () => {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-midnight-blue mb-2">Password Set Successfully!</h3>
+            <h3 className="text-xl font-semibold text-midnight-blue mb-2">Account activated</h3>
             <p className="text-gray-600">Redirecting to your dashboard...</p>
           </CardContent>
         </Card>

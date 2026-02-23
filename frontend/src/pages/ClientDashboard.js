@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -8,14 +8,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
-import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard } from 'lucide-react';
+import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload } from 'lucide-react';
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
 import { formatRiskLabel } from '../utils/riskLabel';
 
+const SETUP_CHECKLIST_DONE_KEY = 'pleerity_setup_checklist_done';
+const SETUP_INCOMPLETE_KEY = 'pleerity_setup_incomplete';
+
 const ClientDashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout } = useAuth();
   const { hasFeature } = useEntitlements();
   const [data, setData] = useState(null);
@@ -33,6 +37,9 @@ const ClientDashboard = () => {
   const [restrictReason, setRestrictReason] = useState(null); // 'plan' | 'not_provisioned' | 'provisioning_incomplete' | null
   const [redirectPath, setRedirectPath] = useState(null); // from 403 X-Redirect header
   const [networkError, setNetworkError] = useState(false); // true when no response (CORS/network)
+  // First-login guided activation: 'checklist' | 'portfolio' | 'documents' | null (null = show main dashboard)
+  const [setupView, setSetupView] = useState(null);
+  const [setupChecklistSeen, setSetupChecklistSeen] = useState(false);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -134,6 +141,57 @@ const ClientDashboard = () => {
     }
   };
 
+  // First-login: show setup checklist when ?first_login=1 and user has not completed/dismissed it
+  const firstLogin = searchParams.get('first_login') === '1' || searchParams.get('first_login') === 'true';
+  useEffect(() => {
+    if (!isClientUser || loading || restrictReason) return;
+    try {
+      const checklistDone = sessionStorage.getItem(SETUP_CHECKLIST_DONE_KEY) === 'true';
+      const incomplete = sessionStorage.getItem(SETUP_INCOMPLETE_KEY) === 'true';
+      setSetupChecklistSeen(incomplete);
+      if (firstLogin && !checklistDone && setupView === null) {
+        setSetupView('checklist');
+      }
+    } catch (e) {
+      // sessionStorage not available (e.g. private mode)
+    }
+  }, [isClientUser, loading, restrictReason, firstLogin, setupView]);
+
+  const dismissSetupChecklist = (markIncomplete = false) => {
+    try {
+      sessionStorage.setItem(SETUP_CHECKLIST_DONE_KEY, 'true');
+      if (markIncomplete) sessionStorage.setItem(SETUP_INCOMPLETE_KEY, 'true');
+      else sessionStorage.removeItem(SETUP_INCOMPLETE_KEY);
+      setSetupChecklistSeen(markIncomplete);
+    } catch (e) {}
+    setSetupView(null);
+    setSearchParams({}, { replace: true });
+  };
+
+  const completeSetupFlow = () => {
+    try {
+      sessionStorage.setItem(SETUP_CHECKLIST_DONE_KEY, 'true');
+      sessionStorage.removeItem(SETUP_INCOMPLETE_KEY);
+      setSetupChecklistSeen(false);
+    } catch (e) {}
+    setSetupView(null);
+    setSearchParams({}, { replace: true });
+  };
+
+  // Whether to show the "documents missing" step: requirements that may need docs/confirmation (REQUIRED/UNKNOWN without confirmed expiry)
+  const needsDocumentsStep = useMemo(() => {
+    if (!requirementsList.length) return false;
+    const needsAttention = requirementsList.some(
+      (r) => (r.applicability === 'REQUIRED' || (r.applicability || 'UNKNOWN') === 'UNKNOWN') && !r.confirmed_expiry_date
+    );
+    return needsAttention;
+  }, [requirementsList]);
+
+  // Count requirements with a document uploaded but expiry not yet confirmed (for "X documents awaiting confirmation" banner)
+  const documentsAwaitingConfirmationCount = useMemo(() => {
+    return requirementsList.filter((r) => r.document_id && !r.confirmed_expiry_date).length;
+  }, [requirementsList]);
+
   const getComplianceColor = (status) => {
     switch (status) {
       case 'GREEN': return 'bg-green-50 text-green-700 border-green-200';
@@ -200,6 +258,127 @@ const ClientDashboard = () => {
                   Check onboarding status
                 </Button>
               )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* First-login guided activation: Setup Checklist / Portfolio / Documents */}
+        {setupView === 'checklist' && (
+          <Card className="max-w-2xl mx-auto mt-8 border-2 border-electric-teal/30 shadow-lg" data-testid="setup-checklist-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-2xl text-midnight-blue">Welcome to Compliance Vault Pro</CardTitle>
+              <p className="text-sm text-gray-600 mt-1">Complete these steps to get an accurate compliance overview. You can also skip and return later.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li className="flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-electric-teal" /> Confirm your portfolio details</li>
+                <li className="flex items-center gap-2"><Upload className="w-4 h-4 text-electric-teal" /> Upload or confirm documents</li>
+                <li className="flex items-center gap-2"><FileText className="w-4 h-4 text-electric-teal" /> Confirm certificate dates</li>
+                <li className="flex items-center gap-2"><Bell className="w-4 h-4 text-electric-teal" /> Turn on reminders</li>
+                <li className="flex items-center gap-2"><Shield className="w-4 h-4 text-electric-teal" /> View your compliance report</li>
+              </ul>
+              <div className="flex flex-wrap gap-3 pt-4">
+                <Button onClick={() => setSetupView('portfolio')} className="bg-electric-teal hover:bg-electric-teal/90" data-testid="setup-start-btn">
+                  Start Setup
+                </Button>
+                <Button variant="outline" onClick={() => dismissSetupChecklist(true)} data-testid="setup-skip-btn">
+                  Skip for now
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {setupView === 'portfolio' && (
+          <Card className="max-w-2xl mx-auto mt-8 border-2 border-electric-teal/30 shadow-lg" data-testid="setup-portfolio-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl text-midnight-blue">Confirm your portfolio</CardTitle>
+              <p className="text-sm text-gray-600 mt-1">Review your properties from intake. You can edit details from the Properties page later.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {data?.properties?.length > 0 ? (
+                <ul className="space-y-2 text-sm">
+                  {data.properties.map((p) => (
+                    <li key={p.property_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium text-midnight-blue">{p.address || p.name || p.property_id}</span>
+                      <span className="text-gray-500 text-xs">{p.property_type || '—'} {p.bedrooms != null ? `· ${p.bedrooms} bed` : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600 text-sm">No properties yet. Add one from the Properties page after setup.</p>
+              )}
+              <div className="flex flex-wrap gap-3 pt-4">
+                <Button onClick={() => navigate('/properties')} variant="outline" size="sm">Edit properties</Button>
+                <Button onClick={() => needsDocumentsStep ? setSetupView('documents') : completeSetupFlow()} className="bg-electric-teal hover:bg-electric-teal/90" data-testid="setup-portfolio-continue-btn">
+                  Save &amp; Continue
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSetupView('checklist')}>Back</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {setupView === 'documents' && (
+          <Card className="max-w-2xl mx-auto mt-8 border-2 border-electric-teal/30 shadow-lg" data-testid="setup-documents-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl text-midnight-blue">Upload certificates for an accurate score</CardTitle>
+              <p className="text-sm text-gray-600 mt-1">You&apos;re almost done. Upload your certificates so we can track expiry dates. Use &quot;tracked items&quot; language — these may apply depending on your situation.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {requirementsList.filter((r) => (r.applicability === 'REQUIRED' || (r.applicability || '') === 'UNKNOWN') && !r.confirmed_expiry_date).length > 0 && (
+                <div className="text-sm text-gray-700">
+                  <p className="font-medium mb-2">Tracked items that may need documents:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {requirementsList.filter((r) => (r.applicability === 'REQUIRED' || (r.applicability || '') === 'UNKNOWN') && !r.confirmed_expiry_date).slice(0, 8).map((r) => (
+                      <li key={r.requirement_id}>{r.requirement_type || r.requirement_id}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-3 pt-4">
+                <Button onClick={() => { completeSetupFlow(); navigate('/documents'); }} className="bg-electric-teal hover:bg-electric-teal/90" data-testid="setup-upload-now-btn">
+                  Upload now
+                </Button>
+                <Button variant="outline" onClick={() => dismissSetupChecklist(true)} data-testid="setup-upload-later-btn">
+                  I&apos;ll upload later
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSetupView('portfolio')}>Back</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Main dashboard (hidden when in setup flow) */}
+        {!setupView && (
+        <>
+        {/* Persistent banner when user skipped setup or chose "upload later" */}
+        {setupChecklistSeen && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="setup-incomplete-banner">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <span className="font-medium text-amber-800">Complete setup to get an accurate score.</span>
+              <span className="text-amber-700 ml-1">Confirm portfolio details and upload or confirm certificate dates for tracked items.</span>
+              {documentsAwaitingConfirmationCount > 0 && (
+                <span className="block mt-2 text-amber-700 text-sm">{documentsAwaitingConfirmationCount} document{documentsAwaitingConfirmationCount !== 1 ? 's' : ''} awaiting confirmation.</span>
+              )}
+              <Button variant="outline" size="sm" className="mt-2 border-amber-300 text-amber-800 hover:bg-amber-100" onClick={() => navigate('/documents')}>
+                Go to Documents
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Documents awaiting confirmation (any user who has uploads but not yet confirmed expiry) */}
+        {!setupChecklistSeen && documentsAwaitingConfirmationCount > 0 && (
+          <Alert className="mb-6 border-blue-200 bg-blue-50" data-testid="documents-awaiting-confirmation-banner">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription>
+              <span className="font-medium text-blue-800">{documentsAwaitingConfirmationCount} document{documentsAwaitingConfirmationCount !== 1 ? 's' : ''} awaiting confirmation.</span>
+              <span className="text-blue-700 ml-1">Confirm certificate details so your score and calendar are up to date.</span>
+              <Button variant="outline" size="sm" className="mt-2 border-blue-300 text-blue-800 hover:bg-blue-100" onClick={() => navigate('/documents')}>
+                Review documents
+              </Button>
             </AlertDescription>
           </Alert>
         )}
@@ -889,6 +1068,8 @@ const ClientDashboard = () => {
           Build: {process.env.REACT_APP_BUILD_SHA}
         </footer>
       )}
+        </>
+        )}
     </div>
   );
 };
