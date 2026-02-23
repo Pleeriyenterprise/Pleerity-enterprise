@@ -6,9 +6,7 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { ArrowLeft, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import api from '../api/client';
 
 const PropertyCreatePage = () => {
   const navigate = useNavigate();
@@ -16,6 +14,7 @@ const PropertyCreatePage = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [isPlanLimit, setIsPlanLimit] = useState(false);
 
   const [formData, setFormData] = useState({
     address_line_1: '',
@@ -29,23 +28,28 @@ const PropertyCreatePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsPlanLimit(false);
     setSuccess(false);
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.post(
-        `${API_URL}/api/properties/create`,
-        formData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post('/properties/create', formData);
 
       setSuccess(true);
       setTimeout(() => {
-        navigate('/app/dashboard');
+        navigate('/dashboard');
       }, 2000);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create property');
+      const detail = err.response?.data?.detail;
+      const code = typeof detail === 'object' && detail?.error_code;
+      if (err.response?.status === 403 && code === 'PLAN_LIMIT') {
+        setIsPlanLimit(true);
+        const msg = typeof detail?.message === 'string' ? detail.message : 'You have reached the maximum number of properties for your current plan.';
+        setError(msg);
+      } else {
+        const msg = typeof detail === 'string' ? detail : (detail?.message ?? err.message ?? 'Failed to create property');
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -114,7 +118,22 @@ const PropertyCreatePage = () => {
             {error && (
               <Alert variant="destructive" className="mb-6">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {error}
+                  {isPlanLimit && (
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-600 text-amber-800 hover:bg-amber-50"
+                        onClick={() => navigate('/settings/billing')}
+                      >
+                        View plan & upgrade
+                      </Button>
+                    </div>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
 
