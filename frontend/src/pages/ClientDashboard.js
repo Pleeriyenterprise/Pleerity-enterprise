@@ -326,11 +326,11 @@ const ClientDashboard = () => {
               <p className="text-sm text-gray-600 mt-1">You&apos;re almost done. Upload your certificates so we can track expiry dates. Use &quot;tracked items&quot; language — these may apply depending on your situation.</p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {requirementsList.filter((r) => (r.applicability === 'REQUIRED' || (r.applicability || '') === 'UNKNOWN') && !r.confirmed_expiry_date).length > 0 && (
+              {requirementsList.filter((r) => (r.applicability === 'REQUIRED' || (r.applicability || 'UNKNOWN') === 'UNKNOWN') && !r.confirmed_expiry_date).length > 0 && (
                 <div className="text-sm text-gray-700">
                   <p className="font-medium mb-2">Tracked items that may need documents:</p>
                   <ul className="list-disc pl-5 space-y-1">
-                    {requirementsList.filter((r) => (r.applicability === 'REQUIRED' || (r.applicability || '') === 'UNKNOWN') && !r.confirmed_expiry_date).slice(0, 8).map((r) => (
+                    {requirementsList.filter((r) => (r.applicability === 'REQUIRED' || (r.applicability || 'UNKNOWN') === 'UNKNOWN') && !r.confirmed_expiry_date).slice(0, 8).map((r) => (
                       <li key={r.requirement_id}>{r.requirement_type || r.requirement_id}</li>
                     ))}
                   </ul>
