@@ -103,13 +103,15 @@ async def get_setup_status(
     """
     Read-only setup status for polling. No side effects. No Stripe calls.
     Auth: JWT (portal user) or client_id query param (post-checkout).
+    When client_id query is provided, it is used so post-checkout flow always shows
+    the status for the client who just paid (avoids showing a different logged-in user's status).
     """
     user = await get_current_user(request)
     resolved_client_id = None
-    if user and user.get("client_id"):
+    if client_id:
+        resolved_client_id = client_id.strip() or None
+    if not resolved_client_id and user and user.get("client_id"):
         resolved_client_id = user["client_id"]
-    if not resolved_client_id and client_id:
-        resolved_client_id = client_id
     if not resolved_client_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

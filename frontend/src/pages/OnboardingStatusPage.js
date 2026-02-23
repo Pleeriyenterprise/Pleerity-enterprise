@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import api from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 import { SUPPORT_EMAIL } from '../config';
 import { toast } from 'sonner';
 
@@ -118,6 +119,7 @@ const NEXT_ACTION_MESSAGES = {
 const OnboardingStatusPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const clientId = searchParams.get('client_id');
   const paymentSuccess = searchParams.get('payment') === 'success';
   const fromStripeRedirect = !!sessionStorage.getItem('pleerity_stripe_redirect');
@@ -160,12 +162,16 @@ const OnboardingStatusPage = () => {
     if ((status?.payment_state || '').toLowerCase() === 'paid') sessionStorage.removeItem('pleerity_stripe_redirect');
   }, [status]);
 
-  // Auto-redirect to client dashboard when password_set (Ready to Use) after 2s; use first_login=1 for guided setup
+  // Auto-redirect to client dashboard when password_set (Ready to Use) after 2s; use first_login=1 for guided setup.
+  // Only redirect when the logged-in user matches the status client (prevents redirecting to another user's dashboard).
   useEffect(() => {
     if (status?.password_set !== true) return;
+    const statusClientId = status?.client_id;
+    if (!statusClientId) return;
+    if (!user?.client_id || user.client_id !== statusClientId) return;
     const t = setTimeout(() => navigate('/dashboard?first_login=1'), 2000);
     return () => clearTimeout(t);
-  }, [status?.password_set, navigate]);
+  }, [status?.password_set, status?.client_id, user?.client_id, navigate]);
 
   const handleCopyCRN = useCallback(() => {
     const crn = status?.customer_reference;
