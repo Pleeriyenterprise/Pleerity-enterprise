@@ -183,7 +183,6 @@ function App() {
                   ======================================== */}
               <Route path="/" element={<HomePage />} />
               <Route path="/demo" element={<DemoPage />} />
-              <Route path="/demo" element={<DemoPage />} />
               <Route path="/compliance-vault-pro" element={<CVPLandingPage />} />
               
               {/* CMS-Driven Marketing Pages */}

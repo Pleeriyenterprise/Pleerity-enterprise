@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
+import DashboardPreview from '../../components/public/DashboardPreview';
 import { SEOHead, organizationSchema } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -162,16 +163,9 @@ const HomePage = () => {
                 ))}
               </div>
             </div>
-            {/* Dashboard preview placeholder */}
-            <div className="relative hidden lg:block">
-              {/* TODO: Replace with dashboard preview image; e.g. src="/images/dashboard-preview.png" */}
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden aspect-video flex items-center justify-center text-gray-400 bg-gray-50">
-                <div className="text-center p-6">
-                  <Shield className="w-16 h-16 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm font-medium">Dashboard preview</p>
-                  <p className="text-xs mt-1">Add image: dashboard-preview.png</p>
-                </div>
-              </div>
+            {/* Dashboard preview — HTML/CSS component (not image) */}
+            <div className="relative w-full lg:block">
+              <DashboardPreview />
             </div>
           </div>
         </div>
