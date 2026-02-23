@@ -171,6 +171,14 @@ async def bulk_upload_documents(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Property not found"
             )
+        if property_doc.get("is_active") is False:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": "PLAN_LIMIT",
+                    "message": "This property is archived. Activate it from property settings or upgrade your plan to add documents.",
+                },
+            )
         
         # Get all requirements for this property
         requirements = await db.requirements.find(
@@ -388,6 +396,14 @@ async def upload_zip_archive(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Property not found"
+            )
+        if property_doc.get("is_active") is False:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": "PLAN_LIMIT",
+                    "message": "This property is archived. Activate it from property settings or upgrade your plan to add documents.",
+                },
             )
         
         # Get all requirements for this property
@@ -648,6 +664,15 @@ async def upload_document(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Property not found"
+            )
+        # Archived (read-only) properties: no new uploads after downgrade
+        if property_doc.get("is_active") is False:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": "PLAN_LIMIT",
+                    "message": "This property is archived. Activate it from property settings or upgrade your plan to add documents.",
+                },
             )
         
         requirement = await db.requirements.find_one(

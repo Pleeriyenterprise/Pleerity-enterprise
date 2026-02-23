@@ -537,6 +537,9 @@ class Property(BaseModel):
     cert_epc: Optional[str] = None
     cert_licence: Optional[str] = None  # Only if licence_required = YES
     
+    # Downgrade / over-limit: when over property limit, only "active" count toward limit; archived = read-only
+    is_active: bool = True  # False = archived (read-only), e.g. after plan downgrade
+    
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 

@@ -714,7 +714,7 @@ const BillingPage = () => {
               <CardContent className="pt-6">
                 <h3 className="font-semibold text-gray-900 mb-2">What happens to my data if I downgrade?</h3>
                 <p className="text-sm text-gray-600">
-                  Your data is never deleted. If you exceed the property limit of a lower plan, you'll need to archive properties before downgrading.
+                  Your data is not deleted on downgrade. If you exceed the property limit of a lower plan, you choose which properties stay active; the rest become archived (read-only). You can view archived property data but cannot add new documents until you activate a property or upgrade.
                 </p>
               </CardContent>
             </Card>

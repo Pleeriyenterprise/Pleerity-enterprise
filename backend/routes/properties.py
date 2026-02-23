@@ -44,11 +44,14 @@ async def create_property(request: Request, data: CreatePropertyRequest):
                 detail="Account must be fully provisioned to add properties"
             )
         
-        # Property cap enforcement (plan_registry canonical)
-        current_count = await db.properties.count_documents({"client_id": user["client_id"]})
+        # Property cap enforcement (plan_registry canonical) – count only active properties
+        active_count = await db.properties.count_documents({
+            "client_id": user["client_id"],
+            "$or": [{"is_active": True}, {"is_active": {"$exists": False}}],
+        })
         from services.plan_registry import plan_registry
         allowed, error_msg, error_details = await plan_registry.enforce_property_limit(
-            user["client_id"], current_count + 1
+            user["client_id"], active_count + 1
         )
         if not allowed:
             await create_audit_log(
@@ -59,14 +62,17 @@ async def create_property(request: Request, data: CreatePropertyRequest):
                 metadata={
                     "action_type": "PLAN_LIMIT_EXCEEDED",
                     "feature": "property_create",
-                    "current_count": current_count,
+                    "current_count": active_count,
                     "requested_count": 1,
                     "attempted_address": data.address_line_1,
                 },
             )
+            detail = dict(error_details or {})
+            detail["error_code"] = "PLAN_LIMIT"  # API contract for plan-limit 403
+            detail["message"] = detail.get("message") or error_msg
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_details or {"error_code": "PROPERTY_LIMIT_EXCEEDED", "message": error_msg},
+                detail=detail,
             )
         
         # Create property
@@ -157,12 +163,14 @@ class PatchPropertyRequest(BaseModel):
     licence_required: Optional[str] = None
     has_gas_supply: Optional[bool] = None
     has_gas: Optional[bool] = None
+    is_active: Optional[bool] = None  # False = archived (read-only) when over property limit
 
 
 @router.patch("/{property_id}")
 async def patch_property(request: Request, property_id: str, data: PatchPropertyRequest):
     """Update a property. Only provided fields are updated.
     Changing is_hmo, bedrooms, occupancy, licence_required, has_gas_supply, or has_gas triggers compliance score recalc.
+    Setting is_active=False archives the property (read-only); is_active=True counts toward plan limit.
     """
     user = await client_route_guard(request)
     db = database.get_db()
@@ -170,7 +178,7 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
         {"_id": 0, "property_id": 1, "client_id": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
-         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1},
+         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1, "is_active": 1},
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -179,6 +187,24 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     payload = data.model_dump(exclude_none=True)
     for key, value in payload.items():
         update[key] = value
+
+    # When activating a property, enforce plan limit (active count cannot exceed allowed)
+    if "is_active" in update and update["is_active"] is True:
+        from services.plan_registry import plan_registry
+        active_count = await db.properties.count_documents({
+            "client_id": user["client_id"],
+            "property_id": {"$ne": property_id},
+            "$or": [{"is_active": True}, {"is_active": {"$exists": False}}],
+        })
+        allowed, error_msg, error_details = await plan_registry.enforce_property_limit(
+            user["client_id"], active_count + 1
+        )
+        if not allowed:
+            detail = error_details or {}
+            if "error_code" not in detail:
+                detail["error_code"] = "PLAN_LIMIT"
+            detail["message"] = detail.get("message") or error_msg
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
     if not update:
         return {"message": "No updates", "property_id": property_id}
@@ -290,12 +316,15 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
                 detail="Account must be fully provisioned to add properties"
             )
 
-        # Property cap enforcement (plan_registry canonical)
-        current_count = await db.properties.count_documents({"client_id": user["client_id"]})
+        # Property cap enforcement (plan_registry canonical) – count only active properties
+        active_count = await db.properties.count_documents({
+            "client_id": user["client_id"],
+            "$or": [{"is_active": True}, {"is_active": {"$exists": False}}],
+        })
         import_count = len(data.properties)
         from services.plan_registry import plan_registry
         allowed, error_msg, error_details = await plan_registry.enforce_property_limit(
-            user["client_id"], current_count + import_count
+            user["client_id"], active_count + import_count
         )
         if not allowed:
             await create_audit_log(
@@ -306,13 +335,16 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
                 metadata={
                     "action_type": "PLAN_LIMIT_EXCEEDED",
                     "feature": "property_bulk_import",
-                    "current_count": current_count,
+                    "current_count": active_count,
                     "import_count": import_count,
                 },
             )
+            detail = dict(error_details or {})
+            detail["error_code"] = "PLAN_LIMIT"
+            detail["message"] = detail.get("message") or error_msg
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_details or {"error_code": "PROPERTY_LIMIT_EXCEEDED", "message": error_msg},
+                detail=detail,
             )
 
         results = {

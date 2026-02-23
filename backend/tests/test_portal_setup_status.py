@@ -19,11 +19,12 @@ class _AsyncIter:
         return self.items.pop(0)
 
 
-def _make_db(client=None, job=None, portal_user=None, properties_count=0, property_items=None):
+def _make_db(client=None, job=None, portal_user=None, properties_count=0, property_items=None, client_billing=None):
     db = MagicMock()
     db.clients.find_one = AsyncMock(return_value=client)
     db.provisioning_jobs.find_one = AsyncMock(return_value=job)
     db.portal_users.find_one = AsyncMock(return_value=portal_user)
+    db.client_billing.find_one = AsyncMock(return_value=client_billing)
     db.properties.count_documents = AsyncMock(return_value=properties_count)
     db.properties.find = MagicMock(return_value=_AsyncIter(property_items or []))
     db.requirements.count_documents = AsyncMock(return_value=5 if property_items else 0)
@@ -378,6 +379,26 @@ def test_setup_status_password_set_complete(client):
     data = response.json()
     assert data["password_set"] is True
     assert data["next_action"] == "go_to_dashboard"
+
+
+def test_setup_status_returns_over_limit_and_details(client):
+    """When over property limit (downgrade), setup-status returns over_limit true and over_limit_details."""
+    mock_client = {"client_id": "c1", "billing_plan": "PLAN_1_SOLO", "subscription_status": "ACTIVE", "onboarding_status": "PROVISIONED", "created_at": "2026-01-01T00:00:00Z"}
+    mock_billing = {"over_property_limit": True, "current_plan_code": "PLAN_1_SOLO"}
+    mock_db = _make_db(client=mock_client, properties_count=3, client_billing=mock_billing)
+    mock_db.properties.count_documents = AsyncMock(side_effect=[3, 3])  # total, then active count
+    plan_registry_mock = MagicMock()
+    plan_registry_mock.get_property_limit_by_string = MagicMock(return_value=2)
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None), \
+         patch("services.plan_registry.plan_registry", plan_registry_mock):
+        response = client.get("/api/portal/setup-status", params={"client_id": "c1"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["over_limit"] is True
+    assert "over_limit_details" in data
+    assert data["over_limit_details"].get("properties", {}).get("active") == 3
+    assert data["over_limit_details"].get("properties", {}).get("allowed") == 2
 
 
 def test_admin_email_health_returns_config(client):

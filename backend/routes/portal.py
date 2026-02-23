@@ -142,6 +142,29 @@ async def get_setup_status(
     requirements_count = await db.requirements.count_documents(
         {"property_id": {"$in": property_ids}}) if property_ids else 0
 
+    # Over-limit (downgrade): active count vs plan limit; no data deletion
+    over_limit = False
+    over_limit_details = {}
+    billing = await db.client_billing.find_one(
+        {"client_id": resolved_client_id},
+        {"_id": 0, "over_property_limit": 1, "current_plan_code": 1},
+    )
+    billing = billing or {}
+    active_count = await db.properties.count_documents({
+        "client_id": resolved_client_id,
+        "$or": [{"is_active": True}, {"is_active": {"$exists": False}}],
+    })
+    plan_str = billing.get("current_plan_code") or client.get("billing_plan") or "PLAN_1_SOLO"
+    try:
+        from services.plan_registry import plan_registry
+        allowed = plan_registry.get_property_limit_by_string(plan_str)
+        over_limit = billing.get("over_property_limit") is True or active_count > allowed
+        over_limit_details = {
+            "properties": {"active": active_count, "allowed": allowed},
+        }
+    except Exception:
+        over_limit_details = {"properties": {"active": active_count, "allowed": None}}
+
     payment_state = _payment_state(client, job is not None)
     provisioning_state = _provisioning_state(client, job)
     password_state = _password_state(portal_user)
@@ -230,6 +253,8 @@ async def get_setup_status(
         "properties_count": properties_count,
         "requirements_count": requirements_count,
         "support_email": SUPPORT_EMAIL,
+        "over_limit": over_limit,
+        "over_limit_details": over_limit_details,
     }
 
 
