@@ -152,12 +152,13 @@ async def create_property(request: Request, data: CreatePropertyRequest):
         )
 
 # Fields that affect compliance score applicability (v1); changing any triggers recalc.
-APPLICABILITY_FIELDS = frozenset({"is_hmo", "bedrooms", "occupancy", "licence_required", "has_gas_supply", "has_gas", "tenancy_active", "furnished"})
+APPLICABILITY_FIELDS = frozenset({"is_hmo", "bedrooms", "occupancy", "licence_required", "has_gas_supply", "has_gas", "tenancy_active", "furnished", "property_type"})
 
 
 class PatchPropertyRequest(BaseModel):
     """Optional fields for PATCH; only provided keys are updated."""
     nickname: Optional[str] = None
+    property_type: Optional[str] = None  # residential, commercial, flat, house, bungalow, etc.; commercial excludes residential-only requirements
     is_hmo: Optional[bool] = None
     bedrooms: Optional[int] = None
     occupancy: Optional[str] = None
@@ -180,7 +181,7 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
 
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
-        {"_id": 0, "property_id": 1, "client_id": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
+        {"_id": 0, "property_id": 1, "client_id": 1, "property_type": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
          "licence_required": 1, "has_gas_supply": 1, "has_gas": 1, "tenancy_active": 1, "furnished": 1, "is_active": 1},
     )
     if not prop:

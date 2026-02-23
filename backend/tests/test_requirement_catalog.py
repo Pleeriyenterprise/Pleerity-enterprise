@@ -12,6 +12,9 @@ from services.requirement_catalog import (
     EICR_CERT,
     EPC_CERT,
     PROPERTY_LICENCE,
+    TENANCY_AGREEMENT,
+    HOW_TO_RENT,
+    DEPOSIT_PRESCRIBED_INFO,
     REQUIREMENT_KEY_TO_DOCUMENT_TYPE,
 )
 
@@ -88,3 +91,33 @@ class TestEvidenceMapping:
         assert REQUIREMENT_KEY_TO_DOCUMENT_TYPE[EICR_CERT] == "eicr"
         assert REQUIREMENT_KEY_TO_DOCUMENT_TYPE[EPC_CERT] == "epc"
         assert REQUIREMENT_KEY_TO_DOCUMENT_TYPE[PROPERTY_LICENCE] == "licence"
+
+
+class TestPropertyTypeCommercial:
+    """Commercial property type: residential-only items (tenancy, How to Rent, deposit) excluded."""
+
+    def test_commercial_excludes_tenancy_and_deposit_even_when_active(self):
+        prop = {"property_type": "commercial", "tenancy_active": True, "deposit_taken": True}
+        applicable = get_applicable_requirements(prop)
+        assert EICR_CERT in applicable
+        assert EPC_CERT in applicable
+        assert TENANCY_AGREEMENT not in applicable
+        assert HOW_TO_RENT not in applicable
+        assert DEPOSIT_PRESCRIBED_INFO not in applicable
+
+    def test_commercial_still_includes_epc_eicr_gas_if_yes_licence_if_applicable(self):
+        prop = {"property_type": "COMMERCIAL", "cert_gas_safety": "YES", "licence_required": "YES"}
+        applicable = get_applicable_requirements(prop)
+        assert EICR_CERT in applicable
+        assert EPC_CERT in applicable
+        assert GAS_SAFETY_CERT in applicable
+        assert PROPERTY_LICENCE in applicable
+        assert TENANCY_AGREEMENT not in applicable
+        assert DEPOSIT_PRESCRIBED_INFO not in applicable
+
+    def test_residential_with_tenancy_includes_tenancy_and_deposit(self):
+        prop = {"property_type": "house", "tenancy_active": True, "deposit_taken": True}
+        applicable = get_applicable_requirements(prop)
+        assert TENANCY_AGREEMENT in applicable
+        assert HOW_TO_RENT in applicable
+        assert DEPOSIT_PRESCRIBED_INFO in applicable

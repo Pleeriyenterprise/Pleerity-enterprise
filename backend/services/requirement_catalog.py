@@ -1,6 +1,14 @@
 """
 Requirement catalog and applicability (deterministic, no legal verdicts).
 Computes per-property applicable requirement keys for the compliance score engine.
+
+Property-type rules (professional approach):
+- Commercial: EICR/EPC and gas (if declared) and licence (if applicable) are scored;
+  residential-only items (tenancy bundle, How to Rent, deposit prescribed info) are
+  excluded so commercial premises are not penalised under PRS rules.
+- Residential (house, flat, bungalow, etc.): full applicability including tenancy/deposit
+  when tenancy_active/deposit_taken are set.
+- HMO / licence: driven by is_hmo, licence_required, licence_type (unchanged).
 """
 from typing import Dict, List
 
@@ -34,20 +42,28 @@ def _str_truthy(val) -> bool:
     return s.upper() in ("YES", "TRUE", "1") or bool(s)
 
 
+def _is_commercial(property_doc: dict) -> bool:
+    """True if property type is commercial (different regulatory regime; exclude residential-only items)."""
+    pt = (property_doc.get("property_type") or "").strip().upper()
+    return pt == "COMMERCIAL"
+
+
 def get_applicable_requirements(property_doc: dict) -> List[str]:
     """
     Return list of applicable canonical requirement keys for this property.
     Rules (MUST follow exactly):
-    - EICR_CERT, EPC_CERT: always applicable.
+    - Property type: COMMERCIAL excludes residential-only items (tenancy, How to Rent, deposit prescribed info).
+    - EICR_CERT, EPC_CERT: always applicable (residential and commercial lettings).
     - GAS_SAFETY_CERT: applicable iff cert_gas_safety == "YES" (do not penalize when NO).
     - PROPERTY_LICENCE: applicable iff is_hmo or licence_required=="YES" or cert_licence=="YES" or licence_type non-empty.
-    - Tenancy docs: not scored in v1 unless tenancy_active == true; if absent, exclude.
-    - Deposit prescribed info: only if deposit_taken == true; if absent, exclude.
+    - Tenancy docs: only if tenancy_active and NOT commercial; if absent, exclude.
+    - Deposit prescribed info: only if deposit_taken and NOT commercial; if absent, exclude.
     - FIRE_SAFETY_EVIDENCE: excluded from v1.
     """
     applicable: List[str] = []
+    is_commercial = _is_commercial(property_doc)
 
-    # Always applicable
+    # Always applicable (residential and commercial lettings)
     applicable.append(EICR_CERT)
     applicable.append(EPC_CERT)
 
@@ -64,14 +80,13 @@ def get_applicable_requirements(property_doc: dict) -> List[str]:
     if is_hmo or licence_required_yes or cert_licence_yes or licence_type_non_empty:
         applicable.append(PROPERTY_LICENCE)
 
-    # Tenancy: only if tenancy_active == true; if field absent, exclude
-    if _str_truthy(property_doc.get("tenancy_active")):
-        applicable.append(TENANCY_AGREEMENT)
-        applicable.append(HOW_TO_RENT)
-
-    # Deposit prescribed info: only if deposit_taken == true; if absent, exclude
-    if _str_truthy(property_doc.get("deposit_taken")):
-        applicable.append(DEPOSIT_PRESCRIBED_INFO)
+    # Tenancy / How to Rent / Deposit: residential regime only; exclude for commercial
+    if not is_commercial:
+        if _str_truthy(property_doc.get("tenancy_active")):
+            applicable.append(TENANCY_AGREEMENT)
+            applicable.append(HOW_TO_RENT)
+        if _str_truthy(property_doc.get("deposit_taken")):
+            applicable.append(DEPOSIT_PRESCRIBED_INFO)
 
     # FIRE_SAFETY_EVIDENCE: exclude from v1 (no add)
 
