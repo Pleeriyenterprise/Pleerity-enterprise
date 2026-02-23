@@ -298,12 +298,15 @@ const ClientDashboard = () => {
             <CardContent className="space-y-4">
               {data?.properties?.length > 0 ? (
                 <ul className="space-y-2 text-sm">
-                  {data.properties.map((p) => (
-                    <li key={p.property_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="font-medium text-midnight-blue">{p.address || p.name || p.property_id}</span>
-                      <span className="text-gray-500 text-xs">{p.property_type || '—'} {p.bedrooms != null ? `· ${p.bedrooms} bed` : ''}</span>
-                    </li>
-                  ))}
+                  {data.properties.map((p) => {
+                    const displayName = p.nickname || p.address_line_1 || (p.address_line_1 && p.city ? `${p.address_line_1}, ${p.city}` : null) || (p.postcode ? `Property ${p.postcode}` : null) || p.property_id;
+                    return (
+                      <li key={p.property_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-midnight-blue">{displayName}</span>
+                        <span className="text-gray-500 text-xs">{p.property_type || '—'}{p.bedrooms != null ? ` · ${p.bedrooms} bed` : ''}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="text-gray-600 text-sm">No properties yet. Add one from the Properties page after setup.</p>
