@@ -604,15 +604,34 @@ const ClientDashboard = () => {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                  <div>
-                    <p className="font-medium text-green-800">Excellent work!</p>
-                    <p className="text-sm text-green-600">Your compliance is in great shape. Keep it up!</p>
+              ) : (() => {
+                const total = complianceScore.stats?.total_requirements ?? 0;
+                const valid = complianceScore.stats?.compliant ?? 0;
+                const allValid = total > 0 && valid === total;
+                if (allValid) {
+                  return (
+                    <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                      <div>
+                        <p className="font-medium text-green-800">Excellent work!</p>
+                        <p className="text-sm text-green-600">Your compliance is in great shape. Keep it up!</p>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <Zap className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        {total === 0
+                          ? 'Add properties and requirements to see actions here.'
+                          : 'Upload documents and confirm expiry dates to improve your score.'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Stats Row - Clickable */}
               <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-4">
