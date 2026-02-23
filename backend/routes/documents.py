@@ -962,13 +962,24 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
         try:
             expiry_dt = _normalize_and_parse_date(data["expiry_date"])
             now = datetime.now(timezone.utc)
-            update_fields = {"due_date": expiry_dt.isoformat(), "updated_at": now.isoformat()}
+            update_fields = {
+                "due_date": expiry_dt.isoformat(),
+                "extracted_expiry_date": expiry_dt.isoformat(),
+                "expiry_source": "EXTRACTED",
+                "updated_at": now.isoformat(),
+            }
             if expiry_dt < now:
                 update_fields["status"] = "OVERDUE"
             elif expiry_dt < now + timedelta(days=30):
                 update_fields["status"] = "EXPIRING_SOON"
             else:
                 update_fields["status"] = "COMPLIANT"
+            conf = (data.get("confidence_scores") or {}).get("overall") if isinstance(data.get("confidence_scores"), dict) else data.get("confidence")
+            if conf is not None:
+                try:
+                    update_fields["extraction_confidence"] = float(conf)
+                except (TypeError, ValueError):
+                    pass
             await db.requirements.update_one({"requirement_id": requirement_id}, {"$set": update_fields})
         except ValueError:
             pass
@@ -1694,10 +1705,16 @@ async def apply_ai_extraction(
         if expiry_date:
             try:
                 expiry_dt = _normalize_and_parse_date(expiry_date)
-                
                 update_fields["due_date"] = expiry_dt.isoformat()
+                update_fields["extracted_expiry_date"] = expiry_dt.isoformat()
+                update_fields["expiry_source"] = "EXTRACTED"
                 changes_made.append(f"Due date set to {expiry_dt.strftime('%Y-%m-%d')}")
-                
+                conf = data.get("confidence_scores", {}).get("overall") if isinstance(data.get("confidence_scores"), dict) else data.get("confidence")
+                if conf is not None:
+                    try:
+                        update_fields["extraction_confidence"] = float(conf)
+                    except (TypeError, ValueError):
+                        pass
                 # Also update status based on date if needed
                 now = datetime.now(timezone.utc)
                 if expiry_dt < now:
@@ -1709,7 +1726,6 @@ async def apply_ai_extraction(
                 else:
                     update_fields["status"] = "COMPLIANT"
                     changes_made.append("Status set to COMPLIANT (valid certificate)")
-                    
             except ValueError as date_err:
                 logger.warning(f"Failed to parse expiry date '{expiry_date}': {date_err}")
                 raise HTTPException(

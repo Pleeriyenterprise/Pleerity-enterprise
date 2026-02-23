@@ -33,8 +33,34 @@ const CalendarPage = () => {
   const fetchCalendarData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/calendar/expiries?year=${currentYear}&month=${currentMonth}`);
-      setCalendarData(response.data);
+      const response = await api.get(`/calendar/events?year=${currentYear}&month=${currentMonth}`);
+      const data = response.data;
+      // Derive summary counts and UI shape from events endpoint (status, requirement_type, property_name)
+      const eventsByDate = data.events_by_date || {};
+      let overdueCount = 0;
+      let expiringSoonCount = 0;
+      const eventsByDateWithUi = {};
+      Object.keys(eventsByDate).forEach((dateKey) => {
+        const events = (eventsByDate[dateKey] || []).map((e) => {
+          if (e.status === 'OVERDUE') overdueCount += 1;
+          else if (e.status === 'EXPIRING_SOON') expiringSoonCount += 1;
+          const statusColor = e.status === 'OVERDUE' ? 'red' : e.status === 'EXPIRING_SOON' ? 'amber' : e.status === 'COMPLIANT' ? 'green' : 'blue';
+          const description = e.requirement_type ? e.requirement_type.replace(/_/g, ' ') : 'Certificate';
+          return { ...e, status_color: statusColor, description, property_address: e.property_name };
+        });
+        eventsByDateWithUi[dateKey] = events;
+      });
+      setCalendarData({
+        events_by_date: eventsByDateWithUi,
+        summary: {
+          total_events: data.summary?.total_events ?? Object.values(eventsByDateWithUi).reduce((s, arr) => s + arr.length, 0),
+          overdue_count: overdueCount,
+          expiring_soon_count: expiringSoonCount,
+          dates_with_events: data.summary?.dates_with_events ?? Object.keys(eventsByDateWithUi).length
+        },
+        year: data.year,
+        month: data.month
+      });
     } catch (error) {
       toast.error('Failed to load calendar data');
     } finally {
@@ -280,7 +306,7 @@ const CalendarPage = () => {
                                       event.status_color === 'green' ? 'bg-green-100 text-green-700' :
                                       'bg-blue-100 text-blue-700'
                                     }`}
-                                    title={`${event.description} - ${event.property_address}`}
+                                    title={`${event.description} - ${event.property_name || event.property_address}`}
                                   >
                                     {event.description.split(' ')[0]}
                                   </div>

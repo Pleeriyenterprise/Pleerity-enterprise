@@ -1,5 +1,7 @@
 """Calendar Routes - Compliance Expiry Calendar View
 Provides calendar data for visualizing certificate expirations.
+Uses deterministic expiry: confirmed_expiry_date else extracted_expiry_date else due_date.
+Excludes applicability=NOT_REQUIRED from events.
 """
 from fastapi import APIRouter, HTTPException, Request, status, Query
 from database import database
@@ -8,8 +10,91 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 import logging
 
+from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
+
+
+@router.get("/events")
+async def get_calendar_events(
+    request: Request,
+    year: Optional[int] = Query(default=None),
+    month: Optional[int] = Query(default=None, ge=1, le=12),
+):
+    """
+    Get calendar events grouped by date. Deterministic expiry; excludes NOT_REQUIRED.
+    Returns: property_id, property_name, requirement_type, due_date, status, document_id (if any).
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    year = year or now.year
+    if month:
+        start = datetime(year, month, 1, tzinfo=timezone.utc)
+        end = datetime(year, month + 1, 1, tzinfo=timezone.utc) if month < 12 else datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        start = datetime(year, 1, 1, tzinfo=timezone.utc)
+        end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+
+    properties = await db.properties.find(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1}
+    ).to_list(100)
+    property_map = {p["property_id"]: p for p in properties}
+    property_ids = list(property_map.keys())
+
+    requirements = await db.requirements.find(
+        {"property_id": {"$in": property_ids}},
+        {"_id": 0}
+    ).to_list(500)
+
+    # Resolve document_id per requirement (first linked document)
+    requirement_ids = [r["requirement_id"] for r in requirements]
+    doc_cursor = db.documents.find(
+        {"requirement_id": {"$in": requirement_ids}, "client_id": user["client_id"]},
+        {"_id": 0, "requirement_id": 1, "document_id": 1}
+    ).limit(1000)
+    req_to_doc = {}
+    async for doc in doc_cursor:
+        rid = doc.get("requirement_id")
+        if rid and rid not in req_to_doc:
+            req_to_doc[rid] = doc.get("document_id")
+
+    events_by_date = {}
+    for req in requirements:
+        if not is_included_for_calendar(req):
+            continue
+        effective = get_effective_expiry_date(req)
+        if effective is None:
+            continue
+        if not (start <= effective < end):
+            continue
+        date_key = effective.strftime("%Y-%m-%d")
+        status = get_computed_status(req)
+        prop = property_map.get(req["property_id"], {})
+        if date_key not in events_by_date:
+            events_by_date[date_key] = []
+        events_by_date[date_key].append({
+            "property_id": req["property_id"],
+            "property_name": prop.get("address_line_1", "Unknown") or (f"{prop.get('city', '')} {prop.get('postcode', '')}".strip() or "Unknown"),
+            "requirement_type": req.get("requirement_type", ""),
+            "due_date": date_key,
+            "status": status,
+            "document_id": req_to_doc.get(req["requirement_id"]),
+            "requirement_id": req["requirement_id"],
+        })
+
+    for date_key in events_by_date:
+        events_by_date[date_key].sort(key=lambda e: (e["status"] == "OVERDUE", e["status"] == "EXPIRING_SOON", e["due_date"]))
+
+    total = sum(len(v) for v in events_by_date.values())
+    return {
+        "events_by_date": events_by_date,
+        "summary": {"total_events": total, "dates_with_events": len(events_by_date)},
+        "year": year,
+        "month": month,
+    }
 
 
 @router.get("/expiries")
@@ -56,54 +141,29 @@ async def get_expiry_calendar(
         property_map = {p["property_id"]: p for p in properties}
         property_ids = list(property_map.keys())
         
-        # Get all requirements within date range
+        # Get all requirements for properties (filter by effective date in code; exclude NOT_REQUIRED)
         requirements = await db.requirements.find(
-            {
-                "property_id": {"$in": property_ids},
-                "due_date": {
-                    "$gte": start_date.isoformat(),
-                    "$lt": end_date.isoformat()
-                }
-            },
+            {"property_id": {"$in": property_ids}},
             {"_id": 0}
         ).to_list(500)
-        
-        # Group requirements by date
+
         events_by_date = {}
-        
         for req in requirements:
-            due_date_str = req.get("due_date", "")
-            if isinstance(due_date_str, str):
-                # Parse the date string
-                try:
-                    due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00'))
-                except:
-                    continue
-            else:
-                due_date = due_date_str
-            
+            if not is_included_for_calendar(req):
+                continue
+            due_date = get_effective_expiry_date(req)
+            if due_date is None or not (start_date <= due_date < end_date):
+                continue
             date_key = due_date.strftime("%Y-%m-%d")
-            
             if date_key not in events_by_date:
                 events_by_date[date_key] = []
-            
             property_info = property_map.get(req["property_id"], {})
-            
-            # Determine status color
-            status = req.get("status", "PENDING")
-            if status in ["OVERDUE", "EXPIRED"]:
-                status_color = "red"
-            elif status == "EXPIRING_SOON":
-                status_color = "amber"
-            elif status == "COMPLIANT":
-                status_color = "green"
-            else:
-                status_color = "blue"
-            
+            status = get_computed_status(req)
+            status_color = "red" if status in ["OVERDUE"] else "amber" if status == "EXPIRING_SOON" else "green" if status == "COMPLIANT" else "blue"
             events_by_date[date_key].append({
                 "requirement_id": req["requirement_id"],
                 "requirement_type": req["requirement_type"],
-                "description": req["description"],
+                "description": req.get("description", ""),
                 "status": status,
                 "status_color": status_color,
                 "property_id": req["property_id"],
@@ -111,9 +171,8 @@ async def get_expiry_calendar(
                 "property_city": property_info.get("city", ""),
                 "due_date": date_key
             })
-        
-        # Sort events within each date by status severity
-        status_priority = {"OVERDUE": 0, "EXPIRED": 0, "EXPIRING_SOON": 1, "PENDING": 2, "COMPLIANT": 3}
+
+        status_priority = {"OVERDUE": 0, "EXPIRING_SOON": 1, "PENDING": 2, "COMPLIANT": 3, "UNKNOWN_DATE": 4}
         for date_key in events_by_date:
             events_by_date[date_key].sort(key=lambda x: status_priority.get(x["status"], 4))
         
@@ -179,42 +238,35 @@ async def get_upcoming_expiries(
         property_map = {p["property_id"]: p for p in properties}
         property_ids = list(property_map.keys())
         
-        # Get requirements due within the time range
+        # Get all requirements for properties; filter by effective due date and exclude NOT_REQUIRED
         requirements = await db.requirements.find(
-            {
-                "property_id": {"$in": property_ids},
-                "due_date": {
-                    "$gte": now.isoformat(),
-                    "$lte": end_date.isoformat()
-                }
-            },
+            {"property_id": {"$in": property_ids}},
             {"_id": 0}
-        ).sort("due_date", 1).to_list(100)
-        
-        # Enrich with property info and calculate days until due
+        ).to_list(500)
+
         upcoming = []
         for req in requirements:
+            if not is_included_for_calendar(req):
+                continue
+            due_date = get_effective_expiry_date(req)
+            if due_date is None or due_date > end_date or due_date < now:
+                continue
             property_info = property_map.get(req["property_id"], {})
-            
-            due_date_str = req.get("due_date", "")
-            try:
-                due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00')) if isinstance(due_date_str, str) else due_date_str
-                days_until_due = (due_date - now).days
-            except:
-                days_until_due = 0
-            
+            days_until_due = (due_date - now).days
+            status = get_computed_status(req)
             upcoming.append({
                 "requirement_id": req["requirement_id"],
-                "requirement_type": req["requirement_type"],
-                "description": req["description"],
-                "status": req.get("status", "PENDING"),
-                "due_date": req["due_date"],
+                "requirement_type": req.get("requirement_type", ""),
+                "description": req.get("description", ""),
+                "status": status,
+                "due_date": due_date.isoformat(),
                 "days_until_due": days_until_due,
                 "property_id": req["property_id"],
                 "property_address": property_info.get("address_line_1", "Unknown"),
                 "property_city": property_info.get("city", ""),
                 "urgency": "high" if days_until_due <= 7 else ("medium" if days_until_due <= 30 else "low")
             })
+        upcoming.sort(key=lambda x: (x["days_until_due"], x["property_address"]))
         
         return {
             "days_ahead": days,

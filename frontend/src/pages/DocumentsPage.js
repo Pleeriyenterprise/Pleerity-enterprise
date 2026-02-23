@@ -54,6 +54,9 @@ const DocumentsPage = () => {
   });
   const [filterPropertyId, setFilterPropertyId] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [confirmDetailsModal, setConfirmDetailsModal] = useState(null);
+  const [confirmExpiryDate, setConfirmExpiryDate] = useState('');
+  const [confirmDetailsSaving, setConfirmDetailsSaving] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -102,6 +105,15 @@ const DocumentsPage = () => {
       });
 
       toast.success('Document uploaded successfully');
+      const prop = properties.find(p => p.property_id === uploadForm.property_id);
+      const req = requirements.find(r => r.requirement_id === uploadForm.requirement_id);
+      setConfirmDetailsModal({
+        property_id: uploadForm.property_id,
+        property_name: prop ? `${prop.address_line_1 || ''}, ${prop.city || ''}`.trim() || prop.property_id : uploadForm.property_id,
+        requirement_id: uploadForm.requirement_id,
+        requirement_type: req?.description || req?.requirement_type || uploadForm.requirement_id
+      });
+      setConfirmExpiryDate('');
       setUploadForm({ property_id: '', requirement_id: '', file: null });
       fetchData();
     } catch (error) {
@@ -220,6 +232,33 @@ const DocumentsPage = () => {
     } catch (error) {
       toast.error('Failed to reject extraction');
     }
+  };
+
+  const handleConfirmDetailsSubmit = async () => {
+    if (!confirmDetailsModal) return;
+    setConfirmDetailsSaving(true);
+    try {
+      if (confirmExpiryDate.trim()) {
+        const dateStr = confirmExpiryDate.trim();
+        await api.patch(
+          `/properties/${confirmDetailsModal.property_id}/requirements/${confirmDetailsModal.requirement_id}`,
+          { confirmed_expiry_date: dateStr }
+        );
+        toast.success('Expiry date saved. Calendar and reminders will use this date.');
+      }
+      setConfirmDetailsModal(null);
+      setConfirmExpiryDate('');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save expiry date');
+    } finally {
+      setConfirmDetailsSaving(false);
+    }
+  };
+
+  const handleConfirmDetailsSkip = () => {
+    setConfirmDetailsModal(null);
+    setConfirmExpiryDate('');
   };
 
   const getStatusBadge = (status) => {
@@ -883,6 +922,69 @@ const DocumentsPage = () => {
                     <Check className="w-4 h-4 mr-2" />
                   )}
                   Apply & Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm document details modal (after upload) */}
+      {confirmDetailsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="confirm-details-modal">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-midnight-blue">Confirm document details</h2>
+                <button
+                  onClick={handleConfirmDetailsSkip}
+                  className="text-gray-400 hover:text-gray-600"
+                  data-testid="close-confirm-details-modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Optionally set the certificate expiry date so the calendar and reminders use it.
+              </p>
+              <div className="space-y-3 mb-6">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Property</label>
+                  <p className="text-sm text-midnight-blue font-medium">{confirmDetailsModal.property_name}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Requirement type</label>
+                  <p className="text-sm text-midnight-blue font-medium">{confirmDetailsModal.requirement_type}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Expiry date</label>
+                  <input
+                    type="date"
+                    value={confirmExpiryDate}
+                    onChange={(e) => setConfirmExpiryDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    data-testid="confirm-expiry-date-input"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Used for calendar and reminders</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleConfirmDetailsSkip}
+                  className="flex-1"
+                  data-testid="confirm-details-skip-btn"
+                >
+                  Skip
+                </Button>
+                <Button
+                  onClick={handleConfirmDetailsSubmit}
+                  disabled={confirmDetailsSaving}
+                  className="flex-1"
+                  data-testid="confirm-details-submit-btn"
+                >
+                  {confirmDetailsSaving ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                  Save
                 </Button>
               </div>
             </div>

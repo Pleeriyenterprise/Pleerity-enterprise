@@ -173,8 +173,9 @@ def compute_property_score(
             "breakdown": [],
         }
 
-    # requirement_id -> catalog key (for docs linked to that requirement)
+    # requirement_id -> catalog key; requirement_id -> applicability (REQUIRED | NOT_REQUIRED | UNKNOWN)
     req_id_to_key: Dict[str, str] = {}
+    req_id_to_applicability: Dict[str, str] = {}
     for r in requirements:
         req_type = r.get("requirement_type") or r.get("requirement_code")
         key = _req_type_to_key(req_type)
@@ -182,18 +183,41 @@ def compute_property_score(
             rid = r.get("requirement_id") or r.get("id")
             if rid:
                 req_id_to_key[rid] = key
+                app = (r.get("applicability") or "UNKNOWN")
+                if isinstance(app, str):
+                    req_id_to_applicability[rid] = app.strip().upper()
+                else:
+                    req_id_to_applicability[rid] = "UNKNOWN"
 
     today = now.date()
     expects_expiry_keys = {"GAS_SAFETY_CERT", "EICR_CERT", "EPC_CERT", "PROPERTY_LICENCE"}
     key_to_best: Dict[str, Dict[str, Any]] = {}
     for key in applicable_w:
         req_ids_for_key = [rid for rid, k in req_id_to_key.items() if k == key]
+        # If any requirement for this key is NOT_REQUIRED, exclude from penalty (full score)
+        applicability_for_key = [
+            req_id_to_applicability.get(rid, "UNKNOWN") for rid in req_ids_for_key
+        ]
+        if "NOT_REQUIRED" in applicability_for_key:
+            key_to_best[key] = {
+                "requirement_key": key,
+                "weight": applicable_w[key],
+                "status": "NOT_REQUIRED",
+                "status_factor": 1.0,
+                "days_to_expiry": None,
+            }
+            continue
+        has_unknown = "UNKNOWN" in applicability_for_key
+
         candidate_docs = [d for d in documents if d.get("requirement_id") in req_ids_for_key]
         document_type = REQUIREMENT_KEY_TO_DOCUMENT_TYPE.get(key, "")
         evidence_doc = pick_evidence_document(candidate_docs, document_type)
         expects_expiry = key in expects_expiry_keys
         status_result = compute_requirement_status(today, evidence_doc, expects_expiry, EXPIRING_SOON_DAYS)
         fraction = STATUS_TO_FRACTION.get(status_result["status"], 0.0)
+        # Low-weight uncertainty penalty: UNKNOWN with missing evidence => 0.5 instead of 0.0
+        if has_unknown and fraction <= 0.0 and not evidence_doc:
+            fraction = 0.5
         key_to_best[key] = {
             "requirement_key": key,
             "weight": applicable_w[key],

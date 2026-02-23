@@ -1,11 +1,14 @@
 """Background jobs for reminders and digests - Compliance Vault Pro"""
 import asyncio
+import json
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timedelta, timezone
 import os
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
+
+from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
 
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
@@ -87,51 +90,57 @@ class JobScheduler:
                     logger.info(f"Skipping reminders for {client['email']} - within quiet hours")
                     continue
                 
-                # Get requirements expiring in next N days (based on preferences)
-                
-                requirements = await self.db.requirements.find({
-                    "client_id": client["client_id"],
-                    "status": {"$in": ["PENDING", "EXPIRING_SOON"]}
-                }, {"_id": 0}).to_list(100)
-                
+                # Get all requirements for client; use effective expiry (confirmed else extracted else due_date); exclude NOT_REQUIRED
+                requirements = await self.db.requirements.find(
+                    {"client_id": client["client_id"]},
+                    {"_id": 0}
+                ).to_list(500)
+
                 expiring_requirements = []
+                overdue_requirements = []
+                reminder_refs = []  # For message_logs: client_id on log; refs list here
                 properties_status_changed = set()
-                
+                now_utc = datetime.now(timezone.utc)
+
                 for req in requirements:
-                    due_date = datetime.fromisoformat(req["due_date"]) if isinstance(req["due_date"], str) else req["due_date"]
-                    days_until_due = (due_date - datetime.now(timezone.utc)).days
-                    
-                    if 0 <= days_until_due <= reminder_days:
+                    if not is_included_for_calendar(req):
+                        continue
+                    due_date = get_effective_expiry_date(req)
+                    if due_date is None:
+                        continue
+                    days_until_due = (due_date - now_utc).days
+
+                    if days_until_due < 0:
+                        overdue_requirements.append({
+                            "type": req.get("description", req.get("requirement_type", "Certificate")),
+                            "due_date": due_date.strftime("%d %B %Y"),
+                            "days_overdue": -days_until_due
+                        })
+                        reminder_refs.append({
+                            "property_id": req.get("property_id"),
+                            "requirement_type": req.get("requirement_type", ""),
+                            "due_date": due_date.strftime("%Y-%m-%d"),
+                        })
+                        await self.db.requirements.update_one(
+                            {"requirement_id": req["requirement_id"]},
+                            {"$set": {"status": "OVERDUE"}}
+                        )
+                        properties_status_changed.add(req.get("property_id"))
+                    elif 0 <= days_until_due <= reminder_days:
                         expiring_requirements.append({
-                            "type": req["description"],
+                            "type": req.get("description", req.get("requirement_type", "Certificate")),
                             "due_date": due_date.strftime("%d %B %Y"),
                             "days_remaining": days_until_due,
                             "status": "URGENT" if days_until_due <= 7 else "WARNING"
                         })
-                        
-                        # Update requirement status
-                        if days_until_due <= reminder_days:
-                            await self.db.requirements.update_one(
-                                {"requirement_id": req["requirement_id"]},
-                                {"$set": {"status": "EXPIRING_SOON"}}
-                            )
-                            properties_status_changed.add(req.get("property_id"))
-                
-                # Check for overdue
-                overdue_requirements = []
-                for req in requirements:
-                    due_date = datetime.fromisoformat(req["due_date"]) if isinstance(req["due_date"], str) else req["due_date"]
-                    if due_date < datetime.now(timezone.utc):
-                        overdue_requirements.append({
-                            "type": req["description"],
-                            "due_date": due_date.strftime("%d %B %Y"),
-                            "days_overdue": (datetime.now(timezone.utc) - due_date).days
+                        reminder_refs.append({
+                            "property_id": req.get("property_id"),
+                            "requirement_type": req.get("requirement_type", ""),
+                            "due_date": due_date.strftime("%Y-%m-%d"),
                         })
-                        
-                        # Update requirement status
                         await self.db.requirements.update_one(
                             {"requirement_id": req["requirement_id"]},
-                            {"$set": {"status": "OVERDUE"}}
+                            {"$set": {"status": "EXPIRING_SOON"}}
                         )
                         properties_status_changed.add(req.get("property_id"))
                 
@@ -161,6 +170,7 @@ class JobScheduler:
                             expiring_requirements,
                             overdue_requirements,
                             recipient_email=recipient_email,
+                            reminder_refs=reminder_refs,
                         )
                     if reminder_recipients:
                         reminder_count += 1
@@ -183,6 +193,7 @@ class JobScheduler:
                                     expiring_requirements,
                                     overdue_requirements,
                                     recipient_phone=recipient_phone,
+                                    reminder_refs=reminder_refs,
                                 )
                     else:
                         logger.info(
@@ -357,8 +368,8 @@ class JobScheduler:
                     phones.append(ap)
         return phones
 
-    async def _send_reminder_email(self, client, expiring, overdue, recipient_email=None):
-        """Send reminder email via NotificationOrchestrator. If recipient_email is set, send to that address (agent); otherwise to client email."""
+    async def _send_reminder_email(self, client, expiring, overdue, recipient_email=None, reminder_refs=None):
+        """Send reminder email via NotificationOrchestrator. If recipient_email is set, send to that address (agent); otherwise to client email. Writes message_log with event_type REMINDER and reminder_refs in metadata."""
         try:
             from services.notification_orchestrator import notification_orchestrator
             from services.webhook_service import fire_reminder_sent
@@ -377,12 +388,14 @@ class JobScheduler:
             }
             if recipient_email:
                 context["recipient"] = recipient_email
+            if reminder_refs is not None:
+                context["reminder_refs"] = json.dumps(reminder_refs)
             await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER",
                 client_id=client["client_id"],
                 context=context,
                 idempotency_key=idempotency_key,
-                event_type="daily_reminder",
+                event_type="REMINDER",
             )
             logger.info(f"Sending reminder to {to_addr}: {len(expiring)} expiring, {len(overdue)} overdue")
             try:
@@ -400,8 +413,8 @@ class JobScheduler:
         except Exception as e:
             logger.error(f"Failed to send reminder email: {e}")
 
-    async def _maybe_send_reminder_sms(self, client, prefs, expiring, overdue, recipient_phone=None):
-        """Send SMS reminder via NotificationOrchestrator (plan-gated, 24h throttle inside orchestrator). If recipient_phone is set, send to that number (e.g. agent)."""
+    async def _maybe_send_reminder_sms(self, client, prefs, expiring, overdue, recipient_phone=None, reminder_refs=None):
+        """Send SMS reminder via NotificationOrchestrator (plan-gated, 24h throttle inside orchestrator). Writes message_log with event_type REMINDER and reminder_refs in metadata."""
         try:
             from services.notification_orchestrator import notification_orchestrator
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -412,12 +425,14 @@ class JobScheduler:
             context = {"count": total, "portal_link": portal_link}
             if recipient_phone:
                 context["recipient"] = recipient_phone
+            if reminder_refs is not None:
+                context["reminder_refs"] = json.dumps(reminder_refs)
             await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER_SMS",
                 client_id=client["client_id"],
                 context=context,
                 idempotency_key=idempotency_key,
-                event_type="daily_reminder_sms",
+                event_type="REMINDER",
             )
         except Exception as e:
             logger.warning("SMS reminder error for client %s (non-fatal): %s", client.get("client_id"), e)

@@ -88,6 +88,20 @@ class RequirementStatus(str, Enum):
     COMPLIANT = "COMPLIANT"
     OVERDUE = "OVERDUE"
     EXPIRING_SOON = "EXPIRING_SOON"
+    UNKNOWN_DATE = "UNKNOWN_DATE"  # No usable expiry date
+    NOT_REQUIRED = "NOT_REQUIRED"  # applicability NOT_REQUIRED
+
+class Applicability(str, Enum):
+    """Per-requirement applicability for scoring and calendar."""
+    REQUIRED = "REQUIRED"
+    NOT_REQUIRED = "NOT_REQUIRED"
+    UNKNOWN = "UNKNOWN"
+
+class ExpirySource(str, Enum):
+    """Source of the effective expiry date."""
+    CONFIRMED = "CONFIRMED"
+    EXTRACTED = "EXTRACTED"
+    NONE = "NONE"
 
 class RuleCategory(str, Enum):
     SAFETY = "SAFETY"
@@ -554,6 +568,13 @@ class Requirement(BaseModel):
     frequency_days: int
     due_date: datetime
     status: RequirementStatus = RequirementStatus.PENDING
+    # Deterministic expiry tracking: confirmed overrides extracted; both optional
+    applicability: Optional[Applicability] = Applicability.UNKNOWN
+    confirmed_expiry_date: Optional[datetime] = None
+    extracted_expiry_date: Optional[datetime] = None
+    expiry_source: Optional[ExpirySource] = ExpirySource.NONE
+    extraction_confidence: Optional[float] = None  # 0-1
+    not_required_reason: Optional[str] = None  # When applicability=NOT_REQUIRED, controlled list
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 

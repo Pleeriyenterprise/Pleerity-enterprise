@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from database import database
 from middleware import client_route_guard
 from models import Property, ComplianceStatus, AuditAction, UserRole
+from utils.expiry_utils import get_effective_expiry_date, is_included_for_calendar
 from utils.audit import create_audit_log
 from pydantic import BaseModel
 from typing import Optional, List
@@ -237,6 +238,76 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
         )
 
     return {"message": "Property updated", "property_id": property_id}
+
+
+# Controlled reason list for NOT_REQUIRED (no legal advice; user selects from list)
+NOT_REQUIRED_REASONS = ["no_gas_supply", "exempt", "not_applicable", "other"]
+
+
+class PatchRequirementRequest(BaseModel):
+    """Update expiry or applicability for a property requirement."""
+    confirmed_expiry_date: Optional[str] = None  # ISO date
+    applicability: Optional[str] = None  # REQUIRED | NOT_REQUIRED | UNKNOWN
+    not_required_reason: Optional[str] = None  # Required when applicability=NOT_REQUIRED; one of NOT_REQUIRED_REASONS
+
+
+@router.patch("/{property_id}/requirements/{requirement_id}")
+async def patch_requirement(
+    request: Request,
+    property_id: str,
+    requirement_id: str,
+    data: PatchRequirementRequest,
+):
+    """Update a requirement's confirmed expiry date or applicability (e.g. mark NOT_REQUIRED with reason)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+
+    req = await db.requirements.find_one(
+        {"requirement_id": requirement_id, "property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0},
+    )
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
+
+    update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if data.confirmed_expiry_date is not None:
+        try:
+            parsed = datetime.fromisoformat(data.confirmed_expiry_date.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            update["confirmed_expiry_date"] = parsed.isoformat()
+            update["expiry_source"] = "CONFIRMED"
+            update["due_date"] = parsed.isoformat()
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid confirmed_expiry_date format; use YYYY-MM-DD or ISO datetime",
+            )
+    if data.applicability is not None:
+        app = data.applicability.strip().upper()
+        if app not in ("REQUIRED", "NOT_REQUIRED", "UNKNOWN"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="applicability must be REQUIRED, NOT_REQUIRED, or UNKNOWN",
+            )
+        update["applicability"] = app
+        if app == "NOT_REQUIRED":
+            reason = (data.not_required_reason or "").strip()
+            if reason and reason not in NOT_REQUIRED_REASONS:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"not_required_reason must be one of: {NOT_REQUIRED_REASONS}",
+                )
+            update["not_required_reason"] = reason or None
+
+    if len(update) <= 1:
+        return {"message": "No updates", "requirement_id": requirement_id}
+
+    await db.requirements.update_one(
+        {"requirement_id": requirement_id, "property_id": property_id, "client_id": user["client_id"]},
+        {"$set": update},
+    )
+    return {"message": "Requirement updated", "requirement_id": requirement_id}
 
 
 @router.get("/list")
@@ -480,9 +551,11 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
         
         upcoming = []
         for req in requirements:
-            due_date = datetime.fromisoformat(req["due_date"]) if isinstance(req["due_date"], str) else req["due_date"]
-            
-            if now <= due_date <= deadline_threshold:
+            if not is_included_for_calendar(req):
+                continue
+            due_date = get_effective_expiry_date(req)
+            if due_date is None or not (now <= due_date <= deadline_threshold):
+                continue
                 # Get property details
                 prop = await db.properties.find_one(
                     {"property_id": req["property_id"]},
@@ -490,13 +563,12 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
                 )
                 
                 days_until_due = (due_date - now).days
-                
                 upcoming.append({
                     "requirement_id": req["requirement_id"],
-                    "description": req["description"],
-                    "due_date": req["due_date"],
+                    "description": req.get("description", ""),
+                    "due_date": due_date.isoformat(),
                     "days_until_due": days_until_due,
-                    "status": req["status"],
+                    "status": req.get("status", "PENDING"),
                     "property_address": f"{prop['address_line_1']}, {prop['city']}" if prop else "Unknown",
                     "property_id": req["property_id"]
                 })
