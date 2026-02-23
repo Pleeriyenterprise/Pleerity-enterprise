@@ -556,22 +556,21 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
             due_date = get_effective_expiry_date(req)
             if due_date is None or not (now <= due_date <= deadline_threshold):
                 continue
-                # Get property details
-                prop = await db.properties.find_one(
-                    {"property_id": req["property_id"]},
-                    {"_id": 0}
-                )
-                
-                days_until_due = (due_date - now).days
-                upcoming.append({
-                    "requirement_id": req["requirement_id"],
-                    "description": req.get("description", ""),
-                    "due_date": due_date.isoformat(),
-                    "days_until_due": days_until_due,
-                    "status": req.get("status", "PENDING"),
-                    "property_address": f"{prop['address_line_1']}, {prop['city']}" if prop else "Unknown",
-                    "property_id": req["property_id"]
-                })
+            # Get property details
+            prop = await db.properties.find_one(
+                {"property_id": req["property_id"]},
+                {"_id": 0}
+            )
+            days_until_due = (due_date - now).days
+            upcoming.append({
+                "requirement_id": req["requirement_id"],
+                "description": req.get("description", ""),
+                "due_date": due_date.isoformat(),
+                "days_until_due": days_until_due,
+                "status": req.get("status", "PENDING"),
+                "property_address": f"{prop['address_line_1']}, {prop['city']}" if prop else "Unknown",
+                "property_id": req["property_id"]
+            })
         
         # Sort by due date
         upcoming.sort(key=lambda x: x["days_until_due"])

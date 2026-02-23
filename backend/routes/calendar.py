@@ -86,7 +86,8 @@ async def get_calendar_events(
         })
 
     for date_key in events_by_date:
-        events_by_date[date_key].sort(key=lambda e: (e["status"] == "OVERDUE", e["status"] == "EXPIRING_SOON", e["due_date"]))
+        # Urgent first: OVERDUE then EXPIRING_SOON then rest (False < True, so != gives overdue smallest)
+        events_by_date[date_key].sort(key=lambda e: (e["status"] != "OVERDUE", e["status"] != "EXPIRING_SOON", e["due_date"]))
 
     total = sum(len(v) for v in events_by_date.values())
     return {
