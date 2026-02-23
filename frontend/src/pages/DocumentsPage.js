@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -59,6 +59,10 @@ const DocumentsPage = () => {
   const [confirmIssueDate, setConfirmIssueDate] = useState('');
   const [confirmCertificateNumber, setConfirmCertificateNumber] = useState('');
   const [confirmDetailsSaving, setConfirmDetailsSaving] = useState(false);
+  const [extractingDocumentId, setExtractingDocumentId] = useState(null);
+  const extractingContextRef = useRef(null);
+  const pollRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -79,6 +83,66 @@ const DocumentsPage = () => {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [confirmDetailsModal?.document_id]);
+
+  // Poll extraction status after upload; open confirm modal when completed or failed (or timeout)
+  useEffect(() => {
+    if (!extractingDocumentId || !extractingContextRef.current) return;
+    const ctx = extractingContextRef.current;
+    const POLL_INTERVAL_MS = 2500;
+    const TIMEOUT_MS = 90000;
+
+    const stopPolling = () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+      setExtractingDocumentId(null);
+      extractingContextRef.current = null;
+    };
+
+    const openConfirmModal = (extractionFailed = false) => {
+      stopPolling();
+      setConfirmExpiryDate('');
+      setConfirmIssueDate('');
+      setConfirmCertificateNumber('');
+      setConfirmDetailsModal({
+        ...ctx,
+        document_id: extractingDocumentId,
+        extractionFailed,
+      });
+      fetchData();
+    };
+
+    const poll = async () => {
+      try {
+        const res = await api.get(`/documents/${extractingDocumentId}/extraction`);
+        const status = res.data?.extraction?.status;
+        if (status === 'completed') {
+          openConfirmModal(false);
+          return;
+        }
+        if (status === 'failed') {
+          openConfirmModal(true);
+          return;
+        }
+      } catch {
+        // keep polling on network error
+      }
+    };
+
+    pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
+    poll();
+
+    timeoutRef.current = setTimeout(() => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
+      timeoutRef.current = null;
+      openConfirmModal(true);
+      toast.info('Extraction is taking longer than expected. You can enter details manually.');
+    }, TIMEOUT_MS);
+
+    return stopPolling;
+  }, [extractingDocumentId]);
 
   const fetchData = async () => {
     try {
@@ -122,17 +186,17 @@ const DocumentsPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      toast.success('Document uploaded successfully');
+      toast.success('Document uploaded. Extracting details…');
       const documentId = res.data?.document_id;
       const prop = properties.find(p => p.property_id === uploadForm.property_id);
       const req = requirements.find(r => r.requirement_id === uploadForm.requirement_id);
-      setConfirmDetailsModal({
+      extractingContextRef.current = {
         property_id: uploadForm.property_id,
         property_name: prop ? `${prop.address_line_1 || ''}, ${prop.city || ''}`.trim() || prop.property_id : uploadForm.property_id,
         requirement_id: uploadForm.requirement_id,
         requirement_type: req?.description || req?.requirement_type || uploadForm.requirement_id,
-        document_id: documentId
-      });
+      };
+      setExtractingDocumentId(documentId);
       setConfirmExpiryDate('');
       setConfirmIssueDate('');
       setConfirmCertificateNumber('');
@@ -170,7 +234,11 @@ const DocumentsPage = () => {
         setUpgradeRequiredDetail(error.upgradeDetail);
         return;
       }
-      toast.error(typeof error.response?.data?.detail === 'string' ? error.response.data.detail : 'Failed to analyze document');
+      const d = error.response?.data?.detail;
+      const msg = typeof d === 'string'
+        ? d
+        : (d?.message && d?.hint ? `${d.message} ${d.hint}` : d?.message || (d?.hint ? `Analysis failed. ${d.hint}` : null) || 'Failed to analyze document');
+      toast.error(msg);
     } finally {
       setAnalyzing(null);
     }
@@ -295,6 +363,23 @@ const DocumentsPage = () => {
     setConfirmCertificateNumber('');
   };
 
+  const openConfirmDetailsForDocument = (doc) => {
+    if (!doc.requirement_id || !doc.property_id) return;
+    const prop = properties.find(p => p.property_id === doc.property_id);
+    const req = requirements.find(r => r.requirement_id === doc.requirement_id);
+    setConfirmExpiryDate('');
+    setConfirmIssueDate('');
+    setConfirmCertificateNumber('');
+    setConfirmDetailsModal({
+      property_id: doc.property_id,
+      property_name: prop ? `${prop.address_line_1 || ''}, ${prop.city || ''}`.trim() || prop.property_id : doc.property_id,
+      requirement_id: doc.requirement_id,
+      requirement_type: req?.description || req?.requirement_type || doc.requirement_id,
+      document_id: doc.document_id,
+      extractionFailed: doc.ai_extraction?.status === 'failed',
+    });
+  };
+
   const getStatusBadge = (status) => {
     const badges = {
       PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800' },
@@ -332,7 +417,15 @@ const DocumentsPage = () => {
     );
   };
 
-  const getExtractionStatusBadge = (doc) => {
+  const getExtractionStatusBadge = (doc, extractingId = null) => {
+    if (extractingId && doc.document_id === extractingId) {
+      return (
+        <span data-testid="extraction-status-extracting" className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800">
+          <RefreshCw className="w-3 h-3 animate-spin" />
+          Extracting…
+        </span>
+      );
+    }
     const status = doc.extraction_status || (doc.ai_extraction?.status === 'completed'
       ? (doc.ai_extraction?.review_status === 'approved' ? 'CONFIRMED' : doc.ai_extraction?.review_status === 'rejected' ? 'REJECTED' : 'NEEDS_REVIEW')
       : doc.ai_extraction?.status === 'failed' ? 'FAILED' : 'PENDING');
@@ -641,7 +734,7 @@ const DocumentsPage = () => {
                                 {doc.file_name || doc.original_filename || 'Document'}
                               </span>
                               {getStatusBadge(doc.status)}
-                              {(doc.extraction_id || doc.ai_extraction) && getExtractionStatusBadge(doc)}
+                              {(doc.extraction_id || doc.ai_extraction || extractingDocumentId === doc.document_id) && getExtractionStatusBadge(doc, extractingDocumentId)}
                             </div>
                             <p className="text-sm text-gray-500 mb-2">
                               Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
@@ -743,7 +836,13 @@ const DocumentsPage = () => {
                                 )}
                               </div>
                             )}
-                            {(doc.extraction_status === 'PENDING') && (
+                            {extractingDocumentId === doc.document_id && (
+                              <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200 flex items-center gap-2">
+                                <RefreshCw className="w-4 h-4 animate-spin text-electric-teal" />
+                                <span className="text-sm text-gray-700">Extracting…</span>
+                              </div>
+                            )}
+                            {(doc.extraction_status === 'PENDING') && extractingDocumentId !== doc.document_id && (
                               <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                 <span className="text-sm text-gray-600">Extraction pending…</span>
                               </div>
@@ -759,6 +858,17 @@ const DocumentsPage = () => {
                           </div>
                           
                           <div className="flex flex-col items-end gap-2 ml-4">
+                            {doc.requirement_id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openConfirmDetailsForDocument(doc)}
+                                data-testid={`confirm-details-btn-${doc.document_id}`}
+                              >
+                                <Calendar className="w-4 h-4 mr-1" />
+                                Confirm details
+                              </Button>
+                            )}
                             {!doc.ai_extraction?.data && (
                               <Button
                                 variant="outline"
@@ -981,6 +1091,11 @@ const DocumentsPage = () => {
               <p className="text-sm text-gray-600 mb-4">
                 Confirm or edit the certificate details so the calendar and reminders use the correct date.
               </p>
+              {confirmDetailsModal.extractionFailed && (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4" data-testid="extraction-failed-message">
+                  Extraction could not read this file. Enter details manually or re-upload.
+                </p>
+              )}
               <div className="space-y-3 mb-6">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-0.5">Property</label>

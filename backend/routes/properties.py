@@ -330,6 +330,18 @@ async def patch_requirement(
         {"requirement_id": requirement_id, "property_id": property_id, "client_id": user["client_id"]},
         {"$set": update},
     )
+
+    # Recalculate property compliance when requirement expiry/status changes (e.g. confirm details later)
+    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=user["client_id"],
+        trigger_reason=TRIGGER_PROPERTY_UPDATED,
+        actor_type=ACTOR_CLIENT,
+        actor_id=user.get("portal_user_id"),
+        correlation_id=f"REQUIREMENT_UPDATED:{requirement_id}",
+    )
+
     return {"message": "Requirement updated", "requirement_id": requirement_id}
 
 

@@ -6,6 +6,7 @@ from models import Document, DocumentStatus, RequirementStatus, AuditAction
 from utils.audit import create_audit_log
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
+import asyncio
 import os
 import uuid
 import logging
@@ -139,6 +140,50 @@ class ExtractionApplyRequest(BaseModel):
 DATA_DIR = os.getenv("DATA_DIR", "/tmp")
 DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(DATA_DIR) / "data" / "documents")))
 DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
+
+
+async def _run_analysis_after_upload(
+    document_id: str,
+    client_id: str,
+    actor_id: Optional[str],
+    file_path: str,
+    mime_type: str,
+) -> None:
+    """Run AI document analysis in background after upload (PDF + images). Sets ai_extraction on doc."""
+    db = database.get_db()
+    try:
+        from services.document_analysis import document_analysis_service
+        result = await document_analysis_service.analyze_document(
+            file_path=file_path,
+            mime_type=mime_type,
+            document_id=document_id,
+            client_id=client_id,
+            actor_id=actor_id,
+        )
+        if not result.get("success"):
+            await db.documents.update_one(
+                {"document_id": document_id},
+                {"$set": {
+                    "ai_extraction": {
+                        "extracted_at": datetime.now(timezone.utc).isoformat(),
+                        "status": "failed",
+                        "error": (result.get("error") or "Analysis failed")[:500],
+                    }
+                }},
+            )
+    except Exception as e:
+        logger.warning("Post-upload analysis failed for %s: %s", document_id, e)
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {"$set": {
+                "ai_extraction": {
+                    "extracted_at": datetime.now(timezone.utc).isoformat(),
+                    "status": "failed",
+                    "error": str(e)[:500],
+                }
+            }},
+        )
+
 
 @router.post("/bulk-upload")
 async def bulk_upload_documents(
@@ -706,6 +751,15 @@ async def upload_document(
         
         await db.documents.insert_one(doc)
         
+        # Trigger AI extraction in background (PDF + images via Gemini/OpenAI); modal opens when done
+        asyncio.create_task(_run_analysis_after_upload(
+            document_id=document.document_id,
+            client_id=user["client_id"],
+            actor_id=user.get("portal_user_id"),
+            file_path=str(file_path),
+            mime_type=file.content_type or "application/octet-stream",
+        ))
+        
         # Do not mark requirement as satisfied on upload; user confirms expiry in modal or via apply-extraction
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
@@ -734,17 +788,6 @@ async def upload_document(
         )
         
         logger.info(f"Document uploaded: {document.document_id}")
-
-        try:
-            from services.document_extraction_service import enqueue_extraction
-            await enqueue_extraction(
-                document_id=document.document_id,
-                client_id=user["client_id"],
-                source="vault_upload",
-                property_id=property_id,
-            )
-        except Exception as ext_err:
-            logger.warning("Enqueue extraction after upload failed (non-blocking): %s", ext_err)
 
         return {
             "message": "Document uploaded successfully",
@@ -1458,9 +1501,16 @@ async def analyze_document_ai(
         raise
     except Exception as e:
         logger.error(f"Document AI analysis error: {e}")
+        err_msg = str(e).strip()[:200] if e else ""
+        detail = {
+            "message": "Failed to analyze document.",
+            "error_code": "ANALYSIS_ERROR",
+        }
+        if err_msg and not any(s in err_msg.lower() for s in ("key", "secret", "password", "token", "api_key")):
+            detail["hint"] = err_msg
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to analyze document"
+            detail=detail,
         )
 
 
