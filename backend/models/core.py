@@ -545,6 +545,10 @@ class Property(BaseModel):
     agent_email: Optional[str] = None
     agent_phone: Optional[str] = None
     
+    # Tenancy and furnishing (for dynamic requirement applicability; catalog uses tenancy_active for tenancy docs)
+    tenancy_active: bool = False
+    furnished: Optional[bool] = None  # True/False/None (unknown) for requirement rules
+    
     # Certificate availability flags (collected at intake for deterministic compliance)
     cert_gas_safety: Optional[str] = None  # "YES", "NO", "UNSURE"
     cert_eicr: Optional[str] = None

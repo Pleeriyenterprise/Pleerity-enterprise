@@ -152,7 +152,7 @@ async def create_property(request: Request, data: CreatePropertyRequest):
         )
 
 # Fields that affect compliance score applicability (v1); changing any triggers recalc.
-APPLICABILITY_FIELDS = frozenset({"is_hmo", "bedrooms", "occupancy", "licence_required", "has_gas_supply", "has_gas"})
+APPLICABILITY_FIELDS = frozenset({"is_hmo", "bedrooms", "occupancy", "licence_required", "has_gas_supply", "has_gas", "tenancy_active", "furnished"})
 
 
 class PatchPropertyRequest(BaseModel):
@@ -164,6 +164,8 @@ class PatchPropertyRequest(BaseModel):
     licence_required: Optional[str] = None
     has_gas_supply: Optional[bool] = None
     has_gas: Optional[bool] = None
+    tenancy_active: Optional[bool] = None
+    furnished: Optional[bool] = None
     is_active: Optional[bool] = None  # False = archived (read-only) when over property limit
 
 
@@ -179,7 +181,7 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
         {"_id": 0, "property_id": 1, "client_id": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
-         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1, "is_active": 1},
+         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1, "tenancy_active": 1, "furnished": 1, "is_active": 1},
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")

@@ -999,7 +999,7 @@ const DocumentsPage = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
                     data-testid="confirm-expiry-date-input"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Required for calendar and reminders</p>
+                  <p className="text-xs text-gray-500 mt-1">Confirm expiry so calendar and reminders use this date.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Issue date</label>

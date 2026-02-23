@@ -226,7 +226,7 @@ const RequirementsPage = () => {
   // Get page title based on filter
   const getPageTitle = () => {
     if (statusFilter === 'DUE_SOON') return 'Attention Needed';
-    if (statusFilter === 'OVERDUE_OR_MISSING') return 'Action Required';
+    if (statusFilter === 'OVERDUE_OR_MISSING') return 'Attention needed';
     if (windowDays) return `Expiring in Next ${windowDays} Days`;
     return 'All Requirements';
   };
@@ -288,7 +288,7 @@ const RequirementsPage = () => {
             <AlertCircle className="h-4 w-4 text-amber-600" />
             <AlertDescription>
               <span className="font-medium text-amber-800">Confirm your property details.</span>
-              <span className="text-amber-700 ml-1">Some tracked items depend on your property settings. Update expiry dates or mark items as not required so we can show the right status.</span>
+              <span className="text-amber-700 ml-1">Some tracked items depend on your property settings. Update expiry dates or mark items as not applicable so we can show the right status.</span>
             </AlertDescription>
           </Alert>
         )}
@@ -325,7 +325,7 @@ const RequirementsPage = () => {
             data-testid="filter-overdue"
           >
             <p className="text-2xl font-bold text-red-600">{stats.overdue + stats.pending}</p>
-            <p className="text-sm text-gray-500">Action Required</p>
+            <p className="text-sm text-gray-500">Attention needed</p>
           </button>
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${windowDays === '30' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}
@@ -483,8 +483,8 @@ const RequirementsPage = () => {
                     data-testid="edit-applicability"
                   >
                     <option value="UNKNOWN">Unknown / not set</option>
-                    <option value="REQUIRED">Yes, required</option>
-                    <option value="NOT_REQUIRED">No, not required</option>
+                    <option value="REQUIRED">Yes, applies to this property</option>
+                    <option value="NOT_REQUIRED">No, does not apply</option>
                   </select>
                 </div>
                 {editForm.applicability === 'NOT_REQUIRED' && (

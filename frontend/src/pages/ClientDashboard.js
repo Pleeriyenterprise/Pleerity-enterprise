@@ -184,7 +184,7 @@ const ClientDashboard = () => {
           <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="alert-provisioning-incomplete">
             <AlertCircle className="h-4 w-4 text-amber-600" />
             <AlertDescription>
-              <span className="font-medium text-amber-900">Not provisioned or action required.</span>
+              <span className="font-medium text-amber-900">Not provisioned or action needed.</span>
               <span className="block mt-1 text-amber-800">{error || 'Complete onboarding or set your password to access the dashboard.'}</span>
               {redirectPath && (
                 <Button
@@ -220,6 +220,20 @@ const ClientDashboard = () => {
               <span className="text-amber-700 ml-1">Some tracked items depend on your property settings. Update your properties so we can show the right items and dates.</span>
               <Button variant="outline" size="sm" className="mt-2 border-amber-300 text-amber-800 hover:bg-amber-100" onClick={() => navigate('/requirements')}>
                 Review requirements
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Provisional score banner: REQUIRED tracked items missing confirmed expiry */}
+        {requirementsList.length > 0 && requirementsList.some(r => (r.applicability || '').toUpperCase() === 'REQUIRED' && !r.confirmed_expiry_date) && (
+          <Alert className="mb-6 border-blue-200 bg-blue-50" data-testid="provisional-score-banner">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription>
+              <span className="font-medium text-blue-800">Score is provisional.</span>
+              <span className="text-blue-700 ml-1">Confirm expiry dates for tracked items to finalise your score. Some items that apply to your properties do not yet have a confirmed expiry date.</span>
+              <Button variant="outline" size="sm" className="mt-2 border-blue-300 text-blue-800 hover:bg-blue-100" onClick={() => navigate('/requirements')}>
+                Confirm expiry dates
               </Button>
             </AlertDescription>
           </Alert>
