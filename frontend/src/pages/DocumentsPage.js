@@ -91,11 +91,15 @@ const DocumentsPage = () => {
     const POLL_INTERVAL_MS = 2500;
     const TIMEOUT_MS = 90000;
 
-    const stopPolling = () => {
+    const clearTimersOnly = () => {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
+    };
+
+    const stopPolling = () => {
+      clearTimersOnly();
       setExtractingDocumentId(null);
       extractingContextRef.current = null;
     };
@@ -141,7 +145,8 @@ const DocumentsPage = () => {
       toast.info('Extraction is taking longer than expected. You can enter details manually.');
     }, TIMEOUT_MS);
 
-    return stopPolling;
+    // Cleanup: only clear timers so a new upload's context in the ref is not wiped before the next effect runs
+    return clearTimersOnly;
   }, [extractingDocumentId]);
 
   const fetchData = async () => {
