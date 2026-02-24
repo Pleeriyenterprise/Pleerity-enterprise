@@ -19,27 +19,31 @@ import {
 import { ChevronLeft, ArrowRight } from 'lucide-react';
 
 const META_TITLE = 'UK Landlord Compliance Checklist (2026 Guide)';
-const META_DESCRIPTION = 'A practical UK landlord compliance checklist for 2026. Track gas safety, EICR, EPC, HMO licences and expiry dates with structured reminders and documentation.';
+const META_DESCRIPTION = 'A practical UK landlord compliance checklist covering gas safety, EICR, EPC and HMO licence tracking. Learn how to organise and monitor expiry dates.';
 const CANONICAL = '/insights/uk-landlord-compliance-checklist-2026';
 const PUBLISHED = '2026-01-01';
 const UPDATED = '2026-01-01';
 
 const FAQ_ITEMS = [
   {
-    question: 'Is landlord compliance mandatory in the UK?',
-    answer: 'Yes. Landlords in the UK have legal obligations around gas safety, electrical safety (EICR), energy performance (EPC), and—where applicable—HMO licensing and deposit protection. Requirements vary by property type and location. This guide is informational; check current legislation and your local authority for your specific duties.',
+    question: 'Is this legal advice?',
+    answer: 'No. This guide provides informational content only. Always consult official guidance or a qualified professional where necessary.',
   },
   {
     question: 'How often do gas safety certificates expire?',
-    answer: 'Gas safety records (CP12) are typically valid for 12 months and must be renewed annually where gas appliances are present. Landlords must arrange an inspection by a Gas Safe registered engineer and provide a copy to tenants. Keeping track of the expiry date helps avoid gaps in compliance.',
+    answer: 'Gas Safety Records are typically valid for 12 months where gas appliances are present.',
+  },
+  {
+    question: 'How long does an EICR last?',
+    answer: 'An EICR is commonly valid for up to 5 years, though this can vary depending on circumstances.',
   },
   {
     question: 'Do all landlords need an HMO licence?',
-    answer: 'Not all. HMO (House in Multiple Occupation) licensing applies to certain multi-occupancy properties; rules and thresholds vary by local authority. Some areas have additional or selective licensing. Check your local authority guidance to see if your property requires a licence and what the renewal period is.',
+    answer: 'No. Licensing depends on property type and local council regulations.',
   },
   {
-    question: 'What happens if I miss an EICR renewal?',
-    answer: 'Electrical safety (EICR) requirements must be met for most rented properties. Missing a renewal can create risk and potential enforcement action depending on the circumstances. Consequences vary; this guide does not constitute legal advice. Proactive tracking and reminders help you stay ahead of renewal dates.',
+    question: 'What is the best way to track landlord compliance?',
+    answer: 'A structured tracking system centralises documents, expiry dates, and reminders across properties.',
   },
 ];
 
@@ -80,13 +84,16 @@ export default function UKLandlordComplianceChecklist2026() {
 
           <header className="mb-10">
             <h1 className="text-4xl sm:text-5xl font-bold text-midnight-blue mb-6">
-              UK Landlord Compliance Checklist (2026)
+              UK Landlord Compliance Checklist (2026 Guide)
             </h1>
-            <p className="text-xl text-gray-600 leading-relaxed mb-6">
-              Being a UK landlord involves managing multiple certificates, documents, and renewal deadlines. This guide outlines the core compliance items commonly required and how to track them in a structured way.
+            <p className="text-xl text-gray-600 leading-relaxed mb-4">
+              Managing rental property in the UK involves tracking multiple safety certificates, documents, and renewal deadlines. Requirements vary depending on property type and local authority, but most landlords must maintain a structured record of safety and tenancy documentation.
+            </p>
+            <p className="text-gray-700 leading-relaxed mb-6">
+              This guide outlines the core compliance items commonly required and explains how to track them in a practical, organised way.
             </p>
             <p className="text-sm text-gray-500 italic border-l-4 border-amber-200 pl-4">
-              This guide is informational and does not constitute legal advice. Requirements may vary depending on property type and local authority.
+              This guide is informational and does not constitute legal advice. Requirements may vary based on property type and council regulations.
             </p>
           </header>
 
@@ -95,15 +102,25 @@ export default function UKLandlordComplianceChecklist2026() {
             <h2 className="text-2xl font-bold text-midnight-blue mb-6">Core Safety Certificates</h2>
 
             <h3 className="text-lg font-semibold text-midnight-blue mt-6 mb-3">Gas Safety Record (CP12)</h3>
+            <p className="text-gray-700 mb-4">
+              If your property contains gas appliances, an annual Gas Safety Record (CP12) is typically required.
+            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Key points:</p>
             <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-              <li>Required annually (where gas appliances exist)</li>
-              <li>Issued by a Gas Safe registered engineer</li>
-              <li>Keep a record and provide a copy to tenants</li>
+              <li>Carried out by a Gas Safe registered engineer</li>
+              <li>Valid for 12 months</li>
+              <li>Copy must be provided to tenants</li>
             </ul>
+            <p className="text-gray-700 mb-4">
+              Missing renewals often occur due to manual tracking errors.
+            </p>
+            <p className="text-gray-700 mb-4">
+              <strong>Structured approach:</strong> Instead of relying on calendar reminders, many landlords use automated expiry tracking systems to monitor CP12 renewal dates across properties.
+            </p>
             <Card className="bg-electric-teal/5 border-electric-teal/20 my-6">
               <CardContent className="p-4">
                 <p className="text-gray-700 mb-3">
-                  Instead of tracking CP12 dates manually, use automated expiry reminders inside{' '}
+                  Track CP12 expiry automatically inside{' '}
                   <Link to="/compliance-vault-pro" className="text-electric-teal font-medium hover:underline">Compliance Vault Pro</Link>.
                 </p>
                 <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" asChild>
@@ -113,39 +130,62 @@ export default function UKLandlordComplianceChecklist2026() {
             </Card>
 
             <h3 className="text-lg font-semibold text-midnight-blue mt-6 mb-3">Electrical Installation Condition Report (EICR)</h3>
+            <p className="text-gray-700 mb-4">
+              Most rental properties require periodic electrical inspection.
+            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Typical considerations:</p>
             <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-              <li>Typically every 5 years (subject to property type)</li>
-              <li>Required for most rented properties</li>
+              <li>Usually valid for 5 years (subject to circumstances)</li>
+              <li>Must be carried out by a qualified electrician</li>
+              <li>Reports may include remedial actions</li>
             </ul>
+            <p className="text-gray-700 mb-4">
+              Tracking EICR expiry is especially important for portfolio landlords managing multiple properties.
+            </p>
             <Card className="bg-electric-teal/5 border-electric-teal/20 my-6">
               <CardContent className="p-4">
                 <p className="text-gray-700">
-                  Set automated <Link to="/insights/understanding-eicr-expiry-reminders" className="text-electric-teal font-medium hover:underline">EICR expiry reminders</Link> to avoid missed deadlines.
+                  Set automated <Link to="/insights/understanding-eicr-expiry-reminders" className="text-electric-teal font-medium hover:underline">EICR expiry reminders</Link> inside your compliance dashboard.
                 </p>
               </CardContent>
             </Card>
 
             <h3 className="text-lg font-semibold text-midnight-blue mt-6 mb-3">Energy Performance Certificate (EPC)</h3>
+            <p className="text-gray-700 mb-4">
+              An EPC is required when letting a property.
+            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Important notes:</p>
             <ul className="list-disc list-inside text-gray-700 space-y-2">
-              <li>Required when letting</li>
-              <li>Must meet minimum rating where applicable</li>
+              <li>Must meet minimum rating thresholds where applicable</li>
+              <li>Valid for 10 years</li>
+              <li>Required before marketing a property</li>
             </ul>
           </section>
 
           {/* Licensing & Property Type */}
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-midnight-blue mb-6">Licensing & Property Type Requirements</h2>
-            <h3 className="text-lg font-semibold text-midnight-blue mb-3">HMO Licence (where applicable)</h3>
+            <h3 className="text-lg font-semibold text-midnight-blue mb-3">HMO Licence (Where Applicable)</h3>
+            <p className="text-gray-700 mb-4">
+              Certain Houses in Multiple Occupation require licensing.
+            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Licensing depends on:</p>
             <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-              <li>Required for certain multi-occupancy properties</li>
-              <li>Renewal periods vary by council</li>
+              <li>Number of occupants</li>
+              <li>Property layout</li>
+              <li>Local council regulations</li>
             </ul>
-            <p className="text-gray-600 text-sm mb-4">Check local authority guidance for your area.</p>
+            <p className="text-gray-700 mb-4">
+              Renewal cycles vary by council.
+            </p>
+            <p className="text-gray-700 mb-4">
+              Because licence expiry dates differ from safety certificate dates, they should be tracked separately.
+            </p>
             <Card className="bg-electric-teal/5 border-electric-teal/20 my-6">
               <CardContent className="p-4">
                 <p className="text-gray-700">
-                  Track HMO licence renewal dates inside a structured compliance dashboard. See our{' '}
-                  <Link to="/insights/hmo-compliance-tracking-uk-explained" className="text-electric-teal font-medium hover:underline">HMO compliance tracking guide</Link>.
+                  Track HMO licence renewal dates per property to avoid confusion. See our{' '}
+                  <Link to="/insights/hmo-compliance-tracking-uk-explained" className="text-electric-teal font-medium hover:underline">HMO Compliance Guide</Link>.
                 </p>
               </CardContent>
             </Card>
@@ -154,26 +194,51 @@ export default function UKLandlordComplianceChecklist2026() {
           {/* Tenancy & Documentation */}
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-midnight-blue mb-6">Tenancy & Documentation Records</h2>
+            <p className="text-gray-700 mb-4">
+              Beyond safety certificates, landlords typically maintain:
+            </p>
             <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
               <li>Tenancy agreements</li>
-              <li>Deposit protection evidence</li>
+              <li>Deposit protection confirmation</li>
               <li>Prescribed information</li>
               <li>Right-to-rent checks</li>
-              <li>Inventory and check-in reports</li>
+              <li>Inventory / check-in documentation</li>
             </ul>
-            <p className="text-gray-600">
-              These may not have expiry dates but should be stored and organised for each tenancy.
+            <p className="text-gray-700">
+              While some of these do not expire annually, they should be centrally stored and accessible in case of audit or dispute.
             </p>
           </section>
 
-          {/* How to Track Compliance */}
+          {/* How to Track Landlord Compliance Properly */}
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-midnight-blue mb-6">How to Track Compliance Properly</h2>
+            <h2 className="text-2xl font-bold text-midnight-blue mb-6">How to Track Landlord Compliance Properly</h2>
             <p className="text-gray-700 mb-4">
-              Most landlords track compliance using spreadsheets, email reminders, and calendar alerts. Common risks include missed renewals, fragmented storage, and no single view across the portfolio.
+              Many landlords manage compliance using:
             </p>
+            <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+              <li>Spreadsheets</li>
+              <li>Email folders</li>
+              <li>Phone reminders</li>
+              <li>Paper files</li>
+            </ul>
+            <p className="text-sm font-medium text-gray-700 mb-2">Common risks include:</p>
+            <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+              <li>Missed renewals</li>
+              <li>Fragmented storage</li>
+              <li>No portfolio overview</li>
+              <li>Difficulty identifying which property requires attention</li>
+            </ul>
             <p className="text-gray-700 mb-4">
-              A structured compliance tracking system centralises documents, expiry dates, reminder schedules, and property-level visibility.
+              A structured compliance tracking system centralises:
+            </p>
+            <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+              <li>Documents</li>
+              <li>Expiry dates</li>
+              <li>Reminder schedules</li>
+              <li>Property-level visibility</li>
+            </ul>
+            <p className="text-gray-700 mb-6">
+              Instead of reacting after deadlines pass, you can monitor everything in one dashboard.
             </p>
             <Card className="bg-midnight-blue text-white my-8 p-6 rounded-xl">
               <p className="text-lg mb-4">
@@ -189,26 +254,58 @@ export default function UKLandlordComplianceChecklist2026() {
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-midnight-blue mb-6">Portfolio-Level Compliance Tracking</h2>
             <p className="text-gray-700 mb-4">
-              Each property may have different certificates, expiry dates, and licence requirements. Tracking per property prevents confusion. A structured risk indicator can help you see which properties need attention—without overpromising outcomes.
+              If you manage more than one property, tracking becomes more complex.
             </p>
-          </section>
-
-          {/* What Happens If You Miss a Deadline */}
-          <section className="mb-10">
-            <h2 className="text-2xl font-bold text-midnight-blue mb-6">What Happens If You Miss a Deadline?</h2>
+            <p className="text-sm font-medium text-gray-700 mb-2">Each property may have:</p>
+            <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+              <li>Different certificate expiry dates</li>
+              <li>Different licensing status</li>
+              <li>Different inspection schedules</li>
+            </ul>
             <p className="text-gray-700 mb-4">
-              Consequences can vary depending on the obligation and circumstances. This is why proactive tracking matters. Set reminders before expiry instead of reacting after.
+              A structured system assigns compliance tracking at the property level, reducing confusion and improving visibility.
             </p>
-            <Button variant="outline" className="border-electric-teal text-electric-teal hover:bg-electric-teal/10" asChild>
-              <Link to="/intake/start">Set up reminders in Compliance Vault Pro <ArrowRight className="w-4 h-4 ml-2 inline" /></Link>
-            </Button>
+            <p className="text-gray-700">
+              Some platforms provide informational risk indicators to highlight which properties require attention. These indicators are based on uploaded evidence and confirmed dates.
+            </p>
           </section>
 
-          {/* Lead magnet: Downloadable Checklist */}
+          {/* What Happens If You Miss a Compliance Deadline? */}
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-midnight-blue mb-6">Downloadable Landlord Compliance Checklist (Free PDF)</h2>
+            <h2 className="text-2xl font-bold text-midnight-blue mb-6">What Happens If You Miss a Compliance Deadline?</h2>
+            <p className="text-gray-700 mb-4">
+              Consequences vary depending on the requirement and local authority.
+            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Common issues include:</p>
+            <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+              <li>Enforcement notices</li>
+              <li>Financial penalties</li>
+              <li>Restrictions on serving notices</li>
+              <li>Tenant disputes</li>
+            </ul>
+            <p className="text-gray-700 mb-4">
+              Proactive tracking reduces the likelihood of oversight.
+            </p>
+            <p className="text-gray-700 mb-4">
+              Instead of manual reminders, automated systems send notifications before expiry.
+            </p>
+          </section>
+
+          {/* Lead magnet: Download the Free Landlord Compliance Checklist (PDF) */}
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-midnight-blue mb-6">Download the Free Landlord Compliance Checklist (PDF)</h2>
+            <p className="text-gray-700 mb-4">
+              If you prefer a manual overview, you can use a structured checklist covering:
+            </p>
+            <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+              <li>Gas Safety</li>
+              <li>EICR</li>
+              <li>EPC</li>
+              <li>Licensing</li>
+              <li>Tenancy documentation</li>
+            </ul>
             <p className="text-gray-700 mb-6">
-              Get our free, editable checklist for UK landlord compliance. Enter your email and we&apos;ll send the PDF to your inbox.
+              Download the editable checklist and use it as a starting framework.
             </p>
             <Card className="bg-gray-50 border-gray-200 max-w-lg">
               <CardContent className="p-6">
@@ -222,7 +319,7 @@ export default function UKLandlordComplianceChecklist2026() {
                     required
                   />
                   <Button type="submit" className="w-full bg-electric-teal hover:bg-electric-teal/90">
-                    Send me the checklist
+                    Download Free Checklist
                   </Button>
                 </form>
                 <p className="text-xs text-gray-500 mt-4">
@@ -235,12 +332,20 @@ export default function UKLandlordComplianceChecklist2026() {
           {/* Final Thoughts */}
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-midnight-blue mb-6">Final Thoughts</h2>
+            <p className="text-gray-700 mb-4">
+              Landlord compliance is not about complexity.
+              <br />
+              It is about structure.
+            </p>
             <p className="text-gray-700 mb-6">
-              Compliance is not about panic. It&apos;s about structure and visibility. Start tracking your landlord compliance checklist today.
+              When documents, dates, and reminders are centralised, oversight becomes significantly easier.
+            </p>
+            <p className="text-gray-700 mb-6">
+              If you want to track your UK landlord compliance checklist digitally, automate reminders, and organise documents per property:
             </p>
             <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
-              <Link to="/intake/start">
-                Start Free Trial
+              <Link to="/compliance-vault-pro">
+                Access Compliance Vault Pro
                 <ArrowRight className="w-5 h-5 ml-2 inline" />
               </Link>
             </Button>
@@ -250,9 +355,9 @@ export default function UKLandlordComplianceChecklist2026() {
           <section className="mb-10 pt-8 border-t border-gray-200">
             <h2 className="text-lg font-semibold text-midnight-blue mb-4">Related guides</h2>
             <ul className="space-y-2 text-gray-700">
-              <li><Link to="/insights/gas-safety-certificate-expiry-tracking-guide" className="text-electric-teal hover:underline">Gas Safety Certificate Expiry Tracking Guide</Link></li>
-              <li><Link to="/insights/understanding-eicr-expiry-reminders" className="text-electric-teal hover:underline">Understanding EICR Expiry & Reminders</Link></li>
-              <li><Link to="/insights/hmo-compliance-tracking-uk-explained" className="text-electric-teal hover:underline">HMO Compliance Tracking UK Explained</Link></li>
+              <li><Link to="/insights/gas-safety-certificate-expiry-tracking-guide" className="text-electric-teal hover:underline">Gas Safety Expiry Guide</Link></li>
+              <li><Link to="/insights/understanding-eicr-expiry-reminders" className="text-electric-teal hover:underline">EICR Expiry Guide</Link></li>
+              <li><Link to="/insights/hmo-compliance-tracking-uk-explained" className="text-electric-teal hover:underline">HMO Compliance Guide</Link></li>
               <li><Link to="/compliance-vault-pro" className="text-electric-teal hover:underline">Compliance Vault Pro</Link></li>
               <li><Link to="/pricing" className="text-electric-teal hover:underline">Pricing</Link></li>
             </ul>
