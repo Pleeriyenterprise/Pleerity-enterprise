@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
@@ -6,6 +6,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
+import { Checkbox } from '../../components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -16,6 +17,19 @@ import {
 import { Mail, Phone, MapPin, Clock, Send, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+function getUtmAndReferrer() {
+  if (typeof window === 'undefined') return {};
+  const params = new URLSearchParams(window.location.search);
+  return {
+    utm_source: params.get('utm_source') || '',
+    utm_medium: params.get('utm_medium') || '',
+    utm_campaign: params.get('utm_campaign') || '',
+    utm_content: params.get('utm_content') || '',
+    utm_term: params.get('utm_term') || '',
+    referrer: document.referrer || '',
+  };
+}
+
 const ContactPage = () => {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -25,9 +39,17 @@ const ContactPage = () => {
     reason: '',
     subject: '',
     message: '',
+    privacy_accepted: false,
+    marketing_opt_in: false,
+    website: '',
+    ...getUtmAndReferrer(),
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, ...getUtmAndReferrer() }));
+  }, []);
 
   const contactReasons = [
     { value: 'general', label: 'General Inquiry' },
@@ -39,6 +61,10 @@ const ContactPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.privacy_accepted) {
+      toast.error('Please accept the privacy policy to submit.');
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -54,6 +80,15 @@ const ContactPage = () => {
           contact_reason: formData.reason,
           subject: formData.subject,
           message: formData.message,
+          privacy_accepted: formData.privacy_accepted,
+          marketing_opt_in: formData.marketing_opt_in,
+          website: formData.website || null,
+          referrer: formData.referrer || null,
+          utm_source: formData.utm_source || null,
+          utm_medium: formData.utm_medium || null,
+          utm_campaign: formData.utm_campaign || null,
+          utm_content: formData.utm_content || null,
+          utm_term: formData.utm_term || null,
         }),
       });
 
@@ -61,7 +96,9 @@ const ContactPage = () => {
         setIsSubmitted(true);
         toast.success('Message sent successfully!');
       } else {
-        throw new Error('Failed to send message');
+        const err = await response.json().catch(() => ({}));
+        const msg = err.detail || 'Failed to send message';
+        toast.error(typeof msg === 'string' ? msg : 'Failed to send message. Please try again.');
       }
     } catch (error) {
       toast.error('Failed to send message. Please try again.');
@@ -105,6 +142,10 @@ const ContactPage = () => {
                   reason: '',
                   subject: '',
                   message: '',
+                  privacy_accepted: false,
+                  marketing_opt_in: false,
+                  website: '',
+                  ...getUtmAndReferrer(),
                 });
               }}
             >
@@ -198,7 +239,7 @@ const ContactPage = () => {
                   <h2 className="text-2xl font-bold text-midnight-blue mb-6">
                     Send us a message
                   </h2>
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-6 relative">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="fullName">Full Name *</Label>
@@ -286,6 +327,40 @@ const ContactPage = () => {
                         required
                         data-testid="contact-message"
                       />
+                    </div>
+
+                    {/* Honeypot - hidden from users */}
+                    <div className="absolute -left-[9999px] w-1 h-1 overflow-hidden" aria-hidden="true">
+                      <Label htmlFor="website">Website</Label>
+                      <Input
+                        id="website"
+                        type="text"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={formData.website}
+                        onChange={(e) => handleChange('website', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="privacy_accepted"
+                        checked={formData.privacy_accepted}
+                        onCheckedChange={(c) => handleChange('privacy_accepted', !!c)}
+                      />
+                      <label htmlFor="privacy_accepted" className="text-sm leading-tight">
+                        I have read and accept the <a href="/privacy" className="text-electric-teal underline">privacy policy</a>. *
+                      </label>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="marketing_opt_in"
+                        checked={formData.marketing_opt_in}
+                        onCheckedChange={(c) => handleChange('marketing_opt_in', !!c)}
+                      />
+                      <label htmlFor="marketing_opt_in" className="text-sm text-gray-600">
+                        I would like to receive occasional updates and offers from Pleerity (optional).
+                      </label>
                     </div>
 
                     <Button

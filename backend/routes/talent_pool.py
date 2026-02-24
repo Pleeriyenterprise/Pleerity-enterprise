@@ -9,9 +9,14 @@ from models import AuditAction
 from utils.audit import create_audit_log
 from utils.submission_utils import (
     check_rate_limit,
-    compute_dedupe_key,
     sanitize_html,
+    is_website_honeypot_filled,
+    compute_spam_score,
+    normalize_email,
     MAX_FIELD_LENGTH,
+    MAX_NAME_LENGTH,
+    MAX_PHONE_LENGTH,
+    SPAM_THRESHOLD,
 )
 from middleware import admin_route_guard
 from datetime import datetime, timezone, timedelta
@@ -40,6 +45,9 @@ class TalentPoolSubmissionRequest(BaseModel):
     work_style: List[str]
     cv_filename: Optional[str] = None
     consent_accepted: bool
+    privacy_accepted: bool = False
+    website: Optional[str] = None
+    honeypot: Optional[str] = None
 
 
 class StatusUpdateRequest(BaseModel):
@@ -50,37 +58,52 @@ class StatusUpdateRequest(BaseModel):
 
 @router.post("/submit")
 async def submit_talent_pool(data: TalentPoolSubmissionRequest, request: Request):
-    """Public endpoint for submitting talent pool application. Rate limited and deduped within 24h."""
+    """Public talent pool submit. Requires privacy_accepted. Dedupes by (type+email) 24h with duplicate_ping. Spam score => status SPAM when >=50."""
+    if not data.privacy_accepted:
+        raise HTTPException(status_code=422, detail="You must accept the privacy policy to submit.")
+
     client_ip = request.client.host if request.client else "unknown"
     if not check_rate_limit(client_ip, "talent"):
         raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
 
+    honeypot_filled = is_website_honeypot_filled(data.website, data.honeypot)
+    safe_summary = sanitize_html(data.professional_summary, max_len=MAX_FIELD_LENGTH)
+    spam_score, _ = compute_spam_score(safe_summary, honeypot_filled)
+    status = "SPAM" if spam_score >= SPAM_THRESHOLD else "NEW"
+
     db = database.get_db()
     now = datetime.now(timezone.utc)
-    msg_snippet = (data.professional_summary or "")[:80]
-    dedupe_key = compute_dedupe_key("talent", data.email, data.phone, msg_snippet, now)
+    email_norm = normalize_email(data.email)
     since_24h = now - timedelta(hours=24)
     since_24h_str = since_24h.isoformat()
     existing = await db.talent_pool.find_one(
-        {"dedupe_key": dedupe_key, "created_at": {"$gte": since_24h_str}},
+        {"email_normalized": email_norm, "created_at": {"$gte": since_24h_str}},
         {"submission_id": 1},
     )
     if existing:
-        logger.info("Talent submission duplicate within 24h")
+        await db.talent_pool.update_one(
+            {"submission_id": existing["submission_id"]},
+            {
+                "$set": {"last_activity_at": now, "updated_at": now},
+                "$push": {"audit": {"at": now.isoformat(), "by": "system", "action": "duplicate_ping"}},
+            },
+        )
+        logger.info("Talent duplicate within 24h, updated duplicate_ping: %s", existing["submission_id"])
         return {
             "ok": True,
             "submission_id": existing["submission_id"],
             "message": "Thank you. Your details have been added to our Talent Pool.",
         }
 
-    # Sanitize free text
-    safe_summary = sanitize_html(data.professional_summary, max_len=MAX_FIELD_LENGTH)
     safe_other_interest = sanitize_html(data.other_interest_text, max_len=500) if data.other_interest_text else None
     safe_other_skills = sanitize_html(data.other_skills_text, max_len=500) if data.other_skills_text else None
-    payload = data.dict()
+    payload = {k: v for k, v in data.dict().items() if k not in ("website", "honeypot", "privacy_accepted")}
     payload["professional_summary"] = safe_summary
     payload["other_interest_text"] = safe_other_interest
     payload["other_skills_text"] = safe_other_skills
+    payload["full_name"] = (payload.get("full_name") or "")[:MAX_NAME_LENGTH]
+    if payload.get("phone"):
+        payload["phone"] = (payload["phone"] or "")[:MAX_PHONE_LENGTH]
 
     submission = TalentPoolSubmission(**payload)
     submission_doc = submission.dict()
@@ -88,11 +111,24 @@ async def submit_talent_pool(data: TalentPoolSubmissionRequest, request: Request
         if submission_doc.get(key):
             val = submission_doc[key]
             submission_doc[key] = val.isoformat() if hasattr(val, "isoformat") else val
-    submission_doc["dedupe_key"] = dedupe_key
+    submission_doc["email_normalized"] = email_norm
+    submission_doc["status"] = status
+    submission_doc["spam_score"] = spam_score
+    submission_doc["last_activity_at"] = now
     submission_doc["source_ip"] = client_ip
     submission_doc["user_agent"] = (request.headers.get("user-agent") or "")[:500]
+    if "audit" not in submission_doc or not submission_doc["audit"]:
+        submission_doc["audit"] = [{"at": now.isoformat(), "by": "system", "action": "created"}]
 
     await db.talent_pool.insert_one(submission_doc)
+
+    if status == "NEW":
+        try:
+            from utils.submission_utils import notify_admin_new_submission
+            summary = f"{submission.full_name} &lt;{submission.email}&gt; – Talent Pool"
+            await notify_admin_new_submission("talent", submission.submission_id, summary)
+        except Exception:
+            pass
 
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,

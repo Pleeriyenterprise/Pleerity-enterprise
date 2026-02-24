@@ -68,11 +68,12 @@ class NoteBody(BaseModel):
 async def export_submissions_csv(
     type: str = Query(..., description="contact | talent | partnership | lead"),
     status: Optional[str] = None,
+    q: Optional[str] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     current_user: dict = Depends(admin_route_guard),
 ):
-    """Export submissions as CSV for the given type and filters."""
+    """Export submissions as CSV for the given type and filters (including search q)."""
     if type not in SUBMISSION_TYPES:
         raise HTTPException(status_code=400, detail="type must be one of: contact, talent, partnership, lead")
     db = database.get_db()
@@ -83,6 +84,30 @@ async def export_submissions_csv(
     query = {}
     if status:
         query["status"] = status
+    if q:
+        if type == "contact":
+            query["$or"] = [
+                {"full_name": {"$regex": q, "$options": "i"}},
+                {"email": {"$regex": q, "$options": "i"}},
+                {"subject": {"$regex": q, "$options": "i"}},
+            ]
+        elif type == "talent":
+            query["$or"] = [
+                {"full_name": {"$regex": q, "$options": "i"}},
+                {"email": {"$regex": q, "$options": "i"}},
+            ]
+        elif type == "partnership":
+            query["$or"] = [
+                {"first_name": {"$regex": q, "$options": "i"}},
+                {"last_name": {"$regex": q, "$options": "i"}},
+                {"company_name": {"$regex": q, "$options": "i"}},
+                {"work_email": {"$regex": q, "$options": "i"}},
+            ]
+        else:
+            query["$or"] = [
+                {"name": {"$regex": q, "$options": "i"}},
+                {"email": {"$regex": q, "$options": "i"}},
+            ]
     if from_date:
         query[created_field] = query.get(created_field) or {}
         query[created_field]["$gte"] = from_date
@@ -192,6 +217,7 @@ async def list_submissions(
                 "name": it.get("full_name"),
                 "email": it.get("email"),
                 "phone": it.get("phone"),
+                "subject": it.get("subject"),
                 "status": it.get("status"),
                 "source": (it.get("source") or {}).get("page"),
                 "assigned_to": None,

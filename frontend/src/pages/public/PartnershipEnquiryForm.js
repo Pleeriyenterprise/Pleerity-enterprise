@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
@@ -11,6 +11,19 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { CheckCircle, AlertCircle, Handshake } from 'lucide-react';
+
+function getUtmAndReferrer() {
+  if (typeof window === 'undefined') return {};
+  const params = new URLSearchParams(window.location.search);
+  return {
+    utm_source: params.get('utm_source') || '',
+    utm_medium: params.get('utm_medium') || '',
+    utm_campaign: params.get('utm_campaign') || '',
+    utm_content: params.get('utm_content') || '',
+    utm_term: params.get('utm_term') || '',
+    referrer: document.referrer || '',
+  };
+}
 
 const PartnershipEnquiryForm = () => {
   const navigate = useNavigate();
@@ -25,8 +38,14 @@ const PartnershipEnquiryForm = () => {
     org_description: '', primary_services: '', typical_client_profile: '',
     collaboration_type: '', collaboration_other: '', problem_solved: '',
     works_with_partners: false, org_size: '', gdpr_compliant_status: '', timeline: '',
-    additional_notes: '', declaration_accepted: false
+    additional_notes: '', declaration_accepted: false,
+    privacy_accepted: false, marketing_opt_in: false, website: '',
+    ...getUtmAndReferrer(),
   });
+
+  useEffect(() => {
+    setForm((prev) => ({ ...prev, ...getUtmAndReferrer() }));
+  }, []);
 
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -42,6 +61,7 @@ const PartnershipEnquiryForm = () => {
     if (!form.collaboration_type || !form.problem_solved) return 'Describe partnership intent';
     if (!form.org_size || !form.gdpr_compliant_status || !form.timeline) return 'Complete readiness section';
     if (!form.declaration_accepted) return 'Accept declaration';
+    if (!form.privacy_accepted) return 'Please accept the privacy policy';
     return null;
   };
 
@@ -50,14 +70,29 @@ const PartnershipEnquiryForm = () => {
     const err = validate();
     if (err) { setError(err); return; }
     setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`${API_URL}/api/partnerships/submit`, {
+      const res = await fetch(`${API_URL}/api/public/partnership`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          ...form,
+          privacy_accepted: form.privacy_accepted,
+          marketing_opt_in: form.marketing_opt_in,
+          website: form.website || null,
+          referrer: form.referrer || null,
+          utm_source: form.utm_source || null,
+          utm_medium: form.utm_medium || null,
+          utm_campaign: form.utm_campaign || null,
+          utm_content: form.utm_content || null,
+          utm_term: form.utm_term || null,
+        }),
       });
       if (res.ok) setSuccess(true);
-      else setError('Submission failed');
+      else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || 'Submission failed');
+      }
     } catch { setError('Network error'); }
     finally { setLoading(false); }
   };
@@ -184,8 +219,20 @@ const PartnershipEnquiryForm = () => {
             <div><Label>Additional notes</Label><Textarea value={form.additional_notes} onChange={e => setForm({...form, additional_notes: e.target.value})} /></div>
           </CardContent></Card>
 
-          <Card><CardContent className="pt-6">
+          <Card><CardContent className="pt-6 relative">
+            <div className="absolute -left-[9999px] w-1 h-1 overflow-hidden" aria-hidden="true">
+              <Label htmlFor="website-honeypot">Website</Label>
+              <Input id="website-honeypot" type="text" tabIndex={-1} autoComplete="off" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
+            </div>
             <div className="flex items-start space-x-2">
+              <Checkbox checked={form.privacy_accepted} onCheckedChange={c => setForm({...form, privacy_accepted: !!c})} />
+              <label className="text-sm">I have read and accept the <a href="/privacy" className="text-electric-teal underline">privacy policy</a>. *</label>
+            </div>
+            <div className="flex items-start space-x-2 mt-2">
+              <Checkbox checked={form.marketing_opt_in} onCheckedChange={c => setForm({...form, marketing_opt_in: !!c})} />
+              <label className="text-sm text-gray-600">I would like to receive occasional updates from Pleerity (optional).</label>
+            </div>
+            <div className="flex items-start space-x-2 mt-2">
               <Checkbox checked={form.declaration_accepted} onCheckedChange={c => setForm({...form, declaration_accepted: c})} />
               <label className="text-sm">I understand that submission does not guarantee a partnership and that Pleerity Enterprise Ltd reviews proposals based on strategic alignment and capacity. *</label>
             </div>

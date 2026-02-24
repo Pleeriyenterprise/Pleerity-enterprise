@@ -4,7 +4,18 @@ from database import database
 from models.partnership import PartnershipEnquiry, PartnershipStatus
 from models import AuditAction
 from utils.audit import create_audit_log
-from utils.submission_utils import check_rate_limit, compute_dedupe_key, sanitize_html, MAX_FIELD_LENGTH
+from utils.submission_utils import (
+    check_rate_limit,
+    sanitize_html,
+    is_website_honeypot_filled,
+    compute_spam_score,
+    normalize_email,
+    MAX_FIELD_LENGTH,
+    MAX_NAME_LENGTH,
+    MAX_PHONE_LENGTH,
+    MAX_ORG_LENGTH,
+    SPAM_THRESHOLD,
+)
 from middleware import admin_route_guard
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
@@ -41,6 +52,9 @@ class PartnershipEnquiryRequest(BaseModel):
     timeline: str
     additional_notes: Optional[str] = None
     declaration_accepted: bool
+    privacy_accepted: bool = False
+    website: Optional[str] = None
+    honeypot: Optional[str] = None
 
 
 class StatusUpdateRequest(BaseModel):
@@ -51,33 +65,52 @@ class StatusUpdateRequest(BaseModel):
 
 @router.post("/submit")
 async def submit_partnership_enquiry(data: PartnershipEnquiryRequest, request: Request):
-    """Public endpoint for submitting partnership enquiry. Rate limited and deduped within 24h."""
+    """Partnership submit. Requires privacy_accepted. Dedupes by (type+email) 24h with duplicate_ping. Spam score => status SPAM when >=50."""
+    if not data.privacy_accepted:
+        raise HTTPException(status_code=422, detail="You must accept the privacy policy to submit.")
+
     client_ip = request.client.host if request.client else "unknown"
     if not check_rate_limit(client_ip, "partnership"):
         raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
 
+    honeypot_filled = is_website_honeypot_filled(data.website, data.honeypot)
+    safe_notes = sanitize_html(data.additional_notes, max_len=MAX_FIELD_LENGTH) if data.additional_notes else None
+    msg_for_spam = safe_notes or data.problem_solved or ""
+    spam_score, _ = compute_spam_score(msg_for_spam, honeypot_filled)
+    status = "SPAM" if spam_score >= SPAM_THRESHOLD else "NEW"
+
     db = database.get_db()
     now = datetime.now(timezone.utc)
-    msg_snippet = (data.additional_notes or data.problem_solved or "")[:80]
-    dedupe_key = compute_dedupe_key("partnership", data.work_email, data.phone, msg_snippet, now)
+    email_norm = normalize_email(data.work_email)
     since_24h = now - timedelta(hours=24)
     since_24h_str = since_24h.isoformat()
     existing = await db.partnership_enquiries.find_one(
-        {"dedupe_key": dedupe_key, "created_at": {"$gte": since_24h_str}},
+        {"email_normalized": email_norm, "created_at": {"$gte": since_24h_str}},
         {"enquiry_id": 1},
     )
     if existing:
-        logger.info("Partnership submission duplicate within 24h")
+        await db.partnership_enquiries.update_one(
+            {"enquiry_id": existing["enquiry_id"]},
+            {
+                "$set": {"last_activity_at": now, "updated_at": now},
+                "$push": {"audit": {"at": now.isoformat(), "by": "system", "action": "duplicate_ping"}},
+            },
+        )
+        logger.info("Partnership duplicate within 24h, updated duplicate_ping: %s", existing["enquiry_id"])
         return {
             "ok": True,
             "submission_id": existing["enquiry_id"],
             "message": "Thank you. Your partnership enquiry has been received. If suitable, we will contact you.",
         }
 
-    safe_notes = sanitize_html(data.additional_notes, max_len=MAX_FIELD_LENGTH) if data.additional_notes else None
-    payload = data.dict()
+    payload = {k: v for k, v in data.dict().items() if k not in ("website", "honeypot", "privacy_accepted")}
     if safe_notes is not None:
         payload["additional_notes"] = safe_notes
+    payload["first_name"] = (payload.get("first_name") or "")[:MAX_NAME_LENGTH]
+    payload["last_name"] = (payload.get("last_name") or "")[:MAX_NAME_LENGTH]
+    if payload.get("phone"):
+        payload["phone"] = (payload["phone"] or "")[:MAX_PHONE_LENGTH]
+    payload["company_name"] = (payload.get("company_name") or "")[:MAX_ORG_LENGTH]
 
     enquiry = PartnershipEnquiry(**payload)
     enquiry_doc = enquiry.dict()
@@ -85,12 +118,25 @@ async def submit_partnership_enquiry(data: PartnershipEnquiryRequest, request: R
         if enquiry_doc.get(key):
             val = enquiry_doc[key]
             enquiry_doc[key] = val.isoformat() if hasattr(val, "isoformat") else val
-    enquiry_doc["dedupe_key"] = dedupe_key
+    enquiry_doc["email_normalized"] = email_norm
+    enquiry_doc["status"] = status
+    enquiry_doc["spam_score"] = spam_score
+    enquiry_doc["last_activity_at"] = now
     enquiry_doc["source_ip"] = client_ip
     enquiry_doc["user_agent"] = (request.headers.get("user-agent") or "")[:500]
+    if "audit" not in enquiry_doc or not enquiry_doc.get("audit"):
+        enquiry_doc["audit"] = [{"at": now.isoformat(), "by": "system", "action": "created"}]
 
     await db.partnership_enquiries.insert_one(enquiry_doc)
-    
+
+    if status == "NEW":
+        try:
+            from utils.submission_utils import notify_admin_new_submission
+            summary = f"{enquiry.company_name} – {enquiry.first_name} {enquiry.last_name} &lt;{enquiry.work_email}&gt;"
+            await notify_admin_new_submission("partnership", enquiry.enquiry_id, summary)
+        except Exception:
+            pass
+
     # Send acknowledgement email only if explicitly enabled (default off)
     send_ack = os.getenv("PARTNERSHIP_SEND_ACK_EMAIL", "false").strip().lower() == "true"
     email_sent = False

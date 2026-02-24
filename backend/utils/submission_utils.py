@@ -1,22 +1,63 @@
 """
 Submission validation, sanitization, dedupe and rate limiting for inbound submissions.
 Used by public lead, contact, partnership, talent endpoints.
+Enterprise limits: name<=120, org<=160, phone<=30, subject<=180, message<=2000, email<=254.
 """
+import os
 import re
 import hashlib
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# Max lengths (task: message <= 2000)
-MAX_MESSAGE_LENGTH = 2000
-MAX_NAME_LENGTH = 200
+
+async def notify_admin_new_submission(
+    submission_type: str,
+    submission_id: str,
+    summary: str,
+    detail_url_path: Optional[str] = None,
+) -> None:
+    """
+    If ADMIN_NOTIFY_EMAIL is set, send one internal 'new submission' email.
+    Logs errors and does not raise; does not block submission success.
+    """
+    admin_email = (os.environ.get("ADMIN_NOTIFY_EMAIL") or "").strip()
+    if not admin_email:
+        return
+    try:
+        from services.notification_orchestrator import notification_orchestrator
+        base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("ADMIN_DASHBOARD_URL") or "http://localhost:3000").rstrip("/")
+        link = f"{base_url}/admin/submissions/{submission_type}/{submission_id}" if detail_url_path is None else f"{base_url}{detail_url_path}"
+        subject = f"New {submission_type.title()} submission: {submission_id}"
+        message = f"<p>{summary}</p><p><a href=\"{link}\">View in admin →</a></p>"
+        idempotency_key = f"admin_notify_{submission_type}_{submission_id}_{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H')}"
+        result = await notification_orchestrator.send(
+            template_key="SUPPORT_INTERNAL_NOTIFICATION",
+            client_id=None,
+            context={"recipient": admin_email, "subject": subject, "message": message},
+            idempotency_key=idempotency_key,
+            event_type="submission_admin_notify",
+        )
+        if result.outcome not in ("sent", "duplicate_ignored"):
+            logger.warning("Admin notify for %s %s: outcome=%s", submission_type, submission_id, getattr(result, "outcome", None))
+    except Exception as e:
+        logger.exception("Admin notify email failed for %s %s: %s", submission_type, submission_id, e)
+
+# Enterprise hard limits (enhancement audit)
+MAX_NAME_LENGTH = 120
+MAX_ORG_LENGTH = 160
 MAX_EMAIL_LENGTH = 254
-MAX_PHONE_LENGTH = 50
-MAX_SUBJECT_LENGTH = 500
+MAX_PHONE_LENGTH = 30
+MAX_SUBJECT_LENGTH = 180
+MAX_MESSAGE_LENGTH = 2000
 MAX_FIELD_LENGTH = 2000
+# Legacy / backward compat (longer fields use these where needed)
+MAX_MESSAGE_LEGACY = 2000
+MAX_NAME_LEGACY = 200
+MAX_SUBJECT_LEGACY = 500
+MAX_PHONE_LEGACY = 50
 
 # Dangerous patterns (stored XSS / script injection)
 SCRIPT_PATTERN = re.compile(r"<script\b[^>]*>|</script>|javascript:", re.I)
@@ -98,10 +139,43 @@ def check_rate_limit(ip: str, key: str = "default") -> bool:
     return True
 
 
+def _is_field_filled(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return isinstance(value, str) and bool(value.strip())
+
+
 def is_honeypot_filled(honeypot_value: Optional[str]) -> bool:
     """If honeypot field is present and non-empty, treat as bot."""
-    if honeypot_value is None:
-        return False
-    if isinstance(honeypot_value, str) and honeypot_value.strip():
-        return True
-    return False
+    return _is_field_filled(honeypot_value)
+
+
+def is_website_honeypot_filled(website: Optional[str], honeypot: Optional[str]) -> bool:
+    """Task: honeypot field name 'website'. Accept both website and legacy honeypot."""
+    return _is_field_filled(website) or _is_field_filled(honeypot)
+
+
+# Spam scoring: +50 honeypot, +20 urls>3, +20 script; threshold 50 => status spam
+SPAM_SCORE_HONEYPOT = 50
+SPAM_SCORE_URLS = 20
+SPAM_SCORE_SCRIPT = 20
+SPAM_THRESHOLD = 50
+URL_PATTERN = re.compile(r"https?://[^\s]+", re.I)
+
+
+def compute_spam_score(message: Optional[str], honeypot_filled: bool) -> Tuple[int, bool]:
+    """
+    Returns (spam_score, has_script). +50 if honeypot, +20 if >3 URLs in message, +20 if script-like.
+    """
+    score = 0
+    has_script = False
+    if honeypot_filled:
+        score += SPAM_SCORE_HONEYPOT
+    if message and isinstance(message, str):
+        urls = URL_PATTERN.findall(message)
+        if len(urls) > 3:
+            score += SPAM_SCORE_URLS
+        if SCRIPT_PATTERN.search(message):
+            score += SPAM_SCORE_SCRIPT
+            has_script = True
+    return (score, has_script)

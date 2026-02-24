@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
@@ -12,6 +12,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { ArrowRight, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 
+function getUtmAndReferrer() {
+  if (typeof window === 'undefined') return {};
+  const params = new URLSearchParams(window.location.search);
+  return {
+    utm_source: params.get('utm_source') || '',
+    utm_medium: params.get('utm_medium') || '',
+    utm_campaign: params.get('utm_campaign') || '',
+    utm_content: params.get('utm_content') || '',
+    utm_term: params.get('utm_term') || '',
+    referrer: document.referrer || '',
+  };
+}
+
 const TalentPoolWizard = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -24,8 +37,14 @@ const TalentPoolWizard = () => {
     interest_areas: [], other_interest_text: '',
     professional_summary: '', years_experience: '',
     skills_tools: [], other_skills_text: '', availability: '', work_style: [],
-    consent_accepted: false
+    consent_accepted: false,
+    privacy_accepted: false, marketing_opt_in: false, website: '',
+    ...getUtmAndReferrer(),
   });
+
+  useEffect(() => {
+    setForm((prev) => ({ ...prev, ...getUtmAndReferrer() }));
+  }, []);
 
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -43,7 +62,7 @@ const TalentPoolWizard = () => {
     if (step === 1 && (!form.full_name || !form.email || !form.country)) return 'Fill all required fields';
     if (step === 2 && form.interest_areas.length === 0) return 'Select at least one interest';
     if (step === 3 && (!form.professional_summary || !form.years_experience)) return 'Complete all fields';
-    if (step === 4 && (!form.availability || form.work_style.length === 0 || !form.consent_accepted)) return 'Complete all fields and accept consent';
+    if (step === 4 && (!form.availability || form.work_style.length === 0 || !form.consent_accepted || !form.privacy_accepted)) return 'Complete all fields and accept consent and privacy policy';
     return null;
   };
 
@@ -60,14 +79,29 @@ const TalentPoolWizard = () => {
     const err = validate();
     if (err) { setError(err); return; }
     setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`${API_URL}/api/talent-pool/submit`, {
+      const res = await fetch(`${API_URL}/api/public/talent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          ...form,
+          privacy_accepted: form.privacy_accepted,
+          marketing_opt_in: form.marketing_opt_in,
+          website: form.website || null,
+          referrer: form.referrer || null,
+          utm_source: form.utm_source || null,
+          utm_medium: form.utm_medium || null,
+          utm_campaign: form.utm_campaign || null,
+          utm_content: form.utm_content || null,
+          utm_term: form.utm_term || null,
+        }),
       });
       if (res.ok) setSuccess(true);
-      else setError('Submission failed');
+      else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || 'Submission failed');
+      }
     } catch { setError('Network error'); }
     finally { setLoading(false); }
   };
@@ -110,7 +144,11 @@ const TalentPoolWizard = () => {
           <CardHeader><CardTitle>Step {step} of 4</CardTitle></CardHeader>
           <CardContent>
             {step === 1 && (
-              <div className="space-y-4">
+              <div className="space-y-4 relative">
+                <div className="absolute -left-[9999px] w-1 h-1 overflow-hidden" aria-hidden="true">
+                  <Label htmlFor="website-honeypot">Website</Label>
+                  <Input id="website-honeypot" type="text" tabIndex={-1} autoComplete="off" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
+                </div>
                 <div><Label>Full Name *</Label><Input value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} /></div>
                 <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></div>
                 <div><Label>Country *</Label><Input value={form.country} onChange={e => setForm({...form, country: e.target.value})} /></div>
@@ -172,6 +210,14 @@ const TalentPoolWizard = () => {
                   </div>
                 </div>
                 <div className="flex items-start space-x-2 pt-4 border-t">
+                  <Checkbox checked={form.privacy_accepted} onCheckedChange={c => setForm({...form, privacy_accepted: !!c})} />
+                  <label className="text-sm">I have read and accept the <a href="/privacy" className="text-electric-teal underline">privacy policy</a> *</label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Checkbox checked={form.marketing_opt_in} onCheckedChange={c => setForm({...form, marketing_opt_in: !!c})} />
+                  <label className="text-sm text-gray-600">I would like to receive occasional updates from Pleerity (optional).</label>
+                </div>
+                <div className="flex items-start space-x-2">
                   <Checkbox checked={form.consent_accepted} onCheckedChange={c => setForm({...form, consent_accepted: c})} />
                   <label className="text-sm">I understand this is not a job application *</label>
                 </div>

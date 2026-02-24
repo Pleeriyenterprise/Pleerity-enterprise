@@ -57,6 +57,18 @@ class TestSubmissionUtils:
         assert is_honeypot_filled("bot") is True
         assert is_honeypot_filled(" x ") is True
 
+    def test_is_website_honeypot_filled(self):
+        from utils.submission_utils import is_website_honeypot_filled
+        assert is_website_honeypot_filled(None, None) is False
+        assert is_website_honeypot_filled("", "") is False
+        assert is_website_honeypot_filled("url", None) is True
+        assert is_website_honeypot_filled(None, "x") is True
+
+    def test_compute_spam_score_honeypot(self):
+        from utils.submission_utils import compute_spam_score, SPAM_SCORE_HONEYPOT
+        score, _ = compute_spam_score("Hello", honeypot_filled=True)
+        assert score >= SPAM_SCORE_HONEYPOT
+
 
 # Admin API tests use TestClient from conftest
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -109,3 +121,125 @@ class TestAdminSubmissionsExportCSV:
         assert response.status_code == 200
         assert "text/csv" in response.headers.get("content-type", "")
         assert "submission_id" in response.text or "full_name" in response.text
+
+    def test_export_csv_accepts_q_parameter(self, client, admin_headers):
+        response = client.get(
+            "/api/admin/submissions/export/csv?type=contact&q=test",
+            headers=admin_headers,
+        )
+        if response.status_code == 401:
+            pytest.skip("Admin auth not available")
+        assert response.status_code == 200
+
+
+class TestContactPrivacyRequired:
+    """Contact form requires privacy_accepted."""
+
+    def test_contact_without_privacy_accepted_returns_422(self, client):
+        payload = {
+            "full_name": "Test User",
+            "email": "privacy-test@example.com",
+            "subject": "Test",
+            "message": "Hello",
+            "contact_reason": "general",
+        }
+        response = client.post("/api/public/contact", json=payload)
+        assert response.status_code == 422
+
+    def test_contact_with_privacy_accepted_false_returns_422(self, client):
+        payload = {
+            "full_name": "Test User",
+            "email": "privacy-test@example.com",
+            "subject": "Test",
+            "message": "Hello",
+            "contact_reason": "general",
+            "privacy_accepted": False,
+        }
+        response = client.post("/api/public/contact", json=payload)
+        assert response.status_code == 422
+
+    def test_contact_with_privacy_accepted_true_accepted(self, client):
+        from database import database
+        if database.get_db() is None:
+            pytest.skip("Database not available (e.g. pytest without MongoDB)")
+        payload = {
+            "full_name": "Test User",
+            "email": "privacy-ok@example.com",
+            "subject": "Test",
+            "message": "Hello",
+            "contact_reason": "general",
+            "privacy_accepted": True,
+        }
+        response = client.post("/api/public/contact", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("ok") is True
+        assert "submission_id" in data
+
+
+class TestContactSpamHoneypot:
+    """Honeypot (website) filled leads to SPAM status when score >= 50."""
+
+    def test_contact_with_website_honeypot_filled_stored_as_spam(self, client, admin_headers):
+        payload = {
+            "full_name": "Bot",
+            "email": "honeypot-test@example.com",
+            "subject": "Test",
+            "message": "Hello",
+            "contact_reason": "general",
+            "privacy_accepted": True,
+            "website": "https://spam.example.com",
+        }
+        response = client.post("/api/public/contact", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("ok") is True
+        sid = data.get("submission_id")
+        if not sid:
+            pytest.skip("No submission_id returned")
+        get_resp = client.get(
+            f"/api/admin/submissions/contact-{sid}",
+            headers=admin_headers,
+        )
+        if get_resp.status_code != 200:
+            pytest.skip("Admin auth or submission not available")
+        doc = get_resp.json()
+        assert doc.get("status") == "SPAM"
+        assert (doc.get("spam_score") or 0) >= 50
+
+
+class TestContactDedupeUpdate:
+    """Dedupe by (type + email) within 24h updates existing and returns same id."""
+
+    def test_contact_duplicate_within_24h_returns_same_id_and_duplicate_ping(self, client, admin_headers):
+        email = "dedupe-test@example.com"
+        payload = {
+            "full_name": "Dedupe User",
+            "email": email,
+            "subject": "First",
+            "message": "First message",
+            "contact_reason": "general",
+            "privacy_accepted": True,
+        }
+        r1 = client.post("/api/public/contact", json=payload)
+        assert r1.status_code == 200
+        d1 = r1.json()
+        sid1 = d1.get("submission_id")
+        assert sid1
+        payload["subject"] = "Second"
+        payload["message"] = "Second message"
+        r2 = client.post("/api/public/contact", json=payload)
+        assert r2.status_code == 200
+        d2 = r2.json()
+        sid2 = d2.get("submission_id")
+        assert sid2 == sid1
+        get_resp = client.get(
+            f"/api/admin/submissions/contact-{sid1}",
+            headers=admin_headers,
+        )
+        if get_resp.status_code != 200:
+            pytest.skip("Admin auth or submission not available")
+        doc = get_resp.json()
+        audit_actions = [a.get("action") for a in (doc.get("audit") or [])]
+        assert "duplicate_ping" in audit_actions
+        assert doc.get("last_activity_at")

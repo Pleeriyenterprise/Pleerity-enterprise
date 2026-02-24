@@ -10,12 +10,17 @@ from datetime import datetime, timezone, timedelta
 from database import database
 from utils.submission_utils import (
     sanitize_html,
-    compute_dedupe_key,
     check_rate_limit,
+    is_website_honeypot_filled,
     is_honeypot_filled,
+    compute_spam_score,
+    normalize_email,
     MAX_MESSAGE_LENGTH,
     MAX_NAME_LENGTH,
     MAX_SUBJECT_LENGTH,
+    MAX_PHONE_LENGTH,
+    MAX_ORG_LENGTH,
+    SPAM_THRESHOLD,
 )
 import logging
 import uuid
@@ -31,19 +36,22 @@ router = APIRouter(prefix="/api/public", tags=["public"])
 class ContactSubmission(BaseModel):
     full_name: str = Field(..., max_length=MAX_NAME_LENGTH)
     email: EmailStr
-    phone: Optional[str] = Field(None, max_length=50)
-    company_name: Optional[str] = Field(None, max_length=200)
+    phone: Optional[str] = Field(None, max_length=MAX_PHONE_LENGTH)
+    company_name: Optional[str] = Field(None, max_length=MAX_ORG_LENGTH)
     contact_reason: str = Field(..., max_length=200)
     subject: str = Field(..., max_length=MAX_SUBJECT_LENGTH)
     message: str = Field(..., max_length=MAX_MESSAGE_LENGTH)
     marketing_opt_in: bool = False
     privacy_accepted: bool = False
-    honeypot: Optional[str] = None
+    website: Optional[str] = None  # honeypot (hidden); if filled, mark spam
+    honeypot: Optional[str] = None  # legacy honeypot field
     source_page: Optional[str] = None
     referrer: Optional[str] = None
     utm_source: Optional[str] = None
     utm_medium: Optional[str] = None
     utm_campaign: Optional[str] = None
+    utm_content: Optional[str] = None
+    utm_term: Optional[str] = None
 
 
 class ServiceInquiry(BaseModel):
@@ -81,36 +89,39 @@ def _rate_limit_contact(ip: str) -> bool:
 @router.post("/contact")
 async def submit_contact_form(submission: ContactSubmission, request: Request):
     """
-    Submit a contact form from the public website.
-    Writes to contact_submissions only. Validates, sanitizes, dedupes within 24h.
+    Submit a contact form. Requires privacy_accepted. Dedupes by (type+email) in 24h with duplicate_ping update.
+    Spam scoring: honeypot/URLs/script => status=SPAM when score>=50.
     """
-    if is_honeypot_filled(submission.honeypot):
-        logger.warning("Contact submission rejected: honeypot filled")
-        return {"ok": True, "submission_id": "", "message": "Thank you for your message. We'll be in touch within 1-2 business days."}
+    if not submission.privacy_accepted:
+        raise HTTPException(status_code=422, detail="You must accept the privacy policy to submit.")
 
     client_ip = request.client.host if request.client else "unknown"
     if not _rate_limit_contact(client_ip):
         raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
 
-    db = database.get_db()
-    now = datetime.now(timezone.utc)
+    honeypot_filled = is_website_honeypot_filled(submission.website, submission.honeypot)
     message_safe = sanitize_html(submission.message)
     subject_safe = sanitize_html(submission.subject, max_len=MAX_SUBJECT_LENGTH)
+    spam_score, _ = compute_spam_score(message_safe, honeypot_filled)
+    status = "SPAM" if spam_score >= SPAM_THRESHOLD else "NEW"
 
-    dedupe_key = compute_dedupe_key(
-        "contact",
-        submission.email,
-        submission.phone,
-        message_safe,
-        now,
-    )
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    email_norm = normalize_email(submission.email)
     since_24h = now - timedelta(hours=24)
     existing = await db.contact_submissions.find_one(
-        {"dedupe_key": dedupe_key, "created_at": {"$gte": since_24h}},
+        {"email_normalized": email_norm, "created_at": {"$gte": since_24h}},
         {"submission_id": 1},
     )
     if existing:
-        logger.info("Contact submission duplicate within 24h, returning existing id")
+        await db.contact_submissions.update_one(
+            {"submission_id": existing["submission_id"]},
+            {
+                "$set": {"last_activity_at": now, "updated_at": now},
+                "$push": {"audit": {"at": now.isoformat(), "by": "system", "action": "duplicate_ping"}},
+            },
+        )
+        logger.info("Contact duplicate within 24h, updated duplicate_ping: %s", existing["submission_id"])
         return {
             "ok": True,
             "submission_id": existing["submission_id"],
@@ -118,31 +129,33 @@ async def submit_contact_form(submission: ContactSubmission, request: Request):
         }
 
     submission_id = generate_submission_id("CONTACT")
-    source = {
-        "page": submission.source_page,
-        "referrer": submission.referrer,
-        "utm": None,
-    }
+    source = {"page": submission.source_page, "referrer": submission.referrer, "utm": None}
     utm = {}
-    if submission.utm_source:
-        utm["utm_source"] = submission.utm_source[:200]
-    if submission.utm_medium:
-        utm["utm_medium"] = submission.utm_medium[:200]
-    if submission.utm_campaign:
-        utm["utm_campaign"] = submission.utm_campaign[:200]
+    for k, v in [
+        ("utm_source", submission.utm_source),
+        ("utm_medium", submission.utm_medium),
+        ("utm_campaign", submission.utm_campaign),
+        ("utm_content", submission.utm_content),
+        ("utm_term", submission.utm_term),
+    ]:
+        if v:
+            utm[k] = (v[:200] if isinstance(v, str) else v)
     if utm:
         source["utm"] = utm
 
     submission_doc = {
         "submission_id": submission_id,
+        "email_normalized": email_norm,
         "full_name": submission.full_name[:MAX_NAME_LENGTH],
         "email": submission.email,
-        "phone": submission.phone,
-        "company_name": submission.company_name,
+        "phone": (submission.phone or "")[:MAX_PHONE_LENGTH] if submission.phone else None,
+        "company_name": (submission.company_name or "")[:MAX_ORG_LENGTH] if submission.company_name else None,
         "contact_reason": submission.contact_reason[:200],
         "subject": subject_safe,
         "message": message_safe,
-        "status": "NEW",
+        "status": status,
+        "spam_score": spam_score,
+        "last_activity_at": now,
         "admin_notes": None,
         "admin_reply": None,
         "replied_by": None,
@@ -153,16 +166,19 @@ async def submit_contact_form(submission: ContactSubmission, request: Request):
         "user_agent": (request.headers.get("user-agent") or "")[:500],
         "consent": {
             "marketing_opt_in": submission.marketing_opt_in,
-            "privacy_accepted": submission.privacy_accepted,
+            "privacy_accepted": True,
         },
         "source": source,
-        "dedupe_key": dedupe_key,
         "notes": [],
-        "audit": [],
+        "audit": [{"at": now.isoformat(), "by": "system", "action": "created"}],
     }
     try:
         await db.contact_submissions.insert_one(submission_doc)
-        logger.info("Contact submission created: %s", submission_id)
+        logger.info("Contact submission created: %s (spam_score=%s)", submission_id, spam_score)
+        if status == "NEW":
+            from utils.submission_utils import notify_admin_new_submission
+            summary = f"{submission.full_name} &lt;{submission.email}&gt; – {submission.subject}"
+            await notify_admin_new_submission("contact", submission_id, summary)
         return {
             "ok": True,
             "submission_id": submission_id,
@@ -180,21 +196,27 @@ async def submit_contact_form(submission: ContactSubmission, request: Request):
 class LeadSubmission(BaseModel):
     name: Optional[str] = Field(None, max_length=MAX_NAME_LENGTH)
     email: Optional[EmailStr] = None
-    phone: Optional[str] = Field(None, max_length=50)
-    company_name: Optional[str] = Field(None, max_length=200)
+    phone: Optional[str] = Field(None, max_length=MAX_PHONE_LENGTH)
+    company_name: Optional[str] = Field(None, max_length=MAX_ORG_LENGTH)
     message_summary: Optional[str] = Field(None, max_length=MAX_MESSAGE_LENGTH)
     marketing_consent: bool = False
+    privacy_accepted: bool = False
+    website: Optional[str] = None
     honeypot: Optional[str] = None
     utm_source: Optional[str] = None
     utm_medium: Optional[str] = None
     utm_campaign: Optional[str] = None
+    utm_content: Optional[str] = None
+    utm_term: Optional[str] = None
     referrer_url: Optional[str] = None
 
 
 @router.post("/lead")
 async def submit_lead(data: LeadSubmission, request: Request):
-    """Create a lead from public form (marketing/checklist). Rate limited; returns { ok, submission_id, message }."""
-    if is_honeypot_filled(data.honeypot):
+    """Create a lead from public form. Requires privacy_accepted. Honeypot (website/honeypot) => no store."""
+    if not data.privacy_accepted:
+        raise HTTPException(status_code=422, detail="You must accept the privacy policy to submit.")
+    if is_website_honeypot_filled(data.website, data.honeypot):
         return {"ok": True, "submission_id": "", "message": "Thank you. We'll be in touch soon."}
     client_ip = request.client.host if request.client else "unknown"
     if not check_rate_limit(client_ip, "lead"):

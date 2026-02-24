@@ -11,6 +11,13 @@ import { ArrowLeft, Copy, AlertTriangle, MessageSquare } from 'lucide-react';
 
 const SUBMISSION_TYPES = ['contact', 'talent', 'partnership', 'lead'];
 
+const STATUS_OPTIONS_BY_TYPE = {
+  contact: ['NEW', 'IN_PROGRESS', 'RESPONDED', 'CLOSED', 'SPAM'],
+  talent: ['NEW', 'REVIEWED', 'SHORTLISTED', 'ARCHIVED', 'SPAM'],
+  partnership: ['NEW', 'REVIEWED', 'APPROVED', 'REJECTED', 'ARCHIVED', 'SPAM'],
+  lead: ['ACTIVE', 'CONVERTED', 'LOST', 'MERGED', 'UNSUBSCRIBED'],
+};
+
 const SubmissionDetailPage = () => {
   const { type, id } = useParams();
   const navigate = useNavigate();
@@ -19,6 +26,8 @@ const SubmissionDetailPage = () => {
   const [error, setError] = useState(null);
   const [note, setNote] = useState('');
   const [status, setStatus] = useState('');
+  const [tags, setTags] = useState([]);
+  const [tagsInput, setTagsInput] = useState('');
   const [updating, setUpdating] = useState(false);
   const [markSpamConfirm, setMarkSpamConfirm] = useState(false);
   const API = process.env.REACT_APP_BACKEND_URL;
@@ -41,6 +50,7 @@ const SubmissionDetailPage = () => {
       const data = await res.json();
       setSubmission(data);
       setStatus(data.status || '');
+      setTags(Array.isArray(data.tags) ? [...data.tags] : []);
     } catch (e) {
       setError('Network error');
     } finally {
@@ -58,8 +68,8 @@ const SubmissionDetailPage = () => {
     // Could add toast
   };
 
-  const handlePatch = async () => {
-    if (!compositeId || status === (submission?.status ?? '')) return;
+  const handlePatch = async (body) => {
+    if (!body || Object.keys(body).length === 0) return;
     setUpdating(true);
     try {
       const res = await fetch(`${API}/api/admin/submissions/${encodeURIComponent(compositeId)}`, {
@@ -68,12 +78,30 @@ const SubmissionDetailPage = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
       if (res.ok) await load();
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleSaveStatus = () => {
+    if (status === (submission?.status ?? '')) return;
+    handlePatch({ status });
+  };
+  const handleAddTag = () => {
+    const t = tagsInput.trim();
+    if (!t || tags.includes(t)) return;
+    const next = [...tags, t];
+    setTags(next);
+    setTagsInput('');
+    handlePatch({ tags: next });
+  };
+  const handleRemoveTag = (t) => {
+    const next = tags.filter((x) => x !== t);
+    setTags(next);
+    handlePatch({ tags: next });
   };
 
   const handleAddNote = async () => {
@@ -151,7 +179,12 @@ const SubmissionDetailPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <span className="text-xs text-gray-500">Name</span>
-                  <p className="font-medium">{submission.full_name ?? submission.name ?? '-'}</p>
+                  <p className="font-medium flex items-center gap-2">
+                    {submission.full_name ?? submission.name ?? '-'}
+                    <Button size="sm" variant="ghost" onClick={() => handleCopy(submission.full_name || submission.name, 'Name')}>
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </p>
                 </div>
                 <div>
                   <span className="text-xs text-gray-500">Email</span>
@@ -196,18 +229,18 @@ const SubmissionDetailPage = () => {
 
             <Card className="p-6 mb-6">
               <h2 className="text-lg font-semibold mb-4">Actions</h2>
-              <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex flex-wrap gap-4 items-center mb-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Status</span>
                   <Select value={status} onValueChange={setStatus}>
                     <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {['NEW', 'IN_PROGRESS', 'RESPONDED', 'REVIEWED', 'SHORTLISTED', 'CLOSED', 'SPAM', 'ARCHIVED'].map(s => (
+                      {(STATUS_OPTIONS_BY_TYPE[type] || ['NEW', 'CLOSED', 'SPAM']).map(s => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" onClick={handlePatch} disabled={updating || status === submission.status}>Update</Button>
+                  <Button size="sm" onClick={handleSaveStatus} disabled={updating || status === submission.status}>Update</Button>
                 </div>
                 {submission.status !== 'SPAM' && (
                   <div className="flex items-center gap-2">
@@ -224,6 +257,42 @@ const SubmissionDetailPage = () => {
                   </div>
                 )}
               </div>
+              {(submission.tags || tags.length > 0) && (
+                <div className="mt-4 pt-4 border-t">
+                  <span className="text-sm text-gray-600 block mb-2">Tags</span>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {(tags.length ? tags : submission.tags || []).map((t) => (
+                      <Badge key={t} variant="secondary" className="flex items-center gap-1">
+                        {t}
+                        <button type="button" className="ml-1 hover:text-destructive" onClick={() => handleRemoveTag(t)} aria-label={`Remove ${t}`}>×</button>
+                      </Badge>
+                    ))}
+                    <Input
+                      placeholder="Add tag..."
+                      value={tagsInput}
+                      onChange={(e) => setTagsInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                      className="w-32 h-8 text-sm"
+                    />
+                    <Button size="sm" variant="outline" onClick={handleAddTag} disabled={!tagsInput.trim() || updating}>Add</Button>
+                  </div>
+                </div>
+              )}
+              {!(submission.tags || tags.length > 0) && (
+                <div className="mt-4 pt-4 border-t">
+                  <span className="text-sm text-gray-600 block mb-2">Tags</span>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Input
+                      placeholder="Add tag..."
+                      value={tagsInput}
+                      onChange={(e) => setTagsInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                      className="w-32 h-8 text-sm"
+                    />
+                    <Button size="sm" variant="outline" onClick={handleAddTag} disabled={!tagsInput.trim() || updating}>Add</Button>
+                  </div>
+                </div>
+              )}
             </Card>
 
             <Card className="p-6 mb-6">
