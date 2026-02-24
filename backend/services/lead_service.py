@@ -134,6 +134,10 @@ class LeadService:
             "last_followup_at": None,
             "next_followup_at": None,
             
+            # Checklist nurture (source_platform COMPLIANCE_CHECKLIST)
+            "nurture_stage": 0,
+            "last_nurture_sent_at": None,
+            
             # Assignment
             "assigned_to": None,
             "assigned_at": None,

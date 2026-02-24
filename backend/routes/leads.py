@@ -205,7 +205,8 @@ async def capture_compliance_checklist_lead(
 ):
     """
     Capture a lead from the UK Landlord Compliance Checklist lead magnet.
-    Does not start follow-up sequence; redirect to thank-you page for download.
+    Does not start generic follow-up sequence; redirect to thank-you page for download.
+    If marketing_consent: sends immediate checklist delivery email (nurture stage 1) and starts 7-day nurture sequence.
     """
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.COMPLIANCE_CHECKLIST,
@@ -225,6 +226,18 @@ async def capture_compliance_checklist_lead(
         actor_type="system",
         ip_address=req.client.host if req.client else None,
     )
+
+    # Send Email 1 (checklist delivery) and set nurture_stage=1 when consent and not duplicate
+    if (
+        request.marketing_consent
+        and not lead.get("is_duplicate")
+        and lead.get("email")
+    ):
+        try:
+            from services.lead_nurture_service import send_checklist_delivery_email_and_update_lead
+            await send_checklist_delivery_email_and_update_lead(lead)
+        except Exception as e:
+            logger.warning("Checklist delivery email failed (lead %s): %s", lead.get("lead_id"), e)
 
     return {
         "success": True,
@@ -559,6 +572,25 @@ async def test_sla_check(
     return {
         "success": True,
         "breaches_detected": breaches,
+    }
+
+
+@admin_router.post("/test/checklist-nurture")
+async def test_checklist_nurture_queue(
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Manually trigger checklist nurture queue processing for testing.
+    Sends due emails (2–5) to COMPLIANCE_CHECKLIST leads.
+    """
+    from services.lead_nurture_service import process_checklist_nurture_queue
+    
+    sent = await process_checklist_nurture_queue()
+    
+    return {
+        "success": True,
+        "message": f"Checklist nurture: {sent} email(s) sent",
+        "count": sent,
     }
 
 

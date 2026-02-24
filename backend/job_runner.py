@@ -366,6 +366,17 @@ async def run_lead_sla_check():
         raise
 
 
+async def run_checklist_nurture_processing():
+    """Daily: send next checklist nurture email (2–5) to COMPLIANCE_CHECKLIST leads when due."""
+    try:
+        from services.lead_nurture_service import process_checklist_nurture_queue
+        sent = await process_checklist_nurture_queue()
+        return {"message": f"Checklist nurture: {sent} email(s) sent", "count": sent}
+    except Exception as e:
+        logger.error(f"Checklist nurture processing failed: {e}")
+        raise
+
+
 async def run_compliance_recalc_sla_monitor():
     """Compliance recalc SLA: detect stuck PENDING/RUNNING, repeated failures, property pending too long; dedupe alerts, audit, optional email."""
     try:
@@ -482,6 +493,7 @@ JOB_RUNNERS = {
     "abandoned_intake_detection": run_abandoned_intake_detection,
     "lead_followup_processing": run_lead_followup_processing,
     "lead_sla_check": run_lead_sla_check,
+    "checklist_nurture_processing": run_checklist_nurture_processing,
     "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
     "notification_failure_spike_monitor": run_notification_failure_spike_monitor,
     "notification_retry_worker": run_notification_retry_worker,

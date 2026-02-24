@@ -766,6 +766,32 @@ export default function AdminLeadsPage() {
                     </CardContent>
                   </Card>
 
+                  {/* Nurture sequence (checklist leads only) */}
+                  {selectedLead.source_platform === 'COMPLIANCE_CHECKLIST' && (
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm">Checklist Nurture Sequence</CardTitle>
+                        <CardDescription>7-day email nurture (Day 0, 2, 4, 6, 9)</CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Nurture stage:</span>{' '}
+                          <span className="font-medium">
+                            {selectedLead.nurture_stage ?? 0} / 5
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Last nurture sent:</span>{' '}
+                          <span className="font-medium">
+                            {selectedLead.last_nurture_sent_at
+                              ? new Date(selectedLead.last_nurture_sent_at).toLocaleString()
+                              : '—'}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* AI Summary */}
                   {selectedLead.ai_summary && (
                     <Card className="bg-blue-50 border-blue-200">

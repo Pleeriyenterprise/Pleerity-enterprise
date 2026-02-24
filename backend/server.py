@@ -88,6 +88,7 @@ from job_runner import (
     run_abandoned_intake_detection,
     run_lead_followup_processing,
     run_lead_sla_check,
+    run_checklist_nurture_processing,
     run_notification_failure_spike_monitor,
     run_notification_retry_worker,
     run_pending_payment_lifecycle,
@@ -492,6 +493,15 @@ async def lifespan(app: FastAPI):
         CronTrigger(minute=0),  # Every hour on the hour
         id="lead_sla_check",
         name="Lead SLA Breach Check",
+        replace_existing=True
+    )
+    
+    # Checklist nurture (Day 2, 4, 6, 9 emails) - daily at 9:00 AM UTC
+    scheduler.add_job(
+        run_checklist_nurture_processing,
+        CronTrigger(hour=9, minute=0),
+        id="checklist_nurture_processing",
+        name="Checklist Nurture (compliance checklist leads)",
         replace_existing=True
     )
     

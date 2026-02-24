@@ -53,6 +53,7 @@ import AccessibilityPage from './pages/public/AccessibilityPage';
 import FAQPage from './pages/public/FAQPage';
 import NewsletterPage from './pages/public/NewsletterPage';
 import ChecklistThankYouPage from './pages/public/ChecklistThankYouPage';
+import UnsubscribePage from './pages/public/UnsubscribePage';
 
 // Auth & Onboarding pages
 import PortalSelectorPage from './pages/PortalSelectorPage';
@@ -216,6 +217,7 @@ function App() {
               <Route path="/faq" element={<FAQPage />} />
               <Route path="/newsletter" element={<NewsletterPage />} />
               <Route path="/checklist-thank-you" element={<ChecklistThankYouPage />} />
+              <Route path="/unsubscribe" element={<UnsubscribePage />} />
               
               {/* Knowledge Base (Public) */}
               <Route path="/support/knowledge-base" element={<PublicKnowledgeBasePage />} />
