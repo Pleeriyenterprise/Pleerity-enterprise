@@ -43,12 +43,12 @@ export const SEOHead = ({
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={fullOgImage} />
 
-      {/* Schema.org JSON-LD */}
-      {schema && (
-        <script type="application/ld+json">
-          {JSON.stringify(schema)}
+      {/* Schema.org JSON-LD (single object or array of schemas) */}
+      {schema && (Array.isArray(schema) ? schema : [schema]).map((s, i) => (
+        <script key={i} type="application/ld+json">
+          {JSON.stringify(s)}
         </script>
-      )}
+      ))}
     </Helmet>
   );
 };
@@ -122,6 +122,20 @@ export const createArticleSchema = (title, excerpt, publishedAt, updatedAt) => (
       "url": "https://pleerity.com/logo.png"
     }
   }
+});
+
+/** FAQ schema for rich results (array of { question, answer }) */
+export const createFAQSchema = (faqs) => ({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": (faqs || []).map(({ question, answer }) => ({
+    "@type": "Question",
+    "name": question,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": answer
+    }
+  }))
 });
 
 export default SEOHead;

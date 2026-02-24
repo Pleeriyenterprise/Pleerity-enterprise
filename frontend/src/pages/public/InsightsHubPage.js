@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
+import UKLandlordComplianceChecklist2026 from './articles/UKLandlordComplianceChecklist2026';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -26,7 +27,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 const FEATURED_GUIDES = [
   {
     slug: 'uk-landlord-compliance-checklist-2026',
-    title: 'UK Landlord Compliance Checklist (2026)',
+    title: 'UK Landlord Compliance Checklist (2026 Guide)',
     excerpt: 'A practical checklist for UK landlords: certificates, deadlines, and documentation.',
     section: 'UK Landlord Compliance Tracking',
   },
@@ -53,11 +54,7 @@ const FEATURED_GUIDES = [
 // Static article content for foundational guides (when no CMS post)
 const getStaticArticle = (slug) => {
   const map = {
-    'uk-landlord-compliance-checklist-2026': {
-      title: 'UK Landlord Compliance Checklist (2026)',
-      excerpt: 'A practical checklist for UK landlords: certificates, deadlines, and documentation.',
-      content: 'Staying on top of landlord compliance in the UK means tracking multiple certificates and deadlines. This checklist covers the essentials: gas safety, EICR, EPC, and other obligations. Keep documents in one place and set reminders so nothing slips. Track this automatically with Compliance Vault Pro.',
-    },
+    // uk-landlord-compliance-checklist-2026 uses dedicated UKLandlordComplianceChecklist2026 component
     'gas-safety-certificate-expiry-tracking-guide': {
       title: 'Gas Safety Certificate Expiry Tracking Guide',
       excerpt: 'What landlords must track for gas safety certificates and renewals.',
@@ -357,7 +354,12 @@ const InsightsHubPage = () => {
     );
   }
   
-  // Static article fallback for foundational guides
+  // Full long-form article (dedicated component)
+  if (slug === 'uk-landlord-compliance-checklist-2026' && !postLoading && !singlePost) {
+    return <UKLandlordComplianceChecklist2026 />;
+  }
+
+  // Static article fallback for other foundational guides
   const staticArticle = slug ? getStaticArticle(slug) : null;
   if (slug && !postLoading && !singlePost && staticArticle) {
     return (
