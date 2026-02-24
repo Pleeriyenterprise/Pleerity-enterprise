@@ -82,6 +82,12 @@ class DocumentServiceLeadRequest(BaseModel):
     marketing_consent: bool = False
 
 
+class ComplianceChecklistLeadRequest(BaseModel):
+    """Request from compliance checklist lead magnet (modal)."""
+    email: EmailStr
+    marketing_consent: bool = False
+
+
 @public_router.post("/capture/chatbot")
 async def capture_chatbot_lead(
     request: ChatbotLeadCaptureRequest,
@@ -189,6 +195,43 @@ async def capture_contact_form_lead(
         "success": True,
         "lead_id": lead["lead_id"],
         "message": "Thank you! We'll be in touch shortly.",
+    }
+
+
+@public_router.post("/capture/compliance-checklist")
+async def capture_compliance_checklist_lead(
+    request: ComplianceChecklistLeadRequest,
+    req: Request,
+):
+    """
+    Capture a lead from the UK Landlord Compliance Checklist lead magnet.
+    Does not start follow-up sequence; redirect to thank-you page for download.
+    """
+    lead_request = LeadCreateRequest(
+        source_platform=LeadSourcePlatform.COMPLIANCE_CHECKLIST,
+        service_interest=LeadServiceInterest.CVP,
+        name=None,
+        email=request.email,
+        phone=None,
+        company_name=None,
+        message_summary="Compliance checklist download",
+        marketing_consent=request.marketing_consent,
+        source_metadata={"source": "compliance_checklist"},
+    )
+
+    lead = await LeadService.create_lead(
+        request=lead_request,
+        actor_id="compliance_checklist",
+        actor_type="system",
+        ip_address=req.client.host if req.client else None,
+    )
+
+    return {
+        "success": True,
+        "lead_id": lead["lead_id"],
+        "is_duplicate": lead.get("is_duplicate", False),
+        "redirect_url": "/checklist-thank-you",
+        "message": "Thank you. Your checklist is ready.",
     }
 
 

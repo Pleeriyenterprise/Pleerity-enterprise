@@ -8,8 +8,8 @@ import { Link } from 'react-router-dom';
 import PublicLayout from '../../../components/public/PublicLayout';
 import { SEOHead, createArticleSchema, createFAQSchema } from '../../../components/public/SEOHead';
 import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
 import { Card, CardContent } from '../../../components/ui/card';
+import ChecklistDownloadModal from '../../../components/public/ChecklistDownloadModal';
 import {
   Accordion,
   AccordionContent,
@@ -48,7 +48,7 @@ const FAQ_ITEMS = [
 ];
 
 export default function UKLandlordComplianceChecklist2026() {
-  const [leadEmail, setLeadEmail] = useState('');
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
 
   const articleSchema = createArticleSchema(
     META_TITLE,
@@ -57,11 +57,6 @@ export default function UKLandlordComplianceChecklist2026() {
     UPDATED
   );
   const faqSchema = createFAQSchema(FAQ_ITEMS);
-
-  const handleLeadSubmit = (e) => {
-    e.preventDefault();
-    // Placeholder: wire to your email/CRM endpoint when ready
-  };
 
   return (
     <PublicLayout>
@@ -307,27 +302,18 @@ export default function UKLandlordComplianceChecklist2026() {
             <p className="text-gray-700 mb-6">
               Download the editable checklist and use it as a starting framework.
             </p>
-            <Card className="bg-gray-50 border-gray-200 max-w-lg">
-              <CardContent className="p-6">
-                <form onSubmit={handleLeadSubmit} className="space-y-4">
-                  <Input
-                    type="email"
-                    placeholder="Your email"
-                    value={leadEmail}
-                    onChange={(e) => setLeadEmail(e.target.value)}
-                    className="h-11"
-                    required
-                  />
-                  <Button type="submit" className="w-full bg-electric-teal hover:bg-electric-teal/90">
-                    Download Free Checklist
-                  </Button>
-                </form>
-                <p className="text-xs text-gray-500 mt-4">
-                  Track this digitally at pleerityenterprise.co.uk
-                </p>
-              </CardContent>
-            </Card>
+            <Button
+              size="lg"
+              className="bg-electric-teal hover:bg-electric-teal/90 text-white"
+              onClick={() => setShowChecklistModal(true)}
+            >
+              Download Free Checklist
+            </Button>
+            <p className="text-xs text-gray-500 mt-4">
+              Track this digitally at pleerityenterprise.co.uk
+            </p>
           </section>
+          <ChecklistDownloadModal open={showChecklistModal} onOpenChange={setShowChecklistModal} />
 
           {/* Final Thoughts */}
           <section className="mb-10">

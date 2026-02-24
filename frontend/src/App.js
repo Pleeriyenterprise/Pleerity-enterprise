@@ -52,6 +52,7 @@ import AssureStackPage from './pages/public/AssureStackPage';
 import AccessibilityPage from './pages/public/AccessibilityPage';
 import FAQPage from './pages/public/FAQPage';
 import NewsletterPage from './pages/public/NewsletterPage';
+import ChecklistThankYouPage from './pages/public/ChecklistThankYouPage';
 
 // Auth & Onboarding pages
 import PortalSelectorPage from './pages/PortalSelectorPage';
@@ -214,6 +215,7 @@ function App() {
               <Route path="/accessibility" element={<AccessibilityPage />} />
               <Route path="/faq" element={<FAQPage />} />
               <Route path="/newsletter" element={<NewsletterPage />} />
+              <Route path="/checklist-thank-you" element={<ChecklistThankYouPage />} />
               
               {/* Knowledge Base (Public) */}
               <Route path="/support/knowledge-base" element={<PublicKnowledgeBasePage />} />

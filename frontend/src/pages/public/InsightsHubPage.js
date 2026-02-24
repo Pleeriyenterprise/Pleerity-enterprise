@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
 import UKLandlordComplianceChecklist2026 from './articles/UKLandlordComplianceChecklist2026';
+import ChecklistDownloadModal from '../../components/public/ChecklistDownloadModal';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -92,6 +93,7 @@ const InsightsHubPage = () => {
   // Single post view
   const [singlePost, setSinglePost] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
+  const [checklistModalOpen, setChecklistModalOpen] = useState(false);
   
   // Format date
   const formatDate = (dateString) => {
@@ -566,24 +568,19 @@ const InsightsHubPage = () => {
             Download Free Landlord Compliance Checklist (PDF)
           </h2>
           <p className="text-gray-600 mb-6">
-            Get our one-page checklist for UK landlord compliance. We&apos;ll send the PDF to your inbox.
+            Get our checklist for UK landlord compliance. Enter your email to download the PDF.
           </p>
-          <form
-            className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
-            onSubmit={(e) => e.preventDefault()}
+          <Button
+            size="lg"
+            className="bg-electric-teal hover:bg-electric-teal/90"
+            onClick={() => setChecklistModalOpen(true)}
           >
-            <Input
-              type="email"
-              placeholder="Your email"
-              className="flex-1 h-11"
-              required
-            />
-            <Button type="submit" className="bg-electric-teal hover:bg-electric-teal/90">
-              Send me the checklist
-            </Button>
-          </form>
+            Download Checklist
+          </Button>
         </div>
       </section>
+
+      <ChecklistDownloadModal open={checklistModalOpen} onOpenChange={setChecklistModalOpen} />
 
       {/* CTA block */}
       <section className="py-16 bg-midnight-blue">

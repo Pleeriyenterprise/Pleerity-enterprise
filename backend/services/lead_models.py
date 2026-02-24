@@ -33,6 +33,7 @@ class LeadSourcePlatform(str, Enum):
     EMAIL = "EMAIL"
     IMPORT = "IMPORT"
     REFERRAL = "REFERRAL"
+    COMPLIANCE_CHECKLIST = "COMPLIANCE_CHECKLIST"  # Lead magnet: UK Landlord Compliance Master Checklist
 
 
 class LeadServiceInterest(str, Enum):
