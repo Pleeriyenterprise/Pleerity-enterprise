@@ -67,132 +67,138 @@ const PricingPage = () => {
     },
   ];
 
-  // CVP Plans (existing)
+  // CVP Plans — Best for + grouped features (Core, Reminders, Reports, AI, Support)
   const cvpPlans = [
     {
       name: 'Solo Landlord',
       code: 'PLAN_1_SOLO',
-      description: 'Perfect for landlords with 1-2 properties',
+      bestFor: '1–2 properties',
       monthlyPrice: 19,
       yearlyPrice: 190,
       onboarding: 49,
       properties: 2,
+      ctaLabel: 'Start Solo Plan',
       features: {
-        'Core Features': [
-          { name: 'Compliance Dashboard', included: true },
-          { name: 'Compliance Score', included: true },
-          { name: 'Expiry Calendar', included: true },
-          { name: 'Email Notifications', included: true },
-          { name: 'Document Upload', included: true },
-          { name: 'Score Trending', included: true },
+        'Core Tracking': [
+          { name: 'Portfolio dashboard', included: true },
+          { name: 'Expiry tracking', included: true },
+          { name: 'Compliance score', included: true },
+          { name: 'Document upload', included: true },
+          { name: 'ZIP bulk upload', included: false },
         ],
-        'AI Features': [
-          { name: 'Basic AI Extraction', included: true },
-          { name: 'Advanced AI Extraction', included: false },
-          { name: 'AI Review Interface', included: false },
+        'Reminders': [
+          { name: 'Email reminders', included: true },
+          { name: 'Basic alerts', included: true },
+          { name: 'SMS reminders', included: false },
         ],
-        'Documents': [
-          { name: 'ZIP Bulk Upload', included: false },
+        'Reports & Exports': [
+          { name: 'Viewable report', included: true },
+          { name: 'Basic export', included: true },
+          { name: 'PDF reports', included: false },
+          { name: 'CSV export', included: false },
+          { name: 'Scheduled reports', included: false },
+          { name: 'Audit log export', included: false },
         ],
-        'Reporting': [
-          { name: 'PDF Reports', included: false },
-          { name: 'CSV Export', included: false },
-          { name: 'Scheduled Reports', included: false },
+        'AI Extraction': [
+          { name: 'Basic AI extraction', included: true },
+          { name: 'Advanced AI extraction', included: false },
         ],
-        'Communication': [
-          { name: 'SMS Reminders', included: false },
+        'Support': [
+          { name: 'Email support', included: true },
+          { name: 'Priority support', included: false },
         ],
-        'Tenant Portal': [
-          { name: 'Tenant View Access', included: false },
-        ],
-        'Advanced': [
-          { name: 'White-Label Reports', included: false },
-          { name: 'Audit Log Export', included: false },
+        'Extras': [
+          { name: 'Tenant portal access', included: false },
+          { name: 'White-label reports', included: false },
         ],
       },
     },
     {
       name: 'Portfolio',
       code: 'PLAN_2_PORTFOLIO',
-      description: 'For growing landlords and small agents',
+      bestFor: '3–10 properties',
       monthlyPrice: 39,
       yearlyPrice: 390,
       onboarding: 79,
       properties: 10,
       popular: true,
+      ctaLabel: 'Start Portfolio Plan',
       features: {
-        'Core Features': [
-          { name: 'Compliance Dashboard', included: true },
-          { name: 'Compliance Score', included: true },
-          { name: 'Expiry Calendar', included: true },
-          { name: 'Email Notifications', included: true },
-          { name: 'Document Upload', included: true },
-          { name: 'Score Trending', included: true },
+        'Core Tracking': [
+          { name: 'Portfolio dashboard', included: true },
+          { name: 'Expiry tracking', included: true },
+          { name: 'Compliance score', included: true },
+          { name: 'Document upload', included: true },
+          { name: 'ZIP bulk upload', included: true },
         ],
-        'AI Features': [
-          { name: 'Basic AI Extraction', included: true },
-          { name: 'Advanced AI Extraction', included: false },
-          { name: 'AI Review Interface', included: false },
+        'Reminders': [
+          { name: 'Email reminders', included: true },
+          { name: 'Basic alerts', included: true },
+          { name: 'SMS reminders', included: true },
         ],
-        'Documents': [
-          { name: 'ZIP Bulk Upload', included: true },
+        'Reports & Exports': [
+          { name: 'Viewable report', included: true },
+          { name: 'Basic export', included: true },
+          { name: 'PDF reports', included: true },
+          { name: 'CSV export', included: false },
+          { name: 'Scheduled reports', included: true },
+          { name: 'Audit log export', included: true },
         ],
-        'Reporting': [
-          { name: 'PDF Reports', included: true },
-          { name: 'CSV Export', included: false },
-          { name: 'Scheduled Reports', included: true },
+        'AI Extraction': [
+          { name: 'Basic AI extraction', included: true },
+          { name: 'Advanced AI extraction', included: true },
         ],
-        'Communication': [
-          { name: 'SMS Reminders', included: false },
+        'Support': [
+          { name: 'Email support', included: true },
+          { name: 'Priority support', included: false },
         ],
-        'Tenant Portal': [
-          { name: 'Tenant View Access', included: false },
-        ],
-        'Advanced': [
-          { name: 'White-Label Reports', included: false },
-          { name: 'Audit Log Export', included: false },
+        'Extras': [
+          { name: 'Tenant portal access', included: false },
+          { name: 'White-label reports', included: false },
         ],
       },
     },
     {
       name: 'Professional',
       code: 'PLAN_3_PRO',
-      description: 'For letting agents and serious operators',
+      bestFor: 'Up to 25 properties',
       monthlyPrice: 79,
       yearlyPrice: 790,
       onboarding: 149,
       properties: 25,
+      ctaLabel: 'Start Professional Plan',
       features: {
-        'Core Features': [
-          { name: 'Compliance Dashboard', included: true },
-          { name: 'Compliance Score', included: true },
-          { name: 'Expiry Calendar', included: true },
-          { name: 'Email Notifications', included: true },
-          { name: 'Document Upload', included: true },
-          { name: 'Score Trending', included: true },
+        'Core Tracking': [
+          { name: 'Portfolio dashboard', included: true },
+          { name: 'Expiry tracking', included: true },
+          { name: 'Compliance score', included: true },
+          { name: 'Document upload', included: true },
+          { name: 'ZIP bulk upload', included: true },
         ],
-        'AI Features': [
-          { name: 'Basic AI Extraction', included: true },
-          { name: 'Advanced AI Extraction', included: true },
-          { name: 'AI Review Interface', included: true },
+        'Reminders': [
+          { name: 'Email reminders', included: true },
+          { name: 'Basic alerts', included: true },
+          { name: 'SMS reminders', included: true },
         ],
-        'Documents': [
-          { name: 'ZIP Bulk Upload', included: true },
+        'Reports & Exports': [
+          { name: 'Viewable report', included: true },
+          { name: 'Basic export', included: true },
+          { name: 'PDF reports', included: true },
+          { name: 'CSV export', included: true },
+          { name: 'Scheduled reports', included: true },
+          { name: 'Audit log export', included: true },
         ],
-        'Reporting': [
-          { name: 'PDF Reports', included: true },
-          { name: 'CSV Export', included: true },
-          { name: 'Scheduled Reports', included: true },
+        'AI Extraction': [
+          { name: 'Basic AI extraction', included: true },
+          { name: 'Advanced AI extraction', included: true },
         ],
-        'Communication': [
-          { name: 'SMS Reminders', included: true },
+        'Support': [
+          { name: 'Email support', included: true },
+          { name: 'Priority support', included: true },
         ],
-        'Tenant Portal': [
-          { name: 'Tenant View Access', included: true },
-        ],
-        'Advanced': [
-          { name: 'White-Label Reports', included: true },
-          { name: 'Audit Log Export', included: true },
+        'Extras': [
+          { name: 'Tenant portal access', included: true },
+          { name: 'White-label reports', included: true },
         ],
       },
     },
@@ -246,10 +252,10 @@ const PricingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl sm:text-5xl font-bold text-midnight-blue mb-6">
-              Simple, Transparent Pricing
+              Pricing Built Around Your Portfolio
             </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Choose the product and plan that fits your needs.
+              Start small. Upgrade as your portfolio grows.
             </p>
 
             {/* Product Tabs */}
@@ -295,7 +301,7 @@ const PricingPage = () => {
                   onClick={() => setBillingCycle('yearly')}
                 >
                   Yearly
-                  <span className="ml-1 text-electric-teal text-xs">Save 2 months</span>
+                  <span className="ml-1.5 text-electric-teal text-xs font-medium">(save 17%)</span>
                 </button>
               </div>
             </div>
@@ -322,7 +328,7 @@ const PricingPage = () => {
                     )}
                     <CardHeader className="text-center pb-4">
                       <CardTitle className="text-2xl font-bold text-midnight-blue">{plan.name}</CardTitle>
-                      <p className="text-gray-500 text-sm">{plan.description}</p>
+                      <p className="text-gray-500 text-sm mt-1">Best for: {plan.bestFor}</p>
                     </CardHeader>
                     <CardContent>
                       <div className="text-center mb-6">
@@ -355,7 +361,7 @@ const PricingPage = () => {
                         asChild
                       >
                         <Link to="/intake/start">
-                          Get Started
+                          {plan.ctaLabel}
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </Link>
                       </Button>
@@ -388,6 +394,9 @@ const PricingPage = () => {
                   </Card>
                 ))}
               </div>
+              <p className="text-center text-sm text-gray-500 mt-8 max-w-2xl mx-auto">
+                Compliance Vault Pro provides structured tracking and informational indicators. It does not provide legal advice or regulatory certification.
+              </p>
             </div>
           </section>
         </>
@@ -541,6 +550,35 @@ const PricingPage = () => {
         </section>
       )}
 
+      {/* Why Choose Compliance Vault Pro — only when CVP tab active */}
+      {activeProduct === 'cvp' && (
+        <section className="py-16 bg-white">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-2xl font-bold text-midnight-blue mb-8 text-center">
+              Why Choose Compliance Vault Pro?
+            </h2>
+            <ul className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0 mt-0.5" />
+                <span className="text-gray-700">Structured tracking and expiry visibility—no spreadsheets.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0 mt-0.5" />
+                <span className="text-gray-700">Reminders and reports to support your compliance oversight.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0 mt-0.5" />
+                <span className="text-gray-700">Scale from one property to a portfolio on one plan.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0 mt-0.5" />
+                <span className="text-gray-700">UK-focused; built for landlords and property professionals.</span>
+              </li>
+            </ul>
+          </div>
+        </section>
+      )}
+
       {/* FAQ Section */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -578,8 +616,11 @@ const PricingPage = () => {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
             Ready to Get Started?
           </h2>
-          <p className="text-lg text-gray-300 mb-8">
+          <p className="text-lg text-gray-300 mb-2">
             Try Compliance Vault Pro free for 14 days. No credit card required.
+          </p>
+          <p className="text-base text-gray-400 mb-8">
+            No long-term contract. Cancel anytime.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
