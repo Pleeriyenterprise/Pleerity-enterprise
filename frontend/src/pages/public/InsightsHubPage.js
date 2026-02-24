@@ -22,6 +22,61 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Static foundational guides — no empty state; SEO and product-aligned
+const FEATURED_GUIDES = [
+  {
+    slug: 'uk-landlord-compliance-checklist-2026',
+    title: 'UK Landlord Compliance Checklist (2026)',
+    excerpt: 'A practical checklist for UK landlords: certificates, deadlines, and documentation.',
+    section: 'UK Landlord Compliance Tracking',
+  },
+  {
+    slug: 'gas-safety-certificate-expiry-tracking-guide',
+    title: 'Gas Safety Certificate Expiry Tracking Guide',
+    excerpt: 'What landlords must track for gas safety certificates and renewals.',
+    section: 'Gas Safety & EICR Expiry Reminders',
+  },
+  {
+    slug: 'understanding-eicr-expiry-reminders',
+    title: 'Understanding EICR Expiry & Reminders',
+    excerpt: 'EICR requirements, expiry cycles, and how to stay on top of renewals.',
+    section: 'Gas Safety & EICR Expiry Reminders',
+  },
+  {
+    slug: 'hmo-compliance-tracking-uk-explained',
+    title: 'HMO Compliance Tracking UK Explained',
+    excerpt: 'HMO-specific compliance obligations and how to track them in one place.',
+    section: 'HMO Compliance Tracking UK',
+  },
+];
+
+// Static article content for foundational guides (when no CMS post)
+const getStaticArticle = (slug) => {
+  const map = {
+    'uk-landlord-compliance-checklist-2026': {
+      title: 'UK Landlord Compliance Checklist (2026)',
+      excerpt: 'A practical checklist for UK landlords: certificates, deadlines, and documentation.',
+      content: 'Staying on top of landlord compliance in the UK means tracking multiple certificates and deadlines. This checklist covers the essentials: gas safety, EICR, EPC, and other obligations. Keep documents in one place and set reminders so nothing slips. Track this automatically with Compliance Vault Pro.',
+    },
+    'gas-safety-certificate-expiry-tracking-guide': {
+      title: 'Gas Safety Certificate Expiry Tracking Guide',
+      excerpt: 'What landlords must track for gas safety certificates and renewals.',
+      content: 'Gas safety certificates must be renewed every 12 months. Landlords need to schedule inspections, keep records, and ensure tenants receive copies. This guide explains what to track and when. Track this automatically with Compliance Vault Pro.',
+    },
+    'understanding-eicr-expiry-reminders': {
+      title: 'Understanding EICR Expiry & Reminders',
+      excerpt: 'EICR requirements, expiry cycles, and how to stay on top of renewals.',
+      content: 'Electrical safety (EICR) requirements apply to most rented properties. Certificates are valid for set periods and must be renewed. This guide covers expiry cycles and how to avoid missed deadlines. Track this automatically with Compliance Vault Pro.',
+    },
+    'hmo-compliance-tracking-uk-explained': {
+      title: 'HMO Compliance Tracking UK Explained',
+      excerpt: 'HMO-specific compliance obligations and how to track them in one place.',
+      content: 'HMO landlords face additional compliance obligations: licensing, fire safety, room sizes, and more. This guide explains what to track and how to keep everything in one place. Track this automatically with Compliance Vault Pro.',
+    },
+  };
+  return map[slug] || null;
+};
+
 const InsightsHubPage = () => {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
@@ -302,7 +357,44 @@ const InsightsHubPage = () => {
     );
   }
   
-  // Post not found
+  // Static article fallback for foundational guides
+  const staticArticle = slug ? getStaticArticle(slug) : null;
+  if (slug && !postLoading && !singlePost && staticArticle) {
+    return (
+      <PublicLayout>
+        <SEOHead
+          title={`${staticArticle.title} - Pleerity Insights`}
+          description={staticArticle.excerpt}
+          canonicalUrl={`/insights/${slug}`}
+        />
+        <article className="py-12">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <Link to="/insights" className="inline-flex items-center text-electric-teal hover:underline mb-8">
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Back to Insights
+            </Link>
+            <header className="mb-8">
+              <h1 className="text-4xl sm:text-5xl font-bold text-midnight-blue mb-4">{staticArticle.title}</h1>
+              <p className="text-xl text-gray-600">{staticArticle.excerpt}</p>
+            </header>
+            <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
+              {staticArticle.content.split(/(?<=\.) /).filter(Boolean).map((para, i) => (
+                <p key={i}>{para.trim()}</p>
+              ))}
+            </div>
+            <div className="mt-12 bg-midnight-blue rounded-xl p-8 text-center">
+              <h3 className="text-2xl font-bold text-white mb-4">Track this automatically with Compliance Vault Pro</h3>
+              <Button asChild className="bg-electric-teal hover:bg-electric-teal/90">
+                <Link to="/intake/start">Start Free Trial <ArrowRight className="w-4 h-4 ml-2 inline" /></Link>
+              </Button>
+            </div>
+          </div>
+        </article>
+      </PublicLayout>
+    );
+  }
+
+  // Post not found (unknown slug)
   if (slug && !postLoading && !singlePost) {
     return (
       <PublicLayout>
@@ -318,27 +410,31 @@ const InsightsHubPage = () => {
     );
   }
   
-  // Blog Listing View
+  // Blog Listing View — resource hub with featured guides, lead magnet, CTA
+  const sectionGroups = FEATURED_GUIDES.reduce((acc, guide) => {
+    if (!acc[guide.section]) acc[guide.section] = [];
+    acc[guide.section].push(guide);
+    return acc;
+  }, {});
+
   return (
     <PublicLayout>
       <SEOHead
-        title="Insights & Blog - Property Management Tips | Pleerity"
-        description="Expert insights, guides, and tips for UK landlords and property managers. Stay updated on compliance, market trends, and best practices."
+        title="Insights for UK Landlords | Compliance Tracking & Guides | Pleerity"
+        description="Practical guides on UK landlord compliance tracking, gas safety and EICR expiry reminders, HMO compliance UK. Free landlord compliance checklist."
         canonicalUrl="/insights"
       />
       
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="py-16 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl sm:text-5xl font-bold text-midnight-blue mb-6">
-              Insights & Resources
+              Insights for UK Landlords & Property Managers
             </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Expert guides, tips, and insights for UK landlords and property managers.
+              Practical guides on compliance tracking, certificates, and portfolio management.
             </p>
-            
-            {/* Search */}
             <div className="relative max-w-xl mx-auto">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
@@ -353,117 +449,77 @@ const InsightsHubPage = () => {
         </div>
       </section>
       
-      {/* Main Content */}
+      {/* Featured Guides — grouped by SEO section headings */}
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Main Column */}
             <div className="lg:w-2/3">
-              {/* Category Tabs */}
-              <div className="flex flex-wrap gap-2 mb-8">
-                <Button
-                  variant={!selectedCategory ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedCategory(null)}
-                >
-                  All
-                </Button>
-                {categories.map(cat => (
-                  <Button
-                    key={cat.name}
-                    variant={selectedCategory === cat.name ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedCategory(cat.name)}
-                  >
-                    {cat.name} ({cat.count})
-                  </Button>
-                ))}
-              </div>
-              
-              {/* Posts Grid */}
-              {isLoading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-electric-teal" />
-                </div>
-              ) : posts.length === 0 ? (
-                <div className="text-center py-12">
-                  <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-gray-600 mb-2">No articles found</h3>
-                  <p className="text-gray-500">Check back soon for new content!</p>
-                </div>
-              ) : (
-                <div className="grid md:grid-cols-2 gap-6">
-                  {posts.map(post => (
-                    <Card 
-                      key={post.id} 
-                      className="overflow-hidden hover:shadow-lg transition-shadow group"
-                      data-testid={`post-card-${post.slug}`}
-                    >
-                      {post.featured_image && (
-                        <img
-                          src={post.featured_image}
-                          alt={post.title}
-                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
-                        />
-                      )}
-                      <CardContent className="p-6">
-                        <Badge variant="outline" className="mb-3">
-                          {post.category}
-                        </Badge>
-                        <h3 className="text-xl font-bold text-midnight-blue mb-2 line-clamp-2 group-hover:text-electric-teal transition-colors">
-                          <Link to={`/insights/${post.slug}`}>
-                            {post.title}
-                          </Link>
-                        </h3>
-                        <p className="text-gray-600 text-sm line-clamp-2 mb-4">
-                          {post.excerpt}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-400 flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(post.published_at)}
-                          </span>
+              {Object.entries(sectionGroups).map(([sectionTitle, guides]) => (
+                <div key={sectionTitle} className="mb-6">
+                  <h2 className="text-2xl font-bold text-midnight-blue mb-4 pb-2 border-b-2 border-electric-teal">
+                    {sectionTitle}
+                  </h2>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {guides.map((guide) => (
+                      <Card
+                        key={guide.slug}
+                        className="overflow-hidden hover:shadow-lg transition-shadow group border-2 border-transparent hover:border-electric-teal"
+                        data-testid={`guide-card-${guide.slug}`}
+                      >
+                        <CardContent className="p-6">
+                          <h3 className="text-xl font-bold text-midnight-blue mb-2 line-clamp-2 group-hover:text-electric-teal transition-colors">
+                            <Link to={`/insights/${guide.slug}`}>{guide.title}</Link>
+                          </h3>
+                          <p className="text-gray-600 text-sm line-clamp-2 mb-4">{guide.excerpt}</p>
                           <Link
-                            to={`/insights/${post.slug}`}
-                            className="text-electric-teal font-medium text-sm flex items-center gap-1 hover:underline"
+                            to={`/insights/${guide.slug}`}
+                            className="text-electric-teal font-medium text-sm inline-flex items-center gap-1 hover:underline"
                           >
-                            Read more
+                            Read guide
                             <ArrowRight className="h-3 w-3" />
                           </Link>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              )}
-              
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-center gap-2 mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="flex items-center px-4 text-gray-500">
-                    Page {page} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                  >
-                    Next
-                  </Button>
+              ))}
+
+              {/* API posts when available (below featured guides) */}
+              {!isLoading && posts.length > 0 && (
+                <div className="mt-12">
+                  <h2 className="text-2xl font-bold text-midnight-blue mb-4">More articles</h2>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {posts.map(post => (
+                      <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
+                        {post.featured_image && (
+                          <img src={post.featured_image} alt={post.title} className="w-full h-48 object-cover" />
+                        )}
+                        <CardContent className="p-6">
+                          <Badge variant="outline" className="mb-3">{post.category}</Badge>
+                          <h3 className="text-xl font-bold text-midnight-blue mb-2 line-clamp-2">
+                            <Link to={`/insights/${post.slug}`}>{post.title}</Link>
+                          </h3>
+                          <p className="text-gray-600 text-sm line-clamp-2 mb-4">{post.excerpt}</p>
+                          <Link to={`/insights/${post.slug}`} className="text-electric-teal font-medium text-sm flex items-center gap-1 hover:underline">
+                            Read more <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex justify-center gap-2 mt-6">
+                      <Button variant="outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                      <span className="flex items-center px-4 text-gray-500">Page {page} of {totalPages}</span>
+                      <Button variant="outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
             
-            {/* Sidebar */}
             <aside className="lg:w-1/3">
-              {/* Popular Tags */}
               {popularTags.length > 0 && (
                 <Card className="mb-6">
                   <CardHeader>
@@ -475,11 +531,7 @@ const InsightsHubPage = () => {
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {popularTags.map(tag => (
-                        <Link
-                          key={tag.name}
-                          to={`/insights?tag=${tag.name}`}
-                          className="text-sm px-3 py-1 bg-gray-100 rounded-full hover:bg-electric-teal hover:text-white transition-colors"
-                        >
+                        <Link key={tag.name} to={`/insights?tag=${tag.name}`} className="text-sm px-3 py-1 bg-gray-100 rounded-full hover:bg-electric-teal hover:text-white transition-colors">
                           #{tag.name} ({tag.count})
                         </Link>
                       ))}
@@ -487,9 +539,7 @@ const InsightsHubPage = () => {
                   </CardContent>
                 </Card>
               )}
-              
-              {/* Newsletter CTA */}
-              <Card className="bg-midnight-blue text-white">
+              <Card className="bg-midnight-blue text-white mb-6">
                 <CardHeader>
                   <CardTitle className="text-lg">Stay Updated</CardTitle>
                 </CardHeader>
@@ -504,6 +554,47 @@ const InsightsHubPage = () => {
               </Card>
             </aside>
           </div>
+        </div>
+      </section>
+
+      {/* Lead magnet */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl font-bold text-midnight-blue mb-4">
+            Download Free Landlord Compliance Checklist (PDF)
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Get our one-page checklist for UK landlord compliance. We&apos;ll send the PDF to your inbox.
+          </p>
+          <form
+            className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
+            onSubmit={(e) => e.preventDefault()}
+          >
+            <Input
+              type="email"
+              placeholder="Your email"
+              className="flex-1 h-11"
+              required
+            />
+            <Button type="submit" className="bg-electric-teal hover:bg-electric-teal/90">
+              Send me the checklist
+            </Button>
+          </form>
+        </div>
+      </section>
+
+      {/* CTA block */}
+      <section className="py-16 bg-midnight-blue">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">
+            Ready to Track Compliance Automatically?
+          </h2>
+          <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+            <Link to="/intake/start">
+              Start Free Trial
+              <ArrowRight className="w-5 h-5 ml-2 inline" />
+            </Link>
+          </Button>
         </div>
       </section>
     </PublicLayout>
