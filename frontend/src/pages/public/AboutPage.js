@@ -1,99 +1,104 @@
+/**
+ * About — Product-led positioning, trust, and Compliance Vault Pro alignment.
+ * Compliance-safe language throughout; no legal claims.
+ */
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
-import { Shield, Zap, TrendingUp, Building, ArrowRight } from 'lucide-react';
+import {
+  FileSearch,
+  Gauge,
+  History,
+  Shield,
+  Lock,
+  Users,
+  Eye,
+  Cpu,
+  AlertCircle,
+  Building2,
+  UserCheck,
+  Briefcase,
+  ArrowRight,
+} from 'lucide-react';
+
+const PRINCIPLES = [
+  {
+    icon: FileSearch,
+    title: 'Evidence First',
+    description: 'We track documents, not assumptions.',
+  },
+  {
+    icon: Gauge,
+    title: 'Structured Indicators',
+    description: 'We provide risk indicators, not legal verdicts.',
+  },
+  {
+    icon: History,
+    title: 'Audit Visibility',
+    description: 'Every update is logged. Every change traceable.',
+  },
+];
+
+const WHO_ITS_FOR = [
+  { icon: UserCheck, label: 'Solo landlords' },
+  { icon: Building2, label: 'Portfolio landlords' },
+  { icon: Briefcase, label: 'Managing agents' },
+  { icon: Users, label: 'Property professionals' },
+];
 
 const AboutPage = () => {
-  const principles = [
-    { icon: Shield, title: 'Simplicity', description: 'Systems should be easy to understand and use, without unnecessary steps or jargon.' },
-    { icon: Zap, title: 'Integrity', description: 'Compliance and automation must be designed with accuracy and data security at the centre.' },
-    { icon: TrendingUp, title: 'Scalability', description: 'Solutions should grow with your business, quietly supporting increasing workloads and maturity.' }
-  ];
-
-  const partners = [
-    { name: 'Stripe', description: 'Secure payment processing' },
-    { name: 'AI language models', description: 'Intelligent document generation' },
-    { name: 'UK regulatory standards', description: 'Trusted compliance frameworks' }
-  ];
-
   return (
     <PublicLayout>
       <SEOHead
-        title="About Us | Pleerity Enterprise Ltd"
-        description="Structured compliance and automation systems for organisations operating under regulatory, procedural, or audit pressure."
+        title="About | Pleerity Enterprise"
+        description="Built for organisations that need structure, not guesswork. Structured compliance technology and audit visibility for UK landlords and property professionals."
         canonicalUrl="/about"
       />
 
+      {/* Hero — Founder-driven positioning */}
       <section className="bg-gradient-to-b from-gray-50 to-white py-20">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-electric-teal/10 text-electric-teal text-sm font-medium mb-6">
-            <Building className="w-4 h-4 mr-2" />
-            About Pleerity Enterprise
-          </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl sm:text-5xl font-bold text-midnight-blue mb-6">
-            Structured compliance and automation systems for organisations operating under regulatory, procedural, or audit pressure.
+            Built for Organisations That Need Structure — Not Guesswork
           </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Compliance is often reactive. We built structured systems to make it proactive.
+          </p>
         </div>
       </section>
 
+      {/* The Problem We Saw */}
       <section className="py-16 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-6">An Operational Approach to Compliance and Automation</h2>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-midnight-blue mb-6">The Problem We Saw</h2>
           <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
             <p>
-              Pleerity Enterprise designs structured compliance and automation systems for organisations that operate 
-              under regulatory, procedural, or audit pressure.
+              Landlords juggling certificates in email folders. Deadlines missed. Spreadsheets breaking. 
+              No central audit trail.
             </p>
             <p>
-              We do not sell generic software or one-off tools. We build controlled operating systems that track 
-              obligations, enforce consistency, and maintain audit-ready documentation over time.
-            </p>
-            <p>
-              Our work is grounded in clear process mapping, defined compliance boundaries, documented workflows, 
-              and ongoing visibility.
-            </p>
-            <p>
-              We focus on systems that reduce risk, prevent failure points, and support long-term operational reliability.
+              Compliance Vault Pro was created to bring structure, visibility, and automation to this process.
             </p>
           </div>
         </div>
       </section>
 
+      {/* Our Approach — Three principles */}
       <section className="py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-6">Our Story</h2>
-          <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
-            <p>
-              Pleerity began with a familiar frustration — hours lost chasing documents, renewals, and updates across 
-              multiple platforms. What started as a focused compliance support service has since developed into a full 
-              automation and intelligence practice serving landlords, SMEs, and professional service firms across the UK.
-            </p>
-            <p>
-              We design the tools we once needed ourselves: practical automation, structured compliance, and clear 
-              documentation suited to real business environments rather than technical experts.
-            </p>
-            <p>
-              Today, our systems help clients reduce administrative workload, prevent missed obligations, and make 
-              informed decisions faster — without additional staff or software complexity.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-8 text-center">Our Philosophy</h2>
-          <p className="text-gray-600 text-center mb-12">
-            We believe technology should simplify, not overwhelm. Every solution we create follows three core principles:
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-midnight-blue mb-4 text-center">Our Approach</h2>
+          <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto">
+            Our approach is built on three principles:
           </p>
           <div className="grid md:grid-cols-3 gap-8">
-            {principles.map((p, i) => {
+            {PRINCIPLES.map((p, i) => {
               const Icon = p.icon;
               return (
-                <Card key={i} className="text-center">
+                <Card key={i} className="text-center border-2 border-transparent hover:border-electric-teal/30 transition-colors">
                   <CardContent className="pt-6">
                     <div className="w-16 h-16 bg-electric-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Icon className="w-8 h-8 text-electric-teal" />
@@ -108,65 +113,97 @@ const AboutPage = () => {
         </div>
       </section>
 
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-6">Security & Data Handling</h2>
-          <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
-            <p>
-              All systems are designed with controlled access, role-based visibility, and secure document handling in mind.
-            </p>
-            <p>
-              We do not monetise client data, resell information, or use client systems for unrelated training or 
-              experimentation. Data access is limited strictly to what is operationally required to deliver agreed services.
-            </p>
-            <p>
-              Client data is stored using secure infrastructure with encryption in transit and access controls. 
-              Access controls are role-based and auditable. We do not share client information with third parties 
-              except where required for service delivery or legal compliance.
-            </p>
-            <p className="font-semibold text-midnight-blue">
-              Compliance should never be uncertain. Our role is to provide clarity and confidence at every stage.
-            </p>
-          </div>
-        </div>
-      </section>
-
+      {/* Security & Data Handling — Expanded */}
       <section className="py-16 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-6">Our Team</h2>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-midnight-blue mb-6 flex items-center gap-2">
+            <Shield className="w-8 h-8 text-electric-teal" />
+            Security & Data Handling
+          </h2>
+          <ul className="space-y-3 text-gray-700">
+            <li className="flex items-start gap-3">
+              <Lock className="w-5 h-5 text-electric-teal shrink-0 mt-0.5" />
+              <span>Secure cloud infrastructure with encryption in transit</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Users className="w-5 h-5 text-electric-teal shrink-0 mt-0.5" />
+              <span>Role-based access controls</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <History className="w-5 h-5 text-electric-teal shrink-0 mt-0.5" />
+              <span>Audit logs for traceability</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Eye className="w-5 h-5 text-electric-teal shrink-0 mt-0.5" />
+              <span>Data access limited to what is operationally required; we do not monetise or resell client data</span>
+            </li>
+          </ul>
+          <div className="mt-8 p-4 rounded-lg bg-amber-50 border border-amber-200">
+            <p className="text-gray-700 flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                <strong className="text-midnight-blue">Compliance disclaimer:</strong> We do not provide legal advice or certification. 
+                Our platform supports compliance oversight through structured tracking and reporting; you remain responsible for 
+                meeting your legal and regulatory obligations.
+              </span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* AI Philosophy */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-midnight-blue mb-6 flex items-center gap-2">
+            <Cpu className="w-8 h-8 text-electric-teal" />
+            AI Philosophy
+          </h2>
           <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
             <p>
-              Pleerity is a UK-based team of automation specialists, compliance professionals, and workflow designers. 
-              Each project is shaped by people who understand the relationship between regulation, operations, and trust.
-            </p>
-            <p>
-              We do not outsource client work, and we do not rely on rigid templates. Instead, we build systems that 
-              fit the way you work and deliver consistent results day after day.
+              <strong className="text-midnight-blue">AI is assistive only.</strong> All extracted data requires user confirmation 
+              before it is applied. Compliance status is determined by structured rules and your confirmed inputs, not by 
+              AI-generated legal conclusions.
             </p>
           </div>
         </div>
       </section>
 
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-8">Our Partners</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {partners.map((p, i) => (
-              <div key={i} className="bg-white p-6 rounded-lg border">
-                <h3 className="font-semibold text-midnight-blue mb-2">{p.name}</h3>
-                <p className="text-sm text-gray-600">{p.description}</p>
-              </div>
-            ))}
+      {/* Who It's Built For */}
+      <section className="py-16 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-midnight-blue mb-8 text-center">Who It's Built For</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {WHO_ITS_FOR.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={i}
+                  className="flex flex-col items-center text-center p-6 rounded-lg border-2 border-gray-100 hover:border-electric-teal/30 transition-colors"
+                >
+                  <div className="w-12 h-12 bg-electric-teal/10 rounded-full flex items-center justify-center mb-3">
+                    <Icon className="w-6 h-6 text-electric-teal" />
+                  </div>
+                  <span className="font-medium text-midnight-blue">{item.label}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
+      {/* Final CTA */}
       <section className="py-20 bg-midnight-blue">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-white mb-6">Ready to Get Started?</h2>
-          <p className="text-lg text-gray-300 mb-8">Explore our services and see how we can help your organisation.</p>
-          <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90" asChild>
-            <Link to="/services">View Services<ArrowRight className="w-5 h-5 ml-2" /></Link>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-white mb-6">See How Structured Compliance Works</h2>
+          <Button
+            size="lg"
+            className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+            asChild
+          >
+            <Link to="/compliance-vault-pro">
+              Explore Compliance Vault Pro
+              <ArrowRight className="w-5 h-5 ml-2 inline-block" />
+            </Link>
           </Button>
         </div>
       </section>
