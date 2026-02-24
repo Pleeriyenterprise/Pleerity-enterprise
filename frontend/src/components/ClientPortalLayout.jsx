@@ -25,6 +25,7 @@ import {
   HelpCircle,
   ChevronDown,
   History,
+  Users,
 } from 'lucide-react';
 
 const PORTAL_TABS = [
@@ -34,6 +35,7 @@ const PORTAL_TABS = [
   { path: '/documents', label: 'Documents', icon: FileText },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/tenants', label: 'Tenants', icon: Users, feature: 'tenant_portal' },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -78,7 +80,11 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   const showReports = hasFeature('reports_pdf') || hasFeature('reports_csv');
-  const tabs = PORTAL_TABS.filter((t) => t.path !== '/reports' || showReports);
+  const tabs = PORTAL_TABS.filter((t) => {
+    if (t.path === '/reports') return showReports;
+    if (t.feature) return hasFeature(t.feature);
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
