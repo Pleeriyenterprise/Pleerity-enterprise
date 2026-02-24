@@ -601,6 +601,11 @@ class ProvisioningService:
                     "provider_message_id": provider_message_id,
                 }
             )
+            try:
+                from services.analytics_service import log_event
+                await log_event("activation_email_sent", {"client_id": client_id})
+            except Exception:
+                pass
             logger.info(
                 "ACTIVATION_EMAIL_SENT client_id=%s provider=postmark template=WELCOME_EMAIL recipient_masked=%s message_id=%s",
                 client_id, _mask_email(email), result.message_id,
@@ -614,6 +619,11 @@ class ProvisioningService:
                 client_id=client_id,
                 metadata={"error_message": err_msg, "provider": "postmark", "provider_response": "not_configured"},
             )
+            try:
+                from services.analytics_service import log_event
+                await log_event("email_failed", {"client_id": client_id, "error_code": "NOT_CONFIGURED", "metadata": {"template_key": "WELCOME_EMAIL", "error": err_msg}})
+            except Exception:
+                pass
             return False, "NOT_CONFIGURED", err_msg
         err = (result.error_message or result.block_reason or result.outcome or "unknown")[:500]
         await create_audit_log(
@@ -625,6 +635,11 @@ class ProvisioningService:
                 "provider_response_code": getattr(result, "status_code", None),
             },
         )
+        try:
+            from services.analytics_service import log_event
+            await log_event("email_failed", {"client_id": client_id, "error_code": "FAILED", "metadata": {"template_key": "WELCOME_EMAIL", "error": err}})
+        except Exception:
+            pass
         logger.warning("ACTIVATION_EMAIL_FAILED client_id=%s error=%s provider_response_code=%s", client_id, err, getattr(result, "status_code", None))
         return False, "FAILED", err
     

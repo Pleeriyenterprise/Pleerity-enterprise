@@ -295,6 +295,16 @@ class StripeWebhookService:
             
             logger.info(f"Created order {order['order_ref']} from draft {draft_ref}")
             
+            try:
+                from services.analytics_service import log_event
+                await log_event(
+                    "payment_succeeded",
+                    {"client_id": order.get("client_id"), "stripe_session_id": session_id},
+                    idempotency_key=(event or {}).get("id"),
+                )
+            except Exception:
+                pass
+            
             # Check if this is a Document Pack order
             order_service_code = order.get("service_code") or service_code
             if order_service_code in document_pack_webhook_handler.VALID_PACK_CODES:
@@ -601,6 +611,15 @@ class StripeWebhookService:
             "HANDLER_END event.type=checkout.session.completed client_id=%s db_updated=subscription_status=%s billing_plan=%s entitlement_status=%s onboarding_status=(unchanged) provisioning_triggered=%s",
             client_id, subscription_status.upper(), plan_code.value, entitlement_status.value, provisioning_triggered,
         )
+        try:
+            from services.analytics_service import log_event
+            await log_event(
+                "payment_succeeded",
+                {"client_id": client_id, "stripe_subscription_id": stripe_subscription_id, "stripe_session_id": checkout_session_id},
+                idempotency_key=(event or {}).get("id"),
+            )
+        except Exception:
+            pass
         return {
             "handled": True,
             "client_id": client_id,
@@ -1003,6 +1022,15 @@ class StripeWebhookService:
             "HANDLER_END event.type=invoice.paid client_id=%s db_updated=subscription_status=%s entitlement_status=%s",
             client_id, new_status.upper(), entitlement_status.value,
         )
+        try:
+            from services.analytics_service import log_event
+            await log_event(
+                "payment_succeeded",
+                {"client_id": client_id, "stripe_subscription_id": subscription_id},
+                idempotency_key=(event or {}).get("id"),
+            )
+        except Exception:
+            pass
         return {
             "handled": True,
             "client_id": client_id,

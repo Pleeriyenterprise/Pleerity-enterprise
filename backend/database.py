@@ -160,6 +160,15 @@ class Database:
                 pass
             await self.db.provisioning_jobs.create_index("client_id")
             await self.db.provisioning_jobs.create_index("status")
+            # Analytics events - conversion funnel and operational metrics (passive logging)
+            await self.db.analytics_events.create_index([("event", 1), ("ts", -1)])
+            await self.db.analytics_events.create_index([("client_id", 1), ("ts", -1)])
+            await self.db.analytics_events.create_index([("lead_id", 1), ("ts", -1)])
+            await self.db.analytics_events.create_index("ts")
+            try:
+                await self.db.analytics_events.create_index("idempotency_key", unique=True, sparse=True)
+            except Exception:
+                pass
             # Requirements catalog (data-driven compliance definitions)
             await self.db.requirements_catalog.create_index("code", unique=True)
             await self.db.requirements_catalog.create_index("category")

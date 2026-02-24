@@ -10,7 +10,7 @@ Provides business intelligence data for the admin analytics dashboard:
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, timezone, timedelta
-from middleware import admin_route_guard
+from middleware import admin_route_guard, require_owner_or_admin
 from database import database
 from typing import Optional, List
 import logging
@@ -470,6 +470,23 @@ def parse_custom_date(date_str: str) -> datetime:
         return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
 
 
+def _analytics_events_query(from_date: Optional[str], to_date: Optional[str], source: Optional[str], plan: Optional[str]):
+    """Build query and date range for analytics_events. from/to are YYYY-MM-DD or ISO."""
+    now = datetime.now(timezone.utc)
+    if from_date and to_date:
+        start = parse_custom_date(from_date)
+        end = parse_custom_date(to_date)
+    else:
+        end = now
+        start = now - timedelta(days=30)
+    query = {"ts": {"$gte": start, "$lte": end}}
+    if source and source.strip():
+        query["source"] = source.strip()
+    if plan and plan.strip():
+        query["plan_code"] = plan.strip()
+    return query, start, end
+
+
 def get_comparison_period(start: datetime, end: datetime) -> tuple:
     """Calculate the comparison period (same duration, immediately before)."""
     duration = end - start
@@ -816,3 +833,233 @@ async def get_breakdown(
         "total_revenue": total_revenue,
         "total_revenue_formatted": f"£{total_revenue / 100:,.2f}"
     }
+
+
+# ============================================================================
+# CONVERSION FUNNEL (analytics_events)
+# ============================================================================
+
+def _parse_from_to(from_date: Optional[str], to_date: Optional[str], period: str = "30d") -> tuple:
+    """Return (start_dt, end_dt) for analytics_events query."""
+    if from_date and to_date:
+        try:
+            start = datetime.fromisoformat(from_date.replace("Z", "+00:00"))
+        except ValueError:
+            start = datetime.strptime(from_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        try:
+            end = datetime.fromisoformat(to_date.replace("Z", "+00:00"))
+        except ValueError:
+            end = datetime.strptime(to_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        return start, end
+    start_iso, end_iso = get_date_range(period)
+    return parse_custom_date(start_iso), parse_custom_date(end_iso)
+
+
+async def _analytics_events_query(
+    start_dt: datetime, end_dt: datetime,
+    source: Optional[str] = None, plan: Optional[str] = None,
+) -> dict:
+    """Build query dict for analytics_events collection."""
+    q = {"ts": {"$gte": start_dt, "$lte": end_dt}}
+    if source:
+        q["source"] = source
+    if plan:
+        q["plan_code"] = plan
+    return q
+
+
+@router.get("/overview", dependencies=[Depends(require_owner_or_admin)])
+async def get_conversion_overview(
+    from_date: Optional[str] = Query(None, description="From date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(None, description="To date YYYY-MM-DD"),
+    period: str = Query("30d", description="Preset if from/to not set"),
+    source: Optional[str] = Query(None, description="Filter by source"),
+    plan: Optional[str] = Query(None, description="Filter by plan_code"),
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Conversion funnel overview from analytics_events.
+    Returns KPI counts, conversion rates, median times, leads by source, failure counts.
+    """
+    db = database.get_db()
+    start_dt, end_dt = _parse_from_to(from_date, to_date, period)
+    q = await _analytics_events_query(start_dt, end_dt, source, plan)
+
+    pipeline_lead = [
+        {"$match": {**q, "event": "lead_captured"}},
+        {"$group": {"_id": "$lead_id"}},
+        {"$count": "count"},
+    ]
+    def pipeline_client(ev):
+        return [
+            {"$match": {**q, "event": ev}},
+            {"$group": {"_id": "$client_id"}},
+            {"$count": "count"},
+        ]
+    events_for_count = [
+        "lead_captured", "intake_submitted", "checkout_started", "payment_succeeded",
+        "provisioning_completed", "activation_email_sent", "password_set", "first_doc_uploaded",
+    ]
+    kpis = {}
+    lead_cur = db.analytics_events.aggregate(pipeline_lead)
+    lead_list = await lead_cur.to_list(length=1)
+    kpis["leads"] = lead_list[0]["count"] if lead_list else 0
+    for ev in events_for_count[1:]:
+        cur = db.analytics_events.aggregate(pipeline_client(ev))
+        lst = await cur.to_list(length=1)
+        kpis[ev] = lst[0]["count"] if lst else 0
+
+    def conv(prev, curr):
+        if prev == 0:
+            return 0.0
+        return round(100.0 * curr / prev, 1)
+    conversion_rates = {
+        "lead_to_intake": conv(kpis["leads"], kpis["intake_submitted"]),
+        "intake_to_checkout": conv(kpis["intake_submitted"], kpis["checkout_started"]),
+        "checkout_to_paid": conv(kpis["checkout_started"], kpis["payment_succeeded"]),
+        "paid_to_provisioned": conv(kpis["payment_succeeded"], kpis["provisioning_completed"]),
+        "provisioned_to_activation_email": conv(kpis["provisioning_completed"], kpis["activation_email_sent"]),
+        "activation_to_password_set": conv(kpis["activation_email_sent"], kpis["password_set"]),
+        "password_set_to_first_value": conv(kpis["password_set"], kpis["first_doc_uploaded"]),
+        "lead_to_paid": conv(kpis["leads"], kpis["payment_succeeded"]),
+        "lead_to_activated": conv(kpis["leads"], kpis["password_set"]),
+    }
+
+    async def median_seconds(event_a: str, event_b: str):
+        cursor = db.analytics_events.find(
+            {**q, "event": {"$in": [event_a, event_b]}, "client_id": {"$exists": True, "$ne": None}},
+            {"client_id": 1, "event": 1, "ts": 1},
+        )
+        events_list = await cursor.to_list(length=50000)
+        by_client = {}
+        for e in events_list:
+            cid = e.get("client_id")
+            if not cid:
+                continue
+            if cid not in by_client:
+                by_client[cid] = {}
+            by_client[cid][e["event"]] = e.get("ts")
+        deltas = []
+        for cid, evs in by_client.items():
+            if event_a in evs and event_b in evs:
+                ta = evs[event_a] if isinstance(evs[event_a], datetime) else datetime.fromisoformat((evs[event_a] or "").replace("Z", "+00:00"))
+                tb = evs[event_b] if isinstance(evs[event_b], datetime) else datetime.fromisoformat((evs[event_b] or "").replace("Z", "+00:00"))
+                deltas.append((tb - ta).total_seconds())
+        if not deltas:
+            return None
+        deltas.sort()
+        mid = len(deltas) // 2
+        return (deltas[mid - 1] + deltas[mid]) / 2.0 if len(deltas) % 2 == 0 else float(deltas[mid])
+
+    median_paid_to_provisioned = await median_seconds("payment_succeeded", "provisioning_completed")
+    median_provisioned_to_password = await median_seconds("provisioning_completed", "password_set")
+    median_password_to_first_value = await median_seconds("password_set", "first_doc_uploaded")
+
+    src_pipeline = [
+        {"$match": {**q, "event": "lead_captured"}},
+        {"$group": {"_id": "$source", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    src_cur = db.analytics_events.aggregate(src_pipeline)
+    leads_by_source = [{"source": x["_id"] or "unknown", "count": x["count"]} for x in await src_cur.to_list(length=100)]
+
+    fail_pipeline = [
+        {"$match": {**q, "event": {"$in": ["checkout_failed", "email_failed", "provisioning_failed"]}}},
+        {"$group": {"_id": {"event": "$event", "error_code": "$metadata.error_code"}, "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    fail_cur = db.analytics_events.aggregate(fail_pipeline)
+    failures_by_error = []
+    async for row in fail_cur:
+        rid = row.get("_id") or {}
+        failures_by_error.append({"event": rid.get("event"), "error_code": rid.get("error_code") or rid.get("event") or "unknown", "count": row["count"]})
+
+    return {
+        "from": start_dt.isoformat(),
+        "to": end_dt.isoformat(),
+        "filters": {"source": source, "plan": plan},
+        "kpis": kpis,
+        "conversion_rates": conversion_rates,
+        "median_seconds": {
+            "paid_to_provisioned": median_paid_to_provisioned,
+            "provisioned_to_password_set": median_provisioned_to_password,
+            "password_set_to_first_value": median_password_to_first_value,
+        },
+        "leads_by_source": leads_by_source,
+        "failures_by_error": failures_by_error,
+    }
+
+
+@router.get("/funnel", dependencies=[Depends(require_owner_or_admin)])
+async def get_conversion_funnel_events(
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    period: str = Query("30d"),
+    source: Optional[str] = Query(None),
+    plan: Optional[str] = Query(None),
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Funnel stage counts, step conversion %, drop-off from analytics_events."""
+    db = database.get_db()
+    start_dt, end_dt = _parse_from_to(from_date, to_date, period)
+    q = await _analytics_events_query(start_dt, end_dt, source, plan)
+    stages = [
+        ("Lead Captured", "lead_captured", "lead_id"),
+        ("Intake Submitted", "intake_submitted", "client_id"),
+        ("Checkout Started", "checkout_started", "client_id"),
+        ("Paid", "payment_succeeded", "client_id"),
+        ("Provisioned", "provisioning_completed", "client_id"),
+        ("Activation Email Sent", "activation_email_sent", "client_id"),
+        ("Password Set", "password_set", "client_id"),
+        ("First Value", "first_doc_uploaded", "client_id"),
+    ]
+    funnel = []
+    prev_count = None
+    for label, event_name, id_field in stages:
+        pipe = [{"$match": {**q, "event": event_name}}, {"$group": {"_id": f"${id_field}"}}, {"$count": "count"}]
+        cur = db.analytics_events.aggregate(pipe)
+        lst = await cur.to_list(length=1)
+        count = lst[0]["count"] if lst else 0
+        step_pct = round(100.0 * count / prev_count, 1) if prev_count and prev_count > 0 else (100.0 if count > 0 else 0)
+        drop_off = (prev_count - count) if prev_count is not None and prev_count > count else 0
+        drop_pct = round(100.0 * drop_off / prev_count, 1) if prev_count and prev_count > 0 else 0
+        funnel.append({
+            "stage": label, "event": event_name, "count": count,
+            "step_conversion_percent": step_pct, "drop_off_count": drop_off, "drop_off_percent": drop_pct,
+        })
+        prev_count = count
+    return {"from": start_dt.isoformat(), "to": end_dt.isoformat(), "funnel": funnel}
+
+
+@router.get("/failures", dependencies=[Depends(require_owner_or_admin)])
+async def get_analytics_failures(
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    period: str = Query("30d"),
+    type: Optional[str] = Query(None, description="Filter: checkout | email | provisioning"),
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Recent failure events with request_id/stripe ids and metadata."""
+    db = database.get_db()
+    start_dt, end_dt = _parse_from_to(from_date, to_date, period)
+    q = {"ts": {"$gte": start_dt, "$lte": end_dt}, "event": {"$in": ["checkout_failed", "email_failed", "provisioning_failed"]}}
+    if type == "checkout":
+        q["event"] = "checkout_failed"
+    elif type == "email":
+        q["event"] = "email_failed"
+    elif type == "provisioning":
+        q["event"] = "provisioning_failed"
+    cursor = db.analytics_events.find(q).sort("ts", -1).limit(200)
+    events = await cursor.to_list(length=200)
+    out = []
+    for e in events:
+        ts = e.get("ts")
+        if isinstance(ts, datetime):
+            ts = ts.isoformat()
+        meta = e.get("metadata") or {}
+        out.append({
+            "ts": ts, "event": e.get("event"), "client_id": e.get("client_id"), "lead_id": e.get("lead_id"),
+            "request_id": meta.get("request_id"), "stripe_session_id": e.get("stripe_session_id"),
+            "stripe_subscription_id": e.get("stripe_subscription_id"), "error_code": meta.get("error_code"), "metadata": meta,
+        })
+    return {"from": start_dt.isoformat(), "to": end_dt.isoformat(), "type_filter": type, "events": out}

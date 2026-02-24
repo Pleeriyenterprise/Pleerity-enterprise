@@ -140,6 +140,12 @@ async def capture_chatbot_lead(
         ip_address=req.client.host if req.client else None,
     )
     
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "web_chat"})
+    except Exception:
+        pass
+    
     # Send acknowledgement email (transactional, not marketing)
     if lead.get("email") and not lead.get("is_duplicate"):
         await LeadFollowUpService.send_acknowledgement(lead)
@@ -182,6 +188,12 @@ async def capture_contact_form_lead(
         actor_type="system",
         ip_address=req.client.host if req.client else None,
     )
+    
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "contact_form"})
+    except Exception:
+        pass
     
     # Send acknowledgement
     if lead.get("email") and not lead.get("is_duplicate"):
@@ -226,6 +238,12 @@ async def capture_compliance_checklist_lead(
         actor_type="system",
         ip_address=req.client.host if req.client else None,
     )
+
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "compliance_checklist"})
+    except Exception:
+        pass
 
     # Send Email 1 (checklist delivery) and set nurture_stage=1 when consent and not duplicate
     if (
@@ -275,6 +293,12 @@ async def capture_document_service_lead(
         ip_address=req.client.host if req.client else None,
     )
     
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "document_services"})
+    except Exception:
+        pass
+    
     # Send acknowledgement
     if lead.get("email") and not lead.get("is_duplicate"):
         await LeadFollowUpService.send_acknowledgement(lead)
@@ -318,6 +342,12 @@ async def capture_whatsapp_lead(
         actor_type="system",
         ip_address=request.client.host if request.client else None,
     )
+    
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "whatsapp"})
+    except Exception:
+        pass
     
     return {
         "success": True,

@@ -124,6 +124,11 @@ export default function AdminAnalyticsDashboard() {
     addons: null,
     dailyRevenue: null,
   });
+  const [conversionOverview, setConversionOverview] = useState(null);
+  const [conversionFunnel, setConversionFunnel] = useState(null);
+  const [conversionFailures, setConversionFailures] = useState(null);
+  const [conversionSourceFilter, setConversionSourceFilter] = useState('');
+  const [conversionPlanFilter, setConversionPlanFilter] = useState('');
   
   // Build query params for API calls
   const getQueryParams = useCallback(() => {
@@ -172,7 +177,26 @@ export default function AdminAnalyticsDashboard() {
         funnel: funnelRes.data,
         addons: addonsRes.data,
       });
-      
+      const convParams = showCustomRange && customDateRange.start && customDateRange.end
+        ? `from=${customDateRange.start}&to=${customDateRange.end}`
+        : `period=${period}`;
+      const sourceParam = conversionSourceFilter ? `&source=${encodeURIComponent(conversionSourceFilter)}` : '';
+      const planParam = conversionPlanFilter ? `&plan=${encodeURIComponent(conversionPlanFilter)}` : '';
+      try {
+        const [overviewRes, funnelResConv, failuresRes] = await Promise.all([
+          client.get(`/admin/analytics/overview?${convParams}${sourceParam}${planParam}`),
+          client.get(`/admin/analytics/funnel?${convParams}${sourceParam}${planParam}`),
+          client.get(`/admin/analytics/failures?${convParams}`),
+        ]);
+        setConversionOverview(overviewRes.data);
+        setConversionFunnel(funnelResConv.data);
+        setConversionFailures(failuresRes.data);
+      } catch (convErr) {
+        console.error('Conversion funnel fetch failed:', convErr);
+        setConversionOverview(null);
+        setConversionFunnel(null);
+        setConversionFailures(null);
+      }
       // Also fetch advanced data
       await fetchAdvancedData();
     } catch (error) {
@@ -181,7 +205,7 @@ export default function AdminAnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [period, fetchAdvancedData]);
+  }, [period, fetchAdvancedData, showCustomRange, customDateRange, conversionSourceFilter, conversionPlanFilter]);
   
   useEffect(() => {
     fetchAllData();
@@ -509,6 +533,160 @@ export default function AdminAnalyticsDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Conversion Funnel (Lead to First Value) - event-based */}
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Target className="h-5 w-5 text-indigo-600" />
+                  Conversion Funnel (Lead to First Value)
+                </CardTitle>
+                <CardDescription>
+                  Operational analytics only. Not legal or compliance advice.
+                </CardDescription>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <input
+                    type="text"
+                    placeholder="Source filter"
+                    value={conversionSourceFilter}
+                    onChange={(e) => setConversionSourceFilter(e.target.value)}
+                    className="px-2 py-1 border rounded text-sm w-36"
+                  />
+                  <select
+                    value={conversionPlanFilter}
+                    onChange={(e) => setConversionPlanFilter(e.target.value)}
+                    className="px-2 py-1 border rounded text-sm"
+                  >
+                    <option value="">All plans</option>
+                    <option value="PLAN_1_SOLO">Solo</option>
+                    <option value="PLAN_2_PORTFOLIO">Portfolio</option>
+                    <option value="PLAN_3_PRO">Pro</option>
+                  </select>
+                  <Button size="sm" onClick={fetchAllData}>Apply</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {conversionOverview && (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                      <StatCard title="Leads" value={conversionOverview.kpis?.leads ?? 0} icon={Target} color="orange" />
+                      <StatCard title="Intake Submitted" value={conversionOverview.kpis?.intake_submitted ?? 0} icon={Activity} color="blue" />
+                      <StatCard title="Checkout Started" value={conversionOverview.kpis?.checkout_started ?? 0} icon={Zap} color="purple" />
+                      <StatCard title="Paid" value={conversionOverview.kpis?.payment_succeeded ?? 0} icon={DollarSign} color="green" />
+                      <StatCard title="Provisioned" value={conversionOverview.kpis?.provisioning_completed ?? 0} icon={Package} color="teal" />
+                      <StatCard title="Activation Email" value={conversionOverview.kpis?.activation_email_sent ?? 0} icon={Activity} color="indigo" />
+                      <StatCard title="Password Set" value={conversionOverview.kpis?.password_set ?? 0} icon={Users} color="amber" />
+                      <StatCard title="First Value" value={conversionOverview.kpis?.first_doc_uploaded ?? 0} icon={TrendingUp} color="green" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <p className="text-sm text-gray-600">
+                        <strong>Median Paid → Provisioned:</strong>{' '}
+                        {conversionOverview.median_seconds?.paid_to_provisioned != null
+                          ? `${Math.round(conversionOverview.median_seconds.paid_to_provisioned / 60)}m`
+                          : '—'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <strong>Median Provisioned → Password Set:</strong>{' '}
+                        {conversionOverview.median_seconds?.provisioned_to_password_set != null
+                          ? `${Math.round(conversionOverview.median_seconds.provisioned_to_password_set / 60)}m`
+                          : '—'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <strong>Median Password Set → First Value:</strong>{' '}
+                        {conversionOverview.median_seconds?.password_set_to_first_value != null
+                          ? `${Math.round(conversionOverview.median_seconds.password_set_to_first_value / 60)}m`
+                          : '—'}
+                      </p>
+                    </div>
+                    {conversionOverview.leads_by_source?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Leads by source</h4>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b"><th className="text-left py-1">Source</th><th className="text-right py-1">Count</th></tr>
+                          </thead>
+                          <tbody>
+                            {conversionOverview.leads_by_source.map((row) => (
+                              <tr key={row.source} className="border-b border-gray-100">
+                                <td className="py-1">{row.source}</td>
+                                <td className="text-right">{row.count}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+                {conversionFunnel?.funnel?.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Funnel stages</h4>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-1">Stage</th>
+                          <th className="text-right py-1">Count</th>
+                          <th className="text-right py-1">Step %</th>
+                          <th className="text-right py-1">Drop-off</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {conversionFunnel.funnel.map((step) => (
+                          <tr key={step.stage} className="border-b border-gray-100">
+                            <td className="py-1">{step.stage}</td>
+                            <td className="text-right">{step.count}</td>
+                            <td className="text-right">{step.step_conversion_percent}%</td>
+                            <td className="text-right">{step.drop_off_count} ({step.drop_off_percent}%)</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {conversionFailures?.events?.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Recent failures</h4>
+                    <div className="max-h-48 overflow-auto border rounded text-sm">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr>
+                            <th className="text-left py-1 px-2">Time</th>
+                            <th className="text-left py-1 px-2">Event</th>
+                            <th className="text-left py-1 px-2">Client</th>
+                            <th className="text-left py-1 px-2">Error</th>
+                            <th className="text-left py-1 px-2">Request ID</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {conversionFailures.events.slice(0, 20).map((ev, i) => (
+                            <tr key={i} className="border-t">
+                              <td className="py-1 px-2 text-gray-600">{ev.ts ? new Date(ev.ts).toLocaleString() : '—'}</td>
+                              <td className="py-1 px-2">{ev.event}</td>
+                              <td className="py-1 px-2">{ev.client_id || '—'}</td>
+                              <td className="py-1 px-2">{ev.error_code || '—'}</td>
+                              <td className="py-1 px-2">
+                                {ev.request_id ? (
+                                  <button
+                                    type="button"
+                                    className="text-indigo-600 underline"
+                                    onClick={() => { navigator.clipboard.writeText(ev.request_id); toast.success('Copied'); }}
+                                  >
+                                    Copy
+                                  </button>
+                                ) : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                {!conversionOverview && !conversionFunnel && !loading && (
+                  <p className="text-gray-500 text-center py-4">No conversion funnel data for this period. Data appears as events are logged.</p>
+                )}
+              </CardContent>
+            </Card>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* SLA Performance */}

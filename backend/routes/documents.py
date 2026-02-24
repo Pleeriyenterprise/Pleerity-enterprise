@@ -787,6 +787,12 @@ async def upload_document(
             }
         )
         
+        try:
+            from services.analytics_service import log_event, log_first_doc_uploaded_once
+            await log_event("doc_uploaded", {"client_id": user["client_id"], "metadata": {"document_id": document.document_id, "property_id": property_id}})
+            await log_first_doc_uploaded_once(user["client_id"])
+        except Exception:
+            pass
         logger.info(f"Document uploaded: {document.document_id}")
 
         return {
@@ -898,7 +904,12 @@ async def admin_upload_document(
         )
         
         logger.info(f"Admin uploaded document for client {client_id}: {document.document_id}")
-
+        try:
+            from services.analytics_service import log_event, log_first_doc_uploaded_once
+            await log_event("doc_uploaded", {"client_id": client_id, "metadata": {"document_id": document.document_id, "property_id": property_id, "admin_upload": True}})
+            await log_first_doc_uploaded_once(client_id)
+        except Exception:
+            pass
         # Enqueue AI extraction (async; do not block or fail upload)
         try:
             from services.document_extraction_service import enqueue_extraction

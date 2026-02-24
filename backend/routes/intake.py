@@ -867,6 +867,18 @@ async def submit_intake(request: Request, data: IntakeFormData):
             }
         )
         
+        try:
+            from services.analytics_service import log_event
+            await log_event("intake_submitted", {
+                "client_id": client.client_id,
+                "customer_reference": crn,
+                "email": data.email,
+                "plan_code": data.billing_plan.value,
+                "properties_count": len(data.properties),
+            })
+        except Exception:
+            pass
+        
         # =========== ENABLEMENT EVENT ===========
         try:
             from services.enablement_service import emit_enablement_event
@@ -1107,6 +1119,14 @@ async def create_checkout(request: Request, client_id: str):
                     request_id,
                 ),
             )
+        try:
+            from services.analytics_service import log_event
+            await log_event("checkout_started", {
+                "client_id": client_id,
+                "stripe_session_id": session.get("session_id"),
+            })
+        except Exception:
+            pass
         return {
             "checkout_url": url,
             "session_id": session.get("session_id", ""),
@@ -1115,6 +1135,11 @@ async def create_checkout(request: Request, client_id: str):
         raise
     except StripeModeMismatchError as e:
         logger.warning("Checkout Stripe mode mismatch request_id=%s: %s", request_id, e)
+        try:
+            from services.analytics_service import log_event
+            await log_event("checkout_failed", {"client_id": client_id, "error_code": "STRIPE_MODE_MISMATCH", "request_id": request_id})
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=_checkout_error_detail(
@@ -1125,6 +1150,11 @@ async def create_checkout(request: Request, client_id: str):
         )
     except PriceConfigMissingError as e:
         logger.error("Checkout price config missing request_id=%s: %s", request_id, e)
+        try:
+            from services.analytics_service import log_event
+            await log_event("checkout_failed", {"client_id": client_id, "error_code": "PRICE_CONFIG_MISSING", "request_id": request_id})
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=_checkout_error_detail(
@@ -1135,6 +1165,11 @@ async def create_checkout(request: Request, client_id: str):
         )
     except ValueError as e:
         logger.warning("Checkout validation/Stripe error request_id=%s: %s", request_id, e)
+        try:
+            from services.analytics_service import log_event
+            await log_event("checkout_failed", {"client_id": client_id, "error_code": "CHECKOUT_FAILED", "request_id": request_id})
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=_checkout_error_detail(
@@ -1145,6 +1180,11 @@ async def create_checkout(request: Request, client_id: str):
         )
     except Exception as e:
         logger.exception("Checkout creation error for client %s request_id=%s: %s", client_id, request_id, e)
+        try:
+            from services.analytics_service import log_event
+            await log_event("checkout_failed", {"client_id": client_id, "error_code": "CHECKOUT_FAILED", "request_id": request_id})
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=_checkout_error_detail(

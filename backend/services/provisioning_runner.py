@@ -218,6 +218,11 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
     )
     logger.info("PROVISIONING_STARTED job_id=%s client_id=%s", job_id, client_id)
 
+    try:
+        from services.analytics_service import log_event
+        await log_event("provisioning_started", {"client_id": client_id, "metadata": {"job_id": job_id}})
+    except Exception:
+        pass
     success, message, user_id = await provisioning_service.provision_client_portal_core(client_id)
     if not success:
         await db.provisioning_jobs.update_one(
@@ -232,6 +237,11 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
             }
         )
         logger.error(f"Job {job_id}: provisioning core failed: {message}")
+        try:
+            from services.analytics_service import log_event
+            await log_event("provisioning_failed", {"client_id": client_id, "metadata": {"job_id": job_id, "error": message[:500]}})
+        except Exception:
+            pass
         # Admin alert on final failure (attempt_count >= MAX_ATTEMPTS)
         updated = await db.provisioning_jobs.find_one({"job_id": job_id}, {"_id": 0, "attempt_count": 1})
         if updated and updated.get("attempt_count", 0) >= MAX_ATTEMPTS:
@@ -252,6 +262,11 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
         }
     )
 
+    try:
+        from services.analytics_service import log_event
+        await log_event("provisioning_completed", {"client_id": client_id, "metadata": {"job_id": job_id}})
+    except Exception:
+        pass
     # Migrate CLEAN intake uploads
     try:
         from services.intake_upload_migration import migrate_intake_uploads_to_vault

@@ -335,6 +335,11 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 actor_id=portal_user["portal_user_id"],
                 client_id=password_token.get("client_id")
             )
+            try:
+                from services.analytics_service import log_event
+                await log_event("password_set", {"client_id": password_token.get("client_id")})
+            except Exception:
+                pass
         
         # Create access token for auto-login (include session_version)
         token_data = {
