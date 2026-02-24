@@ -6,12 +6,28 @@ import { Textarea } from '../components/ui/textarea';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Mail, Search, Eye, Send } from 'lucide-react';
+import { Mail, Search, Eye, Send, Download } from 'lucide-react';
 
 const AdminContactEnquiriesPage = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const API = process.env.REACT_APP_BACKEND_URL;
+
+  const handleExportCsv = async () => {
+    try {
+      const res = await fetch(`${API}/api/admin/submissions/export/csv?type=contact`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'submissions_contact.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +55,12 @@ const AdminContactEnquiriesPage = () => {
         <h1 className="text-3xl font-bold mb-2">Contact Enquiries</h1>
         <p className="text-gray-600 mb-8">Manage and respond to contact form submissions</p>
 
+        <div className="mb-4">
+          <Button variant="outline" size="sm" onClick={handleExportCsv}>
+            <Download className="w-4 h-4 mr-2" /> Export CSV
+          </Button>
+        </div>
+
         <Card>
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
@@ -61,7 +83,7 @@ const AdminContactEnquiriesPage = () => {
                   <td className="px-4 py-3 text-sm">{e.email}</td>
                   <td className="px-4 py-3 text-sm">{e.subject}</td>
                   <td className="px-4 py-3"><Badge className={colors[e.status]}>{e.status}</Badge></td>
-                  <td className="px-4 py-3"><Button size="sm" variant="outline" onClick={() => window.location.href=`/admin/inbox/enquiries/${e.enquiry_id}`}><Eye className="w-4 h-4"/></Button></td>
+                  <td className="px-4 py-3"><Button size="sm" variant="outline" onClick={() => window.location.href=`/admin/submissions/contact/${e.enquiry_id}`}><Eye className="w-4 h-4"/></Button></td>
                 </tr>
               ))}
             </tbody>

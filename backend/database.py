@@ -131,6 +131,20 @@ class Database:
             await self.db.compliance_sla_alerts.create_index([("active", 1), ("last_detected_at", -1)])
             await self.db.compliance_sla_alerts.create_index([("severity", 1)])
 
+            # Submissions: contact, talent, partnership (list/dedupe/audit)
+            await self.db.contact_submissions.create_index("submission_id", unique=True)
+            await self.db.contact_submissions.create_index([("dedupe_key", 1), ("created_at", -1)])
+            await self.db.contact_submissions.create_index("created_at")
+            await self.db.contact_submissions.create_index("status")
+            await self.db.talent_pool.create_index("submission_id", unique=True)
+            await self.db.talent_pool.create_index([("dedupe_key", 1), ("created_at", -1)])
+            await self.db.talent_pool.create_index("created_at")
+            await self.db.talent_pool.create_index("status")
+            await self.db.partnership_enquiries.create_index("enquiry_id", unique=True)
+            await self.db.partnership_enquiries.create_index([("dedupe_key", 1), ("created_at", -1)])
+            await self.db.partnership_enquiries.create_index("created_at")
+            await self.db.partnership_enquiries.create_index("status")
+
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored
             try:
                 await self.db.otp_codes.create_index(

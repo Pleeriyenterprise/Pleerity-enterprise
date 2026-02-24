@@ -1,14 +1,16 @@
 """Partnership Enquiry Routes - Public submission and Admin management"""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from database import database
 from models.partnership import PartnershipEnquiry, PartnershipStatus
 from models import AuditAction
 from utils.audit import create_audit_log
+from utils.submission_utils import check_rate_limit, compute_dedupe_key, sanitize_html, MAX_FIELD_LENGTH
 from middleware import admin_route_guard
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -48,35 +50,52 @@ class StatusUpdateRequest(BaseModel):
 
 
 @router.post("/submit")
-async def submit_partnership_enquiry(data: PartnershipEnquiryRequest):
-    """Public endpoint for submitting partnership enquiry."""
+async def submit_partnership_enquiry(data: PartnershipEnquiryRequest, request: Request):
+    """Public endpoint for submitting partnership enquiry. Rate limited and deduped within 24h."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_rate_limit(client_ip, "partnership"):
+        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
+
     db = database.get_db()
-    
-    # Check for duplicate
+    now = datetime.now(timezone.utc)
+    msg_snippet = (data.additional_notes or data.problem_solved or "")[:80]
+    dedupe_key = compute_dedupe_key("partnership", data.work_email, data.phone, msg_snippet, now)
+    since_24h = now - timedelta(hours=24)
+    since_24h_str = since_24h.isoformat()
     existing = await db.partnership_enquiries.find_one(
-        {"work_email": data.work_email},
-        {"_id": 0}
+        {"dedupe_key": dedupe_key, "created_at": {"$gte": since_24h_str}},
+        {"enquiry_id": 1},
     )
-    
     if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="An enquiry with this email already exists"
-        )
-    
-    # Create enquiry
-    enquiry = PartnershipEnquiry(**data.dict())
-    
+        logger.info("Partnership submission duplicate within 24h")
+        return {
+            "ok": True,
+            "submission_id": existing["enquiry_id"],
+            "message": "Thank you. Your partnership enquiry has been received. If suitable, we will contact you.",
+        }
+
+    safe_notes = sanitize_html(data.additional_notes, max_len=MAX_FIELD_LENGTH) if data.additional_notes else None
+    payload = data.dict()
+    if safe_notes is not None:
+        payload["additional_notes"] = safe_notes
+
+    enquiry = PartnershipEnquiry(**payload)
     enquiry_doc = enquiry.dict()
-    for key in ['created_at', 'updated_at', 'ack_email_sent_at']:
+    for key in ["created_at", "updated_at", "ack_email_sent_at"]:
         if enquiry_doc.get(key):
             val = enquiry_doc[key]
-            enquiry_doc[key] = val.isoformat() if hasattr(val, 'isoformat') else val
-    
+            enquiry_doc[key] = val.isoformat() if hasattr(val, "isoformat") else val
+    enquiry_doc["dedupe_key"] = dedupe_key
+    enquiry_doc["source_ip"] = client_ip
+    enquiry_doc["user_agent"] = (request.headers.get("user-agent") or "")[:500]
+
     await db.partnership_enquiries.insert_one(enquiry_doc)
     
-    # Send acknowledgement email
-    email_sent = await send_partnership_ack_email(enquiry)
+    # Send acknowledgement email only if explicitly enabled (default off)
+    send_ack = os.getenv("PARTNERSHIP_SEND_ACK_EMAIL", "false").strip().lower() == "true"
+    email_sent = False
+    if send_ack:
+        email_sent = await send_partnership_ack_email(enquiry)
     
     # Update record with email status
     if email_sent:
@@ -101,12 +120,12 @@ async def submit_partnership_enquiry(data: PartnershipEnquiryRequest):
         }
     )
     
-    logger.info(f"Partnership enquiry submitted: {enquiry.company_name} ({enquiry.work_email})")
-    
+    logger.info("Partnership enquiry submitted: %s (%s)", enquiry.company_name, enquiry.work_email)
+
     return {
-        "success": True,
-        "enquiry_id": enquiry.enquiry_id,
-        "message": "Thank you. Your partnership enquiry has been received. If suitable, we will contact you."
+        "ok": True,
+        "submission_id": enquiry.enquiry_id,
+        "message": "Thank you. Your partnership enquiry has been received. If suitable, we will contact you.",
     }
 
 

@@ -4,10 +4,19 @@ Handles public website submissions (contact forms, service inquiries)
 NO CVP COLLECTIONS TOUCHED - Writes only to new collections
 """
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from database import database
+from utils.submission_utils import (
+    sanitize_html,
+    compute_dedupe_key,
+    check_rate_limit,
+    is_honeypot_filled,
+    MAX_MESSAGE_LENGTH,
+    MAX_NAME_LENGTH,
+    MAX_SUBJECT_LENGTH,
+)
 import logging
 import uuid
 
@@ -20,13 +29,21 @@ router = APIRouter(prefix="/api/public", tags=["public"])
 # ============================================
 
 class ContactSubmission(BaseModel):
-    full_name: str
+    full_name: str = Field(..., max_length=MAX_NAME_LENGTH)
     email: EmailStr
-    phone: Optional[str] = None
-    company_name: Optional[str] = None
-    contact_reason: str
-    subject: str
-    message: str
+    phone: Optional[str] = Field(None, max_length=50)
+    company_name: Optional[str] = Field(None, max_length=200)
+    contact_reason: str = Field(..., max_length=200)
+    subject: str = Field(..., max_length=MAX_SUBJECT_LENGTH)
+    message: str = Field(..., max_length=MAX_MESSAGE_LENGTH)
+    marketing_opt_in: bool = False
+    privacy_accepted: bool = False
+    honeypot: Optional[str] = None
+    source_page: Optional[str] = None
+    referrer: Optional[str] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
 
 
 class ServiceInquiry(BaseModel):
@@ -50,33 +67,11 @@ def generate_submission_id(prefix: str) -> str:
 
 
 # ============================================
-# RATE LIMITING (Simple in-memory)
+# RATE LIMITING (delegate to submission_utils for consistency)
 # ============================================
 
-# Track submissions per IP (5 per minute)
-_rate_limit_cache = {}
-RATE_LIMIT_WINDOW = 60  # seconds
-RATE_LIMIT_MAX = 5
-
-
-def check_rate_limit(ip: str) -> bool:
-    """Check if IP is rate limited. Returns True if allowed."""
-    now = datetime.now(timezone.utc).timestamp()
-    
-    if ip not in _rate_limit_cache:
-        _rate_limit_cache[ip] = []
-    
-    # Clean old entries
-    _rate_limit_cache[ip] = [
-        ts for ts in _rate_limit_cache[ip] 
-        if now - ts < RATE_LIMIT_WINDOW
-    ]
-    
-    if len(_rate_limit_cache[ip]) >= RATE_LIMIT_MAX:
-        return False
-    
-    _rate_limit_cache[ip].append(now)
-    return True
+def _rate_limit_contact(ip: str) -> bool:
+    return check_rate_limit(ip, "contact")
 
 
 # ============================================
@@ -87,51 +82,169 @@ def check_rate_limit(ip: str) -> bool:
 async def submit_contact_form(submission: ContactSubmission, request: Request):
     """
     Submit a contact form from the public website.
-    Writes to contact_submissions collection ONLY.
+    Writes to contact_submissions only. Validates, sanitizes, dedupes within 24h.
     """
+    if is_honeypot_filled(submission.honeypot):
+        logger.warning("Contact submission rejected: honeypot filled")
+        return {"ok": True, "submission_id": "", "message": "Thank you for your message. We'll be in touch within 1-2 business days."}
+
     client_ip = request.client.host if request.client else "unknown"
-    
-    # Rate limiting
-    if not check_rate_limit(client_ip):
-        raise HTTPException(
-            status_code=429,
-            detail="Too many requests. Please wait a moment and try again."
-        )
-    
+    if not _rate_limit_contact(client_ip):
+        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
+
     db = database.get_db()
-    
-    # Create submission record
+    now = datetime.now(timezone.utc)
+    message_safe = sanitize_html(submission.message)
+    subject_safe = sanitize_html(submission.subject, max_len=MAX_SUBJECT_LENGTH)
+
+    dedupe_key = compute_dedupe_key(
+        "contact",
+        submission.email,
+        submission.phone,
+        message_safe,
+        now,
+    )
+    since_24h = now - timedelta(hours=24)
+    existing = await db.contact_submissions.find_one(
+        {"dedupe_key": dedupe_key, "created_at": {"$gte": since_24h}},
+        {"submission_id": 1},
+    )
+    if existing:
+        logger.info("Contact submission duplicate within 24h, returning existing id")
+        return {
+            "ok": True,
+            "submission_id": existing["submission_id"],
+            "message": "Thank you for your message. We'll be in touch within 1-2 business days.",
+        }
+
     submission_id = generate_submission_id("CONTACT")
+    source = {
+        "page": submission.source_page,
+        "referrer": submission.referrer,
+        "utm": None,
+    }
+    utm = {}
+    if submission.utm_source:
+        utm["utm_source"] = submission.utm_source[:200]
+    if submission.utm_medium:
+        utm["utm_medium"] = submission.utm_medium[:200]
+    if submission.utm_campaign:
+        utm["utm_campaign"] = submission.utm_campaign[:200]
+    if utm:
+        source["utm"] = utm
+
     submission_doc = {
         "submission_id": submission_id,
-        "full_name": submission.full_name,
+        "full_name": submission.full_name[:MAX_NAME_LENGTH],
         "email": submission.email,
         "phone": submission.phone,
         "company_name": submission.company_name,
-        "contact_reason": submission.contact_reason,
-        "subject": submission.subject,
-        "message": submission.message,
-        "status": "new",
+        "contact_reason": submission.contact_reason[:200],
+        "subject": subject_safe,
+        "message": message_safe,
+        "status": "NEW",
         "admin_notes": None,
-        "responded_by": None,
-        "responded_at": None,
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "admin_reply": None,
+        "replied_by": None,
+        "replied_at": None,
+        "created_at": now,
+        "updated_at": now,
         "source_ip": client_ip,
+        "user_agent": (request.headers.get("user-agent") or "")[:500],
+        "consent": {
+            "marketing_opt_in": submission.marketing_opt_in,
+            "privacy_accepted": submission.privacy_accepted,
+        },
+        "source": source,
+        "dedupe_key": dedupe_key,
+        "notes": [],
+        "audit": [],
     }
-    
     try:
         await db.contact_submissions.insert_one(submission_doc)
-        logger.info(f"Contact submission created: {submission_id}")
-        
+        logger.info("Contact submission created: %s", submission_id)
         return {
-            "success": True,
+            "ok": True,
             "submission_id": submission_id,
-            "message": "Thank you for your message. We'll be in touch within 1-2 business days."
+            "message": "Thank you for your message. We'll be in touch within 1-2 business days.",
         }
     except Exception as e:
-        logger.error(f"Failed to save contact submission: {e}")
+        logger.error("Failed to save contact submission: %s", e)
         raise HTTPException(status_code=500, detail="Failed to submit form")
+
+
+# ============================================
+# PUBLIC LEAD (marketing / checklist → leads collection)
+# ============================================
+
+class LeadSubmission(BaseModel):
+    name: Optional[str] = Field(None, max_length=MAX_NAME_LENGTH)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    company_name: Optional[str] = Field(None, max_length=200)
+    message_summary: Optional[str] = Field(None, max_length=MAX_MESSAGE_LENGTH)
+    marketing_consent: bool = False
+    honeypot: Optional[str] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+    referrer_url: Optional[str] = None
+
+
+@router.post("/lead")
+async def submit_lead(data: LeadSubmission, request: Request):
+    """Create a lead from public form (marketing/checklist). Rate limited; returns { ok, submission_id, message }."""
+    if is_honeypot_filled(data.honeypot):
+        return {"ok": True, "submission_id": "", "message": "Thank you. We'll be in touch soon."}
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_rate_limit(client_ip, "lead"):
+        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
+    from services.lead_service import LeadService
+    from services.lead_models import LeadCreateRequest, LeadSourcePlatform, LeadServiceInterest
+    message_safe = sanitize_html(data.message_summary or "", max_len=MAX_MESSAGE_LENGTH)
+    req = LeadCreateRequest(
+        source_platform=LeadSourcePlatform.CONTACT_FORM,
+        service_interest=LeadServiceInterest.UNKNOWN,
+        name=data.name,
+        email=data.email,
+        phone=data.phone,
+        company_name=data.company_name,
+        message_summary=message_safe or None,
+        marketing_consent=data.marketing_consent,
+        utm_source=data.utm_source,
+        utm_medium=data.utm_medium,
+        utm_campaign=data.utm_campaign,
+        referrer_url=data.referrer_url,
+    )
+    lead = await LeadService.create_lead(req, ip_address=client_ip)
+    lead_id = lead.get("lead_id") or lead.get("original_lead_id") or ""
+    return {"ok": True, "submission_id": lead_id, "message": "Thank you. We'll be in touch soon."}
+
+
+# ============================================
+# PUBLIC TALENT (delegate to talent-pool submit)
+# ============================================
+
+@router.post("/talent")
+async def submit_talent_public(request: Request):
+    """Thin wrapper: forward body to talent-pool submit; returns { ok, submission_id, message }."""
+    from routes.talent_pool import submit_talent_pool, TalentPoolSubmissionRequest
+    body = await request.json()
+    data = TalentPoolSubmissionRequest(**body)
+    return await submit_talent_pool(data, request)
+
+
+# ============================================
+# PUBLIC PARTNERSHIP (delegate to partnerships submit)
+# ============================================
+
+@router.post("/partnership")
+async def submit_partnership_public(request: Request):
+    """Thin wrapper: forward body to partnerships submit; returns { ok, submission_id, message }."""
+    from routes.partnerships import submit_partnership_enquiry, PartnershipEnquiryRequest
+    body = await request.json()
+    data = PartnershipEnquiryRequest(**body)
+    return await submit_partnership_enquiry(data, request)
 
 
 @router.post("/service-inquiry")
@@ -141,13 +254,8 @@ async def submit_service_inquiry(inquiry: ServiceInquiry, request: Request):
     Writes to service_inquiries collection ONLY.
     """
     client_ip = request.client.host if request.client else "unknown"
-    
-    # Rate limiting
-    if not check_rate_limit(client_ip):
-        raise HTTPException(
-            status_code=429,
-            detail="Too many requests. Please wait a moment and try again."
-        )
+    if not check_rate_limit(client_ip, "service-inquiry"):
+        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
     
     db = database.get_db()
     

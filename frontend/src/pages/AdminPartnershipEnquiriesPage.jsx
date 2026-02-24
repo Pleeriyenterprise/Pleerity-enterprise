@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, Download } from 'lucide-react';
 
 const AdminPartnershipEnquiriesPage = () => {
   const [data, setData] = useState([]);
@@ -36,6 +36,22 @@ const AdminPartnershipEnquiriesPage = () => {
       if (res.ok) setStats(await res.json());
     } catch(e) {}
   }, [API]);
+
+  const handleExportCsv = async () => {
+    try {
+      const res = await fetch(`${API}/api/admin/submissions/export/csv?type=partnership`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'submissions_partnership.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     load();
@@ -76,6 +92,7 @@ const AdminPartnershipEnquiriesPage = () => {
             </SelectContent>
           </Select>
           <Button onClick={load}>Apply</Button>
+          <Button variant="outline" size="sm" onClick={handleExportCsv}><Download className="w-4 h-4 mr-2" /> Export CSV</Button>
         </div>
 
         <Card>
@@ -104,7 +121,7 @@ const AdminPartnershipEnquiriesPage = () => {
                   <td className="px-4 py-3 text-xs">{e.partnership_type}</td>
                   <td className="px-4 py-3 text-sm">{e.country_region}</td>
                   <td className="px-4 py-3"><Badge className={colors[e.status]}>{e.status}</Badge></td>
-                  <td className="px-4 py-3"><Button size="sm" variant="outline" onClick={() => window.location.href=`/admin/partnership-enquiries/${e.enquiry_id}`}><Eye className="w-4 h-4"/></Button></td>
+                  <td className="px-4 py-3"><Button size="sm" variant="outline" onClick={() => window.location.href=`/admin/submissions/partnership/${e.enquiry_id}`}><Eye className="w-4 h-4"/></Button></td>
                 </tr>
               ))}
             </tbody>

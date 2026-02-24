@@ -135,6 +135,7 @@ import AdminLeadsPage from './pages/AdminLeadsPage';
 import AdminTalentPoolPage from './pages/AdminTalentPoolPage';
 import AdminPartnershipEnquiriesPage from './pages/AdminPartnershipEnquiriesPage';
 import AdminContactEnquiriesPage from './pages/AdminContactEnquiriesPage';
+import AdminSubmissionDetailPage from './pages/AdminSubmissionDetailPage';
 import AdminFAQPage from './pages/AdminFAQPage';
 import AdminNewsletterPage from './pages/AdminNewsletterPage';
 import AdminInsightsFeedbackPage from './pages/AdminInsightsFeedbackPage';
@@ -461,6 +462,7 @@ function App() {
             <Route path="/admin/talent-pool" element={<ProtectedRoute requireAdmin><AdminTalentPoolPage /></ProtectedRoute>} />
             <Route path="/admin/partnership-enquiries" element={<ProtectedRoute requireAdmin><AdminPartnershipEnquiriesPage /></ProtectedRoute>} />
             <Route path="/admin/inbox/enquiries" element={<ProtectedRoute requireAdmin><AdminContactEnquiriesPage /></ProtectedRoute>} />
+            <Route path="/admin/submissions/:type/:id" element={<ProtectedRoute requireAdmin><AdminSubmissionDetailPage /></ProtectedRoute>} />
             <Route path="/admin/content/faqs" element={<ProtectedRoute requireAdmin><AdminFAQPage /></ProtectedRoute>} />
             <Route path="/admin/marketing/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletterPage /></ProtectedRoute>} />
             <Route path="/admin/content/feedback" element={<ProtectedRoute requireAdmin><AdminInsightsFeedbackPage /></ProtectedRoute>} />

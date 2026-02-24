@@ -16,54 +16,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["public-modules"])
 router_admin = APIRouter(prefix="/api/admin", tags=["admin-modules"])
 
-# Contact Enquiries - PUBLIC endpoint
-class ContactEnquiryRequest(BaseModel):
-    full_name: str
-    email: str
-    phone: Optional[str] = None
-    subject: str
-    message: str
-    company_name: Optional[str] = None
-    contact_reason: Optional[str] = None
-
-@router.post("/api/public/contact")
-async def submit_contact_enquiry(data: ContactEnquiryRequest):
-    """Public endpoint for contact form."""
-    db = database.get_db()
-    enquiry = ContactEnquiry(
-        full_name=data.full_name,
-        email=data.email,
-        phone=data.phone,
-        subject=data.subject,
-        message=data.message
-    )
-    doc = enquiry.dict()
-    for k in ['created_at','updated_at','replied_at']:
-        if doc.get(k): doc[k] = doc[k].isoformat() if hasattr(doc[k],'isoformat') else doc[k]
-    await db.contact_enquiries.insert_one(doc)
-    
-    await create_audit_log(
-        action=AuditAction.ADMIN_ACTION,
-        actor_role="PUBLIC",
-        metadata={"action_type": "CONTACT_ENQUIRY_SUBMITTED", "enquiry_id": enquiry.enquiry_id, "email": enquiry.email}
-    )
-    
-    return {"success": True, "enquiry_id": enquiry.enquiry_id}
-
-# ADMIN endpoints
+# Contact Enquiries - PUBLIC endpoint is in routes/public.py (POST /api/public/contact).
+# Admin endpoints below use contact_submissions collection (single source of truth).
 router_admin = APIRouter(prefix="/api/admin", tags=["admin-modules"])
 
 @router_admin.get("/contact/enquiries", dependencies=[Depends(admin_route_guard)])
 async def list_contact_enquiries(status: Optional[str] = None, current_user: dict = Depends(admin_route_guard)):
+    """List contact submissions from contact_submissions collection."""
     db = database.get_db()
     query = {"status": status} if status else {}
-    return await db.contact_enquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    cursor = db.contact_submissions.find(query, {"_id": 0}).sort("created_at", -1)
+    items = await cursor.to_list(1000)
+    # Normalize for frontend: submission_id as enquiry_id if frontend expects enquiry_id
+    for it in items:
+        it["enquiry_id"] = it.get("submission_id")
+    return items
 
 @router_admin.get("/contact/enquiries/{id}", dependencies=[Depends(admin_route_guard)])
 async def get_contact_enquiry(id: str, current_user: dict = Depends(admin_route_guard)):
+    """Get one contact submission by submission_id."""
     db = database.get_db()
-    e = await db.contact_enquiries.find_one({"enquiry_id": id}, {"_id": 0})
-    if not e: raise HTTPException(404, "Not found")
+    e = await db.contact_submissions.find_one({"submission_id": id}, {"_id": 0})
+    if not e:
+        raise HTTPException(404, "Not found")
+    e["enquiry_id"] = e.get("submission_id")
     return e
 
 class ContactReplyRequest(BaseModel):
@@ -72,11 +48,21 @@ class ContactReplyRequest(BaseModel):
 
 @router_admin.post("/contact/enquiries/{id}/reply", dependencies=[Depends(admin_route_guard)])
 async def reply_contact_enquiry(id: str, data: ContactReplyRequest, current_user: dict = Depends(admin_route_guard)):
+    """Set admin reply on contact_submissions document."""
     db = database.get_db()
-    await db.contact_enquiries.update_one({"enquiry_id": id}, {"$set": {
-        "admin_reply": data.reply_message, "replied_at": datetime.now(timezone.utc).isoformat(),
-        "replied_by": current_user.get("email"), "status": data.status, "updated_at": datetime.now(timezone.utc).isoformat()
-    }})
+    now = datetime.now(timezone.utc)
+    result = await db.contact_submissions.update_one(
+        {"submission_id": id},
+        {"$set": {
+            "admin_reply": data.reply_message,
+            "replied_at": now,
+            "replied_by": current_user.get("email"),
+            "status": data.status,
+            "updated_at": now,
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(404, "Not found")
     return {"success": True}
 
 # FAQ Management

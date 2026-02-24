@@ -2,13 +2,19 @@
 Talent Pool Routes - Public submission and Admin management
 Handles career applications and talent pool management
 """
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Request
 from database import database
 from models.talent_pool import TalentPoolSubmission, TalentPoolStatus
 from models import AuditAction
 from utils.audit import create_audit_log
+from utils.submission_utils import (
+    check_rate_limit,
+    compute_dedupe_key,
+    sanitize_html,
+    MAX_FIELD_LENGTH,
+)
 from middleware import admin_route_guard
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
@@ -43,30 +49,51 @@ class StatusUpdateRequest(BaseModel):
 
 
 @router.post("/submit")
-async def submit_talent_pool(data: TalentPoolSubmissionRequest):
-    """Public endpoint for submitting talent pool application."""
+async def submit_talent_pool(data: TalentPoolSubmissionRequest, request: Request):
+    """Public endpoint for submitting talent pool application. Rate limited and deduped within 24h."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_rate_limit(client_ip, "talent"):
+        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
+
     db = database.get_db()
-    
-    # Check for duplicate email
-    existing = await db.talent_pool.find_one({"email": data.email}, {"_id": 0})
+    now = datetime.now(timezone.utc)
+    msg_snippet = (data.professional_summary or "")[:80]
+    dedupe_key = compute_dedupe_key("talent", data.email, data.phone, msg_snippet, now)
+    since_24h = now - timedelta(hours=24)
+    since_24h_str = since_24h.isoformat()
+    existing = await db.talent_pool.find_one(
+        {"dedupe_key": dedupe_key, "created_at": {"$gte": since_24h_str}},
+        {"submission_id": 1},
+    )
     if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="An application with this email already exists"
-        )
-    
-    # Create submission
-    submission = TalentPoolSubmission(**data.dict())
-    
+        logger.info("Talent submission duplicate within 24h")
+        return {
+            "ok": True,
+            "submission_id": existing["submission_id"],
+            "message": "Thank you. Your details have been added to our Talent Pool.",
+        }
+
+    # Sanitize free text
+    safe_summary = sanitize_html(data.professional_summary, max_len=MAX_FIELD_LENGTH)
+    safe_other_interest = sanitize_html(data.other_interest_text, max_len=500) if data.other_interest_text else None
+    safe_other_skills = sanitize_html(data.other_skills_text, max_len=500) if data.other_skills_text else None
+    payload = data.dict()
+    payload["professional_summary"] = safe_summary
+    payload["other_interest_text"] = safe_other_interest
+    payload["other_skills_text"] = safe_other_skills
+
+    submission = TalentPoolSubmission(**payload)
     submission_doc = submission.dict()
-    # Convert datetime fields
-    for key in ['created_at', 'updated_at']:
+    for key in ["created_at", "updated_at"]:
         if submission_doc.get(key):
-            submission_doc[key] = submission_doc[key].isoformat() if hasattr(submission_doc[key], 'isoformat') else submission_doc[key]
-    
+            val = submission_doc[key]
+            submission_doc[key] = val.isoformat() if hasattr(val, "isoformat") else val
+    submission_doc["dedupe_key"] = dedupe_key
+    submission_doc["source_ip"] = client_ip
+    submission_doc["user_agent"] = (request.headers.get("user-agent") or "")[:500]
+
     await db.talent_pool.insert_one(submission_doc)
-    
-    # Audit log
+
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
         actor_role="PUBLIC",
@@ -75,15 +102,14 @@ async def submit_talent_pool(data: TalentPoolSubmissionRequest):
             "submission_id": submission.submission_id,
             "email": submission.email,
             "interest_areas": submission.interest_areas,
-        }
+        },
     )
-    
-    logger.info(f"New talent pool submission: {submission.email}")
-    
+    logger.info("New talent pool submission: %s", submission.email)
+
     return {
-        "success": True,
+        "ok": True,
         "submission_id": submission.submission_id,
-        "message": "Thank you. Your details have been added to our Talent Pool."
+        "message": "Thank you. Your details have been added to our Talent Pool.",
     }
 
 
