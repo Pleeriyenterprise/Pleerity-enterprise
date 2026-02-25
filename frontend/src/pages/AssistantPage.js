@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Send, ArrowLeft, AlertCircle, Shield, ChevronDown, ChevronUp, FileText, Sparkles, RefreshCw, Building2 } from 'lucide-react';
+import { Send, ArrowLeft, AlertCircle, Shield, ChevronDown, ChevronUp, FileText, Sparkles, RefreshCw, Building2, UserCircle } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -29,6 +29,9 @@ const AssistantPage = () => {
   const [conversationId, setConversationId] = useState(null);
   const [propertyId, setPropertyId] = useState('');
   const [properties, setProperties] = useState([]);
+  const [escalationStatus, setEscalationStatus] = useState(null);
+  const [handoverSuggested, setHandoverSuggested] = useState(false);
+  const [escalating, setEscalating] = useState(false);
   const messagesEndRef = useRef(null);
 
   const fetchProperties = useCallback(async () => {
@@ -44,6 +47,24 @@ const AssistantPage = () => {
   useEffect(() => {
     fetchProperties();
   }, [fetchProperties]);
+
+  const fetchEscalationStatus = useCallback(async () => {
+    if (!conversationId) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await axios.get(
+        `${API_URL}/api/assistant/conversation/${conversationId}/status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setEscalationStatus(res.data);
+    } catch {
+      setEscalationStatus(null);
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
+    fetchEscalationStatus();
+  }, [fetchEscalationStatus]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
@@ -85,8 +106,9 @@ const AssistantPage = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { conversation_id, answer, citations, safety_flags } = response.data;
+      const { conversation_id, answer, citations, safety_flags, handover_suggested } = response.data;
       if (conversation_id) setConversationId(conversation_id);
+      setHandoverSuggested(Boolean(handover_suggested));
 
       setMessages(prev => [
         ...prev,
@@ -117,6 +139,32 @@ const AssistantPage = () => {
 
   const handleQuickQuestion = (question) => {
     setInput(question);
+  };
+
+  const handleEscalate = async () => {
+    if (!conversationId || escalating) return;
+    setEscalating(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await axios.post(
+        `${API_URL}/api/assistant/escalate`,
+        { conversation_id: conversationId, reason: 'User requested human' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setEscalationStatus({
+        conversation_id: conversationId,
+        escalated: true,
+        escalation_reason: res.data?.message,
+        escalated_at: new Date().toISOString(),
+      });
+      setHandoverSuggested(false);
+      toast.success(res.data?.message || 'Support has been notified.');
+    } catch (err) {
+      const detail = err.response?.data?.detail || 'Escalation failed.';
+      toast.error(detail);
+    } finally {
+      setEscalating(false);
+    }
   };
 
   return (
@@ -167,6 +215,36 @@ const AssistantPage = () => {
             Information only. Not legal advice.
           </AlertDescription>
         </Alert>
+
+        {/* Escalated to human */}
+        {escalationStatus?.escalated && (
+          <Alert className="mb-6 bg-green-50 border-green-200" data-testid="assistant-escalated-banner">
+            <UserCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-sm text-green-800">
+              <strong>Escalated to human.</strong> Support has been notified with this conversation. We&apos;ll be in touch shortly.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Suggest handover when API flagged */}
+        {handoverSuggested && !escalationStatus?.escalated && conversationId && (
+          <Alert className="mb-6 bg-blue-50 border-blue-200" data-testid="assistant-handover-suggested">
+            <UserCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-sm text-blue-800 flex flex-wrap items-center gap-2">
+              <span>Need to speak with someone? We can transfer this conversation to support.</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleEscalate}
+                disabled={escalating}
+                className="border-blue-300 text-blue-800 hover:bg-blue-100"
+                data-testid="assistant-request-human-btn"
+              >
+                {escalating ? 'Sending…' : 'Talk to a human'}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Chat Container */}
         <Card className="shadow-lg">
@@ -300,20 +378,36 @@ const AssistantPage = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about your compliance status..."
-                  disabled={loading}
+                  disabled={loading || escalationStatus?.escalated}
                   maxLength={500}
                   data-testid="assistant-input"
                   className="flex-1"
                 />
                 <Button
                   type="submit"
-                  disabled={loading || !input.trim()}
+                  disabled={loading || !input.trim() || escalationStatus?.escalated}
                   className="bg-electric-teal hover:bg-teal-600"
                   data-testid="send-question-btn"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
               </form>
+              {conversationId && !escalationStatus?.escalated && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEscalate}
+                    disabled={escalating || loading}
+                    className="text-gray-600"
+                    data-testid="assistant-talk-to-human-btn"
+                  >
+                    <UserCircle className="w-3.5 h-3.5 mr-1" />
+                    {escalating ? 'Sending…' : 'Talk to a human'}
+                  </Button>
+                </div>
+              )}
               <p className="text-xs text-gray-500 mt-2">
                 Information only. Not legal advice. Rate limited.
               </p>

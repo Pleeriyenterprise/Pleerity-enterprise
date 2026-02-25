@@ -8,7 +8,10 @@ from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
 from services.assistant_service import assistant_service
-from services.assistant_chat_service import chat_turn as assistant_chat_turn
+from services.assistant_chat_service import (
+    chat_turn as assistant_chat_turn,
+    escalate_assistant_conversation,
+)
 from utils.rate_limiter import rate_limiter
 from utils import ai_config
 
@@ -28,6 +31,11 @@ class ChatRequest(BaseModel):
     message: str
     conversation_id: Optional[str] = None
     property_id: Optional[str] = None
+
+
+class EscalateRequest(BaseModel):
+    conversation_id: str
+    reason: Optional[str] = None
 
 
 class AssistantResponse(BaseModel):
@@ -167,3 +175,57 @@ async def post_chat(request: Request, data: ChatRequest):
         is_admin=False,
     )
     return result
+
+
+@router.post("/escalate")
+async def post_escalate(request: Request, data: EscalateRequest):
+    """
+    Escalate assistant conversation to human support. Marks session escalated,
+    creates support ticket with full transcript, notifies support dashboard.
+    """
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    user_id = user.get("portal_user_id") or user.get("client_id", "")
+
+    if not data.conversation_id or not data.conversation_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="conversation_id is required",
+        )
+
+    result = await escalate_assistant_conversation(
+        conversation_id=data.conversation_id.strip(),
+        client_id=client_id,
+        user_id=user_id,
+        reason=data.reason,
+    )
+    if result.get("error"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=result["error"],
+        )
+    return result
+
+
+@router.get("/conversation/{conversation_id}/status")
+async def get_conversation_status(request: Request, conversation_id: str):
+    """Return escalation status for a conversation (for portal UI: Escalated / Support joined)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    conv = await db.assistant_conversations.find_one(
+        {"conversation_id": conversation_id, "client_id": user["client_id"]},
+        {"_id": 0, "escalated": 1, "escalation_reason": 1, "escalated_at": 1},
+    )
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+    return {
+        "conversation_id": conversation_id,
+        "escalated": conv.get("escalated", False),
+        "escalation_reason": conv.get("escalation_reason"),
+        "escalated_at": conv.get("escalated_at"),
+    }
+
+

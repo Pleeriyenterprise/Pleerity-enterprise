@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends, status, Query, B
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from database import database
-from middleware import admin_route_guard, require_owner, require_owner_or_admin
+from middleware import admin_route_guard, require_owner, require_owner_or_admin, require_support_or_above
 from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus
 from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
@@ -3855,3 +3855,107 @@ async def get_assistant_query_detail(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load query detail"
         )
+
+
+@router.get("/assistant/conversations", dependencies=[Depends(require_support_or_above)])
+async def list_assistant_conversations(
+    request: Request,
+    client_id: Optional[str] = Query(default=None, description="Filter by client_id"),
+    escalated: Optional[bool] = Query(default=None, description="Filter by escalated"),
+    limit: int = Query(default=50, ge=1, le=100),
+    skip: int = Query(default=0, ge=0),
+):
+    """List Portal Assistant conversations. Support role can read transcripts for handover context."""
+    await require_support_or_above(request)
+    db = database.get_db()
+    query = {}
+    if client_id:
+        query["client_id"] = client_id
+    if escalated is not None:
+        query["escalated"] = escalated
+    total = await db.assistant_conversations.count_documents(query)
+    cursor = db.assistant_conversations.find(
+        query,
+        {"_id": 0, "conversation_id": 1, "client_id": 1, "created_by_user_id": 1, "created_at": 1, "last_activity_at": 1, "escalated": 1, "escalation_reason": 1, "escalated_at": 1},
+    ).sort("last_activity_at", -1).skip(skip).limit(limit)
+    conversations = await cursor.to_list(length=limit)
+    return {
+        "conversations": conversations,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": total > skip + limit,
+    }
+
+
+@router.get("/assistant/conversations/{conversation_id}", dependencies=[Depends(require_support_or_above)])
+async def get_assistant_conversation_with_messages(
+    request: Request,
+    conversation_id: str,
+):
+    """Get one Portal Assistant conversation with full message transcript. Support role can read."""
+    await require_support_or_above(request)
+    db = database.get_db()
+    conv = await db.assistant_conversations.find_one(
+        {"conversation_id": conversation_id},
+        {"_id": 0},
+    )
+    if not conv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+    messages = await db.assistant_messages.find(
+        {"conversation_id": conversation_id},
+        {"_id": 0, "message_id": 1, "role": 1, "message": 1, "created_at": 1, "citations": 1, "safety_flags": 1},
+    ).sort("created_at", 1).to_list(length=500)
+    return {"conversation": conv, "messages": messages}
+
+
+@router.get("/assistant/conversations", dependencies=[Depends(require_support_or_above)])
+async def list_assistant_conversations(
+    request: Request,
+    client_id: Optional[str] = Query(default=None, description="Filter by client_id"),
+    escalated: Optional[bool] = Query(default=None, description="Filter by escalated"),
+    limit: int = Query(default=50, ge=1, le=100),
+    skip: int = Query(default=0, ge=0),
+):
+    """List Portal Assistant conversations. Support role can read transcripts for handover context."""
+    await require_support_or_above(request)
+    db = database.get_db()
+    query = {}
+    if client_id:
+        query["client_id"] = client_id
+    if escalated is not None:
+        query["escalated"] = escalated
+    total = await db.assistant_conversations.count_documents(query)
+    cursor = db.assistant_conversations.find(
+        query,
+        {"_id": 0, "conversation_id": 1, "client_id": 1, "created_by_user_id": 1, "created_at": 1, "last_activity_at": 1, "escalated": 1, "escalation_reason": 1, "escalated_at": 1},
+    ).sort("last_activity_at", -1).skip(skip).limit(limit)
+    conversations = await cursor.to_list(length=limit)
+    return {
+        "conversations": conversations,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": total > skip + limit,
+    }
+
+
+@router.get("/assistant/conversations/{conversation_id}", dependencies=[Depends(require_support_or_above)])
+async def get_assistant_conversation_with_messages(
+    request: Request,
+    conversation_id: str,
+):
+    """Get one Portal Assistant conversation with full message transcript. Support role can read."""
+    await require_support_or_above(request)
+    db = database.get_db()
+    conv = await db.assistant_conversations.find_one(
+        {"conversation_id": conversation_id},
+        {"_id": 0},
+    )
+    if not conv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+    messages = await db.assistant_messages.find(
+        {"conversation_id": conversation_id},
+        {"_id": 0, "message_id": 1, "role": 1, "message": 1, "created_at": 1, "citations": 1, "safety_flags": 1},
+    ).sort("created_at", 1).to_list(length=500)
+    return {"conversation": conv, "messages": messages}
