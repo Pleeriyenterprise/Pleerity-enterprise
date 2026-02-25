@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
-import DashboardPreview from '../../components/public/DashboardPreview';
+import PortfolioComplianceSnapshotMockup from '../../components/public/PortfolioComplianceSnapshotMockup';
 import { SEOHead, organizationSchema } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -125,12 +125,10 @@ const HomePage = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-midnight-blue leading-tight mb-6">
-                Compliance Vault Pro –{' '}
-                <span className="text-electric-teal">Compliance Vault & Audit Intelligence</span>
+                Are You Fully Compliant as a UK Landlord?
               </h1>
               <p className="text-lg text-gray-600 mb-8 max-w-xl">
-                A structured compliance tracking platform for UK landlords. Monitor certificate expiry dates, 
-                get automated reminders, and generate audit-ready reports across your portfolio.
+                Structured compliance monitoring and renewal tracking for UK portfolios.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
@@ -139,8 +137,8 @@ const HomePage = () => {
                   asChild
                   data-testid="hero-cta-primary"
                 >
-                  <Link to="/intake/start">
-                    Start Your Setup
+                  <Link to="/risk-check">
+                    Check Your Compliance Risk
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Link>
                 </Button>
@@ -149,18 +147,9 @@ const HomePage = () => {
                   variant="outline"
                   className="border-electric-teal text-electric-teal hover:bg-electric-teal/5"
                   asChild
-                  data-testid="hero-cta-demo"
+                  data-testid="hero-cta-secondary"
                 >
-                  <Link to="/demo">View Platform Demo</Link>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-midnight-blue/30 text-midnight-blue hover:bg-midnight-blue/5"
-                  asChild
-                  data-testid="hero-cta-risk-check"
-                >
-                  <Link to="/risk-check">Check Your Compliance Risk</Link>
+                  <Link to="/compliance-vault-pro">View Platform Overview</Link>
                 </Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
@@ -172,9 +161,9 @@ const HomePage = () => {
                 ))}
               </div>
             </div>
-            {/* Dashboard preview — HTML/CSS component (not image) */}
+            {/* Portfolio Compliance Snapshot mockup (risk-first hero) */}
             <div className="relative w-full lg:block">
-              <DashboardPreview />
+              <PortfolioComplianceSnapshotMockup />
             </div>
           </div>
         </div>
@@ -396,7 +385,7 @@ const HomePage = () => {
               className="border-white text-white hover:bg-white/10"
               asChild
             >
-              <Link to="/demo">View Demo</Link>
+              <Link to="/risk-check">View Platform Overview</Link>
             </Button>
           </div>
         </div>

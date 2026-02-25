@@ -76,7 +76,7 @@ const CVPLandingPage = () => {
       reminders: 'Email reminders',
       reports: 'Core reports',
       features: ['Portfolio dashboard', 'Document vault', 'Email reminders', 'Compliance score', 'Expiry calendar', 'Basic AI extraction'],
-      cta: 'Start Your Setup',
+      cta: 'Activate Monitoring',
     },
     {
       name: 'Portfolio',
@@ -87,7 +87,7 @@ const CVPLandingPage = () => {
       reports: 'PDF/CSV reports, scheduled reports',
       popular: true,
       features: ['Everything in Solo', 'SMS reminders', 'PDF/CSV reports', 'Advanced AI extraction', 'Tenant portal', 'Scheduled reports'],
-      cta: 'Start Your Setup',
+      cta: 'Activate Monitoring',
     },
     {
       name: 'Professional',
@@ -97,7 +97,7 @@ const CVPLandingPage = () => {
       reminders: 'Email + SMS reminders',
       reports: 'White-label reports, audit log export',
       features: ['Everything in Portfolio', 'White-label reports', 'Audit log export', 'ZIP bulk upload', 'Priority support'],
-      cta: 'Start Your Setup',
+      cta: 'Activate Monitoring',
     },
   ];
 
@@ -156,8 +156,8 @@ const CVPLandingPage = () => {
                   asChild
                   data-testid="cvp-cta-primary"
                 >
-                  <Link to="/intake/start">
-                    Start Your Setup
+                  <Link to="/risk-check">
+                    Check Your Compliance Risk
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Link>
                 </Button>
@@ -167,7 +167,7 @@ const CVPLandingPage = () => {
                   className="border-electric-teal text-electric-teal hover:bg-electric-teal/5"
                   asChild
                 >
-                  <Link to="/demo">View Platform Demo</Link>
+                  <Link to="/compliance-vault-pro#how-it-works">See How It Works</Link>
                 </Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
@@ -210,6 +210,28 @@ const CVPLandingPage = () => {
           <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 inline-block">
             Informational tracking only. Not legal advice.
           </p>
+        </div>
+      </section>
+
+      {/* B.5) CHECK YOUR COMPLIANCE RISK — insert after pain/outcomes */}
+      <section className="py-16 lg:py-20 bg-gray-50">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4">
+            Check Your Compliance Risk
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Get a quick, free snapshot of your portfolio compliance risk in under a minute.
+          </p>
+          <Button
+            size="lg"
+            className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+            asChild
+          >
+            <Link to="/risk-check">
+              Check Your Compliance Risk
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </Button>
         </div>
       </section>
 
@@ -458,7 +480,7 @@ const CVPLandingPage = () => {
               className="border-white text-white hover:bg-white/10"
               asChild
             >
-              <Link to="/demo">View Platform Demo</Link>
+              <Link to="/risk-check">View Platform Overview</Link>
             </Button>
           </div>
         </div>

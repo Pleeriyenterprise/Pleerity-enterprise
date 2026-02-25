@@ -176,7 +176,7 @@ const FAQPage = () => {
               className="bg-transparent border-white text-white hover:bg-white/10 hover:text-white"
               asChild
             >
-              <Link to="/demo">
+              <Link to="/risk-check">
                 Schedule a Demo
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>

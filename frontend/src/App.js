@@ -23,7 +23,6 @@ import ClearFormApp from './clearform/ClearFormApp';
 // Public Website Pages (NEW)
 import {
   HomePage,
-  DemoPage,
   CVPLandingPage,
   ServicesHubPage,
   ServiceDetailPage,
@@ -188,7 +187,7 @@ function App() {
                   No auth required, SEO-optimized
                   ======================================== */}
               <Route path="/" element={<HomePage />} />
-              <Route path="/demo" element={<DemoPage />} />
+              <Route path="/demo" element={<Navigate to="/risk-check" replace />} />
               <Route path="/compliance-vault-pro" element={<CVPLandingPage />} />
               
               {/* CMS-Driven Marketing Pages */}
