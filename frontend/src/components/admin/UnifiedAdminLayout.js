@@ -52,8 +52,8 @@ const navSections = [
     icon: LayoutDashboard,
     items: [
       { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
-      { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-      { href: '/admin/analytics/executive', label: 'Executive Overview', icon: TrendingUp },
+      { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, ownerOrAdminOnly: true },
+      { href: '/admin/analytics/executive', label: 'Executive Overview', icon: TrendingUp, ownerOrAdminOnly: true },
       { href: '/admin/reporting', label: 'Reporting', icon: FileText },
     ],
   },
@@ -294,10 +294,14 @@ const UnifiedAdminLayout = ({ children }) => {
   const [badges, setBadges] = useState({ leads: 0, postal: 0 });
 
   const visibleSections = (() => {
-    if (isOwner?.() || isAdmin?.()) return navSections;
-    if (isSupport?.()) return navSections.filter((s) => SECTIONS_FOR_SUPPORT.includes(s.id));
-    if (isContent?.()) return navSections.filter((s) => SECTIONS_FOR_CONTENT.includes(s.id));
-    return navSections;
+    let sections = navSections;
+    if (isSupport?.()) sections = navSections.filter((s) => SECTIONS_FOR_SUPPORT.includes(s.id));
+    else if (isContent?.()) sections = navSections.filter((s) => SECTIONS_FOR_CONTENT.includes(s.id));
+    const isOwnerOrAdmin = isOwner?.() || isAdmin?.();
+    return sections.map((sec) => ({
+      ...sec,
+      items: (sec.items || []).filter((item) => isOwnerOrAdmin || !item.ownerOrAdminOnly),
+    }));
   })();
 
   // Fetch badge counts

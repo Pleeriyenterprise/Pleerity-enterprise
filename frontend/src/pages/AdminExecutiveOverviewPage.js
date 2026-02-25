@@ -42,7 +42,13 @@ export default function AdminExecutiveOverviewPage() {
       const res = await client.get('/admin/analytics/executive-overview');
       setData(res.data);
     } catch (e) {
-      setError(e?.response?.data?.detail || 'Failed to load executive overview');
+      const status = e?.response?.status;
+      const detail = e?.response?.data?.detail;
+      if (status === 403) {
+        setError('You don’t have permission to view Executive Overview. This page is available to Owner and Admin only.');
+      } else {
+        setError(typeof detail === 'string' ? detail : 'Failed to load executive overview');
+      }
       setData(null);
     } finally {
       setLoading(false);
