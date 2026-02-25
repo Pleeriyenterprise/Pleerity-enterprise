@@ -721,7 +721,6 @@ export default function AdminAnalyticsDashboard() {
                         toast.error('Export failed');
                       }
                     }}
-                    disabled={!marketingFunnel}
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Export CSV
