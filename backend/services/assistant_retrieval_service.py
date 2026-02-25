@@ -147,6 +147,7 @@ async def get_portal_facts(
         "property_id": 1,
         "nickname": 1,
         "postcode": 1,
+        "compliance_score": 1,
     }
     if include_address_line:
         prop_projection["address_line_1"] = 1
@@ -256,11 +257,42 @@ async def get_portal_facts(
         return due_str < today
 
     overdue = sum(1 for r in requirements if _is_overdue(r))
+    expiring_soon_count = sum(
+        1 for r in requirements
+        if (r.get("status") or "").strip().upper() == "EXPIRING_SOON"
+    )
+    compliant_count = sum(
+        1 for r in requirements
+        if (r.get("status") or "").strip().upper() == "COMPLIANT"
+    )
+    scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
+    score_portfolio = round(sum(scores) / len(scores), 1) if scores else None
+    scores_by_property = {
+        p.get("property_id"): p.get("compliance_score")
+        for p in properties
+        if p.get("property_id") and p.get("compliance_score") is not None
+    }
     portfolio_summary = {
         "property_count": property_count,
         "requirement_count": req_count,
         "document_count": doc_count,
         "overdue_requirements_count": overdue,
+        "expiring_soon_count": expiring_soon_count,
+        "compliant_count": compliant_count,
+        "score_portfolio": score_portfolio,
+        "scores_by_property": scores_by_property,
+    }
+
+    # notification_prefs for assistant context (task: email_enabled, sms_enabled, reminder_timing_days, recipients)
+    notif_doc = await db.notification_preferences.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "expiry_reminders": 1, "sms_enabled": 1, "reminder_days_before": 1},
+    )
+    notification_prefs: Dict[str, Any] = {
+        "email_enabled": bool(notif_doc.get("expiry_reminders", True) if notif_doc else True),
+        "sms_enabled": bool(notif_doc.get("sms_enabled", False) if notif_doc else False),
+        "reminder_timing_days": notif_doc.get("reminder_days_before", 30) if notif_doc else 30,
+        "recipients": [],
     }
 
     return {
@@ -268,6 +300,7 @@ async def get_portal_facts(
         "user": user_blob,
         "account_state": account_state,
         "portfolio_summary": portfolio_summary,
+        "notification_prefs": notification_prefs,
         "properties": [
             {
                 "property_id": p.get("property_id"),
