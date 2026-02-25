@@ -14,6 +14,7 @@ from middleware import admin_route_guard, require_owner_or_admin
 from database import database
 from typing import Optional, List
 import logging
+from services.plan_registry import plan_registry
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/analytics", tags=["admin-analytics"])
@@ -41,6 +42,9 @@ def get_date_range(period: str) -> tuple:
         end = now
     elif period == "90d":
         start = now - timedelta(days=90)
+        end = now
+    elif period == "12m":
+        start = now - timedelta(days=365)
         end = now
     elif period == "ytd":
         start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -855,6 +859,168 @@ def _parse_from_to(from_date: Optional[str], to_date: Optional[str], period: str
     return parse_custom_date(start_iso), parse_custom_date(end_iso)
 
 
+@router.get("/revenue", dependencies=[Depends(require_owner_or_admin)])
+async def get_revenue_analytics(
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    period: str = Query("30d", description="7d, 30d, 90d, 12m"),
+    breakdown: str = Query("all", description="all | recurring | one_time for time_series"),
+):
+    """
+    Revenue Analytics: KPIs, subscriber breakdown, time-series, payment health.
+    Data from payments collection (normalized from Stripe) and client_billing.
+    """
+    db = database.get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    start_dt, end_dt = _revenue_date_range(from_date, to_date, period)
+    start_iso = start_dt.isoformat()
+    end_iso = end_dt.isoformat()
+
+    # Payments date filter (created_at is datetime)
+    period_query = {"created_at": {"$gte": start_dt, "$lte": end_dt}}
+    paid_filter = {"status": "paid"}
+
+    # --- KPIs from payments ---
+    total_revenue_lifetime = 0
+    cursor_all = db.payments.find(paid_filter, {"amount": 1})
+    async for p in cursor_all:
+        total_revenue_lifetime += p.get("amount") or 0
+
+    revenue_period = 0
+    cursor_period = db.payments.find({**period_query, **paid_filter}, {"amount": 1})
+    async for p in cursor_period:
+        revenue_period += p.get("amount") or 0
+
+    one_time_revenue = 0
+    cursor_one = db.payments.find({**period_query, **paid_filter, "type": {"$ne": "subscription"}}, {"amount": 1})
+    async for p in cursor_one:
+        one_time_revenue += p.get("amount") or 0
+
+    # --- MRR and subscribers from client_billing + plan_registry ---
+    billing_cursor = db.client_billing.find({}, {"client_id": 1, "subscription_status": 1, "current_plan_code": 1})
+    active_subscribers = 0
+    mrr_pence = 0
+    plan_active = {}
+    plan_canceled = {}
+    async for b in billing_cursor:
+        status = (b.get("subscription_status") or "").upper()
+        plan_code = b.get("current_plan_code") or "PLAN_1_SOLO"
+        if status in ("ACTIVE", "TRIALING"):
+            active_subscribers += 1
+            plan_active[plan_code] = plan_active.get(plan_code, 0) + 1
+            plan_def = plan_registry.get_plan_by_code_string(plan_code)
+            monthly_gbp = (plan_def or {}).get("monthly_price") or 0
+            mrr_pence += int(round(monthly_gbp * 100))
+        elif status in ("CANCELED", "UNPAID", "INCOMPLETE_EXPIRED"):
+            plan_canceled[plan_code] = plan_canceled.get(plan_code, 0) + 1
+
+    recurring_revenue_pence = mrr_pence  # MRR in pence
+    churn_rate = None  # would need status-change history
+    canceled_count = sum(plan_canceled.values())
+    arpu = round(recurring_revenue_pence / active_subscribers, 0) if active_subscribers else None
+
+    # --- Subscriber breakdown by plan ---
+    all_plan_codes = set(plan_active.keys()) | set(plan_canceled.keys())
+    subscriber_breakdown = []
+    for code in sorted(all_plan_codes):
+        plan_def = plan_registry.get_plan_by_code_string(code)
+        plan_name = (plan_def or {}).get("name") or code
+        active = plan_active.get(code, 0)
+        cancelled = plan_canceled.get(code, 0)
+        monthly_gbp = (plan_def or {}).get("monthly_price") or 0
+        mrr_contribution_pence = int(round(active * monthly_gbp * 100))
+        subscriber_breakdown.append({
+            "plan_name": plan_name,
+            "plan_code": code,
+            "active": active,
+            "cancelled": cancelled,
+            "mrr_contribution_pence": mrr_contribution_pence,
+            "mrr_contribution_formatted": f"£{mrr_contribution_pence / 100:,.2f}",
+        })
+
+    # --- Time series (by day or month) ---
+    granularity = "month" if period == "12m" else "day"
+    pipeline_ts = [
+        {"$match": {**period_query, **paid_filter}},
+        {"$project": {"amount": 1, "type": 1, "created_at": 1}},
+    ]
+    if breakdown == "recurring":
+        pipeline_ts[0]["$match"]["type"] = "subscription"
+    elif breakdown == "one_time":
+        pipeline_ts[0]["$match"]["type"] = {"$ne": "subscription"}
+    if granularity == "month":
+        pipeline_ts.append({
+            "$group": {
+                "_id": {"$dateToString": {"format": "%Y-%m", "date": "$created_at"}},
+                "revenue_pence": {"$sum": "$amount"},
+                "count": {"$sum": 1},
+            },
+        })
+    else:
+        pipeline_ts.append({
+            "$group": {
+                "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}},
+                "revenue_pence": {"$sum": "$amount"},
+                "count": {"$sum": 1},
+            },
+        })
+    pipeline_ts.append({"$sort": {"_id": 1}})
+    cursor_ts = db.payments.aggregate(pipeline_ts)
+    raw_ts = await cursor_ts.to_list(length=500)
+    time_series = [
+        {
+            "date": r["_id"],
+            "revenue_pence": r["revenue_pence"],
+            "revenue_formatted": f"£{r['revenue_pence'] / 100:,.2f}",
+            "count": r["count"],
+        }
+        for r in raw_ts
+    ]
+
+    # --- Payment health ---
+    last_30_start = end_dt - timedelta(days=30)
+    failed_last_30 = await db.payments.count_documents({
+        "status": "failed",
+        "created_at": {"$gte": last_30_start, "$lte": end_dt},
+    })
+    past_due = await db.client_billing.count_documents({
+        "subscription_status": {"$in": ["PAST_DUE", "past_due"]},
+    })
+    refunds_last_30 = await db.payments.count_documents({
+        "status": "refunded",
+        "created_at": {"$gte": last_30_start, "$lte": end_dt},
+    })
+
+    return {
+        "from": start_iso,
+        "to": end_iso,
+        "period": period,
+        "kpis": {
+            "total_revenue_lifetime_pence": total_revenue_lifetime,
+            "total_revenue_lifetime_formatted": f"£{total_revenue_lifetime / 100:,.2f}",
+            "revenue_period_pence": revenue_period,
+            "revenue_period_formatted": f"£{revenue_period / 100:,.2f}",
+            "recurring_revenue_pence": recurring_revenue_pence,
+            "mrr_formatted": f"£{recurring_revenue_pence / 100:,.2f}",
+            "one_time_revenue_pence": one_time_revenue,
+            "one_time_revenue_formatted": f"£{one_time_revenue / 100:,.2f}",
+            "active_subscribers": active_subscribers,
+            "churn_rate": churn_rate,
+            "canceled_subscribers": canceled_count,
+            "arpu_pence": arpu,
+            "arpu_formatted": f"£{arpu / 100:,.2f}" if arpu is not None else None,
+        },
+        "subscriber_breakdown": subscriber_breakdown,
+        "time_series": time_series,
+        "payment_health": {
+            "failed_payments_last_30d": failed_last_30,
+            "past_due_accounts": past_due,
+            "refunds_last_30d": refunds_last_30,
+        },
+    }
+
+
 async def _analytics_events_query(
     start_dt: datetime, end_dt: datetime,
     source: Optional[str] = None, plan: Optional[str] = None,
@@ -1246,3 +1412,23 @@ async def export_marketing_funnel_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=marketing_funnel.csv"},
     )
+
+
+# ============================================================================
+# REVENUE ANALYTICS (payments + client_billing; RBAC: Owner/Admin only)
+# ============================================================================
+
+def _revenue_date_range(from_date: Optional[str], to_date: Optional[str], period: str):
+    """Return (start_dt, end_dt) for revenue queries. Supports 7d, 30d, 90d, 12m and custom."""
+    if from_date and to_date:
+        try:
+            start = datetime.fromisoformat(from_date.replace("Z", "+00:00"))
+        except ValueError:
+            start = datetime.strptime(from_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        try:
+            end = datetime.fromisoformat(to_date.replace("Z", "+00:00"))
+        except ValueError:
+            end = datetime.strptime(to_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        return start, end
+    start_iso, end_iso = get_date_range(period)
+    return parse_custom_date(start_iso), parse_custom_date(end_iso)

@@ -130,6 +130,9 @@ export default function AdminAnalyticsDashboard() {
   const [conversionSourceFilter, setConversionSourceFilter] = useState('');
   const [conversionPlanFilter, setConversionPlanFilter] = useState('');
   const [marketingFunnel, setMarketingFunnel] = useState(null);
+  const [revenueAnalytics, setRevenueAnalytics] = useState(null);
+  const [revenuePeriod, setRevenuePeriod] = useState('30d');
+  const [revenueBreakdown, setRevenueBreakdown] = useState('all');
   
   // Build query params for API calls
   const getQueryParams = useCallback(() => {
@@ -213,6 +216,19 @@ export default function AdminAnalyticsDashboard() {
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
+  
+  const fetchRevenueOnly = useCallback(async () => {
+    try {
+      const res = await client.get(`/admin/analytics/revenue?period=${revenuePeriod}&breakdown=${revenueBreakdown}`);
+      setRevenueAnalytics(res.data);
+    } catch (e) {
+      setRevenueAnalytics(null);
+    }
+  }, [revenuePeriod, revenueBreakdown]);
+  
+  useEffect(() => {
+    fetchRevenueOnly();
+  }, [fetchRevenueOnly]);
   
   // Refresh advanced data when compare or breakdown changes
   useEffect(() => {
@@ -816,6 +832,140 @@ export default function AdminAnalyticsDashboard() {
                   </div>
                 ) : (
                   <p className="text-gray-500 text-center py-6">No marketing funnel data for this period.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Revenue Analytics */}
+            <Card className="mb-8">
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-green-600" />
+                      Revenue
+                    </CardTitle>
+                    <CardDescription>Revenue KPIs, MRR, subscribers, and payment health from normalized payments</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={revenuePeriod} onValueChange={setRevenuePeriod}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7d">7 days</SelectItem>
+                        <SelectItem value="30d">30 days</SelectItem>
+                        <SelectItem value="90d">90 days</SelectItem>
+                        <SelectItem value="12m">12 months</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={revenueBreakdown} onValueChange={setRevenueBreakdown}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="recurring">Recurring</SelectItem>
+                        <SelectItem value="one_time">One-time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {revenueAnalytics ? (
+                  <div className="space-y-6">
+                    {/* KPI row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                      <div className="rounded-lg border p-3 bg-gray-50">
+                        <p className="text-xs text-gray-500">Total Revenue (Lifetime)</p>
+                        <p className="text-lg font-bold text-gray-700">{revenueAnalytics.kpis?.total_revenue_lifetime_formatted ?? '£0.00'}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-blue-50">
+                        <p className="text-xs text-gray-600">Revenue (Period)</p>
+                        <p className="text-lg font-bold text-blue-700">{revenueAnalytics.kpis?.revenue_period_formatted ?? '£0.00'}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-teal-50">
+                        <p className="text-xs text-gray-600">MRR</p>
+                        <p className="text-lg font-bold text-teal-700">{revenueAnalytics.kpis?.mrr_formatted ?? '£0.00'}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-amber-50">
+                        <p className="text-xs text-gray-600">Active Subscribers</p>
+                        <p className="text-lg font-bold text-amber-700">{revenueAnalytics.kpis?.active_subscribers ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-gray-50">
+                        <p className="text-xs text-gray-500">Churn / Canceled</p>
+                        <p className="text-lg font-bold text-gray-700">{revenueAnalytics.kpis?.churn_rate != null ? `${revenueAnalytics.kpis.churn_rate}%` : (revenueAnalytics.kpis?.canceled_subscribers ?? 0)}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-green-50">
+                        <p className="text-xs text-gray-600">ARPU</p>
+                        <p className="text-lg font-bold text-green-700">{revenueAnalytics.kpis?.arpu_formatted ?? '—'}</p>
+                      </div>
+                    </div>
+                    {/* Revenue graph (time series) */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Revenue over time</h4>
+                      {revenueAnalytics.time_series?.length > 0 ? (
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                          {(() => {
+                            const series = revenueAnalytics.time_series;
+                            const maxPence = Math.max(...series.map((x) => x.revenue_pence), 1);
+                            return series.map((d) => {
+                              const pct = (d.revenue_pence / maxPence) * 100;
+                            return (
+                              <div key={d.date} className="flex items-center gap-2 text-sm">
+                                <span className="text-gray-600 w-24">{d.date}</span>
+                                <div className="flex-1 bg-gray-200 rounded h-6 overflow-hidden">
+                                  <div className="bg-teal-500 h-full rounded" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="text-gray-700 w-20 text-right">{d.revenue_formatted}</span>
+                              </div>
+                            );
+                            });
+                          })()}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-sm py-4">No revenue data for this period.</p>
+                      )}
+                    </div>
+                    {/* Subscriber overview */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Subscriber overview</h4>
+                      <div className="overflow-x-auto border rounded">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="text-left py-2 px-3">Plan</th>
+                              <th className="text-right py-2 px-3">Active</th>
+                              <th className="text-right py-2 px-3">Cancelled</th>
+                              <th className="text-right py-2 px-3">MRR contribution</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(revenueAnalytics.subscriber_breakdown || []).map((row) => (
+                              <tr key={row.plan_code} className="border-t">
+                                <td className="py-2 px-3">{row.plan_name}</td>
+                                <td className="text-right py-2 px-3">{row.active}</td>
+                                <td className="text-right py-2 px-3">{row.cancelled}</td>
+                                <td className="text-right py-2 px-3">{row.mrr_contribution_formatted}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    {/* Payment health */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Payment health</h4>
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        <span className="text-gray-600">Failed (last 30d): <strong className="text-red-600">{revenueAnalytics.payment_health?.failed_payments_last_30d ?? 0}</strong></span>
+                        <span className="text-gray-600">Past due: <strong>{revenueAnalytics.payment_health?.past_due_accounts ?? 0}</strong></span>
+                        <span className="text-gray-600">Refunds (last 30d): <strong>{revenueAnalytics.payment_health?.refunds_last_30d ?? 0}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-6">No revenue data. Revenue is populated from Stripe webhooks (payments collection).</p>
                 )}
               </CardContent>
             </Card>

@@ -16,8 +16,10 @@ Events Handled:
 - customer.subscription.deleted
 - invoice.paid
 - invoice.payment_failed
+- charge.refunded (normalized payment status = refunded)
 """
 import stripe
+from pymongo.errors import DuplicateKeyError
 import os
 import logging
 from datetime import datetime, timezone
@@ -213,6 +215,7 @@ class StripeWebhookService:
             "customer.subscription.deleted": self._handle_subscription_deleted,
             "invoice.paid": self._handle_invoice_paid,
             "invoice.payment_failed": self._handle_payment_failed,
+            "charge.refunded": self._handle_charge_refunded,
         }
         
         handler = handlers.get(event_type)
@@ -294,6 +297,21 @@ class StripeWebhookService:
             )
             
             logger.info(f"Created order {order['order_ref']} from draft {draft_ref}")
+            
+            # Normalized payment for Revenue Analytics (one-time / pack)
+            event_id = (event or {}).get("id")
+            if event_id and order.get("client_id"):
+                order_service_code = order.get("service_code") or service_code
+                payment_type = "pack" if order_service_code in document_pack_webhook_handler.VALID_PACK_CODES else "one_time"
+                await self._insert_payment(
+                    client_id=order["client_id"],
+                    stripe_event_id=event_id,
+                    amount=order.get("pricing", {}).get("total_pence", 0) or 0,
+                    currency="gbp",
+                    type=payment_type,
+                    status="paid",
+                    stripe_payment_intent_id=payment_intent_id,
+                )
             
             try:
                 from services.analytics_service import log_event
@@ -1031,6 +1049,22 @@ class StripeWebhookService:
             )
         except Exception:
             pass
+        # Normalized payment record for Revenue Analytics (idempotent by stripe_event_id)
+        event_id = (event or {}).get("id")
+        if event_id and client_id:
+            charge_id = invoice.get("charge")
+            if isinstance(charge_id, dict):
+                charge_id = charge_id.get("id") if charge_id else None
+            await self._insert_payment(
+                client_id=client_id,
+                stripe_event_id=event_id,
+                amount=invoice.get("amount_paid") or 0,
+                currency=(invoice.get("currency") or "gbp").lower(),
+                type="subscription",
+                status="paid",
+                stripe_invoice_id=invoice.get("id"),
+                stripe_charge_id=charge_id,
+            )
         return {
             "handled": True,
             "client_id": client_id,
@@ -1147,6 +1181,18 @@ class StripeWebhookService:
             "HANDLER_END event.type=invoice.payment_failed client_id=%s db_updated=subscription_status=%s entitlement_status=%s",
             client_id, new_status.upper(), entitlement_status.value,
         )
+        # Normalized payment record (failed) for Revenue Analytics
+        event_id = (event or {}).get("id")
+        if event_id and client_id:
+            await self._insert_payment(
+                client_id=client_id,
+                stripe_event_id=event_id,
+                amount=invoice.get("amount_due") or 0,
+                currency=(invoice.get("currency") or "gbp").lower(),
+                type="subscription",
+                status="failed",
+                stripe_invoice_id=invoice.get("id"),
+            )
         return {
             "handled": True,
             "client_id": client_id,
@@ -1155,9 +1201,64 @@ class StripeWebhookService:
             "side_effects_blocked": True,
         }
     
+    async def _handle_charge_refunded(self, charge: Dict, event: Dict) -> Dict:
+        """Handle charge.refunded - mark corresponding payment as refunded."""
+        db = database.get_db()
+        charge_id = charge.get("id")
+        if not charge_id:
+            return {"handled": False, "reason": "no_charge_id"}
+        # Find payment by stripe_charge_id or by stripe_invoice_id (charge.invoice)
+        invoice_id = charge.get("invoice")
+        if isinstance(invoice_id, dict):
+            invoice_id = invoice_id.get("id") if invoice_id else None
+        result = await db.payments.update_one(
+            {"$or": [{"stripe_charge_id": charge_id}, {"stripe_invoice_id": invoice_id}]},
+            {"$set": {"status": "refunded", "updated_at": datetime.now(timezone.utc)}},
+        )
+        if result.modified_count:
+            logger.info("Payment marked refunded for charge %s", charge_id)
+        return {"handled": True, "charge_id": charge_id, "updated": result.modified_count}
+    
     # =========================================================================
     # Helpers
     # =========================================================================
+    
+    async def _insert_payment(
+        self,
+        *,
+        client_id: str,
+        stripe_event_id: str,
+        amount: int,
+        currency: str,
+        type: str,
+        status: str,
+        stripe_invoice_id: Optional[str] = None,
+        stripe_charge_id: Optional[str] = None,
+        stripe_payment_intent_id: Optional[str] = None,
+    ) -> None:
+        """Insert normalized payment for Revenue Analytics. Idempotent by stripe_event_id."""
+        db = database.get_db()
+        if not db:
+            return
+        doc = {
+            "client_id": client_id,
+            "stripe_event_id": stripe_event_id,
+            "amount": amount,
+            "currency": currency,
+            "type": type,
+            "status": status,
+            "created_at": datetime.now(timezone.utc),
+        }
+        if stripe_invoice_id:
+            doc["stripe_invoice_id"] = stripe_invoice_id
+        if stripe_charge_id:
+            doc["stripe_charge_id"] = stripe_charge_id
+        if stripe_payment_intent_id:
+            doc["stripe_payment_intent_id"] = stripe_payment_intent_id
+        try:
+            await db.payments.insert_one(doc)
+        except DuplicateKeyError:
+            pass  # idempotent: same event already recorded
     
     def _extract_safe_data(self, event: Dict) -> Dict:
         """Extract safe subset of event data for logging (no secrets)."""

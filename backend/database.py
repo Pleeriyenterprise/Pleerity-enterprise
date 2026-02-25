@@ -169,6 +169,16 @@ class Database:
                 await self.db.stripe_events.create_index("event_id", unique=True)
             except Exception:
                 pass
+            # Normalized payments (Revenue Analytics) - idempotency and date queries
+            if hasattr(self.db, "payments"):
+                try:
+                    await self.db.payments.create_index("stripe_event_id", unique=True, sparse=True)
+                except Exception:
+                    pass
+                await self.db.payments.create_index("created_at")
+                await self.db.payments.create_index([("client_id", 1), ("created_at", -1)])
+                await self.db.payments.create_index("stripe_charge_id", sparse=True)
+                await self.db.payments.create_index("stripe_invoice_id", sparse=True)
             # Provisioning jobs - idempotency by checkout_session_id
             await self.db.provisioning_jobs.create_index("job_id", unique=True)
             try:
