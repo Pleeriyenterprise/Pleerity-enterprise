@@ -7,28 +7,50 @@ import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Search, Eye, Download } from 'lucide-react';
 
-const STATUS_OPTIONS = ['', 'NEW', 'IN_PROGRESS', 'RESPONDED', 'CLOSED', 'SPAM'];
+const STATUS_OPTIONS = [
+  { value: '__all__', label: 'All' },
+  { value: 'NEW', label: 'NEW' },
+  { value: 'IN_PROGRESS', label: 'IN_PROGRESS' },
+  { value: 'RESPONDED', label: 'RESPONDED' },
+  { value: 'CLOSED', label: 'CLOSED' },
+  { value: 'SPAM', label: 'SPAM' },
+];
 
 const AdminContactEnquiriesPage = () => {
   const [result, setResult] = useState({ items: [], total: 0, page: 1, page_size: 20 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [q, setQ] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('__all__');
   const [searchInput, setSearchInput] = useState('');
-  const API = process.env.REACT_APP_BACKEND_URL;
+  const API = process.env.REACT_APP_BACKEND_URL || '';
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ type: 'contact', page: 1, page_size: 50 });
       if (q) params.set('q', q);
-      if (statusFilter) params.set('status', statusFilter);
+      if (statusFilter && statusFilter !== '__all__') params.set('status', statusFilter);
+      const token = localStorage.getItem('auth_token');
       const res = await fetch(`${API}/api/admin/submissions?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { ...(token && { Authorization: `Bearer ${token}` }) },
       });
-      if (res.ok) setResult(await res.json());
-    } catch (e) {}
-    finally { setLoading(false); }
+      if (!res.ok) {
+        if (res.status === 401) {
+          setError('Session expired. Please sign in again.');
+          return;
+        }
+        setError('Unable to load enquiries. Please try again.');
+        return;
+      }
+      const data = await res.json();
+      setResult(Array.isArray(data?.items) ? data : { items: [], total: 0, page: 1, page_size: 20 });
+    } catch (e) {
+      setError('Unable to load enquiries. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, [API, q, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
@@ -36,10 +58,11 @@ const AdminContactEnquiriesPage = () => {
   const handleExportCsv = async () => {
     const params = new URLSearchParams({ type: 'contact' });
     if (q) params.set('q', q);
-    if (statusFilter) params.set('status', statusFilter);
+    if (statusFilter && statusFilter !== '__all__') params.set('status', statusFilter);
     try {
+      const token = localStorage.getItem('auth_token');
       const res = await fetch(`${API}/api/admin/submissions/export/csv?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { ...(token && { Authorization: `Bearer ${token}` }) },
       });
       if (!res.ok) return;
       const blob = await res.blob();
@@ -63,6 +86,15 @@ const AdminContactEnquiriesPage = () => {
         <h1 className="text-3xl font-bold mb-2">Contact Enquiries</h1>
         <p className="text-gray-600 mb-6">Manage and respond to contact form submissions</p>
 
+        {error && (
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={() => window.location.href = '/login/admin'}>
+              Go to sign in
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-4 mb-4 items-center">
           <div className="flex gap-2 flex-1 min-w-[200px]">
             <Input
@@ -79,8 +111,8 @@ const AdminContactEnquiriesPage = () => {
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
-              {STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s || 'all'} value={s}>{s || 'All'}</SelectItem>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -107,10 +139,11 @@ const AdminContactEnquiriesPage = () => {
               ) : items.length === 0 ? (
                 <tr><td colSpan="6" className="px-4 py-8 text-center">No enquiries</td></tr>
               ) : (
-                items.map((e) => {
-                  const id = e.composite_id ? e.composite_id.replace(/^contact-/, '') : e.composite_id;
+                items.map((e, idx) => {
+                  const id = e.composite_id ? String(e.composite_id).replace(/^contact-/, '') : e.composite_id;
+                  const rowKey = e.composite_id || `row-${idx}`;
                   return (
-                    <tr key={e.composite_id} className="hover:bg-gray-50">
+                    <tr key={rowKey} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm">{e.date ? new Date(e.date).toLocaleDateString() : '-'}</td>
                       <td className="px-4 py-3 text-sm font-medium">{e.name ?? '-'}</td>
                       <td className="px-4 py-3 text-sm">{e.email ?? '-'}</td>

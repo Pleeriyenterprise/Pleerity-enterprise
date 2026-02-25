@@ -40,7 +40,7 @@ const SubmissionDetailPage = () => {
     setError(null);
     try {
       const res = await fetch(`${API}/api/admin/submissions/${encodeURIComponent(compositeId)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
       });
       if (!res.ok) {
         if (res.status === 404) setError('Submission not found');
@@ -76,7 +76,7 @@ const SubmissionDetailPage = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify(body),
       });
@@ -112,7 +112,7 @@ const SubmissionDetailPage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify({ note: note.trim() }),
       });
@@ -131,7 +131,7 @@ const SubmissionDetailPage = () => {
     try {
       const res = await fetch(`${API}/api/admin/submissions/${encodeURIComponent(compositeId)}/mark-spam`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
       });
       if (res.ok) {
         setMarkSpamConfirm(false);
