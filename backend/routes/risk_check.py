@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from database import database
 from datetime import datetime, timezone
 from typing import Optional, List, Any
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 import logging
 import uuid
 import os
@@ -39,7 +39,7 @@ class RiskCheckStep1(BaseModel):
 
 
 class RiskCheckReportRequest(RiskCheckStep1):
-    first_name: str
+    first_name: str = Field(..., min_length=1)
     email: EmailStr
     utm_source: Optional[str] = None
     utm_medium: Optional[str] = None
@@ -66,49 +66,10 @@ def _blurred_hint(risk_band: str, score: int) -> str:
 
 
 async def _send_risk_report_email(lead: dict) -> bool:
-    """Send 'Your Compliance Risk Snapshot' email. Returns True if sent or duplicate."""
-    first_name = lead.get("first_name") or "there"
-    email = lead.get("email")
-    score = lead.get("computed_score", 0)
-    risk_band = lead.get("risk_band", "MODERATE")
-    lead_id = lead.get("lead_id", "")
-    base_url = os.environ.get("FRONTEND_URL", os.environ.get("ADMIN_DASHBOARD_URL", "")).rstrip("/").replace("/admin/leads", "")
-    activate_url = f"{base_url}/intake/start" if base_url else "/intake/start"
-
-    body_html = f"""
-<p>Hello {first_name},</p>
-<p>Thank you for using the Pleerity Compliance Risk Check.</p>
-<p>Based on your responses, your monitoring posture is currently assessed as:</p>
-<ul>
-<li><strong>Compliance Score:</strong> {score}%</li>
-<li><strong>Risk Level:</strong> {risk_band}</li>
-</ul>
-<p>Your structured report indicates areas where monitoring gaps may exist.</p>
-<p>Continuous compliance monitoring helps reduce missed renewals and documentation vulnerabilities by providing structured tracking across your portfolio.</p>
-<p>You can activate monitoring at any time here:</p>
-<p><a href="{activate_url}">Activate Monitoring</a></p>
-<p>This report is an informational indicator only and does not replace professional or legal advice.</p>
-<p>Regards,<br/>Pleerity Compliance Vault Pro</p>
-""".strip()
-
-    try:
-        from services.notification_orchestrator import notification_orchestrator
-        idempotency_key = f"risk_report_{lead_id}_{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
-        result = await notification_orchestrator.send(
-            template_key="LEAD_FOLLOWUP",
-            client_id=None,
-            context={
-                "recipient": email,
-                "subject": "Your Compliance Risk Snapshot",
-                "message": body_html,
-            },
-            idempotency_key=idempotency_key,
-            event_type="risk_check_report",
-        )
-        return result.outcome in ("sent", "duplicate_ignored")
-    except Exception as e:
-        logger.warning("Risk report email not sent: %s", e)
-        return False
+    """Send Email 1 (Your Compliance Risk Snapshot). Uses risk_lead_email_service. Returns True if sent or duplicate."""
+    from services.risk_lead_email_service import send_risk_lead_email
+    ok, _ = await send_risk_lead_email(lead, 1)
+    return ok
 
 
 # --- Endpoints ---
@@ -137,6 +98,7 @@ async def risk_check_preview(body: RiskCheckStep1):
         "teaser_text": _teaser_text(result["risk_band"]),
         "blurred_score_hint": _blurred_hint(result["risk_band"], result["score"]),
         "flags_count": len(result["flags"]),
+        "recommended_plan_code": result.get("recommended_plan_code", "PLAN_2_PORTFOLIO"),
     }
 
 
@@ -178,6 +140,10 @@ async def risk_check_report(body: RiskCheckReportRequest, request: Request):
         "exposure_range_label": result["exposure_range_label"],
         "flags": result["flags"],
         "disclaimer_text": result["disclaimer_text"],
+        "recommended_plan_code": result.get("recommended_plan_code", "PLAN_2_PORTFOLIO"),
+        "status": "new",
+        "email_sequence_step": 0,
+        "last_email_sent_at": None,
     }
     if body.utm_source is not None:
         doc["utm_source"] = (str(body.utm_source) or "").strip()[:200]
@@ -189,8 +155,13 @@ async def risk_check_report(body: RiskCheckReportRequest, request: Request):
     db = database.get_db()
     await db[COLLECTION].insert_one(doc)
 
-    # Optional: send report email
-    await _send_risk_report_email(doc)
+    # Send Email 1 (Your Compliance Risk Snapshot) and set nurture fields
+    sent = await _send_risk_report_email(doc)
+    if sent:
+        await db[COLLECTION].update_one(
+            {"lead_id": lead_id},
+            {"$set": {"email_sequence_step": 1, "last_email_sent_at": now_iso, "status": "nurture_started"}},
+        )
 
     # Simulated property breakdown for frontend
     property_breakdown = simulated_property_breakdown(
@@ -209,4 +180,5 @@ async def risk_check_report(body: RiskCheckReportRequest, request: Request):
         "flags": result["flags"],
         "disclaimer_text": result["disclaimer_text"],
         "property_breakdown": property_breakdown,
+        "recommended_plan_code": result.get("recommended_plan_code", "PLAN_2_PORTFOLIO"),
     }

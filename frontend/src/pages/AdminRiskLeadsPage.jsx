@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Search, Download, Mail } from 'lucide-react';
+import { Search, Download, Mail, FileText, Play, Check } from 'lucide-react';
 import client from '../api/client';
+import { toast } from 'sonner';
 
 const AdminRiskLeadsPage = () => {
   const [items, setItems] = useState([]);
@@ -15,6 +17,7 @@ const AdminRiskLeadsPage = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [resending, setResending] = useState(null);
+  const [markingConverted, setMarkingConverted] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -58,11 +61,27 @@ const AdminRiskLeadsPage = () => {
     setResending(leadId);
     try {
       await client.post(`/admin/risk-leads/${leadId}/resend-report`);
+      toast.success('Report email sent');
       load();
     } catch (e) {
       console.error(e);
+      toast.error(e.response?.data?.detail || 'Failed to send email');
     } finally {
       setResending(null);
+    }
+  };
+
+  const handleMarkConverted = async (leadId) => {
+    setMarkingConverted(leadId);
+    try {
+      await client.post(`/admin/risk-leads/${leadId}/mark-converted`);
+      toast.success('Marked as converted');
+      load();
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.detail || 'Failed to update');
+    } finally {
+      setMarkingConverted(null);
     }
   };
 
@@ -107,15 +126,17 @@ const AdminRiskLeadsPage = () => {
                   <th className="p-3">Properties</th>
                   <th className="p-3">Risk Band</th>
                   <th className="p-3">Score</th>
+                  <th className="p-3">Plan</th>
+                  <th className="p-3">Status</th>
                   <th className="p-3">UTM Source</th>
-                  <th className="p-3">Action</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="p-8 text-center text-gray-500">Loading…</td></tr>
+                  <tr><td colSpan={10} className="p-8 text-center text-gray-500">Loading…</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={8} className="p-8 text-center text-gray-500">No risk check leads yet.</td></tr>
+                  <tr><td colSpan={10} className="p-8 text-center text-gray-500">No risk check leads yet.</td></tr>
                 ) : (
                   items.map((row) => (
                     <tr key={row.lead_id} className="border-b hover:bg-gray-50">
@@ -125,11 +146,26 @@ const AdminRiskLeadsPage = () => {
                       <td className="p-3">{row.property_count ?? '—'}</td>
                       <td className="p-3"><Badge className={bandColor(row.risk_band)}>{row.risk_band || '—'}</Badge></td>
                       <td className="p-3">{row.computed_score ?? '—'}</td>
+                      <td className="p-3 text-sm">{row.recommended_plan_code || '—'}</td>
+                      <td className="p-3"><Badge variant={row.status === 'converted' ? 'default' : 'secondary'}>{row.status || 'new'}</Badge></td>
                       <td className="p-3 text-sm">{row.utm_source || '—'}</td>
                       <td className="p-3">
-                        <Button variant="ghost" size="sm" onClick={() => handleResendReport(row.lead_id)} disabled={resending === row.lead_id}>
-                          <Mail className="w-4 h-4 mr-1" /> {resending === row.lead_id ? 'Sending…' : 'Email report again'}
-                        </Button>
+                        <div className="flex flex-wrap gap-1">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to="/risk-check" target="_blank" rel="noopener noreferrer"><FileText className="w-4 h-4 mr-1" /> Open Risk Report</Link>
+                          </Button>
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to={row.recommended_plan_code ? `/intake/start?plan=${row.recommended_plan_code}` : '/intake/start'} target="_blank" rel="noopener noreferrer"><Play className="w-4 h-4 mr-1" /> Start Intake</Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleResendReport(row.lead_id)} disabled={resending === row.lead_id}>
+                            <Mail className="w-4 h-4 mr-1" /> {resending === row.lead_id ? 'Sending…' : 'Resend report'}
+                          </Button>
+                          {row.status !== 'converted' && (
+                            <Button variant="ghost" size="sm" onClick={() => handleMarkConverted(row.lead_id)} disabled={markingConverted === row.lead_id}>
+                              <Check className="w-4 h-4 mr-1" /> {markingConverted === row.lead_id ? 'Updating…' : 'Mark Converted'}
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

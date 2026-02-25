@@ -475,6 +475,56 @@ async def run_pending_payment_lifecycle():
         raise
 
 
+async def run_risk_lead_nurture_processing():
+    """Daily: send risk-check nurture emails 2–5 when due (day 2, 4, 6, 10 since created). Idempotent, no deletes."""
+    from database import database
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    cursor = db.risk_leads.find(
+        {"status": {"$ne": "converted"}, "email_sequence_step": {"$gte": 1}},
+        {"_id": 0, "lead_id": 1, "created_at": 1, "email_sequence_step": 1, "first_name": 1, "email": 1, "computed_score": 1, "risk_band": 1}
+    )
+    leads = await cursor.to_list(length=500)
+    sent = 0
+    for lead in leads:
+        try:
+            created_at = lead.get("created_at")
+            if not created_at:
+                continue
+            if isinstance(created_at, str):
+                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            if getattr(created_at, "tzinfo", None) is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            days_since = (now - created_at).days
+            current_step = lead.get("email_sequence_step") or 0
+            next_step = None
+            if current_step < 2 and days_since >= 2:
+                next_step = 2
+            elif current_step < 3 and days_since >= 4:
+                next_step = 3
+            elif current_step < 4 and days_since >= 6:
+                next_step = 4
+            elif current_step < 5 and days_since >= 10:
+                next_step = 5
+            if next_step is None:
+                continue
+            full_lead = await db.risk_leads.find_one({"lead_id": lead["lead_id"]}, {"_id": 0})
+            if not full_lead:
+                continue
+            from services.risk_lead_email_service import send_risk_lead_email
+            ok, _ = await send_risk_lead_email(full_lead, next_step)
+            if ok:
+                await db.risk_leads.update_one(
+                    {"lead_id": lead["lead_id"]},
+                    {"$set": {"email_sequence_step": next_step, "last_email_sent_at": now.isoformat()}},
+                )
+                sent += 1
+        except Exception as e:
+            logger.warning("Risk lead nurture skip %s: %s", lead.get("lead_id"), e)
+    logger.info("Risk lead nurture: %s email(s) sent", sent)
+    return {"message": f"Risk lead nurture: {sent} email(s) sent", "count": sent}
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -494,6 +544,7 @@ JOB_RUNNERS = {
     "lead_followup_processing": run_lead_followup_processing,
     "lead_sla_check": run_lead_sla_check,
     "checklist_nurture_processing": run_checklist_nurture_processing,
+    "risk_lead_nurture_processing": run_risk_lead_nurture_processing,
     "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
     "notification_failure_spike_monitor": run_notification_failure_spike_monitor,
     "notification_retry_worker": run_notification_retry_worker,

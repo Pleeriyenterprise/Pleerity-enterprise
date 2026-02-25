@@ -13,8 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select';
-import client from '../../api/client';
+import { getPreview, postReport } from '../../api/riskCheckAPI';
 import { toast } from 'sonner';
+
+const SCORE_CAP = 97;
 
 const STEP = { QUESTIONS: 1, PARTIAL_REVEAL: 2, FULL_REPORT: 3 };
 
@@ -50,14 +52,14 @@ const RiskCheckPage = () => {
     }
     setLoading(true);
     try {
-      const res = await client.post('/risk-check/preview', {
+      const data = await getPreview({
         property_count: Math.min(100, Math.max(1, Number(step1.property_count) || 1)),
         any_hmo: !!step1.any_hmo,
         gas_status: step1.gas_status,
         eicr_status: step1.eicr_status,
         tracking_method: step1.tracking_method,
       });
-      setPreview(res.data);
+      setPreview(data);
       setStep(STEP.PARTIAL_REVEAL);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Could not calculate risk. Please try again.');
@@ -75,7 +77,7 @@ const RiskCheckPage = () => {
     }
     setLoading(true);
     try {
-      const res = await client.post('/risk-check/report', {
+      const data = await postReport({
         ...step1,
         property_count: Math.min(100, Math.max(1, Number(step1.property_count) || 1)),
         any_hmo: !!step1.any_hmo,
@@ -83,7 +85,7 @@ const RiskCheckPage = () => {
         email: emailVal,
         ...getUtm(),
       });
-      setReport(res.data);
+      setReport(data);
       setStep(STEP.FULL_REPORT);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Could not generate report. Please try again.');
@@ -254,9 +256,9 @@ const RiskCheckPage = () => {
               <CardContent className="pt-6">
                 <h2 className="text-xl font-semibold text-midnight-blue mb-4">Your Compliance Monitoring Snapshot</h2>
                 <div className="text-center py-4">
-                  <p className="text-4xl font-bold text-midnight-blue">Compliance Score: {report.score}%</p>
+                  <p className="text-4xl font-bold text-midnight-blue">Compliance Score: {report.score} / {SCORE_CAP}</p>
                   <p className="text-lg text-gray-700 mt-2">Risk Level: {riskBandLabel(report.risk_band)}</p>
-                  <p className="text-sm text-gray-500 mt-1">Based on structured weighting of safety and monitoring indicators.</p>
+                  <p className="text-sm text-gray-500 mt-1">Based on structured weighting of safety and monitoring indicators. Score is out of {SCORE_CAP}.</p>
                 </div>
                 {report.property_breakdown && report.property_breakdown.length > 0 && (
                   <div className="mt-6">
@@ -324,7 +326,7 @@ const RiskCheckPage = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button asChild className="flex-1">
-                    <Link to="/intake/start">Activate Monitoring</Link>
+                    <Link to={report.recommended_plan_code ? `/intake/start?plan=${report.recommended_plan_code}` : '/intake/start'}>Activate Monitoring</Link>
                   </Button>
                   <Button variant="outline" asChild>
                     <Link to="/pricing">View Full Plan Comparison</Link>

@@ -399,6 +399,35 @@ async def unsubscribe_lead(lead_id: str):
 # ADMIN ENDPOINTS - Lead Management
 # ============================================================================
 
+@admin_router.get("/risk")
+async def list_risk_leads(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    risk_band: Optional[str] = None,
+    q: Optional[str] = None,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """List risk-check leads (from /risk-check flow). RBAC: owner/admin only. Same data as GET /api/admin/risk-leads."""
+    db = database.get_db()
+    filt = {}
+    if risk_band:
+        filt["risk_band"] = risk_band.strip().upper()
+    if q and q.strip():
+        s = q.strip()
+        filt["$or"] = [
+            {"email": {"$regex": s, "$options": "i"}},
+            {"first_name": {"$regex": s, "$options": "i"}},
+            {"lead_id": {"$regex": s, "$options": "i"}},
+        ]
+    total = await db.risk_leads.count_documents(filt)
+    cursor = db.risk_leads.find(
+        filt,
+        {"_id": 0, "lead_id": 1, "created_at": 1, "first_name": 1, "email": 1, "property_count": 1, "risk_band": 1, "computed_score": 1, "recommended_plan_code": 1, "status": 1, "utm_source": 1},
+    ).sort("created_at", -1).skip(offset).limit(limit)
+    items = await cursor.to_list(length=limit)
+    return {"items": items, "total": total}
+
+
 @admin_router.get("")
 async def list_leads(
     source_platform: Optional[str] = None,

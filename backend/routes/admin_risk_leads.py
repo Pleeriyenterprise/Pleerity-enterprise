@@ -49,6 +49,8 @@ async def list_risk_leads(
             "property_count": 1,
             "risk_band": 1,
             "computed_score": 1,
+            "recommended_plan_code": 1,
+            "status": 1,
             "utm_source": 1,
         },
     ).sort("created_at", -1).skip(offset).limit(limit)
@@ -71,7 +73,7 @@ async def export_risk_leads_csv(
 
     out = io.StringIO()
     w = csv.writer(out)
-    w.writerow(["Date", "Lead ID", "First Name", "Email", "Properties", "Risk Band", "Score", "UTM Source"])
+    w.writerow(["Date", "Lead ID", "First Name", "Email", "Properties", "Risk Band", "Score", "Recommended Plan", "Status", "UTM Source"])
     for r in rows:
         w.writerow([
             r.get("created_at", ""),
@@ -81,6 +83,8 @@ async def export_risk_leads_csv(
             r.get("property_count", ""),
             r.get("risk_band", ""),
             r.get("computed_score", ""),
+            r.get("recommended_plan_code", ""),
+            r.get("status", ""),
             r.get("utm_source", ""),
         ])
     out.seek(0)
@@ -106,3 +110,20 @@ async def resend_risk_report(
     from routes.risk_check import _send_risk_report_email
     ok = await _send_risk_report_email(lead)
     return {"ok": ok, "message": "Email sent" if ok else "Email not sent (check Postmark or duplicate)"}
+
+
+@router.post("/{lead_id}/mark-converted", dependencies=[Depends(admin_route_guard)])
+async def mark_risk_lead_converted(
+    lead_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Set risk lead status to 'converted'. Idempotent."""
+    db = database.get_db()
+    result = await db[COLLECTION].update_one(
+        {"lead_id": lead_id},
+        {"$set": {"status": "converted"}},
+    )
+    if result.matched_count == 0:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Risk lead not found")
+    return {"ok": True, "message": "Marked as converted"}

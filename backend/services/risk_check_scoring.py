@@ -27,6 +27,14 @@ DISCLAIMER = (
     "Local authority requirements may vary."
 )
 
+# Plan recommendation by property count (marketing funnel only)
+def recommended_plan_from_property_count(property_count: int) -> str:
+    if property_count <= 2:
+        return "PLAN_1_SOLO"
+    if property_count <= 10:
+        return "PLAN_2_PORTFOLIO"
+    return "PLAN_3_PRO"
+
 
 def _normalize(val: Any) -> str:
     if val is None:
@@ -172,6 +180,7 @@ def compute_risk_check_result(
 
     exposure_range_label = EXPOSURE_LABELS.get(risk_band, EXPOSURE_LABELS["HIGH"])
     flags = _build_flags(property_count, any_hmo, gas_status, eicr_status, tracking_method)
+    recommended_plan_code = recommended_plan_from_property_count(property_count)
 
     return {
         "score": score,
@@ -179,6 +188,7 @@ def compute_risk_check_result(
         "exposure_range_label": exposure_range_label,
         "flags": flags,
         "disclaimer_text": DISCLAIMER,
+        "recommended_plan_code": recommended_plan_code,
     }
 
 

@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 import uuid
 from contextlib import asynccontextmanager
 from database import database
-from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads, admin_risk_leads
+from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
 
 # ClearForm - Separate Product Routes
 from clearform.routes import auth as clearform_auth
@@ -89,6 +89,7 @@ from job_runner import (
     run_lead_followup_processing,
     run_lead_sla_check,
     run_checklist_nurture_processing,
+    run_risk_lead_nurture_processing,
     run_notification_failure_spike_monitor,
     run_notification_retry_worker,
     run_pending_payment_lifecycle,
@@ -504,6 +505,14 @@ async def lifespan(app: FastAPI):
         name="Checklist Nurture (compliance checklist leads)",
         replace_existing=True
     )
+    # Risk-check lead nurture (steps 2–5 at day 2, 4, 6, 10) - daily at 9:15 AM UTC
+    scheduler.add_job(
+        run_risk_lead_nurture_processing,
+        CronTrigger(hour=9, minute=15),
+        id="risk_lead_nurture_processing",
+        name="Risk Lead Nurture (risk-check conversion leads)",
+        replace_existing=True
+    )
     
     scheduler.start()
     logger.info("Background job scheduler started")
@@ -599,7 +608,6 @@ app.include_router(admin_modules.router_admin)  # Admin endpoints
 app.include_router(admin_submissions.router)  # Unified submissions list/get/patch/notes/export
 app.include_router(intake_uploads.router)  # Intake document uploads
 app.include_router(risk_check.router)  # Compliance Risk Check (standalone demo, no client/provisioning)
-app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, resend report
 app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, resend report
 
 # ============================================================================
