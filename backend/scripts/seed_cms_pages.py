@@ -4,12 +4,21 @@ CMS Service Page Seeder
 Seeds CMS pages from the Service Catalogue.
 Creates category and service pages with default content.
 
-Run with: python scripts/seed_cms_pages.py
+Run from backend dir: python scripts/seed_cms_pages.py
+Or from project root: python backend/scripts/seed_cms_pages.py (with PYTHONPATH=backend)
 """
 
 import asyncio
 import sys
-sys.path.insert(0, '/app/backend')
+from pathlib import Path
+
+# Ensure backend root is on path (works when run from backend/ or from project root)
+_backend_root = Path(__file__).resolve().parent.parent
+if str(_backend_root) not in sys.path:
+    sys.path.insert(0, str(_backend_root))
+# Docker/app default when running from /app/backend
+if Path("/app/backend").exists() and "/app/backend" not in sys.path:
+    sys.path.insert(0, "/app/backend")
 
 from database import database
 from models.cms import PageStatus, PageType, CATEGORY_CONFIG
