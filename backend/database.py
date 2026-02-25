@@ -147,6 +147,11 @@ class Database:
             await self.db.partnership_enquiries.create_index([("dedupe_key", 1), ("created_at", -1)])
             await self.db.partnership_enquiries.create_index("created_at")
             await self.db.partnership_enquiries.create_index("status")
+            # Risk check leads (conversion demo; no client/provisioning)
+            await self.db.risk_leads.create_index("lead_id", unique=True)
+            await self.db.risk_leads.create_index("created_at")
+            await self.db.risk_leads.create_index("email")
+            await self.db.risk_leads.create_index("risk_band")
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored
             try:

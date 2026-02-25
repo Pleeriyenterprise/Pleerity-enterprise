@@ -54,6 +54,7 @@ import FAQPage from './pages/public/FAQPage';
 import NewsletterPage from './pages/public/NewsletterPage';
 import ChecklistThankYouPage from './pages/public/ChecklistThankYouPage';
 import UnsubscribePage from './pages/public/UnsubscribePage';
+import RiskCheckPage from './pages/public/RiskCheckPage';
 
 // Auth & Onboarding pages
 import PortalSelectorPage from './pages/PortalSelectorPage';
@@ -135,6 +136,7 @@ import AdminCannedResponsesPage from './pages/AdminCannedResponsesPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
 import AdminTalentPoolPage from './pages/AdminTalentPoolPage';
 import AdminPartnershipEnquiriesPage from './pages/AdminPartnershipEnquiriesPage';
+import AdminRiskLeadsPage from './pages/AdminRiskLeadsPage';
 import AdminContactEnquiriesPage from './pages/AdminContactEnquiriesPage';
 import AdminSubmissionDetailPage from './pages/AdminSubmissionDetailPage';
 import AdminFAQPage from './pages/AdminFAQPage';
@@ -220,6 +222,7 @@ function App() {
               <Route path="/newsletter" element={<NewsletterPage />} />
               <Route path="/checklist-thank-you" element={<ChecklistThankYouPage />} />
               <Route path="/unsubscribe" element={<UnsubscribePage />} />
+              <Route path="/risk-check" element={<RiskCheckPage />} />
               
               {/* Knowledge Base (Public) */}
               <Route path="/support/knowledge-base" element={<PublicKnowledgeBasePage />} />
@@ -470,6 +473,7 @@ function App() {
             <Route path="/admin/pending-payments" element={<ProtectedRoute requireAdmin><AdminPendingPaymentsPage /></ProtectedRoute>} />
             <Route path="/admin/talent-pool" element={<ProtectedRoute requireAdmin><AdminTalentPoolPage /></ProtectedRoute>} />
             <Route path="/admin/partnership-enquiries" element={<ProtectedRoute requireAdmin><AdminPartnershipEnquiriesPage /></ProtectedRoute>} />
+            <Route path="/admin/risk-leads" element={<ProtectedRoute requireAdmin><AdminRiskLeadsPage /></ProtectedRoute>} />
             <Route path="/admin/inbox/enquiries" element={<ProtectedRoute requireAdmin><AdminContactEnquiriesPage /></ProtectedRoute>} />
             <Route path="/admin/submissions/:type/:id" element={<ProtectedRoute requireAdmin><AdminSubmissionDetailPage /></ProtectedRoute>} />
             <Route path="/admin/content/faqs" element={<ProtectedRoute requireAdmin><AdminFAQPage /></ProtectedRoute>} />

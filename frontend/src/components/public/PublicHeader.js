@@ -195,8 +195,11 @@ const PublicHeader = () => {
             </NavigationMenu>
           </nav>
 
-          {/* Portal Login Link */}
+          {/* CTA + Portal Login */}
           <div className="hidden lg:flex items-center space-x-3">
+            <Button asChild variant="default" className="bg-electric-teal hover:bg-electric-teal/90">
+              <Link to="/risk-check">Check Your Compliance Risk</Link>
+            </Button>
             <Link 
               to="/login" 
               className="text-gray-700 hover:text-electric-teal font-medium text-sm transition-colors"
@@ -287,9 +290,12 @@ const PublicHeader = () => {
               </Link>
             </div>
 
-            {/* Mobile Portal Login */}
-            <div className="border-t border-gray-200 pt-4">
+            {/* Mobile CTA + Portal Login */}
+            <div className="border-t border-gray-200 pt-4 space-y-2">
               <Button className="w-full bg-electric-teal hover:bg-electric-teal/90" asChild>
+                <Link to="/risk-check" onClick={() => setMobileMenuOpen(false)}>Check Your Compliance Risk</Link>
+              </Button>
+              <Button variant="outline" className="w-full" asChild>
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Portal Login</Link>
               </Button>
             </div>
