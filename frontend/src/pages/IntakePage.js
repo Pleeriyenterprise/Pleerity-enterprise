@@ -242,7 +242,7 @@ const IntakePage = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [leadTokenParam, sourceParam]);
+  }, [leadTokenParam, sourceParam, leadIdParam]);
 
   // Load plans on mount
   useEffect(() => {
