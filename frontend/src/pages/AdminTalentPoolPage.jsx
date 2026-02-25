@@ -6,6 +6,7 @@ import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Search, Eye, Download } from 'lucide-react';
+import client from '../api/client';
 
 const AdminTalentPoolPage = () => {
   const [data, setData] = useState([]);
@@ -13,44 +14,47 @@ const AdminTalentPoolPage = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [stats, setStats] = useState({});
-  const API = process.env.REACT_APP_BACKEND_URL;
 
   const load = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      if (filter && filter !== 'all') params.append('status', filter);
-      if (search) params.append('search', search);
-      const res = await fetch(`${API}/api/talent-pool/admin/list?${params}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (res.ok) setData(await res.json());
-    } catch(e) { console.error(e); }
-    finally { setLoading(false); }
-  }, [API, filter, search]);
+      setLoading(true);
+      const params = {};
+      if (filter && filter !== 'all') params.status = filter;
+      if (search) params.search = search;
+      const res = await client.get('/talent-pool/admin/list', { params });
+      setData(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error(e);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, search]);
 
   const loadStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/talent-pool/admin/stats`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (res.ok) setStats(await res.json());
-    } catch(e) {}
-  }, [API]);
+      const res = await client.get('/talent-pool/admin/stats');
+      setStats(res.data || {});
+    } catch (e) {
+      setStats({});
+    }
+  }, []);
 
   const handleExportCsv = async () => {
     try {
-      const res = await fetch(`${API}/api/admin/submissions/export/csv?type=talent`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      const res = await client.get('/admin/submissions/export/csv', {
+        params: { type: 'talent' },
+        responseType: 'blob',
       });
-      if (!res.ok) return;
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'submissions_talent.csv';
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (e) {}
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   useEffect(() => {
