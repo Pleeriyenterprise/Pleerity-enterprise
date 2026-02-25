@@ -269,6 +269,37 @@ async def submit_partnership_public(request: Request):
     return await submit_partnership_enquiry(data, request)
 
 
+# ============================================
+# PUBLIC TRACK (analytics_events for client-side)
+# ============================================
+
+class TrackEventBody(BaseModel):
+    """Client-side analytics event (page views, CTA clicks)."""
+    event_name: str = Field(..., min_length=1, max_length=64)
+    page: Optional[str] = Field(None, max_length=500)
+    session_id: Optional[str] = Field(None, max_length=128)
+    props: Optional[dict] = None  # Flat key-value; sanitized server-side
+
+
+@router.post("/track")
+async def track_event(body: TrackEventBody, request: Request):
+    """
+    Record a client-side analytics event (page view, CTA click, etc.).
+    Rate-limited; writes to analytics_events. Marketing site can call on load or interaction.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_rate_limit(client_ip, "track"):
+        raise HTTPException(status_code=429, detail="Too many requests.")
+    from services.analytics_service import log_public_track
+    ok = await log_public_track(
+        event_name=body.event_name,
+        page=body.page,
+        session_id=body.session_id,
+        props=body.props,
+    )
+    return {"ok": ok}
+
+
 @router.post("/service-inquiry")
 async def submit_service_inquiry(inquiry: ServiceInquiry, request: Request):
     """
@@ -314,6 +345,27 @@ async def submit_service_inquiry(inquiry: ServiceInquiry, request: Request):
     except Exception as e:
         logger.error(f"Failed to save service inquiry: {e}")
         raise HTTPException(status_code=500, detail="Failed to submit inquiry")
+
+
+# ============================================
+# PUBLIC INTAKE SCHEMA (published only, for marketing intake form)
+# ============================================
+
+@router.get("/intake-schema/{schema_key}")
+async def get_published_intake_schema(schema_key: str):
+    """
+    Return the latest published intake schema for a service (schema_key = service_code).
+    Marketing intake form should use this so only published changes go live.
+    """
+    from services.intake_schema_registry import get_service_schema, SERVICE_INTAKE_SCHEMAS
+    from routes.admin_intake_schema import get_live_customizations, merge_schema_with_overrides
+
+    if schema_key not in SERVICE_INTAKE_SCHEMAS:
+        raise HTTPException(status_code=404, detail="Schema not found")
+    base_schema = get_service_schema(schema_key)
+    customizations = await get_live_customizations(schema_key)
+    merged = merge_schema_with_overrides(base_schema, customizations)
+    return merged
 
 
 @router.get("/services")

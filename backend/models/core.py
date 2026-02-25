@@ -60,6 +60,8 @@ class UserRole(str, Enum):
     ROLE_CLIENT = "ROLE_CLIENT"
     ROLE_CLIENT_ADMIN = "ROLE_CLIENT_ADMIN"
     ROLE_ADMIN = "ROLE_ADMIN"
+    ROLE_SUPPORT = "ROLE_SUPPORT"  # Support Dashboard, Notification Health, view-only where allowed
+    ROLE_CONTENT = "ROLE_CONTENT"  # Site Builder, Blog, FAQ, Legal, Canned Responses
     ROLE_TENANT = "ROLE_TENANT"  # Read-only access to property compliance status
 
 class UserStatus(str, Enum):
@@ -824,6 +826,8 @@ class IntakeFormData(BaseModel):
     
     # Temp key for linking uploaded documents before properties exist
     intake_session_id: Optional[str] = None
+    # Schema version used by the form (for audit; set by frontend from GET /api/public/intake-schema/{key})
+    schema_version: Optional[str] = None
 
 
 class LoginRequest(BaseModel):

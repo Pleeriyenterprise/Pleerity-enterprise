@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # Portal separation: which roles may use which login endpoint
 CLIENT_PORTAL_ROLES = (UserRole.ROLE_CLIENT.value, UserRole.ROLE_CLIENT_ADMIN.value)
-STAFF_PORTAL_ROLES = (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value)
+STAFF_PORTAL_ROLES = (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value, UserRole.ROLE_SUPPORT.value, UserRole.ROLE_CONTENT.value)
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: Request, credentials: LoginRequest):
@@ -79,9 +79,9 @@ async def login(request: Request, credentials: LoginRequest):
                 detail="This account must sign in via the Staff/Admin portal."
             )
         
-        # Staff (OWNER/ADMIN) and admin users don't need client association
+        # Staff (OWNER/ADMIN/SUPPORT/CONTENT) don't need client association for admin login
         client = None
-        if portal_user["role"] in (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value):
+        if portal_user["role"] in STAFF_PORTAL_ROLES:
             pass
         else:
             # Get client info for non-admin users

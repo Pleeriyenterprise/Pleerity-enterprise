@@ -768,6 +768,8 @@ async def submit_intake(request: Request, data: IntakeFormData):
         for key in ["created_at", "updated_at"]:
             if client_doc.get(key):
                 client_doc[key] = client_doc[key].isoformat()
+        if getattr(data, "schema_version", None):
+            client_doc["intake_schema_version"] = (data.schema_version or "")[:32]
         
         await db.clients.insert_one(client_doc)
         
@@ -863,7 +865,8 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 "email": data.email,
                 "properties_count": len(data.properties),
                 "billing_plan": data.billing_plan.value,
-                "document_submission_method": data.document_submission_method
+                "document_submission_method": data.document_submission_method,
+                "schema_version": getattr(data, "schema_version", None),
             }
         )
         

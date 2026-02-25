@@ -45,30 +45,54 @@ async def require_auth(request: Request) -> dict:
         )
     return user
 
+# Staff roles that can access admin console (OWNER, ADMIN see all; SUPPORT/CONTENT see role-gated sections)
+STAFF_ROLES = (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value, UserRole.ROLE_SUPPORT.value, UserRole.ROLE_CONTENT.value)
+
+def _role_hierarchy() -> dict:
+    return {
+        UserRole.ROLE_OWNER.value: 4,
+        UserRole.ROLE_ADMIN.value: 3,
+        UserRole.ROLE_SUPPORT.value: 2,
+        UserRole.ROLE_CONTENT.value: 2,
+        UserRole.ROLE_CLIENT_ADMIN.value: 1,
+        UserRole.ROLE_CLIENT.value: 1,
+        UserRole.ROLE_TENANT.value: 0,
+    }
+
+
 async def require_role(request: Request, required_role: UserRole) -> dict:
     """Require specific role."""
     user = await require_auth(request)
     user_role = user.get("role")
-    
-    role_hierarchy = {
-        UserRole.ROLE_OWNER.value: 4,
-        UserRole.ROLE_ADMIN.value: 3,
-        UserRole.ROLE_CLIENT_ADMIN.value: 2,
-        UserRole.ROLE_CLIENT.value: 1,
-        UserRole.ROLE_TENANT.value: 0,
-    }
-    
+    role_hierarchy = _role_hierarchy()
     if role_hierarchy.get(user_role, 0) < role_hierarchy.get(required_role.value, 0):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions"
         )
-    
+    return user
+
+
+async def require_role_in(request: Request, allowed_roles: tuple) -> dict:
+    """Require user role to be one of allowed_roles (e.g. OWNER, ADMIN, SUPPORT)."""
+    user = await require_auth(request)
+    if user.get("role") not in [r.value if hasattr(r, "value") else r for r in allowed_roles]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
     return user
 
 async def require_admin(request: Request) -> dict:
     """Require admin or owner role (admin routes)."""
     return await require_role(request, UserRole.ROLE_ADMIN)
+
+
+async def require_support_or_above(request: Request) -> dict:
+    """Allow OWNER, ADMIN, or SUPPORT (e.g. Support Dashboard, Notification Health)."""
+    return await require_role_in(request, (UserRole.ROLE_OWNER, UserRole.ROLE_ADMIN, UserRole.ROLE_SUPPORT))
+
+
+async def require_content_or_above(request: Request) -> dict:
+    """Allow OWNER, ADMIN, or CONTENT (e.g. Site Builder, Blog, FAQ, Legal)."""
+    return await require_role_in(request, (UserRole.ROLE_OWNER, UserRole.ROLE_ADMIN, UserRole.ROLE_CONTENT))
 
 async def require_owner_or_admin(request: Request) -> dict:
     """Explicit RBAC: require OWNER or ADMIN role (admin-only routes)."""

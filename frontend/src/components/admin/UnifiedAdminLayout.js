@@ -136,6 +136,10 @@ const navSections = [
   },
 ];
 
+// Section IDs that each staff role can see (OWNER/ADMIN see all)
+const SECTIONS_FOR_SUPPORT = ['dashboard', 'support'];
+const SECTIONS_FOR_CONTENT = ['dashboard', 'content'];
+
 // Sidebar content component - defined outside to avoid re-creation
 const SidebarContent = ({ 
   sidebarOpen, 
@@ -146,7 +150,8 @@ const SidebarContent = ({
   badges, 
   navigate, 
   user, 
-  handleLogout 
+  handleLogout,
+  visibleSections,
 }) => (
   <div className="flex flex-col h-full">
     {/* Logo */}
@@ -172,7 +177,7 @@ const SidebarContent = ({
 
     {/* Navigation */}
     <nav className="flex-1 overflow-y-auto py-4 px-3">
-      {navSections.map((section) => (
+      {(visibleSections || navSections).map((section) => (
         <div key={section.id} className="mb-2">
           {/* Section Header */}
           <button
@@ -282,11 +287,18 @@ const SidebarContent = ({
 const UnifiedAdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useAuth();
+  const { logout, user, isSupport, isContent, isAdmin, isOwner } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState(['dashboard', 'customers']);
   const [badges, setBadges] = useState({ leads: 0, postal: 0 });
+
+  const visibleSections = (() => {
+    if (isOwner?.() || isAdmin?.()) return navSections;
+    if (isSupport?.()) return navSections.filter((s) => SECTIONS_FOR_SUPPORT.includes(s.id));
+    if (isContent?.()) return navSections.filter((s) => SECTIONS_FOR_CONTENT.includes(s.id));
+    return navSections;
+  })();
 
   // Fetch badge counts
   useEffect(() => {
@@ -348,6 +360,7 @@ const UnifiedAdminLayout = ({ children }) => {
     navigate,
     user,
     handleLogout,
+    visibleSections,
   };
 
   return (

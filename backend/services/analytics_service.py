@@ -72,6 +72,37 @@ async def log_event(event_name: str, payload: dict[str, Any], idempotency_key: O
         return False
 
 
+async def log_public_track(event_name: str, page: Optional[str] = None, session_id: Optional[str] = None, props: Optional[dict[str, Any]] = None) -> bool:
+    """
+    Insert one analytics event from public track (client-side). Rate-limit at caller.
+    Stores event, ts, page, session_id, and props as metadata (sanitized).
+    """
+    db = database.get_db()
+    if not db:
+        return False
+    now = datetime.now(timezone.utc)
+    doc: dict[str, Any] = {"ts": now, "event": event_name}
+    if page is not None and isinstance(page, str) and len(page) <= 500:
+        doc["page"] = page
+    if session_id is not None and isinstance(session_id, str) and len(session_id) <= 128:
+        doc["session_id"] = session_id
+    if props and isinstance(props, dict):
+        # Keep only simple types; cap size
+        safe: dict[str, Any] = {}
+        for k, v in list(props.items())[:20]:
+            if isinstance(k, str) and len(k) <= 64:
+                if v is None or isinstance(v, (str, int, float, bool)):
+                    safe[k] = str(v)[:200] if isinstance(v, str) else v
+        if safe:
+            doc["metadata"] = safe
+    try:
+        await db[COLLECTION].insert_one(doc)
+        return True
+    except Exception as e:
+        logger.warning("log_public_track failed: event=%s err=%s", event_name, e)
+        return False
+
+
 async def log_first_doc_uploaded_once(client_id: str, payload: Optional[dict[str, Any]] = None) -> bool:
     """
     Log first_doc_uploaded only once per client_id. Returns True if logged, False if already present.

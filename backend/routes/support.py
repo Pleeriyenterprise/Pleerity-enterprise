@@ -22,7 +22,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
-from middleware import admin_route_guard, get_current_user
+from middleware import admin_route_guard, require_support_or_above, get_current_user
 from services.support_service import (
     ConversationService, MessageService, TicketService, SupportAuditService,
     ConversationCreate, MessageCreate, TicketCreate,
@@ -513,7 +513,7 @@ async def list_conversations(
     service_area: Optional[str] = None,
     limit: int = Query(50, le=200),
     skip: int = Query(0, ge=0),
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """List all support conversations with filters."""
     result = await ConversationService.list_conversations(
@@ -535,7 +535,7 @@ async def list_tickets(
     assigned_to: Optional[str] = None,
     limit: int = Query(50, le=200),
     skip: int = Query(0, ge=0),
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """List all support tickets with filters."""
     result = await TicketService.list_tickets(
@@ -553,7 +553,7 @@ async def list_tickets(
 @admin_router.get("/conversation/{conversation_id}")
 async def get_conversation_detail(
     conversation_id: str,
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """Get full conversation with transcript."""
     conversation = await ConversationService.get_conversation(conversation_id)
@@ -582,7 +582,7 @@ async def get_conversation_detail(
 @admin_router.get("/ticket/{ticket_id}")
 async def get_ticket_detail(
     ticket_id: str,
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """Get ticket details with conversation if linked."""
     ticket = await TicketService.get_ticket(ticket_id)
@@ -608,7 +608,7 @@ async def get_ticket_detail(
 async def admin_reply(
     conversation_id: str,
     body: AdminReplyRequest,
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """Admin reply to a conversation."""
     conversation = await ConversationService.get_conversation(conversation_id)
@@ -644,7 +644,7 @@ async def admin_reply(
 async def update_ticket_status(
     ticket_id: str,
     status: str,
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """Update ticket status."""
     from services.support_service import TicketStatus
@@ -678,7 +678,7 @@ async def update_ticket_status(
 async def assign_ticket(
     ticket_id: str,
     assignee: str,
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """Assign ticket to admin."""
     success = await TicketService.update_ticket(
@@ -706,7 +706,7 @@ async def assign_ticket(
 async def add_ticket_note(
     ticket_id: str,
     body: AdminReplyRequest,
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """Add internal note to ticket."""
     success = await TicketService.add_note(
@@ -724,7 +724,7 @@ async def add_ticket_note(
 @admin_router.post("/lookup-by-crn")
 async def admin_lookup_by_crn(
     body: AdminLookupRequest,
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """Admin-only full account lookup by CRN."""
     db = database.get_db()
@@ -772,7 +772,7 @@ async def get_audit_log(
     action: Optional[str] = None,
     limit: int = Query(100, le=500),
     skip: int = Query(0, ge=0),
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """View support audit logs."""
     logs = await SupportAuditService.get_logs(
@@ -788,7 +788,7 @@ async def get_audit_log(
 
 @admin_router.get("/stats")
 async def get_support_stats(
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_support_or_above)
 ):
     """Get support system statistics."""
     db = database.get_db()

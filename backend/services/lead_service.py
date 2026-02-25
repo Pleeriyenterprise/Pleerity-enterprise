@@ -327,6 +327,8 @@ class LeadService:
         assigned_to: Optional[str] = None,
         search: Optional[str] = None,
         sla_breach_only: bool = False,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
         page: int = 1,
         limit: int = 50,
     ) -> Tuple[List[Dict[str, Any]], int]:
@@ -350,6 +352,14 @@ class LeadService:
             filter_query["assigned_to"] = assigned_to
         if sla_breach_only:
             filter_query["sla_breach"] = True
+        if date_from or date_to:
+            created_q = {}
+            if date_from:
+                created_q["$gte"] = date_from if isinstance(date_from, str) and "T" in date_from else f"{date_from}T00:00:00.000Z"
+            if date_to:
+                created_q["$lte"] = date_to if isinstance(date_to, str) and "T" in date_to else f"{date_to}T23:59:59.999Z"
+            if created_q:
+                filter_query["created_at"] = created_q
         
         if search:
             filter_query["$or"] = [

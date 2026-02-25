@@ -5,7 +5,7 @@ const AuthContext = createContext(null);
 
 /** Role-based redirect path: staff -> admin dashboard, client -> app (client) dashboard */
 export function getRedirectPathForRole(role) {
-  if (role === 'ROLE_OWNER' || role === 'ROLE_ADMIN') return '/admin/dashboard';
+  if (['ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPPORT', 'ROLE_CONTENT'].includes(role)) return '/admin/dashboard';
   return '/app/dashboard';
 }
 
@@ -74,11 +74,13 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = () => user?.role === 'ROLE_ADMIN';
   const isOwner = () => user?.role === 'ROLE_OWNER';
-  const isStaff = () => user?.role === 'ROLE_OWNER' || user?.role === 'ROLE_ADMIN';
+  const isStaff = () => ['ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPPORT', 'ROLE_CONTENT'].includes(user?.role);
+  const isSupport = () => user?.role === 'ROLE_SUPPORT';
+  const isContent = () => user?.role === 'ROLE_CONTENT';
   const isClient = () => user?.role === 'ROLE_CLIENT' || user?.role === 'ROLE_CLIENT_ADMIN';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout, isAdmin, isOwner, isStaff, isClient }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout, isAdmin, isOwner, isStaff, isSupport, isContent, isClient }}>
       {children}
     </AuthContext.Provider>
   );

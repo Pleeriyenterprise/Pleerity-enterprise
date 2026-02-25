@@ -7,9 +7,12 @@ Admin endpoints for lead management.
 All actions are audit-logged.
 """
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
+import csv
+import io
 from middleware import admin_route_guard, client_route_guard
 from database import database
 from services.lead_service import LeadService, AbandonedIntakeService
@@ -406,6 +409,8 @@ async def list_leads(
     assigned_to: Optional[str] = None,
     search: Optional[str] = None,
     sla_breach_only: bool = False,
+    date_from: Optional[str] = Query(None, description="Filter from date (YYYY-MM-DD or ISO)"),
+    date_to: Optional[str] = Query(None, description="Filter to date (YYYY-MM-DD or ISO)"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=200),
     current_user: dict = Depends(admin_route_guard),
@@ -420,6 +425,8 @@ async def list_leads(
         assigned_to=assigned_to,
         search=search,
         sla_breach_only=sla_breach_only,
+        date_from=date_from,
+        date_to=date_to,
         page=page,
         limit=limit,
     )
@@ -440,6 +447,57 @@ async def list_leads(
         "limit": limit,
         "stats": stats,
     }
+
+
+@admin_router.get("/export")
+async def export_leads_csv(
+    source_platform: Optional[str] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Export leads as CSV with optional filters (alias for submissions export with type=lead)."""
+    db = database.get_db()
+    filter_query = {"status": {"$ne": LeadStatus.MERGED.value}}
+    if source_platform:
+        filter_query["source_platform"] = source_platform
+    if status:
+        filter_query["status"] = status
+    if search:
+        filter_query["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"email": {"$regex": search, "$options": "i"}},
+            {"phone": {"$regex": search, "$options": "i"}},
+            {"company_name": {"$regex": search, "$options": "i"}},
+            {"lead_id": {"$regex": search, "$options": "i"}},
+        ]
+    if date_from or date_to:
+        created_q = {}
+        if date_from:
+            created_q["$gte"] = date_from if ("T" in (date_from or "")) else f"{date_from}T00:00:00.000Z"
+        if date_to:
+            created_q["$lte"] = date_to if ("T" in (date_to or "")) else f"{date_to}T23:59:59.999Z"
+        if created_q:
+            filter_query["created_at"] = created_q
+    cursor = db["leads"].find(filter_query, {"_id": 0}).sort("created_at", -1)
+    items = await cursor.to_list(5000)
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=["lead_id", "created_at", "name", "email", "phone", "status", "source_platform", "stage", "assigned_to"],
+        extrasaction="ignore",
+    )
+    writer.writeheader()
+    for it in items:
+        writer.writerow({k: (it.get(k) or "") for k in writer.fieldnames})
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=leads_export.csv"},
+    )
 
 
 @admin_router.get("/stats")

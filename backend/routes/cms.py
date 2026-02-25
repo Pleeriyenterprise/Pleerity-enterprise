@@ -7,7 +7,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from pydantic import BaseModel, Field
 
-from middleware import admin_route_guard
+from middleware import admin_route_guard, require_content_or_above
 from models.cms import (
     BlockType, PageStatus, MediaType,
     CMSPageCreate, CMSPageUpdate, CMSPageResponse,
@@ -37,7 +37,7 @@ async def list_pages(
     status: Optional[PageStatus] = None,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """List all CMS pages (Admin only)"""
     pages, total = await cms_service.list_pages(status=status, limit=limit, offset=offset)
@@ -47,7 +47,7 @@ async def list_pages(
 @router.post("/pages", response_model=CMSPageResponse, status_code=201)
 async def create_page(
     data: CMSPageCreate,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Create a new CMS page (Admin only)"""
     try:
@@ -69,7 +69,7 @@ async def create_page(
 @router.get("/pages/{page_id}", response_model=CMSPageResponse)
 async def get_page(
     page_id: str,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Get a CMS page by ID (Admin only)"""
     page = await cms_service.get_page(page_id)
@@ -82,7 +82,7 @@ async def get_page(
 async def update_page(
     page_id: str,
     data: CMSPageUpdate,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Update a CMS page (Admin only)"""
     try:
@@ -108,7 +108,7 @@ async def update_page(
 @router.delete("/pages/{page_id}")
 async def delete_page(
     page_id: str,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Archive a CMS page (Admin only)"""
     success = await cms_service.delete_page(
@@ -130,7 +130,7 @@ async def list_marketing_pages(
     page_type: Optional[str] = None,
     category_slug: Optional[str] = None,
     status: Optional[PageStatus] = None,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """List marketing website pages with filters."""
     from models.cms import CATEGORY_CONFIG
@@ -154,7 +154,7 @@ async def list_marketing_pages(
 
 @router.get("/marketing/services")
 async def list_services_for_linking(
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """List available services from catalogue for linking to CMS pages."""
     from database import database
@@ -171,7 +171,7 @@ async def list_services_for_linking(
 @router.post("/marketing/pages/{page_id}/publish")
 async def publish_marketing_page(
     page_id: str,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Publish a marketing page."""
     try:
@@ -189,7 +189,7 @@ async def publish_marketing_page(
 @router.post("/marketing/pages/{page_id}/unpublish")
 async def unpublish_marketing_page(
     page_id: str,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Unpublish a marketing page (set to draft)."""
     success = await cms_service.unpublish_page(
@@ -206,7 +206,7 @@ async def unpublish_marketing_page(
 async def toggle_page_visibility(
     page_id: str,
     visible: bool,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Toggle page visibility in navigation."""
     from database import database
@@ -227,7 +227,7 @@ async def toggle_page_visibility(
 async def update_page_order(
     page_id: str,
     display_order: int,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Update page display order."""
     from database import database
@@ -252,7 +252,7 @@ async def update_page_order(
 async def add_block(
     page_id: str,
     data: BlockCreateRequest,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Add a block to a page (Admin only)"""
     try:
@@ -274,7 +274,7 @@ async def add_block(
 async def reorder_blocks(
     page_id: str,
     data: ReorderBlocksRequest,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Reorder blocks on a page (Admin only)"""
     try:
@@ -294,7 +294,7 @@ async def update_block(
     page_id: str,
     block_id: str,
     data: BlockUpdateRequest,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Update a block (Admin only)"""
     try:
@@ -315,7 +315,7 @@ async def update_block(
 async def delete_block(
     page_id: str,
     block_id: str,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Delete a block (Admin only)"""
     try:
@@ -340,7 +340,7 @@ async def delete_block(
 async def publish_page(
     page_id: str,
     data: PublishPageRequest = PublishPageRequest(),
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Publish a page (Admin only)"""
     try:
@@ -363,7 +363,7 @@ class RevisionListResponse(BaseModel):
 async def get_revisions(
     page_id: str,
     limit: int = Query(20, ge=1, le=50),
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Get revision history for a page (Admin only)"""
     revisions = await cms_service.get_revisions(page_id=page_id, limit=limit)
@@ -373,7 +373,7 @@ async def get_revisions(
 @router.get("/revisions/{revision_id}", response_model=CMSRevisionResponse)
 async def get_revision(
     revision_id: str,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Get a specific revision (Admin only)"""
     revision = await cms_service.get_revision(revision_id)
@@ -386,7 +386,7 @@ async def get_revision(
 async def rollback_page(
     page_id: str,
     data: RollbackRequest,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Rollback page to a previous revision (Admin only)"""
     try:
@@ -419,7 +419,7 @@ async def list_media(
     search: Optional[str] = None,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """List media library items (Admin only)"""
     items, total = await cms_service.list_media(
@@ -436,7 +436,7 @@ async def upload_media(
     file: UploadFile = File(...),
     alt_text: Optional[str] = None,
     tags: str = "",  # Comma-separated tags
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Upload a media file (Admin only)"""
     # Validate file type
@@ -482,7 +482,7 @@ async def upload_media(
 @router.get("/media/{media_id}", response_model=CMSMediaResponse)
 async def get_media(
     media_id: str,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Get a media item (Admin only)"""
     media = await cms_service.get_media(media_id)
@@ -494,7 +494,7 @@ async def get_media(
 @router.delete("/media/{media_id}")
 async def delete_media(
     media_id: str,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Delete a media item (Admin only)"""
     success = await cms_service.delete_media(
@@ -512,7 +512,7 @@ async def delete_media(
 # ============================================
 
 @router.get("/block-types")
-async def get_block_types(admin: dict = Depends(admin_route_guard)):
+async def get_block_types(admin: dict = Depends(require_content_or_above)):
     """Get available block types with their schemas (Admin only)"""
     from models.cms import BLOCK_CONTENT_SCHEMAS
     
@@ -545,13 +545,13 @@ from services.cms_templates import get_all_templates, get_template, CMS_TEMPLATE
 
 
 @router.get("/templates")
-async def list_templates(admin: dict = Depends(admin_route_guard)):
+async def list_templates(admin: dict = Depends(require_content_or_above)):
     """List all available page templates"""
     return {"templates": get_all_templates()}
 
 
 @router.get("/templates/{template_id}")
-async def get_template_detail(template_id: str, admin: dict = Depends(admin_route_guard)):
+async def get_template_detail(template_id: str, admin: dict = Depends(require_content_or_above)):
     """Get a specific template with full block definitions"""
     template = get_template(template_id)
     if not template:
@@ -563,7 +563,7 @@ async def get_template_detail(template_id: str, admin: dict = Depends(admin_rout
 
 
 @router.get("/templates/{template_id}/preview")
-async def preview_template(template_id: str, admin: dict = Depends(admin_route_guard)):
+async def preview_template(template_id: str, admin: dict = Depends(require_content_or_above)):
     """Get template preview data for rendering in UI"""
     template = get_template(template_id)
     if not template:
@@ -598,7 +598,7 @@ class ApplyTemplateRequest(BaseModel):
 @router.post("/templates/apply")
 async def apply_template(
     request: ApplyTemplateRequest,
-    admin: dict = Depends(admin_route_guard)
+    admin: dict = Depends(require_content_or_above)
 ):
     """Apply a template to create a new page or update existing"""
     template = get_template(request.template_id)
