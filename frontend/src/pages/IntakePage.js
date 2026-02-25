@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { intakeAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -109,8 +109,8 @@ function coerceBool(v) {
 }
 
 /** Build submit payload with numeric and boolean fields coerced for /api/intake/submit */
-export function buildIntakeSubmitPayload(formData, intakeSessionId) {
-  return {
+export function buildIntakeSubmitPayload(formData, intakeSessionId, marketing = {}) {
+  const payload = {
     ...formData,
     intake_session_id: intakeSessionId || null,
     email_upload_consent: coerceBool(formData.email_upload_consent),
@@ -122,6 +122,9 @@ export function buildIntakeSubmitPayload(formData, intakeSessionId) {
       is_hmo: coerceBool(p.is_hmo),
     })),
   };
+  if (marketing.lead_id) payload.lead_id = marketing.lead_id;
+  if (marketing.source) payload.source = marketing.source;
+  return payload;
 }
 
 // Certificate availability options
@@ -133,14 +136,20 @@ const CERT_OPTIONS = [
 
 const IntakePage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [errorDetail, setErrorDetail] = useState(null);
   const [plans, setPlans] = useState([]);
   const [intakeSessionId] = useState(() => uuidv4());
+  const [marketing, setMarketing] = useState({ lead_id: null, source: null });
 
-  // Form data state
+  // Form data state (initial plan from URL ?plan=)
+  const planParam = searchParams.get('plan');
+  const leadIdParam = searchParams.get('lead_id');
+  const sourceParam = searchParams.get('from');
+  const initialPlan = (planParam && ['PLAN_1_SOLO', 'PLAN_2_PORTFOLIO', 'PLAN_3_PRO', 'PLAN_1', 'PLAN_2_5', 'PLAN_6_15'].includes(planParam)) ? planParam : 'PLAN_1_SOLO';
   const [formData, setFormData] = useState({
     // Step 1: Your Details
     full_name: '',
@@ -150,8 +159,8 @@ const IntakePage = () => {
     preferred_contact: 'EMAIL',
     phone: '',
     
-    // Step 2: Plan - NEW DEFAULT
-    billing_plan: 'PLAN_1_SOLO',
+    // Step 2: Plan - NEW DEFAULT (or from ?plan=)
+    billing_plan: initialPlan,
     
     // Step 3: Properties
     properties: [{
@@ -189,6 +198,13 @@ const IntakePage = () => {
 
   // Property limit state for upgrade prompts
   const [propertyLimitError, setPropertyLimitError] = useState(null);
+
+  // URL marketing params (lead_id, from=risk-check) for conversion linking
+  useEffect(() => {
+    if (leadIdParam && leadIdParam.trim()) {
+      setMarketing({ lead_id: leadIdParam.trim(), source: (sourceParam && sourceParam.trim()) || 'risk-check' });
+    }
+  }, [leadIdParam, sourceParam]);
 
   // Load plans on mount
   useEffect(() => {
@@ -425,7 +441,7 @@ const IntakePage = () => {
     setErrorDetail(null);
     const isDev = process.env.NODE_ENV !== 'production';
     try {
-      const submitData = buildIntakeSubmitPayload(formData, intakeSessionId);
+      const submitData = buildIntakeSubmitPayload(formData, intakeSessionId, marketing);
       if (isDev) {
         const base = typeof window !== 'undefined' && window.__CVP_BACKEND_URL;
         console.debug('[CVP] Intake submit → POST', base ? `${base}/api/intake/submit` : '/api/intake/submit');

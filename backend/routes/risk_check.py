@@ -46,6 +46,12 @@ class RiskCheckReportRequest(RiskCheckStep1):
     utm_campaign: Optional[str] = None
 
 
+class RiskCheckActivateRequest(BaseModel):
+    """Record CTA click: lead_id and optional selected plan. Idempotent."""
+    lead_id: str
+    selected_plan_code: Optional[str] = None
+
+
 # --- Helpers ---
 
 
@@ -182,3 +188,20 @@ async def risk_check_report(body: RiskCheckReportRequest, request: Request):
         "property_breakdown": property_breakdown,
         "recommended_plan_code": result.get("recommended_plan_code", "PLAN_2_PORTFOLIO"),
     }
+
+
+@router.post("/activate")
+async def risk_check_activate(body: RiskCheckActivateRequest):
+    """
+    Record that a lead clicked the CTA (Activate Monitoring). Sets status to activated_cta.
+    Idempotent: only if current status is 'new' or 'activated_cta'.
+    Does not create client or trigger provisioning.
+    """
+    db = database.get_db()
+    result = await db[COLLECTION].update_one(
+        {"lead_id": body.lead_id, "status": {"$in": ["new", "activated_cta", "nurture_started"]}},
+        {"$set": {"status": "activated_cta", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if result.matched_count == 0:
+        logger.warning("Risk check activate: lead not found or already past CTA lead_id=%s", body.lead_id)
+    return {"ok": True}

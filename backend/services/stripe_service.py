@@ -40,6 +40,7 @@ class StripeService:
         origin_url: str,
         customer_email: Optional[str] = None,
         customer_reference: Optional[str] = None,
+        lead_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create Stripe checkout session for new subscription.
@@ -130,12 +131,14 @@ class StripeService:
                     "plan_code": plan.value,
                     "service": "COMPLIANCE_VAULT_PRO",
                     **({"customer_reference": customer_reference} if customer_reference else {}),
+                    **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
                 },
                 "subscription_data": {
                     "metadata": {
                         "client_id": client_id,
                         "plan_code": plan.value,
                         **({"customer_reference": customer_reference} if customer_reference else {}),
+                        **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
                     },
                 },
                 "expand": ["line_items"],  # Expand for webhook processing

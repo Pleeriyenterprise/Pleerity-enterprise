@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select';
-import { getPreview, postReport } from '../../api/riskCheckAPI';
+import { getPreview, postReport, activate } from '../../api/riskCheckAPI';
 import { toast } from 'sonner';
 
 const SCORE_CAP = 97;
@@ -325,8 +325,19 @@ const RiskCheckPage = () => {
                   Certificate expiry tracking · Renewal reminders · Secure document vault · Compliance score dashboard · Audit-ready reporting · Cancel anytime.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button asChild className="flex-1">
-                    <Link to={report.recommended_plan_code ? `/intake/start?plan=${report.recommended_plan_code}` : '/intake/start'}>Activate Monitoring</Link>
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      const plan = report.recommended_plan_code || '';
+                      const params = new URLSearchParams();
+                      if (plan) params.set('plan', plan);
+                      if (report.lead_id) params.set('lead_id', report.lead_id);
+                      params.set('from', 'risk-check');
+                      activate(report.lead_id, plan).catch(() => {});
+                      navigate(`/intake/start?${params.toString()}`);
+                    }}
+                  >
+                    Activate Monitoring
                   </Button>
                   <Button variant="outline" asChild>
                     <Link to="/pricing">View Full Plan Comparison</Link>

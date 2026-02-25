@@ -770,8 +770,25 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 client_doc[key] = client_doc[key].isoformat()
         if getattr(data, "schema_version", None):
             client_doc["intake_schema_version"] = (data.schema_version or "")[:32]
+        lead_id_val = getattr(data, "lead_id", None)
+        if lead_id_val and (lead_id_val or "").strip():
+            src = (getattr(data, "source", None) or "risk-check")
+            client_doc["marketing"] = {
+                "source": (str(src)).strip()[:64] if src else "risk-check",
+                "lead_id": (lead_id_val or "").strip()[:128],
+            }
         
         await db.clients.insert_one(client_doc)
+        
+        # Link risk-check lead to client (best-effort; do not block intake)
+        if lead_id_val and (lead_id_val or "").strip():
+            try:
+                await db.risk_leads.update_one(
+                    {"lead_id": (lead_id_val or "").strip()},
+                    {"$set": {"status": "checkout_created", "client_id": client.client_id, "updated_at": datetime.now(timezone.utc).isoformat()}},
+                )
+            except Exception as link_err:
+                logger.warning("Risk lead link after intake failed lead_id=%s: %s", lead_id_val, link_err)
         
         # =========== CREATE PROPERTIES ===========
         
@@ -1071,7 +1088,7 @@ async def create_checkout(request: Request, client_id: str):
     try:
         client = await db.clients.find_one(
             {"client_id": client_id},
-            {"_id": 0, "billing_plan": 1, "email": 1, "contact_email": 1},
+            {"_id": 0, "billing_plan": 1, "email": 1, "contact_email": 1, "marketing": 1},
         )
         if not client:
             logger.warning("Checkout client not found client_id=%s request_id=%s", client_id, request_id)
@@ -1105,13 +1122,24 @@ async def create_checkout(request: Request, client_id: str):
         )
         plan_code = client.get("billing_plan") or "PLAN_1_SOLO"
         customer_email = client.get("contact_email") or client.get("email")
+        lead_id = (client.get("marketing") or {}).get("lead_id") if client.get("marketing") else None
         session = await stripe_service.create_checkout_session(
             client_id=client_id,
             plan_code=plan_code,
             origin_url=origin,
             customer_email=customer_email,
+            lead_id=lead_id,
         )
         url = session.get("checkout_url")
+        session_id = session.get("session_id")
+        if lead_id and session_id:
+            try:
+                await db.risk_leads.update_one(
+                    {"lead_id": lead_id},
+                    {"$set": {"stripe_session_id": session_id, "updated_at": datetime.now(timezone.utc).isoformat()}},
+                )
+            except Exception as e:
+                logger.warning("Risk lead stripe_session_id update failed lead_id=%s: %s", lead_id, e)
         if not url:
             logger.error("Stripe session missing checkout_url for client %s request_id=%s", client_id, request_id)
             raise HTTPException(

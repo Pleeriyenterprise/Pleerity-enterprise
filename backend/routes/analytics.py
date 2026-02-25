@@ -1232,6 +1232,60 @@ async def get_analytics_failures(
 
 
 # ============================================================================
+# MARKETING (risk-check funnel: leads_created → activated_cta → checkout_created → converted)
+# ============================================================================
+
+@router.get("/marketing", dependencies=[Depends(require_owner_or_admin)])
+async def get_marketing_analytics(
+    period: str = Query("30d", description="Preset: 7d, 30d"),
+):
+    """
+    Risk-check marketing funnel: counts and conversion rates from risk_leads.
+    Returns leads_created, activated_cta, checkout_created, converted, conversion_rate,
+    conversion_rate_after_cta; revenue placeholders; latest leads table.
+    """
+    db = database.get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    start_dt, end_dt = _parse_from_to(None, None, period)
+    start_iso = start_dt.isoformat()
+    end_iso = end_dt.isoformat()
+    created_q = {"$gte": start_iso, "$lte": end_iso}
+
+    # Counts in period (by created_at). Stages are cumulative (converted implies checkout_created and activated_cta).
+    leads_created = await db.risk_leads.count_documents({"created_at": created_q})
+    activated_cta = await db.risk_leads.count_documents({"created_at": created_q, "status": {"$in": ["activated_cta", "checkout_created", "converted"]}})
+    checkout_created = await db.risk_leads.count_documents({"created_at": created_q, "status": {"$in": ["checkout_created", "converted"]}})
+    converted = await db.risk_leads.count_documents({"created_at": created_q, "status": "converted"})
+    # Also count converted that may have been created earlier but converted in range (optional)
+    conversion_rate = round(100.0 * converted / leads_created, 1) if leads_created else 0.0
+    conversion_rate_after_cta = round(100.0 * converted / activated_cta, 1) if activated_cta else 0.0
+
+    # Latest leads (for table)
+    cursor = db.risk_leads.find(
+        {"created_at": created_q},
+        {"_id": 0, "lead_id": 1, "created_at": 1, "first_name": 1, "email": 1, "status": 1, "property_count": 1, "risk_band": 1, "computed_score": 1, "recommended_plan_code": 1},
+    ).sort("created_at", -1).limit(50)
+    latest_leads = await cursor.to_list(length=50)
+
+    return {
+        "from": start_iso,
+        "to": end_iso,
+        "period": period,
+        "risk_check": {
+            "leads_created": leads_created,
+            "activated_cta": activated_cta,
+            "checkout_created": checkout_created,
+            "converted": converted,
+            "conversion_rate": conversion_rate,
+            "conversion_rate_after_cta": conversion_rate_after_cta,
+        },
+        "revenue_summary": {"mrr": None, "total_revenue": None},
+        "latest_leads": latest_leads,
+    }
+
+
+# ============================================================================
 # MARKETING FUNNEL (leads → trial → portal_activated → paid)
 # ============================================================================
 

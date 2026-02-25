@@ -828,6 +828,9 @@ class IntakeFormData(BaseModel):
     intake_session_id: Optional[str] = None
     # Schema version used by the form (for audit; set by frontend from GET /api/public/intake-schema/{key})
     schema_version: Optional[str] = None
+    # Marketing funnel linking (e.g. risk-check): optional lead_id and source; stored on client.marketing
+    lead_id: Optional[str] = None
+    source: Optional[str] = None
 
 
 class LoginRequest(BaseModel):

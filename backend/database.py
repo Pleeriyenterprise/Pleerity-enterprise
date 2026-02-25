@@ -152,6 +152,7 @@ class Database:
             await self.db.risk_leads.create_index("created_at")
             await self.db.risk_leads.create_index("email")
             await self.db.risk_leads.create_index("risk_band")
+            await self.db.risk_leads.create_index("status")
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored
             try:

@@ -638,6 +638,45 @@ class StripeWebhookService:
             )
         except Exception:
             pass
+
+        # Mark risk-check lead as converted (authoritative; only on payment). Idempotent.
+        lead_id_meta = metadata.get("lead_id")
+        if lead_id_meta and (lead_id_meta or "").strip():
+            try:
+                now_utc = datetime.now(timezone.utc)
+                res = await db.risk_leads.update_one(
+                    {"lead_id": (lead_id_meta or "").strip(), "status": {"$ne": "converted"}},
+                    {"$set": {
+                        "status": "converted",
+                        "converted_at": now_utc.isoformat(),
+                        "client_id": client_id,
+                        "stripe_subscription_id": stripe_subscription_id,
+                        "updated_at": now_utc.isoformat(),
+                    }},
+                )
+                if res.modified_count:
+                    lead_doc = await db.risk_leads.find_one(
+                        {"lead_id": (lead_id_meta or "").strip()},
+                        {"_id": 0, "snapshot": 1, "computed_score": 1, "exposure_range_label": 1, "flags": 1, "created_at": 1},
+                    )
+                    # Optional: import risk snapshot into client (once; does not affect compliance scoring)
+                    if lead_doc and not (await db.clients.find_one({"client_id": client_id}, {"_id": 0, "initial_risk_snapshot": 1}) or {}).get("initial_risk_snapshot"):
+                        snapshot = lead_doc.get("snapshot")
+                        await db.clients.update_one(
+                            {"client_id": client_id},
+                            {"$set": {"initial_risk_snapshot": {
+                                "source": "risk-check",
+                                "lead_id": (lead_id_meta or "").strip(),
+                                "generated_at": lead_doc.get("created_at"),
+                                "score_estimate": lead_doc.get("computed_score"),
+                                "exposure_band": lead_doc.get("exposure_range_label"),
+                                "flags": lead_doc.get("flags") or [],
+                                "disclaimer": "Informational estimate from the pre-intake risk check. Not legal advice.",
+                            }}},
+                        )
+            except Exception as e:
+                logger.warning("Risk lead conversion mark failed lead_id=%s: %s", lead_id_meta, e)
+
         return {
             "handled": True,
             "client_id": client_id,

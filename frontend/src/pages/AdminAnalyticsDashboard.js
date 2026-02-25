@@ -130,6 +130,7 @@ export default function AdminAnalyticsDashboard() {
   const [conversionSourceFilter, setConversionSourceFilter] = useState('');
   const [conversionPlanFilter, setConversionPlanFilter] = useState('');
   const [marketingFunnel, setMarketingFunnel] = useState(null);
+  const [marketingRiskCheck, setMarketingRiskCheck] = useState(null);
   const [revenueAnalytics, setRevenueAnalytics] = useState(null);
   const [revenuePeriod, setRevenuePeriod] = useState('30d');
   const [revenueBreakdown, setRevenueBreakdown] = useState('all');
@@ -187,16 +188,18 @@ export default function AdminAnalyticsDashboard() {
       const sourceParam = conversionSourceFilter ? `&source=${encodeURIComponent(conversionSourceFilter)}` : '';
       const planParam = conversionPlanFilter ? `&plan=${encodeURIComponent(conversionPlanFilter)}` : '';
       try {
-        const [overviewRes, funnelResConv, failuresRes, marketingFunnelRes] = await Promise.all([
+        const [overviewRes, funnelResConv, failuresRes, marketingFunnelRes, marketingRiskCheckRes] = await Promise.all([
           client.get(`/admin/analytics/overview?${convParams}${sourceParam}${planParam}`),
           client.get(`/admin/analytics/funnel?${convParams}${sourceParam}${planParam}`),
           client.get(`/admin/analytics/failures?${convParams}`),
           client.get(`/admin/analytics/marketing-funnel?${convParams}`).catch(() => ({ data: null })),
+          client.get(`/admin/analytics/marketing?period=${period}`).catch(() => ({ data: null })),
         ]);
         setConversionOverview(overviewRes.data);
         setConversionFunnel(funnelResConv.data);
         setConversionFailures(failuresRes.data);
         setMarketingFunnel(marketingFunnelRes?.data ?? null);
+        setMarketingRiskCheck(marketingRiskCheckRes?.data ?? null);
       } catch (convErr) {
         console.error('Conversion funnel fetch failed:', convErr);
         setConversionOverview(null);
@@ -835,6 +838,79 @@ export default function AdminAnalyticsDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Risk Check Funnel (demo → paid conversion linking) */}
+            {marketingRiskCheck && (
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle className="text-base">Risk Check Funnel</CardTitle>
+                  <CardDescription>
+                    Leads from /risk-check: created → CTA clicked → checkout started → converted (period: {marketingRiskCheck.period || '30d'})
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                      <div className="rounded-lg border p-3 bg-gray-50">
+                        <p className="text-xs text-gray-500">Leads created</p>
+                        <p className="text-xl font-bold">{marketingRiskCheck.risk_check?.leads_created ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-blue-50">
+                        <p className="text-xs text-gray-600">Activated CTA</p>
+                        <p className="text-xl font-bold text-blue-700">{marketingRiskCheck.risk_check?.activated_cta ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-amber-50">
+                        <p className="text-xs text-gray-600">Checkout created</p>
+                        <p className="text-xl font-bold text-amber-700">{marketingRiskCheck.risk_check?.checkout_created ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-green-50">
+                        <p className="text-xs text-gray-600">Converted</p>
+                        <p className="text-xl font-bold text-green-700">{marketingRiskCheck.risk_check?.converted ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-teal-50">
+                        <p className="text-xs text-gray-600">Conversion %</p>
+                        <p className="text-xl font-bold text-teal-700">{marketingRiskCheck.risk_check?.conversion_rate ?? 0}%</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-teal-50">
+                        <p className="text-xs text-gray-600">After CTA %</p>
+                        <p className="text-xl font-bold text-teal-700">{marketingRiskCheck.risk_check?.conversion_rate_after_cta ?? 0}%</p>
+                      </div>
+                    </div>
+                    {Array.isArray(marketingRiskCheck.latest_leads) && marketingRiskCheck.latest_leads.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Latest risk-check leads</h4>
+                        <div className="overflow-x-auto border rounded">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="text-left p-2">Date</th>
+                                <th className="text-left p-2">Lead ID</th>
+                                <th className="text-left p-2">Name</th>
+                                <th className="text-left p-2">Email</th>
+                                <th className="text-left p-2">Status</th>
+                                <th className="text-left p-2">Score</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {marketingRiskCheck.latest_leads.slice(0, 20).map((row) => (
+                                <tr key={row.lead_id} className="border-t">
+                                  <td className="p-2">{row.created_at ? new Date(row.created_at).toLocaleDateString() : '—'}</td>
+                                  <td className="p-2 font-mono text-xs">{row.lead_id || '—'}</td>
+                                  <td className="p-2">{row.first_name || '—'}</td>
+                                  <td className="p-2">{row.email || '—'}</td>
+                                  <td className="p-2">{row.status || '—'}</td>
+                                  <td className="p-2">{row.computed_score ?? '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Revenue Analytics */}
             <Card className="mb-8">

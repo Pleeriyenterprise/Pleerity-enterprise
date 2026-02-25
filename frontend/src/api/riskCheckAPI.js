@@ -25,3 +25,14 @@ export async function postReport(body) {
   const res = await client.post(`${PREFIX}/report`, body);
   return res.data;
 }
+
+/**
+ * Record CTA click (Activate Monitoring). Sets risk lead status to activated_cta. Idempotent.
+ * @param {string} leadId - risk_leads.lead_id
+ * @param {string} [selectedPlanCode] - e.g. PLAN_1_SOLO
+ * @returns {Promise<Object>} { ok: true }
+ */
+export async function activate(leadId, selectedPlanCode) {
+  const res = await client.post(`${PREFIX}/activate`, { lead_id: leadId, selected_plan_code: selectedPlanCode || null });
+  return res.data;
+}
