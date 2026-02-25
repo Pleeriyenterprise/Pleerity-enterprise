@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import PublicLayout from '../../components/public/PublicLayout';
+import FunnelLayout from '../../components/public/FunnelLayout';
 import { SEOHead } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -144,7 +144,7 @@ const RiskCheckPage = () => {
   };
 
   return (
-    <PublicLayout>
+    <FunnelLayout>
       <SEOHead
         title="UK Landlord Compliance Risk Check | Pleerity Compliance Vault Pro"
         description="Answer 5 quick questions to assess your UK landlord compliance monitoring posture. Get a structured risk snapshot and see how continuous tracking reduces renewal gaps."
@@ -435,7 +435,7 @@ const RiskCheckPage = () => {
           </div>
         )}
       </div>
-    </PublicLayout>
+    </FunnelLayout>
   );
 };
 

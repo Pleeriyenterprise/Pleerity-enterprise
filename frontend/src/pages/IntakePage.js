@@ -148,6 +148,7 @@ const IntakePage = () => {
   // Form data state (initial plan from URL ?plan=)
   const planParam = searchParams.get('plan');
   const leadIdParam = searchParams.get('lead_id');
+  const leadTokenParam = searchParams.get('lead_token');
   const sourceParam = searchParams.get('from');
   const initialPlan = (planParam && ['PLAN_1_SOLO', 'PLAN_2_PORTFOLIO', 'PLAN_3_PRO', 'PLAN_1', 'PLAN_2_5', 'PLAN_6_15'].includes(planParam)) ? planParam : 'PLAN_1_SOLO';
   const [formData, setFormData] = useState({
@@ -198,6 +199,8 @@ const IntakePage = () => {
 
   // Property limit state for upgrade prompts
   const [propertyLimitError, setPropertyLimitError] = useState(null);
+  const [prefillFromRiskCheck, setPrefillFromRiskCheck] = useState(false);
+  const [leadPropertyCountHint, setLeadPropertyCountHint] = useState(null);
 
   // URL marketing params (lead_id, from=risk-check) for conversion linking
   useEffect(() => {
@@ -205,6 +208,41 @@ const IntakePage = () => {
       setMarketing({ lead_id: leadIdParam.trim(), source: (sourceParam && sourceParam.trim()) || 'risk-check' });
     }
   }, [leadIdParam, sourceParam]);
+
+  // lead_token prefill: fetch lead-from-token and prefill form (no plan, no consents)
+  useEffect(() => {
+    if (!leadTokenParam || !leadTokenParam.trim()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await intakeAPI.getLeadFromToken(leadTokenParam.trim());
+        if (cancelled) return;
+        setMarketing({ lead_id: data.lead_id || leadIdParam, source: (sourceParam && sourceParam.trim()) || 'risk-check' });
+        setFormData((prev) => {
+          const next = { ...prev };
+          if (data.full_name != null && data.full_name !== '') next.full_name = String(data.full_name).trim();
+          else if (data.first_name != null && data.first_name !== '') next.full_name = String(data.first_name).trim();
+          if (data.email != null && data.email !== '') next.email = String(data.email).trim();
+          if (data.phone != null && data.phone !== '') next.phone = String(data.phone).trim();
+          if (Array.isArray(prev.properties) && prev.properties.length > 0 && data.any_hmo === true) {
+            next.properties = prev.properties.map((p, i) => (i === 0 ? { ...p, is_hmo: true } : p));
+          }
+          if (data.tracking_method != null && data.tracking_method !== '' && !prev.document_submission_method) {
+            const t = String(data.tracking_method).toLowerCase();
+            if (t.includes('automated')) next.document_submission_method = 'UPLOAD';
+            else if (t.includes('manual') || t.includes('spreadsheet')) next.document_submission_method = 'EMAIL';
+          }
+          return next;
+        });
+        setPrefillFromRiskCheck(true);
+        const count = data.property_count != null ? Math.max(1, parseInt(data.property_count, 10) || 1) : null;
+        setLeadPropertyCountHint(count > 1 ? count : null);
+      } catch (err) {
+        if (!cancelled) toast.error(err.response?.data?.detail || 'Invalid or expired link. Request a new report from the risk check.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [leadTokenParam, sourceParam]);
 
   // Load plans on mount
   useEffect(() => {
@@ -612,6 +650,13 @@ const IntakePage = () => {
           </Alert>
         )}
 
+        {prefillFromRiskCheck && (
+          <Alert className="mb-6 border-blue-200 bg-blue-50" data-testid="intake-prefill-banner">
+            <Info className="h-4 w-4" />
+            <AlertDescription>We preloaded your setup from your risk check. You can change anything.</AlertDescription>
+          </Alert>
+        )}
+
         {/* Step 1: Your Details */}
         {step === 1 && (
           <Step1YourDetails 
@@ -645,6 +690,7 @@ const IntakePage = () => {
             onNext={nextStep}
             onBack={prevStep}
             goToStep={goToStep}
+            leadPropertyCountHint={leadPropertyCountHint}
           />
         )}
 
@@ -903,7 +949,7 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
 // ============================================================================
 // STEP 3: PROPERTIES
 // ============================================================================
-const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, propertyLimitError, setPropertyLimitError, onNext, onBack, goToStep }) => {
+const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, propertyLimitError, setPropertyLimitError, onNext, onBack, goToStep, leadPropertyCountHint }) => {
   const maxProperties = PLAN_LIMITS[formData.billing_plan] ?? 2;
   const currentCount = formData.properties.length;
   const canAddMore = currentCount < maxProperties;
@@ -948,6 +994,9 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
               {formData.properties.length}/{maxProperties}
             </span>
           </div>
+          {leadPropertyCountHint != null && leadPropertyCountHint > 1 && (
+            <p className="text-sm text-blue-700 mt-2">You indicated {leadPropertyCountHint} properties; add them here.</p>
+          )}
         </CardHeader>
       </Card>
 

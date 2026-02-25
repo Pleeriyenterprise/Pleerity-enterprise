@@ -136,7 +136,10 @@ export const intakeAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   validatePropertyCount: (planId, propertyCount) => 
-    apiClient.post('/intake/validate-property-count', { plan_id: planId, property_count: propertyCount })
+    apiClient.post('/intake/validate-property-count', { plan_id: planId, property_count: propertyCount }),
+  /** Prefill from risk-check: GET lead-from-token (signed token from Activate Monitoring email). */
+  getLeadFromToken: (leadToken) =>
+    apiClient.get('/risk-check/lead-from-token', { params: { lead_token: leadToken } })
 };
 
 export const clientAPI = {

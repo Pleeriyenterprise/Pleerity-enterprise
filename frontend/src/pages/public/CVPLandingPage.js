@@ -157,7 +157,7 @@ const CVPLandingPage = () => {
                   data-testid="cvp-cta-primary"
                 >
                   <Link to="/risk-check">
-                    Check Your Compliance Risk
+                    Check Your Risk
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Link>
                 </Button>
@@ -167,7 +167,7 @@ const CVPLandingPage = () => {
                   className="border-electric-teal text-electric-teal hover:bg-electric-teal/5"
                   asChild
                 >
-                  <Link to="/compliance-vault-pro#how-it-works">See How It Works</Link>
+                  <Link to="/intake/start">Start Monitoring</Link>
                 </Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
@@ -213,25 +213,30 @@ const CVPLandingPage = () => {
         </div>
       </section>
 
-      {/* B.5) CHECK YOUR COMPLIANCE RISK — insert after pain/outcomes */}
+      {/* B.5) See your compliance risk in 60 seconds — mid-page CTA */}
       <section className="py-16 lg:py-20 bg-gray-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4">
-            Check Your Compliance Risk
+            See your compliance risk in 60 seconds
           </h2>
           <p className="text-gray-600 mb-6">
-            Get a quick, free snapshot of your portfolio compliance risk in under a minute.
+            Answer a few questions and get a structured risk report. Lead-only until you activate monitoring.
           </p>
-          <Button
-            size="lg"
-            className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
-            asChild
-          >
-            <Link to="/risk-check">
-              Check Your Compliance Risk
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              size="lg"
+              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+              asChild
+            >
+              <Link to="/risk-check">
+                Check Your Risk
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal" asChild>
+              <Link to="/pricing">View Pricing</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -435,6 +440,12 @@ const CVPLandingPage = () => {
           <p className="text-center text-sm text-gray-500 mt-6">
             <Link to="/pricing" className="text-electric-teal hover:underline">View full pricing details</Link>
           </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
+            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8" asChild>
+              <Link to="/intake/start">Activate Monitoring</Link>
+            </Button>
+            <Link to="/pricing" className="text-sm text-electric-teal hover:underline">See pricing</Link>
+          </div>
         </div>
       </section>
 

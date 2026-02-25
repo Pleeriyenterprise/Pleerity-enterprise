@@ -19,18 +19,27 @@ NURTURE_SUBJECTS = [
 ]
 
 
-def _activate_url(lead: dict) -> str:
-    base = (os.environ.get("FRONTEND_URL") or os.environ.get("ADMIN_DASHBOARD_URL") or "").rstrip("/").replace("/admin/leads", "").replace("/admin", "")
-    if base:
-        return f"{base}/intake/start"
-    return "/intake/start"
+def _activate_url(lead: dict, activation_token: Optional[str] = None) -> str:
+    """
+    Build absolute URL for 'Activate Monitoring' CTA.
+    Uses app origin (get_public_app_url) so /intake/start is on the portal app; optional lead_token for prefill.
+    """
+    try:
+        from utils.public_app_url import get_public_app_url
+        base = get_public_app_url(for_email_links=True).rstrip("/")
+    except ValueError:
+        base = (os.environ.get("FRONTEND_URL") or os.environ.get("FRONTEND_PUBLIC_URL") or "").strip().rstrip("/") or "http://localhost:3000"
+    url = f"{base}/intake/start"
+    if activation_token and (activation_token or "").strip():
+        url = f"{url}?lead_token={(activation_token or "").strip()}"
+    return url
 
 
-def _body_step1(lead: dict) -> str:
+def _body_step1(lead: dict, activation_token: Optional[str] = None) -> str:
     first_name = lead.get("first_name") or "there"
     score = lead.get("computed_score", 0)
     risk_band = lead.get("risk_band", "MODERATE")
-    url = _activate_url(lead)
+    url = _activate_url(lead, activation_token)
     return f"""
 <p>Hello {first_name},</p>
 <p>Thank you for completing the Pleerity Compliance Risk Check.</p>
@@ -112,13 +121,15 @@ def _body_step5(lead: dict) -> str:
 """.strip()
 
 
-_BODY_BUILDERS = [_body_step1, _body_step2, _body_step3, _body_step4, _body_step5]
+def _body_step1_builder(lead: dict, activation_token: Optional[str] = None) -> str:
+    return _body_step1(lead, activation_token)
 
 
-async def send_risk_lead_email(lead: dict, step: int) -> tuple[bool, Optional[str]]:
+async def send_risk_lead_email(lead: dict, step: int, activation_token: Optional[str] = None) -> tuple[bool, Optional[str]]:
     """
     Send nurture email for step (1-based, 1–5). Returns (success, error_message).
     Uses notification orchestrator with LEAD_FOLLOWUP.
+    When step==1, pass activation_token so the Activate Monitoring link includes lead_token for intake prefill.
     """
     if step < 1 or step > 5:
         return False, "step must be 1–5"
@@ -127,7 +138,10 @@ async def send_risk_lead_email(lead: dict, step: int) -> tuple[bool, Optional[st
         return False, "no email"
     lead_id = lead.get("lead_id", "")
     subject = NURTURE_SUBJECTS[step - 1]
-    body_html = _BODY_BUILDERS[step - 1](lead)
+    if step == 1:
+        body_html = _body_step1_builder(lead, activation_token)
+    else:
+        body_html = [_body_step2, _body_step3, _body_step4, _body_step5][step - 2](lead)
     try:
         from services.notification_orchestrator import notification_orchestrator
         now = datetime.now(timezone.utc)

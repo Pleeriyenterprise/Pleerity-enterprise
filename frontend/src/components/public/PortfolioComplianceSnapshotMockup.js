@@ -3,67 +3,39 @@ import { Link } from 'react-router-dom';
 import { Button } from '../ui/button';
 
 /**
- * Hero mockup: "Portfolio Compliance Snapshot (Example)" for risk-first homepage.
- * Static, no API calls. Task: horizontal bar for score, properties count, category breakdown with bars.
- * Compliance-safe footer microtext; CTA "Generate My Risk Report" → /risk-check.
+ * Hero mockup: "Compliance Score (Example Preview)" for risk-first homepage.
+ * Static, no API calls. Task: 62%, risk label, 3 sample alerts, compliance-safe footer.
+ * CTA "Generate My Risk Report" → /risk-check.
  */
-const BAR_ITEMS = [
-  { label: 'Gas Safety', pct: 80, color: 'bg-green-500' },
-  { label: 'Electrical (EICR)', pct: 60, color: 'bg-amber-500' },
-  { label: 'Licensing', pct: 40, color: 'bg-red-500', badge: 'Review required' },
-  { label: 'Document Coverage', pct: 55, color: 'bg-amber-500' },
+const SAMPLE_ALERTS = [
+  'Gas Safety: due soon',
+  'EICR: not confirmed',
+  'Document vault: incomplete',
 ];
 
 const PortfolioComplianceSnapshotMockup = () => {
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto" aria-label="Example compliance score preview">
       <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-5">
         <h3 className="text-sm font-semibold text-midnight-blue mb-4">
-          Portfolio Compliance Snapshot (Example)
+          Compliance Score (Example Preview)
         </h3>
-        {/* Compliance Score: 62% horizontal bar */}
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-medium text-gray-600">Compliance Score</span>
-            <span className="text-sm font-bold text-midnight-blue">62%</span>
-          </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-electric-teal rounded-full transition-all"
-              style={{ width: '62%' }}
-            />
-          </div>
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-2xl font-bold text-midnight-blue">62%</span>
+          <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded">
+            Moderate–High
+          </span>
         </div>
-        <div className="flex gap-4 text-xs text-gray-600 mb-4">
-          <span>Properties monitored: <strong className="text-midnight-blue">4</strong></span>
-          <span>2 properties require attention</span>
-        </div>
-        {/* Category breakdown with bars */}
-        <div className="space-y-3">
-          {BAR_ITEMS.map((item) => (
-            <div key={item.label}>
-              <div className="flex justify-between items-center mb-0.5">
-                <span className="text-xs text-gray-700">{item.label}</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-midnight-blue">{item.pct}%</span>
-                  {item.badge && (
-                    <span className="text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
-                      {item.badge}
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full ${item.color} rounded-full`}
-                  style={{ width: `${item.pct}%` }}
-                />
-              </div>
-            </div>
+        <ul className="space-y-2 mb-4">
+          {SAMPLE_ALERTS.map((alert) => (
+            <li key={alert} className="text-xs text-gray-700 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+              {alert}
+            </li>
           ))}
-        </div>
-        <p className="text-[10px] text-gray-500 mt-4 leading-snug">
-          Illustrative portfolio example. Live score generated after assessment. Informational indicator only.
+        </ul>
+        <p className="text-[10px] text-gray-500 leading-snug">
+          Example preview. Your score is generated from your inputs. This is not legal advice.
         </p>
       </div>
       <Button

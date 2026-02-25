@@ -676,6 +676,43 @@ class StripeWebhookService:
                         )
             except Exception as e:
                 logger.warning("Risk lead conversion mark failed lead_id=%s: %s", lead_id_meta, e)
+        else:
+            # Fallback: no lead_id in metadata; try to find risk lead by customer email (e.g. user lost link)
+            customer_email = (session.get("customer_details") or {}).get("email") or session.get("customer_email")
+            if customer_email and isinstance(customer_email, str) and customer_email.strip():
+                try:
+                    email_lower = customer_email.strip().lower()
+                    now_utc = datetime.now(timezone.utc)
+                    res = await db.risk_leads.update_one(
+                        {"email": email_lower, "status": {"$ne": "converted"}},
+                        {"$set": {
+                            "status": "converted",
+                            "converted_at": now_utc.isoformat(),
+                            "client_id": client_id,
+                            "stripe_subscription_id": stripe_subscription_id,
+                            "updated_at": now_utc.isoformat(),
+                        }},
+                    )
+                    if res.modified_count:
+                        lead_doc = await db.risk_leads.find_one(
+                            {"email": email_lower},
+                            {"_id": 0, "lead_id": 1, "computed_score": 1, "exposure_range_label": 1, "flags": 1, "created_at": 1},
+                        )
+                        if lead_doc and not (await db.clients.find_one({"client_id": client_id}, {"_id": 0, "initial_risk_snapshot": 1}) or {}).get("initial_risk_snapshot"):
+                            await db.clients.update_one(
+                                {"client_id": client_id},
+                                {"$set": {"initial_risk_snapshot": {
+                                    "source": "risk-check",
+                                    "lead_id": lead_doc.get("lead_id", ""),
+                                    "generated_at": lead_doc.get("created_at"),
+                                    "score_estimate": lead_doc.get("computed_score"),
+                                    "exposure_band": lead_doc.get("exposure_range_label"),
+                                    "flags": lead_doc.get("flags") or [],
+                                    "disclaimer": "Informational estimate from the pre-intake risk check. Not legal advice.",
+                                }}},
+                            )
+                except Exception as e:
+                    logger.warning("Risk lead conversion by email failed email=%s: %s", customer_email[:20] if customer_email else "", e)
 
         return {
             "handled": True,

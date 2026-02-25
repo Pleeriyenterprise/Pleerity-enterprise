@@ -149,7 +149,7 @@ const HomePage = () => {
                   asChild
                   data-testid="hero-cta-secondary"
                 >
-                  <Link to="/compliance-vault-pro">View Platform Overview</Link>
+                  <Link to="/intake/start">Start Monitoring</Link>
                 </Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
@@ -161,9 +161,13 @@ const HomePage = () => {
                 ))}
               </div>
             </div>
-            {/* Portfolio Compliance Snapshot mockup (risk-first hero) */}
+            {/* Compliance Score Preview mockup + SEO H2 */}
             <div className="relative w-full lg:block">
+              <h2 className="sr-only">UK landlord compliance tracking—risk report in 60 seconds</h2>
               <PortfolioComplianceSnapshotMockup />
+              <p className="text-xs text-gray-500 text-center mt-4 px-2">
+                Built for UK landlords • Expiry tracking • Reminder automation • Audit trail
+              </p>
             </div>
           </div>
         </div>
