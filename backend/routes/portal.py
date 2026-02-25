@@ -10,8 +10,15 @@ from pydantic import BaseModel
 
 from database import database
 from middleware import get_current_user
+from models import AuditAction
+from utils.audit import create_audit_log
+from utils.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/api/portal", tags=["portal"])
+
+# Resend activation: max 3 requests per client per hour
+RESEND_ACTIVATION_MAX_PER_HOUR = 3
+RESEND_ACTIVATION_WINDOW_MINUTES = 60
 
 SUPPORT_EMAIL = (os.getenv("SUPPORT_EMAIL") or os.getenv("REACT_APP_SUPPORT_EMAIL") or "info@pleerityenterprise.co.uk").strip()
 
@@ -283,8 +290,30 @@ async def resend_activation(
     Resend activation (password setup) email. Does NOT provision or change subscription.
     Requires: portal user exists and client onboarding_status == PROVISIONED.
     Auth: same as setup-status (JWT or client_id query).
+    Rate limit: 3 requests per client per hour; returns 429 when exceeded.
     """
     resolved_client_id = await _resolve_portal_client_id(request, client_id)
+
+    # Rate limit: 3 per hour per client
+    rate_key = f"resend_activation:{resolved_client_id}"
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        rate_key, RESEND_ACTIVATION_MAX_PER_HOUR, RESEND_ACTIVATION_WINDOW_MINUTES
+    )
+    if not allowed:
+        user = await get_current_user(request)
+        await create_audit_log(
+            action=AuditAction.ACTIVATION_EMAIL_RESEND,
+            actor_id=user.get("user_id") or user.get("portal_user_id") if user else None,
+            client_id=resolved_client_id,
+            resource_type="client",
+            resource_id=resolved_client_id,
+            metadata={"rate_limited": True, "message": err_msg},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=err_msg or "Too many resend attempts. Please try again later.",
+        )
+
     db = database.get_db()
     client = await db.clients.find_one(
         {"client_id": resolved_client_id},
@@ -340,4 +369,14 @@ async def resend_activation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error_code": "EMAIL_SEND_FAILED", "message": act_err or act_status or "Failed to send activation email"},
         )
+    # Audit successful resend (main audit_logs for compliance)
+    user = await get_current_user(request)
+    await create_audit_log(
+        action=AuditAction.ACTIVATION_EMAIL_RESEND,
+        actor_id=user.get("user_id") or user.get("portal_user_id") if user else None,
+        client_id=resolved_client_id,
+        resource_type="client",
+        resource_id=resolved_client_id,
+        metadata={"outcome": "sent"},
+    )
     return {"message": "Activation email sent"}

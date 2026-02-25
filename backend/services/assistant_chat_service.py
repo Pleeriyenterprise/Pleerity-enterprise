@@ -16,6 +16,7 @@ from utils import ai_config
 from utils.audit import create_audit_log
 
 from services.assistant_retrieval_service import get_portal_facts, get_kb_snippets
+from services.assistant_prompt import ASSISTANT_SYSTEM_PROMPT, get_portal_urls
 
 logger = logging.getLogger(__name__)
 
@@ -49,33 +50,9 @@ SAFE_FALLBACK_ANSWER = (
     "I don't provide legal advice or compliance verdicts. What would you like to know about your data?"
 )
 
-CHAT_SYSTEM_PROMPT = """You are the Compliance Vault Pro Assistant. You explain what the portal shows only. You do NOT provide legal advice, legal interpretation, or compliance verdicts.
-
-Safety disclaimer (you must not override this):
-- This is information only, not legal advice.
-- We do not give a compliance verdict; we describe what the portal shows and suggest actions.
-- If uncertain, ask the user to upload or confirm evidence and to seek professional advice.
-
-Rules:
-- Use ONLY the provided portal_facts and kb_snippets. Never invent data.
-- Do not say "you are compliant", "you are non-compliant", "you are legally required to", or predict fines/enforcement.
-- If data is missing, say what is missing and suggest actions (e.g. upload document, book inspection).
-- If the user asks for a legal verdict or legal advice, set safety_flags.legal_advice_request to true and give a polite refusal plus what you can show from the portal.
-- Cite sources: for each fact from portal_facts use source_type "portal_data" and a source_id like "property:PROP_ID" or "client_summary"; for KB use source_type "kb" and source_id like "assistant_kb/filename.md".
-
-Respond with ONLY valid JSON in this exact shape (no markdown, no extra text):
-{
-  "answer": "Your response text here",
-  "citations": [
-    {"source_type": "portal_data", "source_id": "property:abc123", "title": "Property nickname status"},
-    {"source_type": "kb", "source_id": "assistant_kb/certificates_overview.md", "title": "Certificates overview"}
-  ],
-  "safety_flags": {
-    "legal_advice_request": false,
-    "missing_data": false
-  }
-}
-"""
+# System prompt is in services.assistant_prompt (ASSISTANT_SYSTEM_PROMPT) for single source of truth.
+# CHAT_SYSTEM_PROMPT kept as alias for any code that still references it.
+CHAT_SYSTEM_PROMPT = ASSISTANT_SYSTEM_PROMPT
 
 
 def _rewrite_compliance_verdict_language(text: str) -> str:
@@ -231,7 +208,12 @@ async def chat_turn(
         }
 
     # Retrieval
-    portal_facts = await get_portal_facts(client_id, "admin" if is_admin else "client", property_id=property_id)
+    portal_facts = await get_portal_facts(
+        client_id,
+        "admin" if is_admin else "client",
+        property_id=property_id,
+        portal_user_id=user_id or None,
+    )
     if portal_facts.get("error"):
         await create_audit_log(
             action=AuditAction.ASSISTANT_CHAT_ERROR,
@@ -250,8 +232,12 @@ async def chat_turn(
         }
 
     kb_snippets = get_kb_snippets(message)
+    portal_urls = get_portal_urls()
     context = f"""Portal facts (use only this data for the user's account):
 {json.dumps(portal_facts, indent=2, default=str)}
+
+Portal URLs (use ONLY these when linking to the portal; do not invent or alter URLs):
+{json.dumps(portal_urls, indent=2)}
 
 Knowledge base snippets:
 {chr(10).join(f"--- {s.get('title', '')} ({s.get('source_id', '')}) ---{chr(10)}{s.get('content', '')}" for s in kb_snippets)}
@@ -283,7 +269,7 @@ Respond with ONLY the JSON object (answer, citations, safety_flags). No other te
 
     try:
         raw = await chat_openai(
-            system_prompt=CHAT_SYSTEM_PROMPT,
+            system_prompt=ASSISTANT_SYSTEM_PROMPT,
             user_text=context,
         )
     except Exception as e:

@@ -21,7 +21,7 @@ Admin endpoints:
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from middleware import admin_route_guard, require_support_or_above, get_current_user
 from services.support_service import (
     ConversationService, MessageService, TicketService, SupportAuditService,
@@ -85,6 +85,12 @@ class TicketRequest(BaseModel):
 
 class AdminReplyRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=5000)
+
+
+class AdminCreateTicketFromConversationRequest(BaseModel):
+    """Optional subject/description when creating a ticket from a conversation."""
+    subject: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, min_length=1, max_length=5000)
 
 
 class AdminLookupRequest(BaseModel):
@@ -511,6 +517,7 @@ async def list_conversations(
     status: Optional[str] = None,
     channel: Optional[str] = None,
     service_area: Optional[str] = None,
+    search: Optional[str] = Query(None, description="CRN, email, or client_id"),
     limit: int = Query(50, le=200),
     skip: int = Query(0, ge=0),
     current_user: dict = Depends(require_support_or_above)
@@ -520,6 +527,7 @@ async def list_conversations(
         status=status,
         channel=channel,
         service_area=service_area,
+        search=search,
         limit=limit,
         skip=skip
     )
@@ -533,6 +541,7 @@ async def list_tickets(
     service_area: Optional[str] = None,
     priority: Optional[str] = None,
     assigned_to: Optional[str] = None,
+    search: Optional[str] = Query(None, description="CRN or email"),
     limit: int = Query(50, le=200),
     skip: int = Query(0, ge=0),
     current_user: dict = Depends(require_support_or_above)
@@ -544,6 +553,7 @@ async def list_tickets(
         service_area=service_area,
         priority=priority,
         assigned_to=assigned_to,
+        search=search,
         limit=limit,
         skip=skip
     )
@@ -555,27 +565,45 @@ async def get_conversation_detail(
     conversation_id: str,
     current_user: dict = Depends(require_support_or_above)
 ):
-    """Get full conversation with transcript."""
+    """Get full conversation with transcript and system events."""
     conversation = await ConversationService.get_conversation(conversation_id)
-    
+
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
+
     messages = await MessageService.get_messages(conversation_id, limit=500)
     transcript = await MessageService.get_transcript(conversation_id)
-    
+
     # Get linked ticket if any
     db = database.get_db()
     ticket = await db["support_tickets"].find_one(
         {"conversation_id": conversation_id},
         {"_id": 0}
     )
-    
+
+    # System events from support audit log (admin_reply, ticket_created, etc.)
+    audit_logs = await SupportAuditService.get_logs(
+        resource_type="conversation",
+        resource_id=conversation_id,
+        limit=50
+    )
+    system_events = [
+        {
+            "type": "system_event",
+            "action": e.get("action"),
+            "timestamp": e.get("timestamp"),
+            "actor_id": e.get("actor_id"),
+            "details": e.get("details") or {},
+        }
+        for e in audit_logs
+    ]
+
     return {
         "conversation": conversation,
         "messages": messages,
         "transcript": transcript,
         "linked_ticket": ticket,
+        "system_events": system_events,
     }
 
 
@@ -584,23 +612,34 @@ async def get_ticket_detail(
     ticket_id: str,
     current_user: dict = Depends(require_support_or_above)
 ):
-    """Get ticket details with conversation if linked."""
+    """Get ticket details with conversation if linked. Includes handover_summary when from Portal Assistant escalation."""
     ticket = await TicketService.get_ticket(ticket_id)
-    
+
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    
-    # Get linked conversation if any
+
+    # Linked conversation if any
     conversation = None
     messages = []
     if ticket.get("conversation_id"):
         conversation = await ConversationService.get_conversation(ticket["conversation_id"])
         messages = await MessageService.get_messages(ticket["conversation_id"])
-    
+
+    # Handover summary when ticket is from Portal Assistant escalation
+    handover_summary = None
+    subj = (ticket.get("subject") or "").strip()
+    desc = (ticket.get("description") or "")
+    if "Portal Assistant escalation" in subj or "User requested human handover" in desc:
+        handover_summary = {
+            "reason": "Portal Assistant escalation",
+            "description_preview": desc[:1500] + ("..." if len(desc) > 1500 else ""),
+        }
+
     return {
         "ticket": ticket,
         "conversation": conversation,
         "messages": messages,
+        "handover_summary": handover_summary,
     }
 
 
@@ -638,6 +677,64 @@ async def admin_reply(
         "success": True,
         "message": message
     }
+
+
+@admin_router.post("/conversation/{conversation_id}/create-ticket")
+async def create_ticket_from_conversation(
+    conversation_id: str,
+    body: AdminCreateTicketFromConversationRequest | None = None,
+    current_user: dict = Depends(require_support_or_above)
+):
+    """Create a support ticket linked to this conversation. Subject/description default from transcript."""
+    conversation = await ConversationService.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    db = database.get_db()
+    existing = await db["support_tickets"].find_one({"conversation_id": conversation_id}, {"ticket_id": 1})
+    if existing:
+        raise HTTPException(status_code=400, detail="A ticket is already linked to this conversation")
+
+    transcript = await MessageService.get_transcript(conversation_id)
+    subject = (body and body.subject and body.subject.strip()) or "Conversation escalation"
+    description = (body and body.description and body.description.strip()) or (transcript[:4000] if transcript else "No transcript.")
+
+    ticket_data = TicketCreate(
+        subject=subject[:200],
+        description=description[:5000],
+        category=TicketCategory.OTHER,
+        priority=TicketPriority.MEDIUM,
+        contact_method=ContactMethod.EMAIL,
+        service_area=ServiceArea.OTHER,
+        email=conversation.get("email"),
+        crn=conversation.get("crn"),
+    )
+    ticket = await TicketService.create_ticket(ticket_data, conversation_id=conversation_id)
+
+    await SupportAuditService.log_action(
+        action="ticket_created_from_conversation",
+        actor_type="admin",
+        actor_id=current_user.get("email"),
+        resource_type="conversation",
+        resource_id=conversation_id,
+        details={"ticket_id": ticket["ticket_id"]},
+    )
+
+    return {"success": True, "ticket_id": ticket["ticket_id"], "ticket": ticket}
+
+
+@admin_router.get("/canned-responses")
+async def list_canned_responses_for_reply(
+    current_user: dict = Depends(require_support_or_above)
+):
+    """List active canned responses for the reply bar (label, response_text, response_id). Support and above."""
+    db = database.get_db()
+    cursor = db["canned_responses"].find(
+        {"is_active": True},
+        {"_id": 0, "response_id": 1, "label": 1, "response_text": 1, "category": 1}
+    ).sort("order", 1).limit(100)
+    items = await cursor.to_list(length=100)
+    return {"responses": items}
 
 
 @admin_router.put("/ticket/{ticket_id}/status")
@@ -714,10 +811,19 @@ async def add_ticket_note(
         body.message,
         current_user.get("email", "admin")
     )
-    
+
     if not success:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    
+
+    await SupportAuditService.log_action(
+        action="ticket_note_added",
+        actor_type="admin",
+        actor_id=current_user.get("email"),
+        resource_type="ticket",
+        resource_id=ticket_id,
+        details={"note_length": len(body.message)},
+    )
+
     return {"success": True}
 
 
@@ -728,9 +834,9 @@ async def admin_lookup_by_crn(
 ):
     """Admin-only full account lookup by CRN."""
     db = database.get_db()
-    
+    crn_upper = (body.crn or "").strip().upper()
     client = await db["clients"].find_one(
-        {"crn": body.crn.upper()},
+        {"customer_reference": crn_upper},
         {"_id": 0, "password_hash": 0}
     )
     
@@ -792,21 +898,21 @@ async def get_support_stats(
 ):
     """Get support system statistics."""
     db = database.get_db()
-    
+
     # Conversation stats
     total_conversations = await db["support_conversations"].count_documents({})
     open_conversations = await db["support_conversations"].count_documents({"status": "open"})
     escalated_conversations = await db["support_conversations"].count_documents({"status": "escalated"})
-    
+
     # Ticket stats
     total_tickets = await db["support_tickets"].count_documents({})
     new_tickets = await db["support_tickets"].count_documents({"status": "new"})
     open_tickets = await db["support_tickets"].count_documents({"status": "open"})
     pending_tickets = await db["support_tickets"].count_documents({"status": "pending"})
-    
+
     # Priority breakdown
     high_priority = await db["support_tickets"].count_documents({"priority": {"$in": ["high", "urgent"]}})
-    
+
     return {
         "conversations": {
             "total": total_conversations,
@@ -820,4 +926,115 @@ async def get_support_stats(
             "pending": pending_tickets,
             "high_priority": high_priority,
         }
+    }
+
+
+@admin_router.get("/context/{client_id}")
+async def get_support_context(
+    client_id: str,
+    current_user: dict = Depends(require_support_or_above)
+):
+    """
+    Get support context for a client: account snapshot, portfolio snapshot,
+    notification prefs, recent audit log, recent email delivery events, recent documents.
+    Used by Support Dashboard context panel. RBAC: Support and above.
+    """
+    db = database.get_db()
+
+    client = await db["clients"].find_one(
+        {"client_id": client_id},
+        {"_id": 0, "password_hash": 0, "client_id": 1, "customer_reference": 1, "full_name": 1, "email": 1,
+         "subscription_status": 1, "onboarding_status": 1, "provisioning_status": 1,
+         "activation_email_status": 1, "activation_email_sent_at": 1, "billing_plan": 1}
+    )
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Account snapshot
+    account_snapshot = {
+        "client_id": client.get("client_id"),
+        "name": client.get("full_name") or client.get("name"),
+        "email": client.get("email"),
+        "crn": client.get("customer_reference"),
+        "subscription_status": client.get("subscription_status") or "none",
+        "onboarding_status": client.get("onboarding_status"),
+        "provisioning_status": client.get("provisioning_status"),
+        "activation_email_status": client.get("activation_email_status"),
+        "activation_email_sent_at": client.get("activation_email_sent_at").isoformat() if client.get("activation_email_sent_at") and hasattr(client.get("activation_email_sent_at"), "isoformat") else (str(client.get("activation_email_sent_at")) if client.get("activation_email_sent_at") else None),
+        "billing_plan": client.get("billing_plan"),
+    }
+    # Recent orders
+    orders_cursor = db["orders"].find(
+        {"client_id": client_id},
+        {"_id": 0, "order_ref": 1, "status": 1, "service_name": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(5)
+    account_snapshot["recent_orders"] = await orders_cursor.to_list(length=5)
+
+    # Portfolio snapshot
+    properties_count = await db["properties"].count_documents({"client_id": client_id})
+    property_ids = [p["property_id"] async for p in db["properties"].find({"client_id": client_id}, {"property_id": 1})]
+    requirements_count = await db["requirements"].count_documents({"property_id": {"$in": property_ids}}) if property_ids else 0
+    documents_count = await db["documents"].count_documents({"client_id": client_id})
+    cutoff = datetime.now(timezone.utc)
+    overdue_req = await db["requirements"].count_documents({
+        "property_id": {"$in": property_ids},
+        "due_date": {"$lt": cutoff},
+        "status": {"$nin": ["satisfied", "waived", "cancelled"]}
+    }) if property_ids else 0
+    portfolio_snapshot = {
+        "properties_count": properties_count,
+        "requirements_count": requirements_count,
+        "documents_count": documents_count,
+        "overdue_requirements_count": overdue_req,
+    }
+
+    # Notification preferences (client-scoped)
+    notif_prefs = await db["notification_preferences"].find_one(
+        {"client_id": client_id},
+        {"_id": 0}
+    )
+    notification_prefs = notif_prefs or {}
+
+    # Recent audit log (client_id)
+    audit_cursor = db["audit_logs"].find(
+        {"client_id": client_id},
+        {"_id": 0, "action": 1, "actor_id": 1, "resource_type": 1, "resource_id": 1, "timestamp": 1, "metadata": 1}
+    ).sort("timestamp", -1).limit(20)
+    recent_audit_log = await audit_cursor.to_list(length=20)
+    for e in recent_audit_log:
+        ts = e.get("timestamp")
+        if hasattr(ts, "isoformat"):
+            e["timestamp"] = ts.isoformat()
+
+    # Recent email delivery (message_logs for this client)
+    since = (datetime.now(timezone.utc) - timedelta(hours=168)).isoformat()  # 7 days
+    msg_cursor = db["message_logs"].find(
+        {"client_id": client_id, "created_at": {"$gte": since}},
+        {"_id": 0, "created_at": 1, "template_alias": 1, "status": 1, "message_id": 1}
+    ).sort("created_at", -1).limit(20)
+    recent_email_delivery = await msg_cursor.to_list(length=20)
+    for e in recent_email_delivery:
+        ts = e.get("created_at")
+        if hasattr(ts, "isoformat"):
+            e["created_at"] = ts.isoformat()
+
+    # Recent documents with extraction status
+    doc_cursor = db["documents"].find(
+        {"client_id": client_id},
+        {"_id": 0, "document_id": 1, "file_name": 1, "status": 1, "uploaded_at": 1, "property_id": 1}
+    ).sort("uploaded_at", -1).limit(15)
+    recent_documents = await doc_cursor.to_list(length=15)
+    for d in recent_documents:
+        up = d.get("uploaded_at")
+        if hasattr(up, "isoformat"):
+            d["uploaded_at"] = up.isoformat()
+
+    return {
+        "client_id": client_id,
+        "account_snapshot": account_snapshot,
+        "portfolio_snapshot": portfolio_snapshot,
+        "notification_prefs": notification_prefs,
+        "recent_audit_log": recent_audit_log,
+        "recent_email_delivery": recent_email_delivery,
+        "recent_documents": recent_documents,
     }

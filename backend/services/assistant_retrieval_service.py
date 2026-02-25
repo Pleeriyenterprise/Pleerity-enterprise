@@ -4,6 +4,7 @@ Used by /api/assistant/chat only. No web scraping; KB from curated markdown unde
 """
 import logging
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypedDict
 
@@ -103,10 +104,12 @@ async def get_portal_facts(
     user_role: str,
     property_id: Optional[str] = None,
     include_address_line: bool = False,
+    portal_user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Minimal portal data for assistant context. PII minimization: nickname + postcode only
     unless include_address_line is True (e.g. user explicitly asked for address).
+    When portal_user_id is provided, user/account_state are scoped to that portal user.
     """
     db = database.get_db()
 
@@ -119,10 +122,25 @@ async def get_portal_facts(
             "billing_plan": 1,
             "subscription_status": 1,
             "client_type": 1,
+            "onboarding_status": 1,
+            "provisioning_status": 1,
+            "activation_email_status": 1,
+            "activation_email_sent_at": 1,
+            "email": 1,
+            "full_name": 1,
         },
     )
     if not client:
         return {"error": "Client not found"}
+
+    # Portal user for user + account_state (optional portal_user_id to scope to current user)
+    pu_query: Dict[str, Any] = {"client_id": client_id}
+    if portal_user_id:
+        pu_query["portal_user_id"] = portal_user_id
+    portal_user = await db.portal_users.find_one(
+        pu_query,
+        {"_id": 0, "portal_user_id": 1, "auth_email": 1, "role": 1, "password_status": 1},
+    )
 
     prop_projection = {
         "_id": 0,
@@ -200,8 +218,56 @@ async def get_portal_facts(
         "client_type": client.get("client_type"),
     }
 
+    # user: name, email, role, CRN (minimal for assistant context)
+    name = client.get("full_name") or client.get("name") or ((portal_user or {}).get("auth_email") or "").split("@")[0] or ""
+    email = (portal_user or {}).get("auth_email") or client.get("email") or ""
+    role = (portal_user or {}).get("role") or "ROLE_CLIENT"
+    user_blob = {"name": name, "email": email, "role": role, "crn": client.get("customer_reference") or ""}
+
+    # account_state: payment_state, provisioning_status, portal_user_exists, activation_email_status, password_set
+    sub = (client.get("subscription_status") or "").strip().upper()
+    payment_state = "paid" if sub in ("ACTIVE", "TRIALING") else "unpaid" if sub in ("PAST_DUE", "CANCELED", "UNPAID") else "pending"
+    onb = (client.get("onboarding_status") or "").strip()
+    prov = (client.get("provisioning_status") or "").strip() or ("COMPLETED" if onb == "PROVISIONED" else "IN_PROGRESS" if onb == "PROVISIONING" else "FAILED" if onb == "FAILED" else "NOT_STARTED")
+    act = (client.get("activation_email_status") or "").strip().upper()
+    activation_email_status = act if act in ("SENT", "FAILED", "NOT_SENT") else "NOT_SENT"
+    password_set = bool(portal_user and ((portal_user.get("password_status") or "").upper() == "SET"))
+    account_state = {
+        "payment_state": payment_state,
+        "provisioning_status": prov,
+        "portal_user_exists": bool(portal_user),
+        "activation_email_status": activation_email_status,
+        "password_set": password_set,
+    }
+
+    # portfolio_summary: counts and high-level view (scores if available)
+    property_count = len(properties)
+    req_count = len(requirements)
+    doc_count = len(documents)
+    today = datetime.now(timezone.utc).date().isoformat()
+    def _is_overdue(r: Dict[str, Any]) -> bool:
+        due = r.get("due_date")
+        if not due:
+            return False
+        if hasattr(due, "date"):
+            due_str = due.date().isoformat() if hasattr(due, "date") else str(due)[:10]
+        else:
+            due_str = str(due)[:10]
+        return due_str < today
+
+    overdue = sum(1 for r in requirements if _is_overdue(r))
+    portfolio_summary = {
+        "property_count": property_count,
+        "requirement_count": req_count,
+        "document_count": doc_count,
+        "overdue_requirements_count": overdue,
+    }
+
     return {
         "client_summary": summary,
+        "user": user_blob,
+        "account_state": account_state,
+        "portfolio_summary": portfolio_summary,
         "properties": [
             {
                 "property_id": p.get("property_id"),

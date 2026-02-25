@@ -15,7 +15,7 @@ import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   ArrowLeft, Search, Filter, MessageSquare, Ticket, Clock,
   User, AlertTriangle, CheckCircle2, XCircle, Send, RefreshCw,
-  ChevronDown, Eye, MoreVertical, FileText, Phone, Mail
+  ChevronDown, Eye, MoreVertical, FileText, Phone, Mail, Info
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -108,6 +108,12 @@ function TicketRow({ ticket, onSelect, isSelected }) {
           <h4 className="font-medium text-gray-900 truncate">{ticket.subject}</h4>
           <p className="text-sm text-gray-500 truncate">{ticket.description}</p>
           <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+            {ticket.assigned_to && (
+              <span className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                {ticket.assigned_to}
+              </span>
+            )}
             {ticket.email && (
               <span className="flex items-center gap-1">
                 <Mail className="h-3 w-3" />
@@ -118,6 +124,14 @@ function TicketRow({ ticket, onSelect, isSelected }) {
               <Clock className="h-3 w-3" />
               {new Date(ticket.created_at).toLocaleDateString()}
             </span>
+            {(() => {
+              const created = new Date(ticket.created_at);
+              const hoursAgo = (Date.now() - created.getTime()) / (1000 * 60 * 60);
+              const isOverdue = hoursAgo >= 24 && ['new', 'open'].includes(ticket.status);
+              return isOverdue ? (
+                <Badge variant="destructive" className="text-xs">SLA &gt;24h</Badge>
+              ) : null;
+            })()}
           </div>
         </div>
         <Badge variant="secondary" className="ml-2 shrink-0">
@@ -153,6 +167,9 @@ function ConversationRow({ conversation, onSelect, isSelected }) {
             <span>•</span>
             <span>{conversation.message_count} messages</span>
           </div>
+          {conversation.last_message_text && (
+            <p className="text-xs text-gray-500 truncate mt-0.5">{conversation.last_message_text}</p>
+          )}
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
             <Clock className="h-3 w-3" />
             {new Date(conversation.last_message_at).toLocaleString()}
@@ -169,9 +186,19 @@ function ConversationRow({ conversation, onSelect, isSelected }) {
 }
 
 // Transcript viewer component
-function TranscriptViewer({ messages, onReply }) {
+function TranscriptViewer({ messages = [], systemEvents = [], cannedResponses = [], onReply }) {
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+
+  // Merge messages and system events by timestamp for display order
+  const timeline = React.useMemo(() => {
+    const items = [
+      ...messages.map((m) => ({ type: 'message', ...m, sortAt: m.timestamp })),
+      ...systemEvents.map((e, i) => ({ type: 'system', ...e, sortAt: e.timestamp || '', id: `evt-${i}` })),
+    ];
+    items.sort((a, b) => (a.sortAt || '').localeCompare(b.sortAt || ''));
+    return items;
+  }, [messages, systemEvents]);
 
   const handleSend = async () => {
     if (!replyText.trim()) return;
@@ -181,37 +208,79 @@ function TranscriptViewer({ messages, onReply }) {
     setSending(false);
   };
 
+  const insertCanned = (text) => {
+    setReplyText((prev) => (prev ? `${prev}\n\n${text}` : text));
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div className={`max-w-[80%] ${
-              msg.sender === 'user' 
-                ? 'bg-teal-500 text-white rounded-br-sm' 
-                : msg.sender === 'human'
-                  ? 'bg-blue-500 text-white rounded-bl-sm'
-                  : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-            } rounded-2xl px-4 py-2`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {msg.sender}
-                </Badge>
-                <span className="text-xs opacity-75">
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </span>
+        {timeline.map((item, idx) => {
+          if (item.type === 'system') {
+            return (
+              <div key={item.id || idx} className="flex justify-center">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-xs text-amber-800">
+                  <span className="font-medium">Event:</span> {item.action}
+                  {item.actor_id && ` · ${item.actor_id}`}
+                  {item.timestamp && (
+                    <span className="ml-2 text-amber-600">
+                      {new Date(item.timestamp).toLocaleString()}
+                    </span>
+                  )}
+                </div>
               </div>
-              <p className="text-sm whitespace-pre-wrap">{msg.message_text}</p>
+            );
+          }
+          const msg = item;
+          return (
+            <div
+              key={idx}
+              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`max-w-[80%] ${
+                msg.sender === 'user'
+                  ? 'bg-teal-500 text-white rounded-br-sm'
+                  : msg.sender === 'human'
+                    ? 'bg-blue-500 text-white rounded-bl-sm'
+                    : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+              } rounded-2xl px-4 py-2`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="secondary" className="text-xs capitalize">
+                    {msg.sender}
+                  </Badge>
+                  <span className="text-xs opacity-75">
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{msg.message_text}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      
+
       {/* Reply input */}
       <div className="border-t p-4">
+        {cannedResponses.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            <span className="text-xs text-gray-500 mr-1">Canned:</span>
+            <Select onValueChange={(v) => {
+              const r = cannedResponses.find((x) => x.response_id === v);
+              if (r?.response_text) insertCanned(r.response_text);
+            }}>
+              <SelectTrigger className="w-[180px] h-7 text-xs">
+                <SelectValue placeholder="Insert response..." />
+              </SelectTrigger>
+              <SelectContent>
+                {cannedResponses.map((r) => (
+                  <SelectItem key={r.response_id} value={r.response_id}>
+                    {r.label || r.response_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="flex gap-2">
           <Textarea
             value={replyText}
@@ -234,7 +303,7 @@ function TranscriptViewer({ messages, onReply }) {
 }
 
 // CRN Lookup component
-function CRNLookup() {
+function CRNLookup({ onViewContext }) {
   const [crn, setCrn] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -256,6 +325,11 @@ function CRNLookup() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewContext = () => {
+    const clientId = result?.client?.client_id;
+    if (clientId && onViewContext) onViewContext(clientId);
   };
 
   return (
@@ -280,7 +354,7 @@ function CRNLookup() {
         {result && (
           <div className="space-y-3">
             <div className="bg-gray-50 rounded-lg p-3">
-              <h4 className="font-medium text-gray-900">{result.client?.name}</h4>
+              <h4 className="font-medium text-gray-900">{result.client?.full_name || result.client?.name}</h4>
               <p className="text-sm text-gray-600">{result.client?.email}</p>
               <Badge className="mt-2">{result.client?.subscription_status || 'No subscription'}</Badge>
             </div>
@@ -302,6 +376,13 @@ function CRNLookup() {
             <p className="text-sm text-gray-500">
               Properties: {result.properties_count || 0}
             </p>
+            
+            {result.client?.client_id && onViewContext && (
+              <Button variant="outline" size="sm" onClick={handleViewContext} className="w-full">
+                <Info className="h-4 w-4 mr-2" />
+                View full context
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -323,7 +404,23 @@ export default function AdminSupportPage() {
     category: '',
     priority: '',
     service_area: '',
+    search: '',
+    assigned_to: '',
   });
+  const [contextClientId, setContextClientId] = useState(null);
+  const [contextData, setContextData] = useState(null);
+  const [contextLoading, setContextLoading] = useState(false);
+  const [cannedResponses, setCannedResponses] = useState([]);
+
+  // Fetch canned responses for reply bar
+  const fetchCannedResponses = useCallback(async () => {
+    try {
+      const res = await client.get('/admin/support/canned-responses');
+      setCannedResponses(res.data.responses || []);
+    } catch {
+      setCannedResponses([]);
+    }
+  }, []);
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
@@ -342,7 +439,7 @@ export default function AdminSupportPage() {
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
       });
-      
+
       const response = await client.get(`/admin/support/tickets?${params}`);
       setTickets(response.data.tickets || []);
     } catch (err) {
@@ -357,7 +454,8 @@ export default function AdminSupportPage() {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
       if (filters.service_area) params.append('service_area', filters.service_area);
-      
+      if (filters.search) params.append('search', filters.search);
+
       const response = await client.get(`/admin/support/conversations?${params}`);
       setConversations(response.data.conversations || []);
     } catch (err) {
@@ -384,11 +482,11 @@ export default function AdminSupportPage() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchStats(), fetchTickets(), fetchConversations()]);
+      await Promise.all([fetchStats(), fetchTickets(), fetchConversations(), fetchCannedResponses()]);
       setLoading(false);
     };
     loadData();
-  }, [fetchStats, fetchTickets, fetchConversations]);
+  }, [fetchStats, fetchTickets, fetchConversations, fetchCannedResponses]);
 
   // Load detail when item selected
   useEffect(() => {
@@ -399,6 +497,31 @@ export default function AdminSupportPage() {
       setItemDetail(null);
     }
   }, [selectedItem, fetchItemDetail]);
+
+  const openContextPanel = useCallback((clientId) => {
+    setContextClientId(clientId);
+    setContextData(null);
+  }, []);
+
+  useEffect(() => {
+    if (!contextClientId) {
+      setContextData(null);
+      return;
+    }
+    let cancelled = false;
+    setContextLoading(true);
+    client.get(`/admin/support/context/${contextClientId}`)
+      .then((res) => {
+        if (!cancelled) setContextData(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('Failed to load context');
+      })
+      .finally(() => {
+        if (!cancelled) setContextLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [contextClientId]);
 
   // Handle reply
   const handleReply = async (message) => {
@@ -428,6 +551,19 @@ export default function AdminSupportPage() {
       }
     } catch (err) {
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleCreateTicketFromConversation = async () => {
+    const convId = itemDetail?.conversation?.conversation_id;
+    if (!convId) return;
+    try {
+      const res = await client.post(`/admin/support/conversation/${convId}/create-ticket`, {});
+      toast.success(`Ticket ${res.data.ticket_id} created`);
+      fetchTickets();
+      fetchItemDetail(selectedItem, 'conversation');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to create ticket');
     }
   };
 
@@ -489,9 +625,9 @@ export default function AdminSupportPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className={`grid gap-6 ${contextClientId ? 'grid-cols-12' : 'grid-cols-12'}`}>
           {/* Left panel - List */}
-          <div className="col-span-12 lg:col-span-5">
+          <div className={contextClientId ? 'col-span-4' : 'col-span-12 lg:col-span-5'}>
             <Card className="h-[600px] flex flex-col">
               <CardHeader className="pb-2">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -508,12 +644,18 @@ export default function AdminSupportPage() {
                 </Tabs>
                 
                 {/* Filters */}
-                <div className="flex gap-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3 items-center">
+                  <Input
+                    placeholder="Search CRN / email"
+                    value={filters.search || ''}
+                    onChange={(e) => setFilters(f => ({ ...f, search: e.target.value.trim() }))}
+                    className="w-36 h-8 text-xs"
+                  />
                   <Select
                     value={filters.status || "all"}
                     onValueChange={(v) => setFilters(f => ({ ...f, status: v === "all" ? "" : v }))}
                   >
-                    <SelectTrigger className="w-32 text-xs">
+                    <SelectTrigger className="w-32 text-xs h-8">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -525,16 +667,23 @@ export default function AdminSupportPage() {
                       <SelectItem value="resolved">Resolved</SelectItem>
                     </SelectContent>
                   </Select>
-                  
+
                   {activeTab === 'tickets' && (
-                    <Select
-                      value={filters.priority || "all"}
-                      onValueChange={(v) => setFilters(f => ({ ...f, priority: v === "all" ? "" : v }))}
-                    >
-                      <SelectTrigger className="w-32 text-xs">
-                        <SelectValue placeholder="Priority" />
-                      </SelectTrigger>
-                      <SelectContent>
+                    <>
+                      <Input
+                        placeholder="Assigned to"
+                        value={filters.assigned_to || ''}
+                        onChange={(e) => setFilters(f => ({ ...f, assigned_to: e.target.value.trim() }))}
+                        className="w-28 h-8 text-xs"
+                      />
+                        <Select
+                        value={filters.priority || "all"}
+                        onValueChange={(v) => setFilters(f => ({ ...f, priority: v === "all" ? "" : v }))}
+                      >
+                        <SelectTrigger className="w-32 text-xs h-8">
+                          <SelectValue placeholder="Priority" />
+                        </SelectTrigger>
+                          <SelectContent>
                         <SelectItem value="all">All Priority</SelectItem>
                         <SelectItem value="urgent">Urgent</SelectItem>
                         <SelectItem value="high">High</SelectItem>
@@ -542,6 +691,7 @@ export default function AdminSupportPage() {
                         <SelectItem value="low">Low</SelectItem>
                       </SelectContent>
                     </Select>
+                    </>
                   )}
                 </div>
               </CardHeader>
@@ -589,7 +739,7 @@ export default function AdminSupportPage() {
           </div>
 
           {/* Right panel - Detail */}
-          <div className="col-span-12 lg:col-span-7">
+          <div className={contextClientId ? 'col-span-4' : 'col-span-12 lg:col-span-7'}>
             {!selectedItem ? (
               <Card className="h-[600px] flex items-center justify-center">
                 <div className="text-center text-gray-500">
@@ -600,7 +750,7 @@ export default function AdminSupportPage() {
             ) : itemDetail ? (
               <Card className="h-[600px] flex flex-col">
                 <CardHeader className="pb-2 border-b">
-                  <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-gray-900">
                         {itemDetail.ticket?.subject || itemDetail.conversation?.conversation_id}
@@ -615,6 +765,26 @@ export default function AdminSupportPage() {
                           <Badge className={PRIORITY_COLORS[itemDetail.ticket.priority]}>
                             {itemDetail.ticket.priority}
                           </Badge>
+                        )}
+                        {(itemDetail.conversation?.client_id) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openContextPanel(itemDetail.conversation.client_id)}
+                          >
+                            <Info className="h-3 w-3 mr-1" />
+                            Context
+                          </Button>
+                        )}
+                        {itemDetail.conversation && !itemDetail.linked_ticket && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCreateTicketFromConversation}
+                          >
+                            <Ticket className="h-3 w-3 mr-1" />
+                            Create ticket
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -657,11 +827,19 @@ export default function AdminSupportPage() {
                     </div>
                   )}
                 </CardHeader>
-                
-                <CardContent className="flex-1 p-0 overflow-hidden">
-                  {itemDetail.messages?.length > 0 ? (
+
+                <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
+                  {itemDetail.handover_summary && (
+                    <div className="border-b bg-amber-50 px-4 py-2">
+                      <h4 className="text-xs font-semibold text-amber-800 uppercase mb-1">Handover summary</h4>
+                      <p className="text-sm text-amber-900 whitespace-pre-wrap">{itemDetail.handover_summary.description_preview}</p>
+                    </div>
+                  )}
+                  {itemDetail.messages?.length > 0 || itemDetail.system_events?.length > 0 ? (
                     <TranscriptViewer
-                      messages={itemDetail.messages}
+                      messages={itemDetail.messages || []}
+                      systemEvents={itemDetail.system_events || []}
+                      cannedResponses={cannedResponses}
                       onReply={handleReply}
                     />
                   ) : (
@@ -679,9 +857,101 @@ export default function AdminSupportPage() {
             
             {/* CRN Lookup below detail */}
             <div className="mt-6">
-              <CRNLookup />
+              <CRNLookup onViewContext={openContextPanel} />
             </div>
           </div>
+
+          {/* Context panel */}
+          {contextClientId && (
+            <div className="col-span-4">
+              <Card className="h-[600px] flex flex-col">
+                <CardHeader className="pb-2 border-b flex flex-row items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Info className="h-4 w-4" />
+                    Client context
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setContextClientId(null); setContextData(null); }}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto p-3 space-y-4">
+                  {contextLoading ? (
+                    <div className="flex justify-center py-8">
+                      <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                    </div>
+                  ) : contextData ? (
+                    <>
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Account</h4>
+                        <div className="bg-gray-50 rounded p-2 text-sm">
+                          <p className="font-medium">{contextData.account_snapshot?.name}</p>
+                          <p className="text-gray-600">{contextData.account_snapshot?.email}</p>
+                          <p className="text-gray-500">CRN: {contextData.account_snapshot?.crn}</p>
+                          <Badge className="mt-1">{contextData.account_snapshot?.subscription_status}</Badge>
+                          {contextData.account_snapshot?.onboarding_status && (
+                            <p className="text-xs mt-1">Onboarding: {contextData.account_snapshot.onboarding_status}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Portfolio</h4>
+                        <div className="bg-gray-50 rounded p-2 text-sm flex flex-wrap gap-2">
+                          <span>Properties: {contextData.portfolio_snapshot?.properties_count ?? 0}</span>
+                          <span>Requirements: {contextData.portfolio_snapshot?.requirements_count ?? 0}</span>
+                          <span>Documents: {contextData.portfolio_snapshot?.documents_count ?? 0}</span>
+                          {(contextData.portfolio_snapshot?.overdue_requirements_count ?? 0) > 0 && (
+                            <Badge variant="destructive">Overdue: {contextData.portfolio_snapshot.overdue_requirements_count}</Badge>
+                          )}
+                        </div>
+                      </div>
+                      {contextData.recent_audit_log?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Recent audit</h4>
+                          <ul className="space-y-1 text-xs max-h-32 overflow-y-auto">
+                            {contextData.recent_audit_log.slice(0, 8).map((e, i) => (
+                              <li key={i} className="flex justify-between gap-2">
+                                <span className="truncate">{e.action}</span>
+                                <span className="text-gray-400 shrink-0">{e.timestamp ? new Date(e.timestamp).toLocaleDateString() : ''}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {contextData.recent_email_delivery?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Email delivery (7d)</h4>
+                          <ul className="space-y-1 text-xs max-h-24 overflow-y-auto">
+                            {contextData.recent_email_delivery.slice(0, 5).map((e, i) => (
+                              <li key={i} className="flex justify-between gap-2">
+                                <span className="truncate">{e.template_alias || '—'}</span>
+                                <Badge variant={e.status === 'sent' ? 'default' : 'destructive'} className="text-xs">{e.status}</Badge>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {contextData.recent_documents?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Recent documents</h4>
+                          <ul className="space-y-1 text-xs max-h-24 overflow-y-auto">
+                            {contextData.recent_documents.slice(0, 5).map((d, i) => (
+                              <li key={i} className="truncate" title={d.file_name}>{d.file_name}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500">No context data</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
     </div>
     </UnifiedAdminLayout>

@@ -236,7 +236,8 @@ def test_resend_activation_403_when_not_provisioned(client):
     mock_db.portal_users.find_one = AsyncMock(return_value=mock_portal)
 
     with patch("routes.portal.database.get_db", return_value=mock_db), \
-         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None), \
+         patch("routes.portal.rate_limiter.check_rate_limit", new_callable=AsyncMock, return_value=(True, None)):
         response = client.post("/api/portal/resend-activation", params={"client_id": "c1"})
 
     assert response.status_code == 403
@@ -260,6 +261,7 @@ def test_resend_activation_200_does_not_alter_subscription(client):
 
     with patch("routes.portal.database.get_db", return_value=mock_db), \
          patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None), \
+         patch("routes.portal.rate_limiter.check_rate_limit", new_callable=AsyncMock, return_value=(True, None)), \
          patch("services.provisioning.provisioning_service._send_password_setup_link", new_callable=AsyncMock, return_value=(True, "SENT", None)):
         response = client.post("/api/portal/resend-activation", params={"client_id": "c1"})
 
@@ -291,6 +293,7 @@ def test_resend_activation_500_on_email_failure(client):
 
     with patch("routes.portal.database.get_db", return_value=mock_db), \
          patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None), \
+         patch("routes.portal.rate_limiter.check_rate_limit", new_callable=AsyncMock, return_value=(True, None)), \
          patch("services.provisioning.provisioning_service._send_password_setup_link", new_callable=AsyncMock, return_value=(False, "FAILED", "Postmark error")):
         response = client.post("/api/portal/resend-activation", params={"client_id": "c1"})
 
@@ -301,6 +304,16 @@ def test_resend_activation_500_on_email_failure(client):
     assert len(calls) >= 1
     set_payload = (calls[0][0][1] if len(calls[0][0]) > 1 else calls[0][1] or {}).get("$set", {})
     assert set_payload.get("activation_email_status") == "FAILED"
+
+
+def test_resend_activation_429_when_rate_limited(client):
+    """resend-activation returns 429 when rate limit exceeded (3 per hour per client)."""
+    with patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value={"client_id": "c1"}), \
+         patch("routes.portal.rate_limiter.check_rate_limit", new_callable=AsyncMock, return_value=(False, "Rate limit exceeded. Try again in 120 seconds")):
+        response = client.post("/api/portal/resend-activation", params={"client_id": "c1"})
+
+    assert response.status_code == 429
+    assert "rate limit" in (response.json().get("detail") or "").lower() or "try again" in (response.json().get("detail") or "").lower()
 
 
 def test_setup_status_payment_state_mapping(client):

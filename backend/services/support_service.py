@@ -231,12 +231,13 @@ class ConversationService:
         status: Optional[str] = None,
         channel: Optional[str] = None,
         service_area: Optional[str] = None,
+        search: Optional[str] = None,
         limit: int = 50,
         skip: int = 0
     ) -> Dict[str, Any]:
-        """List conversations with filters."""
+        """List conversations with filters. search matches crn or email (case-insensitive)."""
         db = database.get_db()
-        
+
         query = {}
         if status:
             query["status"] = status
@@ -244,15 +245,25 @@ class ConversationService:
             query["channel"] = channel
         if service_area:
             query["service_area"] = service_area
-        
+        if search:
+            search_clean = (search or "").strip()
+            if search_clean:
+                import re
+                pattern = re.escape(search_clean)
+                query["$or"] = [
+                    {"crn": {"$regex": pattern, "$options": "i"}},
+                    {"email": {"$regex": pattern, "$options": "i"}},
+                    {"client_id": search_clean},
+                ]
+
         total = await db[CONVERSATIONS_COLLECTION].count_documents(query)
-        
+
         cursor = db[CONVERSATIONS_COLLECTION].find(
             query, {"_id": 0}
         ).sort("last_message_at", -1).skip(skip).limit(limit)
-        
+
         conversations = await cursor.to_list(length=limit)
-        
+
         return {
             "conversations": conversations,
             "total": total,
@@ -293,7 +304,7 @@ class MessageService:
         await db[CONVERSATIONS_COLLECTION].update_one(
             {"conversation_id": conversation_id},
             {
-                "$set": {"last_message_at": now},
+                "$set": {"last_message_at": now, "last_message_text": (data.message_text or "")[:500]},
                 "$inc": {"message_count": 1}
             }
         )
@@ -435,12 +446,13 @@ class TicketService:
         service_area: Optional[str] = None,
         priority: Optional[str] = None,
         assigned_to: Optional[str] = None,
+        search: Optional[str] = None,
         limit: int = 50,
         skip: int = 0
     ) -> Dict[str, Any]:
-        """List tickets with filters."""
+        """List tickets with filters. search matches crn or email (case-insensitive)."""
         db = database.get_db()
-        
+
         query = {}
         if status:
             query["status"] = status
@@ -452,15 +464,24 @@ class TicketService:
             query["priority"] = priority
         if assigned_to:
             query["assigned_to"] = assigned_to
-        
+        if search:
+            search_clean = (search or "").strip()
+            if search_clean:
+                import re
+                pattern = re.escape(search_clean)
+                query["$or"] = [
+                    {"crn": {"$regex": pattern, "$options": "i"}},
+                    {"email": {"$regex": pattern, "$options": "i"}},
+                ]
+
         total = await db[TICKETS_COLLECTION].count_documents(query)
-        
+
         cursor = db[TICKETS_COLLECTION].find(
             query, {"_id": 0}
         ).sort("created_at", -1).skip(skip).limit(limit)
-        
+
         tickets = await cursor.to_list(length=limit)
-        
+
         return {
             "tickets": tickets,
             "total": total,
