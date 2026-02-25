@@ -1063,3 +1063,186 @@ async def get_analytics_failures(
             "stripe_subscription_id": e.get("stripe_subscription_id"), "error_code": meta.get("error_code"), "metadata": meta,
         })
     return {"from": start_dt.isoformat(), "to": end_dt.isoformat(), "type_filter": type, "events": out}
+
+
+# ============================================================================
+# MARKETING FUNNEL (leads → trial → portal_activated → paid)
+# ============================================================================
+
+@router.get("/marketing-funnel", dependencies=[Depends(require_owner_or_admin)])
+async def get_marketing_funnel(
+    from_date: Optional[str] = Query(None, description="From date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(None, description="To date YYYY-MM-DD"),
+    period: str = Query("30d", description="Preset: 7d, 30d, 90d"),
+):
+    """
+    Marketing funnel: KPIs and stages from leads, clients, portal_users.
+    Returns: visitors (placeholder), leads_count, trials_count, paid_count, conversion_rate, mrr,
+    funnel (leads, trial_started, portal_activated, paid), source_breakdown (by utm_source),
+    conversion_timing (avg_days_lead_to_trial, avg_days_trial_to_paid).
+    """
+    db = database.get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    start_dt, end_dt = _parse_from_to(from_date, to_date, period)
+    start_iso = start_dt.isoformat()
+    end_iso = end_dt.isoformat()
+
+    # Date filter for created_at (leads/clients often store iso string)
+    created_query = {"$gte": start_iso, "$lte": end_iso}
+    # Client created_at may be string or datetime; accept both for robust counts
+    created_query_dt = {"$gte": start_dt, "$lte": end_dt}
+    client_created_in_range = {"$or": [{"created_at": created_query}, {"created_at": created_query_dt}]}
+    client_created_lte_end = {"$or": [{"created_at": {"$lte": end_iso}}, {"created_at": {"$lte": end_dt}}]}
+
+    # --- KPIs ---
+    leads_count = await db.leads.count_documents({"created_at": created_query})
+    trials_count = await db.clients.count_documents({
+        **client_created_in_range,
+        "subscription_status": {"$in": ["TRIALING", "trialing"]},
+    })
+    paid_count = await db.clients.count_documents({
+        "subscription_status": {"$in": ["ACTIVE", "active"]},
+    })
+    conversion_rate = round(100.0 * paid_count / leads_count, 1) if leads_count else 0.0
+    visitors = None  # placeholder
+    mrr = None  # placeholder until plan pricing / Stripe MRR available
+
+    # --- Funnel stages (counts in period where applicable) ---
+    # Leads: count in range
+    funnel_leads = leads_count
+    # Trial started: clients created in range with TRIALING (or any client who started trial in range - we use created in range + TRIALING)
+    funnel_trial = trials_count
+    # Portal activated: clients that have at least one portal_user
+    portal_activated_ids = await db.portal_users.distinct("client_id")
+    funnel_portal = await db.clients.count_documents({
+        "client_id": {"$in": portal_activated_ids},
+        **client_created_lte_end,
+    })
+    # Paid: active subscriptions (all time for current state)
+    funnel_paid = paid_count
+
+    funnel = [
+        {"stage": "Leads", "count": funnel_leads, "conversion_rate": 100.0 if funnel_leads else 0, "drop_off_percent": 0},
+        {"stage": "Trial started", "count": funnel_trial, "conversion_rate": round(100.0 * funnel_trial / funnel_leads, 1) if funnel_leads else 0, "drop_off_percent": round(100.0 * (funnel_leads - funnel_trial) / funnel_leads, 1) if funnel_leads else 0},
+        {"stage": "Portal activated", "count": funnel_portal, "conversion_rate": round(100.0 * funnel_portal / funnel_leads, 1) if funnel_leads else 0, "drop_off_percent": round(100.0 * (funnel_trial - funnel_portal) / funnel_trial, 1) if funnel_trial else 0},
+        {"stage": "Paid", "count": funnel_paid, "conversion_rate": round(100.0 * funnel_paid / funnel_leads, 1) if funnel_leads else 0, "drop_off_percent": round(100.0 * (funnel_portal - funnel_paid) / funnel_portal, 1) if funnel_portal else 0},
+    ]
+
+    # --- Source attribution (from leads.utm_source) ---
+    pipeline_source = [
+        {"$match": {"created_at": created_query}},
+        {"$group": {"_id": {"$ifNull": ["$utm_source", "Direct"]}, "leads": {"$sum": 1}}},
+        {"$sort": {"leads": -1}},
+    ]
+    cursor_src = db.leads.aggregate(pipeline_source)
+    source_rows = await cursor_src.to_list(length=100)
+    # Enrich with trials/paid by matching clients by lead_id
+    lead_ids_by_source = {}
+    for row in source_rows:
+        src = row["_id"] or "Direct"
+        lead_ids_by_source[src] = set()
+    cursor_leads_src = db.leads.find(
+        {"created_at": created_query},
+        {"lead_id": 1, "utm_source": 1},
+    )
+    async for lead in cursor_leads_src:
+        src = (lead.get("utm_source") or "Direct").strip() or "Direct"
+        if src not in lead_ids_by_source:
+            lead_ids_by_source[src] = set()
+        lid = lead.get("lead_id")
+        if lid:
+            lead_ids_by_source[src].add(lid)
+    source_breakdown = []
+    for row in source_rows:
+        src = row["_id"] or "Direct"
+        lead_ids = list(lead_ids_by_source.get(src, []))
+        trials_src = await db.clients.count_documents({"lead_id": {"$in": lead_ids}, "subscription_status": {"$in": ["TRIALING", "trialing"]}}) if lead_ids else 0
+        paid_src = await db.clients.count_documents({"lead_id": {"$in": lead_ids}, "subscription_status": {"$in": ["ACTIVE", "active"]}}) if lead_ids else 0
+        conv = round(100.0 * paid_src / row["leads"], 1) if row["leads"] else 0
+        source_breakdown.append({"source": src, "leads": row["leads"], "trials": trials_src, "paid": paid_src, "conversion_percent": conv})
+    source_breakdown.sort(key=lambda x: x["leads"], reverse=True)
+
+    # --- Conversion timing ---
+    # avg_days_lead_to_trial: clients with lead_id, (client.created_at - lead.created_at)
+    clients_with_lead = await db.clients.find({"lead_id": {"$exists": True, "$ne": None}}, {"client_id": 1, "lead_id": 1, "created_at": 1}).to_list(length=5000)
+    lead_created = {}
+    if clients_with_lead:
+        lead_ids_for_timing = [c["lead_id"] for c in clients_with_lead]
+        cursor_lead_dates = db.leads.find({"lead_id": {"$in": lead_ids_for_timing}}, {"lead_id": 1, "created_at": 1})
+        async for le in cursor_lead_dates:
+            lead_created[le["lead_id"]] = le.get("created_at")
+    deltas_lead_trial = []
+    for c in clients_with_lead:
+        lid = c.get("lead_id")
+        ldt = lead_created.get(lid)
+        cdt = c.get("created_at")
+        if not ldt or not cdt:
+            continue
+        try:
+            ld = ldt if isinstance(ldt, datetime) else datetime.fromisoformat((ldt or "").replace("Z", "+00:00"))
+            cd = cdt if isinstance(cdt, datetime) else datetime.fromisoformat((cdt or "").replace("Z", "+00:00"))
+            deltas_lead_trial.append((cd - ld).total_seconds() / 86400.0)
+        except (TypeError, ValueError):
+            pass
+    avg_days_lead_to_trial = round(sum(deltas_lead_trial) / len(deltas_lead_trial), 1) if deltas_lead_trial else None
+    # avg_days_trial_to_paid: placeholder (would need first TRIALING date and first ACTIVE date per client)
+    avg_days_trial_to_paid = None
+
+    return {
+        "from": start_iso,
+        "to": end_iso,
+        "kpis": {
+            "visitors": visitors,
+            "leads_count": leads_count,
+            "trials_count": trials_count,
+            "paid_count": paid_count,
+            "conversion_rate": conversion_rate,
+            "mrr": mrr,
+        },
+        "funnel": funnel,
+        "source_breakdown": source_breakdown,
+        "conversion_timing": {
+            "avg_days_lead_to_trial": avg_days_lead_to_trial,
+            "avg_days_trial_to_paid": avg_days_trial_to_paid,
+        },
+    }
+
+
+@router.get("/marketing-funnel/export", dependencies=[Depends(require_owner_or_admin)])
+async def export_marketing_funnel_csv(
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    period: str = Query("30d"),
+):
+    """Export marketing funnel data as CSV (same params as marketing-funnel)."""
+    from fastapi.responses import StreamingResponse
+    import csv
+    import io
+    data = await get_marketing_funnel(from_date=from_date, to_date=to_date, period=period)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Metric", "Value"])
+    writer.writerow(["From", data["from"]])
+    writer.writerow(["To", data["to"]])
+    writer.writerow(["Leads", data["kpis"]["leads_count"]])
+    writer.writerow(["Trials", data["kpis"]["trials_count"]])
+    writer.writerow(["Paid", data["kpis"]["paid_count"]])
+    writer.writerow(["Conversion rate %", data["kpis"]["conversion_rate"]])
+    writer.writerow([])
+    writer.writerow(["Funnel stage", "Count", "Conversion %", "Drop-off %"])
+    for row in data["funnel"]:
+        writer.writerow([row["stage"], row["count"], row["conversion_rate"], row["drop_off_percent"]])
+    writer.writerow([])
+    writer.writerow(["Source", "Leads", "Trials", "Paid", "Conversion %"])
+    for row in data["source_breakdown"]:
+        writer.writerow([row["source"], row["leads"], row["trials"], row["paid"], row["conversion_percent"]])
+    writer.writerow([])
+    writer.writerow(["Avg days lead to trial", data["conversion_timing"].get("avg_days_lead_to_trial") or ""])
+    writer.writerow(["Avg days trial to paid", data["conversion_timing"].get("avg_days_trial_to_paid") or ""])
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=marketing_funnel.csv"},
+    )

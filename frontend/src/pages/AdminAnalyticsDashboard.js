@@ -10,7 +10,7 @@ import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   ArrowLeft, TrendingUp, TrendingDown, Minus, DollarSign,
   Package, Users, Clock, Target, Activity, BarChart3,
-  RefreshCw, Calendar, Zap, Printer
+  RefreshCw, Calendar, Zap, Printer, Download, Filter
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -129,6 +129,7 @@ export default function AdminAnalyticsDashboard() {
   const [conversionFailures, setConversionFailures] = useState(null);
   const [conversionSourceFilter, setConversionSourceFilter] = useState('');
   const [conversionPlanFilter, setConversionPlanFilter] = useState('');
+  const [marketingFunnel, setMarketingFunnel] = useState(null);
   
   // Build query params for API calls
   const getQueryParams = useCallback(() => {
@@ -183,14 +184,16 @@ export default function AdminAnalyticsDashboard() {
       const sourceParam = conversionSourceFilter ? `&source=${encodeURIComponent(conversionSourceFilter)}` : '';
       const planParam = conversionPlanFilter ? `&plan=${encodeURIComponent(conversionPlanFilter)}` : '';
       try {
-        const [overviewRes, funnelResConv, failuresRes] = await Promise.all([
+        const [overviewRes, funnelResConv, failuresRes, marketingFunnelRes] = await Promise.all([
           client.get(`/admin/analytics/overview?${convParams}${sourceParam}${planParam}`),
           client.get(`/admin/analytics/funnel?${convParams}${sourceParam}${planParam}`),
           client.get(`/admin/analytics/failures?${convParams}`),
+          client.get(`/admin/analytics/marketing-funnel?${convParams}`).catch(() => ({ data: null })),
         ]);
         setConversionOverview(overviewRes.data);
         setConversionFunnel(funnelResConv.data);
         setConversionFailures(failuresRes.data);
+        setMarketingFunnel(marketingFunnelRes?.data ?? null);
       } catch (convErr) {
         console.error('Conversion funnel fetch failed:', convErr);
         setConversionOverview(null);
@@ -684,6 +687,136 @@ export default function AdminAnalyticsDashboard() {
                 )}
                 {!conversionOverview && !conversionFunnel && !loading && (
                   <p className="text-gray-500 text-center py-4">No conversion funnel data for this period. Data appears as events are logged.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Marketing Funnel (Leads → Trial → Portal → Paid) */}
+            <Card className="mb-8">
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Filter className="h-5 w-5 text-teal-600" />
+                      Marketing Funnel
+                    </CardTitle>
+                    <CardDescription>Leads, trials, portal activation, and paid conversions</CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const params = showCustomRange && customDateRange.start && customDateRange.end
+                        ? `from_date=${customDateRange.start}&to_date=${customDateRange.end}`
+                        : `period=${period}`;
+                      try {
+                        const res = await client.get(`/admin/analytics/marketing-funnel/export?${params}`, { responseType: 'blob' });
+                        const url = window.URL.createObjectURL(res.data);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'marketing_funnel.csv';
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                      } catch (e) {
+                        toast.error('Export failed');
+                      }
+                    }}
+                    disabled={!marketingFunnel}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {marketingFunnel ? (
+                  <div className="space-y-6">
+                    {/* KPI row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                      <div className="rounded-lg border p-3 bg-gray-50">
+                        <p className="text-xs text-gray-500">Visitors</p>
+                        <p className="text-xl font-bold text-gray-700">{marketingFunnel.kpis?.visitors ?? '—'}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-blue-50">
+                        <p className="text-xs text-gray-600">Leads</p>
+                        <p className="text-xl font-bold text-blue-700">{marketingFunnel.kpis?.leads_count ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-amber-50">
+                        <p className="text-xs text-gray-600">Trials</p>
+                        <p className="text-xl font-bold text-amber-700">{marketingFunnel.kpis?.trials_count ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-green-50">
+                        <p className="text-xs text-gray-600">Paid</p>
+                        <p className="text-xl font-bold text-green-700">{marketingFunnel.kpis?.paid_count ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-teal-50">
+                        <p className="text-xs text-gray-600">Conversion %</p>
+                        <p className="text-xl font-bold text-teal-700">{marketingFunnel.kpis?.conversion_rate ?? 0}%</p>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-gray-50">
+                        <p className="text-xs text-gray-500">MRR</p>
+                        <p className="text-xl font-bold text-gray-700">{marketingFunnel.kpis?.mrr != null ? marketingFunnel.kpis.mrr : '—'}</p>
+                      </div>
+                    </div>
+                    {/* Funnel stages */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Funnel</h4>
+                      <div className="space-y-2">
+                        {marketingFunnel.funnel?.map((step, idx) => (
+                          <div key={step.stage} className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-gray-800 w-36">{step.stage}</span>
+                            <span className="text-sm text-gray-600">{step.count}</span>
+                            <ProgressBar value={step.conversion_rate} max={100} color="teal" />
+                            <span className="text-xs text-gray-500">{step.conversion_rate}%</span>
+                            {step.drop_off_percent > 0 && (
+                              <span className="text-xs text-red-600">↓{step.drop_off_percent}%</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Source attribution */}
+                    {marketingFunnel.source_breakdown?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Lead source</h4>
+                        <div className="overflow-x-auto border rounded">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="text-left py-2 px-3">Source</th>
+                                <th className="text-right py-2 px-3">Leads</th>
+                                <th className="text-right py-2 px-3">Trials</th>
+                                <th className="text-right py-2 px-3">Paid</th>
+                                <th className="text-right py-2 px-3">Conv %</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {marketingFunnel.source_breakdown.map((row) => (
+                                <tr key={row.source} className="border-t">
+                                  <td className="py-2 px-3">{row.source}</td>
+                                  <td className="text-right py-2 px-3">{row.leads}</td>
+                                  <td className="text-right py-2 px-3">{row.trials}</td>
+                                  <td className="text-right py-2 px-3">{row.paid}</td>
+                                  <td className="text-right py-2 px-3">{row.conversion_percent}%</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    {/* Conversion timing */}
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <span className="text-gray-600">
+                        Avg days lead → trial: <strong>{marketingFunnel.conversion_timing?.avg_days_lead_to_trial ?? '—'}</strong>
+                      </span>
+                      <span className="text-gray-600">
+                        Avg days trial → paid: <strong>{marketingFunnel.conversion_timing?.avg_days_trial_to_paid ?? '—'}</strong>
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-6">No marketing funnel data for this period.</p>
                 )}
               </CardContent>
             </Card>
