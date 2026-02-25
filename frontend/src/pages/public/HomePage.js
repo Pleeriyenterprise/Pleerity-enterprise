@@ -153,6 +153,15 @@ const HomePage = () => {
                 >
                   <Link to="/demo">View Platform Demo</Link>
                 </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-midnight-blue/30 text-midnight-blue hover:bg-midnight-blue/5"
+                  asChild
+                  data-testid="hero-cta-risk-check"
+                >
+                  <Link to="/risk-check">Check Your Compliance Risk</Link>
+                </Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
                 {trustBullets.map((point) => (

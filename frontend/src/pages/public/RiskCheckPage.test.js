@@ -1,38 +1,51 @@
 /**
- * Risk Check page: Step 2 does not show full report until email is submitted and report API returns.
+ * Risk Check page: 4-step funnel. Step 2 = partial only; Step 3 = email gate; Step 4 = full report.
+ * Activate redirects to /intake/start?plan=...&lead_id=...&from=risk-check.
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import RiskCheckPage from './RiskCheckPage';
 
+function renderWithProviders(ui) {
+  return render(
+    <HelmetProvider>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </HelmetProvider>
+  );
+}
+
 const mockPost = jest.fn();
+const mockNavigate = jest.fn();
 jest.mock('../../api/client', () => ({
   __esModule: true,
   default: {
     post: (...args) => mockPost(...args),
   },
 }));
-
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 
 describe('RiskCheckPage', () => {
   beforeEach(() => {
     mockPost.mockReset();
+    mockNavigate.mockClear();
+    Element.prototype.scrollIntoView = jest.fn();
   });
 
-  it('shows Step 1 questions initially', () => {
-    render(
-      <MemoryRouter>
-        <RiskCheckPage />
-      </MemoryRouter>
-    );
-    expect(screen.getByText(/Compliance Monitoring Snapshot/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Calculate Risk/ })).toBeInTheDocument();
-    expect(screen.queryByText(/Your Compliance Monitoring Snapshot/)).not.toBeInTheDocument();
+  it('shows Step 1 questions and progress Step 1 of 4', () => {
+    renderWithProviders(<RiskCheckPage />);
+    expect(screen.getByText(/Check Your Compliance Risk in 60 Seconds/)).toBeInTheDocument();
+    expect(screen.getByText(/Step 1 of 4/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Continue/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Your Risk Snapshot/)).not.toBeInTheDocument();
   });
 
-  it('shows Step 2 partial reveal after Calculate Risk; full report only after Generate My Risk Report', async () => {
+  it('submits questions → partial; email gate → full report; activate redirects with lead_id', async () => {
     mockPost
       .mockResolvedValueOnce({
         data: {
@@ -40,6 +53,7 @@ describe('RiskCheckPage', () => {
           teaser_text: 'Your responses suggest moderate monitoring risk.',
           blurred_score_hint: 'Moderate range',
           flags_count: 2,
+          recommended_plan_code: 'PLAN_2_PORTFOLIO',
         },
       })
       .mockResolvedValueOnce({
@@ -51,58 +65,62 @@ describe('RiskCheckPage', () => {
           flags: [],
           disclaimer_text: 'This assessment is informational.',
           property_breakdown: [{ label: 'Property 1', score: 64, gas: 'Valid', electrical: 'Valid', tracking: 'Manual' }],
+          recommended_plan_code: 'PLAN_2_PORTFOLIO',
         },
-      });
+      })
+      .mockResolvedValueOnce({ data: { ok: true } });
 
-    render(
-      <MemoryRouter>
-        <RiskCheckPage />
-      </MemoryRouter>
-    );
+    renderWithProviders(<RiskCheckPage />);
 
-    // Open each Select and choose an option (gas, eicr, tracking)
     const openAndSelect = async (testId, optionText) => {
       const trigger = screen.getByTestId(testId);
       fireEvent.click(trigger);
-      await waitFor(() => screen.getByText(optionText));
-      fireEvent.click(screen.getByText(optionText));
+      const option = await waitFor(() => screen.getByRole('option', { name: optionText }));
+      fireEvent.click(option);
     };
     await openAndSelect('risk-gas', 'Valid');
     await openAndSelect('risk-eicr', 'Valid');
-    await openAndSelect('risk-tracking', 'Manual reminders');
+    await openAndSelect('risk-tracking', 'Manual');
 
-    fireEvent.click(screen.getByRole('button', { name: /Calculate Risk/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Continue/ }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/risk-check/preview', expect.any(Object));
     });
 
-    // Step 2: partial reveal and email gate visible; full report not yet
+    // Step 2: partial only; "Get Full Risk Report" (no email form here)
     await waitFor(() => {
-      expect(screen.getByText(/Preliminary Risk Assessment/)).toBeInTheDocument();
-      expect(screen.getByText(/Get Your Full Compliance Risk Report/)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Generate My Risk Report/ })).toBeInTheDocument();
+      expect(screen.getByText(/Preliminary Result/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Get Full Risk Report/ })).toBeInTheDocument();
     });
-    expect(screen.queryByText(/Compliance Score: 64%/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/64/)).not.toBeInTheDocument();
 
-    // Fill email gate and submit
-    const nameInput = screen.getByPlaceholderText('First name');
+    fireEvent.click(screen.getByRole('button', { name: /Get Full Risk Report/ }));
+
+    // Step 3: email gate
+    await waitFor(() => {
+      expect(screen.getByText(/Send My Full Risk Report/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Generate My Report/ })).toBeInTheDocument();
+    });
     const emailInput = screen.getByPlaceholderText('you@example.com');
-    fireEvent.change(nameInput, { target: { value: 'Jane' } });
     fireEvent.change(emailInput, { target: { value: 'jane@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: /Generate My Risk Report/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generate My Report/ }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/risk-check/report', expect.objectContaining({
-        first_name: 'Jane',
         email: 'jane@example.com',
       }));
     });
 
-    // Step 3: full report visible
+    // Step 4: full report
     await waitFor(() => {
-      expect(screen.getByText(/Compliance Score: 64%/)).toBeInTheDocument();
+      expect(screen.getByText(/Compliance Risk Score \(estimate\): 64 \/ 97/)).toBeInTheDocument();
       expect(screen.getByText(/Activate Monitoring/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Activate Monitoring/));
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/intake\/start\?.*lead_id=RISK-ABC123.*from=risk-check/));
     });
   });
 });
