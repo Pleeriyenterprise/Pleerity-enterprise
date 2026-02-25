@@ -149,7 +149,7 @@ const HomePage = () => {
                   asChild
                   data-testid="hero-cta-secondary"
                 >
-                  <Link to="/intake/start">Start Monitoring</Link>
+                  <Link to="/compliance-vault-pro">View Platform Overview</Link>
                 </Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
@@ -200,7 +200,7 @@ const HomePage = () => {
               </div>
               <div className="mt-4 flex justify-center">
                 <Button className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
-                  <Link to="/intake/start">Generate Report</Link>
+                  <Link to="/risk-check">Generate Report</Link>
                 </Button>
               </div>
             </div>
@@ -221,7 +221,7 @@ const HomePage = () => {
           </div>
           <div className="flex justify-center">
             <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
-              <Link to="/intake/start">Start Your Setup</Link>
+              <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
           </div>
         </div>
@@ -298,7 +298,7 @@ const HomePage = () => {
           </div>
           <div className="text-center mt-12">
             <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
-              <Link to="/intake/start">Start Tracking Today</Link>
+              <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
           </div>
         </div>
@@ -338,10 +338,10 @@ const HomePage = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
             <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
-              <Link to="/pricing">View plans</Link>
+              <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
             <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal" asChild>
-              <Link to="/intake/start">Start Your Setup</Link>
+              <Link to="/pricing">View plans</Link>
             </Button>
           </div>
         </div>
@@ -381,7 +381,7 @@ const HomePage = () => {
               className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
               asChild
             >
-              <Link to="/intake/start">Start Your Setup</Link>
+              <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
             <Button
               size="lg"
@@ -389,7 +389,7 @@ const HomePage = () => {
               className="border-white text-white hover:bg-white/10"
               asChild
             >
-              <Link to="/risk-check">View Platform Overview</Link>
+              <Link to="/compliance-vault-pro">View Platform Overview</Link>
             </Button>
           </div>
         </div>
