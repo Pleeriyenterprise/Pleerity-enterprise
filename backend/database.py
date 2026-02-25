@@ -179,6 +179,12 @@ class Database:
                 await self.db.payments.create_index([("client_id", 1), ("created_at", -1)])
                 await self.db.payments.create_index("stripe_charge_id", sparse=True)
                 await self.db.payments.create_index("stripe_invoice_id", sparse=True)
+            # MRR snapshots for NRR (Executive Overview)
+            if hasattr(self.db, "mrr_snapshots"):
+                try:
+                    await self.db.mrr_snapshots.create_index("period", unique=True)
+                except Exception:
+                    pass
             # Provisioning jobs - idempotency by checkout_session_id
             await self.db.provisioning_jobs.create_index("job_id", unique=True)
             try:

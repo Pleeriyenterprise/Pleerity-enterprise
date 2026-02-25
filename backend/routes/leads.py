@@ -423,10 +423,16 @@ async def list_leads(
         page=page,
         limit=limit,
     )
-    
+    # Enrich with lead_score (0-100), score_band (High/Medium/Low), and tags for display
+    intent_to_score = {"HIGH": 75, "MEDIUM": 50, "LOW": 25}
+    for lead in leads:
+        raw = lead.get("intent_score") or "LOW"
+        lead["lead_score"] = intent_to_score.get(str(raw).upper(), 25)
+        s = lead["lead_score"]
+        lead["score_band"] = "High" if s >= 70 else "Medium" if s >= 40 else "Low"
+        lead["tags"] = lead.get("tags") or []
     # Get stats
     stats = await LeadService.get_stats()
-    
     return {
         "leads": leads,
         "total": total,
@@ -637,7 +643,8 @@ async def get_lead(
     lead = await LeadService.get_lead(lead_id)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    
+    lead["tags"] = lead.get("tags") or []
+
     # Get audit log
     audit_log = await LeadService.get_audit_log(lead_id, limit=20)
     

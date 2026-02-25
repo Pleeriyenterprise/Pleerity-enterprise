@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Settings,
   BarChart3,
+  TrendingUp,
   Mail,
   Truck,
   HeadphonesIcon,
@@ -52,6 +53,7 @@ const navSections = [
     items: [
       { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
       { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+      { href: '/admin/analytics/executive', label: 'Executive Overview', icon: TrendingUp },
       { href: '/admin/reporting', label: 'Reporting', icon: FileText },
     ],
   },

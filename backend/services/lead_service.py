@@ -47,6 +47,13 @@ def generate_lead_id() -> str:
     return f"LEAD-{timestamp}-{unique}"
 
 
+def _initial_lead_tags(source_platform) -> List[str]:
+    """Initial tags for nurture alignment (e.g. checklist_download, checklist_nurture_v1)."""
+    if source_platform == LeadSourcePlatform.COMPLIANCE_CHECKLIST:
+        return ["checklist_download", "checklist_nurture_v1"]
+    return []
+
+
 class LeadService:
     """Service for lead management operations."""
     
@@ -137,6 +144,7 @@ class LeadService:
             # Checklist nurture (source_platform COMPLIANCE_CHECKLIST)
             "nurture_stage": 0,
             "last_nurture_sent_at": None,
+            "tags": _initial_lead_tags(request.source_platform),
             
             # Assignment
             "assigned_to": None,

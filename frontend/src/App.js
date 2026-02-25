@@ -127,6 +127,7 @@ import AdminServiceCataloguePage from './pages/AdminServiceCataloguePage';
 import AdminNotificationPreferencesPage from './pages/AdminNotificationPreferencesPage';
 import AdminIntakeSchemaPage from './pages/AdminIntakeSchemaPage';
 import AdminAnalyticsDashboard from './pages/AdminAnalyticsDashboard';
+import AdminExecutiveOverviewPage from './pages/AdminExecutiveOverviewPage';
 import AdminSupportPage from './pages/AdminSupportPage';
 import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
 import AdminLegalContentPage from './pages/AdminLegalContentPage';
@@ -390,6 +391,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminAnalyticsDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/analytics/executive" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminExecutiveOverviewPage />
                 </ProtectedRoute>
               } 
             />

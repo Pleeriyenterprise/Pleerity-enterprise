@@ -1432,3 +1432,301 @@ def _revenue_date_range(from_date: Optional[str], to_date: Optional[str], period
         return start, end
     start_iso, end_iso = get_date_range(period)
     return parse_custom_date(start_iso), parse_custom_date(end_iso)
+
+
+# ============================================================================
+# EXECUTIVE OVERVIEW (investor-ready snapshot; RBAC: Owner/Admin only)
+# ============================================================================
+
+@router.get("/executive-overview", dependencies=[Depends(require_owner_or_admin)])
+async def get_executive_overview():
+    """
+    Executive Overview: MRR, ARR, Revenue YTD, Gross Profit YTD, SaaS health,
+    revenue composition (donut), and 12-month revenue trend. Investor-ready.
+    """
+    db = database.get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    now = datetime.now(timezone.utc)
+    ytd_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    ly_start = (ytd_start - timedelta(days=365)).replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    ly_end = ytd_start - timedelta(microseconds=1)
+
+    paid_filter = {"status": "paid"}
+    ytd_query = {"created_at": {"$gte": ytd_start, "$lte": now}}
+    ly_query = {"created_at": {"$gte": ly_start, "$lte": ly_end}}
+
+    # Revenue YTD and last year YTD; cost YTD for gross profit
+    revenue_ytd = 0
+    cost_ytd = 0
+    async for p in db.payments.find({**ytd_query, **paid_filter}, {"amount": 1, "cost_pence": 1}):
+        revenue_ytd += p.get("amount") or 0
+        cost_ytd += p.get("cost_pence") or 0
+    revenue_ytd_ly = 0
+    async for p in db.payments.find({**ly_query, **paid_filter}, {"amount": 1}):
+        revenue_ytd_ly += p.get("amount") or 0
+    change_ytd_pct = round((revenue_ytd - revenue_ytd_ly) / revenue_ytd_ly * 100, 1) if revenue_ytd_ly else (100.0 if revenue_ytd else 0)
+    trend_ytd = "up" if change_ytd_pct > 0 else "down" if change_ytd_pct < 0 else "flat"
+
+    # MRR and ARR from client_billing + plan_registry
+    mrr_pence = 0
+    active_subscribers = 0
+    canceled_count = 0
+    async for b in db.client_billing.find({}, {"subscription_status": 1, "current_plan_code": 1}):
+        status = (b.get("subscription_status") or "").upper()
+        if status in ("ACTIVE", "TRIALING"):
+            active_subscribers += 1
+            plan_def = plan_registry.get_plan_by_code_string(b.get("current_plan_code") or "PLAN_1_SOLO")
+            monthly_gbp = (plan_def or {}).get("monthly_price") or 0
+            mrr_pence += int(round(monthly_gbp * 100))
+        elif status in ("CANCELED", "UNPAID", "INCOMPLETE_EXPIRED"):
+            canceled_count += 1
+    arr_pence = mrr_pence * 12
+    # MRR/ARR change: use revenue this month vs last month as proxy
+    this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_month_end = this_month_start - timedelta(microseconds=1)
+    last_month_start = (this_month_start - timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    rev_this_month = 0
+    rev_last_month = 0
+    async for p in db.payments.find({"status": "paid", "created_at": {"$gte": this_month_start, "$lte": now}}, {"amount": 1}):
+        rev_this_month += p.get("amount") or 0
+    async for p in db.payments.find({"status": "paid", "created_at": {"$gte": last_month_start, "$lte": last_month_end}}, {"amount": 1}):
+        rev_last_month += p.get("amount") or 0
+    change_revenue_month_pct = round((rev_this_month - rev_last_month) / rev_last_month * 100, 1) if rev_last_month else (100.0 if rev_this_month else 0)
+    trend_mrr = "up" if change_revenue_month_pct > 0 else "down" if change_revenue_month_pct < 0 else "flat"
+
+    # New subscribers (30d): clients with first subscription payment in last 30d
+    thirty_d_ago = now - timedelta(days=30)
+    pipeline_new = [
+        {"$match": {"type": "subscription", "status": "paid", "created_at": {"$gte": thirty_d_ago, "$lte": now}}},
+        {"$group": {"_id": "$client_id"}},
+    ]
+    ids_in_30d = set()
+    async for doc in db.payments.aggregate(pipeline_new):
+        if doc.get("_id"):
+            ids_in_30d.add(doc["_id"])
+    new_subscribers_30d = 0
+    for cid in ids_in_30d:
+        earlier = await db.payments.find_one({"client_id": cid, "type": "subscription", "status": "paid", "created_at": {"$lt": thirty_d_ago}})
+        if not earlier:
+            new_subscribers_30d += 1
+
+    churn_rate = round(100.0 * canceled_count / (active_subscribers + canceled_count), 1) if (active_subscribers + canceled_count) else None
+    churn_decimal = (churn_rate / 100.0) if churn_rate is not None and churn_rate > 0 else None
+    arpu_pence = round(mrr_pence / active_subscribers, 0) if active_subscribers else None
+    ltv_pence = round(arpu_pence / churn_decimal, 0) if (arpu_pence and churn_decimal) else None
+
+    # NRR: record current MRR snapshot and compare to previous month (approximate NRR)
+    current_period = now.strftime("%Y-%m")
+    await db.mrr_snapshots.update_one(
+        {"period": current_period},
+        {"$set": {"mrr_pence": mrr_pence, "recorded_at": now}},
+        upsert=True,
+    )
+    prev_period_dt = (now.replace(day=1) - timedelta(days=1))
+    prev_period = prev_period_dt.strftime("%Y-%m")
+    prev_snapshot = await db.mrr_snapshots.find_one({"period": prev_period}, {"mrr_pence": 1})
+    nrr = None
+    if prev_snapshot and (prev_snapshot.get("mrr_pence") or 0) > 0:
+        nrr = round(100.0 * mrr_pence / prev_snapshot["mrr_pence"], 1)
+
+    # Subscriber breakdown by plan (for Subscription performance table)
+    plan_active = {}
+    plan_trial = {}
+    plan_canceled = {}
+    async for b in db.client_billing.find({}, {"subscription_status": 1, "current_plan_code": 1}):
+        status = (b.get("subscription_status") or "").upper()
+        plan_code = b.get("current_plan_code") or "PLAN_1_SOLO"
+        if status == "TRIALING":
+            plan_trial[plan_code] = plan_trial.get(plan_code, 0) + 1
+        elif status in ("ACTIVE",):
+            plan_active[plan_code] = plan_active.get(plan_code, 0) + 1
+        elif status in ("CANCELED", "UNPAID", "INCOMPLETE_EXPIRED"):
+            plan_canceled[plan_code] = plan_canceled.get(plan_code, 0) + 1
+    all_plans = set(plan_active.keys()) | set(plan_trial.keys()) | set(plan_canceled.keys())
+    subscription_performance = []
+    for code in sorted(all_plans):
+        plan_def = plan_registry.get_plan_by_code_string(code)
+        plan_name = (plan_def or {}).get("name") or code
+        active = plan_active.get(code, 0)
+        trial = plan_trial.get(code, 0)
+        churned = plan_canceled.get(code, 0)
+        monthly_gbp = (plan_def or {}).get("monthly_price") or 0
+        mrr_contribution_pence = int(round((active + trial) * monthly_gbp * 100))
+        subscription_performance.append({
+            "plan_name": plan_name,
+            "plan_code": code,
+            "active": active,
+            "trial": trial,
+            "churned": churned,
+            "mrr_contribution_pence": mrr_contribution_pence,
+            "mrr_contribution_formatted": f"£{mrr_contribution_pence / 100:,.2f}",
+        })
+
+    # Revenue composition (YTD) for donut: Subscription, Pack, One-time (Setup/Other)
+    comp = {"Subscription": 0, "Document Packs": 0, "Setup & other": 0}
+    async for p in db.payments.find({**ytd_query, **paid_filter}, {"amount": 1, "type": 1}):
+        amt = p.get("amount") or 0
+        t = (p.get("type") or "one_time").lower()
+        if t == "subscription":
+            comp["Subscription"] += amt
+        elif t == "pack":
+            comp["Document Packs"] += amt
+        else:
+            comp["Setup & other"] += amt
+    total_comp = sum(comp.values())
+    revenue_composition = [
+        {"label": k, "value_pence": v, "percent": round(100.0 * v / total_comp, 1) if total_comp else 0}
+        for k, v in comp.items() if v > 0
+    ]
+
+    # 12-month monthly trend (recurring, one-time, total)
+    monthly_trend = []
+    first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    for i in range(11, -1, -1):
+        # i=11 -> 11 months ago, i=0 -> current month
+        month_start = first_of_this_month - timedelta(days=30 * i)
+        month_start = month_start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        month_end = next_month - timedelta(microseconds=1)
+        if month_end > now:
+            month_end = now
+        mq = {"status": "paid", "created_at": {"$gte": month_start, "$lte": month_end}}
+        rec = 0
+        one = 0
+        async for p in db.payments.find({**mq, "type": "subscription"}, {"amount": 1}):
+            rec += p.get("amount") or 0
+        async for p in db.payments.find(mq, {"amount": 1, "type": 1}):
+            amt = p.get("amount") or 0
+            if (p.get("type") or "").lower() == "subscription":
+                continue
+            one += amt
+        monthly_trend.append({
+            "month": month_start.strftime("%Y-%m"),
+            "label": month_start.strftime("%b %Y"),
+            "recurring_pence": rec,
+            "one_time_pence": one,
+            "total_pence": rec + one,
+        })
+
+    # Gross profit YTD: revenue_ytd - cost_ytd (cost_pence on payments when set)
+    gross_profit_ytd_pence = revenue_ytd - cost_ytd
+    gross_profit_ytd_formatted = f"£{gross_profit_ytd_pence / 100:,.2f}"
+    change_gp_pct = None
+    trend_gp = "flat"
+
+    # Payment health (financial stability)
+    last_30_start = now - timedelta(days=30)
+    failed_30d = await db.payments.count_documents({
+        "status": "failed",
+        "created_at": {"$gte": last_30_start, "$lte": now},
+    })
+    refunds_30d = await db.payments.count_documents({
+        "status": "refunded",
+        "created_at": {"$gte": last_30_start, "$lte": now},
+    })
+    past_due = await db.client_billing.count_documents({
+        "subscription_status": {"$in": ["PAST_DUE", "past_due"]},
+    })
+    cash_in_30d = 0
+    async for p in db.payments.find({"status": "paid", "created_at": {"$gte": last_30_start, "$lte": now}}, {"amount": 1}):
+        cash_in_30d += p.get("amount") or 0
+
+    # Risk: revenue from top 5 customers (YTD paid by client_id)
+    pipeline_top = [
+        {"$match": {**ytd_query, **paid_filter}},
+        {"$group": {"_id": "$client_id", "total_pence": {"$sum": "$amount"}}},
+        {"$sort": {"total_pence": -1}},
+        {"$limit": 5},
+    ]
+    top5_pence = 0
+    async for doc in db.payments.aggregate(pipeline_top):
+        top5_pence += doc.get("total_pence") or 0
+    revenue_top5_pct = round(100.0 * top5_pence / revenue_ytd, 1) if revenue_ytd else 0
+
+    # Valuation snapshot (admin only; typical early-stage SaaS multiple 5–8x ARR)
+    arr_gbp = arr_pence / 100.0
+    multiple_low, multiple_high = 5, 8
+    implied_valuation_low_gbp = arr_gbp * multiple_low
+    implied_valuation_high_gbp = arr_gbp * multiple_high
+
+    # Growth efficiency: funnel + placeholders for CAC-based metrics
+    thirty_d_ago = now - timedelta(days=30)
+    # Leads: created_at may be string (iso)
+    leads_30d = await db.leads.count_documents({
+        "created_at": {"$gte": thirty_d_ago.isoformat(), "$lte": now.isoformat()},
+    })
+    # Clients created in last 30d (signed up / trial started); accept string or datetime created_at
+    clients_30d_query = {
+        "$or": [
+            {"created_at": {"$gte": thirty_d_ago.isoformat(), "$lte": now.isoformat()}},
+            {"created_at": {"$gte": thirty_d_ago, "$lte": now}},
+        ],
+        "subscription_status": {"$in": ["TRIALING", "trialing", "ACTIVE", "active"]},
+    }
+    trials_30d = await db.clients.count_documents(clients_30d_query)
+    # Use active_subscribers as current paid; conversion = paid / leads (lead-to-paid)
+    conversion_pct = round(100.0 * active_subscribers / leads_30d, 1) if leads_30d else 0
+    growth_efficiency = {
+        "visitors": None,
+        "leads_30d": leads_30d,
+        "trials_30d": trials_30d,
+        "paid": active_subscribers,
+        "conversion_pct": conversion_pct,
+        "cost_per_lead": None,
+        "cpa": None,
+        "payback_months": None,
+    }
+
+    return {
+        "row1_core": {
+            "mrr_pence": mrr_pence,
+            "mrr_formatted": f"£{mrr_pence / 100:,.2f}",
+            "arr_pence": arr_pence,
+            "arr_formatted": f"£{arr_pence / 100:,.2f}",
+            "revenue_ytd_pence": revenue_ytd,
+            "revenue_ytd_formatted": f"£{revenue_ytd / 100:,.2f}",
+            "change_revenue_ytd_pct": change_ytd_pct,
+            "trend_revenue_ytd": trend_ytd,
+            "change_revenue_month_pct": change_revenue_month_pct,
+            "trend_mrr": trend_mrr,
+            "gross_profit_ytd_pence": gross_profit_ytd_pence,
+            "gross_profit_ytd_formatted": gross_profit_ytd_formatted,
+            "change_gp_pct": change_gp_pct,
+            "trend_gp": trend_gp,
+        },
+        "row2_saas": {
+            "active_subscribers": active_subscribers,
+            "new_subscribers_30d": new_subscribers_30d,
+            "churn_rate": churn_rate,
+            "arpu_pence": arpu_pence,
+            "arpu_formatted": f"£{arpu_pence / 100:,.2f}" if arpu_pence is not None else None,
+            "ltv_pence": ltv_pence,
+            "ltv_formatted": f"£{ltv_pence / 100:,.2f}" if ltv_pence is not None else None,
+            "nrr": nrr,
+            "nrr_note": None if nrr is not None else "Record MRR snapshots (next month) for NRR.",
+        },
+        "subscription_performance": subscription_performance,
+        "revenue_composition": revenue_composition,
+        "monthly_trend_12": monthly_trend,
+        "financial_stability": {
+            "cash_in_30d_pence": cash_in_30d,
+            "cash_in_30d_formatted": f"£{cash_in_30d / 100:,.2f}",
+            "failed_payments_30d": failed_30d,
+            "refunds_30d": refunds_30d,
+            "past_due_accounts": past_due,
+        },
+        "risk_indicators": {
+            "revenue_top5_pct": revenue_top5_pct,
+        },
+        "valuation_snapshot": {
+            "arr_pence": arr_pence,
+            "arr_formatted": f"£{arr_pence / 100:,.2f}",
+            "multiple_low": multiple_low,
+            "multiple_high": multiple_high,
+            "implied_valuation_low_gbp": implied_valuation_low_gbp,
+            "implied_valuation_high_gbp": implied_valuation_high_gbp,
+            "implied_valuation_formatted": f"£{implied_valuation_low_gbp:,.0f} – £{implied_valuation_high_gbp:,.0f}",
+        },
+        "growth_efficiency": growth_efficiency,
+    }

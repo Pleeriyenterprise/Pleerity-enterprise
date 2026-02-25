@@ -518,11 +518,28 @@ export default function AdminLeadsPage() {
                           <Badge variant="outline" className={`text-xs ${intentColors[lead.intent_score] || ''}`}>
                             {(lead.intent_score ?? '')} Intent
                           </Badge>
+                          {(lead.score_band || lead.lead_score != null) && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                lead.score_band === 'High' ? 'bg-green-50 text-green-700 border-green-200' :
+                                lead.score_band === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-gray-50 text-gray-600 border-gray-200'
+                              }`}
+                            >
+                              {lead.score_band ?? '—'} ({lead.lead_score ?? '—'})
+                            </Badge>
+                          )}
                           {lead.service_interest && lead.service_interest !== 'UNKNOWN' && (
                             <Badge variant="outline" className="text-xs">
                               {String(lead.service_interest).replace(/_/g, ' ')}
                             </Badge>
                           )}
+                          {Array.isArray(lead.tags) && lead.tags.length > 0 && lead.tags.map((t) => (
+                            <Badge key={t} variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200">
+                              {t}
+                            </Badge>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -763,6 +780,18 @@ export default function AdminLeadsPage() {
                         <span className="text-gray-500">Service:</span>{' '}
                         <span className="font-medium">{selectedLead.service_interest?.replace(/_/g, ' ')}</span>
                       </div>
+                      {Array.isArray(selectedLead.tags) && selectedLead.tags.length > 0 && (
+                        <div className="md:col-span-3">
+                          <span className="text-gray-500">Tags:</span>{' '}
+                          <span className="flex flex-wrap gap-1 mt-1">
+                            {selectedLead.tags.map((t) => (
+                              <Badge key={t} variant="secondary" className="text-xs font-normal">
+                                {t}
+                              </Badge>
+                            ))}
+                          </span>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 

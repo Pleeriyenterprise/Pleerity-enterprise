@@ -230,7 +230,10 @@ async def send_checklist_delivery_email_and_update_lead(lead: Dict[str, Any]) ->
     now = datetime.now(timezone.utc).isoformat()
     await db[LEADS_COLLECTION].update_one(
         {"lead_id": lead["lead_id"]},
-        {"$set": {"nurture_stage": 1, "last_nurture_sent_at": now, "updated_at": now}},
+        {
+            "$set": {"nurture_stage": 1, "last_nurture_sent_at": now, "updated_at": now},
+            "$addToSet": {"tags": {"$each": ["checklist_download", "checklist_nurture_v1"]}},
+        },
     )
     await LeadService.log_audit(
         event=LeadAuditEvent.FOLLOWUP_EMAIL_SENT,

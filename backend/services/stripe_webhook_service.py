@@ -1235,8 +1235,9 @@ class StripeWebhookService:
         stripe_invoice_id: Optional[str] = None,
         stripe_charge_id: Optional[str] = None,
         stripe_payment_intent_id: Optional[str] = None,
+        cost_pence: Optional[int] = None,
     ) -> None:
-        """Insert normalized payment for Revenue Analytics. Idempotent by stripe_event_id."""
+        """Insert normalized payment for Revenue Analytics. Idempotent by stripe_event_id. cost_pence optional for gross profit."""
         db = database.get_db()
         if not db:
             return
@@ -1255,6 +1256,8 @@ class StripeWebhookService:
             doc["stripe_charge_id"] = stripe_charge_id
         if stripe_payment_intent_id:
             doc["stripe_payment_intent_id"] = stripe_payment_intent_id
+        if cost_pence is not None:
+            doc["cost_pence"] = cost_pence
         try:
             await db.payments.insert_one(doc)
         except DuplicateKeyError:
