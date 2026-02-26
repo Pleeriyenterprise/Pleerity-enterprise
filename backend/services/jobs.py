@@ -1070,14 +1070,21 @@ class ScheduledReportJob:
                         logger.warning(f"Unknown report type: {report_type}")
                         continue
                     
-                    # Prepare email
-                    recipients = schedule.get("recipients", [client.get("email")])
+                    # Prepare email; ensure recipients is always a list (may be stored as string)
+                    raw_recipients = schedule.get("recipients", [client.get("email")])
+                    if isinstance(raw_recipients, str):
+                        recipients = [r.strip() for r in raw_recipients.split(",") if r.strip()]
+                    else:
+                        recipients = list(raw_recipients) if raw_recipients else []
+                    if not recipients:
+                        recipients = [client.get("email")] if client.get("email") else []
                     frequency = schedule.get("frequency", "weekly")
                     
                     subject = f"Your {frequency.title()} Compliance Report - {now.strftime('%d %b %Y')}"
                     
                     # Send to each recipient via orchestrator
                     date_key = now.strftime("%Y-%m-%d")
+                    schedule_sent = 0
                     for recipient in recipients:
                         try:
                             idempotency_key = f"{schedule.get('schedule_id', schedule['client_id'])}_SCHEDULED_REPORT_{date_key}_{recipient}"
@@ -1100,22 +1107,27 @@ class ScheduledReportJob:
                             )
                             if result.outcome in ("sent", "duplicate_ignored"):
                                 reports_sent += 1
+                                schedule_sent += 1
                         except Exception as e:
                             logger.error(f"Failed to send report to {recipient}: {e}")
                     
-                    # Calculate next scheduled time
-                    next_scheduled = self._calculate_next_schedule(frequency, now)
-                    
-                    # Update schedule record
-                    await self.db.report_schedules.update_one(
-                        {"schedule_id": schedule["schedule_id"]},
-                        {"$set": {
-                            "last_sent": now.isoformat(),
-                            "next_scheduled": next_scheduled.isoformat()
-                        }}
-                    )
-                    
-                    logger.info(f"Sent {report_type} report for client {schedule['client_id']}")
+                    # Only advance next_scheduled when at least one email was sent; otherwise retry next hour
+                    if schedule_sent > 0:
+                        next_scheduled = self._calculate_next_schedule(frequency, now)
+                        await self.db.report_schedules.update_one(
+                            {"schedule_id": schedule["schedule_id"]},
+                            {"$set": {
+                                "last_sent": now.isoformat(),
+                                "next_scheduled": next_scheduled.isoformat()
+                            }}
+                        )
+                        logger.info(f"Sent {report_type} report for client {schedule['client_id']}")
+                    else:
+                        logger.warning(
+                            "Scheduled report for client %s (schedule %s) produced no successful sends; not advancing next_scheduled",
+                            schedule["client_id"],
+                            schedule.get("schedule_id"),
+                        )
                     
                 except Exception as e:
                     logger.error(f"Error processing schedule {schedule.get('schedule_id')}: {e}")

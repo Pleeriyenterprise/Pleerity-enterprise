@@ -504,8 +504,17 @@ async def create_report_schedule(request: Request, data: CreateScheduleRequest):
             {"_id": 0}
         )
         
-        # Default recipients to client email if not provided
-        recipients = data.recipients if data.recipients else [client.get("email", user.get("email"))]
+        # Normalize recipients to a list (API may receive list or comma-separated string)
+        if data.recipients:
+            if isinstance(data.recipients, list):
+                recipients = [str(r).strip() for r in data.recipients if str(r).strip()]
+            else:
+                recipients = [r.strip() for r in str(data.recipients).split(",") if r.strip()]
+        else:
+            recipients = []
+        if not recipients:
+            recipients = [client.get("email") or user.get("email") or ""]
+            recipients = [r for r in recipients if r]
         
         # Calculate next scheduled time
         now = datetime.now(timezone.utc)

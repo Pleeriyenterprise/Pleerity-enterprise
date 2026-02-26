@@ -515,13 +515,12 @@ async def invite_tenant(request: Request):
                 detail="User with this email already exists"
             )
         
-        # Create tenant user (auth_email required for login)
+        # Build tenant and token in memory; send email first so we only persist on success
         import uuid
         from datetime import datetime, timezone, timedelta
         from auth import generate_secure_token, hash_token
         
         tenant_id = str(uuid.uuid4())
-        
         tenant_user = {
             "portal_user_id": tenant_id,
             "client_id": user["client_id"],
@@ -534,10 +533,6 @@ async def invite_tenant(request: Request):
             "created_at": datetime.now(timezone.utc).isoformat(),
             "invited_by": user["portal_user_id"]
         }
-        
-        await db.portal_users.insert_one(tenant_user)
-        
-        # Create password token (same schema as set_password expects: token_hash, client_id, etc.)
         raw_token = generate_secure_token()
         token_hash = hash_token(raw_token)
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
@@ -547,26 +542,9 @@ async def invite_tenant(request: Request):
             "client_id": user["client_id"],
             "expires_at": expires_at.isoformat(),
         }
-        await db.password_tokens.insert_one(token_doc)
-        
-        # Create property assignments if specified
-        if property_ids:
-            for prop_id in property_ids:
-                # Verify property belongs to client
-                prop = await db.properties.find_one({
-                    "property_id": prop_id,
-                    "client_id": user["client_id"]
-                })
-                if prop:
-                    await db.tenant_assignments.insert_one({
-                        "tenant_id": tenant_id,
-                        "property_id": prop_id,
-                        "assigned_at": datetime.now(timezone.utc).isoformat(),
-                        "assigned_by": user["portal_user_id"]
-                    })
+        invite_url = f"{body.get('base_url', '')}/set-password?token={raw_token}"
         
         from services.notification_orchestrator import notification_orchestrator
-        invite_url = f"{body.get('base_url', '')}/set-password?token={raw_token}"
         idempotency_key = f"{tenant_id}_TENANT_INVITE"
         result = await notification_orchestrator.send(
             template_key="TENANT_INVITE",
@@ -580,31 +558,53 @@ async def invite_tenant(request: Request):
             idempotency_key=idempotency_key,
             event_type="tenant_invite",
         )
-        if result.outcome != "sent":
-            if result.outcome == "blocked":
-                reason = result.block_reason or "Email provider not configured"
-                if reason == "BLOCKED_PROVIDER_NOT_CONFIGURED":
-                    reason = "Email provider (Postmark) is not configured. Set POSTMARK_SERVER_TOKEN to send invite emails."
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Invitation email could not be sent: {reason}",
-                )
-            if result.outcome == "failed":
-                msg = result.error_message or "Email delivery failed"
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=f"Invitation email failed to deliver: {msg}",
-                )
-            if result.outcome == "duplicate_ignored":
-                return {
-                    "message": "An invitation was already sent to this email recently. If they did not receive it, check spam or resend from Tenant Management.",
-                    "tenant_id": tenant_id,
-                    "email": email,
-                    "invite_sent": False,
-                    "duplicate": True,
-                }
-        logger.info(f"Tenant invited: {email} by {user['email']}")
         
+        if result.outcome == "blocked":
+            reason = result.block_reason or "Email provider not configured"
+            if reason == "BLOCKED_PROVIDER_NOT_CONFIGURED":
+                reason = "Email provider (Postmark) is not configured. Set POSTMARK_SERVER_TOKEN to send invite emails."
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Invitation email could not be sent: {reason}",
+            )
+        if result.outcome == "failed":
+            msg = result.error_message or "Email delivery failed"
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Invitation email failed to deliver: {msg}",
+            )
+        if result.outcome == "duplicate_ignored":
+            return {
+                "message": "An invitation was already sent to this email recently. If they did not receive it, check spam or resend from Tenant Management.",
+                "tenant_id": tenant_id,
+                "email": email,
+                "invite_sent": False,
+                "duplicate": True,
+            }
+        if result.outcome != "sent":
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Invitation email could not be sent",
+            )
+        
+        # Email sent successfully; persist tenant and token
+        await db.portal_users.insert_one(tenant_user)
+        await db.password_tokens.insert_one(token_doc)
+        if property_ids:
+            for prop_id in property_ids:
+                prop = await db.properties.find_one({
+                    "property_id": prop_id,
+                    "client_id": user["client_id"]
+                })
+                if prop:
+                    await db.tenant_assignments.insert_one({
+                        "tenant_id": tenant_id,
+                        "property_id": prop_id,
+                        "assigned_at": datetime.now(timezone.utc).isoformat(),
+                        "assigned_by": user["portal_user_id"]
+                    })
+        
+        logger.info(f"Tenant invited: {email} by {user['email']}")
         return {
             "message": "Tenant invited successfully",
             "tenant_id": tenant_id,
