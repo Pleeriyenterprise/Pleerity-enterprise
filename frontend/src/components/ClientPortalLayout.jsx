@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
-import { clientAPI } from '../api/client';
+import api, { clientAPI } from '../api/client';
 import { Button } from './ui/button';
 import { SUPPORT_EMAIL } from '../config';
 import { toast } from 'sonner';
@@ -46,11 +46,13 @@ const SETTINGS_SUB = [
 ];
 
 export default function ClientPortalLayout({ children, crn: crnProp = null }) {
-  const { user, logout } = useAuth();
+  const { user, logout, isClient } = useAuth();
   const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [crnState, setCrnState] = useState(crnProp);
+  const [profile, setProfile] = useState(null);
+  const [headerAvatarUrl, setHeaderAvatarUrl] = useState(null);
 
   useEffect(() => {
     if (crnProp) {
@@ -62,6 +64,44 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       if (ref) setCrnState(ref);
     }).catch(() => {});
   }, [crnProp]);
+
+  const fetchProfile = () => {
+    if (!user?.client_id || !['ROLE_CLIENT', 'ROLE_CLIENT_ADMIN'].includes(user?.role)) return;
+    api.get('/profile/me').then((r) => {
+      setProfile(r.data);
+      if (r.data.has_avatar) {
+        api.get('/profile/me/avatar', { responseType: 'blob' })
+          .then((av) => {
+            setHeaderAvatarUrl((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return URL.createObjectURL(av.data);
+            });
+          })
+          .catch(() => setHeaderAvatarUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+          }));
+      } else {
+        setHeaderAvatarUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return null;
+        });
+      }
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchProfile();
+    const onUpdated = () => fetchProfile();
+    window.addEventListener('profile-updated', onUpdated);
+    return () => {
+      window.removeEventListener('profile-updated', onUpdated);
+      setHeaderAvatarUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, [user?.client_id, user?.role]);
 
   const crn = crnState || crnProp;
 
@@ -128,9 +168,16 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                 <MessageSquare className="w-4 h-4 mr-1.5" />
                 <span className="hidden sm:inline">Ask Assistant</span>
               </Button>
-              <span className="text-sm text-gray-300 truncate max-w-[120px] sm:max-w-[200px]" title={user?.email}>
-                {user?.email}
-              </span>
+              <div className="flex items-center gap-2">
+                {headerAvatarUrl && (
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white/30 flex-shrink-0">
+                    <img src={headerAvatarUrl} alt="" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <span className="text-sm text-gray-300 truncate max-w-[120px] sm:max-w-[200px]" title={user?.email}>
+                  {profile?.full_name || user?.email}
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"

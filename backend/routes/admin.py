@@ -6,11 +6,13 @@ from middleware import admin_route_guard, require_owner, require_owner_or_admin,
 from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus
 from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 import logging
 import uuid
 import json
 import os
 from urllib.parse import urlparse
+from fastapi.responses import FileResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
@@ -689,6 +691,27 @@ async def get_client_detail(request: Request, client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load client details"
         )
+
+
+@router.get("/clients/{client_id}/avatar")
+async def get_client_avatar(request: Request, client_id: str):
+    """Return a client's profile picture (admin). 404 if none."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "avatar_ext": 1}
+    )
+    if not client or not client.get("avatar_ext"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No profile picture")
+    ext = client.get("avatar_ext", ".jpg")
+    avatars_dir = Path(os.getenv("DATA_DIR", "/tmp")) / "data" / "profile_avatars"
+    file_path = avatars_dir / f"{client_id}{ext}"
+    if not file_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No profile picture")
+    media = "image/jpeg" if ext == ".jpg" else ("image/png" if ext == ".png" else "image/webp")
+    return FileResponse(path=str(file_path), media_type=media)
+
 
 @router.get("/audit-logs")
 async def get_audit_logs(
@@ -2929,6 +2952,30 @@ async def get_client_full_status(request: Request, client_id: str):
             detail="Failed to get client status"
         )
 
+
+def _get_profile_avatars_path():
+    data_dir = os.getenv("DATA_DIR", "/tmp")
+    return Path(data_dir) / "data" / "profile_avatars"
+
+
+@router.get("/clients/{client_id}/avatar")
+async def get_client_avatar(request: Request, client_id: str):
+    """Return a client's profile picture (admin). 404 if none."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "avatar_ext": 1}
+    )
+    if not client or not client.get("avatar_ext"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No profile picture")
+    avatars_dir = _get_profile_avatars_path()
+    ext = client.get("avatar_ext", ".jpg")
+    file_path = avatars_dir / f"{client_id}{ext}"
+    if not file_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No profile picture")
+    media = "image/jpeg" if ext == ".jpg" else ("image/png" if ext == ".png" else "image/webp")
+    return FileResponse(path=str(file_path), media_type=media)
 
 
 # ============================================================================

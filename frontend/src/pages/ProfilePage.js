@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../api/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { ArrowLeft, Save, User, Bell, CheckCircle2 } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { ArrowLeft, Save, User, Bell, CheckCircle2, Camera } from 'lucide-react';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -16,6 +14,8 @@ const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
@@ -28,21 +28,29 @@ const ProfilePage = () => {
     fetchProfile();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+    };
+  }, [avatarUrl]);
+
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(
-        `${API_URL}/api/profile/me`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      const response = await api.get('/profile/me');
       setProfile(response.data);
       setFormData({
         full_name: response.data.full_name,
         phone: response.data.phone || ''
       });
+      if (response.data.has_avatar) {
+        const avRes = await api.get('/profile/me/avatar', { responseType: 'blob' });
+        setAvatarUrl(URL.createObjectURL(avRes.data));
+      } else {
+        setAvatarUrl(null);
+      }
     } catch (err) {
       setError('Failed to load profile');
+      setAvatarUrl(null);
     } finally {
       setLoading(false);
     }
@@ -55,19 +63,40 @@ const ProfilePage = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.patch(
-        `${API_URL}/api/profile/me`,
-        formData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      await api.patch('/profile/me', formData);
       setSuccess('Profile updated successfully');
       setTimeout(() => setSuccess(''), 3000);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('profile-updated'));
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError('');
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post('/profile/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await fetchProfile();
+      setSuccess('Profile picture updated');
+      setTimeout(() => setSuccess(''), 3000);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('profile-updated'));
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to upload picture');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -142,6 +171,30 @@ const ProfilePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="flex flex-col sm:flex-row gap-6 mb-6">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-24 h-24 rounded-full bg-midnight-blue/10 flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-12 h-12 text-midnight-blue/50" />
+                  )}
+                </div>
+                <label className="cursor-pointer inline-flex">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                    disabled={uploadingAvatar}
+                  />
+                  <span className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background px-4 py-2 hover:bg-accent hover:text-accent-foreground disabled:opacity-50">
+                    {uploadingAvatar ? 'Uploading...' : <><Camera className="w-4 h-4 mr-1" />Upload photo</>}
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500">JPEG, PNG or WebP, max 5MB</p>
+              </div>
+              <div className="flex-1">
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Full Name</label>
@@ -192,6 +245,8 @@ const ProfilePage = () => {
                 {saving ? 'Saving...' : 'Save Profile'}
               </Button>
             </form>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

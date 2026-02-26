@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/properties", tags=["properties"])
 
 class CreatePropertyRequest(BaseModel):
+    nickname: Optional[str] = None  # Optional; when set, used to identify the property; otherwise address is used
     address_line_1: str
     address_line_2: Optional[str] = None
     city: str
@@ -79,6 +80,7 @@ async def create_property(request: Request, data: CreatePropertyRequest):
         # Create property
         property_obj = Property(
             client_id=user["client_id"],
+            nickname=(data.nickname or "").strip() or None,
             address_line_1=data.address_line_1,
             address_line_2=data.address_line_2,
             city=data.city,

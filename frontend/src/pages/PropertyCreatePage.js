@@ -17,6 +17,7 @@ const PropertyCreatePage = () => {
   const [isPlanLimit, setIsPlanLimit] = useState(false);
 
   const [formData, setFormData] = useState({
+    nickname: '',
     address_line_1: '',
     address_line_2: '',
     city: '',
@@ -33,7 +34,10 @@ const PropertyCreatePage = () => {
     setLoading(true);
 
     try {
-      await api.post('/properties/create', formData);
+      const payload = { ...formData };
+      if (!payload.nickname?.trim()) delete payload.nickname;
+      else payload.nickname = payload.nickname.trim();
+      await api.post('/properties/create', payload);
 
       setSuccess(true);
       setTimeout(() => {
@@ -138,6 +142,17 @@ const PropertyCreatePage = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Property nickname (optional)</label>
+                <Input
+                  value={formData.nickname}
+                  onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                  placeholder="e.g. Main Street flat, Deansgate Tower"
+                  data-testid="nickname-input"
+                />
+                <p className="text-xs text-gray-500">If provided, this name will be used to identify the property across the dashboard. Otherwise the address is used.</p>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Address Line 1 *</label>
                 <Input

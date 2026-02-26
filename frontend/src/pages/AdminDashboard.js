@@ -7,6 +7,7 @@ import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { 
   LayoutDashboard, 
   Users, 
+  User,
   FileText, 
   FileCheck,
   Mail, 
@@ -197,6 +198,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   const [uploadRequirementId, setUploadRequirementId] = useState('');
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [clientAvatarUrl, setClientAvatarUrl] = useState(null);
 
   const fetchClientData = useCallback(async () => {
     if (!clientId) return;
@@ -221,6 +223,24 @@ const ClientDetailModal = ({ clientId, onClose }) => {
           preferred_contact: c.preferred_contact || 'EMAIL'
         });
       }
+      if (c?.avatar_ext || c?.avatar_updated_at) {
+        api.get(`/admin/clients/${clientId}/avatar`, { responseType: 'blob' })
+          .then((av) => {
+            setClientAvatarUrl((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return URL.createObjectURL(av.data);
+            });
+          })
+          .catch(() => setClientAvatarUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+          }));
+      } else {
+        setClientAvatarUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return null;
+        });
+      }
     } catch (error) {
       toast.error('Failed to load client data');
     } finally {
@@ -239,6 +259,10 @@ const ClientDetailModal = ({ clientId, onClose }) => {
       setUploadPropertyId('');
       setUploadRequirementId('');
       setUploadFile(null);
+      setClientAvatarUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
     }
   }, [clientId, fetchClientData]);
 
@@ -432,8 +456,18 @@ const ClientDetailModal = ({ clientId, onClose }) => {
       <div className="bg-white rounded-xl w-full max-w-5xl mx-4 shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-midnight-blue text-white p-6 flex items-center justify-between flex-shrink-0">
-          <div>
-            <h2 className="text-xl font-bold">{c.full_name}</h2>
+          <div className="flex items-center gap-4">
+            {clientAvatarUrl ? (
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0">
+                <img src={clientAvatarUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-electric-teal/30 flex items-center justify-center flex-shrink-0">
+                <User className="w-8 h-8 text-white/80" />
+              </div>
+            )}
+            <div>
+              <h2 className="text-xl font-bold">{c.full_name}</h2>
             <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
               <span>{c.email}</span>
               {c.customer_reference && (

@@ -1,7 +1,8 @@
 """User Profile Routes - Additive Enhancement
 Allows clients to view and update their profile and notification preferences.
 """
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status, File, UploadFile
+from fastapi.responses import FileResponse
 from database import database
 from middleware import client_route_guard
 from models import AuditAction, UserRole
@@ -9,10 +10,18 @@ from utils.audit import create_audit_log
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime, timezone
+from pathlib import Path
+import os
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/profile", tags=["profile"])
+
+DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+PROFILE_AVATARS_PATH = Path(DATA_DIR) / "data" / "profile_avatars"
+PROFILE_AVATARS_PATH.mkdir(parents=True, exist_ok=True)
+AVATAR_MAX_BYTES = 5 * 1024 * 1024  # 5MB
+AVATAR_ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 class UpdateProfileRequest(BaseModel):
     full_name: Optional[str] = None
@@ -101,6 +110,7 @@ async def get_profile(request: Request):
             "phone": client.get("phone"),
             "company_name": client.get("company_name"),
             "client_type": client["client_type"],
+            "has_avatar": bool(client.get("avatar_updated_at")),
             "notification_preferences": preferences
         }
         
@@ -315,8 +325,7 @@ async def update_profile(request: Request, data: UpdateProfileRequest):
         
         # Audit log
         await create_audit_log(
-            action=AuditAction.ADMIN_ACTION,
-            actor_role=UserRole(user["role"]),
+            action=AuditAction.PROFILE_UPDATED_BY_CLIENT,
             actor_id=user["portal_user_id"],
             client_id=user["client_id"],
             resource_type="client_profile",
@@ -337,3 +346,57 @@ async def update_profile(request: Request, data: UpdateProfileRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update profile"
         )
+
+
+@router.get("/me/avatar")
+async def get_my_avatar(request: Request):
+    """Return the current user's profile picture. 404 if none."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "avatar_ext": 1}
+    )
+    if not client or not client.get("avatar_ext"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No profile picture")
+    ext = client.get("avatar_ext", ".jpg")
+    file_path = PROFILE_AVATARS_PATH / f"{user['client_id']}{ext}"
+    if not file_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No profile picture")
+    media = "image/jpeg" if ext == ".jpg" else ("image/png" if ext == ".png" else "image/webp")
+    return FileResponse(path=str(file_path), media_type=media)
+
+
+@router.post("/me/avatar")
+async def upload_my_avatar(request: Request, file: UploadFile = File(...)):
+    """Upload profile picture. Replaces existing. Logged for admin monitoring."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    if not file.content_type or file.content_type.lower() not in AVATAR_ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Allowed types: JPEG, PNG, WebP"
+        )
+    content = await file.read()
+    if len(content) > AVATAR_MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large (max 5MB)"
+        )
+    ext = ".jpg" if "jpeg" in (file.content_type or "").lower() else (".png" if "png" in (file.content_type or "").lower() else ".webp")
+    file_path = PROFILE_AVATARS_PATH / f"{user['client_id']}{ext}"
+    file_path.write_bytes(content)
+    now = datetime.now(timezone.utc).isoformat()
+    await db.clients.update_one(
+        {"client_id": user["client_id"]},
+        {"$set": {"avatar_ext": ext, "avatar_updated_at": now}}
+    )
+    await create_audit_log(
+        action=AuditAction.PROFILE_AVATAR_UPLOADED,
+        actor_id=user["portal_user_id"],
+        client_id=user["client_id"],
+        resource_type="client_profile",
+        metadata={"action": "avatar_uploaded"},
+    )
+    logger.info(f"Profile avatar uploaded for client {user['client_id']}")
+    return {"message": "Profile picture updated", "has_avatar": True}
