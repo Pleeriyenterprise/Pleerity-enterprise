@@ -132,6 +132,23 @@ async def list_pending_verification_documents(
             {"_id": 0, "document_id": 1, "client_id": 1, "property_id": 1, "requirement_id": 1, "uploaded_at": 1}
         ).sort("uploaded_at", 1).skip(skip).limit(limit)
         items = await cursor.to_list(limit)
+        # Enrich with client display name and CRN for admin table
+        client_ids = list({d.get("client_id") for d in items if d.get("client_id")})
+        clients_map = {}
+        if client_ids:
+            clients_cursor = db.clients.find(
+                {"client_id": {"$in": client_ids}},
+                {"_id": 0, "client_id": 1, "full_name": 1, "customer_reference": 1}
+            )
+            for c in await clients_cursor.to_list(len(client_ids)):
+                clients_map[c["client_id"]] = {
+                    "client_name": c.get("full_name") or "—",
+                    "crn": c.get("customer_reference") or "—",
+                }
+        for d in items:
+            info = clients_map.get(d.get("client_id"), {})
+            d["client_name"] = info.get("client_name", "—")
+            d["crn"] = info.get("crn", "—")
         returned = len(items)
         return {
             "documents": items,

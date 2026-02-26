@@ -3678,7 +3678,7 @@ const StatisticsDashboard = () => {
 // Dashboard Overview
 const EMPTY_STATS = { stats: {}, compliance_overview: {}, recent_activity: [] };
 
-const DashboardOverview = ({ onShowDrilldown }) => {
+const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState(null);
@@ -3908,6 +3908,8 @@ const DashboardOverview = ({ onShowDrilldown }) => {
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-600">
                   <th className="py-2 pr-4">Document ID</th>
+                  <th className="py-2 pr-4">Client</th>
+                  <th className="py-2 pr-4">CRN</th>
                   <th className="py-2 pr-4">Client ID</th>
                   <th className="py-2 pr-4">Property ID</th>
                   <th className="py-2 pr-4">Requirement ID</th>
@@ -3916,11 +3918,21 @@ const DashboardOverview = ({ onShowDrilldown }) => {
               </thead>
               <tbody>
                 {(pendingList.documents ?? []).length === 0 ? (
-                  <tr><td colSpan={5} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
+                  <tr><td colSpan={7} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
                 ) : (
                   (pendingList.documents ?? []).filter(Boolean).map((doc, idx) => (
-                    <tr key={doc?.document_id ?? doc?.client_id ?? idx} className="border-b border-gray-100">
+                    <tr
+                      key={doc?.document_id ?? doc?.client_id ?? idx}
+                      className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => doc?.client_id && onSelectClient?.(doc.client_id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && doc?.client_id) onSelectClient?.(doc.client_id); }}
+                      aria-label={`View client ${doc?.client_name ?? doc?.client_id ?? 'Unknown'}`}
+                    >
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.document_id ?? '—'}</td>
+                      <td className="py-2 pr-4 font-medium text-midnight-blue">{doc?.client_name ?? '—'}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{doc?.crn ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.client_id ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.property_id ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.requirement_id ?? '—'}</td>
@@ -4008,7 +4020,7 @@ const AdminDashboard = () => {
 
   const renderContent = () => {
     switch (effectiveTab) {
-      case 'overview': return <DashboardOverview onShowDrilldown={handleShowDrilldown} />;
+      case 'overview': return <DashboardOverview onShowDrilldown={handleShowDrilldown} onSelectClient={(id) => setSelectedClientId(id)} />;
       case 'statistics': return <StatisticsDashboard />;
       case 'jobs': return <JobsMonitoring />;
       case 'clients': return <ClientsManagement />;
