@@ -39,6 +39,12 @@ const PORTAL_TABS = [
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
+const TENANT_PORTAL_TABS = [
+  { path: '/tenant', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { path: '/tenant/properties', label: 'Properties', icon: Building2 },
+  { path: '/tenant/settings', label: 'Settings', icon: Settings },
+];
+
 const SETTINGS_SUB = [
   { path: '/settings/profile', label: 'Profile', icon: User },
   { path: '/settings/notifications', label: 'Notifications', icon: Bell },
@@ -66,7 +72,8 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   }, [crnProp]);
 
   const fetchProfile = () => {
-    if (!user?.client_id || !['ROLE_CLIENT', 'ROLE_CLIENT_ADMIN'].includes(user?.role)) return;
+    if (!user?.client_id) return;
+    if (!['ROLE_CLIENT', 'ROLE_CLIENT_ADMIN', 'ROLE_TENANT'].includes(user?.role)) return;
     api.get('/profile/me').then((r) => {
       setProfile(r.data);
       if (r.data.has_avatar) {
@@ -115,17 +122,21 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   const location = useLocation();
+  const showReports = hasFeature('reports_pdf') || hasFeature('reports_csv');
+  const isTenant = user?.role === 'ROLE_TENANT';
+  const tabs = isTenant
+    ? TENANT_PORTAL_TABS
+    : PORTAL_TABS.filter((t) => {
+        if (t.path === '/reports') return showReports;
+        if (t.feature) return hasFeature(t.feature);
+        return true;
+      });
+
   const isSettingsActive = (pathname) => {
     const p = pathname || location.pathname;
+    if (isTenant) return p === '/tenant/settings' || p.startsWith('/tenant/settings/');
     return p === '/settings' || p.startsWith('/settings/');
   };
-
-  const showReports = hasFeature('reports_pdf') || hasFeature('reports_csv');
-  const tabs = PORTAL_TABS.filter((t) => {
-    if (t.path === '/reports') return showReports;
-    if (t.feature) return hasFeature(t.feature);
-    return true;
-  });
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -204,14 +215,15 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         <nav className={`border-t border-white/10 ${mobileNavOpen ? 'block' : 'hidden'} lg:block`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col lg:flex-row lg:space-x-1">
-              {tabs.map(({ path, label, icon: Icon }) => (
+              {tabs.map(({ path, label, icon: Icon, end }) => (
                 <NavLink
                   key={path}
                   to={path}
+                  end={end}
                   onClick={() => setMobileNavOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center px-3 py-3 lg:py-4 text-sm font-medium border-b-2 lg:border-b-2 transition-colors ${
-                      isActive || (path === '/settings' && isSettingsActive(location.pathname))
+                      isActive || ((path === '/settings' || path === '/tenant/settings') && isSettingsActive(location.pathname))
                         ? 'border-electric-teal text-electric-teal'
                         : 'border-transparent text-gray-300 hover:text-white hover:border-gray-400'
                     }`

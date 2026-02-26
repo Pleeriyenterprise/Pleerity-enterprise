@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, Outlet } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { EntitlementsProvider } from './contexts/EntitlementsContext';
@@ -106,6 +106,9 @@ import ReportsPage from './pages/ReportsPage';
 import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 import CalendarPage from './pages/CalendarPage';
 import TenantDashboard from './pages/TenantDashboard';
+import TenantPropertiesPage from './pages/TenantPropertiesPage';
+import TenantPropertyDetailPage from './pages/TenantPropertyDetailPage';
+import TenantSettingsPage from './pages/TenantSettingsPage';
 import TenantManagementPage from './pages/TenantManagementPage';
 import BulkPropertyImportPage from './pages/BulkPropertyImportPage';
 import IntegrationsPage from './pages/IntegrationsPage';
@@ -267,7 +270,12 @@ function App() {
               <Route path="notifications" element={<NotificationPreferencesPage />} />
               <Route path="billing" element={<BillingPage />} />
             </Route>
-            <Route path="/tenant" element={<ClientPortal><TenantDashboard /></ClientPortal>} />
+            <Route path="/tenant" element={<ClientPortal><Outlet /></ClientPortal>}>
+              <Route index element={<TenantDashboard />} />
+              <Route path="properties" element={<TenantPropertiesPage />} />
+              <Route path="properties/:propertyId" element={<TenantPropertyDetailPage />} />
+              <Route path="settings" element={<TenantSettingsPage />} />
+            </Route>
             <Route path="/tenants" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="tenant_portal"><TenantManagementPage /></EntitlementProtectedRoute></ClientPortal>} />
             <Route path="/integrations" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="webhooks"><IntegrationsPage /></EntitlementProtectedRoute></ClientPortal>} />
             <Route path="/orders/:orderId/provide-info" element={<ClientPortal><ClientProvideInfoPage /></ClientPortal>} />
