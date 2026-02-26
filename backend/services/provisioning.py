@@ -491,13 +491,14 @@ class ProvisioningService:
             {"_id": 0}
         ).to_list(100)
         
-        # Deterministic compliance logic
+        # Deterministic compliance logic: OVERDUE → RED; EXPIRING_SOON or PENDING (missing evidence) → AMBER; else GREEN
         red_count = sum(1 for r in requirements if r["status"] == RequirementStatus.OVERDUE.value)
         amber_count = sum(1 for r in requirements if r["status"] == RequirementStatus.EXPIRING_SOON.value)
-        
+        pending_count = sum(1 for r in requirements if r["status"] == RequirementStatus.PENDING.value)
+
         if red_count > 0:
             status = ComplianceStatus.RED
-        elif amber_count > 0:
+        elif amber_count > 0 or pending_count > 0:
             status = ComplianceStatus.AMBER
         else:
             status = ComplianceStatus.GREEN

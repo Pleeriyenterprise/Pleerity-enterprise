@@ -55,7 +55,7 @@ const PropertiesPage = () => {
       case 'GREEN':
         return { icon: CheckCircle, text: 'Valid', className: 'bg-green-100 text-green-700 border border-green-200' };
       case 'AMBER':
-        return { icon: Clock, text: 'Expiring soon', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
+        return { icon: Clock, text: 'Attention needed', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
       case 'RED':
         return { icon: AlertTriangle, text: 'Overdue', className: 'bg-red-100 text-red-700 border border-red-200' };
       default:
@@ -152,7 +152,7 @@ const PropertiesPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-amber-600">{stats.amber}</p>
-                <p className="text-sm text-gray-500">Expiring soon</p>
+                <p className="text-sm text-gray-500">Attention needed</p>
               </div>
             </div>
           </div>
@@ -205,12 +205,22 @@ const PropertiesPage = () => {
             <div className="p-12 text-center">
               <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchTerm || filterStatus !== 'all' ? 'No matching properties' : 'No properties yet'}
+                {searchTerm
+                  ? 'No matching properties'
+                  : filterStatus === 'all'
+                    ? 'No properties yet'
+                    : filterStatus === 'GREEN'
+                      ? 'No valid properties'
+                      : filterStatus === 'AMBER'
+                        ? 'No properties needing attention'
+                        : 'No overdue properties'}
               </h3>
               <p className="text-gray-500 mb-4">
-                {searchTerm || filterStatus !== 'all' 
-                  ? 'Try adjusting your search or filter criteria' 
-                  : 'Add your first property to get started with compliance tracking'}
+                {searchTerm
+                  ? 'Try adjusting your search.'
+                  : filterStatus !== 'all'
+                    ? 'No properties in this category. Click "Total Properties" or another tab to see your list.'
+                    : 'Add your first property to get started with compliance tracking'}
               </p>
               {!searchTerm && filterStatus === 'all' && (
                 <Button

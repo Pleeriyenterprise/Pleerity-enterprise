@@ -30,6 +30,7 @@ export default function PropertyDetailPage() {
   const [scoreHistoryModal, setScoreHistoryModal] = useState(false);
   const [scoreHistoryEntries, setScoreHistoryEntries] = useState([]);
   const [scoreHistoryLoading, setScoreHistoryLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -40,41 +41,46 @@ export default function PropertyDetailPage() {
     }
   }, [requirements]);
 
+  const fetchData = React.useCallback(async () => {
+    try {
+      setError(null);
+      const propsRes = await clientAPI.getProperties();
+      const prop = (propsRes.data.properties || []).find((p) => p.property_id === propertyId);
+      setProperty(prop || null);
+      try {
+        const detailRes = await clientAPI.getComplianceDetail(propertyId);
+        if (detailRes?.data) {
+          setComplianceDetail(detailRes.data);
+          setRequirements(detailRes.data.matrix || []);
+          return;
+        }
+      } catch (_) {
+        /* fallback to requirements list */
+      }
+      const reqsRes = await clientAPI.getPropertyRequirements(propertyId);
+      setRequirements(reqsRes.data?.requirements || []);
+      setComplianceDetail(null);
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to load property');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [propertyId]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        setError(null);
-        const propsRes = await clientAPI.getProperties();
-        if (cancelled) return;
-        const prop = (propsRes.data.properties || []).find((p) => p.property_id === propertyId);
-        setProperty(prop || null);
-        try {
-          const detailRes = await clientAPI.getComplianceDetail(propertyId);
-          if (!cancelled && detailRes?.data) {
-            setComplianceDetail(detailRes.data);
-            setRequirements(detailRes.data.matrix || []);
-            return;
-          }
-        } catch (_) {
-          /* fallback to requirements list */
-        }
-        const reqsRes = await clientAPI.getPropertyRequirements(propertyId);
-        if (!cancelled) {
-          setRequirements(reqsRes.data?.requirements || []);
-          setComplianceDetail(null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e.response?.data?.detail || 'Failed to load property');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
+    setLoading(true);
+    fetchData().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
     return () => { cancelled = true; };
-  }, [propertyId]);
+  }, [fetchData]);
 
   const getStatus = (r) => getEvidenceStatus(r.status);
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -115,10 +121,23 @@ export default function PropertyDetailPage() {
 
   return (
     <div>
-      <Button variant="ghost" size="sm" className="mb-4 -ml-2" onClick={() => navigate('/properties')}>
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to properties
-      </Button>
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate('/properties')}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to properties
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="border-gray-200"
+          data-testid="property-detail-refresh"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </Button>
+      </div>
 
       {/* Property header card */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 mb-6">

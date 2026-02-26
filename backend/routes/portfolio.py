@@ -138,6 +138,11 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
     detail = await get_property_compliance_detail(client_id, property_id)
     if detail is not None:
         response = dict(detail)
+        # Prefer matrix-computed score/risk so property detail matches the requirements matrix (no stale stored values)
+        if response.get("property_score") is not None:
+            response["score"] = response["property_score"]
+        if response.get("risk_level") is not None:
+            response["risk_level"] = response["risk_level"]
     else:
         # Fallback: no catalog or no applicable; return minimal from requirements
         requirements = await db.requirements.find(
@@ -185,10 +190,10 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             "risk_level": score_to_risk_level(property_score),
             "kpis": kpis,
         }
-    # Enrich with score change tracking and last updated
+    # Enrich with score change tracking and last updated (score/risk already set from detail when available)
     response.setdefault("score", prop.get("compliance_score"))
     response.setdefault("risk_level", prop.get("risk_level"))
-    response["last_updated_at"] = prop.get("compliance_last_calculated_at")
+    response["last_updated_at"] = response.get("last_updated_at") or prop.get("compliance_last_calculated_at")
     latest_log = await db.score_change_log.find_one(
         {"property_id": property_id, "client_id": client_id},
         sort=[("created_at", -1)],

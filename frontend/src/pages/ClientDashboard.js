@@ -846,6 +846,11 @@ const ClientDashboard = () => {
         {/* Next Actions: Fix now → /properties/:id#req=code */}
         {(() => {
           const actionStatuses = ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON', 'PENDING', 'MISSING'];
+          const properties = data?.properties || [];
+          const getPropertyDisplayName = (propertyId) => {
+            const p = properties.find((pr) => pr.property_id === propertyId);
+            return p ? (p.nickname || p.address_line_1 || (p.postcode ? p.postcode : null) || propertyId) : propertyId;
+          };
           const nextItems = requirementsList
             .filter((r) => actionStatuses.includes((r.status || '').toUpperCase()))
             .map((r) => ({
@@ -874,7 +879,7 @@ const ClientDashboard = () => {
                   {deduped.map((a, i) => (
                     <li key={`${a.property_id}-${a.requirement_code}-${i}`} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                       <span className="text-sm text-gray-700 truncate mr-2">
-                        {a.description || a.requirement_code} · Property {a.property_id}
+                        {a.description || a.requirement_code} · {getPropertyDisplayName(a.property_id)}
                       </span>
                       <Button
                         size="sm"

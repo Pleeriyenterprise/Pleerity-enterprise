@@ -30,13 +30,19 @@ from utils.audit import create_audit_log
 import logging
 import json
 import os
+import shutil
 import uuid
 import string
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intake", tags=["intake"])
+
+# Document vault path for copying intake-uploaded files (same as documents route / intake_upload_migration)
+_DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(_DATA_DIR) / "data" / "documents")))
 
 # Plan property limits - now uses plan_registry as single source of truth
 # These are kept for backward compatibility but plan_registry is authoritative
@@ -948,32 +954,69 @@ async def submit_intake(request: Request, data: IntakeFormData):
 
 
 async def _reconcile_intake_documents(db, client_id: str, session_id: str, property_map: dict):
-    """Link documents uploaded during intake to their actual property IDs."""
+    """Link documents uploaded during intake to their actual property IDs.
+    Copies files into the document vault (DOCUMENT_STORAGE_PATH) so viewing works after login,
+    and enqueues AI extraction so Apply can be used like Path B (intake_uploads) documents.
+    """
     try:
-        # Find documents with this session ID
         documents = await db.documents.find({
             "intake_session_id": session_id,
             "source": "INTAKE_UPLOAD"
         }).to_list(100)
-        
+
+        DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
+        dest_dir = DOCUMENT_STORAGE_PATH / client_id
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
         for doc in documents:
             property_temp_key = doc.get("property_temp_key")
             if property_temp_key and property_temp_key in property_map:
                 actual_property_id = property_map[property_temp_key]
-                
+
                 await db.documents.update_one(
                     {"document_id": doc["document_id"]},
                     {
                         "$set": {
                             "client_id": client_id,
                             "property_id": actual_property_id,
-                            "property_temp_key": None  # Clear temp key
+                            "property_temp_key": None
                         }
                     }
                 )
-                
                 logger.info(f"Reconciled document {doc['document_id']} to property {actual_property_id}")
-    
+
+                # Copy file into vault so GET /documents/{id}/file works after login
+                old_path = doc.get("file_path")
+                if old_path and os.path.isfile(old_path):
+                    try:
+                        ext = (Path(old_path).suffix or Path(doc.get("file_name", "")).suffix or "").strip().lower()
+                        if not ext or "/" in ext or "\\" in ext or len(ext) > 12:
+                            ext = ".bin"
+                        unique_name = f"{uuid.uuid4().hex}{ext}"
+                        dest_path = dest_dir / unique_name
+                        shutil.copy2(old_path, dest_path)
+                        file_size = os.path.getsize(dest_path)
+                        await db.documents.update_one(
+                            {"document_id": doc["document_id"]},
+                            {"$set": {"file_path": str(dest_path), "file_size": file_size}}
+                        )
+                        logger.info(f"Copied intake document {doc['document_id']} to vault at {dest_path}")
+                    except Exception as copy_err:
+                        logger.warning("Intake doc vault copy failed document_id=%s: %s", doc["document_id"], copy_err)
+
+                # Enqueue extraction so user can Apply after login (same as Path B)
+                try:
+                    from services.document_extraction_service import enqueue_extraction
+                    await enqueue_extraction(
+                        document_id=doc["document_id"],
+                        client_id=client_id,
+                        source="intake_upload",
+                        property_id=actual_property_id,
+                        intake_session_id=session_id,
+                    )
+                except Exception as ext_err:
+                    logger.warning("Enqueue extraction after intake reconcile failed document_id=%s: %s", doc["document_id"], ext_err)
+
     except Exception as e:
         logger.error(f"Document reconciliation error: {e}")
 

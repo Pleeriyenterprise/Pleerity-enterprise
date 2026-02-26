@@ -752,39 +752,43 @@ class JobScheduler:
             return False
     
     def _calculate_property_compliance(self, requirements):
-        """Calculate overall compliance status for a property based on its requirements."""
+        """Calculate overall compliance status for a property based on its requirements.
+        OVERDUE/EXPIRED → RED; EXPIRING_SOON or PENDING (missing evidence) → AMBER; else GREEN.
+        """
         if not requirements:
             return "GREEN"  # No requirements = compliant
-        
+
         now = datetime.now(timezone.utc)
         has_overdue = False
         has_expiring_soon = False
-        
+        has_pending = False
+
         for req in requirements:
             status = req.get("status", "PENDING")
-            
+
             if status in ["OVERDUE", "EXPIRED"]:
                 has_overdue = True
             elif status == "EXPIRING_SOON":
                 has_expiring_soon = True
             elif status == "PENDING":
-                # Check due date
+                has_pending = True
+                # Also check due date: if past due or within 30 days, upgrade to overdue/expiring
                 due_date_str = req.get("due_date")
                 if due_date_str:
                     try:
                         due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00')) if isinstance(due_date_str, str) else due_date_str
                         days_until_due = (due_date - now).days
-                        
+
                         if days_until_due < 0:
                             has_overdue = True
                         elif days_until_due <= 30:
                             has_expiring_soon = True
                     except Exception:
                         pass
-        
+
         if has_overdue:
             return "RED"
-        elif has_expiring_soon:
+        elif has_expiring_soon or has_pending:
             return "AMBER"
         else:
             return "GREEN"
