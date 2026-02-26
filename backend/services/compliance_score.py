@@ -78,7 +78,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
     try:
         properties = await db.properties.find(
             {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_last_calculated_at": 1, "is_hmo": 1}
+            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_last_calculated_at": 1, "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1}
         ).to_list(100)
         if not properties:
             return {
@@ -89,6 +89,15 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "breakdown": {},
                 "recommendations": [],
                 "enhanced_model": True,
+                "stats": {},
+                "properties_count": 0,
+                "score_last_calculated_at": None,
+                "score_model_version": "1.2",
+                "model_updated_at": "2026-01-15",
+                "data_completeness_percent": None,
+                "components": {},
+                "property_breakdown": [],
+                "drivers": [],
             }
         from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
         need_backfill = [p for p in properties if p.get("compliance_score") is None]
@@ -103,7 +112,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             )
         properties = await db.properties.find(
             {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "is_hmo": 1}
+            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "compliance_last_calculated_at": 1}
         ).to_list(100)
         scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
         if not scores:
@@ -115,6 +124,15 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "breakdown": {},
                 "recommendations": [],
                 "enhanced_model": True,
+                "stats": {},
+                "properties_count": len(properties),
+                "score_last_calculated_at": None,
+                "score_model_version": "1.2",
+                "model_updated_at": "2026-01-15",
+                "data_completeness_percent": None,
+                "components": {},
+                "property_breakdown": [],
+                "drivers": [],
             }
         client_score = round(sum(scores) / len(scores))
         breakdowns = [p.get("compliance_breakdown") or {} for p in properties if isinstance(p.get("compliance_breakdown"), dict)]
@@ -132,15 +150,54 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         else:
             breakdown = {}
         grade, color, message = score_to_grade_color_message(client_score)
+        property_ids = [p["property_id"] for p in properties]
         requirements = await db.requirements.find(
             {"client_id": client_id},
-            {"_id": 0, "status": 1}
+            {"_id": 0, "property_id": 1, "requirement_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1}
         ).to_list(500)
         total_reqs = len(requirements)
         compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
         pending = sum(1 for r in requirements if r.get("status") == "PENDING")
         expiring_soon = sum(1 for r in requirements if r.get("status") == "EXPIRING_SOON")
         overdue = sum(1 for r in requirements if r.get("status") in ("OVERDUE", "EXPIRED"))
+        documents = await db.documents.find(
+            {"client_id": client_id},
+            {"_id": 0, "property_id": 1, "requirement_id": 1, "status": 1}
+        ).to_list(1000)
+        req_ids_with_verified = set()
+        req_ids_with_any_doc = set()
+        for d in documents:
+            rid = d.get("requirement_id")
+            if not rid:
+                continue
+            req_ids_with_any_doc.add(rid)
+            if d.get("status") == "VERIFIED":
+                req_ids_with_verified.add(rid)
+        verified_coverage = (len(req_ids_with_verified) / total_reqs * 100) if total_reqs > 0 else 0
+        total_coverage = (len(req_ids_with_any_doc) / total_reqs * 100) if total_reqs > 0 else 0
+        now = datetime.now(timezone.utc)
+        days_until_next = None
+        nearest_type = None
+        for r in requirements:
+            if r.get("status") in ("COMPLIANT", "PENDING", "EXPIRING_SOON"):
+                due = r.get("due_date")
+                if due:
+                    try:
+                        dt = datetime.fromisoformat(due.replace("Z", "+00:00")) if isinstance(due, str) else due
+                        days = (dt - now).days
+                        if days >= 0 and (days_until_next is None or days < days_until_next):
+                            days_until_next = days
+                            nearest_type = r.get("requirement_type")
+                    except Exception:
+                        pass
+        score_last_calculated_at = None
+        for p in properties:
+            t = p.get("compliance_last_calculated_at")
+            if t:
+                if score_last_calculated_at is None or (t > score_last_calculated_at):
+                    score_last_calculated_at = t
+        if isinstance(score_last_calculated_at, datetime) and score_last_calculated_at.tzinfo is None:
+            score_last_calculated_at = score_last_calculated_at.replace(tzinfo=timezone.utc)
         stats = {
             "total_requirements": total_reqs,
             "compliant": compliant,
@@ -148,14 +205,123 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "expiring_soon": expiring_soon,
             "overdue": overdue,
             "critical_overdue": 0,
-            "documents_uploaded": 0,
-            "documents_verified": 0,
-            "verified_coverage_percent": 0,
-            "total_coverage_percent": 0,
-            "days_until_next_expiry": None,
-            "nearest_expiry_type": None,
+            "documents_uploaded": len(documents),
+            "documents_verified": len([d for d in documents if d.get("status") == "VERIFIED"]),
+            "verified_coverage_percent": round(verified_coverage, 1),
+            "total_coverage_percent": round(total_coverage, 1),
+            "document_coverage_percent": round(total_coverage, 1),
+            "days_until_next_expiry": int(days_until_next) if days_until_next is not None else None,
+            "nearest_expiry_type": nearest_type,
             "hmo_properties": sum(1 for p in properties if p.get("is_hmo")),
         }
+        prop_map = {p["property_id"]: p for p in properties}
+        by_property = {}
+        for r in requirements:
+            pid = r.get("property_id")
+            if pid not in by_property:
+                by_property[pid] = {"valid": 0, "expiring": 0, "overdue": 0}
+            s = r.get("status")
+            if s == "COMPLIANT":
+                by_property[pid]["valid"] += 1
+            elif s == "EXPIRING_SOON":
+                by_property[pid]["expiring"] += 1
+            elif s in ("OVERDUE", "EXPIRED"):
+                by_property[pid]["overdue"] += 1
+        property_breakdown = []
+        for p in properties:
+            pid = p["property_id"]
+            bp = by_property.get(pid, {})
+            property_breakdown.append({
+                "property_id": pid,
+                "name": p.get("nickname") or p.get("address_line_1") or "Property",
+                "postcode": p.get("postcode") or "",
+                "score": p.get("compliance_score"),
+                "valid": bp.get("valid", 0),
+                "expiring": bp.get("expiring", 0),
+                "overdue": bp.get("overdue", 0),
+            })
+        due_0_30 = due_31_60 = due_61_90 = 0
+        for r in requirements:
+            if r.get("status") in ("COMPLIANT", "PENDING", "EXPIRING_SOON"):
+                due = r.get("due_date")
+                if due:
+                    try:
+                        dt = datetime.fromisoformat(due.replace("Z", "+00:00")) if isinstance(due, str) else due
+                        days = (dt - now).days
+                        if 0 <= days <= 30:
+                            due_0_30 += 1
+                        elif 31 <= days <= 60:
+                            due_31_60 += 1
+                        elif 61 <= days <= 90:
+                            due_61_90 += 1
+                    except Exception:
+                        pass
+        weights_map = {"status": 0.35, "expiry": 0.25, "documents": 0.15, "overdue_penalty": 0.15, "risk_factor": 0.10}
+        components = {
+            "status": {
+                "weight": weights_map["status"],
+                "score": round(breakdown.get("status_score", 0), 0),
+                "valid": compliant,
+                "expiring": expiring_soon,
+                "overdue": overdue,
+            },
+            "timeline": {
+                "weight": weights_map["expiry"],
+                "score": round(breakdown.get("expiry_score", 0), 0),
+                "due_0_30": due_0_30,
+                "due_31_60": due_31_60,
+                "due_61_90": due_61_90,
+                "overdue": overdue,
+            },
+            "documents": {
+                "weight": weights_map["documents"],
+                "score": round(breakdown.get("document_score", 0), 0),
+                "evidence_coverage_percent": round(verified_coverage, 0),
+            },
+            "urgency": {
+                "weight": weights_map["overdue_penalty"],
+                "score": round(breakdown.get("overdue_penalty_score", 0), 0),
+                "overdue": overdue,
+            },
+        }
+        drivers = []
+        for r in requirements:
+            s = r.get("status")
+            if s == "COMPLIANT":
+                continue
+            pid = r.get("property_id")
+            prop = prop_map.get(pid, {})
+            req_name = r.get("description") or (r.get("requirement_type") or "Requirement").replace("_", " ")
+            evidence = r.get("requirement_id") in req_ids_with_any_doc
+            actions = []
+            if not evidence:
+                actions.append("UPLOAD")
+            if s in ("OVERDUE", "EXPIRED"):
+                actions.append("VIEW")
+            elif s == "EXPIRING_SOON":
+                actions.append("VIEW")
+            if evidence and s in ("PENDING", "EXPIRING_SOON"):
+                actions.append("CONFIRM")
+            if not actions and s not in ("COMPLIANT",):
+                actions.append("VIEW")
+            display_status = s
+            if s == "EXPIRED":
+                display_status = "OVERDUE"
+            elif s == "PENDING" and not evidence:
+                display_status = "MISSING_EVIDENCE"
+            elif s == "PENDING" and evidence:
+                display_status = "NEEDS_CONFIRMATION"
+            drivers.append({
+                "property_id": pid,
+                "property_name": prop.get("nickname") or prop.get("address_line_1") or pid,
+                "requirement_id": r.get("requirement_id"),
+                "requirement_name": req_name,
+                "status": display_status,
+                "date_used": r.get("due_date"),
+                "date_confidence": "UNKNOWN",
+                "evidence_uploaded": evidence,
+                "actions": list(dict.fromkeys(actions)) if actions else ["VIEW"],
+            })
         recommendations = []
         if overdue > 0:
             recommendations.append({"priority": "high", "action": f"Address {overdue} overdue requirement(s)", "impact": "+10-20 points"})
@@ -178,6 +344,13 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "stats": stats,
             "recommendations": recommendations[:5],
             "properties_count": len(properties),
+            "score_last_calculated_at": score_last_calculated_at.isoformat() if isinstance(score_last_calculated_at, datetime) else score_last_calculated_at,
+            "score_model_version": "1.2",
+            "model_updated_at": "2026-01-15",
+            "data_completeness_percent": round(verified_coverage, 0) if total_reqs > 0 else None,
+            "components": components,
+            "property_breakdown": property_breakdown,
+            "drivers": drivers,
         }
     except Exception as e:
         logger.error(f"Error calculating compliance score: {e}")
@@ -190,6 +363,15 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "recommendations": [],
             "error": str(e),
             "enhanced_model": True,
+            "stats": {},
+            "properties_count": 0,
+            "score_last_calculated_at": None,
+            "score_model_version": "1.2",
+            "model_updated_at": "2026-01-15",
+            "data_completeness_percent": None,
+            "components": {},
+            "property_breakdown": [],
+            "drivers": [],
         }
 
 

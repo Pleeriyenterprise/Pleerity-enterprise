@@ -30,4 +30,4 @@ def score_to_grade_color_message(score: int) -> tuple:
         return ("C", "amber", "Moderate risk - action required")
     if score >= RISK_BAND_HIGH_MIN:
         return ("D", "amber", "High risk - action required")
-    return ("F", "red", "Critical risk - immediate action needed")
+    return ("F", "red", "High urgency: overdue items detected")
