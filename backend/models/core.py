@@ -258,7 +258,10 @@ class AuditAction(str, Enum):
     TENANT_CONTACT_LANDLORD = "TENANT_CONTACT_LANDLORD"
     TENANT_REQUEST_CERTIFICATE = "TENANT_REQUEST_CERTIFICATE"
 
-class EmailTemplateAlias(str, Enum):
+    # Report exports (score explanation PDF, score drivers CSV)
+    REPORT_EXPORTED = "REPORT_EXPORTED"
+
+
     PASSWORD_SETUP = "password-setup"
     PASSWORD_RESET = "password-reset"
     PORTAL_READY = "portal-ready"

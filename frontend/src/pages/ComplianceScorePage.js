@@ -46,6 +46,60 @@ const ComplianceScorePage = () => {
   const [showDefinitionsModal, setShowDefinitionsModal] = useState(false);
   const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
   const [driversFilterPropertyId, setDriversFilterPropertyId] = useState(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const res = await api.get('/reports/score-explanation.pdf', { responseType: 'blob' });
+      const disposition = res.headers['content-disposition'];
+      const filename = disposition?.match(/filename="?([^";\n]+)"?/)?.[1] || `compliance_score_summary_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Export generated at ${new Date().toLocaleTimeString()}`);
+    } catch (err) {
+      if (err.response?.status === 403) {
+        toast.error('Upgrade required for PDF reports');
+      } else {
+        toast.error('Export failed, please try again');
+      }
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleDownloadCsv = async () => {
+    setExportingCsv(true);
+    try {
+      const res = await api.get('/reports/score-drivers.csv', { responseType: 'blob' });
+      const disposition = res.headers['content-disposition'];
+      const filename = disposition?.match(/filename="?([^";\n]+)"?/)?.[1] || `score_drivers_${new Date().toISOString().slice(0, 10)}.csv`;
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Export generated at ${new Date().toLocaleTimeString()}`);
+    } catch (err) {
+      if (err.response?.status === 403) {
+        toast.error('Upgrade required for CSV reports');
+      } else {
+        toast.error('Export failed, please try again');
+      }
+    } finally {
+      setExportingCsv(false);
+    }
+  };
 
   const formatRelativeTime = (iso) => {
     if (!iso) return null;
@@ -273,30 +327,26 @@ const ComplianceScorePage = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="compliance-score-page">
-        {/* Export buttons (enterprise add-ons - UI only) */}
+        {/* Export buttons (enterprise add-ons) */}
         <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button variant="outline" size="sm" disabled className="cursor-not-allowed">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download score explanation (PDF)
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Coming soon</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button variant="outline" size="sm" disabled className="cursor-not-allowed">
-                  <FileDown className="w-4 h-4 mr-2" />
-                  Export score drivers (CSV)
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Coming soon</TooltipContent>
-          </Tooltip>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={exportingPdf}
+          >
+            {exportingPdf ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            Download score explanation (PDF)
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadCsv}
+            disabled={exportingCsv}
+          >
+            {exportingCsv ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
+            Export score drivers (CSV)
+          </Button>
         </div>
         {/* Back Button */}
         <Button

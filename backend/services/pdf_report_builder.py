@@ -276,6 +276,198 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     return buffer.getvalue()
 
 
+def build_score_explanation_report(
+    client_id: str,
+    score_payload: dict,
+    client_doc: dict,
+    branding: dict,
+) -> bytes:
+    """
+    Build Compliance Score Summary (Informational) PDF. Audit-style, branded.
+    Sections: cover, portfolio snapshot, what score means, weighting model,
+    top drivers, property breakdown, appendix (full drivers). Footer: disclaimer + Pleerity line.
+    """
+    company_name = client_doc.get("company_name") or client_doc.get("full_name") or "Client"
+    crn = client_doc.get("customer_reference") or client_id
+    now = datetime.now(timezone.utc)
+    now_str = now.strftime("%d %B %Y at %H:%M UTC")
+    data_as_of = score_payload.get("score_last_calculated_at") or now.isoformat()
+    if isinstance(data_as_of, str) and len(data_as_of) > 19:
+        data_as_of = data_as_of[:19].replace("T", " ")
+
+    branding = branding or {
+        "primary_color": "#0B1D3A",
+        "secondary_color": "#00B8A9",
+        "company_name": company_name,
+    }
+    styles, table_style = _build_styles_and_table_style(branding)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50,
+    )
+    elements = []
+
+    # —— 1. Cover ——
+    elements.append(Spacer(1, 60))
+    elements.append(Paragraph("Compliance Score Summary (Informational)", styles["title"]))
+    elements.append(Paragraph(
+        f"{company_name}<br/>CRN: {crn}<br/>Generated: {now_str}<br/>Data as of: {data_as_of}",
+        styles["subtitle"],
+    ))
+    elements.append(Paragraph(
+        "Informational tracking indicator only. Not legal advice. Status based on portal records; may apply depending on your situation.",
+        styles["small"],
+    ))
+    elements.append(Spacer(1, 30))
+    elements.append(HRFlowable(width="100%", thickness=2, color=colors.Color(*_hex_to_rgb(branding.get("secondary_color", "#00B8A9"))), spaceAfter=20))
+    elements.append(PageBreak())
+
+    # —— 2. Portfolio snapshot ——
+    elements.append(Paragraph("Portfolio snapshot", styles["heading"]))
+    score = score_payload.get("score")
+    grade = score_payload.get("grade") or "—"
+    stats = score_payload.get("stats") or {}
+    valid = stats.get("compliant", 0)
+    expiring = stats.get("expiring_soon", 0)
+    overdue = stats.get("overdue", 0)
+    props_count = score_payload.get("properties_count", 0)
+    completeness = score_payload.get("data_completeness_percent")
+    completeness_str = f"{completeness}%" if completeness is not None else "—"
+    model_ver = score_payload.get("score_model_version") or "—"
+    snapshot_text = f"""
+    <b>Overall score:</b> {score if score is not None else '—'}/100 &nbsp;|&nbsp; <b>Grade:</b> {grade}
+    <br/><br/>
+    <b>Valid:</b> {valid} &nbsp;|&nbsp; <b>Expiring soon:</b> {expiring} &nbsp;|&nbsp; <b>Overdue:</b> {overdue}
+    <br/>
+    <b>Properties monitored:</b> {props_count} &nbsp;|&nbsp; <b>Data completeness:</b> {completeness_str} &nbsp;|&nbsp; <b>Model:</b> CVP Score v{model_ver}
+    """
+    elements.append(Paragraph(snapshot_text, styles["body"]))
+    elements.append(Spacer(1, 24))
+
+    # —— 3. What the score means ——
+    elements.append(Paragraph("What the score means", styles["heading"]))
+    elements.append(Paragraph(
+        "<b>Scope (included):</b> Applicable tracked items for each property (e.g. Gas Safety, EICR, EPC, Licence if configured).",
+        styles["body"],
+    ))
+    elements.append(Paragraph(
+        "<b>Excluded:</b> Council-specific rules unless configured; optional uploads not tracked; evidence not uploaded/confirmed.",
+        styles["body"],
+    ))
+    elements.append(Paragraph(
+        "<b>Definitions:</b> Valid = current and in date; Expiring soon = due within the configured window; Overdue = due date passed; Missing evidence = no upload; Not applicable = excluded from score.",
+        styles["body"],
+    ))
+    elements.append(Paragraph(
+        "<b>Updates:</b> Score recalculates automatically when documents, dates, applicability, or status changes.",
+        styles["body"],
+    ))
+    elements.append(Spacer(1, 24))
+
+    # —— 4. Weighting model ——
+    elements.append(Paragraph("Weighting model", styles["heading"]))
+    weights = score_payload.get("weights") or {}
+    breakdown = score_payload.get("breakdown") or {}
+    components = score_payload.get("components") or {}
+    weight_rows = [["Component", "Weight", "Your score (%)"]]
+    comp_map = {"status": "status", "expiry": "timeline", "documents": "documents", "overdue_penalty": "urgency"}
+    break_map = {"status": "status_score", "expiry": "expiry_score", "documents": "document_score", "overdue_penalty": "overdue_penalty_score"}
+    for key, label in [("status", "Status"), ("expiry", "Timeline"), ("documents", "Documents"), ("overdue_penalty", "Urgency impact")]:
+        w = weights.get(key, "—")
+        comp = components.get(comp_map[key])
+        sc = comp.get("score") if isinstance(comp, dict) else breakdown.get(break_map[key])
+        weight_rows.append([label, str(w), str(round(sc)) if sc is not None else "—"])
+    if len(weight_rows) > 1:
+        wt = Table(weight_rows, colWidths=[180, 80, 100])
+        wt.setStyle(table_style)
+        elements.append(wt)
+    elements.append(Spacer(1, 24))
+
+    # —— 5. Top drivers ——
+    drivers = score_payload.get("drivers") or []
+    top_drivers = drivers[:10]
+    elements.append(Paragraph("Top drivers (what is affecting your score)", styles["heading"]))
+    if not top_drivers:
+        elements.append(Paragraph("No issues detected based on current portal records.", styles["body"]))
+    else:
+        driver_rows = [["Property", "Requirement", "Status", "Date used", "Evidence", "Next step"]]
+        for d in top_drivers:
+            next_step = "—"
+            acts = d.get("actions") or []
+            if "UPLOAD" in acts:
+                next_step = "Upload document"
+            elif "CONFIRM" in acts:
+                next_step = "Confirm details"
+            elif "VIEW" in acts:
+                next_step = "View requirement"
+            date_used = d.get("date_used")
+            if date_used and isinstance(date_used, str):
+                date_used = date_used[:10] if len(date_used) >= 10 else date_used
+            driver_rows.append([
+                (d.get("property_name") or d.get("property_id") or "—")[:25],
+                (d.get("requirement_name") or "—")[:30],
+                (d.get("status") or "—"),
+                str(date_used) if date_used else "—",
+                "Yes" if d.get("evidence_uploaded") else "No",
+                next_step,
+            ])
+        dt = Table(driver_rows, colWidths=[100, 120, 70, 75, 50, 95])
+        dt.setStyle(table_style)
+        elements.append(dt)
+    elements.append(Spacer(1, 24))
+
+    # —— 6. Property breakdown ——
+    elements.append(Paragraph("Property breakdown", styles["heading"]))
+    prop_breakdown = score_payload.get("property_breakdown") or []
+    if not prop_breakdown:
+        elements.append(Paragraph("No property data in scope.", styles["body"]))
+    else:
+        prop_rows = [["Property", "Score", "Valid", "Expiring", "Overdue"]]
+        for p in prop_breakdown[:30]:
+            prop_rows.append([
+                (p.get("name") or p.get("property_id") or "—")[:40],
+                str(p.get("score")) if p.get("score") is not None else "—",
+                str(p.get("valid", 0)),
+                str(p.get("expiring", 0)),
+                str(p.get("overdue", 0)),
+            ])
+        pt = Table(prop_rows, colWidths=[200, 50, 50, 60, 60])
+        pt.setStyle(table_style)
+        elements.append(pt)
+    elements.append(Spacer(1, 24))
+
+    # —— 7. Appendix: full driver table (optional) ——
+    if drivers and len(drivers) > 10:
+        elements.append(Paragraph("Appendix: full driver list", styles["heading"]))
+        full_rows = [["Property", "Requirement", "Status", "Date used", "Evidence"]]
+        for d in drivers:
+            date_used = d.get("date_used")
+            if date_used and isinstance(date_used, str):
+                date_used = date_used[:10] if len(date_used) >= 10 else date_used
+            full_rows.append([
+                (d.get("property_name") or d.get("property_id") or "—")[:30],
+                (d.get("requirement_name") or "—")[:35],
+                (d.get("status") or "—")[:15],
+                str(date_used) if date_used else "—",
+                "Y" if d.get("evidence_uploaded") else "N",
+            ])
+        ft = Table(full_rows, colWidths=[120, 130, 70, 75, 45])
+        ft.setStyle(table_style)
+        elements.append(ft)
+    elements.append(Spacer(1, 20))
+
+    # Footer
+    elements.append(HRFlowable(width="100%", thickness=1, color=colors.gray, spaceAfter=12))
+    elements.append(Paragraph("Pleerity Enterprise Ltd – AI-Driven Solutions & Compliance", styles["footer"]))
+    elements.append(Paragraph(f"CRN: {crn} &nbsp;|&nbsp; Generated: {now_str}", styles["footer"]))
+    elements.append(Paragraph("Informational indicator based on portal records. Not legal advice.", styles["footer"]))
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 def build_property_report(client_id: str, property_id: str, report_data: dict) -> bytes:
     """
     Build Evidence Readiness PDF for a single property. Sync; deterministic.

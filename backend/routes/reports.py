@@ -1,5 +1,6 @@
 """Reporting Routes - Generate and download compliance reports."""
 import asyncio
+import csv
 import io
 import logging
 from datetime import datetime, timezone
@@ -14,8 +15,9 @@ from middleware import client_route_guard, admin_route_guard
 from models import AuditAction
 from utils.audit import create_audit_log
 from services.reporting_service import reporting_service
-from services.pdf_report_builder import build_portfolio_report, build_property_report
+from services.pdf_report_builder import build_portfolio_report, build_property_report, build_score_explanation_report
 from services.report_service import load_evidence_readiness_data
+from services.compliance_score import calculate_compliance_score
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -136,6 +138,174 @@ async def list_reports(request: Request):
             "risk_level_at_time": row.get("risk_level_at_time"),
         })
     return {"reports": items}
+
+
+@router.get("/score-drivers.csv")
+async def get_score_drivers_csv(request: Request):
+    """
+    Export score drivers as CSV (portfolio scope).
+    Columns: CRN, Property name, Postcode, Requirement, Status, Date used, Date confidence,
+    Evidence uploaded, Next step label, Last updated.
+    Plan-gated by reports_csv. Audit logged.
+    """
+    from services.plan_registry import plan_registry
+
+    user = await client_route_guard(request)
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_csv")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "reports_csv", "upgrade_required": True},
+        )
+    try:
+        db = database.get_db()
+        client = await db.clients.find_one(
+            {"client_id": user["client_id"]},
+            {"_id": 0, "customer_reference": 1},
+        )
+        crn = (client or {}).get("customer_reference") or user["client_id"]
+        score_data = await calculate_compliance_score(user["client_id"])
+        drivers = score_data.get("drivers") or []
+        data_as_of = score_data.get("score_last_calculated_at") or datetime.now(timezone.utc).isoformat()
+        if isinstance(data_as_of, datetime):
+            data_as_of = data_as_of.isoformat()
+
+        def _next_step_label(actions):
+            if not actions:
+                return "—"
+            if "UPLOAD" in actions:
+                return "Upload document"
+            if "CONFIRM" in actions:
+                return "Confirm details"
+            if "VIEW" in actions:
+                return "View requirement"
+            return "—"
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "CRN", "Property name", "Postcode", "Requirement", "Status", "Date used",
+            "Date confidence", "Evidence uploaded", "Next step label", "Last updated",
+        ])
+        for d in drivers:
+            postcode = ""
+            if score_data.get("property_breakdown"):
+                for pb in score_data["property_breakdown"]:
+                    if pb.get("property_id") == d.get("property_id"):
+                        postcode = pb.get("postcode") or ""
+                        break
+            date_used = d.get("date_used")
+            if date_used:
+                try:
+                    date_used = date_used[:10] if isinstance(date_used, str) else str(date_used)[:10]
+                except Exception:
+                    date_used = str(date_used) if date_used else "—"
+            else:
+                date_used = "—"
+            writer.writerow([
+                crn,
+                (d.get("property_name") or d.get("property_id") or "—"),
+                postcode,
+                (d.get("requirement_name") or "—"),
+                (d.get("status") or "—"),
+                date_used,
+                (d.get("date_confidence") or "UNKNOWN"),
+                "Y" if d.get("evidence_uploaded") else "N",
+                _next_step_label(d.get("actions") or []),
+                data_as_of[:19] if isinstance(data_as_of, str) and len(data_as_of) > 19 else data_as_of,
+            ])
+
+        await create_audit_log(
+            action=AuditAction.REPORT_EXPORTED,
+            actor_id=user.get("portal_user_id"),
+            client_id=user["client_id"],
+            resource_type="report",
+            metadata={"report_type": "score_drivers_csv", "scope": "portfolio"},
+        )
+
+        filename = f"score_drivers_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.csv"
+        return StreamingResponse(
+            io.BytesIO(output.getvalue().encode("utf-8-sig")),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    except Exception as e:
+        logger.exception("Score drivers CSV error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate score drivers export",
+        )
+
+
+@router.get("/score-explanation.pdf")
+async def get_score_explanation_pdf(
+    request: Request,
+    scope: str = "portfolio",
+    property_id: Optional[str] = None,
+):
+    """
+    Download Compliance Score Summary (Informational) PDF.
+    Branded, audit-style report. Plan-gated by reports_pdf. Audit logged.
+    """
+    from services.plan_registry import plan_registry
+
+    user = await client_route_guard(request)
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
+        )
+    try:
+        score_data = await calculate_compliance_score(user["client_id"])
+        db = database.get_db()
+        client = await db.clients.find_one(
+            {"client_id": user["client_id"]},
+            {"_id": 0, "full_name": 1, "company_name": 1, "customer_reference": 1},
+        )
+        client_doc = client or {}
+        try:
+            from services.professional_reports import professional_report_generator
+            branding = await professional_report_generator.get_branding(user["client_id"])
+        except Exception:
+            branding = {
+                "primary_color": "#0B1D3A",
+                "secondary_color": "#00B8A9",
+                "company_name": client_doc.get("company_name") or client_doc.get("full_name") or "Client",
+            }
+
+        pdf_bytes = await asyncio.to_thread(
+            build_score_explanation_report,
+            user["client_id"],
+            score_data,
+            client_doc,
+            branding,
+        )
+
+        await create_audit_log(
+            action=AuditAction.REPORT_EXPORTED,
+            actor_id=user.get("portal_user_id"),
+            client_id=user["client_id"],
+            resource_type="report",
+            metadata={
+                "report_type": "score_explanation_pdf",
+                "scope": scope,
+                "property_id": property_id,
+            },
+        )
+
+        filename = f"compliance_score_summary_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.pdf"
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    except Exception as e:
+        logger.exception("Score explanation PDF error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate score explanation PDF",
+        )
 
 
 @router.get("/{report_id}/download")
