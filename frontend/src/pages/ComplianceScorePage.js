@@ -184,7 +184,10 @@ const ComplianceScorePage = () => {
                   </div>
                   <p className="text-lg text-gray-700">{scoreData?.message}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Based on {scoreData?.stats?.total_requirements || 0} tracked items across {scoreData?.properties_count || 0} properties. These may apply depending on your situation.
+                    Based on {scoreData?.stats?.total_requirements || 0} tracked items across {scoreData?.properties_count || 0} {scoreData?.properties_count === 1 ? 'property' : 'properties'}.
+                    {scoreData?.properties_count != null && scoreData.properties_count > 1 && (
+                      <span className="block mt-0.5">Your overall score is the average of each property&apos;s score.</span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -229,6 +232,11 @@ const ComplianceScorePage = () => {
           {showMethodology && (
             <CardContent className="border-t">
               <div className="space-y-6">
+                {scoreData?.properties_count != null && scoreData.properties_count > 1 && (
+                  <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <strong>Multiple properties:</strong> Your overall score is the average of each property&apos;s score. Each property has its own score from its requirements and documents; the number shown is the average across all {scoreData.properties_count} properties.
+                  </p>
+                )}
                 {/* Weighting Model */}
                 <div>
                   <h4 className="font-semibold text-midnight-blue mb-3">Score Weighting Model</h4>

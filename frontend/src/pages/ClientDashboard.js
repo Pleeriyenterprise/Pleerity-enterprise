@@ -477,6 +477,9 @@ const ClientDashboard = () => {
               }`}>
                 {complianceScore.message}
               </p>
+              {complianceScore.properties_count != null && complianceScore.properties_count > 1 && (
+                <p className="text-xs text-gray-500 mt-1">Overall score: average across your {complianceScore.properties_count} properties.</p>
+              )}
               
               {/* Score Trending Sparkline */}
               {scoreTrend?.has_history && scoreTrend.sparkline?.length > 1 && (
@@ -667,13 +670,13 @@ const ClientDashboard = () => {
         )}
 
         {/* Risk level and KPIs from compliance summary (catalog-driven when available) */}
-        {portfolioSummary?.risk_level && (
+        {(portfolioSummary?.risk_level || complianceScore?.score != null) && (
           <p className="text-sm text-gray-600 mb-2">
-            <span className="font-medium">Risk level:</span> {formatRiskLabel(portfolioSummary.risk_level)}
-            {portfolioSummary.portfolio_score != null && (
-              <span className="ml-2 text-gray-500">(Portfolio score: {portfolioSummary.portfolio_score}/100)</span>
+            <span className="font-medium">Risk level:</span> {formatRiskLabel(portfolioSummary?.risk_level || complianceScore?.message || '')}
+            {(complianceScore?.score != null || portfolioSummary?.portfolio_score != null) && (
+              <span className="ml-2 text-gray-500">(Score: {complianceScore?.score ?? portfolioSummary?.portfolio_score}/100)</span>
             )}
-            {portfolioSummary.updated_at && (
+            {portfolioSummary?.updated_at && (
               <span className="ml-2 text-gray-400 text-xs">Updated {new Date(portfolioSummary.updated_at).toLocaleString()}</span>
             )}
           </p>
@@ -765,7 +768,7 @@ const ClientDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Score &amp; Risk</p>
                   <p className="text-3xl font-bold text-midnight-blue">
-                    {portfolioSummary?.portfolio_score ?? complianceScore?.score ?? '—'}
+                    {complianceScore?.score ?? portfolioSummary?.portfolio_score ?? '—'}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {portfolioSummary?.risk_level ? formatRiskLabel(portfolioSummary.risk_level) : (complianceScore?.message || 'Portfolio')}
