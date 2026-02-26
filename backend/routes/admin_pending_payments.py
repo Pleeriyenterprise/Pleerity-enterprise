@@ -25,6 +25,46 @@ router = APIRouter(prefix="/api/admin/intake", tags=["admin-intake"])
 SUBSCRIPTION_ACTIVE_STATUSES = frozenset({"active", "trialing"})
 SUBSCRIPTION_TERMINAL_STATUSES = frozenset({"canceled", "incomplete_expired"})
 
+# Brand colours for payment link email (aligned with order_email_templates / email_service)
+_BRAND_PRIMARY = "#0B1D3A"
+_BRAND_ACCENT = "#00B8A9"
+
+
+def _build_payment_link_email_html(checkout_url: str, customer_reference: str) -> str:
+    """Build branded HTML for the payment link (complete your payment) email."""
+    ref_display = customer_reference if customer_reference and customer_reference != "N/A" else ""
+    ref_block = ""
+    if ref_display:
+        ref_block = f"""
+                    <p style="margin: 0 0 20px 0; font-size: 14px; color: #64748b;">Your Customer Reference</p>
+                    <p style="margin: 0 0 24px 0;"><span style="background-color: {_BRAND_ACCENT}; color: white; padding: 6px 14px; border-radius: 6px; font-family: monospace; font-size: 14px; font-weight: 600;">{ref_display}</span></p>"""
+    return f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f1f5f9;">
+    <div style="max-width: 560px; margin: 0 auto; padding: 24px 16px;">
+        <div style="background-color: {_BRAND_PRIMARY}; padding: 24px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600;">Compliance Vault Pro</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Complete your payment</p>
+        </div>
+        <div style="background-color: #ffffff; padding: 28px 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 10px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <p style="margin: 0 0 16px 0; font-size: 16px; color: #334155;">You recently started your Compliance Vault Pro onboarding. Complete your payment to activate your account.</p>
+            {ref_block}
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: #64748b;">Click the button below to pay securely. You will be taken to our payment provider to complete the transaction.</p>
+            <p style="margin: 0 0 8px 0;">
+                <a href="{checkout_url}" style="display: inline-block; background-color: {_BRAND_ACCENT}; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete payment</a>
+            </p>
+            <p style="margin: 12px 0 0 0; font-size: 12px; color: #94a3b8;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px; word-break: break-all;"><a href="{checkout_url}" style="color: {_BRAND_ACCENT}; text-decoration: underline;">{checkout_url if len(checkout_url) <= 80 else checkout_url[:80] + "..."}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 16px 0;" />
+            <p style="margin: 0; font-size: 13px; color: #64748b;">If you have any questions, please contact support.</p>
+            <p style="margin: 8px 0 0 0; font-size: 12px; color: #94a3b8;">Pleerity Enterprise Ltd</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
 
 def _is_paid_or_active(client: dict) -> bool:
     sub_status = (client.get("subscription_status") or "").lower()
@@ -276,19 +316,22 @@ async def send_payment_link(request: Request, client_id: str):
         try:
             from postmarker.core import PostmarkClient
             postmark = PostmarkClient(server_token=postmark_token)
-            crn = client.get("customer_reference") or "N/A"
-            body = f"""You recently started your Compliance Vault Pro onboarding. Complete your payment to activate your account.
+            crn = (client.get("customer_reference") or "N/A").strip()
+            # Plain text fallback
+            text_body = f"""You recently started your Compliance Vault Pro onboarding. Complete your payment to activate your account.
 
 Your Customer Reference: {crn}
 Payment link: {checkout_url}
 
 If you have any questions, please contact support."""
-
+            # Branded HTML (same style as admin invite / order emails)
+            html_body = _build_payment_link_email_html(checkout_url=checkout_url, customer_reference=crn)
             postmark.emails.send(
                 From=postmark_from,
                 To=client["email"],
                 Subject="Complete your Compliance Vault Pro payment",
-                TextBody=body,
+                TextBody=text_body,
+                HtmlBody=html_body,
             )
             email_sent = True
             logger.info("Recovery email sent to %s for client %s", client["email"], client_id)
