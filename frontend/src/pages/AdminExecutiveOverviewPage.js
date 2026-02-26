@@ -76,8 +76,10 @@ export default function AdminExecutiveOverviewPage() {
     return (
       <UnifiedAdminLayout>
         <div className="max-w-4xl mx-auto p-6">
-          <p className="text-red-600">{error}</p>
-          <button type="button" onClick={fetchData} className="mt-2 text-sm text-gray-600 underline">
+          <p className="text-red-600 font-medium">Failed to load executive overview</p>
+          <p className="mt-1 text-gray-700">{error}</p>
+          <p className="mt-2 text-sm text-gray-500">If the backend is running, check that <code className="bg-gray-100 px-1 rounded">REACT_APP_BACKEND_URL</code> points to it.</p>
+          <button type="button" onClick={fetchData} className="mt-4 px-4 py-2 bg-electric-teal text-white rounded-lg hover:opacity-90 text-sm font-medium">
             Retry
           </button>
         </div>

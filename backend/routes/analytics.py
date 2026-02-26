@@ -8,7 +8,7 @@ Provides business intelligence data for the admin analytics dashboard:
 - SLA performance metrics
 - Customer insights
 """
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from datetime import datetime, timezone, timedelta
 from middleware import admin_route_guard, require_owner_or_admin
 from database import database
@@ -1493,7 +1493,7 @@ def _revenue_date_range(from_date: Optional[str], to_date: Optional[str], period
 # ============================================================================
 
 @router.get("/executive-overview", dependencies=[Depends(require_owner_or_admin)])
-async def get_executive_overview():
+async def get_executive_overview(request: Request):
     """
     Executive Overview: MRR, ARR, Revenue YTD, Gross Profit YTD, SaaS health,
     revenue composition (donut), and 12-month revenue trend. Investor-ready.

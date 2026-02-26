@@ -34,6 +34,7 @@ const AdminAssistantPage = () => {
   const [queryHistory, setQueryHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [assistantUnavailable, setAssistantUnavailable] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -118,6 +119,7 @@ const AdminAssistantPage = () => {
         question: userQuestion
       });
 
+      setAssistantUnavailable(false);
       // Add assistant response to conversation
       setConversation(prev => [...prev, { 
         role: 'assistant', 
@@ -131,7 +133,12 @@ const AdminAssistantPage = () => {
         loadQueryHistory();
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || 'Failed to get response';
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail;
+      const errorMsg = typeof detail === 'string' ? detail : (detail?.message) || 'Failed to get response';
+      if (status === 503 && (errorMsg.includes('LLM_API_KEY') || errorMsg.toLowerCase().includes('assistant unavailable'))) {
+        setAssistantUnavailable(true);
+      }
       toast.error(errorMsg);
       setConversation(prev => [...prev, { 
         role: 'error', 
@@ -148,6 +155,7 @@ const AdminAssistantPage = () => {
     setConversation([]);
     setQueryHistory([]);
     setShowHistory(false);
+    setAssistantUnavailable(false);
   };
 
   const loadPreviousQuery = (query) => {
@@ -416,6 +424,12 @@ const AdminAssistantPage = () => {
 
               {/* Chat Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="chat-messages">
+                {assistantUnavailable && (
+                  <div className="rounded-xl p-4 bg-amber-50 border border-amber-200 text-amber-800" data-testid="assistant-unavailable-banner">
+                    <p className="font-medium">AI Assistant is not configured</p>
+                    <p className="text-sm mt-1">To enable, set <code className="bg-amber-100 px-1 rounded">LLM_API_KEY</code> in the server environment (e.g. Google AI Studio / Gemini API key). See README or contact your administrator.</p>
+                  </div>
+                )}
                 {!clientSnapshot ? (
                   <div className="text-center py-12">
                     <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -491,13 +505,13 @@ const AdminAssistantPage = () => {
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                     placeholder={clientSnapshot ? "Ask about this client's compliance..." : "Load a client first"}
-                    disabled={!clientSnapshot || askingQuestion}
+                    disabled={!clientSnapshot || askingQuestion || assistantUnavailable}
                     className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                     data-testid="question-input"
                   />
                   <button
                     type="submit"
-                    disabled={!clientSnapshot || !question.trim() || askingQuestion}
+                    disabled={!clientSnapshot || !question.trim() || askingQuestion || assistantUnavailable}
                     className="px-6 py-3 bg-electric-teal text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     data-testid="send-question-btn"
                   >
