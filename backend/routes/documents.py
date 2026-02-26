@@ -142,6 +142,49 @@ DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(DA
 DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
 
+async def _apply_extraction_to_requirement(
+    db,
+    requirement_id: str,
+    property_id: str,
+    client_id: str,
+    expiry_date_str: str,
+    actor_id: Optional[str],
+) -> bool:
+    """Update requirement due_date and status from extracted expiry. Used after upload+analysis and by apply-extraction."""
+    try:
+        expiry_dt = _normalize_and_parse_date(expiry_date_str)
+    except ValueError:
+        return False
+    now = datetime.now(timezone.utc)
+    if expiry_dt < now:
+        status_value = RequirementStatus.OVERDUE.value
+    elif expiry_dt < now + timedelta(days=30):
+        status_value = RequirementStatus.EXPIRING_SOON.value
+    else:
+        status_value = RequirementStatus.COMPLIANT.value
+    update_fields = {
+        "due_date": expiry_dt.isoformat(),
+        "extracted_expiry_date": expiry_dt.isoformat(),
+        "expiry_source": "EXTRACTED",
+        "status": status_value,
+        "updated_at": now.isoformat(),
+    }
+    await db.requirements.update_one(
+        {"requirement_id": requirement_id},
+        {"$set": update_fields},
+    )
+    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_AI_APPLIED, ACTOR_CLIENT
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=client_id,
+        trigger_reason=TRIGGER_AI_APPLIED,
+        actor_type=ACTOR_CLIENT,
+        actor_id=actor_id,
+        correlation_id=f"EXTRACTION_APPLIED:{requirement_id}",
+    )
+    return True
+
+
 async def _run_analysis_after_upload(
     document_id: str,
     client_id: str,
@@ -177,6 +220,33 @@ async def _run_analysis_after_upload(
                 "Document extraction failed: document_id=%s error_code=%s (set OPENAI_API_KEY or LLM_API_KEY for AI; manual entry always available)",
                 document_id, error_code,
             )
+        else:
+            # Success: auto-update linked requirement so Requirements page reflects evidence (enterprise: upload+extract => requirement updated)
+            extracted_data = result.get("extracted_data") or {}
+            expiry_date = extracted_data.get("expiry_date")
+            if expiry_date:
+                doc = await db.documents.find_one(
+                    {"document_id": document_id},
+                    {"_id": 0, "requirement_id": 1, "property_id": 1, "client_id": 1},
+                )
+                if doc and doc.get("requirement_id"):
+                    ok = await _apply_extraction_to_requirement(
+                        db,
+                        doc["requirement_id"],
+                        doc["property_id"],
+                        doc["client_id"],
+                        expiry_date,
+                        actor_id,
+                    )
+                    if ok:
+                        await db.documents.update_one(
+                            {"document_id": document_id},
+                            {"$set": {"ai_extraction.review_status": "approved"}},
+                        )
+                        logger.info(
+                            "Document extraction applied to requirement: document_id=%s requirement_id=%s",
+                            document_id, doc["requirement_id"],
+                        )
     except Exception as e:
         logger.warning("Post-upload analysis failed for %s: %s", document_id, e)
         await db.documents.update_one(
@@ -1692,10 +1762,10 @@ async def apply_ai_extraction(
     This endpoint allows users to:
     1. Review AI-extracted data
     2. Modify any incorrect values
-    3. Apply the data to update the requirement's due date
+    3. Apply the data to update the requirement's due date (user consent + accurate compliance score)
     
-    IMPORTANT: This does NOT auto-mark the requirement as compliant.
-    The deterministic compliance engine evaluates status based on dates only.
+    Available on all plans (Solo, Portfolio, Professional) so users can explicitly confirm
+    extracted data before it updates the requirement.
     
     Args:
         document_id: The document whose extraction to apply
@@ -1703,34 +1773,8 @@ async def apply_ai_extraction(
     
     Returns:
         Success message with changes applied, or descriptive error.
-    Gated: Professional only (ai_review_interface).
     """
     user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(
-        user["client_id"], "ai_review_interface"
-    )
-    if not allowed:
-        await create_audit_log(
-            action=AuditAction.ADMIN_ACTION,
-            actor_id=user.get("portal_user_id"),
-            client_id=user["client_id"],
-            metadata={
-                "action_type": "PLAN_GATE_DENIED",
-                "feature_key": "ai_review_interface",
-                "endpoint": f"/api/documents/{document_id}/apply-extraction",
-                "method": "POST",
-                "reason": error_msg,
-            }
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {
-                "message": "AI Review Interface requires Professional plan.",
-                "feature": "ai_review_interface",
-                "upgrade_required": True,
-            }
-        )
     db = database.get_db()
     confirmed_data = body.confirmed_data if body else None
     try:

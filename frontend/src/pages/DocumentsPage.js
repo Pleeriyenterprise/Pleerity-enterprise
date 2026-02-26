@@ -719,6 +719,9 @@ const DocumentsPage = () => {
                     Your Documents ({filteredDocuments.length}{filteredDocuments.length !== documents.length ? ` of ${documents.length}` : ''})
                   </span>
                 </CardTitle>
+                <p className="text-sm text-gray-500 mt-1">
+                  When you upload a certificate and choose a property and requirement, the linked requirement on the Requirements page is updated automatically after extraction (all plans).
+                </p>
               </CardHeader>
               <CardContent>
                 {documents.length === 0 ? (
@@ -869,8 +872,8 @@ const DocumentsPage = () => {
                                   </div>
                                 )}
 
-                                {/* Review button if not yet reviewed (Pro only) */}
-                                {hasFeature('ai_review_interface') && doc.ai_extraction.review_status === 'pending' && (
+                                {/* Review & Apply: available on all plans for user consent and accurate compliance */}
+                                {doc.ai_extraction.review_status === 'pending' && (
                                   <div className="mt-3 pt-3 border-t border-teal-200">
                                     <Button
                                       size="sm"
@@ -889,12 +892,10 @@ const DocumentsPage = () => {
                             {(doc.extraction_status === 'EXTRACTED' || doc.extraction_status === 'NEEDS_REVIEW') && (
                               <div className="mt-3 p-3 bg-teal-50 rounded-lg border border-teal-100">
                                 <p className="text-sm text-teal-800 mb-2">Evidence readiness extraction ready for review.</p>
-                                {hasFeature('ai_review_interface') && (
-                                  <Button size="sm" onClick={() => openReviewModal(doc)} className="w-full" data-testid={`review-extraction-btn-${doc.document_id}`}>
-                                    <FileCheck className="w-4 h-4 mr-2" />
-                                    Review extraction
-                                  </Button>
-                                )}
+                                <Button size="sm" onClick={() => openReviewModal(doc)} className="w-full" data-testid={`review-extraction-btn-${doc.document_id}`}>
+                                  <FileCheck className="w-4 h-4 mr-2" />
+                                  Review extraction
+                                </Button>
                               </div>
                             )}
                             {extractingDocumentId === doc.document_id && (
@@ -976,7 +977,7 @@ const DocumentsPage = () => {
                                 )}
                               </Button>
                             )}
-                            {hasFeature('ai_review_interface') && doc.ai_extraction?.data && doc.ai_extraction.review_status !== 'pending' && (
+                            {doc.ai_extraction?.data && doc.ai_extraction.review_status !== 'pending' && (
                               <Button
                                 variant="ghost"
                                 size="sm"
