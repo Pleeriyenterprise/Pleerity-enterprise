@@ -104,7 +104,7 @@ const DocumentsPage = () => {
       extractingContextRef.current = null;
     };
 
-    const openConfirmModal = (extractionFailed = false) => {
+    const openConfirmModal = (extractionFailed = false, extractionErrorCode = null) => {
       stopPolling();
       setConfirmExpiryDate('');
       setConfirmIssueDate('');
@@ -113,6 +113,7 @@ const DocumentsPage = () => {
         ...ctx,
         document_id: extractingDocumentId,
         extractionFailed,
+        extractionErrorCode,
       });
       fetchData();
     };
@@ -126,7 +127,7 @@ const DocumentsPage = () => {
           return;
         }
         if (status === 'failed') {
-          openConfirmModal(true);
+          openConfirmModal(true, res.data?.extraction?.error_code || null);
           return;
         }
       } catch {
@@ -141,7 +142,7 @@ const DocumentsPage = () => {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
       timeoutRef.current = null;
-      openConfirmModal(true);
+      openConfirmModal(true, 'TIMEOUT');
       toast.info('Extraction is taking longer than expected. You can enter details manually.');
     }, TIMEOUT_MS);
 
@@ -1098,7 +1099,9 @@ const DocumentsPage = () => {
               </p>
               {confirmDetailsModal.extractionFailed && (
                 <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4" data-testid="extraction-failed-message">
-                  Extraction could not read this file. Enter details manually or re-upload.
+                  {confirmDetailsModal.extractionErrorCode === 'AI_NOT_CONFIGURED'
+                    ? 'AI extraction is not configured on this server. Enter the details below manually.'
+                    : 'Extraction could not read this file. Enter details manually or re-upload.'}
                 </p>
               )}
               <div className="space-y-3 mb-6">

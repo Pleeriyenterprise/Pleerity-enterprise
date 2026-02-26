@@ -204,6 +204,7 @@ class DocumentAnalysisService:
             return {
                 "success": False,
                 "error": "Document file not found",
+                "error_code": "FILE_NOT_FOUND",
                 "extracted_data": None,
                 "requires_review": True,
             }
@@ -222,56 +223,57 @@ class DocumentAnalysisService:
             extract_compliance_fields = None
 
         if ai_config and getattr(ai_config, "is_configured", lambda: False)() and _extract_text_from_file and extract_compliance_fields:
-            text = _extract_text_from_file(file_path, mime_type)
-            if text and text.strip():
-                result = extract_compliance_fields(text, os.path.basename(file_path), None)
-                if result.get("success") and result.get("extracted"):
-                    mapped = self._map_ai_provider_to_analysis(result["extracted"])
-                    extracted_data = self._normalize_extraction_data(mapped)
-                    extraction_quality = self._assess_extraction_quality(extracted_data)
-                    await db.documents.update_one(
-                        {"document_id": document_id},
-                        {"$set": {
-                            "ai_extraction": {
-                                "extracted_at": datetime.now(timezone.utc).isoformat(),
-                                "data": extracted_data,
-                                "status": "completed",
+            try:
+                text = _extract_text_from_file(file_path, mime_type)
+                if text and text.strip():
+                    result = extract_compliance_fields(text, os.path.basename(file_path), None)
+                    if result.get("success") and result.get("extracted"):
+                        mapped = self._map_ai_provider_to_analysis(result["extracted"])
+                        extracted_data = self._normalize_extraction_data(mapped)
+                        extraction_quality = self._assess_extraction_quality(extracted_data)
+                        await db.documents.update_one(
+                            {"document_id": document_id},
+                            {"$set": {
+                                "ai_extraction": {
+                                    "extracted_at": datetime.now(timezone.utc).isoformat(),
+                                    "data": extracted_data,
+                                    "status": "completed",
+                                    "doc_type_hint": doc_type_hint,
+                                    "extraction_quality": extraction_quality,
+                                    "requires_review": True,
+                                    "review_status": "pending",
+                                }
+                            }}
+                        )
+                        await create_audit_log(
+                            action=AuditAction.DOCUMENT_AI_ANALYZED,
+                            actor_id=actor_id,
+                            client_id=client_id,
+                            resource_type="document",
+                            resource_id=document_id,
+                            metadata={
+                                "document_type": extracted_data.get("document_type"),
                                 "doc_type_hint": doc_type_hint,
+                                "overall_confidence": extracted_data.get("confidence_scores", {}).get("overall"),
                                 "extraction_quality": extraction_quality,
+                                "has_expiry_date": extracted_data.get("expiry_date") is not None,
+                                "has_engineer_details": extracted_data.get("engineer_details", {}).get("name") is not None,
                                 "requires_review": True,
-                                "review_status": "pending",
+                                "provider": "openai",
                             }
-                        }}
-                    )
-                    await create_audit_log(
-                        action=AuditAction.DOCUMENT_AI_ANALYZED,
-                        actor_id=actor_id,
-                        client_id=client_id,
-                        resource_type="document",
-                        resource_id=document_id,
-                        metadata={
-                            "document_type": extracted_data.get("document_type"),
-                            "doc_type_hint": doc_type_hint,
-                            "overall_confidence": extracted_data.get("confidence_scores", {}).get("overall"),
+                        )
+                        logger.info("Document analyzed successfully via OpenAI: %s (quality: %s)", document_id, extraction_quality)
+                        return {
+                            "success": True,
+                            "extracted_data": extracted_data,
                             "extraction_quality": extraction_quality,
-                            "has_expiry_date": extracted_data.get("expiry_date") is not None,
-                            "has_engineer_details": extracted_data.get("engineer_details", {}).get("name") is not None,
                             "requires_review": True,
-                            "provider": "openai",
+                            "error": None,
                         }
-                    )
-                    logger.info("Document analyzed successfully via OpenAI: %s (quality: %s)", document_id, extraction_quality)
-                    return {
-                        "success": True,
-                        "extracted_data": extracted_data,
-                        "extraction_quality": extraction_quality,
-                        "requires_review": True,
-                        "error": None,
-                    }
-            # No text or extraction failed; fall through to Gemini if available
-            logger.debug("OpenAI extraction path produced no result; trying Gemini if configured")
-        except Exception as e:
-            logger.warning("OpenAI extraction path failed: %s; falling back to Gemini if configured", e)
+                # No text or extraction failed; fall through to Gemini if available
+                logger.debug("OpenAI extraction path produced no result; trying Gemini if configured")
+            except Exception as e:
+                logger.warning("OpenAI extraction path failed: %s; falling back to Gemini if configured", e)
 
         # Gemini path (LLM_API_KEY)
         try:
@@ -280,6 +282,7 @@ class DocumentAnalysisService:
             return {
                 "success": False,
                 "error": "AI extraction unavailable. Set AI_ENABLED=true and OPENAI_API_KEY in .env, or set LLM_API_KEY for Gemini.",
+                "error_code": "AI_NOT_CONFIGURED",
                 "extracted_data": None,
                 "requires_review": True,
             }
@@ -287,6 +290,7 @@ class DocumentAnalysisService:
             return {
                 "success": False,
                 "error": "AI extraction unavailable. Set AI_ENABLED=true and OPENAI_API_KEY in .env, or set LLM_API_KEY for Gemini.",
+                "error_code": "AI_NOT_CONFIGURED",
                 "extracted_data": None,
                 "requires_review": True,
             }
@@ -374,6 +378,7 @@ class DocumentAnalysisService:
                             "extracted_at": datetime.now(timezone.utc).isoformat(),
                             "status": "failed",
                             "error": "Failed to parse AI response",
+                            "error_code": "PARSE_ERROR",
                             "raw_response": response[:1000]
                         }
                     }}
@@ -382,12 +387,15 @@ class DocumentAnalysisService:
                 return {
                     "success": False,
                     "error": "Failed to parse AI response",
+                    "error_code": "PARSE_ERROR",
                     "extracted_data": None,
                     "requires_review": True
                 }
         
         except Exception as e:
             logger.error(f"Document analysis error: {e}")
+            error_code = "AI_ERROR"
+            error_msg = str(e)
             
             # Store error in document record
             await db.documents.update_one(
@@ -396,14 +404,16 @@ class DocumentAnalysisService:
                     "ai_extraction": {
                         "extracted_at": datetime.now(timezone.utc).isoformat(),
                         "status": "failed",
-                        "error": str(e)
+                        "error": error_msg[:500],
+                        "error_code": error_code
                     }
                 }}
             )
             
             return {
                 "success": False,
-                "error": str(e),
+                "error": error_msg,
+                "error_code": error_code,
                 "extracted_data": None,
                 "requires_review": True
             }

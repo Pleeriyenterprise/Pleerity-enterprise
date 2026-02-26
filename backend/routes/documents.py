@@ -161,6 +161,7 @@ async def _run_analysis_after_upload(
             actor_id=actor_id,
         )
         if not result.get("success"):
+            error_code = result.get("error_code") or "ANALYSIS_FAILED"
             await db.documents.update_one(
                 {"document_id": document_id},
                 {"$set": {
@@ -168,8 +169,13 @@ async def _run_analysis_after_upload(
                         "extracted_at": datetime.now(timezone.utc).isoformat(),
                         "status": "failed",
                         "error": (result.get("error") or "Analysis failed")[:500],
+                        "error_code": error_code,
                     }
                 }},
+            )
+            logger.info(
+                "Document extraction failed: document_id=%s error_code=%s (set OPENAI_API_KEY or LLM_API_KEY for AI; manual entry always available)",
+                document_id, error_code,
             )
     except Exception as e:
         logger.warning("Post-upload analysis failed for %s: %s", document_id, e)
@@ -180,6 +186,7 @@ async def _run_analysis_after_upload(
                     "extracted_at": datetime.now(timezone.utc).isoformat(),
                     "status": "failed",
                     "error": str(e)[:500],
+                    "error_code": "AI_ERROR",
                 }
             }},
         )
