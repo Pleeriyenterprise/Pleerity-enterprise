@@ -49,7 +49,8 @@ export default function AdminExecutiveOverviewPage() {
       } else {
         const msg = typeof detail === 'string' ? detail : (detail && typeof detail === 'object' && detail.message ? detail.message : null) || 'Failed to load executive overview';
         const statusInfo = status != null ? ` (${status})` : '';
-        setError(msg + statusInfo);
+        const networkHint = e?.response == null && e?.message ? ' Check your connection and that the backend is running.' : '';
+        setError(msg + statusInfo + networkHint);
       }
       setData(null);
     } finally {

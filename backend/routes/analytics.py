@@ -1789,4 +1789,8 @@ async def get_executive_overview():
         raise
     except Exception as e:
         logger.exception("Executive overview failed: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to compute executive overview. Please try again.")
+        err_msg = str(e).strip()[:200] if str(e) else ""
+        detail = "Failed to compute executive overview. Please try again."
+        if err_msg and not any(x in err_msg.lower() for x in ("password", "token", "secret", "key")):
+            detail = f"{detail} ({err_msg})"
+        raise HTTPException(status_code=500, detail=detail)
