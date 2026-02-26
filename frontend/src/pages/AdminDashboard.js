@@ -468,7 +468,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
             )}
             <div>
               <h2 className="text-xl font-bold">{c.full_name}</h2>
-            <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
+              <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
               <span>{c.email}</span>
               {c.customer_reference && (
                 <span className="px-2 py-0.5 bg-electric-teal/20 text-electric-teal rounded font-mono">
@@ -484,6 +484,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
           >
             <X className="w-6 h-6" />
           </button>
+        </div>
         </div>
 
         {/* Tabs */}
