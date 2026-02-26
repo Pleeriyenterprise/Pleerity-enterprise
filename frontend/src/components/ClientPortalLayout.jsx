@@ -101,6 +101,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         return null;
       });
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchProfile intentionally omitted; deps are user identity only
   }, [user?.client_id, user?.role]);
 
   const crn = crnState || crnProp;
