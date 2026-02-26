@@ -1545,9 +1545,35 @@ async def get_document_file(request: Request, document_id: str, download: bool =
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     if document["client_id"] != user["client_id"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
-    file_path = Path(document.get("file_path", ""))
+    raw_path = document.get("file_path", "")
+    file_path = Path(raw_path)
+    resolved_via_fallback = False
     if not file_path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        # Resolve relative to document storage (e.g. different DATA_DIR or path stored as relative)
+        if not file_path.is_absolute() and raw_path:
+            resolved = (DOCUMENT_STORAGE_PATH / raw_path).resolve()
+            if resolved.is_file() and str(resolved).startswith(str(DOCUMENT_STORAGE_PATH.resolve())):
+                file_path = resolved
+                resolved_via_fallback = True
+        if not file_path.is_file() and raw_path:
+            # Try client_id / basename in case only filename was stored
+            base_name = file_path.name
+            if base_name and base_name != ".":
+                resolved = (DOCUMENT_STORAGE_PATH / document["client_id"] / base_name).resolve()
+                if resolved.is_file() and str(resolved).startswith(str(DOCUMENT_STORAGE_PATH.resolve())):
+                    file_path = resolved
+                    resolved_via_fallback = True
+        if not file_path.is_file():
+            logger.warning(
+                "Document file missing: document_id=%s stored_path=%s DOCUMENT_STORAGE_PATH=%s",
+                document_id, raw_path, DOCUMENT_STORAGE_PATH,
+            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    if resolved_via_fallback:
+        logger.info(
+            "Document file resolved via fallback: document_id=%s stored_path=%s resolved_path=%s",
+            document_id, raw_path, str(file_path),
+        )
     await create_audit_log(
         action=AuditAction.DOCUMENT_VIEWED,
         actor_id=user["portal_user_id"],

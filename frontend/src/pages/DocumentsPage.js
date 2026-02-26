@@ -178,7 +178,24 @@ const DocumentsPage = () => {
       // Revoke after a delay so the new tab can load it
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Could not open document');
+      const data = err.response?.data;
+      if (data instanceof Blob) {
+        data.text().then((text) => {
+          try {
+            const parsed = JSON.parse(text);
+            const msg = parsed.detail?.message || parsed.detail || parsed.message || 'Could not open document';
+            toast.error(msg);
+          } catch (_) {
+            toast.error('Could not open document');
+          }
+        }).catch(() => toast.error('Could not open document'));
+        return;
+      }
+      let message = 'Could not open document';
+      if (data && typeof data === 'string') message = data;
+      else if (data?.detail && typeof data.detail === 'string') message = data.detail;
+      else if (data?.detail?.message) message = data.detail.message;
+      toast.error(message);
     }
   };
 
