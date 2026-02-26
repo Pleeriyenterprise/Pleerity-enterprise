@@ -45,6 +45,7 @@ const RequirementsPage = () => {
   const [editModal, setEditModal] = useState(null); // { requirement, property } or null
   const [editSaving, setEditSaving] = useState(false);
   const [editForm, setEditForm] = useState({ confirmed_expiry_date: '', applicability: '', not_required_reason: '' });
+  const [documentCountByRequirementId, setDocumentCountByRequirementId] = useState({});
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -57,13 +58,21 @@ const RequirementsPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [dashboardRes, requirementsRes] = await Promise.all([
+      const [dashboardRes, requirementsRes, documentsRes] = await Promise.all([
         clientAPI.getDashboard().then((r) => r.data),
-        clientAPI.getRequirements().then((r) => r.data)
+        clientAPI.getRequirements().then((r) => r.data),
+        clientAPI.getDocuments().then((r) => r.data).catch(() => ({ documents: [] }))
       ]);
       setClientData(dashboardRes);
       setProperties(dashboardRes?.properties || []);
       setRequirements(requirementsRes?.requirements || []);
+      const docs = documentsRes?.documents || [];
+      const countBy = {};
+      docs.forEach((d) => {
+        const rid = d.requirement_id;
+        if (rid) countBy[rid] = (countBy[rid] || 0) + 1;
+      });
+      setDocumentCountByRequirementId(countBy);
     } catch (error) {
       toast.error('Failed to load requirements');
     } finally {
@@ -185,6 +194,7 @@ const RequirementsPage = () => {
     const statusConfig = getStatusConfig(req.status);
     const StatusIcon = statusConfig.icon;
     const daysUntil = getDaysUntilDue(req.due_date);
+    const docCount = documentCountByRequirementId[req.requirement_id] || 0;
     return (
       <div key={req.requirement_id} className="p-4 hover:bg-gray-50 transition-colors" data-testid={`requirement-row-${req.requirement_id}`}>
         <div className="flex items-start justify-between">
@@ -196,6 +206,12 @@ const RequirementsPage = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold text-midnight-blue">{req.requirement_type?.replace(/_/g, ' ') || 'Unknown Requirement'}</h3>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
+                {docCount > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200" data-testid={`doc-count-${req.requirement_id}`}>
+                    <FileText className="w-3.5 h-3.5" />
+                    {docCount} document{docCount !== 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
               <p className="text-sm text-gray-600 mt-1 line-clamp-2">{req.description || 'No description available'}</p>
               <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
