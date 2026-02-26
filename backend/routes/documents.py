@@ -1615,28 +1615,44 @@ async def get_document_file(request: Request, document_id: str, download: bool =
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     if document["client_id"] != user["client_id"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
-    raw_path = document.get("file_path", "")
-    file_path = Path(raw_path)
+    raw_path = (document.get("file_path") or "").strip().replace("\\", "/")
+    file_path = Path(raw_path) if raw_path else Path()
     resolved_via_fallback = False
     if not file_path.is_file():
-        # Resolve relative to document storage (e.g. different DATA_DIR or path stored as relative)
-        if not file_path.is_absolute() and raw_path:
+        # Prefer lookup under configured DOCUMENT_STORAGE_PATH (handles different server, DATA_DIR, or stale absolute path)
+        base_name = file_path.name if raw_path else None
+        client_id_val = document.get("client_id") or ""
+        if base_name and base_name != "." and client_id_val:
+            candidate = (DOCUMENT_STORAGE_PATH / client_id_val / base_name).resolve()
+            if candidate.is_file():
+                try:
+                    candidate.relative_to(DOCUMENT_STORAGE_PATH.resolve())
+                    file_path = candidate
+                    resolved_via_fallback = True
+                except ValueError:
+                    pass
+        if not file_path.is_file() and raw_path and not file_path.is_absolute():
             resolved = (DOCUMENT_STORAGE_PATH / raw_path).resolve()
-            if resolved.is_file() and str(resolved).startswith(str(DOCUMENT_STORAGE_PATH.resolve())):
-                file_path = resolved
-                resolved_via_fallback = True
+            if resolved.is_file():
+                try:
+                    resolved.relative_to(DOCUMENT_STORAGE_PATH.resolve())
+                    file_path = resolved
+                    resolved_via_fallback = True
+                except ValueError:
+                    pass
         if not file_path.is_file() and raw_path:
-            # Try client_id / basename in case only filename was stored
             base_name = file_path.name
-            if base_name and base_name != ".":
-                resolved = (DOCUMENT_STORAGE_PATH / document["client_id"] / base_name).resolve()
-                if resolved.is_file() and str(resolved).startswith(str(DOCUMENT_STORAGE_PATH.resolve())):
+            if base_name and base_name != "." and client_id_val:
+                resolved = (DOCUMENT_STORAGE_PATH / client_id_val / base_name).resolve()
+                if resolved.is_file():
                     file_path = resolved
                     resolved_via_fallback = True
         if not file_path.is_file():
+            storage_dir = (DOCUMENT_STORAGE_PATH / client_id_val).resolve() if client_id_val else DOCUMENT_STORAGE_PATH
+            dir_exists = storage_dir.is_dir() if client_id_val else DOCUMENT_STORAGE_PATH.is_dir()
             logger.warning(
-                "Document file missing: document_id=%s stored_path=%s DOCUMENT_STORAGE_PATH=%s",
-                document_id, raw_path, DOCUMENT_STORAGE_PATH,
+                "Document file missing: document_id=%s stored_path=%s DOCUMENT_STORAGE_PATH=%s storage_dir_exists=%s",
+                document_id, raw_path, str(DOCUMENT_STORAGE_PATH), dir_exists,
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     if resolved_via_fallback:
