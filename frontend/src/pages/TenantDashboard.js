@@ -27,8 +27,23 @@ import {
 } from 'lucide-react';
 
 /**
+ * Derive a friendly display name (first name only) from tenant_name.
+ * e.g. "Mike Edes" -> "Mike", "mike@mailinator.com" -> "Mike"
+ */
+function getTenantFirstName(tenantName) {
+  if (!tenantName || typeof tenantName !== 'string') return 'Tenant';
+  const s = tenantName.trim();
+  if (s.includes('@')) {
+    const beforeAt = s.split('@')[0].trim();
+    return beforeAt ? beforeAt.charAt(0).toUpperCase() + beforeAt.slice(1).toLowerCase() : 'Tenant';
+  }
+  const firstWord = s.split(/\s+/)[0];
+  return firstWord ? firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase() : 'Tenant';
+}
+
+/**
  * Tenant Dashboard - Enhanced view for tenants
- * 
+ *
  * Shows:
  * ✅ Property compliance status (GREEN/AMBER/RED)
  * ✅ Certificate status and expiry dates
@@ -262,7 +277,7 @@ const TenantDashboard = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-midnight-blue">
-                Welcome, {data?.tenant_name || 'Tenant'}
+                Welcome, {getTenantFirstName(data?.tenant_name)}
               </h2>
               <p className="text-gray-600 mt-1">
                 View the compliance status of your rental property below. Green means fully compliant, 

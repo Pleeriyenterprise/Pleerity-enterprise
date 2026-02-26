@@ -357,7 +357,7 @@ class CompliancePackService:
             ))
         
         story.append(Paragraph(
-            "Powered by Compliance Vault Pro • pleerity.com",
+            "Powered by Compliance Vault Pro • pleerityenterprise.co.uk",
             self.styles['Footer']
         ))
         

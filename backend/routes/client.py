@@ -543,6 +543,8 @@ async def invite_tenant(request: Request):
             "expires_at": expires_at.isoformat(),
         }
         invite_url = f"{body.get('base_url', '')}/set-password?token={raw_token}"
+        base = (body.get("base_url") or "").rstrip("/")
+        login_url = f"{base}/login/client" if base else ""
         
         from services.notification_orchestrator import notification_orchestrator
         idempotency_key = f"{tenant_id}_TENANT_INVITE"
@@ -553,6 +555,7 @@ async def invite_tenant(request: Request):
                 "recipient": email,
                 "tenant_name": full_name or "there",
                 "setup_link": invite_url,
+                "login_url": login_url,
                 "subject": "You've been invited to view property compliance",
             },
             idempotency_key=idempotency_key,
@@ -671,6 +674,94 @@ async def list_tenants(request: Request):
             detail="Failed to list tenants"
         )
 
+
+@router.get("/tenant-messages")
+async def list_tenant_messages(request: Request):
+    """List messages from tenants to this client (landlord). Gated: tenant_portal."""
+    user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
+    db = database.get_db()
+    cursor = db.tenant_messages.find(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "message_id": 1, "tenant_name": 1, "tenant_email": 1, "property_id": 1, "property_address": 1, "subject": 1, "message": 1, "created_at": 1},
+    ).sort("created_at", -1)
+    messages = await cursor.to_list(200)
+    for m in messages:
+        if m.get("created_at"):
+            m["created_at"] = m["created_at"].isoformat()
+    return {"messages": messages}
+
+
+@router.get("/tenant-requests")
+async def list_tenant_requests(request: Request):
+    """List certificate requests from tenants for this client. Gated: tenant_portal."""
+    user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
+    db = database.get_db()
+    cursor = db.tenant_requests.find(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "request_id": 1, "tenant_name": 1, "tenant_email": 1, "property_id": 1, "property_address": 1, "certificate_type": 1, "message": 1, "status": 1, "created_at": 1},
+    ).sort("created_at", -1)
+    requests_list = await cursor.to_list(200)
+    for r in requests_list:
+        if r.get("created_at"):
+            r["created_at"] = r["created_at"].isoformat()
+    return {"requests": requests_list}
+
+
+@router.patch("/tenant-requests/{request_id}")
+async def update_tenant_request_status(request: Request, request_id: str):
+    """Update a certificate request status (IN_PROGRESS, DONE, DECLINED). Gated: tenant_portal."""
+    user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
+        )
+    if user.get("role") not in ["ROLE_CLIENT", "ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    status_value = (body.get("status") or "").strip().upper()
+    if status_value not in ("IN_PROGRESS", "DONE", "DECLINED"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="status must be one of: IN_PROGRESS, DONE, DECLINED")
+    db = database.get_db()
+    doc = await db.tenant_requests.find_one({"request_id": request_id, "client_id": user["client_id"]})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+    from datetime import datetime, timezone
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    now = datetime.now(timezone.utc)
+    await db.tenant_requests.update_one(
+        {"request_id": request_id, "client_id": user["client_id"]},
+        {"$set": {"status": status_value, "updated_at": now}},
+    )
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+        resource_type="tenant_request",
+        resource_id=request_id,
+        metadata={"status": status_value, "actor_role": user.get("role")},
+    )
+    return {"request_id": request_id, "status": status_value}
 
 
 @router.post("/tenants/{tenant_id}/assign-property")
@@ -936,6 +1027,8 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
         
         from services.notification_orchestrator import notification_orchestrator
         invite_url = f"{body.get('base_url', '')}/set-password?token={raw_token}"
+        base = (body.get("base_url") or "").rstrip("/")
+        login_url = f"{base}/login/client" if base else ""
         idempotency_key = f"{tenant_id}_TENANT_INVITE_resend"
         await notification_orchestrator.send(
             template_key="TENANT_INVITE",
@@ -944,6 +1037,7 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
                 "recipient": tenant.get("auth_email") or tenant.get("email"),
                 "tenant_name": tenant.get("full_name", "there"),
                 "setup_link": invite_url,
+                "login_url": login_url,
                 "subject": "Reminder: Set up your tenant portal access",
             },
             idempotency_key=idempotency_key,

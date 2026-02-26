@@ -254,6 +254,10 @@ class AuditAction(str, Enum):
     CMS_MEDIA_DELETE = "CMS_MEDIA_DELETE"
     PENDING_VERIFICATION_DIGEST_SENT = "PENDING_VERIFICATION_DIGEST_SENT"
 
+    # Tenant portal → landlord
+    TENANT_CONTACT_LANDLORD = "TENANT_CONTACT_LANDLORD"
+    TENANT_REQUEST_CERTIFICATE = "TENANT_REQUEST_CERTIFICATE"
+
 class EmailTemplateAlias(str, Enum):
     PASSWORD_SETUP = "password-setup"
     PASSWORD_RESET = "password-reset"

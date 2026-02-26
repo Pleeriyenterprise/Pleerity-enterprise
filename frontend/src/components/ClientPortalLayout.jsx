@@ -65,11 +65,12 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       setCrnState(crnProp);
       return;
     }
+    if (user?.role === 'ROLE_TENANT') return;
     clientAPI.getDashboard().then((r) => {
       const ref = r.data?.client?.customer_reference;
       if (ref) setCrnState(ref);
     }).catch(() => {});
-  }, [crnProp]);
+  }, [crnProp, user?.role]);
 
   const fetchProfile = () => {
     if (!user?.client_id) return;
@@ -149,7 +150,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                 <h1 className="text-xl font-bold">Compliance Vault Pro</h1>
                 <span className="text-sm text-gray-300 hidden sm:inline">AI-Driven Solutions & Compliance</span>
               </NavLink>
-              {crn && (
+              {crn && !isTenant && (
                 <div className="flex items-center gap-1">
                   <span
                     className="px-2.5 py-1 bg-electric-teal/20 text-electric-teal rounded-lg font-mono text-sm"
@@ -253,7 +254,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
             >
               {SUPPORT_EMAIL}
             </a>
-            {crn && (
+            {crn && !isTenant && (
               <div className="flex items-center gap-1">
                 <span className="text-sm text-gray-600">CRN: {crn}</span>
                 <button

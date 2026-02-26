@@ -23,7 +23,9 @@ import {
   Send,
   Plus,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  MessageSquare,
+  FileCheck
 } from 'lucide-react';
 
 const TenantManagementPage = () => {
@@ -31,6 +33,8 @@ const TenantManagementPage = () => {
   const { user } = useAuth();
   const [tenants, setTenants] = useState([]);
   const [properties, setProperties] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(null);
@@ -41,6 +45,7 @@ const TenantManagementPage = () => {
     full_name: '',
     property_ids: []
   });
+  const [updatingRequestId, setUpdatingRequestId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -58,6 +63,17 @@ const TenantManagementPage = () => {
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
+    }
+    try {
+      const [msgRes, reqRes] = await Promise.all([
+        api.get('/client/tenant-messages'),
+        api.get('/client/tenant-requests')
+      ]);
+      setMessages(msgRes.data.messages || []);
+      setRequests(reqRes.data.requests || []);
+    } catch (_) {
+      setMessages([]);
+      setRequests([]);
     }
   };
 
@@ -130,6 +146,19 @@ const TenantManagementPage = () => {
       toast.success('Invitation resent');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to resend invitation');
+    }
+  };
+
+  const updateRequestStatus = async (requestId, statusValue) => {
+    setUpdatingRequestId(requestId);
+    try {
+      await api.patch(`/client/tenant-requests/${requestId}`, { status: statusValue });
+      toast.success('Request updated');
+      setRequests(prev => prev.map(r => r.request_id === requestId ? { ...r, status: statusValue } : r));
+    } catch (error) {
+      toast.error(error.response?.data?.detail?.message || error.response?.data?.detail || 'Failed to update');
+    } finally {
+      setUpdatingRequestId(null);
     }
   };
 
@@ -223,9 +252,9 @@ const TenantManagementPage = () => {
             <div>
               <h2 className="text-lg font-bold text-midnight-blue">About Tenant Access</h2>
               <p className="text-gray-600 mt-1">
-                Tenants have <strong>read-only access</strong> to view the compliance status of assigned properties. 
-                They can see certificate status (GREEN/AMBER/RED) and expiry dates, but cannot upload documents, 
-                access reports, or make any changes.
+                Tenants can view compliance status of assigned properties (GREEN/AMBER/RED), see certificate expiry dates, 
+                and <strong>contact you</strong> or <strong>request certificate updates</strong> from this portal. 
+                Messages and requests appear above; you receive an email and can update request status here.
               </p>
             </div>
           </div>
@@ -256,6 +285,111 @@ const TenantManagementPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Messages from tenants */}
+        <Card className="mb-8" data-testid="tenant-messages-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Messages from tenants ({messages.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {messages.length === 0 ? (
+              <p className="text-sm text-gray-500">No messages from tenants yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((m) => (
+                  <div key={m.message_id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50">
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <span className="font-medium text-midnight-blue">{m.tenant_name || m.tenant_email}</span>
+                        <span className="text-gray-500 text-sm ml-2">• {m.property_address || m.property_id}</span>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {m.created_at ? new Date(m.created_at).toLocaleString() : ''}
+                      </span>
+                    </div>
+                    <div className="text-sm font-medium text-gray-700 mt-1">{m.subject}</div>
+                    <div className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{m.message}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Certificate requests */}
+        <Card className="mb-8" data-testid="tenant-requests-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Certificate requests ({requests.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {requests.length === 0 ? (
+              <p className="text-sm text-gray-500">No certificate requests from tenants yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {requests.map((r) => (
+                  <div key={r.request_id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50 flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-midnight-blue">{r.tenant_name || r.tenant_email}</span>
+                        <span className="text-sm text-gray-600">{r.certificate_type}</span>
+                        <span className="text-gray-500 text-sm">{r.property_address || r.property_id}</span>
+                      </div>
+                      {r.message && <div className="text-sm text-gray-600 mt-1">{r.message}</div>}
+                      <span className="text-xs text-gray-400 mt-1 block">
+                        {r.created_at ? new Date(r.created_at).toLocaleString() : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${
+                        r.status === 'DONE' ? 'bg-green-100 text-green-700' :
+                        r.status === 'DECLINED' ? 'bg-red-100 text-red-700' :
+                        r.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {r.status}
+                      </span>
+                      {r.status === 'PENDING' && (
+                        <select
+                          className="text-sm border border-gray-200 rounded px-2 py-1"
+                          value=""
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v) updateRequestStatus(r.request_id, v);
+                          }}
+                          disabled={updatingRequestId === r.request_id}
+                          data-testid={`request-status-${r.request_id}`}
+                        >
+                          <option value="">Update status…</option>
+                          <option value="IN_PROGRESS">In progress</option>
+                          <option value="DONE">Done</option>
+                          <option value="DECLINED">Declined</option>
+                        </select>
+                      )}
+                      {(r.status === 'IN_PROGRESS' || r.status === 'DONE' || r.status === 'DECLINED') && (
+                        <select
+                          className="text-sm border border-gray-200 rounded px-2 py-1"
+                          value={r.status}
+                          onChange={(e) => updateRequestStatus(r.request_id, e.target.value)}
+                          disabled={updatingRequestId === r.request_id}
+                        >
+                          <option value="IN_PROGRESS">In progress</option>
+                          <option value="DONE">Done</option>
+                          <option value="DECLINED">Declined</option>
+                        </select>
+                      )}
+                      {updatingRequestId === r.request_id && <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Tenants List */}
         <Card data-testid="tenants-list-card">

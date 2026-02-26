@@ -153,6 +153,12 @@ class Database:
             await self.db.risk_leads.create_index("email")
             await self.db.risk_leads.create_index("risk_band")
             await self.db.risk_leads.create_index("status")
+            # Tenant portal: messages and certificate requests (landlord notification flow)
+            await self.db.tenant_messages.create_index([("client_id", 1), ("created_at", -1)])
+            await self.db.tenant_messages.create_index("message_id", unique=True)
+            await self.db.tenant_requests.create_index([("client_id", 1), ("created_at", -1)])
+            await self.db.tenant_requests.create_index("request_id", unique=True)
+            await self.db.tenant_requests.create_index([("client_id", 1), ("status", 1)])
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored
             try:

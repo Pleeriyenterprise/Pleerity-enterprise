@@ -325,6 +325,7 @@ class EmailService:
                     <p style="color: #666; font-size: 14px;">
                         This link expires in 7 days. If you have questions, please contact your landlord.
                     </p>
+                    {f'<p style="color: #666; font-size: 14px; margin-top: 16px;">After you\'ve set your password, you can log in anytime at: <a href="{model.get("login_url", "#")}" style="color: #00B8A9;">{model.get("login_url", "")}</a></p>' if model.get('login_url') else ''}
                 </div>
                 {footer}
             </body>

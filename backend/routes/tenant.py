@@ -1,32 +1,68 @@
-"""Tenant Routes - STRICTLY VIEW-ONLY access to property compliance status.
+"""Tenant Routes - View compliance + optional messaging to landlord.
 
-ROLE_TENANT has STRICTLY LIMITED permissions:
+ROLE_TENANT can:
 ✅ View property compliance status (GREEN/AMBER/RED)
 ✅ View certificate status and expiry dates
-✅ View basic summaries
 ✅ Download compliance pack for assigned properties
+✅ Contact landlord (message stored, email sent to landlord)
+✅ Request certificate (request stored, email sent to landlord)
 
-❌ NO certificate requests (REMOVED - view-only)
-❌ NO landlord messaging (REMOVED - view-only)
-❌ No document uploads
-❌ No audit logs access
-❌ No reports access
-❌ No billing/settings visibility
-❌ No admin actions
-
-TENANT PORTAL IS VIEW-ONLY:
-- No action may create tasks, notifications, or audit side effects
-- Tenants can only read compliance data, not affect it
+Landlord is notified by email; messages/requests are stored for audit and landlord view.
 """
 from fastapi import APIRouter, HTTPException, Request, status
 from database import database
 from middleware import client_route_guard
 from datetime import datetime, timezone
+from pydantic import BaseModel
+from typing import Optional
+from models import AuditAction
+from utils.audit import create_audit_log
 import logging
 import uuid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/tenant", tags=["tenant"])
+
+
+class ContactLandlordBody(BaseModel):
+    property_id: str
+    subject: str
+    message: str
+
+
+class RequestCertificateBody(BaseModel):
+    property_id: str
+    certificate_type: str
+    message: Optional[str] = None
+
+
+async def _ensure_tenant_property_access(request: Request, property_id: str):
+    """Verify the authenticated tenant has access to the property. Returns (db, user, client_id)."""
+    user = await tenant_route_guard(request)
+    db = database.get_db()
+    client_id = user.get("client_id")
+    tenant_id = user.get("portal_user_id")
+    property_doc = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1},
+    )
+    if not property_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Property not found or access denied",
+        )
+    if user.get("role") == "ROLE_TENANT":
+        assignment = await db.tenant_assignments.find_one({
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+        })
+        all_assignments = await db.tenant_assignments.count_documents({"tenant_id": tenant_id})
+        if all_assignments > 0 and not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not assigned to this property",
+            )
+    return db, user, client_id, property_doc
 
 
 async def tenant_route_guard(request: Request):
@@ -319,42 +355,184 @@ async def get_tenant_compliance_pack(request: Request, property_id: str):
 
 @router.post("/request-certificate")
 async def request_certificate_update(request: Request):
-    """DISABLED: Tenant portal is view-only.
-    
-    This endpoint has been disabled as part of the view-only tenant portal.
-    Tenants can view compliance status but cannot create requests or tasks.
-    """
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail={
-            "error_code": "FEATURE_DISABLED",
-            "message": "Certificate requests have been disabled. The tenant portal is view-only.",
-            "action": "Please contact your landlord directly for certificate updates."
-        }
+    """Submit a certificate request for a property. Stored and landlord notified by email."""
+    body = await request.json()
+    try:
+        data = RequestCertificateBody(
+            property_id=body.get("property_id", ""),
+            certificate_type=body.get("certificate_type", ""),
+            message=body.get("message"),
+        )
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid body: property_id and certificate_type required")
+    if not data.property_id or not data.certificate_type:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id and certificate_type are required")
+
+    db, user, client_id, property_doc = await _ensure_tenant_property_access(request, data.property_id)
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "email": 1, "full_name": 1, "contact_email": 1})
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+    landlord_email = (client.get("email") or client.get("contact_email") or "").strip()
+    if not landlord_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Landlord has no email on file")
+
+    request_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    tenant_name = user.get("full_name", user.get("email", "Tenant"))
+    address = f"{property_doc.get('address_line_1', '')}, {property_doc.get('city', '')} {property_doc.get('postcode', '')}".strip(", ")
+    doc = {
+        "request_id": request_id,
+        "client_id": client_id,
+        "tenant_id": user.get("portal_user_id"),
+        "tenant_email": user.get("email", ""),
+        "tenant_name": tenant_name,
+        "property_id": data.property_id,
+        "property_address": address,
+        "certificate_type": data.certificate_type,
+        "message": (data.message or "").strip(),
+        "status": "PENDING",
+        "created_at": now,
+    }
+    await db.tenant_requests.insert_one(doc)
+
+    email_body = (
+        f"A tenant has requested a certificate update via the tenant portal.<br><br>"
+        f"<strong>Tenant:</strong> {tenant_name}<br>"
+        f"<strong>Property:</strong> {address}<br>"
+        f"<strong>Certificate type:</strong> {data.certificate_type}<br>"
     )
+    if data.message:
+        email_body += f"<br><strong>Message:</strong><br>{data.message.replace(chr(10), '<br>')}"
+    from services.notification_orchestrator import notification_orchestrator
+    idempotency_key = f"{client_id}_TENANT_REQUEST_{request_id}"
+    result = await notification_orchestrator.send(
+        template_key="ADMIN_MANUAL",
+        client_id=client_id,
+        context={
+            "client_name": client.get("full_name", "Client"),
+            "subject": "Certificate request from tenant",
+            "message": email_body,
+            "customer_reference": client.get("customer_reference", "N/A"),
+            "company_name": "Pleerity Enterprise Ltd",
+            "tagline": "AI-Driven Solutions & Compliance",
+        },
+        idempotency_key=idempotency_key,
+        event_type="tenant_request_certificate",
+    )
+    if result.outcome not in ("sent", "duplicate_ignored"):
+        logger.warning("Tenant request certificate email failed: %s", result.error_message)
+
+    await create_audit_log(
+        action=AuditAction.TENANT_REQUEST_CERTIFICATE,
+        client_id=client_id,
+        actor_id=user.get("portal_user_id"),
+        resource_type="tenant_request",
+        resource_id=request_id,
+        metadata={
+            "property_id": data.property_id,
+            "certificate_type": data.certificate_type,
+            "tenant_email": user.get("email"),
+            "landlord_email": landlord_email,
+        },
+    )
+    return {"request_id": request_id, "status": "PENDING"}
 
 
 @router.get("/requests")
 async def get_tenant_requests(request: Request):
-    """DISABLED: Tenant portal is view-only.
-    
-    Returns empty list for backward compatibility.
-    """
-    return {"requests": [], "note": "Certificate requests have been disabled. The tenant portal is view-only."}
+    """List the authenticated tenant's certificate requests (for their assigned properties)."""
+    user = await tenant_route_guard(request)
+    db = database.get_db()
+    tenant_id = user.get("portal_user_id")
+    cursor = db.tenant_requests.find(
+        {"tenant_id": tenant_id},
+        {"_id": 0, "request_id": 1, "property_id": 1, "property_address": 1, "certificate_type": 1, "message": 1, "status": 1, "created_at": 1},
+    ).sort("created_at", -1)
+    requests = await cursor.to_list(100)
+    for r in requests:
+        if r.get("created_at"):
+            r["created_at"] = r["created_at"].isoformat()
+    return {"requests": requests}
 
 
 @router.post("/contact-landlord")
 async def contact_landlord(request: Request):
-    """DISABLED: Tenant portal is view-only.
-    
-    This endpoint has been disabled as part of the view-only tenant portal.
-    Tenants should contact their landlord through external means.
-    """
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail={
-            "error_code": "FEATURE_DISABLED",
-            "message": "Landlord messaging has been disabled. The tenant portal is view-only.",
-            "action": "Please contact your landlord directly using their contact information."
-        }
+    """Send a message to the landlord for a property. Stored and landlord notified by email."""
+    body = await request.json()
+    try:
+        data = ContactLandlordBody(
+            property_id=body.get("property_id", ""),
+            subject=(body.get("subject") or "").strip(),
+            message=(body.get("message") or "").strip(),
+        )
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid body: property_id, subject and message required")
+    if not data.property_id or not data.subject or not data.message:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id, subject and message are required")
+
+    db, user, client_id, property_doc = await _ensure_tenant_property_access(request, data.property_id)
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "email": 1, "full_name": 1, "contact_email": 1})
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+    landlord_email = (client.get("email") or client.get("contact_email") or "").strip()
+    if not landlord_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Landlord has no email on file")
+
+    message_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    tenant_name = user.get("full_name", user.get("email", "Tenant"))
+    address = f"{property_doc.get('address_line_1', '')}, {property_doc.get('city', '')} {property_doc.get('postcode', '')}".strip(", ")
+    doc = {
+        "message_id": message_id,
+        "client_id": client_id,
+        "tenant_id": user.get("portal_user_id"),
+        "tenant_email": user.get("email", ""),
+        "tenant_name": tenant_name,
+        "property_id": data.property_id,
+        "property_address": address,
+        "subject": data.subject,
+        "message": data.message,
+        "created_at": now,
+    }
+    await db.tenant_messages.insert_one(doc)
+
+    email_body = (
+        f"Message from your tenant via the tenant portal.<br><br>"
+        f"<strong>From:</strong> {tenant_name}<br>"
+        f"<strong>Property:</strong> {address}<br>"
+        f"<strong>Subject:</strong> {data.subject}<br><br>"
+        f"{data.message.replace(chr(10), '<br>')}"
     )
+    from services.notification_orchestrator import notification_orchestrator
+    idempotency_key = f"{client_id}_TENANT_CONTACT_{message_id}"
+    result = await notification_orchestrator.send(
+        template_key="ADMIN_MANUAL",
+        client_id=client_id,
+        context={
+            "client_name": client.get("full_name", "Client"),
+            "subject": data.subject,
+            "message": email_body,
+            "customer_reference": client.get("customer_reference", "N/A"),
+            "company_name": "Pleerity Enterprise Ltd",
+            "tagline": "AI-Driven Solutions & Compliance",
+        },
+        idempotency_key=idempotency_key,
+        event_type="tenant_contact_landlord",
+    )
+    if result.outcome not in ("sent", "duplicate_ignored"):
+        logger.warning("Tenant contact landlord email failed: %s", result.error_message)
+
+    await create_audit_log(
+        action=AuditAction.TENANT_CONTACT_LANDLORD,
+        client_id=client_id,
+        actor_id=user.get("portal_user_id"),
+        resource_type="tenant_message",
+        resource_id=message_id,
+        metadata={
+            "property_id": data.property_id,
+            "subject": data.subject,
+            "tenant_email": user.get("email"),
+            "landlord_email": landlord_email,
+        },
+    )
+    return {"message_id": message_id}
