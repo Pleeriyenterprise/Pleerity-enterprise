@@ -3027,10 +3027,10 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
         try:
             base_url = get_frontend_base_url()
         except ValueError as e:
-            raise HTTPException(status_code=503, detail={"error_code": "APP_URL_NOT_CONFIGURED", "message": str(e)})
+            raise HTTPException(status_code=503, detail=f"App URL not configured: {e}")
         setup_link = f"{base_url}/set-password?token={raw_token}"
         idempotency_key = f"{portal_user_id}_ADMIN_INVITE"
-        await notification_orchestrator.send(
+        result = await notification_orchestrator.send(
             template_key="ADMIN_INVITE",
             client_id=None,
             context={
@@ -3043,6 +3043,29 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
             idempotency_key=idempotency_key,
             event_type="admin_invite",
         )
+        if result.outcome != "sent":
+            if result.outcome == "blocked":
+                reason = result.block_reason or "email provider not configured"
+                if reason == "BLOCKED_PROVIDER_NOT_CONFIGURED":
+                    reason = "Email provider (Postmark) is not configured. Set POSTMARK_SERVER_TOKEN to send invite emails."
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Invitation email could not be sent: {reason}",
+                )
+            if result.outcome == "failed":
+                msg = result.error_message or "Email delivery failed"
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Invitation email failed to deliver: {msg}",
+                )
+            if result.outcome == "duplicate_ignored":
+                return {
+                    "message": "An invitation was already sent to this email recently. If they did not receive it, check spam or use Resend invite later.",
+                    "portal_user_id": portal_user_id,
+                    "email": invite_data.email,
+                    "status": "INVITED",
+                    "duplicate": True,
+                }
         logger.info(f"Sent admin invite email to: {invite_data.email}")
         
         await create_audit_log(
@@ -3306,11 +3329,11 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
         try:
             base_url = get_frontend_base_url()
         except ValueError as e:
-            raise HTTPException(status_code=503, detail={"error_code": "APP_URL_NOT_CONFIGURED", "message": str(e)})
+            raise HTTPException(status_code=503, detail=f"App URL not configured: {e}")
         setup_link = f"{base_url}/set-password?token={raw_token}"
         admin_name = target_admin.get("full_name", target_admin.get("auth_email", "Admin"))
         idempotency_key = f"{portal_user_id}_ADMIN_INVITE"
-        await notification_orchestrator.send(
+        result = await notification_orchestrator.send(
             template_key="ADMIN_INVITE",
             client_id=None,
             context={
@@ -3323,6 +3346,28 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
             idempotency_key=idempotency_key,
             event_type="admin_invite_resend",
         )
+        if result.outcome != "sent":
+            if result.outcome == "blocked":
+                reason = result.block_reason or "email provider not configured"
+                if reason == "BLOCKED_PROVIDER_NOT_CONFIGURED":
+                    reason = "Email provider (Postmark) is not configured. Set POSTMARK_SERVER_TOKEN to send invite emails."
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Invitation email could not be sent: {reason}",
+                )
+            if result.outcome == "failed":
+                msg = result.error_message or "Email delivery failed"
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Invitation email failed to deliver: {msg}",
+                )
+            if result.outcome == "duplicate_ignored":
+                return {
+                    "message": "An invitation was already sent recently. If the recipient did not receive it, check spam or try again in a few minutes.",
+                    "portal_user_id": portal_user_id,
+                    "email": target_admin["auth_email"],
+                    "duplicate": True,
+                }
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
