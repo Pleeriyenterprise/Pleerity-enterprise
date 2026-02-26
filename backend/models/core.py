@@ -262,6 +262,7 @@ class AuditAction(str, Enum):
     REPORT_EXPORTED = "REPORT_EXPORTED"
 
 
+class EmailTemplateAlias(str, Enum):
     PASSWORD_SETUP = "password-setup"
     PASSWORD_RESET = "password-reset"
     PORTAL_READY = "portal-ready"
