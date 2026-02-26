@@ -3709,27 +3709,40 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             ]
         }
         
-        # Step 3: Call LLM with injected snapshot (Google Generative AI)
+        # Step 3: Call LLM — use OpenAI if configured, else Gemini (LLM_API_KEY)
         try:
-            from utils.llm_chat import chat, _get_api_key
+            from utils import ai_config
+            from utils.llm_chat import chat, chat_openai, _get_api_key
         except ImportError:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Admin assistant unavailable (LLM not configured)",
             )
-        if not _get_api_key():
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Admin assistant unavailable (LLM_API_KEY not set)",
-            )
         system_prompt = ADMIN_ASSISTANT_PROMPT.format(
             snapshot=json.dumps(snapshot_data, indent=2, default=str)
         )
-        answer = await chat(
-            system_prompt=system_prompt,
-            user_text=question,
-            model="gemini-2.5-flash",
-        )
+        if ai_config.get_openai_api_key():
+            answer = await chat_openai(system_prompt=system_prompt, user_text=question)
+            model_used = getattr(ai_config, "AI_MODEL", "openai")
+        elif _get_api_key():
+            answer = await chat(
+                system_prompt=system_prompt,
+                user_text=question,
+                model="gemini-2.5-flash",
+            )
+            model_used = "gemini-2.5-flash"
+        else:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(
+                "Admin assistant 503: OPENAI_API_KEY present=%s, LLM_API_KEY present=%s (set at least one in server env)",
+                bool(ai_config.get_openai_api_key()),
+                bool(_get_api_key()),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Admin assistant unavailable (set OPENAI_API_KEY or LLM_API_KEY in the server environment)",
+            )
         
         # Step 4: Save query to history collection
         query_history_entry = {
@@ -3741,7 +3754,7 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             "client_name": client.get("full_name"),
             "question": question,
             "answer": answer,
-            "model": "gemini-2.5-flash",
+            "model": model_used,
             "snapshot_summary": {
                 "properties_count": len(properties),
                 "requirements_count": total_reqs,
@@ -3766,7 +3779,7 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
                 "client_email": client.get("email"),
                 "properties_in_snapshot": len(properties),
                 "requirements_in_snapshot": total_reqs,
-                "model": "gemini-2.5-flash",
+                "model": model_used,
                 "query_id": query_history_entry["query_id"]
             }
         )
