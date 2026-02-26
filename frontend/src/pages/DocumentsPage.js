@@ -788,6 +788,15 @@ const DocumentsPage = () => {
                               {getStatusBadge(doc.status)}
                               {(doc.extraction_id || doc.ai_extraction || extractingDocumentId === doc.document_id) && getExtractionStatusBadge(doc, extractingDocumentId)}
                             </div>
+                            {doc.property_id && (
+                              <p className="text-sm text-gray-600 mb-1 flex items-center gap-1.5">
+                                <Building2 className="w-4 h-4 text-gray-400" />
+                                {(() => {
+                                  const prop = properties.find(p => p.property_id === doc.property_id);
+                                  return prop ? (prop.nickname || `${prop.address_line_1 || ''}, ${prop.city || ''}`.trim() || doc.property_id) : doc.property_id;
+                                })()}
+                              </p>
+                            )}
                             <p className="text-sm text-gray-500 mb-2">
                               Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
                             </p>
