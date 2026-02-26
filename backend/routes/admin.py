@@ -1453,7 +1453,7 @@ async def get_client_readiness(request: Request, client_id: str):
             )
         
         portal_user = await db.portal_users.find_one(
-            {"client_id": client_id, "role": "ROLE_CLIENT"},
+            {"client_id": client_id, "role": {"$in": ["ROLE_CLIENT", "ROLE_CLIENT_ADMIN"]}},
             {"_id": 0}
         )
         
@@ -1516,7 +1516,7 @@ async def get_client_readiness(request: Request, client_id: str):
             {
                 "item": "password_set",
                 "label": "Password Set by Client",
-                "status": "complete" if portal_user and portal_user.get("password_status") == "SET" else "pending",
+                "status": "complete" if portal_user and (portal_user.get("password_status") == "SET" or portal_user.get("password_set")) else "pending",
                 "required": False,
                 "details": {
                     "password_status": portal_user.get("password_status") if portal_user else "N/A"
