@@ -30,7 +30,8 @@ import {
   Wrench,
   Award,
   FileCheck,
-  Files
+  Files,
+  Trash2
 } from 'lucide-react';
 
 const DocumentsPage = () => {
@@ -60,6 +61,7 @@ const DocumentsPage = () => {
   const [confirmCertificateNumber, setConfirmCertificateNumber] = useState('');
   const [confirmDetailsSaving, setConfirmDetailsSaving] = useState(false);
   const [extractingDocumentId, setExtractingDocumentId] = useState(null);
+  const [deletingDocumentId, setDeletingDocumentId] = useState(null);
   const extractingContextRef = useRef(null);
   const pollRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -164,6 +166,33 @@ const DocumentsPage = () => {
       toast.error('Failed to load documents');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewDocument = async (doc) => {
+    try {
+      const res = await api.get(`/documents/${doc.document_id}/file`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: res.data.type || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      // Revoke after a delay so the new tab can load it
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Could not open document');
+    }
+  };
+
+  const handleRemoveDocument = async (doc) => {
+    if (!window.confirm(`Remove "${doc.file_name || doc.original_filename || 'this document'}"? This cannot be undone.`)) return;
+    setDeletingDocumentId(doc.document_id);
+    try {
+      await api.delete(`/documents/${doc.document_id}`);
+      toast.success('Document removed');
+      await fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to remove document');
+    } finally {
+      setDeletingDocumentId(null);
     }
   };
 
@@ -864,6 +893,34 @@ const DocumentsPage = () => {
                           </div>
                           
                           <div className="flex flex-col items-end gap-2 ml-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewDocument(doc)}
+                                data-testid={`view-doc-btn-${doc.document_id}`}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoveDocument(doc)}
+                                disabled={deletingDocumentId === doc.document_id}
+                                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                                data-testid={`remove-doc-btn-${doc.document_id}`}
+                              >
+                                {deletingDocumentId === doc.document_id ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Trash2 className="w-4 h-4 mr-1" />
+                                    Remove
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             {doc.requirement_id && (
                               <Button
                                 variant="outline"

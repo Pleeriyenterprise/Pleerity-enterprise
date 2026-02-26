@@ -1272,12 +1272,12 @@ async def delete_document(request: Request, document_id: str):
         except Exception as file_err:
             logger.warning(f"Could not remove file for document {document_id}: {file_err}")
         await create_audit_log(
-            action=AuditAction.ADMIN_ACTION,
+            action=AuditAction.DOCUMENT_DELETED_BY_CLIENT,
             actor_id=user["portal_user_id"],
             client_id=user["client_id"],
             resource_type="document",
             resource_id=document_id,
-            metadata={"action": "document_deleted"}
+            metadata={"action": "document_deleted", "file_name": document.get("file_name")},
         )
         return {"message": "Document deleted"}
     except HTTPException:
@@ -1320,12 +1320,12 @@ async def admin_delete_document(request: Request, document_id: str):
         except Exception as file_err:
             logger.warning(f"Could not remove file for document {document_id}: {file_err}")
         await create_audit_log(
-            action=AuditAction.ADMIN_ACTION,
+            action=AuditAction.DOCUMENT_DELETED_BY_ADMIN,
             actor_id=user["portal_user_id"],
             client_id=client_id,
             resource_type="document",
             resource_id=document_id,
-            metadata={"action": "admin_document_deleted"}
+            metadata={"action": "admin_document_deleted", "file_name": document.get("file_name")},
         )
         return {"message": "Document deleted"}
     except HTTPException:
@@ -1530,6 +1530,42 @@ async def analyze_document_ai(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=detail,
         )
+
+
+@router.get("/{document_id}/file")
+async def get_document_file(request: Request, document_id: str, download: bool = False):
+    """Client views or downloads their uploaded document. Logged for admin monitoring."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    document = await db.documents.find_one(
+        {"document_id": document_id},
+        {"_id": 0, "client_id": 1, "file_path": 1, "file_name": 1, "mime_type": 1}
+    )
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if document["client_id"] != user["client_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
+    file_path = Path(document.get("file_path", ""))
+    if not file_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    await create_audit_log(
+        action=AuditAction.DOCUMENT_VIEWED,
+        actor_id=user["portal_user_id"],
+        client_id=user["client_id"],
+        resource_type="document",
+        resource_id=document_id,
+        metadata={"file_name": document.get("file_name"), "download": download},
+    )
+    from fastapi.responses import FileResponse
+    media_type = document.get("mime_type") or "application/octet-stream"
+    filename = document.get("file_name") or "document"
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type,
+        filename=filename,
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
+    )
 
 
 @router.get("/{document_id}/extraction")
