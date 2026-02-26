@@ -949,7 +949,7 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
         // Map drilldown type to API endpoint
         if (drilldownType === 'clients' || drilldownType === 'clients-active' || drilldownType === 'clients-pending') {
           const status = drilldownType === 'clients-active' ? '&subscription_status=ACTIVE' : 
-                         drilldownType === 'clients-pending' ? '&onboarding_status=PENDING' : '';
+                         drilldownType === 'clients-pending' ? '&subscription_status=PENDING' : '';
           endpoint = `/admin/clients?limit=50${status}`;
         } else if (drilldownType === 'properties') {
           endpoint = '/admin/kpi/properties?limit=50';
@@ -3780,7 +3780,7 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
     { label: 'Total Properties', value: stats?.stats?.total_properties || 0, icon: Building2, color: 'text-purple-600 bg-purple-100', drilldown: 'properties' },
     { label: 'Active Clients', value: stats?.stats?.active_clients || 0, icon: CheckCircle, color: 'text-green-600 bg-green-100', drilldown: 'clients-active' },
     { label: 'Pending Setup', value: stats?.stats?.pending_clients || 0, icon: Clock, color: 'text-amber-600 bg-amber-100', drilldown: 'clients-pending' },
-    { label: 'Unverified Documents', value: unverifiedCount, icon: FileCheck, color: 'text-teal-600 bg-teal-100', drilldown: null, badge: true },
+    { label: 'Unverified Documents', value: unverifiedCount, icon: FileCheck, color: 'text-teal-600 bg-teal-100', drilldown: 'scroll-pending-verification', badge: true },
   ];
 
   const complianceCards = [
@@ -3800,7 +3800,9 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
           return (
             <Wrapper
               key={idx}
-              onClick={stat.drilldown ? () => onShowDrilldown && onShowDrilldown(stat.drilldown) : undefined}
+              onClick={stat.drilldown === 'scroll-pending-verification'
+                ? () => document.getElementById('pending-verification-section')?.scrollIntoView({ behavior: 'smooth' })
+                : stat.drilldown ? () => onShowDrilldown && onShowDrilldown(stat.drilldown) : undefined}
               className={`bg-white rounded-xl border border-gray-200 p-6 text-left transition-all ${stat.drilldown ? 'hover:shadow-lg hover:border-electric-teal cursor-pointer group' : ''}`}
               data-testid={stat.drilldown ? `kpi-tile-${stat.drilldown}` : 'kpi-tile-unverified-documents'}
             >
@@ -3854,7 +3856,7 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       )}
 
       {/* Pending verification (UPLOADED older than X hours) */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="pending-verification-section">
+      <div id="pending-verification-section" className="bg-white rounded-xl border border-gray-200 p-6" data-testid="pending-verification-section">
         <h3 className="text-lg font-semibold text-midnight-blue mb-4">Pending verification</h3>
         <p className="text-sm text-gray-500 mb-4">Documents with status UPLOADED older than selected hours (filterable by client).</p>
         {pendingListWarning && (
