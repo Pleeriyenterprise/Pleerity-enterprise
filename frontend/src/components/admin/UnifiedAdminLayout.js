@@ -78,8 +78,8 @@ const navSections = [
     items: [
       { href: '/admin/services', label: 'Service Catalogue', icon: Package },
       { href: '/admin/intake-schema', label: 'Intake Schema', icon: PenTool },
-      { href: '/admin/billing', label: 'Pricing & Billing', icon: CreditCard },
-      { href: '/admin/pending-payments', label: 'Pending Payments', icon: Clock },
+      { href: '/admin/billing', label: 'Pricing & Billing', icon: CreditCard, tabTarget: 'overview' },
+      { href: '/admin/billing', label: 'Pending Payments', icon: Clock, tabTarget: 'pending-payments' },
     ],
   },
   {
@@ -340,6 +340,9 @@ const UnifiedAdminLayout = ({ children }) => {
   };
 
   const isActive = (path, tabTarget) => {
+    if (tabTarget === 'overview') {
+      return location.pathname === path && !location.search.includes('tab=pending-payments');
+    }
     if (tabTarget) {
       return location.pathname === path && location.search.includes(`tab=${tabTarget}`);
     }

@@ -469,7 +469,7 @@ function App() {
               } 
             />
             <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeadsPage /></ProtectedRoute>} />
-            <Route path="/admin/pending-payments" element={<ProtectedRoute requireAdmin><AdminPendingPaymentsPage /></ProtectedRoute>} />
+            <Route path="/admin/pending-payments" element={<ProtectedRoute requireAdmin><Navigate to="/admin/billing?tab=pending-payments" replace /></ProtectedRoute>} />
             <Route path="/admin/talent-pool" element={<ProtectedRoute requireAdmin><AdminTalentPoolPage /></ProtectedRoute>} />
             <Route path="/admin/partnership-enquiries" element={<ProtectedRoute requireAdmin><AdminPartnershipEnquiriesPage /></ProtectedRoute>} />
             <Route path="/admin/risk-leads" element={<ProtectedRoute requireAdmin><AdminRiskLeadsPage /></ProtectedRoute>} />

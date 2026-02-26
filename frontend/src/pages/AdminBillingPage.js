@@ -32,17 +32,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from 'sonner';
 import api from '../api/client';
+import AdminPendingPaymentsPage from './AdminPendingPaymentsPage';
 
 const AdminBillingPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') || 'overview';
   
   // Search state
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   
-  // Selected client state
+  // Selected client state (only when on overview tab)
   const [selectedClientId, setSelectedClientId] = useState(searchParams.get('client') || null);
   const [billingSnapshot, setBillingSnapshot] = useState(null);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
@@ -285,9 +287,10 @@ const AdminBillingPage = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate('/admin')}
+              onClick={() => navigate(-1)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               data-testid="back-btn"
+              title="Back to previous page"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
@@ -299,10 +302,35 @@ const AdminBillingPage = () => {
               <p className="text-sm text-gray-500">Manage client billing, subscriptions, and entitlements</p>
             </div>
           </div>
+          {/* Tabs: one source of truth for anything money */}
+          <div className="flex gap-1 mt-3 border-b border-gray-200">
+            <button
+              onClick={() => setSearchParams((p) => { const next = new URLSearchParams(p); next.delete('tab'); return next; })}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                tab !== 'pending-payments' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+              data-testid="tab-overview"
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setSearchParams((p) => { p.set('tab', 'pending-payments'); return p; })}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+                tab === 'pending-payments' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+              data-testid="tab-pending-payments"
+            >
+              <Clock className="w-4 h-4" />
+              Pending Payments
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {tab === 'pending-payments' ? (
+          <AdminPendingPaymentsPage embedded />
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Search & Results */}
           <div className="lg:col-span-1 space-y-4">
@@ -409,7 +437,12 @@ const AdminBillingPage = () => {
                       onClick={() => setSelectedClientId(client.client_id)}
                       className="w-full text-left p-2 rounded border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors"
                     >
-                      <p className="text-sm font-medium text-gray-900">{client.contact_email}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {client.full_name || client.contact_email || 'Unknown'}
+                      </p>
+                      {(client.crn || client.customer_reference) && (
+                        <p className="text-xs text-gray-600">CRN: {client.crn || client.customer_reference}</p>
+                      )}
                       <p className="text-xs text-amber-700">
                         {client.entitlement_status === 'LIMITED' ? 'Payment issue' : 'Setup incomplete'}
                       </p>
@@ -702,6 +735,7 @@ const AdminBillingPage = () => {
             )}
           </div>
         </div>
+        )}
       </main>
 
       {/* Message Modal */}

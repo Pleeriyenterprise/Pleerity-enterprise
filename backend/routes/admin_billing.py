@@ -1040,7 +1040,7 @@ async def get_billing_statistics(request: Request):
             if "_id" in event:
                 del event["_id"]
         
-        # Clients needing attention
+        # Clients needing attention (include name and CRN for display)
         attention_needed = await db.clients.find(
             {
                 "$or": [
@@ -1048,8 +1048,10 @@ async def get_billing_statistics(request: Request):
                     {"onboarding_status": {"$nin": ["PROVISIONED", "COMPLETE"]}},
                 ]
             },
-            {"_id": 0, "client_id": 1, "contact_email": 1, "entitlement_status": 1, "onboarding_status": 1}
+            {"_id": 0, "client_id": 1, "contact_email": 1, "full_name": 1, "customer_reference": 1, "entitlement_status": 1, "onboarding_status": 1}
         ).limit(20).to_list(20)
+        for c in attention_needed:
+            c["crn"] = c.get("customer_reference")
         
         return {
             "entitlement_counts": {

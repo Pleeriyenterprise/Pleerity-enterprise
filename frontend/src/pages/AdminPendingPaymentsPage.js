@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { toast } from 'sonner';
 import api from '../api/client';
 
-const AdminPendingPaymentsPage = () => {
+const AdminPendingPaymentsPage = ({ embedded = false }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(null);
@@ -75,7 +75,7 @@ const AdminPendingPaymentsPage = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className={embedded ? '' : 'p-6 max-w-7xl mx-auto'}>
       <Card>
         <CardHeader>
           <CardTitle>Pending Payments</CardTitle>
