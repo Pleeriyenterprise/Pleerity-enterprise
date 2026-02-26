@@ -287,12 +287,13 @@ const AdminBillingPage = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              type="button"
+              onClick={() => navigate('/admin/dashboard')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-electric-teal focus:ring-offset-1"
               data-testid="back-btn"
-              title="Back to previous page"
+              title="Back to Dashboard"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <h1 className="text-xl font-semibold text-midnight-blue flex items-center gap-2">

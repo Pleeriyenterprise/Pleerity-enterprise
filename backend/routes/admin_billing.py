@@ -687,6 +687,7 @@ async def resend_password_setup(request: Request, client_id: str):
                 template_key="WELCOME_EMAIL",
                 client_id=client_id,
                 context={
+                    "recipient": user_email,
                     "setup_link": setup_url,
                     "client_name": portal_user.get("full_name") or portal_user.get("name", "Customer"),
                     "company_name": "Pleerity Enterprise Ltd",
@@ -699,14 +700,23 @@ async def resend_password_setup(request: Request, client_id: str):
             logger.error(f"Resend setup send error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value},
+                detail={"error_code": "EMAIL_SEND_FAILED", "message": str(e), "template": EmailTemplateAlias.PASSWORD_SETUP.value},
             )
         if result.status_code == 403:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=result.details or {"error_code": "ACCOUNT_NOT_READY"})
+        if result.outcome == "blocked":
+            reason = result.block_reason or "Email provider not configured"
+            if reason == "BLOCKED_PROVIDER_NOT_CONFIGURED":
+                reason = "Email provider (Postmark) is not configured. Set POSTMARK_SERVER_TOKEN to send password setup emails."
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"error_code": "EMAIL_NOT_CONFIGURED", "message": reason},
+            )
         if result.outcome == "failed":
+            msg = (result.error_message or "Email delivery failed")[:500]
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={"error_code": "EMAIL_SEND_FAILED", "template": EmailTemplateAlias.PASSWORD_SETUP.value, "message_id": result.message_id},
+                detail={"error_code": "EMAIL_SEND_FAILED", "message": msg, "template": EmailTemplateAlias.PASSWORD_SETUP.value},
             )
         
         await create_audit_log(

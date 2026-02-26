@@ -1188,7 +1188,12 @@ async def resend_password_setup(request: Request, client_id: str):
             )
         setup_link = f"{base_url}/set-password?token={raw_token}"
         activation_link_domain = urlparse(setup_link).netloc or ""
-        client_email = (client.get("email") or portal_user.get("auth_email") or "").strip()
+        client_email = (client.get("email") or client.get("contact_email") or portal_user.get("auth_email") or "").strip()
+        if not client_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error_code": "EMAIL_INPUT_INVALID", "message": "Client has no email; add email to client or portal user."},
+            )
         if not setup_link:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1200,6 +1205,7 @@ async def resend_password_setup(request: Request, client_id: str):
                 template_key="WELCOME_EMAIL",
                 client_id=client_id,
                 context={
+                    "recipient": client_email,
                     "setup_link": setup_link,
                     "client_name": client.get("full_name") or "Customer",
                     "company_name": "Pleerity Enterprise Ltd",
