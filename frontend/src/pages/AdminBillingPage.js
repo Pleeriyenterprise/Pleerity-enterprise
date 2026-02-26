@@ -315,7 +315,7 @@ const AdminBillingPage = () => {
               Overview
             </button>
             <button
-              onClick={() => setSearchParams((p) => { p.set('tab', 'pending-payments'); return p; })}
+              onClick={() => setSearchParams((p) => { const next = new URLSearchParams(p); next.set('tab', 'pending-payments'); return next; })}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
                 tab === 'pending-payments' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
               }`}

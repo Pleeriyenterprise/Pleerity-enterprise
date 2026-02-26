@@ -23,10 +23,12 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
     try {
       const params = q && q.trim() ? { q: q.trim() } : {};
       const response = await api.get('/admin/intake/pending-payments', { params });
-      setItems(response.data?.items || []);
+      const raw = response?.data?.items;
+      setItems(Array.isArray(raw) ? raw : []);
     } catch (error) {
       console.error('Failed to fetch pending payments:', error);
       toast.error('Failed to load pending payments');
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -69,9 +71,14 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
   };
 
   const formatDate = (d) => {
-    if (!d) return '—';
-    const dt = typeof d === 'string' ? new Date(d) : d;
-    return dt.toLocaleDateString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    if (d == null) return '—';
+    try {
+      const dt = typeof d === 'string' ? new Date(d) : d;
+      if (Number.isNaN(dt.getTime())) return '—';
+      return dt.toLocaleDateString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    } catch {
+      return '—';
+    }
   };
 
   return (
@@ -124,8 +131,8 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
-                    <tr key={item.client_id} className="border-b hover:bg-muted/50">
+                  {(items || []).map((item, index) => (
+                    <tr key={item.client_id || `row-${index}`} className="border-b hover:bg-muted/50">
                       <td className="py-2">{item.customer_reference || '—'}</td>
                       <td className="py-2">{item.full_name || '—'}</td>
                       <td className="py-2">{item.email || '—'}</td>
@@ -156,7 +163,7 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
                           <Button
                             size="sm"
                             onClick={() => handleSendPaymentLink(item.client_id)}
-                            disabled={sending === item.client_id}
+                            disabled={sending === item.client_id || !item.client_id}
                           >
                             {sending === item.client_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                             Send link

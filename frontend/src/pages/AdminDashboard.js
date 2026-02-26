@@ -50,7 +50,8 @@ import {
   ExternalLink,
   Sparkles,
   CreditCard,
-  Copy
+  Copy,
+  Upload
 } from 'lucide-react';
 
 // Global Search Component
@@ -192,6 +193,10 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   const [scoreHistoryLoading, setScoreHistoryLoading] = useState(false);
   const [scoreHistoryError, setScoreHistoryError] = useState(null);
   const [fullHistoryModal, setFullHistoryModal] = useState(null);
+  const [uploadPropertyId, setUploadPropertyId] = useState('');
+  const [uploadRequirementId, setUploadRequirementId] = useState('');
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
 
   const fetchClientData = useCallback(async () => {
     if (!clientId) return;
@@ -231,6 +236,9 @@ const ClientDetailModal = ({ clientId, onClose }) => {
       setScoreHistoryError(null);
       setFullHistoryModal(null);
       setLastResendActivationLink(null);
+      setUploadPropertyId('');
+      setUploadRequirementId('');
+      setUploadFile(null);
     }
   }, [clientId, fetchClientData]);
 
@@ -332,6 +340,35 @@ const ClientDetailModal = ({ clientId, onClose }) => {
     navigator.clipboard.writeText(url).then(() => toast.success('Link copied to clipboard')).catch(() => toast.error('Copy failed'));
   };
 
+  const handleUploadDocument = async (e) => {
+    e.preventDefault();
+    if (!uploadPropertyId || !uploadRequirementId || !uploadFile || !clientId) {
+      toast.error('Please select property, requirement, and a file');
+      return;
+    }
+    setUploadingDocument(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('client_id', clientId);
+      formData.append('property_id', uploadPropertyId);
+      formData.append('requirement_id', uploadRequirementId);
+      await api.post('/documents/admin/upload', formData);
+      toast.success('Document uploaded successfully');
+      setUploadFile(null);
+      setUploadRequirementId('');
+      setUploadPropertyId('');
+      if (document.getElementById('admin-upload-file-input')) document.getElementById('admin-upload-file-input').value = '';
+      fetchClientData();
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (detail?.message || 'Failed to upload document');
+      toast.error(msg);
+    } finally {
+      setUploadingDocument(false);
+    }
+  };
+
   const paymentCompleteItem = readiness?.checklist?.find((i) => i.item === 'payment_complete');
   const showPaymentLinkActions = paymentCompleteItem?.status !== 'complete';
 
@@ -421,6 +458,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
             {[
               { id: 'overview', label: 'Overview', icon: Eye },
               { id: 'setup', label: 'Setup Controls', icon: Settings },
+              { id: 'upload', label: 'Upload document', icon: Upload },
               { id: 'messaging', label: 'Messaging', icon: MessageSquare },
               { id: 'timeline', label: 'Audit Timeline', icon: History }
             ].map((tab) => (
@@ -832,6 +870,77 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeSection === 'upload' && (
+            <div className="space-y-6">
+              <h3 className="font-semibold text-midnight-blue mb-4 flex items-center gap-2">
+                <Upload className="w-5 h-5" />
+                Upload document on behalf of client
+              </h3>
+              <p className="text-sm text-gray-600">Select a property and requirement, then choose a file. The document will be stored against the client&apos;s record and can be verified in Compliance.</p>
+              <form onSubmit={handleUploadDocument} className="bg-gray-50 rounded-lg p-6 space-y-4 max-w-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                  <select
+                    value={uploadPropertyId}
+                    onChange={(e) => { setUploadPropertyId(e.target.value); setUploadRequirementId(''); }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                    required
+                    data-testid="admin-upload-property"
+                  >
+                    <option value="">Select property</option>
+                    {(client?.properties ?? []).map((p) => (
+                      <option key={p.property_id} value={p.property_id}>
+                        {p.nickname || p.address_line_1 || p.property_id}
+                        {p.postcode ? ` (${p.postcode})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Requirement</label>
+                  <select
+                    value={uploadRequirementId}
+                    onChange={(e) => setUploadRequirementId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                    required
+                    disabled={!uploadPropertyId}
+                    data-testid="admin-upload-requirement"
+                  >
+                    <option value="">Select requirement</option>
+                    {(client?.requirements ?? [])
+                      .filter((r) => r.property_id === uploadPropertyId)
+                      .map((r) => (
+                        <option key={r.requirement_id} value={r.requirement_id}>
+                          {r.requirement_type || r.requirement_id}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+                  <input
+                    id="admin-upload-file-input"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                    data-testid="admin-upload-file"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, or DOC/DOCX</p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={uploadingDocument || !uploadPropertyId || !uploadRequirementId || !uploadFile}
+                  className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  data-testid="admin-upload-submit"
+                >
+                  {uploadingDocument ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {uploadingDocument ? 'Uploading…' : 'Upload document'}
+                </button>
+              </form>
             </div>
           )}
 
