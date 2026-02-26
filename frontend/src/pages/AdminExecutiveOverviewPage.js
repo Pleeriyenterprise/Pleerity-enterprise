@@ -47,7 +47,9 @@ export default function AdminExecutiveOverviewPage() {
       if (status === 403) {
         setError('You don’t have permission to view Executive Overview. This page is available to Owner and Admin only.');
       } else {
-        setError(typeof detail === 'string' ? detail : 'Failed to load executive overview');
+        const msg = typeof detail === 'string' ? detail : (detail && typeof detail === 'object' && detail.message ? detail.message : null) || 'Failed to load executive overview';
+        const statusInfo = status != null ? ` (${status})` : '';
+        setError(msg + statusInfo);
       }
       setData(null);
     } finally {
