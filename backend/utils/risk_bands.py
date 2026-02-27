@@ -31,3 +31,19 @@ def score_to_grade_color_message(score: int) -> tuple:
     if score >= RISK_BAND_HIGH_MIN:
         return ("D", "amber", "High risk - action required")
     return ("F", "red", "High urgency: overdue items detected")
+
+
+def risk_level_to_grade_color_message(risk_level: str) -> tuple:
+    """Map backend risk_level string to (grade, color, message). Keeps dashboard and compliance-score page in sync."""
+    if not risk_level or not isinstance(risk_level, str):
+        return ("—", "gray", "")
+    s = risk_level.strip()
+    if s == "Low Risk":
+        return ("B", "green", "Low risk - good standing")
+    if s == "Moderate Risk":
+        return ("C", "amber", "Moderate risk - action required")
+    if s == "High Risk":
+        return ("D", "amber", "High risk - action required")
+    if s == "Critical Risk":
+        return ("F", "red", "High urgency: overdue items detected")
+    return ("—", "gray", s)

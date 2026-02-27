@@ -11,3 +11,14 @@ export function formatRiskLabel(riskLevel) {
   if (s === 'Critical Risk') return 'Critical risk';
   return s;
 }
+
+/** Map backend risk_level to grade + color + message so dashboard card matches "Risk level" line and tables. */
+export function riskLevelToGradeColorMessage(riskLevel) {
+  if (!riskLevel || typeof riskLevel !== 'string') return { grade: '—', color: 'gray', message: '' };
+  const s = riskLevel.trim();
+  if (s === 'Low Risk') return { grade: 'B', color: 'green', message: 'Low risk - good standing' };
+  if (s === 'Moderate Risk') return { grade: 'C', color: 'amber', message: 'Moderate risk - action required' };
+  if (s === 'High Risk') return { grade: 'D', color: 'amber', message: 'High risk - action required' };
+  if (s === 'Critical Risk') return { grade: 'F', color: 'red', message: 'High urgency: overdue items detected' };
+  return { grade: '—', color: 'gray', message: formatRiskLabel(riskLevel) };
+}

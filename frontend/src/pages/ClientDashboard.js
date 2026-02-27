@@ -12,7 +12,7 @@ import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Cloc
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
-import { formatRiskLabel } from '../utils/riskLabel';
+import { formatRiskLabel, riskLevelToGradeColorMessage } from '../utils/riskLabel';
 
 const SETUP_CHECKLIST_DONE_KEY = 'pleerity_setup_checklist_done';
 const SETUP_INCOMPLETE_KEY = 'pleerity_setup_incomplete';
@@ -210,12 +210,19 @@ const ClientDashboard = () => {
     }
   };
 
-  // Single property: use portfolio summary score so main card and portfolio table show the same number
+  // Single property: use portfolio summary score so main card and portfolio table show the same number.
+  // Use backend risk_level for grade/message when present so the main card matches "Risk level" and table (no score=65 + "Moderate" vs "High risk").
   const displayScoreInfo = useMemo(() => {
     const singleProperty = portfolioSummary?.properties?.length === 1 && portfolioSummary?.portfolio_score != null;
     if (singleProperty) {
-      const { grade, color, message } = scoreToGradeColorMessage(portfolioSummary.portfolio_score);
-      return { score: portfolioSummary.portfolio_score, grade, color, message };
+      const score = portfolioSummary.portfolio_score;
+      const riskLevel = portfolioSummary.risk_level || portfolioSummary.portfolio_risk_level;
+      if (riskLevel) {
+        const { grade, color, message } = riskLevelToGradeColorMessage(riskLevel);
+        return { score, grade, color, message };
+      }
+      const { grade, color, message } = scoreToGradeColorMessage(score);
+      return { score, grade, color, message };
     }
     if (complianceScore) {
       return { score: complianceScore.score, grade: complianceScore.grade, color: complianceScore.color, message: complianceScore.message };

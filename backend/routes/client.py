@@ -55,11 +55,12 @@ def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> s
 
 @router.get("/compliance-score")
 async def get_compliance_score(request: Request):
-    """Get the client's overall compliance score (0-100)."""
+    """Get the client's overall compliance score (0-100). Uses single source of truth in calculate_compliance_score (catalog when available, else stored scores)."""
     user = await client_route_guard(request)
-    
+    client_id = user["client_id"]
+
     try:
-        score_data = await calculate_compliance_score(user["client_id"])
+        score_data = await calculate_compliance_score(client_id)
         return score_data
     except Exception as e:
         logger.error(f"Compliance score error: {e}")

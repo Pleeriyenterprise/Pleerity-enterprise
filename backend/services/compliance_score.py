@@ -19,7 +19,7 @@ Weighting Model:
 from database import database
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
-from utils.risk_bands import score_to_grade_color_message
+from utils.risk_bands import score_to_grade_color_message, risk_level_to_grade_color_message
 import logging
 
 logger = logging.getLogger(__name__)
@@ -327,7 +327,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             recommendations.append({"priority": "high", "action": f"Address {overdue} overdue requirement(s)", "impact": "+10-20 points"})
         if expiring_soon > 0:
             recommendations.append({"priority": "medium", "action": f"Renew {expiring_soon} certificate(s) expiring soon", "impact": "+10-15 points"})
-        return {
+        result = {
             "score": client_score,
             "grade": grade,
             "color": color,
@@ -352,6 +352,22 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "property_breakdown": property_breakdown,
             "drivers": drivers,
         }
+        # Single source of truth: when catalog-driven portfolio exists, use its score/risk so dashboard, compliance-score page, and reports all show the same number.
+        try:
+            from services.catalog_compliance import get_portfolio_compliance_from_catalog
+            catalog = await get_portfolio_compliance_from_catalog(client_id)
+            if catalog and catalog.get("portfolio_score") is not None:
+                result["score"] = catalog["portfolio_score"]
+                risk_level = catalog.get("risk_level") or catalog.get("portfolio_risk_level")
+                if risk_level:
+                    g, c, m = risk_level_to_grade_color_message(risk_level)
+                    result["grade"], result["color"], result["message"] = g, c, m
+                else:
+                    g, c, m = score_to_grade_color_message(catalog["portfolio_score"])
+                    result["grade"], result["color"], result["message"] = g, c, m
+        except Exception as cat_err:
+            logger.debug("Catalog compliance not used for score overwrite: %s", cat_err)
+        return result
     except Exception as e:
         logger.error(f"Error calculating compliance score: {e}")
         return {
