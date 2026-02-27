@@ -1321,9 +1321,8 @@ async def delete_document(request: Request, document_id: str):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this document")
         requirement_id = document.get("requirement_id")
         property_id = document.get("property_id")
-        was_verified = document.get("status") == DocumentStatus.VERIFIED.value
         await db.documents.delete_one({"document_id": document_id})
-        if was_verified and requirement_id:
+        if requirement_id:
             await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
         if property_id:
             from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_DELETED, ACTOR_CLIENT
@@ -1368,10 +1367,9 @@ async def admin_delete_document(request: Request, document_id: str):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
         requirement_id = document.get("requirement_id")
         property_id = document.get("property_id")
-        was_verified = document.get("status") == DocumentStatus.VERIFIED.value
         client_id = document["client_id"]
         await db.documents.delete_one({"document_id": document_id})
-        if was_verified and requirement_id:
+        if requirement_id:
             await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
         if property_id:
             from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_ADMIN_DELETE, ACTOR_ADMIN
@@ -1406,7 +1404,8 @@ async def admin_delete_document(request: Request, document_id: str):
 
 
 async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, property_id: Optional[str]) -> None:
-    """If no VERIFIED document remains for this requirement, set requirement to PENDING and sync property compliance."""
+    """If no VERIFIED document remains for this requirement, set requirement to PENDING, clear due_date, and sync property compliance.
+    Ensures Requirements page, Property detail, and Calendar all show 'Missing evidence' and no stale expiry after document delete."""
     remaining = await db.documents.count_documents(
         {"requirement_id": requirement_id, "status": DocumentStatus.VERIFIED.value}
     )
@@ -1414,7 +1413,7 @@ async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, prope
         return
     await db.requirements.update_one(
         {"requirement_id": requirement_id},
-        {"$set": {"status": RequirementStatus.PENDING.value}}
+        {"$set": {"status": RequirementStatus.PENDING.value}, "$unset": {"due_date": ""}}
     )
     if property_id:
         from services.provisioning import provisioning_service
