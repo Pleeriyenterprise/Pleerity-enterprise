@@ -211,14 +211,17 @@ const ClientDashboard = () => {
   };
 
   // Single property: use portfolio summary score so main card and portfolio table show the same number.
-  // Use backend risk_level for grade/message when present so the main card matches "Risk level" and table (no score=65 + "Moderate" vs "High risk").
+  // Use backend risk_level for grade/message when present; for Low Risk derive grade from score (90+ → A, 80–89 → B) so 100/100 shows Grade A.
   const displayScoreInfo = useMemo(() => {
     const singleProperty = portfolioSummary?.properties?.length === 1 && portfolioSummary?.portfolio_score != null;
     if (singleProperty) {
       const score = portfolioSummary.portfolio_score;
       const riskLevel = portfolioSummary.risk_level || portfolioSummary.portfolio_risk_level;
       if (riskLevel) {
-        const { grade, color, message } = riskLevelToGradeColorMessage(riskLevel);
+        const s = (riskLevel || '').trim();
+        const { grade, color, message } = s === 'Low Risk'
+          ? scoreToGradeColorMessage(score)
+          : riskLevelToGradeColorMessage(riskLevel);
         return { score, grade, color, message };
       }
       const { grade, color, message } = scoreToGradeColorMessage(score);

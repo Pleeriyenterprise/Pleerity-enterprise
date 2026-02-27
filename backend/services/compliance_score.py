@@ -359,11 +359,16 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             if catalog and catalog.get("portfolio_score") is not None:
                 result["score"] = catalog["portfolio_score"]
                 risk_level = catalog.get("risk_level") or catalog.get("portfolio_risk_level")
+                portfolio_score = catalog["portfolio_score"]
                 if risk_level:
-                    g, c, m = risk_level_to_grade_color_message(risk_level)
+                    # For Low Risk, derive grade from score (90+ → A, 80–89 → B) so 100/100 shows Grade A
+                    if risk_level.strip() == "Low Risk":
+                        g, c, m = score_to_grade_color_message(portfolio_score)
+                    else:
+                        g, c, m = risk_level_to_grade_color_message(risk_level)
                     result["grade"], result["color"], result["message"] = g, c, m
                 else:
-                    g, c, m = score_to_grade_color_message(catalog["portfolio_score"])
+                    g, c, m = score_to_grade_color_message(portfolio_score)
                     result["grade"], result["color"], result["message"] = g, c, m
         except Exception as cat_err:
             logger.debug("Catalog compliance not used for score overwrite: %s", cat_err)
