@@ -508,8 +508,8 @@ const ClientDashboard = () => {
               }`}>
                 {displayScoreInfo?.message ?? complianceScore?.message}
               </p>
-              {(complianceScore?.properties_count != null && complianceScore.properties_count > 1) && (
-                <p className="text-xs text-gray-500 mt-1">Overall score: average across your {complianceScore.properties_count} properties.</p>
+              {(complianceScore?.properties_count != null && (complianceScore?.properties_count ?? 0) > 1) && (
+                <p className="text-xs text-gray-500 mt-1">Overall score: average across your {complianceScore?.properties_count} properties.</p>
               )}
               
               {/* Score Trending Sparkline */}
@@ -567,15 +567,15 @@ const ClientDashboard = () => {
               <div className="mt-4 pt-4 border-t border-white/50 space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Status (40%)</span>
-                  <span className="font-medium">{complianceScore.breakdown?.status_score?.toFixed(0)}%</span>
+                  <span className="font-medium">{complianceScore?.breakdown?.status_score?.toFixed(0)}%</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Timeline (30%)</span>
-                  <span className="font-medium">{complianceScore.breakdown?.expiry_score?.toFixed(0)}%</span>
+                  <span className="font-medium">{complianceScore?.breakdown?.expiry_score?.toFixed(0)}%</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Documents (15%)</span>
-                  <span className="font-medium">{complianceScore.breakdown?.document_score?.toFixed(0)}%</span>
+                  <span className="font-medium">{complianceScore?.breakdown?.document_score?.toFixed(0)}%</span>
                 </div>
               </div>
               
@@ -598,10 +598,10 @@ const ClientDashboard = () => {
                 <div className="mt-3 pt-3 border-t border-white/50 text-xs space-y-2" onClick={(e) => e.stopPropagation()}>
                   <p className="font-medium text-gray-700">Score Components:</p>
                   <ul className="space-y-1 text-gray-600">
-                    <li>• <strong>Status (40%):</strong> {complianceScore.stats?.compliant || 0}/{complianceScore.stats?.total_requirements || 0} requirements valid</li>
-                    <li>• <strong>Timeline (30%):</strong> {complianceScore.stats?.expiring_soon || 0} items due within 30 days</li>
-                    <li>• <strong>Documents (15%):</strong> {complianceScore.stats?.document_coverage_percent?.toFixed(0) || 0}% requirement coverage</li>
-                    <li>• <strong>Overdue Penalty (15%):</strong> {complianceScore.stats?.overdue || 0} overdue items</li>
+                    <li>• <strong>Status (40%):</strong> {complianceScore?.stats?.compliant || 0}/{complianceScore?.stats?.total_requirements || 0} requirements valid</li>
+                    <li>• <strong>Timeline (30%):</strong> {complianceScore?.stats?.expiring_soon || 0} items due within 30 days</li>
+                    <li>• <strong>Documents (15%):</strong> {complianceScore?.stats?.document_coverage_percent?.toFixed(0) || 0}% requirement coverage</li>
+                    <li>• <strong>Overdue Penalty (15%):</strong> {complianceScore?.stats?.overdue || 0} overdue items</li>
                   </ul>
                   <p className="text-electric-teal pt-1">Click card for full breakdown →</p>
                 </div>
@@ -615,9 +615,9 @@ const ClientDashboard = () => {
                 <h3 className="font-semibold text-midnight-blue">Quick Actions to Improve Your Score</h3>
               </div>
               
-              {complianceScore.recommendations?.length > 0 ? (
+              {complianceScore?.recommendations?.length > 0 ? (
                 <div className="space-y-3">
-                  {complianceScore.recommendations.map((rec, idx) => (
+                  {(complianceScore?.recommendations ?? []).map((rec, idx) => (
                     <div 
                       key={idx}
                       className={`flex items-start gap-3 p-3 rounded-lg ${
@@ -639,8 +639,8 @@ const ClientDashboard = () => {
                   ))}
                 </div>
               ) : (() => {
-                const total = complianceScore.stats?.total_requirements ?? 0;
-                const valid = complianceScore.stats?.compliant ?? 0;
+                const total = complianceScore?.stats?.total_requirements ?? 0;
+                const valid = complianceScore?.stats?.compliant ?? 0;
                 const displayScore = displayScoreInfo?.score ?? complianceScore?.score ?? 0;
                 const allValid = total > 0 && valid === total && actionableMissingCount === 0 && displayScore >= 80;
                 if (allValid) {
@@ -675,7 +675,7 @@ const ClientDashboard = () => {
                   onClick={() => navigate('/requirements')}
                   data-testid="stat-requirements"
                 >
-                  <p className="text-2xl font-bold text-midnight-blue">{complianceScore.stats?.total_requirements || 0}</p>
+                  <p className="text-2xl font-bold text-midnight-blue">{complianceScore?.stats?.total_requirements || 0}</p>
                   <p className="text-xs text-gray-500">Requirements</p>
                 </div>
                 <div 
@@ -683,7 +683,7 @@ const ClientDashboard = () => {
                   onClick={() => navigate('/requirements?status=COMPLIANT')}
                   data-testid="stat-valid"
                 >
-                  <p className="text-2xl font-bold text-green-600">{complianceScore.stats?.compliant || 0}</p>
+                  <p className="text-2xl font-bold text-green-600">{complianceScore?.stats?.compliant || 0}</p>
                   <p className="text-xs text-gray-500">Valid</p>
                 </div>
                 <div 
@@ -692,7 +692,7 @@ const ClientDashboard = () => {
                   data-testid="stat-expiry"
                 >
                   <p className="text-2xl font-bold text-amber-600">
-                    {complianceScore.stats?.days_until_next_expiry !== null ? complianceScore.stats?.days_until_next_expiry : '—'}
+                    {complianceScore?.stats?.days_until_next_expiry !== null && complianceScore?.stats?.days_until_next_expiry !== undefined ? complianceScore?.stats?.days_until_next_expiry : '—'}
                   </p>
                   <p className="text-xs text-gray-500">Days to Next Expiry</p>
                 </div>
