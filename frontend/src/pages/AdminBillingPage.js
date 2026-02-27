@@ -55,6 +55,9 @@ const AdminBillingPage = () => {
   const [resendingSetup, setResendingSetup] = useState(false);
   const [provisioning, setProvisioning] = useState(false);
   const [portalLink, setPortalLink] = useState(null);
+  const [changingPlan, setChangingPlan] = useState(false);
+  const [changePlanCode, setChangePlanCode] = useState('PLAN_2_PORTFOLIO');
+  const [applyAtPeriodEnd, setApplyAtPeriodEnd] = useState(true);
   
   // Message modal
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -78,6 +81,13 @@ const AdminBillingPage = () => {
       setSearchParams({ client: selectedClientId });
     }
   }, [selectedClientId, setSearchParams]);
+
+  // Keep change-plan dropdown in sync with current plan when snapshot loads
+  useEffect(() => {
+    if (billingSnapshot?.plan_code && billingSnapshot?.stripe_subscription_id) {
+      setChangePlanCode(billingSnapshot.plan_code);
+    }
+  }, [billingSnapshot?.plan_code, billingSnapshot?.stripe_subscription_id]);
 
   const fetchStatistics = async () => {
     try {
@@ -188,6 +198,33 @@ const AdminBillingPage = () => {
       toast.error(error.response?.data?.detail || 'Failed to send setup email');
     } finally {
       setResendingSetup(false);
+    }
+  };
+
+  const handleChangePlan = async () => {
+    if (!selectedClientId || !changePlanCode) return;
+    if (changePlanCode === billingSnapshot?.plan_code) {
+      toast.error('Select a different plan to change');
+      return;
+    }
+    setChangingPlan(true);
+    try {
+      const response = await api.post(`/admin/billing/clients/${selectedClientId}/change-plan`, {
+        plan_code: changePlanCode,
+        apply_at_period_end: applyAtPeriodEnd,
+      });
+      if (response.data.success) {
+        toast.success('Plan change applied', {
+          description: response.data.apply_at_period_end
+            ? `New plan (${response.data.new_plan}) will apply at end of billing period.`
+            : `Switched to ${response.data.new_plan}.`,
+        });
+        await fetchBillingSnapshot(selectedClientId);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to change plan');
+    } finally {
+      setChangingPlan(false);
     }
   };
 
@@ -547,6 +584,62 @@ const AdminBillingPage = () => {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Change plan (only when client has Stripe subscription) */}
+                {billingSnapshot.stripe_subscription_id && (
+                  <Card data-testid="change-plan-card">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Change Plan</CardTitle>
+                      <CardDescription>
+                        Upgrade or downgrade this client&apos;s subscription. Apply at period end to avoid proration (recommended for downgrades).
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">New plan</label>
+                        <select
+                          value={changePlanCode}
+                          onChange={(e) => setChangePlanCode(e.target.value)}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          data-testid="change-plan-select"
+                        >
+                          <option value="PLAN_1_SOLO">Solo Landlord</option>
+                          <option value="PLAN_2_PORTFOLIO">Portfolio / Small Agent</option>
+                          <option value="PLAN_3_PRO">Professional / Agent / HMO</option>
+                        </select>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={applyAtPeriodEnd}
+                          onChange={(e) => setApplyAtPeriodEnd(e.target.checked)}
+                          className="rounded border-gray-300"
+                          data-testid="apply-at-period-end"
+                        />
+                        Apply at period end (no proration)
+                      </label>
+                      <Button
+                        onClick={handleChangePlan}
+                        disabled={changingPlan || changePlanCode === billingSnapshot.plan_code}
+                        variant="default"
+                        className="w-full sm:w-auto"
+                        data-testid="change-plan-btn"
+                      >
+                        {changingPlan ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          'Change plan'
+                        )}
+                      </Button>
+                      {changePlanCode === billingSnapshot.plan_code && (
+                        <p className="text-sm text-gray-500">Select a different plan to change.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Stripe Details */}
                 <Card data-testid="stripe-info">

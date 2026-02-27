@@ -7,6 +7,7 @@ Endpoints:
 - GET /api/admin/billing/clients/{client_id} - Get full billing snapshot
 - POST /api/admin/billing/clients/{client_id}/sync - Force sync from Stripe
 - POST /api/admin/billing/clients/{client_id}/portal-link - Create Stripe billing portal link
+- POST /api/admin/billing/clients/{client_id}/change-plan - Change subscription plan (upgrade/downgrade)
 - POST /api/admin/billing/clients/{client_id}/resend-setup - Resend password setup email
 - POST /api/admin/billing/clients/{client_id}/force-provision - Re-run provisioning
 - POST /api/admin/billing/clients/{client_id}/message - Send message to client
@@ -49,6 +50,12 @@ class MessageRequest(BaseModel):
     custom_text: Optional[str] = None
     subject: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+
+
+class ChangePlanRequest(BaseModel):
+    """Request to change a client's subscription plan (admin support flow)."""
+    plan_code: str  # PLAN_1_SOLO | PLAN_2_PORTFOLIO | PLAN_3_PRO
+    apply_at_period_end: bool = True  # If True, new price applies at next billing; if False, prorate immediately
 
 
 # =============================================================================
@@ -597,13 +604,191 @@ async def create_billing_portal_link(request: Request, client_id: str):
         logger.error(f"Stripe portal error: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Stripe error: {str(e)}"
+            detail=f"Stripe error: {str(e)}",
         )
     except Exception as e:
-        logger.error(f"Create portal link error: {e}")
+        logger.error(f"Portal link error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create portal link"
+            detail="Failed to create portal link",
+        )
+
+
+# =============================================================================
+# Change Plan (admin-initiated upgrade/downgrade)
+# =============================================================================
+
+@router.post("/clients/{client_id}/change-plan")
+async def change_client_plan(request: Request, client_id: str, body: ChangePlanRequest):
+    """
+    Change a client's subscription plan (upgrade or downgrade).
+    
+    Requires an active Stripe subscription. Optionally apply at period end to avoid
+    proration (recommended for downgrades). Updates Stripe then syncs app state.
+    """
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+
+    try:
+        # Resolve plan code
+        try:
+            new_plan_code = PlanCode(body.plan_code)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid plan_code. Use one of: {', '.join(p.value for p in PlanCode)}",
+            )
+
+        # Get client and billing
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "client_id": 1, "stripe_customer_id": 1, "billing_plan": 1},
+        )
+        if not client:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "stripe_customer_id": 1, "stripe_subscription_id": 1, "current_plan_code": 1},
+        )
+        stripe_customer_id = client.get("stripe_customer_id") or (billing.get("stripe_customer_id") if billing else None)
+        stripe_subscription_id = billing.get("stripe_subscription_id") if billing else None
+
+        if not stripe_subscription_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Client has no active Stripe subscription. Cannot change plan.",
+            )
+
+        # Current plan from our record (may differ from Stripe until sync)
+        current_plan_str = billing.get("current_plan_code") or client.get("billing_plan") or "PLAN_1_SOLO"
+        current_plan_code = plan_registry.resolve_plan_code(current_plan_str)
+        if current_plan_code == new_plan_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Client is already on {new_plan_code.value}. No change made.",
+            )
+
+        # Get new price ID
+        price_ids = plan_registry.get_stripe_price_ids(new_plan_code)
+        new_price_id = price_ids.get("subscription_price_id")
+        if not new_price_id:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Stripe price not configured for this plan.",
+            )
+
+        # Retrieve subscription and find the recurring (plan) subscription item
+        subscription = stripe.Subscription.retrieve(
+            stripe_subscription_id,
+            expand=["items.data.price"],
+        )
+        subscription_item_id = None
+        for item in subscription.get("items", {}).get("data", []):
+            price_id = (item.get("price") or {}).get("id") if isinstance(item.get("price"), dict) else getattr(item.get("price"), "id", None)
+            if price_id and plan_registry.get_plan_from_subscription_price_id(price_id):
+                subscription_item_id = item.get("id")
+                break
+
+        if not subscription_item_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not find a recurring plan item on this subscription.",
+            )
+
+        # Update subscription in Stripe
+        proration_behavior = "none" if body.apply_at_period_end else "create_prorations"
+        stripe.Subscription.modify(
+            stripe_subscription_id,
+            items=[{"id": subscription_item_id, "price": new_price_id}],
+            proration_behavior=proration_behavior,
+        )
+
+        # Re-retrieve subscription and update app state so admin sees new plan immediately
+        updated_sub = stripe.Subscription.retrieve(
+            stripe_subscription_id,
+            expand=["items.data.price"],
+        )
+        derived_plan = None
+        for item in updated_sub.get("items", {}).get("data", []):
+            price_id = (item.get("price") or {}).get("id") if isinstance(item.get("price"), dict) else getattr(item.get("price"), "id", None)
+            if price_id:
+                derived_plan = plan_registry.get_plan_from_subscription_price_id(price_id)
+                if derived_plan:
+                    break
+        if not derived_plan:
+            derived_plan = PlanCode.PLAN_1_SOLO
+        new_status = (updated_sub.status or "").upper()
+        new_entitlement = plan_registry.get_entitlement_status_from_subscription(updated_sub.status)
+
+        billing_update = {
+            "client_id": client_id,
+            "stripe_customer_id": stripe_customer_id,
+            "updated_at": datetime.now(timezone.utc),
+            "stripe_subscription_id": stripe_subscription_id,
+            "current_plan_code": derived_plan.value,
+            "subscription_status": new_status,
+            "entitlement_status": new_entitlement.value,
+            "cancel_at_period_end": updated_sub.cancel_at_period_end,
+            "current_period_start": datetime.fromtimestamp(updated_sub.current_period_start, tz=timezone.utc),
+            "current_period_end": datetime.fromtimestamp(updated_sub.current_period_end, tz=timezone.utc),
+        }
+        await db.client_billing.update_one(
+            {"client_id": client_id},
+            {"$set": billing_update, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
+            upsert=True,
+        )
+        await db.clients.update_one(
+            {"client_id": client_id},
+            {"$set": {
+                "stripe_customer_id": stripe_customer_id,
+                "billing_plan": derived_plan.value,
+                "subscription_status": "ACTIVE" if new_status in ("ACTIVE", "TRIALING") else new_status,
+                "entitlement_status": new_entitlement.value,
+            }},
+        )
+        after_state = {
+            "subscription_status": new_status,
+            "entitlement_status": new_entitlement.value,
+            "current_plan_code": derived_plan.value,
+        }
+
+        # Audit log
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=admin.get("portal_user_id"),
+            client_id=client_id,
+            metadata={
+                "action_type": "BILLING_PLAN_CHANGED",
+                "previous_plan": current_plan_code.value,
+                "new_plan": new_plan_code.value,
+                "apply_at_period_end": body.apply_at_period_end,
+                "stripe_subscription_id": stripe_subscription_id,
+            },
+        )
+
+        return {
+            "success": True,
+            "message": "Plan change applied. Billing synced.",
+            "previous_plan": current_plan_code.value,
+            "new_plan": new_plan_code.value,
+            "apply_at_period_end": body.apply_at_period_end,
+            "after": after_state,
+        }
+    except HTTPException:
+        raise
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error during change-plan: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Stripe error: {str(e)}",
+        )
+    except Exception as e:
+        logger.error(f"Change plan error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to change plan",
         )
 
 
