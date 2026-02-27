@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Eye,
+  Download,
   Edit3,
   Check,
   X,
@@ -183,7 +184,7 @@ const DocumentsPage = () => {
         data.text().then((text) => {
           try {
             const parsed = JSON.parse(text);
-            const msg = parsed.detail?.message || parsed.detail || parsed.message || 'Could not open document';
+            const msg = parsed.detail?.message ?? (typeof parsed.detail === 'string' ? parsed.detail : parsed.detail?.msg) ?? parsed.message ?? 'Could not open document';
             toast.error(msg);
           } catch (_) {
             toast.error('Could not open document');
@@ -196,6 +197,37 @@ const DocumentsPage = () => {
       else if (data?.detail && typeof data.detail === 'string') message = data.detail;
       else if (data?.detail?.message) message = data.detail.message;
       toast.error(message);
+    }
+  };
+
+  const handleDownloadDocument = async (doc) => {
+    try {
+      const res = await api.get(`/documents/${doc.document_id}/file?download=true`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: res.data.type || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name || doc.original_filename || 'document';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Download started');
+    } catch (err) {
+      const data = err.response?.data;
+      if (data instanceof Blob) {
+        data.text().then((text) => {
+          try {
+            const parsed = JSON.parse(text);
+            const msg = parsed.detail?.message ?? (typeof parsed.detail === 'string' ? parsed.detail : null) ?? parsed.message ?? 'Could not download document';
+            toast.error(msg);
+          } catch (_) {
+            toast.error('Could not download document');
+          }
+        }).catch(() => toast.error('Could not download document'));
+        return;
+      }
+      toast.error(data?.detail || 'Could not download document');
     }
   };
 
@@ -929,6 +961,15 @@ const DocumentsPage = () => {
                               >
                                 <Eye className="w-4 h-4 mr-1" />
                                 View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadDocument(doc)}
+                                data-testid={`download-doc-btn-${doc.document_id}`}
+                              >
+                                <Download className="w-4 h-4 mr-1" />
+                                Download
                               </Button>
                               <Button
                                 variant="outline"

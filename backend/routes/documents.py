@@ -323,13 +323,14 @@ async def bulk_upload_documents(
                 with open(file_path, "wb") as f:
                     f.write(contents)
                 
+                stored_path = f"{user['client_id']}/{unique_filename}"
                 # Create document record (without requirement assignment initially)
                 document = Document(
                     client_id=user["client_id"],
                     property_id=property_id,
                     requirement_id=None,  # Will be assigned after AI analysis
                     file_name=file.filename,
-                    file_path=str(file_path),
+                    file_path=stored_path,
                     file_size=len(contents),
                     mime_type=file.content_type or "application/octet-stream",
                     status=DocumentStatus.UPLOADED,
@@ -810,13 +811,16 @@ async def upload_document(
         with open(file_path, "wb") as f:
             f.write(contents)
         
+        # Store relative path so file can be resolved when DOCUMENT_STORAGE_PATH differs (e.g. another server)
+        stored_path = f"{user['client_id']}/{unique_filename}"
+        
         # Create document record
         document = Document(
             client_id=user["client_id"],
             property_id=property_id,
             requirement_id=requirement_id,
             file_name=file.filename,
-            file_path=str(file_path),
+            file_path=stored_path,
             file_size=len(contents),
             mime_type=file.content_type or "application/octet-stream",
             status=DocumentStatus.UPLOADED,
@@ -933,13 +937,14 @@ async def admin_upload_document(
         with open(file_path, "wb") as f:
             f.write(contents)
         
+        stored_path = f"{client_id}/{unique_filename}"
         # Create document record
         document = Document(
             client_id=client_id,
             property_id=property_id,
             requirement_id=requirement_id,
             file_name=file.filename,
-            file_path=str(file_path),
+            file_path=stored_path,
             file_size=len(contents),
             mime_type=file.content_type or "application/octet-stream",
             status=DocumentStatus.UPLOADED,
@@ -1335,9 +1340,13 @@ async def delete_document(request: Request, document_id: str):
                 correlation_id=f"DOC_DELETED:{document_id}",
             )
         try:
-            file_path = Path(document.get("file_path", ""))
-            if file_path.is_file():
-                file_path.unlink(missing_ok=True)
+            fp = document.get("file_path", "")
+            if fp:
+                p = Path(fp)
+                if not p.is_absolute():
+                    p = (DOCUMENT_STORAGE_PATH / p).resolve()
+                if p.is_file():
+                    p.unlink(missing_ok=True)
         except Exception as file_err:
             logger.warning(f"Could not remove file for document {document_id}: {file_err}")
         await create_audit_log(
@@ -1382,9 +1391,13 @@ async def admin_delete_document(request: Request, document_id: str):
                 correlation_id=f"ADMIN_DELETE:{document_id}",
             )
         try:
-            file_path = Path(document.get("file_path", ""))
-            if file_path.is_file():
-                file_path.unlink(missing_ok=True)
+            fp = document.get("file_path", "")
+            if fp:
+                p = Path(fp)
+                if not p.is_absolute():
+                    p = (DOCUMENT_STORAGE_PATH / p).resolve()
+                if p.is_file():
+                    p.unlink(missing_ok=True)
         except Exception as file_err:
             logger.warning(f"Could not remove file for document {document_id}: {file_err}")
         await create_audit_log(
@@ -1531,9 +1544,13 @@ async def analyze_document_ai(
         has_advanced_extraction = plan_registry.get_features_by_string(plan_str).get("ai_extraction_advanced", False)
         # Perform AI analysis
         from services.document_analysis import document_analysis_service
-        
+
+        analysis_file_path = document["file_path"]
+        if analysis_file_path and not Path(analysis_file_path).is_absolute():
+            analysis_file_path = str((DOCUMENT_STORAGE_PATH / analysis_file_path).resolve())
+
         result = await document_analysis_service.analyze_document(
-            file_path=document["file_path"],
+            file_path=analysis_file_path,
             mime_type=document.get("mime_type", "application/pdf"),
             document_id=document_id,
             client_id=document["client_id"],
@@ -1617,10 +1634,10 @@ async def get_document_file(request: Request, document_id: str, download: bool =
     raw_path = (document.get("file_path") or "").strip().replace("\\", "/")
     file_path = Path(raw_path) if raw_path else Path()
     resolved_via_fallback = False
+    client_id_val = document.get("client_id") or ""
     if not file_path.is_file():
         # Prefer lookup under configured DOCUMENT_STORAGE_PATH (handles different server, DATA_DIR, or stale absolute path)
         base_name = file_path.name if raw_path else None
-        client_id_val = document.get("client_id") or ""
         if base_name and base_name != "." and client_id_val:
             candidate = (DOCUMENT_STORAGE_PATH / client_id_val / base_name).resolve()
             if candidate.is_file():
@@ -1646,6 +1663,22 @@ async def get_document_file(request: Request, document_id: str, download: bool =
                 if resolved.is_file():
                     file_path = resolved
                     resolved_via_fallback = True
+        # Fallback: try document_id + extension from file_name (handles missing/stale file_path, e.g. intake-reconciled or different server)
+        if not file_path.is_file() and client_id_val:
+            file_name = (document.get("file_name") or "").strip()
+            ext = Path(file_name).suffix if file_name else ".pdf"
+            if ext and not ext.startswith("."):
+                ext = f".{ext}"
+            if not ext or ext == ".":
+                ext = ".pdf"
+            candidate = (DOCUMENT_STORAGE_PATH / client_id_val / f"{document_id}{ext}").resolve()
+            if candidate.is_file():
+                try:
+                    candidate.relative_to(DOCUMENT_STORAGE_PATH.resolve())
+                    file_path = candidate
+                    resolved_via_fallback = True
+                except ValueError:
+                    pass
         if not file_path.is_file():
             storage_dir = (DOCUMENT_STORAGE_PATH / client_id_val).resolve() if client_id_val else DOCUMENT_STORAGE_PATH
             dir_exists = storage_dir.is_dir() if client_id_val else DOCUMENT_STORAGE_PATH.is_dir()
