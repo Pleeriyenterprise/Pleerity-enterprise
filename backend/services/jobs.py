@@ -175,7 +175,7 @@ class JobScheduler:
                         )
                     if reminder_recipients:
                         reminder_count += 1
-                    # Professional only: runtime plan gating before SMS (survives downgrade/cancel)
+                    # Portfolio and above: runtime plan gating before SMS (survives downgrade/cancel)
                     from services.plan_registry import plan_registry
                     sms_allowed, _sms_err, _sms_details = await plan_registry.enforce_feature(
                         client["client_id"], "sms_reminders"

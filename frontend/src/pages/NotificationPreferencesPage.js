@@ -549,7 +549,7 @@ const NotificationPreferencesPage = () => {
           )}
         </section>
 
-        {/* SMS Notifications Section (Pro only) */}
+        {/* SMS Notifications Section (Portfolio and above; pricing page) */}
         {hasFeature('sms_reminders') ? (
           <SMSNotificationsSection 
             preferences={preferences}
@@ -563,8 +563,8 @@ const NotificationPreferencesPage = () => {
             <UpgradePrompt
               featureName="SMS Notifications"
               featureDescription="Receive urgent compliance alerts via text message."
-              requiredPlan="PLAN_3_PRO"
-              requiredPlanName="Professional"
+              requiredPlan="PLAN_2_PORTFOLIO"
+              requiredPlanName="Portfolio"
               variant="card"
             />
           </div>

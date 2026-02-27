@@ -454,12 +454,13 @@ MINIMUM_PLAN_FOR_FEATURE = {
     "zip_upload": PlanCode.PLAN_2_PORTFOLIO,
     "reports_pdf": PlanCode.PLAN_2_PORTFOLIO,
     "scheduled_reports": PlanCode.PLAN_2_PORTFOLIO,
+    # PLAN_2_PORTFOLIO and above (pricing: Portfolio + Pro include SMS reminders)
+    "sms_reminders": PlanCode.PLAN_2_PORTFOLIO,
     # PLAN_3_PRO only
     "ai_extraction_advanced": PlanCode.PLAN_3_PRO,
     "extraction_review_ui": PlanCode.PLAN_3_PRO,
     "ai_review_interface": PlanCode.PLAN_3_PRO,
     "reports_csv": PlanCode.PLAN_3_PRO,
-    "sms_reminders": PlanCode.PLAN_3_PRO,
     "tenant_portal": PlanCode.PLAN_3_PRO,
     "tenant_portal_access": PlanCode.PLAN_3_PRO,
     "webhooks": PlanCode.PLAN_3_PRO,
