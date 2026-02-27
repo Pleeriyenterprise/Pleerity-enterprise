@@ -1,6 +1,7 @@
 """Background jobs for reminders and digests - Compliance Vault Pro"""
 import asyncio
 import json
+import uuid
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timedelta, timezone
 import os
@@ -293,11 +294,13 @@ class JobScheduler:
                 digest_content["include_audit_summary"] = prefs.get("digest_audit_summary", False) if prefs else False
                 
                 # Send digest email (skip and audit if no recipient)
+                digest_id = str(uuid.uuid4())
+                digest_content["digest_id"] = digest_id
                 sent = await self._send_digest_email(client, digest_content)
                 if not sent:
                     continue
                 digest_log = {
-                    "digest_id": str(datetime.now(timezone.utc).timestamp()),
+                    "digest_id": digest_id,
                     "client_id": client["client_id"],
                     "digest_period_start": period_start.isoformat(),
                     "digest_period_end": period_end.isoformat(),
@@ -306,6 +309,16 @@ class JobScheduler:
                     "created_at": datetime.now(timezone.utc).isoformat()
                 }
                 await self.db.digest_logs.insert_one(digest_log)
+                try:
+                    from utils.audit import create_audit_log
+                    from models import AuditAction
+                    await create_audit_log(
+                        action=AuditAction.DIGEST_SENT,
+                        client_id=client["client_id"],
+                        metadata={"digest_id": digest_id, "channel": "EMAIL"},
+                    )
+                except Exception as audit_err:
+                    logger.warning("Failed to log DIGEST_SENT audit for %s: %s", digest_id, audit_err)
                 digest_count += 1
             
             logger.info(f"Monthly digest job complete. Sent {digest_count} digests.")
@@ -468,6 +481,7 @@ class JobScheduler:
             template_model = {
                 "period_start": content.get("period_start", ""),
                 "period_end": content.get("period_end", ""),
+                "data_as_of": content.get("period_end", ""),
                 "properties_count": content.get("properties_count", 0),
                 "total_requirements": content.get("total_requirements", 0),
                 "compliant": content.get("compliant", 0),

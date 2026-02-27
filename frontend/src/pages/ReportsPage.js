@@ -29,7 +29,8 @@ import {
   Bell,
   X,
   Lock,
-  ArrowUpRight
+  ArrowUpRight,
+  Eye
 } from 'lucide-react';
 import UpgradePrompt from '../components/UpgradePrompt';
 
@@ -58,6 +59,9 @@ const ReportsPage = () => {
     frequency: 'weekly',
     recipients: ''
   });
+  const [digests, setDigests] = useState([]);
+  const [digestView, setDigestView] = useState(null);
+  const [downloadingDigestId, setDownloadingDigestId] = useState(null);
 
   const hasReportsAccess = hasFeature('reports_pdf') || hasFeature('reports_csv');
   const hasScheduledReportsAccess = hasFeature('scheduled_reports');
@@ -65,16 +69,18 @@ const ReportsPage = () => {
   const fetchData = useCallback(async () => {
     try {
       setUpgradeRequiredDetail(null);
-      const [reportsRes, propsRes, schedulesRes, previousRes] = await Promise.all([
+      const [reportsRes, propsRes, schedulesRes, previousRes, digestsRes] = await Promise.all([
         api.get('/reports/available'),
         api.get('/client/properties'),
         api.get('/reports/schedules'),
-        hasReportsAccess ? api.get('/reports').catch(() => ({ data: { reports: [] } })) : Promise.resolve({ data: { reports: [] } })
+        hasReportsAccess ? api.get('/reports').catch(() => ({ data: { reports: [] } })) : Promise.resolve({ data: { reports: [] } }),
+        api.get('/portal/digests?limit=6').catch(() => ({ data: { digests: [] } }))
       ]);
       setAvailableReports(reportsRes.data.reports || []);
       setProperties(propsRes.data.properties || []);
       setSchedules(schedulesRes.data.schedules || []);
       setPreviousReports(previousRes?.data?.reports || []);
+      setDigests(digestsRes?.data?.digests || []);
     } catch (error) {
       if (error.isPlanGateDenied && error.upgradeDetail) {
         setUpgradeRequiredDetail(error.upgradeDetail);
@@ -283,6 +289,43 @@ const ReportsPage = () => {
     }
   };
 
+  const downloadDigestPdf = (digest) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    doc.setFillColor(26, 39, 68);
+    doc.rect(0, 0, pageWidth, 32, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.text('Monthly Compliance Digest', 14, 14);
+    doc.setFontSize(9);
+    const periodStart = (digest.digest_period_start || digest.content?.period_start || '').slice(0, 10);
+    const periodEnd = (digest.digest_period_end || digest.content?.period_end || '').slice(0, 10);
+    doc.text(`Period: ${periodStart} to ${periodEnd}`, 14, 22);
+    doc.setTextColor(0, 0, 0);
+    let y = 42;
+    const c = digest.content || {};
+    doc.setFontSize(11);
+    doc.text('Summary (counts only)', 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.text(`Properties: ${c.properties_count ?? 0}`, 14, y);
+    y += 6;
+    doc.text(`Total requirements: ${c.total_requirements ?? 0}`, 14, y);
+    y += 6;
+    doc.text(`Compliant: ${c.compliant ?? 0}`, 14, y);
+    y += 6;
+    doc.text(`Overdue: ${c.overdue ?? 0}`, 14, y);
+    y += 6;
+    doc.text(`Expiring soon: ${c.expiring_soon ?? 0}`, 14, y);
+    y += 6;
+    doc.text(`Documents uploaded (period): ${c.documents_uploaded ?? 0}`, 14, y);
+    y += 14;
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Data as of ' + (periodEnd || 'N/A') + '. This summary is for information only and does not constitute legal advice.', 14, y, { maxWidth: pageWidth - 28 });
+    doc.save(`monthly_digest_${periodEnd || 'report'}.pdf`);
+  };
+
   const createSchedule = async (e) => {
     e.preventDefault();
     setCreatingSchedule(true);
@@ -437,6 +480,122 @@ const ReportsPage = () => {
               requiredPlanName="Portfolio"
               variant="card"
             />
+          </div>
+        )}
+        {/* Monthly Digests - last 6 with View and Download PDF */}
+        <Card className="mb-6" data-testid="digests-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-electric-teal" />
+              Monthly Digests
+            </CardTitle>
+            <p className="text-sm text-gray-500 mt-1">
+              Past monthly compliance digests sent to your email. View summary or download as PDF.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-gray-500">Loading digests…</p>
+            ) : digests.length === 0 ? (
+              <p className="text-sm text-gray-500">No digests yet. Enable Monthly Digest in Notification Preferences to receive them.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 font-medium text-gray-700">Period</th>
+                      <th className="text-left py-2 font-medium text-gray-700">Sent</th>
+                      <th className="text-right py-2 font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {digests.map((d) => {
+                      const periodStart = (d.digest_period_start || d.content?.period_start || '').slice(0, 10);
+                      const periodEnd = (d.digest_period_end || d.content?.period_end || '').slice(0, 10);
+                      const sentAt = d.sent_at ? new Date(d.sent_at).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—';
+                      return (
+                        <tr key={d.digest_id} className="border-b border-gray-100">
+                          <td className="py-3 text-gray-800">{periodStart} – {periodEnd}</td>
+                          <td className="py-3 text-gray-600">{sentAt}</td>
+                          <td className="py-3 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mr-1"
+                              onClick={() => setDigestView(d)}
+                              data-testid={`digest-view-${d.digest_id}`}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={downloadingDigestId === d.digest_id}
+                              onClick={() => {
+                                setDownloadingDigestId(d.digest_id);
+                                try {
+                                  downloadDigestPdf(d);
+                                  toast.success('Digest PDF downloaded');
+                                } catch (err) {
+                                  toast.error('Failed to generate PDF');
+                                } finally {
+                                  setDownloadingDigestId(null);
+                                }
+                              }}
+                              data-testid={`digest-download-${d.digest_id}`}
+                            >
+                              {downloadingDigestId === d.digest_id ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                              Download PDF
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        {digestView && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDigestView(null)}>
+            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-semibold text-midnight-blue">Monthly Digest</h3>
+                <button type="button" onClick={() => setDigestView(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto">
+                {(() => {
+                  const c = digestView.content || {};
+                  const periodStart = (digestView.digest_period_start || c.period_start || '').slice(0, 10);
+                  const periodEnd = (digestView.digest_period_end || c.period_end || '').slice(0, 10);
+                  const sentAt = digestView.sent_at ? new Date(digestView.sent_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+                  return (
+                    <>
+                      <p className="text-sm text-gray-600 mb-3">Period: {periodStart} – {periodEnd} · Sent: {sentAt}</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                        <li>Properties: {c.properties_count ?? 0}</li>
+                        <li>Total requirements: {c.total_requirements ?? 0}</li>
+                        <li>Compliant: {c.compliant ?? 0}</li>
+                        <li>Overdue: {c.overdue ?? 0}</li>
+                        <li>Expiring soon: {c.expiring_soon ?? 0}</li>
+                        <li>Documents uploaded (period): {c.documents_uploaded ?? 0}</li>
+                      </ul>
+                      <p className="text-xs text-gray-500 mt-4">This summary is for information only and does not constitute legal advice.</p>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="p-4 border-t border-gray-200">
+                <Button variant="outline" onClick={() => { downloadDigestPdf(digestView); setDigestView(null); toast.success('Digest PDF downloaded'); }}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+              </div>
+            </div>
           </div>
         )}
         {/* Evidence Readiness PDF */}

@@ -2,6 +2,8 @@
 
 GET /api/portal/setup-status - Read-only; JWT optional, client_id query for post-checkout.
 POST /api/portal/resend-activation - Resend activation (password setup) email; same auth as setup-status.
+GET /api/portal/digests - List monthly digests for the authenticated client (portal JWT required).
+GET /api/portal/digests/{id} - Get a single digest by id (portal JWT required).
 """
 import os
 from fastapi import APIRouter, HTTPException, Request, Query, Body, status
@@ -9,7 +11,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 
 from database import database
-from middleware import get_current_user
+from middleware import get_current_user, client_route_guard
 from models import AuditAction
 from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter
@@ -380,3 +382,57 @@ async def resend_activation(
         metadata={"outcome": "sent"},
     )
     return {"message": "Activation email sent"}
+
+
+# ---------------------------------------------------------------------------
+# Portal digests (monthly compliance digest list and detail)
+# ---------------------------------------------------------------------------
+
+@router.get("/digests")
+async def list_portal_digests(
+    request: Request,
+    limit: int = Query(12, ge=1, le=24, description="Max number of digests to return"),
+):
+    """
+    List monthly digests for the authenticated client. Requires portal JWT.
+    Returns digests sorted by sent_at descending.
+    """
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    db = database.get_db()
+    cursor = db.digest_logs.find(
+        {"client_id": client_id},
+        {"_id": 0},
+    ).sort("sent_at", -1).limit(limit)
+    items = await cursor.to_list(length=limit)
+    for d in items:
+        if isinstance(d.get("sent_at"), datetime):
+            d["sent_at"] = d["sent_at"].isoformat()
+        if isinstance(d.get("digest_period_start"), datetime):
+            d["digest_period_start"] = d["digest_period_start"].isoformat()
+        if isinstance(d.get("digest_period_end"), datetime):
+            d["digest_period_end"] = d["digest_period_end"].isoformat()
+    return {"digests": items}
+
+
+@router.get("/digests/{digest_id}")
+async def get_portal_digest(request: Request, digest_id: str):
+    """
+    Get a single digest by id. Returns 404 if not found or not owned by the client.
+    """
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    db = database.get_db()
+    doc = await db.digest_logs.find_one(
+        {"digest_id": digest_id, "client_id": client_id},
+        {"_id": 0},
+    )
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Digest not found")
+    if isinstance(doc.get("sent_at"), datetime):
+        doc["sent_at"] = doc["sent_at"].isoformat()
+    if isinstance(doc.get("digest_period_start"), datetime):
+        doc["digest_period_start"] = doc["digest_period_start"].isoformat()
+    if isinstance(doc.get("digest_period_end"), datetime):
+        doc["digest_period_end"] = doc["digest_period_end"].isoformat()
+    return doc

@@ -560,6 +560,7 @@ class EmailService:
             if not items:
                 items = ["<li>No sections enabled in your digest preferences.</li>"]
             list_html = "\n                        ".join(items)
+            data_as_of = (model.get("data_as_of") or model.get("period_end") or "").replace("T", " ")[:19]
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -572,6 +573,7 @@ class EmailService:
                         {list_html}
                     </ul>
                     <p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p>
+                    <p style="color: #64748b; font-size: 12px; margin-top: 16px;">Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.</p>
                 </div>
                 {self._build_email_footer(model)}
             </body>
@@ -782,6 +784,7 @@ Review the admin dashboard pending-verification list to process these documents.
             if not lines:
                 lines = ["- No sections enabled in your digest preferences."]
             body_lines = "\n".join(lines)
+            data_as_of = (model.get("data_as_of") or model.get("period_end") or "").replace("T", " ")[:19]
             return f"""
 MONTHLY COMPLIANCE DIGEST
 ========================
@@ -791,6 +794,8 @@ Summary for the period (counts only):
 {body_lines}
 
 Period: {model.get('period_start', '')} to {model.get('period_end', '')}
+
+Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
