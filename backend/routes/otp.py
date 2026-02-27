@@ -41,15 +41,24 @@ def _correlation_id(request: Request) -> str:
 async def otp_send_endpoint(request: Request, data: OtpSendBody):
     """
     Send OTP to phone via NotificationOrchestrator (OTP_CODE_SMS).
-    Always 200 with generic message (no user enumeration).
+    Returns 200 when an OTP was sent (or duplicate). Returns 503 when SMS could not be sent
+    (e.g. SMS not configured or provider error) so the client can show an error instead of a false success.
     """
     try:
         phone_e164 = _normalize_phone(data.phone_number)
-        await otp_send(
+        sent, fail_reason = await otp_send(
             phone_e164=phone_e164,
             purpose=data.action,
             correlation_id=_correlation_id(request),
         )
+        if not sent and fail_reason:
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "detail": "We couldn't send the verification code. Please try again later or contact support.",
+                    "code": "SMS_UNAVAILABLE",
+                },
+            )
         return {"ok": True, "message": "If eligible, an OTP was sent."}
     except Exception as e:
         logger.exception(f"OTP send error: {e}")

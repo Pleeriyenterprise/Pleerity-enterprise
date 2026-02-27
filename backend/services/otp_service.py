@@ -87,25 +87,26 @@ async def send_otp(
     phone_e164: str,
     purpose: str,
     correlation_id: Optional[str] = None,
-) -> bool:
+) -> Tuple[bool, Optional[str]]:
     """
     Create or replace OTP for (phone_hash, purpose). Enforce cooldown and OTP_MAX_SENDS_PER_HOUR.
-    Always return True (generic success). Log hashed phone only.
+    Returns (True, None) when an OTP was sent or duplicate; (False, reason) when send was blocked or failed
+    so the API can return 503 and the client can show "SMS unavailable" instead of a false success.
     """
     correlation_id = correlation_id or ""
     phone_e164 = _normalize_phone(phone_e164)
     if len(phone_e164) < 10:
         logger.warning(f"[{correlation_id}] otp_send invalid_phone phone_hash={_phone_hash_for_log(phone_e164)}")
-        return True
+        return True, None
 
     if not OTP_PEPPER:
         logger.error(f"[{correlation_id}] otp_send misconfiguration OTP_PEPPER not set")
-        return True
+        return True, None
 
     try:
         ph = _phone_hash(phone_e164)
     except ValueError:
-        return True
+        return True, None
 
     db = database.get_db()
     now = datetime.now(timezone.utc)
@@ -131,7 +132,7 @@ async def send_otp(
             logger.info(
                 f"[{correlation_id}] otp_send lockout phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}"
             )
-            return True
+            return True, None
 
     # Rate limit: max OTP_MAX_SENDS_PER_WINDOW per window
     if existing:
@@ -140,7 +141,7 @@ async def send_otp(
             logger.info(
                 f"[{correlation_id}] otp_send cooldown phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}"
             )
-            return True
+            return True, None
         send_count = existing.get("send_count", 0)
         window_start = _parse_dt(existing.get("send_window_start")) or now
         if window_start > window_start_dt and send_count >= OTP_MAX_SENDS_PER_WINDOW:
@@ -152,7 +153,7 @@ async def send_otp(
             logger.info(
                 f"[{correlation_id}] otp_send rate_limited phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}"
             )
-            return True
+            return True, None
         if window_start <= window_start_dt:
             send_count = 0
             window_start = now
@@ -220,11 +221,16 @@ async def send_otp(
             metadata={"phone_hash": ph[:16], "purpose": purpose, "message_id": result.message_id},
         )
         logger.info(f"[{correlation_id}] otp_send success phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose}")
+        return True, None
+    elif result.outcome == "duplicate_ignored":
+        return True, None
     elif result.outcome == "blocked":
         logger.warning(f"[{correlation_id}] otp_send blocked phone_hash={_phone_hash_for_log(phone_e164)} reason={result.block_reason}")
+        return False, "sms_unavailable"
     elif result.outcome == "failed":
         logger.warning(f"[{correlation_id}] otp_send failed phone_hash={_phone_hash_for_log(phone_e164)} error={result.error_message}")
-    return True
+        return False, "sms_failed"
+    return True, None
 
 
 async def verify_otp(

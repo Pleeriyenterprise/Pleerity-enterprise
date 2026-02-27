@@ -31,7 +31,8 @@ async def test_otp_send_returns_sent_and_stores_phone_hash_code_hash_only():
                     orch_send.return_value = NotificationResult(outcome="sent", message_id="msg-1")
                     with patch("services.otp_service.create_audit_log", new_callable=AsyncMock) as audit:
                         result = await send_otp(phone_e164="+447700900123", purpose="verify_phone", correlation_id="cid-1")
-    assert result is True
+    sent, _ = result
+    assert sent is True
     db.otp_codes.update_one.assert_called_once()
     call_kw = db.otp_codes.update_one.call_args[0][2]["$set"]
     assert "phone_hash" in call_kw
@@ -59,7 +60,8 @@ async def test_otp_send_without_pepper_returns_true_no_send():
         with patch("services.otp_service.OTP_PEPPER", ""):
             with patch("services.otp_service.database.get_db", return_value=db):
                 result = await send_otp(phone_e164="+447700900123", purpose="step_up", correlation_id="cid-2")
-    assert result is True
+    sent, _ = result
+    assert sent is True
     db.otp_codes.update_one.assert_not_called()
 
 
@@ -77,7 +79,8 @@ async def test_otp_send_cooldown_returns_true_without_sending():
         with patch("services.otp_service.OTP_PEPPER", "p"):
             with patch("services.otp_service.database.get_db", return_value=db):
                 result = await send_otp(phone_e164="+447700900456", purpose="verify_phone", correlation_id="c")
-    assert result is True
+    sent, _ = result
+    assert sent is True
     db.otp_codes.update_one.assert_not_called()
 
 
@@ -258,10 +261,33 @@ async def test_otp_rate_limit_triggers_OTP_RATE_LIMITED_audit_and_no_send():
                         with patch("services.otp_service.notification_orchestrator.send", new_callable=AsyncMock) as orch_send:
                             with patch("services.otp_service.create_audit_log", new_callable=AsyncMock) as audit:
                                 result = await send_otp(phone_e164="+447700900123", purpose="verify_phone", correlation_id="r")
-    assert result is True
+    sent, _ = result
+    assert sent is True
     orch_send.assert_not_called()
     audit_calls = [c.kwargs.get("action") for c in audit.call_args_list]
     assert any(getattr(a, "value", str(a)) == "OTP_RATE_LIMITED" for a in audit_calls)
+
+
+@pytest.mark.asyncio
+async def test_otp_send_blocked_provider_returns_false_reason():
+    """When orchestrator returns outcome=blocked (e.g. SMS not configured), send_otp returns (False, 'sms_unavailable')."""
+    from services.otp_service import send_otp
+    from services.notification_orchestrator import NotificationResult
+
+    db = MagicMock()
+    db.otp_codes.find_one = AsyncMock(return_value=None)
+    db.otp_codes.update_one = AsyncMock(return_value=MagicMock(modified_count=0, upserted_id=1))
+
+    with patch.dict("os.environ", {"OTP_PEPPER": "test-pepper"}, clear=False):
+        with patch("services.otp_service.OTP_PEPPER", "test-pepper"):
+            with patch("services.otp_service.database.get_db", return_value=db):
+                with patch("services.otp_service.notification_orchestrator.send", new_callable=AsyncMock) as orch_send:
+                    orch_send.return_value = NotificationResult(outcome="blocked", block_reason="BLOCKED_PROVIDER_NOT_CONFIGURED")
+                    with patch("services.otp_service.create_audit_log", new_callable=AsyncMock):
+                        result = await send_otp(phone_e164="+447700900123", purpose="verify_phone", correlation_id="cid-blocked")
+    sent, reason = result
+    assert sent is False
+    assert reason == "sms_unavailable"
 
 
 @pytest.mark.asyncio

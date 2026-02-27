@@ -47,7 +47,13 @@ const SMSNotificationsSection = ({ preferences, setPreferences, handleToggle, se
       setOtpSent(true);
       toast.success('Verification code sent! Check your phone.');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to send verification code');
+      const detail = error.response?.data?.detail;
+      const code = error.response?.data?.code;
+      if (error.response?.status === 503 || code === 'SMS_UNAVAILABLE') {
+        toast.error(detail || 'SMS verification is temporarily unavailable. Please try again later or contact support.');
+      } else {
+        toast.error(detail || 'Failed to send verification code');
+      }
     } finally {
       setSendingOtp(false);
     }

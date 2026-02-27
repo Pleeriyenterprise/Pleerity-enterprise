@@ -268,8 +268,8 @@ class NotificationOrchestrator:
             )
             return NotificationResult(outcome="blocked", block_reason="no_recipient", status_code=400)
 
-        # SMS 24h throttle
-        if channel == "SMS":
+        # SMS 24h throttle (per client; skip for OTP where client_id is None)
+        if channel == "SMS" and client_id is not None:
             throttle_ok = await self._check_sms_throttle(db, client_id, template_key)
             if not throttle_ok:
                 await self._write_blocked_log(
