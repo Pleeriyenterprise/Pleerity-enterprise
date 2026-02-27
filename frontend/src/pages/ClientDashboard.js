@@ -520,7 +520,7 @@ const ClientDashboard = () => {
               )}
               
               {/* Score Trending Sparkline */}
-              {scoreTrend?.has_history && scoreTrend.sparkline?.length > 1 && (
+              {scoreTrend?.has_history && scoreTrend.sparkline?.length >= 1 && (
                 <div className="mt-4 pt-3 border-t border-white/50" data-testid="score-trend-section">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-gray-500">30-Day Trend</span>
@@ -528,24 +528,24 @@ const ClientDashboard = () => {
                       {scoreTrend.trend_direction === 'up' && (
                         <span className="flex items-center text-xs text-green-600">
                           <TrendingUp className="w-3 h-3 mr-0.5" />
-                          +{scoreTrend.change_7d || scoreTrend.change_30d || 0}
+                          +{scoreTrend.change_7d ?? scoreTrend.change_30d ?? 0}
                         </span>
                       )}
                       {scoreTrend.trend_direction === 'down' && (
                         <span className="flex items-center text-xs text-red-600">
                           <TrendingDown className="w-3 h-3 mr-0.5" />
-                          {scoreTrend.change_7d || scoreTrend.change_30d || 0}
+                          {scoreTrend.change_7d ?? scoreTrend.change_30d ?? 0}
                         </span>
                       )}
-                      {scoreTrend.trend_direction === 'stable' && (
+                      {(scoreTrend.trend_direction === 'stable' || scoreTrend.trend_direction === 'neutral') && (
                         <span className="flex items-center text-xs text-gray-500">
                           <Minus className="w-3 h-3 mr-0.5" />
-                          Stable
+                          {scoreTrend.sparkline?.length > 1 ? 'Stable' : 'Tracking started'}
                         </span>
                       )}
                     </div>
                   </div>
-                  <Sparkline 
+                  <Sparkline
                     data={scoreTrend.sparkline}
                     width={180}
                     height={40}
@@ -553,7 +553,9 @@ const ClientDashboard = () => {
                     showArea={true}
                   />
                   <p className="text-xs text-gray-400 mt-1">
-                    {scoreTrend.days_of_data} days of data • Avg: {scoreTrend.avg_score}
+                    {scoreTrend.days_of_data} day{scoreTrend.days_of_data !== 1 ? 's' : ''} of data
+                    {scoreTrend.sparkline?.length > 1 && ` • Avg: ${scoreTrend.avg_score}`}
+                    {scoreTrend.sparkline?.length === 1 && ' • More points will appear as history builds'}
                   </p>
                 </div>
               )}

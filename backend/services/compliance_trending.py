@@ -129,6 +129,17 @@ async def get_score_trend(
             },
             projection
         ).sort("date_key", 1).to_list(days + 1)
+
+        # If no history yet, capture today's snapshot so trend can start building (lazy backfill)
+        if not snapshots:
+            try:
+                await capture_daily_snapshot(client_id)
+                snapshots = await db.compliance_score_history.find(
+                    {"client_id": client_id, "date_key": {"$gte": start_date}},
+                    projection
+                ).sort("date_key", 1).to_list(days + 1)
+            except Exception as snap_err:
+                logger.debug("Lazy snapshot for trend failed: %s", snap_err)
         
         if not snapshots:
             return {
@@ -177,7 +188,7 @@ async def get_score_trend(
             score_first = snapshots[0].get("score", 0)
             change_30d = latest_score - score_first
         
-        # Determine trend direction
+        # Determine trend direction (use "stable" when only one point so UI shows a direction)
         if change_7d is not None:
             if change_7d > 2:
                 trend_direction = "up"
@@ -185,6 +196,8 @@ async def get_score_trend(
                 trend_direction = "down"
             else:
                 trend_direction = "stable"
+        elif len(snapshots) >= 1:
+            trend_direction = "stable"
         else:
             trend_direction = "neutral"
         

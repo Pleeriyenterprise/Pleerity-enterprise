@@ -23,7 +23,7 @@ const Sparkline = ({
   trendDirection = 'neutral',
   className = ''
 }) => {
-  if (!data || data.length < 2) {
+  if (!data || data.length === 0) {
     return (
       <div 
         className={`flex items-center justify-center text-xs text-gray-400 ${className}`}
@@ -34,9 +34,12 @@ const Sparkline = ({
     );
   }
 
+  // Single point: show as flat line (same start and end) so something is visible
+  const chartData = data.length === 1 ? [data[0], data[0]] : data;
+
   // Calculate min/max for scaling
-  const min = Math.min(...data);
-  const max = Math.max(...data);
+  const min = Math.min(...chartData);
+  const max = Math.max(...chartData);
   const range = max - min || 1; // Avoid division by zero
   
   // Add padding to the range
@@ -45,8 +48,8 @@ const Sparkline = ({
   const paddedRange = paddedMax - paddedMin;
 
   // Calculate points
-  const points = data.map((value, index) => {
-    const x = (index / (data.length - 1)) * width;
+  const points = chartData.map((value, index) => {
+    const x = (index / (chartData.length - 1)) * width;
     const y = height - ((value - paddedMin) / paddedRange) * height;
     return { x, y, value };
   });
