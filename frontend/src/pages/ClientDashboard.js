@@ -17,6 +17,15 @@ import { formatRiskLabel } from '../utils/riskLabel';
 const SETUP_CHECKLIST_DONE_KEY = 'pleerity_setup_checklist_done';
 const SETUP_INCOMPLETE_KEY = 'pleerity_setup_incomplete';
 
+/** Map 0-100 score to grade/color/message (matches backend risk_bands). Use when displaying portfolio score for single-property consistency. */
+function scoreToGradeColorMessage(score) {
+  if (score == null || typeof score !== 'number') return { grade: '—', color: 'gray', message: '' };
+  if (score >= 80) return { grade: score >= 90 ? 'A' : 'B', color: 'green', message: 'Low risk - good standing' };
+  if (score >= 60) return { grade: 'C', color: 'amber', message: 'Moderate risk - action required' };
+  if (score >= 40) return { grade: 'D', color: 'amber', message: 'High risk - action required' };
+  return { grade: 'F', color: 'red', message: 'High urgency: overdue items detected' };
+}
+
 const ClientDashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -200,6 +209,28 @@ const ClientDashboard = () => {
       default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
+
+  // Single property: use portfolio summary score so main card and portfolio table show the same number
+  const displayScoreInfo = useMemo(() => {
+    const singleProperty = portfolioSummary?.properties?.length === 1 && portfolioSummary?.portfolio_score != null;
+    if (singleProperty) {
+      const { grade, color, message } = scoreToGradeColorMessage(portfolioSummary.portfolio_score);
+      return { score: portfolioSummary.portfolio_score, grade, color, message };
+    }
+    if (complianceScore) {
+      return { score: complianceScore.score, grade: complianceScore.grade, color: complianceScore.color, message: complianceScore.message };
+    }
+    return null;
+  }, [complianceScore, portfolioSummary]);
+
+  // Actionable missing = requirement rows that are PENDING or OVERDUE (matches Requirements page filter OVERDUE_OR_MISSING)
+  // Use this so "Missing evidence" count matches what the user sees when they click through
+  const actionableMissingCount = useMemo(() => {
+    const pending = complianceScore?.stats?.pending ?? 0;
+    const overdue = complianceScore?.stats?.overdue ?? 0;
+    if (complianceScore?.stats != null) return pending + overdue;
+    return portfolioSummary?.kpis?.missing ?? 0;
+  }, [complianceScore?.stats?.pending, complianceScore?.stats?.overdue, complianceScore?.stats, portfolioSummary?.kpis?.missing]);
 
   if (loading) {
     return (
@@ -422,14 +453,14 @@ const ClientDashboard = () => {
         )}
 
         {/* Compliance Score Widget */}
-        {complianceScore && (
+        {(complianceScore || displayScoreInfo) && (
           <div className="mb-8 grid lg:grid-cols-3 gap-6" data-testid="compliance-score-widget">
-            {/* Main Score Card - CLICKABLE */}
+            {/* Main Score Card - CLICKABLE; single property uses portfolio score so card and table match */}
             <div 
               className={`lg:col-span-1 rounded-2xl p-6 border-2 cursor-pointer hover:shadow-lg transition-all group ${
-                complianceScore.color === 'green' ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:border-green-400' :
-                complianceScore.color === 'amber' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 hover:border-amber-400' :
-                complianceScore.color === 'red' ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:border-red-400' :
+                displayScoreInfo?.color === 'green' ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:border-green-400' :
+                displayScoreInfo?.color === 'amber' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 hover:border-amber-400' :
+                displayScoreInfo?.color === 'red' ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:border-red-400' :
                 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 hover:border-gray-400'
               }`}
               onClick={() => navigate('/compliance-score')}
@@ -443,41 +474,41 @@ const ClientDashboard = () => {
                   </div>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className={`text-5xl font-bold ${
-                      complianceScore.color === 'green' ? 'text-green-700' :
-                      complianceScore.color === 'amber' ? 'text-amber-700' :
-                      complianceScore.color === 'red' ? 'text-red-700' :
+                      displayScoreInfo?.color === 'green' ? 'text-green-700' :
+                      displayScoreInfo?.color === 'amber' ? 'text-amber-700' :
+                      displayScoreInfo?.color === 'red' ? 'text-red-700' :
                       'text-gray-700'
                     }`}>
-                      {complianceScore.score}
+                      {displayScoreInfo?.score ?? complianceScore?.score}
                     </span>
                     <span className="text-2xl text-gray-400">/100</span>
                   </div>
                 </div>
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                  complianceScore.color === 'green' ? 'bg-green-200' :
-                  complianceScore.color === 'amber' ? 'bg-amber-200' :
-                  complianceScore.color === 'red' ? 'bg-red-200' :
+                  displayScoreInfo?.color === 'green' ? 'bg-green-200' :
+                  displayScoreInfo?.color === 'amber' ? 'bg-amber-200' :
+                  displayScoreInfo?.color === 'red' ? 'bg-red-200' :
                   'bg-gray-200'
                 }`}>
                   <span className={`text-3xl font-bold ${
-                    complianceScore.color === 'green' ? 'text-green-700' :
-                    complianceScore.color === 'amber' ? 'text-amber-700' :
-                    complianceScore.color === 'red' ? 'text-red-700' :
+                    displayScoreInfo?.color === 'green' ? 'text-green-700' :
+                    displayScoreInfo?.color === 'amber' ? 'text-amber-700' :
+                    displayScoreInfo?.color === 'red' ? 'text-red-700' :
                     'text-gray-700'
                   }`}>
-                    {complianceScore.grade}
+                    {displayScoreInfo?.grade ?? complianceScore?.grade}
                   </span>
                 </div>
               </div>
               <p className={`text-sm ${
-                complianceScore.color === 'green' ? 'text-green-700' :
-                complianceScore.color === 'amber' ? 'text-amber-700' :
-                complianceScore.color === 'red' ? 'text-red-700' :
+                displayScoreInfo?.color === 'green' ? 'text-green-700' :
+                displayScoreInfo?.color === 'amber' ? 'text-amber-700' :
+                displayScoreInfo?.color === 'red' ? 'text-red-700' :
                 'text-gray-600'
               }`}>
-                {complianceScore.message}
+                {displayScoreInfo?.message ?? complianceScore?.message}
               </p>
-              {complianceScore.properties_count != null && complianceScore.properties_count > 1 && (
+              {(complianceScore?.properties_count != null && complianceScore.properties_count > 1) && (
                 <p className="text-xs text-gray-500 mt-1">Overall score: average across your {complianceScore.properties_count} properties.</p>
               )}
               
@@ -610,7 +641,8 @@ const ClientDashboard = () => {
               ) : (() => {
                 const total = complianceScore.stats?.total_requirements ?? 0;
                 const valid = complianceScore.stats?.compliant ?? 0;
-                const allValid = total > 0 && valid === total;
+                const displayScore = displayScoreInfo?.score ?? complianceScore?.score ?? 0;
+                const allValid = total > 0 && valid === total && actionableMissingCount === 0 && displayScore >= 80;
                 if (allValid) {
                   return (
                     <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
@@ -670,23 +702,23 @@ const ClientDashboard = () => {
         )}
 
         {/* Risk level and KPIs from compliance summary (catalog-driven when available) */}
-        {(portfolioSummary?.risk_level || complianceScore?.score != null) && (
+        {(portfolioSummary?.risk_level || displayScoreInfo || complianceScore?.score != null) && (
           <p className="text-sm text-gray-600 mb-2">
-            <span className="font-medium">Risk level:</span> {formatRiskLabel(portfolioSummary?.risk_level || complianceScore?.message || '')}
-            {(complianceScore?.score != null || portfolioSummary?.portfolio_score != null) && (
-              <span className="ml-2 text-gray-500">(Score: {complianceScore?.score ?? portfolioSummary?.portfolio_score}/100)</span>
+            <span className="font-medium">Risk level:</span> {formatRiskLabel(portfolioSummary?.risk_level || displayScoreInfo?.message || complianceScore?.message || '')}
+            {(displayScoreInfo?.score != null || complianceScore?.score != null || portfolioSummary?.portfolio_score != null) && (
+              <span className="ml-2 text-gray-500">(Score: {displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score}/100)</span>
             )}
             {portfolioSummary?.updated_at && (
               <span className="ml-2 text-gray-400 text-xs">Updated {new Date(portfolioSummary.updated_at).toLocaleString()}</span>
             )}
           </p>
         )}
-        {portfolioSummary?.kpis && (
+        {(portfolioSummary?.kpis || complianceScore?.stats) && (
           <div className="flex flex-wrap gap-4 mb-4 text-sm">
-            <span className="text-red-600 font-medium">Overdue: {portfolioSummary.kpis.overdue ?? 0}</span>
-            <span className="text-amber-600 font-medium">Expiring (30d): {portfolioSummary.kpis.expiring_30 ?? 0}</span>
-            <span className="text-gray-600 font-medium">Missing: {portfolioSummary.kpis.missing ?? 0}</span>
-            <span className="text-green-600 font-medium">Valid: {portfolioSummary.kpis.compliant ?? 0}</span>
+            <span className="text-red-600 font-medium">Overdue: {portfolioSummary?.kpis?.overdue ?? complianceScore?.stats?.overdue ?? 0}</span>
+            <span className="text-amber-600 font-medium">Expiring (30d): {portfolioSummary?.kpis?.expiring_30 ?? complianceScore?.stats?.expiring_soon ?? 0}</span>
+            <span className="text-gray-600 font-medium">Missing: {actionableMissingCount}</span>
+            <span className="text-green-600 font-medium">Valid: {portfolioSummary?.kpis?.compliant ?? complianceScore?.stats?.compliant ?? 0}</span>
           </div>
         )}
 
@@ -768,10 +800,10 @@ const ClientDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Score &amp; Risk</p>
                   <p className="text-3xl font-bold text-midnight-blue">
-                    {complianceScore?.score ?? portfolioSummary?.portfolio_score ?? '—'}
+                    {displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score ?? '—'}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {portfolioSummary?.risk_level ? formatRiskLabel(portfolioSummary.risk_level) : (complianceScore?.message || 'Portfolio')}
+                    {displayScoreInfo?.message ?? (portfolioSummary?.risk_level ? formatRiskLabel(portfolioSummary.risk_level) : (complianceScore?.message || 'Portfolio'))}
                   </p>
                   <p className="text-xs text-electric-teal opacity-0 group-hover:opacity-100 transition-opacity mt-1">
                     View score →
@@ -834,7 +866,7 @@ const ClientDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Missing evidence</p>
                   <p className="text-3xl font-bold text-gray-700">
-                    {portfolioSummary?.kpis?.missing ?? 0}
+                    {actionableMissingCount}
                   </p>
                   <p className="text-xs text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
                     View →
