@@ -113,7 +113,7 @@ async def get_property_compliance_detail(
         }
     reqs = await db.requirements.find(
         {"client_id": client_id, "property_id": property_id},
-        {"_id": 0, "requirement_id": 1, "requirement_type": 1, "status": 1, "due_date": 1},
+        {"_id": 0, "requirement_id": 1, "requirement_type": 1, "requirement_code": 1, "status": 1, "due_date": 1, "applicability": 1},
     ).to_list(200)
     docs = await db.documents.find(
         {"client_id": client_id, "property_id": property_id, "status": "VERIFIED"},
@@ -142,6 +142,9 @@ async def get_property_compliance_detail(
         if is_high:
             high_total += 1
         row = next((r for r in reqs if _requirement_matches_code(r, code)), None)
+        # Exclude from matrix and score if a requirement row exists with applicability=NOT_REQUIRED
+        if row and (row.get("applicability") or "").strip().upper() == "NOT_REQUIRED":
+            continue
         status = (row.get("status") or "PENDING").strip() if row else "PENDING"
         due_date = row.get("due_date") if row else None
         days = _days_to_expiry(due_date) if due_date else None

@@ -4,12 +4,16 @@ from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 import io
+import uuid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(client_route_guard)])
+
+# Controlled reason list for "Mark as not applicable" (must match properties.PATCH requirement)
+NOT_REQUIRED_REASONS = ["no_gas_supply", "exempt", "not_applicable", "other"]
 
 
 def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> str:
@@ -300,6 +304,100 @@ async def get_property_requirements(request: Request, property_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load requirements"
         )
+
+
+@router.post("/properties/{property_id}/requirements/mark-not-applicable")
+async def mark_requirement_not_applicable(request: Request, property_id: str):
+    """Create or update a requirement row as NOT_APPLICABLE for a catalog item (e.g. from Property detail).
+    Used when the item appears as 'Missing evidence' on the property tab but does not apply to this property.
+    After this, the catalog matrix excludes it and the item disappears from the property requirements list."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    client_id = user["client_id"]
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    requirement_code = (body.get("requirement_code") or "").strip()
+    not_required_reason = (body.get("not_required_reason") or "").strip()
+    if not requirement_code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="requirement_code is required")
+    if not not_required_reason or not_required_reason not in NOT_REQUIRED_REASONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"not_required_reason is required and must be one of: {NOT_REQUIRED_REASONS}",
+        )
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    catalog_doc = await db.requirements_catalog.find_one(
+        {"code": requirement_code},
+        {"_id": 0, "code": 1, "title": 1},
+    )
+    if not catalog_doc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown requirement_code: {requirement_code}",
+        )
+    code = catalog_doc.get("code", requirement_code)
+    title = catalog_doc.get("title") or code
+
+    def _matches(r):
+        rt = (r.get("requirement_type") or "").strip().lower()
+        rc = (r.get("requirement_code") or "").strip().lower()
+        c = code.strip().lower()
+        return rt == c or rc == c
+
+    reqs = await db.requirements.find(
+        {"client_id": client_id, "property_id": property_id},
+        {"_id": 0, "requirement_id": 1, "requirement_type": 1, "requirement_code": 1},
+    ).to_list(200)
+    existing_row = next((r for r in reqs if _matches(r)), None)
+    now = datetime.now(timezone.utc)
+    if existing_row:
+        update = {
+            "applicability": "NOT_REQUIRED",
+            "not_required_reason": not_required_reason or None,
+            "status": "NOT_REQUIRED",
+            "updated_at": now.isoformat(),
+        }
+        await db.requirements.update_one(
+            {"requirement_id": existing_row["requirement_id"], "property_id": property_id, "client_id": client_id},
+            {"$set": update},
+        )
+        requirement_id = existing_row["requirement_id"]
+    else:
+        requirement_id = str(uuid.uuid4())
+        due_far = now + timedelta(days=365 * 10)
+        doc = {
+            "requirement_id": requirement_id,
+            "client_id": client_id,
+            "property_id": property_id,
+            "requirement_type": code,
+            "requirement_code": code,
+            "description": title,
+            "frequency_days": 0,
+            "due_date": due_far.isoformat(),
+            "status": "NOT_REQUIRED",
+            "applicability": "NOT_REQUIRED",
+            "not_required_reason": not_required_reason or None,
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+        }
+        await db.requirements.insert_one(doc)
+    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=client_id,
+        trigger_reason=TRIGGER_PROPERTY_UPDATED,
+        actor_type=ACTOR_CLIENT,
+        actor_id=user.get("portal_user_id"),
+        correlation_id=f"MARK_NOT_APPLICABLE:{requirement_id}",
+    )
+    return {"message": "Requirement marked as not applicable", "requirement_id": requirement_id}
 
 
 @router.get("/requirements")

@@ -147,6 +147,9 @@ export const clientAPI = {
   getEntitlements: () => apiClient.get('/client/entitlements'),
   getProperties: () => apiClient.get('/client/properties'),
   getPropertyRequirements: (propertyId) => apiClient.get(`/client/properties/${propertyId}/requirements`),
+  /** Mark a catalog requirement as not applicable for this property (creates/updates requirement row). */
+  markRequirementNotApplicable: (propertyId, body) =>
+    apiClient.post(`/client/properties/${propertyId}/requirements/mark-not-applicable`, body),
   getRequirements: () => apiClient.get('/client/requirements'),
   getDocuments: () => apiClient.get('/documents'),
   /** Audit Intelligence: portfolio score, risk_level, properties summary */

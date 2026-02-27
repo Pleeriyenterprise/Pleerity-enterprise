@@ -14,10 +14,19 @@ import {
   TrendingDown,
   History,
   X,
+  MinusCircle,
 } from 'lucide-react';
 import { SUPPORT_EMAIL } from '../config';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import { formatRiskLabel } from '../utils/riskLabel';
+import { toast } from 'sonner';
+
+const NOT_REQUIRED_REASONS = [
+  { value: 'no_gas_supply', label: 'No gas supply' },
+  { value: 'exempt', label: 'Exempt' },
+  { value: 'not_applicable', label: 'Not applicable' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function PropertyDetailPage() {
   const { propertyId } = useParams();
@@ -31,6 +40,9 @@ export default function PropertyDetailPage() {
   const [scoreHistoryEntries, setScoreHistoryEntries] = useState([]);
   const [scoreHistoryLoading, setScoreHistoryLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [notApplicableModal, setNotApplicableModal] = useState(null);
+  const [notApplicableReason, setNotApplicableReason] = useState('');
+  const [notApplicableSubmitting, setNotApplicableSubmitting] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -285,7 +297,7 @@ export default function PropertyDetailPage() {
                     <td className="p-3 text-gray-600">{formatDate(rowExpiry(r))}</td>
                     <td className="p-3">{days != null ? (days < 0 ? `${Math.abs(days)} days overdue` : `${days} days`) : '—'}</td>
                     <td className="p-3">
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2 items-center">
                         {(r.evidence_doc_id || ['Valid', 'Expiring soon', 'Overdue', 'Needs review'].includes(status.text)) ? (
                           <Button
                             size="sm"
@@ -307,6 +319,21 @@ export default function PropertyDetailPage() {
                             Upload
                           </Button>
                         )}
+                        {status.text === 'Missing evidence' && (r.requirement_code || r.requirement_type) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-gray-600 hover:text-gray-800"
+                            onClick={() => {
+                              setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) });
+                              setNotApplicableReason('not_applicable');
+                            }}
+                            data-testid="mark-not-applicable"
+                          >
+                            <MinusCircle className="w-3.5 h-3.5 mr-1" />
+                            Mark as not applicable
+                          </Button>
+                        )}
                         <a
                           href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`}
                           className="text-sm text-gray-500 hover:text-electric-teal"
@@ -322,6 +349,53 @@ export default function PropertyDetailPage() {
           </table>
         </div>
       </div>
+
+      {notApplicableModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !notApplicableSubmitting && setNotApplicableModal(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full m-4 p-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-midnight-blue mb-2">Mark as not applicable</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              &ldquo;{notApplicableModal.title}&rdquo; will be excluded from this property&apos;s score and requirements list. You can change this later from the Requirements tab.
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+            <select
+              value={notApplicableReason}
+              onChange={(e) => setNotApplicableReason(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 mb-4"
+              data-testid="not-applicable-reason"
+            >
+              {NOT_REQUIRED_REASONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setNotApplicableModal(null)} disabled={notApplicableSubmitting}>Cancel</Button>
+              <Button
+                onClick={async () => {
+                  setNotApplicableSubmitting(true);
+                  try {
+                    await clientAPI.markRequirementNotApplicable(propertyId, {
+                      requirement_code: notApplicableModal.requirement_code,
+                      not_required_reason: notApplicableReason,
+                    });
+                    toast.success('Requirement marked as not applicable. List will update.');
+                    setNotApplicableModal(null);
+                    fetchData();
+                  } catch (err) {
+                    toast.error(err.response?.data?.detail || 'Failed to update');
+                  } finally {
+                    setNotApplicableSubmitting(false);
+                  }
+                }}
+                disabled={notApplicableSubmitting}
+                data-testid="not-applicable-confirm"
+              >
+                {notApplicableSubmitting ? 'Saving…' : 'Confirm'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
