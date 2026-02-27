@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
+import UpgradePrompt from '../components/UpgradePrompt';
 import api from '../api/client';
 import { toast } from 'sonner';
 import { 
@@ -51,8 +52,13 @@ const ComplianceScorePage = () => {
   const [driversFilterPropertyId, setDriversFilterPropertyId] = useState(null);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [showExportUpgradeModal, setShowExportUpgradeModal] = useState(false);
 
   const handleDownloadPdf = async () => {
+    if (!canExportScore) {
+      setShowExportUpgradeModal(true);
+      return;
+    }
     setExportingPdf(true);
     try {
       const res = await api.get('/reports/score-explanation.pdf', { responseType: 'blob' });
@@ -69,7 +75,7 @@ const ComplianceScorePage = () => {
       toast.success(`Export generated at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       if (err.response?.status === 403) {
-        toast.error('Upgrade required for PDF reports');
+        setShowExportUpgradeModal(true);
       } else {
         toast.error('Export failed, please try again');
       }
@@ -79,6 +85,10 @@ const ComplianceScorePage = () => {
   };
 
   const handleDownloadCsv = async () => {
+    if (!canExportScore) {
+      setShowExportUpgradeModal(true);
+      return;
+    }
     setExportingCsv(true);
     try {
       const res = await api.get('/reports/score-drivers.csv', { responseType: 'blob' });
@@ -95,7 +105,7 @@ const ComplianceScorePage = () => {
       toast.success(`Export generated at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       if (err.response?.status === 403) {
-        toast.error('Upgrade required for CSV reports');
+        setShowExportUpgradeModal(true);
       } else {
         toast.error('Export failed, please try again');
       }
@@ -330,28 +340,36 @@ const ComplianceScorePage = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="compliance-score-page">
-        {/* Export buttons: Portfolio and Professional only */}
-        {canExportScore && (
-          <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadPdf}
-              disabled={exportingPdf}
-            >
-              {exportingPdf ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-              Download score explanation (PDF)
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadCsv}
-              disabled={exportingCsv}
-            >
-              {exportingCsv ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
-              Export score drivers (CSV)
-            </Button>
-          </div>
+        {/* Export buttons: visible to all; upgrade prompt on click for Solo */}
+        <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={exportingPdf}
+          >
+            {exportingPdf ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            Download score explanation (PDF)
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadCsv}
+            disabled={exportingCsv}
+          >
+            {exportingCsv ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
+            Export score drivers (CSV)
+          </Button>
+        </div>
+        {showExportUpgradeModal && (
+          <UpgradePrompt
+            featureName="Score report exports"
+            featureDescription="Download score explanation (PDF) and export score drivers (CSV) are available on Portfolio and Professional plans."
+            requiredPlan="PLAN_2_PORTFOLIO"
+            requiredPlanName="Portfolio"
+            variant="modal"
+            onDismiss={() => setShowExportUpgradeModal(false)}
+          />
         )}
         {/* Back Button */}
         <Button
