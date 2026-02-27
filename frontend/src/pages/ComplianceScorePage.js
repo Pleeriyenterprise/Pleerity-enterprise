@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntitlements } from '../contexts/EntitlementsContext';
 import api from '../api/client';
 import { toast } from 'sonner';
 import { 
@@ -36,7 +37,9 @@ import { Skeleton } from '../components/ui/skeleton';
 
 const ComplianceScorePage = () => {
   const { user, logout } = useAuth();
+  const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
+  const canExportScore = hasFeature('reports_pdf'); // Portfolio and Professional only
   const [scoreData, setScoreData] = useState(null);
   const [properties, setProperties] = useState([]);
   const [requirements, setRequirements] = useState([]);
@@ -327,27 +330,29 @@ const ComplianceScorePage = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="compliance-score-page">
-        {/* Export buttons (enterprise add-ons) */}
-        <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadPdf}
-            disabled={exportingPdf}
-          >
-            {exportingPdf ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-            Download score explanation (PDF)
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadCsv}
-            disabled={exportingCsv}
-          >
-            {exportingCsv ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
-            Export score drivers (CSV)
-          </Button>
-        </div>
+        {/* Export buttons: Portfolio and Professional only */}
+        {canExportScore && (
+          <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={exportingPdf}
+            >
+              {exportingPdf ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              Download score explanation (PDF)
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadCsv}
+              disabled={exportingCsv}
+            >
+              {exportingCsv ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
+              Export score drivers (CSV)
+            </Button>
+          </div>
+        )}
         {/* Back Button */}
         <Button
           variant="ghost"

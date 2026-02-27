@@ -146,16 +146,16 @@ async def get_score_drivers_csv(request: Request):
     Export score drivers as CSV (portfolio scope).
     Columns: CRN, Property name, Postcode, Requirement, Status, Date used, Date confidence,
     Evidence uploaded, Next step label, Last updated.
-    Plan-gated by reports_csv. Audit logged.
+    Plan-gated by reports_pdf (Portfolio and Professional only). Audit logged.
     """
     from services.plan_registry import plan_registry
 
     user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_csv")
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
     if not allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "reports_csv", "upgrade_required": True},
+            detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
         )
     try:
         db = database.get_db()
