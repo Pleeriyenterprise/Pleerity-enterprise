@@ -581,36 +581,110 @@ async def get_system_statistics(request: Request):
         )
 
 
+# Map plan_code query param (solo|portfolio|pro) to billing_plan value
+_PLAN_CODE_TO_BILLING = {"solo": "PLAN_1_SOLO", "portfolio": "PLAN_2_PORTFOLIO", "pro": "PLAN_3_PRO"}
+
+
 @router.get("/clients")
 async def get_clients(
-    request: Request, 
-    skip: int = 0, 
+    request: Request,
+    skip: int = 0,
     limit: int = 50,
     subscription_status: str = None,
-    onboarding_status: str = None
+    onboarding_status: str = None,
+    plan_code: str = None,
+    min_properties: int = None,
+    max_properties: int = None,
+    risk_band: str = None,
+    q: str = None,
 ):
-    """Get all clients (admin only). Supports filtering by subscription_status and onboarding_status."""
-    user = await admin_route_guard(request)
+    """
+    Get all clients (admin only). Supports filtering by subscription_status, onboarding_status,
+    plan_code (solo|portfolio|pro), min_properties, max_properties, and q (search name/email/CRN).
+    Returns each client with plan_code, subscription_status, current_period_end, cancel_at_period_end,
+    property_count; portfolio_score_band reserved for future use.
+    """
+    await admin_route_guard(request)
     db = database.get_db()
-    
+
     try:
-        # Build query with optional filters
-        query = {}
+        import re
+        # Base match on clients collection
+        match = {}
         if subscription_status:
-            query["subscription_status"] = subscription_status.upper()
+            match["subscription_status"] = subscription_status.strip().upper()
         if onboarding_status:
-            query["onboarding_status"] = onboarding_status.upper()
-        
-        clients = await db.clients.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
-        total = await db.clients.count_documents(query)
-        
+            match["onboarding_status"] = onboarding_status.strip().upper()
+        if plan_code:
+            plan_key = (plan_code or "").strip().lower()
+            if plan_key in _PLAN_CODE_TO_BILLING:
+                match["billing_plan"] = _PLAN_CODE_TO_BILLING[plan_key]
+        if q and q.strip():
+            q_esc = re.escape(q.strip())
+            match["$or"] = [
+                {"full_name": {"$regex": q_esc, "$options": "i"}},
+                {"email": {"$regex": q_esc, "$options": "i"}},
+                {"customer_reference": {"$regex": q_esc, "$options": "i"}},
+            ]
+        # risk_band filter reserved for future use (no-op when portfolio_score_band not stored)
+
+        pipeline = [
+            {"$match": match},
+            {"$lookup": {"from": "client_billing", "localField": "client_id", "foreignField": "client_id", "as": "_billing"}},
+            {"$lookup": {"from": "properties", "localField": "client_id", "foreignField": "client_id", "as": "_props"}},
+            {
+                "$addFields": {
+                    "property_count": {"$size": "$_props"},
+                    "current_period_end": {"$arrayElemAt": ["$_billing.current_period_end", 0]},
+                    "cancel_at_period_end": {"$arrayElemAt": ["$_billing.cancel_at_period_end", 0]},
+                    "plan_code": "$billing_plan",
+                }
+            },
+        ]
+        if min_properties is not None:
+            pipeline.append({"$match": {"property_count": {"$gte": min_properties}}})
+        if max_properties is not None:
+            pipeline.append({"$match": {"property_count": {"$lte": max_properties}}})
+
+        # Facet: total count and paginated list
+        pipeline.append({
+            "$facet": {
+                "total": [{"$count": "n"}],
+                "clients": [
+                    {"$skip": skip},
+                    {"$limit": limit},
+                    {
+                        "$project": {
+                            "_id": 0,
+                            "_billing": 0,
+                            "_props": 0,
+                            "portfolio_score_band": {"$literal": None},
+                        }
+                    },
+                ]
+            }
+        })
+
+        cursor = db.clients.aggregate(pipeline)
+        result = await cursor.to_list(length=1)
+        out = result[0] if result else {}
+        total = (out.get("total") or [{}])[0].get("n", 0)
+        clients = out.get("clients") or []
+
+        # Normalize datetime and bool for JSON
+        for c in clients:
+            val = c.get("current_period_end")
+            if hasattr(val, "isoformat"):
+                c["current_period_end"] = val.isoformat()
+            if c.get("cancel_at_period_end") is None:
+                c["cancel_at_period_end"] = False
+
         return {
             "clients": clients,
             "total": total,
             "skip": skip,
-            "limit": limit
+            "limit": limit,
         }
-    
     except Exception as e:
         logger.error(f"Get clients error: {e}")
         raise HTTPException(

@@ -96,9 +96,6 @@ class NotificationOrchestrator:
         enqueue retry in 30-60s, audit NOTIFICATION_THROTTLED, and return that result.
         Otherwise return None.
         """
-        # SMS throttle disabled for testing; re-enable when needed for production
-        if channel == "SMS":
-            return None
         limit = NOTIFICATION_EMAIL_PER_MINUTE_LIMIT if channel == "EMAIL" else NOTIFICATION_SMS_PER_MINUTE_LIMIT
         since = datetime.now(timezone.utc) - timedelta(minutes=1)
         count = await db.message_logs.count_documents({
@@ -271,12 +268,14 @@ class NotificationOrchestrator:
             )
             return NotificationResult(outcome="blocked", block_reason="no_recipient", status_code=400)
 
-        # SMS 24h throttle disabled for testing; re-enable when needed for production
-        # if channel == "SMS" and client_id is not None:
-        #     throttle_ok = await self._check_sms_throttle(db, client_id, template_key)
-        #     if not throttle_ok:
-        #         await self._write_blocked_log(...)
-        #         return NotificationResult(outcome="blocked", block_reason="sms_24h_throttle")
+        # SMS 24h throttle (per client; skip for OTP where client_id is None)
+        if channel == "SMS" and client_id is not None:
+            throttle_ok = await self._check_sms_throttle(db, client_id, template_key)
+            if not throttle_ok:
+                await self._write_blocked_log(
+                    db, client_id, template_key, channel, "sms_24h_throttle", None, idempotency_key, context, event_type,
+                )
+                return NotificationResult(outcome="blocked", block_reason="sms_24h_throttle")
 
         # Insert PENDING message log (with idempotency_key for duplicate detection)
         now = datetime.now(timezone.utc)

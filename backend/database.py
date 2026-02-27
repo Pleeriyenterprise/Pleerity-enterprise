@@ -54,7 +54,9 @@ class Database:
             
             await self.db.clients.create_index("client_id", unique=True)
             await self.db.clients.create_index("full_name")  # For name search
-            
+            await self.db.clients.create_index("billing_plan")  # Plan filter (admin clients list)
+            await self.db.clients.create_index("subscription_status")  # Status filter (admin clients list)
+
             # Property indexes - for postcode search
             await self.db.properties.create_index("postcode")
             await self.db.properties.create_index("client_id")

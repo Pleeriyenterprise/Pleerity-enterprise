@@ -1448,26 +1448,65 @@ const JobsMonitoring = () => {
 };
 
 const ClientsManagement = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [clients, setClients] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientDetails, setClientDetails] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchInputValue, setSearchInputValue] = useState(() => searchParams.get('q') || '');
+  const planFilter = searchParams.get('plan_code') || '';
+  const subscriptionFilter = searchParams.get('subscription_status') || '';
+  const statusFilter = searchParams.get('onboarding_status') || 'all';
+  const searchTerm = searchParams.get('q') || '';
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    setSearchInputValue(searchTerm);
+  }, [searchTerm]);
 
-  const fetchClients = async () => {
+  const updateParams = (updates) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value == null || value === '' || value === 'all') next.delete(key);
+      else next.set(key, value);
+    });
+    setSearchParams(next, { replace: true });
+  };
+
+  const searchDebounceRef = useRef(null);
+  const handleSearchChange = (e) => {
+    const v = e.target.value;
+    setSearchInputValue(v);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => updateParams({ q: v }), 300);
+  };
+
+  const fetchClients = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await api.get('/admin/clients?limit=100');
-      setClients(response.data.clients);
+      const params = new URLSearchParams({ limit: '100' });
+      if (planFilter && planFilter !== 'all') params.set('plan_code', planFilter);
+      if (subscriptionFilter && subscriptionFilter !== 'all') params.set('subscription_status', subscriptionFilter);
+      if (statusFilter && statusFilter !== 'all') params.set('onboarding_status', statusFilter);
+      if (searchTerm.trim()) params.set('q', searchTerm.trim());
+      const response = await api.get(`/admin/clients?${params.toString()}`);
+      setClients(response.data.clients || []);
+      setTotal(response.data.total ?? 0);
     } catch (error) {
       toast.error('Failed to load clients');
+      setClients([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
+  }, [planFilter, subscriptionFilter, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  const handleClearFilters = () => {
+    setSearchParams({}, { replace: true });
   };
 
   const fetchClientDetails = async (clientId) => {
@@ -1502,12 +1541,7 @@ const ClientsManagement = () => {
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const filteredClients = clients.filter(client => {
-    const matchesSearch = client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || client.onboarding_status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const hasFilters = planFilter || subscriptionFilter || (statusFilter && statusFilter !== 'all') || searchTerm.trim();
 
   if (loading) {
     return (
@@ -1520,31 +1554,68 @@ const ClientsManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-midnight-blue">Clients ({clients.length})</h2>
+        <h2 className="text-xl font-semibold text-midnight-blue">Clients ({total})</h2>
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
-          />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name, email or CRN..."
+              value={searchInputValue}
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+            />
+          </div>
+          <select
+            value={planFilter || 'all'}
+            onChange={(e) => updateParams({ plan_code: e.target.value })}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+            aria-label="Plan filter"
+          >
+            <option value="all">All Plans</option>
+            <option value="solo">Solo</option>
+            <option value="portfolio">Portfolio</option>
+            <option value="pro">Pro</option>
+          </select>
+          <select
+            value={subscriptionFilter || 'all'}
+            onChange={(e) => updateParams({ subscription_status: e.target.value })}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+            aria-label="Subscription status filter"
+          >
+            <option value="all">All Subscription</option>
+            <option value="ACTIVE">Active</option>
+            <option value="TRIALING">Trialing</option>
+            <option value="PENDING">Pending</option>
+            <option value="PAST_DUE">Past due</option>
+            <option value="CANCELED">Canceled</option>
+            <option value="NONE">None</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => updateParams({ onboarding_status: e.target.value })}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+            aria-label="Onboarding status filter"
+          >
+            <option value="all">All Status</option>
+            <option value="PROVISIONED">Provisioned</option>
+            <option value="PENDING_PAYMENT">Pending Payment</option>
+            <option value="INTAKE_COMPLETE">Intake Complete</option>
+          </select>
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 focus:ring-2 focus:ring-electric-teal"
+            >
+              Clear
+            </button>
+          )}
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
-        >
-          <option value="all">All Status</option>
-          <option value="PROVISIONED">Provisioned</option>
-          <option value="PENDING_PAYMENT">Pending Payment</option>
-          <option value="INTAKE_COMPLETE">Intake Complete</option>
-        </select>
       </div>
 
       <div className="flex gap-6">
@@ -1561,7 +1632,7 @@ const ClientsManagement = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredClients.map((client) => (
+                {clients.map((client) => (
                   <tr 
                     key={client.client_id} 
                     className={`hover:bg-gray-50 cursor-pointer ${selectedClient === client.client_id ? 'bg-teal-50' : ''}`}
