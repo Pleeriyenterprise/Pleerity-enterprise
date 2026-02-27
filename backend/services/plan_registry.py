@@ -280,12 +280,13 @@ FEATURE_MATRIX = {
         "zip_upload": True,
         "reports_pdf": True,
         "scheduled_reports": True,
+        # SMS reminders: Portfolio+ (pricing page)
+        "sms_reminders": True,
         # Professional only -> False for Portfolio
         "ai_extraction_advanced": False,
         "extraction_review_ui": False,
         "ai_review_interface": False,
         "reports_csv": False,
-        "sms_reminders": False,
         "tenant_portal": False,
         "tenant_portal_access": False,
         "webhooks": False,
