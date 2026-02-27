@@ -173,6 +173,10 @@ const PropertiesPage = () => {
           </div>
         </div>
 
+        <p className="text-sm text-gray-500 mb-4" data-testid="properties-status-legend">
+          Valid = all requirements compliant; Attention needed = expiring soon or missing evidence; Overdue = at least one overdue requirement.
+        </p>
+
         {/* Search Bar */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
           <div className="flex gap-4">
