@@ -286,7 +286,7 @@ export default function PropertyDetailPage() {
                     <td className="p-3">{days != null ? (days < 0 ? `${Math.abs(days)} days overdue` : `${days} days`) : '—'}</td>
                     <td className="p-3">
                       <div className="flex gap-2">
-                        {r.evidence_doc_id ? (
+                        {(r.evidence_doc_id || ['Valid', 'Expiring soon', 'Overdue', 'Needs review'].includes(status.text)) ? (
                           <Button
                             size="sm"
                             variant="outline"
