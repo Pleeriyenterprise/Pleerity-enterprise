@@ -83,6 +83,12 @@ async def get_profile(request: Request):
             {"_id": 0}
         )
         
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found"
+            )
+        
         # Get notification preferences
         preferences = await db.notification_preferences.find_one(
             {"client_id": user["client_id"]},
@@ -105,11 +111,11 @@ async def get_profile(request: Request):
         
         profile = {
             "portal_user_id": portal_user["portal_user_id"],
-            "email": portal_user["auth_email"],
-            "full_name": client["full_name"],
+            "email": portal_user.get("auth_email") or "",
+            "full_name": client.get("full_name") or "",
             "phone": client.get("phone"),
             "company_name": client.get("company_name"),
-            "client_type": client["client_type"],
+            "client_type": client.get("client_type") or "INDIVIDUAL",
             "has_avatar": bool(client.get("avatar_updated_at")),
             "notification_preferences": preferences
         }

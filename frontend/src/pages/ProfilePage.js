@@ -49,7 +49,8 @@ const ProfilePage = () => {
         setAvatarUrl(null);
       }
     } catch (err) {
-      setError('Failed to load profile');
+      const message = err.response?.data?.detail || 'Failed to load profile';
+      setError(typeof message === 'string' ? message : 'Failed to load profile');
       setAvatarUrl(null);
     } finally {
       setLoading(false);
