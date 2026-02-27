@@ -1129,23 +1129,51 @@ class ScheduledReportJob:
                         except Exception as e:
                             logger.error(f"Failed to send report to {recipient}: {e}")
                     
-                    # Only advance next_scheduled when at least one email was sent; otherwise retry next hour
+                    # Advance next_scheduled when at least one email was sent; otherwise retry next hour.
+                    # Always set last_attempted_at so UI can show when the job last ran.
+                    now_iso = now.isoformat()
                     if schedule_sent > 0:
                         next_scheduled = self._calculate_next_schedule(frequency, now)
                         await self.db.report_schedules.update_one(
                             {"schedule_id": schedule["schedule_id"]},
                             {"$set": {
-                                "last_sent": now.isoformat(),
+                                "last_sent": now_iso,
+                                "last_attempted_at": now_iso,
                                 "next_scheduled": next_scheduled.isoformat()
                             }}
                         )
                         logger.info(f"Sent {report_type} report for client {schedule['client_id']}")
                     else:
-                        logger.warning(
-                            "Scheduled report for client %s (schedule %s) produced no successful sends; not advancing next_scheduled",
-                            schedule["client_id"],
-                            schedule.get("schedule_id"),
-                        )
+                        # No successful sends: avoid stuck "Next" date in UI — if next_scheduled is already in the past, advance to next period
+                        current_next_raw = schedule.get("next_scheduled")
+                        try:
+                            current_next = datetime.fromisoformat(
+                                current_next_raw.replace("Z", "+00:00")
+                            ) if current_next_raw else None
+                        except (ValueError, TypeError):
+                            current_next = None
+                        if current_next and (now - current_next) > timedelta(minutes=30):
+                            next_scheduled = self._calculate_next_schedule(frequency, now)
+                            await self.db.report_schedules.update_one(
+                                {"schedule_id": schedule["schedule_id"]},
+                                {"$set": {"next_scheduled": next_scheduled.isoformat(), "last_attempted_at": now_iso}}
+                            )
+                            logger.info(
+                                "Scheduled report for client %s (schedule %s) produced no sends; advanced next_scheduled to %s so UI and next run are correct",
+                                schedule["client_id"],
+                                schedule.get("schedule_id"),
+                                next_scheduled.isoformat(),
+                            )
+                        else:
+                            await self.db.report_schedules.update_one(
+                                {"schedule_id": schedule["schedule_id"]},
+                                {"$set": {"last_attempted_at": now_iso}}
+                            )
+                            logger.warning(
+                                "Scheduled report for client %s (schedule %s) produced no successful sends; not advancing next_scheduled",
+                                schedule["client_id"],
+                                schedule.get("schedule_id"),
+                            )
                     
                 except Exception as e:
                     logger.error(f"Error processing schedule {schedule.get('schedule_id')}: {e}")

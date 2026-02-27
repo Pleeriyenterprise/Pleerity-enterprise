@@ -786,11 +786,17 @@ const ReportsPage = () => {
                         <div className="text-sm text-gray-500">
                           {getFrequencyLabel(schedule.frequency)} • {schedule.recipients?.join(', ')}
                         </div>
-                        {schedule.next_scheduled && (
-                          <div className="text-xs text-gray-400">
-                            Next: {new Date(schedule.next_scheduled).toLocaleDateString()}
-                          </div>
-                        )}
+                        <div className="text-xs text-gray-400 space-y-0.5">
+                          {schedule.next_scheduled && (
+                            <div>Next: {new Date(schedule.next_scheduled).toLocaleDateString()}</div>
+                          )}
+                          {schedule.last_sent && (
+                            <div>Last sent: {new Date(schedule.last_sent).toLocaleString()}</div>
+                          )}
+                          {schedule.last_attempted_at && !schedule.last_sent && (
+                            <div>Last attempted: {new Date(schedule.last_attempted_at).toLocaleString()}</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
