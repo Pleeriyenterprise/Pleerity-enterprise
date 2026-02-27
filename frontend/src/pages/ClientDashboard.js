@@ -230,7 +230,7 @@ const ClientDashboard = () => {
     const overdue = complianceScore?.stats?.overdue ?? 0;
     if (complianceScore?.stats != null) return pending + overdue;
     return portfolioSummary?.kpis?.missing ?? 0;
-  }, [complianceScore?.stats?.pending, complianceScore?.stats?.overdue, complianceScore?.stats, portfolioSummary?.kpis?.missing]);
+  }, [complianceScore, portfolioSummary]);
 
   if (loading) {
     return (
