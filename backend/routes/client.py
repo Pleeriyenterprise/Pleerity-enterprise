@@ -3,12 +3,51 @@ from fastapi.responses import StreamingResponse
 from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
 import logging
 import io
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(client_route_guard)])
+
+
+def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> str:
+    """Compute property-level compliance status from requirements (same logic as jobs.check_compliance_status_changes).
+    OVERDUE/EXPIRED → RED; EXPIRING_SOON or PENDING (missing evidence) → AMBER; else GREEN.
+    Ensures Properties page aligns with Compliance Score dashboard."""
+    if not requirements:
+        return "GREEN"
+    now = datetime.now(timezone.utc)
+    has_overdue = False
+    has_expiring_soon = False
+    has_pending = False
+    for req in requirements:
+        status = req.get("status", "PENDING")
+        if status in ["OVERDUE", "EXPIRED"]:
+            has_overdue = True
+        elif status == "EXPIRING_SOON":
+            has_expiring_soon = True
+        elif status == "PENDING":
+            has_pending = True
+            due_date_str = req.get("due_date")
+            if due_date_str:
+                try:
+                    due_date = datetime.fromisoformat(due_date_str.replace("Z", "+00:00")) if isinstance(due_date_str, str) else due_date_str
+                    if due_date.tzinfo is None:
+                        due_date = due_date.replace(tzinfo=timezone.utc)
+                    days_until_due = (due_date - now).days
+                    if days_until_due < 0:
+                        has_overdue = True
+                    elif days_until_due <= 30:
+                        has_expiring_soon = True
+                except Exception:
+                    pass
+    if has_overdue:
+        return "RED"
+    if has_expiring_soon or has_pending:
+        return "AMBER"
+    return "GREEN"
 
 @router.get("/compliance-score")
 async def get_compliance_score(request: Request):
@@ -173,9 +212,24 @@ async def get_dashboard(request: Request):
         overdue = sum(1 for r in requirements if r["status"] == "OVERDUE")
         expiring = sum(1 for r in requirements if r["status"] == "EXPIRING_SOON")
         
+        # Group requirements by property so Properties page status matches Compliance Score
+        reqs_by_property = {}
+        for r in requirements:
+            pid = r.get("property_id")
+            if pid:
+                reqs_by_property.setdefault(pid, []).append(r)
+        # Override each property's compliance_status with live-computed value (RED/AMBER/GREEN)
+        properties_out = []
+        for prop in properties:
+            p = dict(prop)
+            p["compliance_status"] = _compute_property_compliance_status(
+                reqs_by_property.get(p.get("property_id"), [])
+            )
+            properties_out.append(p)
+        
         return {
             "client": client,
-            "properties": properties,
+            "properties": properties_out,
             "compliance_summary": {
                 "total_requirements": total_requirements,
                 "compliant": compliant,
