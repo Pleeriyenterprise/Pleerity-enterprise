@@ -716,42 +716,69 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
                 derived_plan = plan_registry.get_plan_from_subscription_price_id(price_id)
                 if derived_plan:
                     break
+        # Use requested plan as fallback if price-to-plan lookup fails (keeps DB in sync with what we set in Stripe)
         if not derived_plan:
-            derived_plan = PlanCode.PLAN_1_SOLO
+            derived_plan = new_plan_code
         new_status = (updated_sub.status or "").upper()
         new_entitlement = plan_registry.get_entitlement_status_from_subscription(updated_sub.status)
 
-        billing_update = {
-            "client_id": client_id,
-            "stripe_customer_id": stripe_customer_id,
-            "updated_at": datetime.now(timezone.utc),
-            "stripe_subscription_id": stripe_subscription_id,
-            "current_plan_code": derived_plan.value,
-            "subscription_status": new_status,
-            "entitlement_status": new_entitlement.value,
-            "cancel_at_period_end": updated_sub.cancel_at_period_end,
-            "current_period_start": datetime.fromtimestamp(updated_sub.current_period_start, tz=timezone.utc),
-            "current_period_end": datetime.fromtimestamp(updated_sub.current_period_end, tz=timezone.utc),
-        }
-        await db.client_billing.update_one(
-            {"client_id": client_id},
-            {"$set": billing_update, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
-            upsert=True,
-        )
-        await db.clients.update_one(
-            {"client_id": client_id},
-            {"$set": {
+        # When apply_at_period_end is True, Stripe applies the new price at period end; do not change
+        # app plan/entitlement now or the client would lose features immediately.
+        if body.apply_at_period_end:
+            # Only update period metadata; leave current_plan_code and entitlement unchanged
+            billing_update = {
+                "client_id": client_id,
                 "stripe_customer_id": stripe_customer_id,
-                "billing_plan": derived_plan.value,
-                "subscription_status": "ACTIVE" if new_status in ("ACTIVE", "TRIALING") else new_status,
+                "updated_at": datetime.now(timezone.utc),
+                "stripe_subscription_id": stripe_subscription_id,
+                "cancel_at_period_end": updated_sub.cancel_at_period_end,
+                "current_period_start": datetime.fromtimestamp(updated_sub.current_period_start, tz=timezone.utc),
+                "current_period_end": datetime.fromtimestamp(updated_sub.current_period_end, tz=timezone.utc),
+            }
+            await db.client_billing.update_one(
+                {"client_id": client_id},
+                {"$set": billing_update, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
+                upsert=True,
+            )
+            # Do not update clients.billing_plan or entitlement_status
+            after_state = {
+                "subscription_status": new_status,
+                "entitlement_status": "ENABLED",  # unchanged until period end
+                "current_plan_code": current_plan_code.value,
+                "scheduled_plan_at_period_end": new_plan_code.value,
+            }
+        else:
+            billing_update = {
+                "client_id": client_id,
+                "stripe_customer_id": stripe_customer_id,
+                "updated_at": datetime.now(timezone.utc),
+                "stripe_subscription_id": stripe_subscription_id,
+                "current_plan_code": derived_plan.value,
+                "subscription_status": new_status,
                 "entitlement_status": new_entitlement.value,
-            }},
-        )
-        after_state = {
-            "subscription_status": new_status,
-            "entitlement_status": new_entitlement.value,
-            "current_plan_code": derived_plan.value,
-        }
+                "cancel_at_period_end": updated_sub.cancel_at_period_end,
+                "current_period_start": datetime.fromtimestamp(updated_sub.current_period_start, tz=timezone.utc),
+                "current_period_end": datetime.fromtimestamp(updated_sub.current_period_end, tz=timezone.utc),
+            }
+            await db.client_billing.update_one(
+                {"client_id": client_id},
+                {"$set": billing_update, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
+                upsert=True,
+            )
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {"$set": {
+                    "stripe_customer_id": stripe_customer_id,
+                    "billing_plan": derived_plan.value,
+                    "subscription_status": "ACTIVE" if new_status in ("ACTIVE", "TRIALING") else new_status,
+                    "entitlement_status": new_entitlement.value,
+                }},
+            )
+            after_state = {
+                "subscription_status": new_status,
+                "entitlement_status": new_entitlement.value,
+                "current_plan_code": derived_plan.value,
+            }
 
         # Audit log
         await create_audit_log(
