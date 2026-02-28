@@ -284,7 +284,15 @@ class StripeService:
 
         except stripe.error.StripeError as e:
             logger.error("Stripe upgrade portal error for client %s: %s", client_id, e)
-            raise ValueError(f"Failed to create upgrade session: {str(e)}")
+            err_msg = str(e).strip()
+            # Stripe returns this when Customer Portal has "subscription plan changes" disabled
+            if "subscription update" in err_msg.lower() and "portal configuration" in err_msg.lower():
+                raise ValueError(
+                    "Subscription plan changes are not enabled in the billing portal. "
+                    "Please contact support to enable upgrades, or we can enable it in Stripe Dashboard: "
+                    "Settings → Billing → Customer portal → Subscription plan changes."
+                )
+            raise ValueError(f"Failed to create upgrade session: {err_msg}")
     
     async def get_subscription_status(self, client_id: str) -> Dict[str, Any]:
         """Get current subscription status for a client."""
