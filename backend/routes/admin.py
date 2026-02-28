@@ -76,14 +76,20 @@ async def get_admin_dashboard(request: Request):
                 "recent_signups_7d": recent_signups,
                 "unverified_documents_count": unverified_documents_count,
             },
-            "compliance_overview": compliance_breakdown
+            "compliance_overview": compliance_breakdown,
+            "recent_activity": [],
         }
     
     except Exception as e:
-        logger.error(f"Admin dashboard error: {e}")
+        import traceback
+        logger.error("Admin dashboard error: %s\n%s", e, traceback.format_exc())
+        detail = "Failed to load admin dashboard"
+        err_str = str(e).strip()
+        if err_str and len(err_str) < 200:
+            detail = f"{detail}: {err_str}"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to load admin dashboard"
+            detail=detail,
         )
 
 

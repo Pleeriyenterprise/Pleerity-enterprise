@@ -55,6 +55,16 @@ import {
   Upload
 } from 'lucide-react';
 
+/** Normalize API error detail (string or FastAPI validation array) for toast messages. */
+function normalizeErrorDetail(detail, fallback) {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0];
+    return first.msg || (first.loc && first.loc.join('. ')) || String(first);
+  }
+  return fallback;
+}
+
 // Global Search Component
 const GlobalSearch = ({ onSelectClient }) => {
   const [query, setQuery] = useState('');
@@ -1111,9 +1121,10 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
           setData(response.data.properties || []);
           setTotalCount(response.data.total || 0);
         }
-      } catch (error) {
+    } catch (error) {
         if (!cancelled) {
-          toast.error('Failed to load drill-down data');
+          const msg = normalizeErrorDetail(error.response?.data?.detail, error.message || 'Failed to load drill-down data');
+          toast.error(msg);
           setData([]);
         }
       } finally {
@@ -3942,7 +3953,8 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       setStats(data && typeof data === 'object' && !Array.isArray(data) ? data : EMPTY_STATS);
     } catch (error) {
       const status = error.response?.status;
-      const message = error.response?.data?.detail ?? error.message ?? 'Failed to load dashboard';
+      const rawDetail = error.response?.data?.detail;
+      const message = normalizeErrorDetail(rawDetail, error.message || 'Failed to load dashboard');
       setDashboardError({ status, message });
       setStats(EMPTY_STATS);
       if (status === 403) {
@@ -3950,7 +3962,7 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       } else if (status === 401) {
         toast.error('Session expired');
       } else {
-        toast.error('Failed to load dashboard stats');
+        toast.error(message);
       }
     } finally {
       setLoading(false);
