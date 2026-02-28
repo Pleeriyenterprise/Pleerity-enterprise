@@ -58,6 +58,10 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // FormData must use multipart/form-data with boundary; do not send application/json
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     if (!firstRequestLogged && typeof window !== 'undefined') {
       firstRequestLogged = true;
       const url = config.url ?? config.baseURL ?? '?';
