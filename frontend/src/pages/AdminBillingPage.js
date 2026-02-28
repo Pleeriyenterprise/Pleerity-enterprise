@@ -585,61 +585,76 @@ const AdminBillingPage = () => {
                   </CardContent>
                 </Card>
 
-                {/* Change plan (only when client has Stripe subscription) */}
-                {billingSnapshot.stripe_subscription_id && (
-                  <Card data-testid="change-plan-card">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Change Plan</CardTitle>
-                      <CardDescription>
-                        Upgrade or downgrade this client&apos;s subscription. Apply at period end to avoid proration (recommended for downgrades).
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">New plan</label>
-                        <select
-                          value={changePlanCode}
-                          onChange={(e) => setChangePlanCode(e.target.value)}
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                          data-testid="change-plan-select"
+                {/* Change plan – support flow for upgrade/downgrade (always show so support can find it) */}
+                <Card data-testid="change-plan-card">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Change Plan (Support)
+                    </CardTitle>
+                    <CardDescription>
+                      When a client contacts support for an upgrade or downgrade, choose the new plan below. Apply at period end to avoid proration (recommended for downgrades).
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {!billingSnapshot.stripe_subscription_id ? (
+                      <Alert className="border-amber-200 bg-amber-50">
+                        <Info className="w-4 h-4 text-amber-600" />
+                        <AlertDescription>
+                          <span className="font-medium text-amber-800">No active Stripe subscription.</span>
+                          <span className="block mt-1 text-amber-700 text-sm">
+                            Create a billing portal link below and send it to the client so they can subscribe, or create the subscription in Stripe first.
+                          </span>
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">New plan</label>
+                          <select
+                            value={changePlanCode}
+                            onChange={(e) => setChangePlanCode(e.target.value)}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                            data-testid="change-plan-select"
+                          >
+                            <option value="PLAN_1_SOLO">Solo Landlord</option>
+                            <option value="PLAN_2_PORTFOLIO">Portfolio / Small Agent</option>
+                            <option value="PLAN_3_PRO">Professional / Agent / HMO</option>
+                          </select>
+                        </div>
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={applyAtPeriodEnd}
+                            onChange={(e) => setApplyAtPeriodEnd(e.target.checked)}
+                            className="rounded border-gray-300"
+                            data-testid="apply-at-period-end"
+                          />
+                          Apply at period end (no proration; recommended for downgrades)
+                        </label>
+                        <Button
+                          onClick={handleChangePlan}
+                          disabled={changingPlan || changePlanCode === billingSnapshot.plan_code}
+                          variant="default"
+                          className="w-full sm:w-auto"
+                          data-testid="change-plan-btn"
                         >
-                          <option value="PLAN_1_SOLO">Solo Landlord</option>
-                          <option value="PLAN_2_PORTFOLIO">Portfolio / Small Agent</option>
-                          <option value="PLAN_3_PRO">Professional / Agent / HMO</option>
-                        </select>
-                      </div>
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={applyAtPeriodEnd}
-                          onChange={(e) => setApplyAtPeriodEnd(e.target.checked)}
-                          className="rounded border-gray-300"
-                          data-testid="apply-at-period-end"
-                        />
-                        Apply at period end (no proration)
-                      </label>
-                      <Button
-                        onClick={handleChangePlan}
-                        disabled={changingPlan || changePlanCode === billingSnapshot.plan_code}
-                        variant="default"
-                        className="w-full sm:w-auto"
-                        data-testid="change-plan-btn"
-                      >
-                        {changingPlan ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Updating...
-                          </>
-                        ) : (
-                          'Change plan'
+                          {changingPlan ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            'Change plan'
+                          )}
+                        </Button>
+                        {changePlanCode === billingSnapshot.plan_code && (
+                          <p className="text-sm text-gray-500">Select a different plan to change.</p>
                         )}
-                      </Button>
-                      {changePlanCode === billingSnapshot.plan_code && (
-                        <p className="text-sm text-gray-500">Select a different plan to change.</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
 
                 {/* Stripe Details */}
                 <Card data-testid="stripe-info">

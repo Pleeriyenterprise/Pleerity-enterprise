@@ -685,11 +685,18 @@ async def get_clients(
             "skip": skip,
             "limit": limit,
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Get clients error: {e}")
+        import traceback
+        logger.error("Get clients error: %s\n%s", e, traceback.format_exc())
+        detail = "Failed to load clients"
+        err_str = str(e).strip()
+        if err_str and len(err_str) < 200:
+            detail = f"{detail}: {err_str}"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to load clients"
+            detail=detail,
         )
 
 

@@ -1493,7 +1493,8 @@ const ClientsManagement = () => {
       setClients(response.data.clients || []);
       setTotal(response.data.total ?? 0);
     } catch (error) {
-      toast.error('Failed to load clients');
+      const msg = error.response?.data?.detail || error.message || 'Failed to load clients';
+      toast.error(msg);
       setClients([]);
       setTotal(0);
     } finally {
