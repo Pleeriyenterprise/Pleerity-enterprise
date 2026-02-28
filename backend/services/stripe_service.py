@@ -183,19 +183,20 @@ class StripeService:
         origin_url: str
     ) -> Dict[str, Any]:
         """
-        Create checkout session for plan upgrade.
-        
-        For existing customers, uses Stripe Billing Portal or creates
-        a new checkout session that will update the subscription.
+        Create checkout or portal session for plan upgrade.
+
+        - No existing subscription: creates full Checkout session for the new plan.
+        - Existing subscription: creates Billing Portal session with subscription_update_confirm
+          so the user lands on "Confirm plan change" for the chosen plan, not the generic portal home.
         """
         db = database.get_db()
-        
+
         # Get current billing info
         billing = await db.client_billing.find_one(
             {"client_id": client_id},
             {"_id": 0}
         )
-        
+
         if not billing or not billing.get("stripe_customer_id"):
             # No existing subscription - treat as new checkout
             client = await db.clients.find_one(
@@ -208,29 +209,82 @@ class StripeService:
                 origin_url=origin_url,
                 customer_email=client.get("contact_email") if client else None
             )
-        
-        # Existing customer - create portal session for upgrade
+
+        # Existing customer - send to portal with subscription_update_confirm so they
+        # see the plan change confirmation for the requested plan, not the generic portal.
         stripe_customer_id = billing.get("stripe_customer_id")
-        
-        try:
-            # Create billing portal session
+        stripe_subscription_id = billing.get("stripe_subscription_id")
+        if not stripe_subscription_id:
+            # Should not happen if they have stripe_customer_id from our flow; fallback to portal home
             portal_session = stripe.billing_portal.Session.create(
                 customer=stripe_customer_id,
-                return_url=f"{origin_url}/app/billing",
+                return_url=f"{origin_url.rstrip('/')}/app/billing",
             )
-            
-            logger.info(f"Billing portal session created for client {client_id}")
-            
             return {
                 "portal_url": portal_session.url,
                 "type": "billing_portal",
                 "current_plan": billing.get("current_plan_code"),
                 "target_plan": new_plan_code,
             }
-            
+
+        # Resolve new plan and its Stripe price
+        mode = _get_stripe_mode()
+        try:
+            config = get_stripe_price_mappings(mode)
+        except StripeModeMismatchError:
+            raise
+        try:
+            plan = PlanCode(new_plan_code)
+        except ValueError:
+            plan = plan_registry._resolve_plan_code(new_plan_code)
+        prices = config["mappings"].get(plan.value, {})
+        new_price_id = prices.get("subscription_price_id")
+        if not new_price_id:
+            raise StripeModeMismatchError(
+                f"No {mode} subscription price for plan {new_plan_code}. Set STRIPE_{mode.upper()}_PRICE_{plan.value}_MONTHLY."
+            )
+
+        try:
+            # Get subscription item id for the recurring line we're updating
+            subscription = stripe.Subscription.retrieve(
+                stripe_subscription_id,
+                expand=["items.data"]
+            )
+            items = subscription.get("items") or {}
+            data = (items.get("data") or []) if isinstance(items, dict) else []
+            if not data:
+                raise ValueError("Subscription has no items")
+            subscription_item_id = data[0]["id"]
+
+            portal_session = stripe.billing_portal.Session.create(
+                customer=stripe_customer_id,
+                return_url=f"{origin_url.rstrip('/')}/app/billing",
+                flow_data={
+                    "type": "subscription_update_confirm",
+                    "subscription_update_confirm": {
+                        "subscription": stripe_subscription_id,
+                        "items": [
+                            {"id": subscription_item_id, "price": new_price_id}
+                        ],
+                    },
+                },
+            )
+
+            logger.info(
+                "Upgrade portal session created for client %s -> %s (sub %s)",
+                client_id, new_plan_code, stripe_subscription_id
+            )
+
+            return {
+                "portal_url": portal_session.url,
+                "type": "billing_portal",
+                "current_plan": billing.get("current_plan_code"),
+                "target_plan": new_plan_code,
+            }
+
         except stripe.error.StripeError as e:
-            logger.error(f"Stripe portal error for client {client_id}: {e}")
-            raise ValueError(f"Failed to create billing portal session: {str(e)}")
+            logger.error("Stripe upgrade portal error for client %s: %s", client_id, e)
+            raise ValueError(f"Failed to create upgrade session: {str(e)}")
     
     async def get_subscription_status(self, client_id: str) -> Dict[str, Any]:
         """Get current subscription status for a client."""
