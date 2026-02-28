@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import ProductScreenshot from '../../components/public/ProductScreenshot';
@@ -28,6 +28,8 @@ import {
 } from '../../components/ui/accordion';
 
 const CVPLandingPage = () => {
+  const [heroImageError, setHeroImageError] = useState(false);
+  const [calendarImageError, setCalendarImageError] = useState(false);
   const trustBullets = [
     'Expiry reminders',
     'Evidence vault',
@@ -182,14 +184,21 @@ const CVPLandingPage = () => {
             </div>
             <div className="relative hidden lg:block">
               <ProductScreenshot className="max-h-[380px]">
-                <img
-                  src="/images/marketing/hero-command-centre.png"
-                  alt="Compliance dashboard showing score and quick actions"
-                  width={1200}
-                  height={850}
-                  className="w-full h-auto object-contain object-top"
-                  fetchPriority="high"
-                />
+                {heroImageError ? (
+                  <div className="w-full min-h-[280px] flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-lg">
+                    Dashboard preview
+                  </div>
+                ) : (
+                  <img
+                    src="/images/marketing/hero-command-centre.png"
+                    alt="Compliance dashboard showing score and quick actions"
+                    width={1200}
+                    height={850}
+                    className="w-full h-auto object-contain object-top"
+                    fetchPriority="high"
+                    onError={() => setHeroImageError(true)}
+                  />
+                )}
               </ProductScreenshot>
             </div>
           </div>
@@ -361,14 +370,21 @@ const CVPLandingPage = () => {
           </p>
           <div className="mt-8 max-w-2xl mx-auto">
             <ProductScreenshot>
-              <img
-                src="/images/marketing/support-calendar.png"
-                alt="Compliance calendar view with upcoming expiries"
-                width={1200}
-                height={800}
-                className="w-full h-auto"
-                loading="lazy"
-              />
+              {calendarImageError ? (
+                <div className="w-full min-h-[200px] flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-lg">
+                  Calendar preview
+                </div>
+              ) : (
+                <img
+                  src="/images/marketing/support-calendar.png"
+                  alt="Compliance calendar view with upcoming expiries"
+                  width={1200}
+                  height={800}
+                  className="w-full h-auto"
+                  loading="lazy"
+                  onError={() => setCalendarImageError(true)}
+                />
+              )}
             </ProductScreenshot>
           </div>
         </div>

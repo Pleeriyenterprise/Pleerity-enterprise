@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import ProductScreenshot from '../../components/public/ProductScreenshot';
@@ -25,6 +25,8 @@ import {
 } from '../../components/ui/accordion';
 
 const HomePage = () => {
+  const [heroImageError, setHeroImageError] = useState(false);
+  const [featureImageError, setFeatureImageError] = useState(false);
   const trustBullets = [
     'Expiry reminders',
     'Evidence vault',
@@ -165,14 +167,21 @@ const HomePage = () => {
             <div className="relative w-full lg:block">
               <h2 className="sr-only">UK landlord compliance tracking—risk report in 60 seconds</h2>
               <ProductScreenshot className="max-h-[380px] lg:max-h-[420px]">
-                <img
-                  src="/images/marketing/hero-command-centre.png"
-                  alt="Compliance dashboard example showing score and quick actions"
-                  width={1200}
-                  height={850}
-                  className="w-full h-auto object-contain object-top"
-                  fetchPriority="high"
-                />
+                {heroImageError ? (
+                  <div className="w-full min-h-[280px] flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-lg">
+                    Dashboard preview
+                  </div>
+                ) : (
+                  <img
+                    src="/images/marketing/hero-command-centre.png"
+                    alt="Compliance dashboard example showing score and quick actions"
+                    width={1200}
+                    height={850}
+                    className="w-full h-auto object-contain object-top"
+                    fetchPriority="high"
+                    onError={() => setHeroImageError(true)}
+                  />
+                )}
               </ProductScreenshot>
               <p className="text-xs text-gray-500 text-center mt-4 px-2">
                 Illustrative portfolio example. Live score generated after structured assessment.
@@ -200,14 +209,21 @@ const HomePage = () => {
             </ul>
             <div className="relative w-full lg:max-w-[60%]">
               <ProductScreenshot>
-                <img
-                  src="/images/marketing/feature-expiry-list.png"
-                  alt="Upcoming expiries list from Compliance Calendar"
-                  width={1200}
-                  height={800}
-                  className="w-full h-auto"
-                  loading="lazy"
-                />
+                {featureImageError ? (
+                  <div className="w-full min-h-[200px] flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-lg">
+                    Upcoming expiries preview
+                  </div>
+                ) : (
+                  <img
+                    src="/images/marketing/feature-expiry-list.png"
+                    alt="Upcoming expiries list from Compliance Calendar"
+                    width={1200}
+                    height={800}
+                    className="w-full h-auto"
+                    loading="lazy"
+                    onError={() => setFeatureImageError(true)}
+                  />
+                )}
               </ProductScreenshot>
               <p className="text-xs text-gray-500 text-center mt-2">Expiry alerts generated from confirmed certificate dates.</p>
               <div className="mt-4 flex justify-center">
