@@ -22,3 +22,23 @@ export function riskLevelToGradeColorMessage(riskLevel) {
   if (s === 'Critical Risk') return { grade: 'F', color: 'red', message: 'High urgency: overdue items detected' };
   return { grade: '—', color: 'gray', message: formatRiskLabel(riskLevel) };
 }
+
+/** Inline risk band explanation for display under grade (matches backend risk_bands). */
+export function getRiskBandExplanation(riskLevel) {
+  if (!riskLevel || typeof riskLevel !== 'string') return '';
+  const s = riskLevel.trim();
+  if (s === 'Low Risk') return 'Low risk (80–100): Good standing.';
+  if (s === 'Moderate Risk') return 'Medium risk (60–79): Action required to maintain compliance.';
+  if (s === 'High Risk') return 'High risk (40–59): Action required to reduce exposure.';
+  if (s === 'Critical Risk') return 'Critical risk (0–39): Immediate action required.';
+  return '';
+}
+
+/** Risk band explanation when only score is available (e.g. from compliance score API). */
+export function getRiskBandExplanationFromScore(score) {
+  if (score == null || typeof score !== 'number') return '';
+  if (score >= 80) return 'Low risk (80–100): Good standing.';
+  if (score >= 60) return 'Medium risk (60–79): Action required to maintain compliance.';
+  if (score >= 40) return 'High risk (40–59): Action required to reduce exposure.';
+  return 'Critical risk (0–39): Immediate action required.';
+}

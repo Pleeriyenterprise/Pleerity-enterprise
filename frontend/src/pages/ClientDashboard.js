@@ -12,7 +12,7 @@ import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Cloc
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
-import { formatRiskLabel, riskLevelToGradeColorMessage } from '../utils/riskLabel';
+import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
 
 const SETUP_CHECKLIST_DONE_KEY = 'pleerity_setup_checklist_done';
 const SETUP_INCOMPLETE_KEY = 'pleerity_setup_incomplete';
@@ -264,6 +264,46 @@ const ClientDashboard = () => {
     return portfolioSummary?.kpis?.missing ?? 0;
   }, [complianceScore, portfolioSummary]);
 
+  // Net change last 30 days from timeline (single trend source: score_events)
+  const netChange30 = useMemo(() => {
+    const points = scoreTimeline?.points;
+    if (!points || points.length < 2) return null;
+    const now = new Date();
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() - 30);
+    const lastScore = points[points.length - 1].score;
+    const firstInWindow = points.find((p) => new Date(p.date) >= cutoff);
+    const baseScore = firstInWindow ? firstInWindow.score : points[0].score;
+    const delta = lastScore - baseScore;
+    return delta;
+  }, [scoreTimeline?.points]);
+
+  // Inline risk band explanation under grade (single source: portfolio risk_level or score)
+  const riskBandExplanation = useMemo(() => {
+    const level = portfolioSummary?.risk_level || portfolioSummary?.portfolio_risk_level;
+    if (level) return getRiskBandExplanation(level);
+    const score = displayScoreInfo?.score ?? complianceScore?.score;
+    return getRiskBandExplanationFromScore(score);
+  }, [portfolioSummary?.risk_level, portfolioSummary?.portfolio_risk_level, displayScoreInfo?.score, complianceScore?.score]);
+
+  // Audit readiness: Low / Moderate / High from overdue, missing %, expiring (single canonical snapshot)
+  const auditReadiness = useMemo(() => {
+    const total = complianceScore?.stats?.total_requirements ?? (portfolioSummary?.kpis ? (portfolioSummary.kpis.compliant ?? 0) + (portfolioSummary.kpis.overdue ?? 0) + (portfolioSummary.kpis.expiring_30 ?? 0) + (portfolioSummary.kpis.missing ?? 0) : 0);
+    if (total == null || total === 0) return null;
+    const overdue = complianceScore?.stats?.overdue ?? portfolioSummary?.kpis?.overdue ?? 0;
+    const expiringSoon = complianceScore?.stats?.expiring_soon ?? portfolioSummary?.kpis?.expiring_30 ?? 0;
+    const missing = actionableMissingCount;
+    const compliant = complianceScore?.stats?.compliant ?? portfolioSummary?.kpis?.compliant ?? 0;
+    const missingPct = total > 0 ? (missing / total) * 100 : 0;
+    const confirmedPct = total > 0 ? (compliant / total) * 100 : 0;
+    const level = (overdue > 0 || missingPct > 30) ? 'Low' : (missingPct > 10 || expiringSoon > 5) ? 'Moderate' : 'High';
+    const drivers = [];
+    if (overdue > 0) drivers.push(`${overdue} overdue`);
+    if (missing > 0) drivers.push(`${missingPct.toFixed(0)}% missing evidence`);
+    drivers.push(`${confirmedPct.toFixed(0)}% confirmed`);
+    return { level, drivers, overdue, missingPct, confirmedPct };
+  }, [complianceScore?.stats, portfolioSummary?.kpis, actionableMissingCount]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -456,6 +496,32 @@ const ClientDashboard = () => {
           <p className="text-xs text-gray-500 mt-2">This is an evidence-based status summary. It is not legal advice.</p>
         </div>
 
+        {/* Compact top strip: score, grade, risk band, last updated, properties count */}
+        {(displayScoreInfo || complianceScore || portfolioSummary) && (
+          <div className="mb-6 flex flex-wrap items-center gap-4 py-3 px-4 rounded-xl bg-gray-50 border border-gray-200" data-testid="dashboard-top-strip">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-midnight-blue">{displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score ?? '—'}</span>
+              <span className="text-gray-500">/100</span>
+              <span className={`ml-1 text-lg font-semibold ${
+                displayScoreInfo?.color === 'green' ? 'text-green-600' :
+                displayScoreInfo?.color === 'amber' ? 'text-amber-600' :
+                displayScoreInfo?.color === 'red' ? 'text-red-600' : 'text-gray-600'
+              }`}>
+                Grade {displayScoreInfo?.grade ?? complianceScore?.grade ?? '—'}
+              </span>
+            </div>
+            <span className="text-sm text-gray-600">
+              {formatRiskLabel(portfolioSummary?.risk_level) || displayScoreInfo?.message || complianceScore?.message || '—'}
+            </span>
+            {portfolioSummary?.updated_at && (
+              <span className="text-xs text-gray-500">Updated {new Date(portfolioSummary.updated_at).toLocaleString()}</span>
+            )}
+            {(portfolioSummary?.properties?.length != null || complianceScore?.properties_count != null) && (
+              <span className="text-xs text-gray-500">{portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0} propert{(portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0) === 1 ? 'y' : 'ies'}</span>
+            )}
+          </div>
+        )}
+
         {/* Score Trend (90 days) + What Changed */}
         <div className="mb-8 grid lg:grid-cols-2 gap-6" data-testid="score-trend-and-changes">
           {/* Left: Score Trend (90 days) */}
@@ -484,6 +550,11 @@ const ClientDashboard = () => {
                         : 'neutral'
                     }
                   />
+                  {netChange30 != null && (
+                    <p className="text-sm font-medium mt-2 text-gray-700" data-testid="net-change-30">
+                      Net change last 30 days: {netChange30 > 0 ? `+${netChange30}` : netChange30}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 mt-2">
                     {scoreTimeline.last_updated_at
                       ? `Last updated ${(function () {
@@ -683,64 +754,14 @@ const ClientDashboard = () => {
               }`}>
                 {displayScoreInfo?.message ?? complianceScore?.message}
               </p>
+              {riskBandExplanation && (
+                <p className="text-xs text-gray-600 mt-1" data-testid="risk-band-explanation">{riskBandExplanation}</p>
+              )}
               {(complianceScore?.properties_count != null && (complianceScore?.properties_count ?? 0) > 1) && (
                 <p className="text-xs text-gray-500 mt-1">Overall score: average across your {complianceScore?.properties_count} properties.</p>
               )}
-              
-              {/* Score Trending Sparkline */}
-              {scoreTrend?.has_history && scoreTrend.sparkline?.length >= 1 && (
-                <div className="mt-4 pt-3 border-t border-white/50" data-testid="score-trend-section">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-500">30-Day Trend</span>
-                    <div className="flex items-center gap-1">
-                      {scoreTrend.trend_direction === 'up' && (
-                        <span className="flex items-center text-xs text-green-600">
-                          <TrendingUp className="w-3 h-3 mr-0.5" />
-                          +{scoreTrend.change_7d ?? scoreTrend.change_30d ?? 0}
-                        </span>
-                      )}
-                      {scoreTrend.trend_direction === 'down' && (
-                        <span className="flex items-center text-xs text-red-600">
-                          <TrendingDown className="w-3 h-3 mr-0.5" />
-                          {scoreTrend.change_7d ?? scoreTrend.change_30d ?? 0}
-                        </span>
-                      )}
-                      {(scoreTrend.trend_direction === 'stable' || scoreTrend.trend_direction === 'neutral') && (
-                        <span className="flex items-center text-xs text-gray-500">
-                          <Minus className="w-3 h-3 mr-0.5" />
-                          {scoreTrend.sparkline?.length > 1 ? 'Stable' : 'Tracking started'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Sparkline
-                    data={scoreTrend.sparkline}
-                    width={180}
-                    height={40}
-                    trendDirection={scoreTrend.trend_direction}
-                    showArea={true}
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    {scoreTrend.days_of_data} day{scoreTrend.days_of_data !== 1 ? 's' : ''} of data
-                    {scoreTrend.sparkline?.length > 1 && ` • Avg: ${scoreTrend.avg_score}`}
-                    {scoreTrend.sparkline?.length === 1 && ' • More points will appear as history builds'}
-                  </p>
-                </div>
-              )}
-              
-              {/* Show placeholder if no trend data yet */}
-              {(!scoreTrend?.has_history || !scoreTrend?.sparkline?.length) && (
-                <div className="mt-4 pt-3 border-t border-white/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-500">30-Day Trend</span>
-                  </div>
-                  <div className="h-10 flex items-center justify-center bg-white/30 rounded-lg">
-                    <span className="text-xs text-gray-400">Trend tracking starts tomorrow</span>
-                  </div>
-                </div>
-              )}
-              
-              {/* Score Breakdown */}
+
+              {/* Score breakdown and explanation – single trend is shown in Score Trend (90 days) card */}
               <div className="mt-4 pt-4 border-t border-white/50 space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Status (40%)</span>
@@ -794,26 +815,44 @@ const ClientDashboard = () => {
               
               {complianceScore?.recommendations?.length > 0 ? (
                 <div className="space-y-3">
-                  {(complianceScore?.recommendations ?? []).map((rec, idx) => (
-                    <div 
-                      key={idx}
-                      className={`flex items-start gap-3 p-3 rounded-lg ${
-                        rec.priority === 'high' ? 'bg-red-50 border border-red-100' :
-                        rec.priority === 'medium' ? 'bg-amber-50 border border-amber-100' :
-                        'bg-gray-50 border border-gray-100'
-                      }`}
-                    >
-                      <div className={`w-2 h-2 rounded-full mt-2 ${
-                        rec.priority === 'high' ? 'bg-red-500' :
-                        rec.priority === 'medium' ? 'bg-amber-500' :
-                        'bg-gray-400'
-                      }`} />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-800">{rec.action}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Potential impact: {rec.impact}</p>
+                  {(complianceScore?.recommendations ?? []).slice(0, 3).map((rec, idx) => {
+                    const actionLower = (rec.action || '').toLowerCase();
+                    const fixNowPath =
+                      actionLower.includes('overdue') ? '/requirements?status=OVERDUE_OR_MISSING' :
+                      actionLower.includes('expir') ? '/requirements?window=30&status=DUE_SOON' :
+                      actionLower.includes('verif') || actionLower.includes('confirm') ? '/documents' :
+                      actionLower.includes('upload') ? '/documents' :
+                      '/requirements';
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-start gap-3 p-3 rounded-lg ${
+                          rec.priority === 'high' || rec.priority === 'critical' ? 'bg-red-50 border border-red-100' :
+                          rec.priority === 'medium' ? 'bg-amber-50 border border-amber-100' :
+                          'bg-gray-50 border border-gray-100'
+                        }`}
+                      >
+                        <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
+                          rec.priority === 'high' || rec.priority === 'critical' ? 'bg-red-500' :
+                          rec.priority === 'medium' ? 'bg-amber-500' :
+                          'bg-gray-400'
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800">{rec.action}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Potential impact: {rec.impact}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={(e) => { e.stopPropagation(); navigate(fixNowPath); }}
+                          data-testid={`quick-action-fix-${idx}`}
+                        >
+                          Fix now
+                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (() => {
                 const total = complianceScore?.stats?.total_requirements ?? 0;
@@ -878,27 +917,28 @@ const ClientDashboard = () => {
           </div>
         )}
 
-        {/* Risk level and KPIs from compliance summary (catalog-driven when available) */}
-        {(portfolioSummary?.risk_level || displayScoreInfo || complianceScore?.score != null) && (
-          <p className="text-sm text-gray-600 mb-2">
-            <span className="font-medium">Risk level:</span> {formatRiskLabel(portfolioSummary?.risk_level || displayScoreInfo?.message || complianceScore?.message || '')}
-            {(displayScoreInfo?.score != null || complianceScore?.score != null || portfolioSummary?.portfolio_score != null) && (
-              <span className="ml-2 text-gray-500">(Score: {displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score}/100)</span>
-            )}
-            {portfolioSummary?.updated_at && (
-              <span className="ml-2 text-gray-400 text-xs">Updated {new Date(portfolioSummary.updated_at).toLocaleString()}</span>
-            )}
-          </p>
-        )}
-        {(portfolioSummary?.kpis || complianceScore?.stats) && (
-          <div className="flex flex-wrap gap-4 mb-4 text-sm">
-            <span className="text-red-600 font-medium">Overdue: {portfolioSummary?.kpis?.overdue ?? complianceScore?.stats?.overdue ?? 0}</span>
-            <span className="text-amber-600 font-medium">Expiring (30d): {portfolioSummary?.kpis?.expiring_30 ?? complianceScore?.stats?.expiring_soon ?? 0}</span>
-            <span className="text-gray-600 font-medium">Missing: {actionableMissingCount}</span>
-            <span className="text-green-600 font-medium">Valid: {portfolioSummary?.kpis?.compliant ?? complianceScore?.stats?.compliant ?? 0}</span>
-          </div>
+        {/* Audit readiness: single canonical snapshot (v2 Row 2) */}
+        {auditReadiness && (
+          <Card className="mb-8 border border-gray-200 shadow-sm max-w-md" data-testid="audit-readiness-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-electric-teal" />
+                Audit readiness
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className={`text-lg font-semibold ${
+                auditReadiness.level === 'Low' ? 'text-red-600' :
+                auditReadiness.level === 'Moderate' ? 'text-amber-600' : 'text-green-600'
+              }`}>
+                {auditReadiness.level}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">{auditReadiness.drivers.join(' · ')}</p>
+            </CardContent>
+          </Card>
         )}
 
+        {/* De-duplicated: score/risk/last updated/properties are in top strip and KPI tiles below */}
         {/* Compliance Framework explanation (static, no legal advice) */}
         <div className="mb-8 rounded-xl border border-gray-200 bg-white overflow-hidden">
           <button
@@ -943,6 +983,7 @@ const ClientDashboard = () => {
                     <th className="p-3">Risk level</th>
                     <th className="p-3">Overdue</th>
                     <th className="p-3">Expiring soon</th>
+                    <th className="p-3">Missing evidence</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -957,6 +998,7 @@ const ClientDashboard = () => {
                       <td className="p-3">{formatRiskLabel(p.risk_level)}</td>
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
+                      <td className="p-3">{p.missing_count ?? 0}</td>
                     </tr>
                   ))}
                 </tbody>
