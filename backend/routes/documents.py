@@ -1668,20 +1668,40 @@ async def get_document_file(request: Request, document_id: str, download: bool =
     """Client views or downloads their uploaded document. Logged for admin monitoring."""
     user = await client_route_guard(request)
     db = database.get_db()
+    document, file_path, media_type, filename = await _resolve_document_file_path(db, document_id)
+    if document["client_id"] != user["client_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
+    await create_audit_log(
+        action=AuditAction.DOCUMENT_VIEWED,
+        actor_id=user["portal_user_id"],
+        client_id=user["client_id"],
+        resource_type="document",
+        resource_id=document_id,
+        metadata={"file_name": document.get("file_name"), "download": download},
+    )
+    from fastapi.responses import FileResponse
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type,
+        filename=filename,
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
+    )
+
+
+async def _resolve_document_file_path(db, document_id: str):
+    """Resolve document record and filesystem path for serving. Returns (document, path, media_type, filename). Raises HTTPException if not found."""
     document = await db.documents.find_one(
         {"document_id": document_id},
         {"_id": 0, "client_id": 1, "file_path": 1, "file_name": 1, "mime_type": 1}
     )
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    if document["client_id"] != user["client_id"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
     raw_path = (document.get("file_path") or "").strip().replace("\\", "/")
     file_path = Path(raw_path) if raw_path else Path()
     resolved_via_fallback = False
     client_id_val = document.get("client_id") or ""
     if not file_path.is_file():
-        # Prefer lookup under configured DOCUMENT_STORAGE_PATH (handles different server, DATA_DIR, or stale absolute path)
         base_name = file_path.name if raw_path else None
         if base_name and base_name != "." and client_id_val:
             candidate = (DOCUMENT_STORAGE_PATH / client_id_val / base_name).resolve()
@@ -1708,7 +1728,6 @@ async def get_document_file(request: Request, document_id: str, download: bool =
                 if resolved.is_file():
                     file_path = resolved
                     resolved_via_fallback = True
-        # Fallback: try document_id + extension from file_name (handles missing/stale file_path, e.g. intake-reconciled or different server)
         if not file_path.is_file() and client_id_val:
             file_name = (document.get("file_name") or "").strip()
             ext = Path(file_name).suffix if file_name else ".pdf"
@@ -1737,24 +1756,9 @@ async def get_document_file(request: Request, document_id: str, download: bool =
             "Document file resolved via fallback: document_id=%s stored_path=%s resolved_path=%s",
             document_id, raw_path, str(file_path),
         )
-    await create_audit_log(
-        action=AuditAction.DOCUMENT_VIEWED,
-        actor_id=user["portal_user_id"],
-        client_id=user["client_id"],
-        resource_type="document",
-        resource_id=document_id,
-        metadata={"file_name": document.get("file_name"), "download": download},
-    )
-    from fastapi.responses import FileResponse
     media_type = document.get("mime_type") or "application/octet-stream"
     filename = document.get("file_name") or "document"
-    disposition = "attachment" if download else "inline"
-    return FileResponse(
-        path=str(file_path),
-        media_type=media_type,
-        filename=filename,
-        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
-    )
+    return (document, file_path, media_type, filename)
 
 
 @router.get("/{document_id}/extraction")

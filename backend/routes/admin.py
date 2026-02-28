@@ -174,6 +174,34 @@ async def list_pending_verification_documents(
         )
 
 
+@router.get("/documents/{document_id}/file", dependencies=[Depends(require_owner_or_admin)])
+async def get_admin_document_file(
+    request: Request,
+    document_id: str,
+    download: bool = Query(False, description="If true, return as attachment"),
+):
+    """Admin view or download any document by ID (e.g. for pending verification review)."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from routes.documents import _resolve_document_file_path
+    document, file_path, media_type, filename = await _resolve_document_file_path(db, document_id)
+    await create_audit_log(
+        action=AuditAction.DOCUMENT_VIEWED,
+        actor_id=user.get("portal_user_id") or user.get("user_id") or "admin",
+        client_id=document.get("client_id"),
+        resource_type="document",
+        resource_id=document_id,
+        metadata={"file_name": filename, "download": download, "admin": True},
+    )
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type,
+        filename=filename,
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
+    )
+
+
 @router.get("/extraction-queue", dependencies=[Depends(require_owner_or_admin)])
 async def list_extraction_queue(
     request: Request,

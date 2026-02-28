@@ -43,6 +43,7 @@ import {
   UserPlus,
   UserMinus,
   RotateCcw,
+  Download,
   MailPlus,
   MessageSquare,
   History,
@@ -3888,6 +3889,39 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
     }
   };
 
+  const handleViewDocument = async (doc) => {
+    if (!doc?.document_id) return;
+    try {
+      const res = await api.get(`/admin/documents/${doc.document_id}/file`, { params: { download: false }, responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      const msg = e.response?.data instanceof Blob ? 'Document not found or file missing' : (e.response?.data?.detail || 'Failed to open document');
+      toast.error(msg);
+    }
+  };
+
+  const handleDownloadDocument = async (doc) => {
+    if (!doc?.document_id) return;
+    try {
+      const res = await api.get(`/admin/documents/${doc.document_id}/file`, { params: { download: true }, responseType: 'blob' });
+      const blob = new Blob([res.data], { type: res.data.type || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name || doc.original_filename || 'document';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Download started');
+    } catch (e) {
+      const msg = e.response?.data instanceof Blob ? 'Document not found or file missing' : (e.response?.data?.detail || 'Failed to download document');
+      toast.error(msg);
+    }
+  };
+
   const fetchStats = async () => {
     try {
       const response = await api.get('/admin/dashboard');
@@ -4119,7 +4153,27 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.requirement_id ?? '—'}</td>
                       <td className="py-2 pr-4 text-gray-600">{doc?.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
                       <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleViewDocument(doc)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded"
+                            title="View document"
+                            data-testid={`view-doc-${doc?.document_id}`}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadDocument(doc)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded"
+                            title="Download document"
+                            data-testid={`download-doc-${doc?.document_id}`}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleVerifyDocument(doc)}
