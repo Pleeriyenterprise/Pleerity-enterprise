@@ -2160,7 +2160,7 @@ const EmailDelivery = () => {
                       </td>
                       <td className="px-4 py-2 font-mono text-xs">{row.client_id ?? '—'}</td>
                       <td className="px-4 py-2 font-mono text-xs truncate max-w-[120px]" title={row.message_id}>{row.message_id ?? '—'}</td>
-                      <td className="px-4 py-2 text-gray-600">{row.provider_error_type || row.provider_error_code ? `${row.provider_error_type || ''} ${row.provider_error_code || ''}`.trim() : '—'}</td>
+                      <td className="px-4 py-2 text-gray-600 max-w-[200px] truncate" title={row.error_message || row.provider_error_type || row.provider_error_code}>{row.provider_error_type || row.provider_error_code ? `${row.provider_error_type || ''} ${row.provider_error_code || ''}`.trim() : row.error_message || '—'}</td>
                       <td className="px-4 py-2">
                         {canShowResend(row) ? (
                           <button
@@ -2208,102 +2208,6 @@ const EmailDelivery = () => {
           )}
         </div>
       )}
-    </div>
-  );
-};
-
-const MessageLogs = () => {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchMessages();
-  }, []);
-
-  const fetchMessages = async () => {
-    try {
-      const response = await api.get('/admin/audit-logs?action=EMAIL_SENT&limit=50');
-      // Also fetch failed emails
-      const failedResponse = await api.get('/admin/audit-logs?action=EMAIL_FAILED&limit=50');
-      
-      const allMessages = [...response.data.logs, ...failedResponse.data.logs]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      setMessages(allMessages);
-    } catch (error) {
-      toast.error('Failed to load message logs');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-midnight-blue">Message Logs</h2>
-        <button
-          onClick={fetchMessages}
-          className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipient</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Template</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider ID</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {(messages ?? []).map((msg, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(msg.timestamp).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-midnight-blue">
-                    {msg.metadata?.recipient || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {msg.metadata?.template || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                      msg.metadata?.status === 'sent' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {msg.metadata?.status === 'sent' ? (
-                        <CheckCircle className="w-3 h-3" />
-                      ) : (
-                        <XCircle className="w-3 h-3" />
-                      )}
-                      {msg.metadata?.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 font-mono">
-                    {msg.metadata?.postmark_id ? msg.metadata.postmark_id.substring(0, 12) + '...' : 'N/A'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 };
@@ -3914,6 +3818,9 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const [pendingHours, setPendingHours] = useState(24);
   const [pendingClientId, setPendingClientId] = useState('');
   const [pendingListWarning, setPendingListWarning] = useState(null);
+  const [rejectModalDoc, setRejectModalDoc] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -3944,6 +3851,42 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       setPendingLoading(false);
     }
   }, [pendingHours, pendingClientId]);
+
+  const handleVerifyDocument = async (doc) => {
+    if (!doc?.document_id) return;
+    try {
+      await api.post(`/documents/verify/${doc.document_id}`);
+      toast.success('Document verified');
+      fetchPendingVerification();
+      fetchStats();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to verify document');
+    }
+  };
+
+  const handleRejectDocument = async () => {
+    if (!rejectModalDoc?.document_id || !rejectReason.trim()) {
+      toast.error('Please enter a reason for rejection');
+      return;
+    }
+    setRejectSubmitting(true);
+    try {
+      await api.post(
+        `/documents/reject/${rejectModalDoc.document_id}`,
+        new URLSearchParams({ reason: rejectReason.trim() }),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+      toast.success('Document rejected');
+      setRejectModalDoc(null);
+      setRejectReason('');
+      fetchPendingVerification();
+      fetchStats();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to reject document');
+    } finally {
+      setRejectSubmitting(false);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -4143,30 +4086,60 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                   <th className="py-2 pr-4">Client ID</th>
                   <th className="py-2 pr-4">Property ID</th>
                   <th className="py-2 pr-4">Requirement ID</th>
-                  <th className="py-2">Uploaded at</th>
+                  <th className="py-2 pr-4">Uploaded at</th>
+                  <th className="py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {(pendingList.documents ?? []).length === 0 ? (
-                  <tr><td colSpan={7} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
+                  <tr><td colSpan={8} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
                 ) : (
                   (pendingList.documents ?? []).filter(Boolean).map((doc, idx) => (
                     <tr
                       key={doc?.document_id ?? doc?.client_id ?? idx}
-                      className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => doc?.client_id && onSelectClient?.(doc.client_id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && doc?.client_id) onSelectClient?.(doc.client_id); }}
-                      aria-label={`View client ${doc?.client_name ?? doc?.client_id ?? 'Unknown'}`}
+                      className="border-b border-gray-100 hover:bg-gray-50"
                     >
-                      <td className="py-2 pr-4 font-mono text-xs">{doc?.document_id ?? '—'}</td>
-                      <td className="py-2 pr-4 font-medium text-midnight-blue">{doc?.client_name ?? '—'}</td>
+                      <td
+                        className="py-2 pr-4 font-mono text-xs cursor-pointer"
+                        onClick={() => doc?.client_id && onSelectClient?.(doc.client_id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && doc?.client_id) onSelectClient?.(doc.client_id); }}
+                      >{doc?.document_id ?? '—'}</td>
+                      <td
+                        className="py-2 pr-4 font-medium text-midnight-blue cursor-pointer"
+                        onClick={() => doc?.client_id && onSelectClient?.(doc.client_id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && doc?.client_id) onSelectClient?.(doc.client_id); }}
+                      >{doc?.client_name ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.crn ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.client_id ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.property_id ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.requirement_id ?? '—'}</td>
-                      <td className="py-2 text-gray-600">{doc?.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
+                      <td className="py-2 pr-4 text-gray-600">{doc?.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
+                      <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyDocument(doc)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded"
+                            data-testid={`verify-doc-${doc?.document_id}`}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Verify
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setRejectModalDoc({ document_id: doc.document_id, client_name: doc.client_name }); setRejectReason(''); }}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded"
+                            data-testid={`reject-doc-${doc?.document_id}`}
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            Reject
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -4181,6 +4154,46 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
           </div>
         )}
       </div>
+
+      {/* Reject document modal */}
+      {rejectModalDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-labelledby="reject-document-title">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h2 id="reject-document-title" className="text-lg font-semibold text-midnight-blue mb-2">Reject document</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Document {rejectModalDoc.document_id}
+              {rejectModalDoc.client_name && ` · ${rejectModalDoc.client_name}`}
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Reason for rejection (required)</label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. Document does not meet requirement"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[80px] mb-4"
+              data-testid="reject-document-reason"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setRejectModalDoc(null); setRejectReason(''); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectDocument}
+                disabled={!rejectReason.trim() || rejectSubmitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg flex items-center gap-2"
+                data-testid="reject-document-submit"
+              >
+                {rejectSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -4245,7 +4258,6 @@ const AdminDashboard = () => {
     { id: 'templates', label: 'Templates', icon: Mail },
     { id: 'emailDelivery', label: 'Email delivery', icon: Mail },
     { id: 'audit', label: 'Audit Logs', icon: FileText },
-    { id: 'messages', label: 'Messages', icon: Activity },
   ];
 
   const renderContent = () => {
@@ -4259,7 +4271,6 @@ const AdminDashboard = () => {
       case 'templates': return <EmailTemplates />;
       case 'emailDelivery': return <EmailDelivery />;
       case 'audit': return <AuditLogs />;
-      case 'messages': return <MessageLogs />;
       default: return <DashboardOverview onShowDrilldown={handleShowDrilldown} />;
     }
   };

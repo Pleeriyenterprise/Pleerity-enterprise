@@ -230,17 +230,24 @@ async def get_email_delivery(
     await admin_route_guard(request)
     db = database.get_db()
     try:
-        since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat()
+        since_dt = datetime.now(timezone.utc) - timedelta(hours=since_hours)
         status_order = {"failed": 0, "skipped": 1, "sent": 2}
 
         items_from_msg = []
         count_msg = 0
         if status is None or status in ("sent", "failed"):
-            q = {"created_at": {"$gte": since}, "status": {"$in": ["sent", "failed"]}}
+            # Accept both orchestrator (SENT/FAILED, template_key) and legacy (sent/failed, template_alias)
+            q = {
+                "created_at": {"$gte": since_dt},
+                "status": {"$in": ["sent", "failed", "SENT", "FAILED"]},
+                "$or": [{"channel": {"$exists": False}}, {"channel": "EMAIL"}],
+            }
             if status:
-                q["status"] = status
+                q["status"] = {"$in": [status, status.upper()]}
             if template_alias:
-                q["template_alias"] = template_alias
+                q["$and"] = [
+                    {"$or": [{"template_alias": template_alias}, {"template_key": template_alias}]},
+                ]
             if client_id:
                 q["client_id"] = client_id
             count_msg = await db.message_logs.count_documents(q)
@@ -251,11 +258,13 @@ async def get_email_delivery(
                         "_id": 0,
                         "created_at": 1,
                         "template_alias": 1,
+                        "template_key": 1,
                         "status": 1,
                         "client_id": 1,
                         "message_id": 1,
                         "provider_error_type": 1,
                         "provider_error_code": 1,
+                        "error_message": 1,
                     },
                 )
                 .sort("created_at", -1)
@@ -263,14 +272,17 @@ async def get_email_delivery(
             )
             raw = await cursor.to_list(2000)
             for r in raw:
+                st = r.get("status") or ""
+                status_normalized = st.lower() if st in ("SENT", "FAILED", "sent", "failed") else st
                 items_from_msg.append({
                     "created_at": r.get("created_at"),
-                    "template_alias": r.get("template_alias"),
-                    "status": r.get("status"),
+                    "template_alias": r.get("template_alias") or r.get("template_key"),
+                    "status": status_normalized,
                     "client_id": r.get("client_id"),
                     "message_id": r.get("message_id"),
                     "provider_error_type": r.get("provider_error_type"),
                     "provider_error_code": r.get("provider_error_code"),
+                    "error_message": r.get("error_message"),
                 })
 
         items_from_audit = []

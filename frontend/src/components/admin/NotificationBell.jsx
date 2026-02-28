@@ -28,7 +28,10 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+// Use same base as api client: relative /api when REACT_APP_BACKEND_URL not set
+const _backendUrl = process.env.REACT_APP_BACKEND_URL;
+const API_BASE = typeof _backendUrl === 'string' && _backendUrl.trim() ? _backendUrl.trim().replace(/\/$/, '') : '';
+const NOTIFICATIONS_BASE = API_BASE ? `${API_BASE}/api` : '/api';
 
 // Polling interval for notifications (30 seconds)
 const POLL_INTERVAL = 30000;
@@ -164,7 +167,7 @@ const NotificationBell = () => {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/notifications/?limit=20`, {
+      const response = await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/?limit=20`, {
         headers: getAuthHeaders(),
       });
         if (response.ok) {
@@ -179,7 +182,7 @@ const NotificationBell = () => {
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/notifications/unread-count`, {
+      const response = await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/unread-count`, {
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -193,7 +196,7 @@ const NotificationBell = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      await fetch(`${API_URL}/api/admin/notifications/${notificationId}/read`, {
+      await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/${notificationId}/read`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -210,7 +213,7 @@ const NotificationBell = () => {
 
   const markAllAsRead = async () => {
     try {
-      await fetch(`${API_URL}/api/admin/notifications/read-all`, {
+      await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/read-all`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -235,7 +238,7 @@ const NotificationBell = () => {
     
     const loadInitial = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/admin/notifications/unread-count`, {
+        const response = await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/unread-count`, {
           headers: getAuthHeaders(),
         });
         if (response.ok && mounted) {
@@ -260,7 +263,7 @@ const NotificationBell = () => {
     
     const loadNotifications = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/admin/notifications/?limit=20`, {
+        const response = await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/?limit=20`, {
           headers: getAuthHeaders(),
         });
         if (response.ok && mounted) {
@@ -342,10 +345,10 @@ const NotificationBell = () => {
               className="w-full text-sm text-gray-600 hover:text-gray-900"
               onClick={() => {
                 setIsOpen(false);
-                navigate('/admin/notifications');
+                navigate('/admin/notifications/preferences');
               }}
             >
-              View all notifications
+              Notification preferences
             </Button>
           </div>
         )}
