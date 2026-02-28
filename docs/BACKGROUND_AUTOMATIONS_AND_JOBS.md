@@ -2,6 +2,28 @@
 
 All times are **UTC**. The job scheduler (APScheduler) runs **in-process** with the FastAPI application. Jobs execute only while the API server is running.
 
+## Why do I have to manually trigger jobs?
+
+Automations run **only when the API process that started the scheduler is running**. If you have to run jobs manually for them to do anything, one of the following is usually true:
+
+1. **The API server is not running 24/7**
+   - **Local development:** If you stop the server (e.g. close the terminal), no jobs run until you start it again. Schedules (e.g. “9:00 UTC”) only fire when the process is up at that time.
+   - **Hosting that spins down:** Some platforms (e.g. Render free tier, serverless, or “sleep after idle”) shut down the process when there’s no traffic. When the process is down, no cron runs. **Fix:** Use a plan or setup that keeps **one** API instance running all the time, or use an **external cron** (e.g. cron job or hosted scheduler) that calls your “run job now” endpoint on a schedule.
+
+2. **Multiple API workers**
+   - If you start the app with **multiple workers** (e.g. `uvicorn ... --workers 4`), each worker is a separate process. Each process runs its own scheduler, so jobs can run multiple times (once per worker), or in some deployments only one process is long-lived and the others are short-lived, so the scheduler may only run in one process. **Fix:** For scheduled jobs, run **one** worker (or one dedicated “worker” process) that stays up and owns the scheduler; use more workers only for HTTP if needed.
+
+3. **Scheduler never started or not bound to the event loop**
+   - If `PYTEST_RUNNING=1` is set, the scheduler is skipped. In production this should not be set.
+   - If the app crashes or fails during startup before `scheduler.start()` runs, the scheduler never starts. Check startup logs for “Background job scheduler started” and any errors before it.
+   - The scheduler must run on the same asyncio event loop as the FastAPI app. In `server.py` lifespan, the running loop is set on the scheduler before jobs are added and started (`scheduler._eventloop = asyncio.get_running_loop()`). If you see “No running event loop for scheduler” in logs, jobs will not run automatically until that is fixed.
+
+4. **Jobs run but don’t do what you expect**
+   - Delivery (email/SMS) can fail if Postmark/Twilio are not configured or are rate-limited; the job still “runs” but no email is sent.
+   - Some jobs only act for clients in certain states (e.g. ENABLED entitlement, plan allows feature). See “Delivery dependencies” and “Plan/entitlement gating” below.
+
+**Quick check:** Open **Admin → Dashboard → Jobs** (or call `GET /api/admin/jobs/status`). If you see “Next run” times for each job, the scheduler is running in that process. If you don’t, that process doesn’t have an active scheduler.
+
 ## Why automations might not run or not deliver
 
 1. **Server not running** – If the API process is stopped (e.g. dev machine off, deployment down), no jobs run.

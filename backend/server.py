@@ -23,6 +23,7 @@ from clearform.routes.admin import router as clearform_admin_router
 
 import os
 import logging
+import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -309,7 +310,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to create ClearForm indexes: {e}")
     
-    # Configure scheduled jobs
+    # Configure scheduled jobs – bind scheduler to running event loop so async jobs execute
+    try:
+        _loop = asyncio.get_running_loop()
+        scheduler._eventloop = _loop
+        logger.info("Scheduler bound to running event loop (jobs will run automatically)")
+    except RuntimeError as e:
+        logger.warning("No running event loop for scheduler: %s. Jobs may not run automatically.", e)
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
         run_daily_reminders,
@@ -515,7 +522,8 @@ async def lifespan(app: FastAPI):
     )
     
     scheduler.start()
-    logger.info("Background job scheduler started")
+    jobs = scheduler.get_jobs()
+    logger.info("Background job scheduler started with %s job(s). Next runs: %s", len(jobs), [j.next_run_time.isoformat() if j.next_run_time else None for j in jobs[:5]])
     
     yield
     
