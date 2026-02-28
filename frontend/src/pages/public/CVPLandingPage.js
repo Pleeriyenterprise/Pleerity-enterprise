@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
+import ProductScreenshot from '../../components/public/ProductScreenshot';
 import { SEOHead, productSchema } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -180,14 +181,16 @@ const CVPLandingPage = () => {
               </div>
             </div>
             <div className="relative hidden lg:block">
-              {/* TODO: Replace with dashboard preview image when available */}
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden aspect-video flex items-center justify-center bg-gray-50 text-gray-400">
-                <div className="text-center p-6">
-                  <Shield className="w-16 h-16 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm font-medium">Dashboard preview</p>
-                  <p className="text-xs mt-1">Add image: dashboard-preview.png</p>
-                </div>
-              </div>
+              <ProductScreenshot className="max-h-[380px]">
+                <img
+                  src="/images/marketing/hero-command-centre.png"
+                  alt="Compliance dashboard showing score and quick actions"
+                  width={1200}
+                  height={850}
+                  className="w-full h-auto object-contain object-top"
+                  fetchPriority="high"
+                />
+              </ProductScreenshot>
             </div>
           </div>
         </div>
@@ -350,12 +353,24 @@ const CVPLandingPage = () => {
             Reminders & Notifications
           </h2>
           <p className="text-gray-600 mb-4">
-            Reminders are sent when we have a known or confirmed expiry date for a requirement. 
+            Reminders are sent when we have a known or confirmed expiry date for a requirement.
             You’ll get advance notice before deadlines so you can renew in time. Scheduling and frequency depend on your plan.
           </p>
           <p className="text-gray-600 mb-4">
             You control how you’re notified: in your account you can set preferences for email and SMS (where available on your plan) so reminders fit how you work.
           </p>
+          <div className="mt-8 max-w-2xl mx-auto">
+            <ProductScreenshot>
+              <img
+                src="/images/marketing/support-calendar.png"
+                alt="Compliance calendar view with upcoming expiries"
+                width={1200}
+                height={800}
+                className="w-full h-auto"
+                loading="lazy"
+              />
+            </ProductScreenshot>
+          </div>
         </div>
       </section>
 

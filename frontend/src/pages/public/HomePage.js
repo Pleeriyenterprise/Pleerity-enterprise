@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
-import PortfolioComplianceSnapshotMockup from '../../components/public/PortfolioComplianceSnapshotMockup';
+import ProductScreenshot from '../../components/public/ProductScreenshot';
 import { SEOHead, organizationSchema } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -161,12 +161,21 @@ const HomePage = () => {
                 ))}
               </div>
             </div>
-            {/* Compliance Score Preview mockup + SEO H2 */}
+            {/* Hero: real dashboard screenshot (cropped); headline remains dominant */}
             <div className="relative w-full lg:block">
               <h2 className="sr-only">UK landlord compliance tracking—risk report in 60 seconds</h2>
-              <PortfolioComplianceSnapshotMockup />
+              <ProductScreenshot className="max-h-[380px] lg:max-h-[420px]">
+                <img
+                  src="/images/marketing/hero-command-centre.png"
+                  alt="Compliance dashboard example showing score and quick actions"
+                  width={1200}
+                  height={850}
+                  className="w-full h-auto object-contain object-top"
+                  fetchPriority="high"
+                />
+              </ProductScreenshot>
               <p className="text-xs text-gray-500 text-center mt-4 px-2">
-                Built for UK landlords • Expiry tracking • Reminder automation • Audit trail
+                Illustrative portfolio example. Live score generated after structured assessment.
               </p>
             </div>
           </div>
@@ -189,15 +198,18 @@ const HomePage = () => {
               <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Expiring soon indicator</li>
               <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Overdue alert example</li>
             </ul>
-            <div className="relative">
-              {/* TODO: Replace with dashboard or calendar screenshot; e.g. src="/images/calendar-preview.png" or dashboard-preview.png */}
-              <div className="bg-gray-100 rounded-xl border border-gray-200 aspect-video flex items-center justify-center text-gray-500">
-                <div className="text-center p-4">
-                  <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Dashboard / calendar preview</p>
-                  <p className="text-xs mt-1">Add image when available</p>
-                </div>
-              </div>
+            <div className="relative w-full lg:max-w-[60%]">
+              <ProductScreenshot>
+                <img
+                  src="/images/marketing/feature-expiry-list.png"
+                  alt="Upcoming expiries list from Compliance Calendar"
+                  width={1200}
+                  height={800}
+                  className="w-full h-auto"
+                  loading="lazy"
+                />
+              </ProductScreenshot>
+              <p className="text-xs text-gray-500 text-center mt-2">Expiry alerts generated from confirmed certificate dates.</p>
               <div className="mt-4 flex justify-center">
                 <Button className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
                   <Link to="/risk-check">Generate Report</Link>
