@@ -3,9 +3,10 @@ from database import database
 from models import MessageLog, EmailTemplateAlias, AuditAction
 from utils.audit import create_audit_log
 from datetime import datetime, timezone
+import html as html_module
 import os
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,53 @@ class EmailService:
                 </div>
         """
 
+    def _build_scheduled_report_table(self, report_rows: List[Dict[str, Any]]) -> str:
+        """Build HTML table for scheduled requirements report with status styling."""
+        status_styles = {
+            "COMPLIANT": "background-color: #dcfce7; color: #166534; font-weight: 600;",
+            "OVERDUE": "background-color: #fee2e2; color: #b91c1c; font-weight: 600;",
+            "PENDING": "background-color: #fef3c7; color: #b45309; font-weight: 600;",
+            "EXPIRING_SOON": "background-color: #fef3c7; color: #b45309; font-weight: 600;",
+        }
+        columns = [
+            ("property_address", "Property"),
+            ("requirement_type", "Type"),
+            ("description", "Description"),
+            ("status", "Status"),
+            ("due_date", "Due date"),
+            ("frequency_days", "Freq."),
+            ("documents_count", "Docs"),
+            ("latest_document", "Latest doc"),
+            ("latest_doc_status", "Doc status"),
+        ]
+        thead = "".join(
+            f'<th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid #e2e8f0; background: #f1f5f9;">{label}</th>'
+            for _key, label in columns
+        )
+        rows_html = []
+        for row in report_rows:
+            cells = []
+            for key, _label in columns:
+                val = row.get(key, "")
+                if isinstance(val, (int, float)):
+                    val = str(val)
+                else:
+                    val = str(val) if val is not None else ""
+                escaped = html_module.escape(val)
+                if key == "status":
+                    style = status_styles.get(str(val).upper(), "")
+                    cells.append(
+                        f'<td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; {style}">{escaped}</span></td>'
+                    )
+                else:
+                    cells.append(f'<td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{escaped}</td>')
+            rows_html.append("<tr>" + "".join(cells) + "</tr>")
+        return f"""
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead><tr>{thead}</tr></thead>
+            <tbody>{"".join(rows_html)}</tbody>
+        </table>"""
+
     def _build_html_body(self, template_alias: EmailTemplateAlias, model: Dict[str, Any]) -> str:
         """Build HTML email body based on template type."""
         footer = self._build_email_footer(model)
@@ -298,6 +346,34 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.REMINDER:
+            footer = self._build_email_footer(model)
+            req_name = model.get("requirement_name", "Certificate")
+            prop_addr = model.get("property_address", "Your property")
+            due_date = model.get("due_date", "")
+            days_remaining = model.get("days_remaining", 0)
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #f59e0b; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
+                    <h2 style="margin: 0; font-size: 18px;">Compliance Action Required</h2>
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('client_name', 'Valued Customer')},</p>
+                    <p>This is a reminder that <strong>{req_name}</strong> for your property at <strong>{prop_addr}</strong> is due on <strong>{due_date}</strong>.</p>
+                    <p><strong>{days_remaining}</strong> days remaining to complete this requirement.</p>
+                    <p style="margin: 24px 0;">
+                        <a href="{model.get('portal_link', '#')}"
+                           style="background-color: #00B8A9; color: white; padding: 12px 24px;
+                                  text-decoration: none; border-radius: 6px; display: inline-block;">
+                            View in Portal
+                        </a>
+                    </p>
+                </div>
+                {footer}
+            </body>
+            </html>
+            """
         elif template_alias == EmailTemplateAlias.TENANT_INVITE:
             footer = self._build_email_footer(model)
             return f"""
@@ -335,10 +411,23 @@ class EmailService:
             footer = self._build_email_footer(model)
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
-            
+            report_rows: List[Dict[str, Any]] = model.get('report_rows') or []
+            total_requirements = model.get('total_requirements', 0) or len(report_rows)
+            if report_rows:
+                report_table_html = self._build_scheduled_report_table(report_rows)
+                report_body = f"""
+                    <p style="margin: 0 0 12px 0;"><strong>Report:</strong> {html_module.escape(str(model.get('report_type', 'Requirements Report')))}</p>
+                    <p style="margin: 0 0 16px 0;"><strong>Total requirements:</strong> {total_requirements}</p>
+                    <div style="overflow-x: auto; margin: 16px 0; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        {report_table_html}
+                    </div>"""
+            else:
+                raw_content = (model.get('report_content') or 'Report data will appear here.')[:1500]
+                report_body = f"""
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; overflow-x: auto;">{html_module.escape(raw_content)}</div>"""
             return f"""
             <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
                 <div style="background: linear-gradient(135deg, #0B1D3A 0%, #1a3a5c 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
                     <h1 style="margin: 0; font-size: 24px; display: inline-block;">📊 Your {model.get('frequency', 'Weekly').title()} Compliance Report</h1>{ref_badge}
                     <p style="margin: 10px 0 0; opacity: 0.9;">Generated on {model.get('generated_date', 'today')}</p>
@@ -346,13 +435,9 @@ class EmailService:
                 <div style="border: 1px solid #eee; border-top: 0; padding: 20px; background: white;">
                     <p>Hello {model.get('client_name', 'there')},</p>
                     <p>Please find your scheduled <strong>{model.get('report_type', 'compliance')}</strong> report below.</p>
-                    
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; overflow-x: auto;">
-{model.get('report_content', 'Report data will appear here.')[:1500]}
-                    </div>
-                    
-                    <p style="color: #666; font-size: 14px;">
-                        For the full report with all details, please log in to your dashboard 
+                    {report_body}
+                    <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                        For the full report with all details, please log in to your dashboard
                         and download the complete report from the Reports section.
                     </p>
                 </div>
@@ -671,6 +756,25 @@ WHAT THIS MEANS:
 • RED = Immediate action required
 {footer}
             """
+        elif template_alias == EmailTemplateAlias.REMINDER:
+            req_name = model.get("requirement_name", "Certificate")
+            prop_addr = model.get("property_address", "Your property")
+            due_date = model.get("due_date", "")
+            days_remaining = model.get("days_remaining", 0)
+            return f"""
+Compliance Action Required
+=========================
+{ref_line}
+
+Hello {model.get('client_name', 'Valued Customer')},
+
+This is a reminder that {req_name} for your property at {prop_addr} is due on {due_date}.
+
+{days_remaining} days remaining to complete this requirement.
+
+View in Portal: {model.get('portal_link', '#')}
+{footer}
+            """
         elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
             return f"""
 🛡️ ADMIN INVITATION - Compliance Vault Pro
@@ -690,6 +794,25 @@ Set up your admin account here: {model.get('setup_link', '#')}
 ⏰ This invitation expires in 24 hours.
 
 If you did not expect this invitation, please contact the system administrator.
+{footer}
+            """
+        elif template_alias == EmailTemplateAlias.SCHEDULED_REPORT:
+            total = model.get('total_requirements', 0)
+            report_type = model.get('report_type', 'compliance')
+            return f"""
+Your {model.get('frequency', 'Weekly').title()} Compliance Report
+=========================================
+{ref_line}
+
+Hello {model.get('client_name', 'there')},
+
+Please find your scheduled {report_type} report summary below.
+
+Report: {report_type}
+Generated: {model.get('generated_date', 'today')}
+Total requirements: {total}
+
+For the full report with all details, please log in to your dashboard and download the complete report from the Reports section.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.AI_EXTRACTION_APPLIED:

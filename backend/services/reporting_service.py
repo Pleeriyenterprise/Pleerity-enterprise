@@ -343,10 +343,12 @@ class ReportingService:
             row = {k: v for k, v in req.items() if k != 'requirement_id'}
             writer.writerow(row)
         
+        rows = [{k: v for k, v in req.items() if k != 'requirement_id'} for req in data['requirements']]
         return {
             "content": output.getvalue(),
             "filename": f"requirements_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            "content_type": "text/csv"
+            "content_type": "text/csv",
+            "rows": rows,
         }
     
     def _generate_audit_csv(self, data: Dict[str, Any]) -> Dict[str, Any]:

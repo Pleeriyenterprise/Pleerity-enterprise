@@ -97,6 +97,20 @@ class JobScheduler:
                     {"_id": 0}
                 ).to_list(500)
 
+                # Resolve property addresses once for reminder content
+                property_ids = list({r.get("property_id") for r in requirements if r.get("property_id")})
+                properties_map = {}
+                if property_ids:
+                    props_cursor = self.db.properties.find(
+                        {"property_id": {"$in": property_ids}},
+                        {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1, "nickname": 1}
+                    )
+                    async for p in props_cursor:
+                        addr = p.get("nickname") or p.get("address_line_1") or "Your property"
+                        if p.get("city") or p.get("postcode"):
+                            addr = f"{addr}, {p.get('city', '')} {p.get('postcode', '')}".strip(", ")
+                        properties_map[p["property_id"]] = addr or "Your property"
+
                 expiring_requirements = []
                 overdue_requirements = []
                 reminder_refs = []  # For message_logs: client_id on log; refs list here
@@ -112,10 +126,12 @@ class JobScheduler:
                     days_until_due = (due_date - now_utc).days
 
                     if days_until_due < 0:
+                        prop_addr = properties_map.get(req.get("property_id"), "Your property")
                         overdue_requirements.append({
                             "type": req.get("description", req.get("requirement_type", "Certificate")),
                             "due_date": due_date.strftime("%d %B %Y"),
-                            "days_overdue": -days_until_due
+                            "days_overdue": -days_until_due,
+                            "property_address": prop_addr,
                         })
                         reminder_refs.append({
                             "property_id": req.get("property_id"),
@@ -128,11 +144,13 @@ class JobScheduler:
                         )
                         properties_status_changed.add(req.get("property_id"))
                     elif 0 <= days_until_due <= reminder_days:
+                        prop_addr = properties_map.get(req.get("property_id"), "Your property")
                         expiring_requirements.append({
                             "type": req.get("description", req.get("requirement_type", "Certificate")),
                             "due_date": due_date.strftime("%d %B %Y"),
                             "days_remaining": days_until_due,
-                            "status": "URGENT" if days_until_due <= 7 else "WARNING"
+                            "status": "URGENT" if days_until_due <= 7 else "WARNING",
+                            "property_address": prop_addr,
                         })
                         reminder_refs.append({
                             "property_id": req.get("property_id"),
@@ -382,7 +400,7 @@ class JobScheduler:
         return phones
 
     async def _send_reminder_email(self, client, expiring, overdue, recipient_email=None, reminder_refs=None):
-        """Send reminder email via NotificationOrchestrator. If recipient_email is set, send to that address (agent); otherwise to client email. Writes message_log with event_type REMINDER and reminder_refs in metadata."""
+        """Send reminder email via NotificationOrchestrator. Fills template placeholders (requirement_name, property_address, due_date, days_remaining, company_name) from the first overdue or expiring item so the email is professionally branded and not raw template vars."""
         try:
             from services.notification_orchestrator import notification_orchestrator
             from services.webhook_service import fire_reminder_sent
@@ -392,17 +410,30 @@ class JobScheduler:
                 return
             key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}"
-            portal_link = os.environ.get("FRONTEND_URL", "https://app.pleerity.co.uk") + "/app/dashboard"
+            base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://app.pleerity.co.uk").strip().rstrip("/")
+            portal_link = f"{base_url}/dashboard"
             context = {
                 "client_name": client.get("full_name", "Valued Customer"),
                 "expiring_count": len(expiring),
                 "overdue_count": len(overdue),
                 "portal_link": portal_link,
+                "company_name": client.get("company_name") or "Pleerity Enterprise",
             }
             if recipient_email:
                 context["recipient"] = recipient_email
             if reminder_refs is not None:
                 context["reminder_refs"] = json.dumps(reminder_refs)
+            # Fill single-requirement placeholders for template (subject/body use first item)
+            first_item = (overdue[0] if overdue else expiring[0]) if (overdue or expiring) else None
+            if first_item:
+                context["requirement_name"] = first_item.get("type", "Certificate")
+                context["property_address"] = first_item.get("property_address", "Your property")
+                context["due_date"] = first_item.get("due_date", "")
+                if first_item.get("days_overdue") is not None:
+                    context["days_remaining"] = 0
+                else:
+                    context["days_remaining"] = first_item.get("days_remaining", 0)
+                context["subject"] = f"Action Required: {context['requirement_name']} Due Soon"
             await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER",
                 client_id=client["client_id"],
@@ -433,7 +464,8 @@ class JobScheduler:
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             key_suffix = (recipient_phone or "").replace("+", "").replace(" ", "")[:20] if recipient_phone else "client"
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}_{key_suffix}"
-            portal_link = os.environ.get("PORTAL_BASE_URL", "https://app.pleerity.co.uk") + "/app/dashboard"
+            base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://app.pleerity.co.uk").strip().rstrip("/")
+            portal_link = f"{base_url}/dashboard"
             total = len(expiring) + len(overdue)
             context = {"count": total, "portal_link": portal_link}
             if recipient_phone:
@@ -1117,6 +1149,8 @@ class ScheduledReportJob:
                                     "frequency": frequency,
                                     "generated_date": now.strftime("%d %B %Y"),
                                     "report_content": report_data.get("content", "")[:2000],
+                                    "report_rows": report_data.get("rows") or [],
+                                    "total_requirements": len(report_data.get("rows", [])),
                                     "company_name": client.get("company_name", "Your Company"),
                                     "subject": subject,
                                 },
