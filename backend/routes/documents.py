@@ -1750,7 +1750,11 @@ async def _resolve_document_file_path(db, document_id: str):
                 "Document file missing: document_id=%s stored_path=%s DOCUMENT_STORAGE_PATH=%s storage_dir_exists=%s",
                 document_id, raw_path, str(DOCUMENT_STORAGE_PATH), dir_exists,
             )
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found. The document record exists but the file is missing from server storage. "
+                "If uploads were done on another server or DOCUMENT_STORAGE_PATH differs, the file may not be available here.",
+            )
     if resolved_via_fallback:
         logger.info(
             "Document file resolved via fallback: document_id=%s stored_path=%s resolved_path=%s",

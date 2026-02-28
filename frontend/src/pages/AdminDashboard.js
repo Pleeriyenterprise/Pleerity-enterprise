@@ -3416,7 +3416,7 @@ const EmailTemplates = () => {
 };
 
 // Statistics Dashboard - Executive View
-const StatisticsDashboard = () => {
+const StatisticsDashboard = ({ onNavigateToTab }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [chartsExpanded, setChartsExpanded] = useState(false);
@@ -3507,7 +3507,14 @@ const StatisticsDashboard = () => {
       {/* Primary Layer - Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Properties */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="stat-card-total-properties">
+        <div
+          role={onNavigateToTab ? 'button' : undefined}
+          tabIndex={onNavigateToTab ? 0 : undefined}
+          onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+          className={`bg-white rounded-xl border border-gray-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-teal-200 hover:shadow-sm transition-all' : ''}`}
+          data-testid="stat-card-total-properties"
+        >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-3xl font-bold text-midnight-blue">{totalProperties}</p>
@@ -3519,7 +3526,14 @@ const StatisticsDashboard = () => {
         </div>
 
         {/* Compliant - GREEN */}
-        <div className="bg-white rounded-xl border-2 border-green-200 p-5" data-testid="stat-card-compliant">
+        <div
+          role={onNavigateToTab ? 'button' : undefined}
+          tabIndex={onNavigateToTab ? 0 : undefined}
+          onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'compliance-GREEN' }) : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('overview', { drilldown: 'compliance-GREEN' }); } : undefined}
+          className={`bg-white rounded-xl border-2 border-green-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-green-300 hover:shadow-sm transition-all' : ''}`}
+          data-testid="stat-card-compliant"
+        >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-3xl font-bold text-green-600">{compliantCount}</p>
@@ -3531,7 +3545,14 @@ const StatisticsDashboard = () => {
         </div>
 
         {/* Attention Needed - AMBER */}
-        <div className="bg-white rounded-xl border-2 border-amber-200 p-5" data-testid="stat-card-attention">
+        <div
+          role={onNavigateToTab ? 'button' : undefined}
+          tabIndex={onNavigateToTab ? 0 : undefined}
+          onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'compliance-AMBER' }) : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('overview', { drilldown: 'compliance-AMBER' }); } : undefined}
+          className={`bg-white rounded-xl border-2 border-amber-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-amber-300 hover:shadow-sm transition-all' : ''}`}
+          data-testid="stat-card-attention"
+        >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-3xl font-bold text-amber-600">{attentionCount}</p>
@@ -3543,7 +3564,14 @@ const StatisticsDashboard = () => {
         </div>
 
         {/* Action Required - RED */}
-        <div className="bg-white rounded-xl border-2 border-red-200 p-5" data-testid="stat-card-action-required">
+        <div
+          role={onNavigateToTab ? 'button' : undefined}
+          tabIndex={onNavigateToTab ? 0 : undefined}
+          onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'compliance-RED' }) : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('overview', { drilldown: 'compliance-RED' }); } : undefined}
+          className={`bg-white rounded-xl border-2 border-red-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-red-300 hover:shadow-sm transition-all' : ''}`}
+          data-testid="stat-card-action-required"
+        >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-3xl font-bold text-red-600">{actionCount}</p>
@@ -3555,7 +3583,14 @@ const StatisticsDashboard = () => {
         </div>
 
         {/* Upcoming Expiries */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="stat-card-expiring">
+        <div
+          role={onNavigateToTab ? 'button' : undefined}
+          tabIndex={onNavigateToTab ? 0 : undefined}
+          onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+          className={`bg-white rounded-xl border border-gray-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-teal-200 hover:shadow-sm transition-all' : ''}`}
+          data-testid="stat-card-expiring"
+        >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-3xl font-bold text-midnight-blue">{expiring30Days}</p>
@@ -3583,7 +3618,13 @@ const StatisticsDashboard = () => {
           
           <div className="space-y-3">
             {overdueCount > 0 && (
-              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
+              <div
+                role={onNavigateToTab ? 'button' : undefined}
+                tabIndex={onNavigateToTab ? 0 : undefined}
+                onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+                className={`flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-red-100 transition-colors' : ''}`}
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                   <span className="text-sm font-medium text-red-800">Overdue Requirements</span>
@@ -3593,7 +3634,13 @@ const StatisticsDashboard = () => {
             )}
             
             {expiring30Days > 0 && (
-              <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100">
+              <div
+                role={onNavigateToTab ? 'button' : undefined}
+                tabIndex={onNavigateToTab ? 0 : undefined}
+                onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+                className={`flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-amber-100 transition-colors' : ''}`}
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
                   <span className="text-sm font-medium text-amber-800">Due in 30 days</span>
@@ -3603,7 +3650,13 @@ const StatisticsDashboard = () => {
             )}
 
             {stats.requirements?.expiring_next_60_days > expiring30Days && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div
+                role={onNavigateToTab ? 'button' : undefined}
+                tabIndex={onNavigateToTab ? 0 : undefined}
+                onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+                className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
                   <span className="text-sm font-medium text-gray-700">Due in 31-60 days</span>
@@ -3636,23 +3689,53 @@ const StatisticsDashboard = () => {
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div
+              role={onNavigateToTab ? 'button' : undefined}
+              tabIndex={onNavigateToTab ? 0 : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
+            >
               <span className="text-sm text-gray-600">Total Clients</span>
               <span className="font-semibold text-midnight-blue">{stats.clients?.total || 0}</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div
+              role={onNavigateToTab ? 'button' : undefined}
+              tabIndex={onNavigateToTab ? 0 : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
+            >
               <span className="text-sm text-gray-600">Active Subscriptions</span>
               <span className="font-semibold text-green-600">{stats.clients?.by_subscription_status?.ACTIVE || 0}</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div
+              role={onNavigateToTab ? 'button' : undefined}
+              tabIndex={onNavigateToTab ? 0 : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
+            >
               <span className="text-sm text-gray-600">Total Requirements</span>
               <span className="font-semibold text-midnight-blue">{stats.requirements?.total || 0}</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div
+              role={onNavigateToTab ? 'button' : undefined}
+              tabIndex={onNavigateToTab ? 0 : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
+            >
               <span className="text-sm text-gray-600">Documents Uploaded</span>
               <span className="font-semibold text-midnight-blue">{stats.documents?.total || 0}</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-teal-50 rounded-lg border border-teal-100">
+            <div
+              role={onNavigateToTab ? 'button' : undefined}
+              tabIndex={onNavigateToTab ? 0 : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              className={`flex items-center justify-between p-3 bg-teal-50 rounded-lg border border-teal-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-teal-100 transition-colors' : ''}`}
+            >
               <span className="text-sm font-medium text-teal-700">Overall Compliance Rate</span>
               <span className="font-bold text-electric-teal">{complianceRate}%</span>
             </div>
@@ -3897,8 +3980,19 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       window.open(url, '_blank', 'noopener,noreferrer');
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (e) {
-      const msg = e.response?.data instanceof Blob ? 'Document not found or file missing' : (e.response?.data?.detail || 'Failed to open document');
-      toast.error(msg);
+      const data = e.response?.data;
+      if (data instanceof Blob) {
+        data.text().then((text) => {
+          try {
+            const j = JSON.parse(text);
+            toast.error(j.detail || 'Document not found or file missing');
+          } catch {
+            toast.error('Document not found or file missing');
+          }
+        }).catch(() => toast.error('Document not found or file missing'));
+      } else {
+        toast.error(data?.detail || 'Failed to open document');
+      }
     }
   };
 
@@ -3917,8 +4011,19 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       URL.revokeObjectURL(url);
       toast.success('Download started');
     } catch (e) {
-      const msg = e.response?.data instanceof Blob ? 'Document not found or file missing' : (e.response?.data?.detail || 'Failed to download document');
-      toast.error(msg);
+      const data = e.response?.data;
+      if (data instanceof Blob) {
+        data.text().then((text) => {
+          try {
+            const j = JSON.parse(text);
+            toast.error(j.detail || 'Document not found or file missing');
+          } catch {
+            toast.error('Document not found or file missing');
+          }
+        }).catch(() => toast.error('Document not found or file missing'));
+      } else {
+        toast.error(data?.detail || 'Failed to download document');
+      }
     }
   };
 
@@ -4302,6 +4407,12 @@ const AdminDashboard = () => {
     setDrilldownType(type);
   };
 
+  /** Navigate to another tab from Statistics (and optionally open a drilldown modal on Overview). */
+  const handleNavigateToTab = (tabId, options = {}) => {
+    if (options.drilldown) setDrilldownType(options.drilldown);
+    setActiveTab(tabId);
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'statistics', label: 'Statistics', icon: BarChart3 },
@@ -4317,7 +4428,7 @@ const AdminDashboard = () => {
   const renderContent = () => {
     switch (effectiveTab) {
       case 'overview': return <DashboardOverview onShowDrilldown={handleShowDrilldown} onSelectClient={(id) => setSelectedClientId(id)} />;
-      case 'statistics': return <StatisticsDashboard />;
+      case 'statistics': return <StatisticsDashboard onNavigateToTab={handleNavigateToTab} />;
       case 'jobs': return <JobsMonitoring />;
       case 'clients': return <ClientsManagement />;
       case 'admins': return <AdminsManagement />;
