@@ -2,7 +2,15 @@
 
 ## Overview
 
-Cropped marketing screenshots are produced by a **build-time** Node script using **sharp**. Raw full-page screenshots go in `public/images/raw/`; cropped outputs are written to `public/images/marketing/`.
+The marketing site shows product visuals in three places: homepage hero, homepage “Portfolio in one view”, and CVP page hero + calendar section. **SVG placeholders** are committed in `public/images/marketing/` so these images always load without any build step:
+
+- `hero-command-centre.svg` – dashboard preview
+- `feature-expiry-list.svg` – upcoming expiries preview
+- `support-calendar.svg` – calendar preview
+
+HomePage and CVPLandingPage reference these SVGs by default. To use **real cropped screenshots** instead, add raw screenshots to `public/images/raw/`, run the script below to generate PNGs, then change the page `src` from `.svg` to `.png` for the slots you want to replace.
+
+Cropped marketing screenshots (PNG) are produced by a **build-time** Node script using **sharp**. Raw full-page screenshots go in `public/images/raw/`; cropped outputs are written to `public/images/marketing/`.
 
 ## Commands
 
@@ -35,14 +43,15 @@ The script looks for files in `public/images/raw/` with any of these names (firs
 - `frontend/scripts/generateMarketingImages.js` – crop script
 - `frontend/public/images/raw/.gitkeep` – placeholder so `raw/` is committed
 - `frontend/public/images/marketing/.gitkeep` – placeholder so `marketing/` is committed
+- `frontend/public/images/marketing/hero-command-centre.svg`, `feature-expiry-list.svg`, `support-calendar.svg` – committed SVG placeholders (used by default)
 - `frontend/src/components/public/ProductScreenshot.js` – reusable screenshot wrapper (rounded-xl, border, shadow-md, white background)
 - `frontend/docs/MARKETING_IMAGES.md` – this file
 
 ## Files modified
 
 - `frontend/package.json` – added script `generate-marketing-images`; `sharp` in devDependencies
-- `frontend/src/pages/public/HomePage.js` – hero uses `/images/marketing/hero-command-centre.png` + caption; feature section uses `/images/marketing/feature-expiry-list.png`; ProductScreenshot wrapper; priority/lazy and width/height on images
-- `frontend/src/pages/public/CVPLandingPage.js` – hero uses `hero-command-centre.png`; Reminders section uses `support-calendar.png`; ProductScreenshot wrapper
+- `frontend/src/pages/public/HomePage.js` – hero uses `/images/marketing/hero-command-centre.svg`; feature section uses `/images/marketing/feature-expiry-list.svg`; ProductScreenshot wrapper; priority/lazy and width/height on images
+- `frontend/src/pages/public/CVPLandingPage.js` – hero uses `hero-command-centre.svg`; Reminders section uses `support-calendar.svg`; ProductScreenshot wrapper
 - `frontend/src/components/public/index.js` – export `ProductScreenshot`
 
 ## Routes changed

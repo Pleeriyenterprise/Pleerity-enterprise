@@ -152,7 +152,7 @@ const AdminRiskLeadsPage = () => {
                       <td className="p-3">
                         <div className="flex flex-wrap gap-1">
                           <Button variant="outline" size="sm" asChild>
-                            <Link to="/risk-check" target="_blank" rel="noopener noreferrer"><FileText className="w-4 h-4 mr-1" /> Open Risk Report</Link>
+                            <Link to={`/admin/risk-leads/report/${row.lead_id}`} target="_blank" rel="noopener noreferrer"><FileText className="w-4 h-4 mr-1" /> Open Risk Report</Link>
                           </Button>
                           <Button variant="outline" size="sm" asChild>
                             <Link to={row.recommended_plan_code ? `/intake/start?plan=${row.recommended_plan_code}` : '/intake/start'} target="_blank" rel="noopener noreferrer"><Play className="w-4 h-4 mr-1" /> Start Intake</Link>

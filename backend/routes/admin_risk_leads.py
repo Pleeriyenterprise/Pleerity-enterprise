@@ -95,6 +95,42 @@ async def export_risk_leads_csv(
     )
 
 
+@router.get("/{lead_id}/report", dependencies=[Depends(admin_route_guard)])
+async def get_risk_lead_report(
+    lead_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Return the full risk report payload for a lead (same shape as POST /api/risk-check/report). For admin view only."""
+    from fastapi import HTTPException
+    from services.risk_check_scoring import simulated_property_breakdown
+
+    db = database.get_db()
+    lead = await db[COLLECTION].find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Risk lead not found")
+
+    score = lead.get("computed_score", 0)
+    property_count = max(1, min(100, lead.get("property_count") or 1))
+    gas_status = lead.get("gas_status") or "—"
+    eicr_status = lead.get("eicr_status") or "—"
+    tracking_method = lead.get("tracking_method") or "—"
+
+    property_breakdown = simulated_property_breakdown(
+        property_count, score, gas_status, eicr_status, tracking_method
+    )
+
+    return {
+        "lead_id": lead.get("lead_id"),
+        "score": score,
+        "risk_band": lead.get("risk_band", "LOW"),
+        "exposure_range_label": lead.get("exposure_range_label", ""),
+        "flags": lead.get("flags", []),
+        "disclaimer_text": lead.get("disclaimer_text", ""),
+        "property_breakdown": property_breakdown,
+        "recommended_plan_code": lead.get("recommended_plan_code", "PLAN_2_PORTFOLIO"),
+    }
+
+
 @router.post("/{lead_id}/resend-report", dependencies=[Depends(admin_route_guard)])
 async def resend_risk_report(
     lead_id: str,

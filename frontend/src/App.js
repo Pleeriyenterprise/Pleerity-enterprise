@@ -139,6 +139,8 @@ import AdminLeadsPage from './pages/AdminLeadsPage';
 import AdminTalentPoolPage from './pages/AdminTalentPoolPage';
 import AdminPartnershipEnquiriesPage from './pages/AdminPartnershipEnquiriesPage';
 import AdminRiskLeadsPage from './pages/AdminRiskLeadsPage';
+import AdminRiskReportPage from './pages/AdminRiskReportPage';
+import AdminRiskReportPage from './pages/AdminRiskReportPage';
 import AdminContactEnquiriesPage from './pages/AdminContactEnquiriesPage';
 import AdminSubmissionDetailPage from './pages/AdminSubmissionDetailPage';
 import AdminFAQPage from './pages/AdminFAQPage';
@@ -490,7 +492,9 @@ function App() {
             <Route path="/admin/pending-payments" element={<ProtectedRoute requireAdmin><Navigate to="/admin/billing?tab=pending-payments" replace /></ProtectedRoute>} />
             <Route path="/admin/talent-pool" element={<ProtectedRoute requireAdmin><AdminTalentPoolPage /></ProtectedRoute>} />
             <Route path="/admin/partnership-enquiries" element={<ProtectedRoute requireAdmin><AdminPartnershipEnquiriesPage /></ProtectedRoute>} />
+            <Route path="/admin/risk-leads/report/:leadId" element={<ProtectedRoute requireAdmin><AdminRiskReportPage /></ProtectedRoute>} />
             <Route path="/admin/risk-leads" element={<ProtectedRoute requireAdmin><AdminRiskLeadsPage /></ProtectedRoute>} />
+            <Route path="/admin/risk-leads/report/:leadId" element={<ProtectedRoute requireAdmin><AdminRiskReportPage /></ProtectedRoute>} />
             <Route path="/admin/inbox/enquiries" element={<ProtectedRoute requireAdmin><AdminContactEnquiriesPage /></ProtectedRoute>} />
             <Route path="/admin/submissions/:type/:id" element={<ProtectedRoute requireAdmin><AdminSubmissionDetailPage /></ProtectedRoute>} />
             <Route path="/admin/content/faqs" element={<ProtectedRoute requireAdmin><AdminFAQPage /></ProtectedRoute>} />

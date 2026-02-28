@@ -173,7 +173,7 @@ const HomePage = () => {
                   </div>
                 ) : (
                   <img
-                    src="/images/marketing/hero-command-centre.png"
+                    src="/images/marketing/hero-command-centre.svg"
                     alt="Compliance dashboard example showing score and quick actions"
                     width={1200}
                     height={850}
@@ -215,7 +215,7 @@ const HomePage = () => {
                   </div>
                 ) : (
                   <img
-                    src="/images/marketing/feature-expiry-list.png"
+                    src="/images/marketing/feature-expiry-list.svg"
                     alt="Upcoming expiries list from Compliance Calendar"
                     width={1200}
                     height={800}

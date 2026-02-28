@@ -190,7 +190,7 @@ const CVPLandingPage = () => {
                   </div>
                 ) : (
                   <img
-                    src="/images/marketing/hero-command-centre.png"
+                    src="/images/marketing/hero-command-centre.svg"
                     alt="Compliance dashboard showing score and quick actions"
                     width={1200}
                     height={850}
@@ -376,7 +376,7 @@ const CVPLandingPage = () => {
                 </div>
               ) : (
                 <img
-                  src="/images/marketing/support-calendar.png"
+                  src="/images/marketing/support-calendar.svg"
                   alt="Compliance calendar view with upcoming expiries"
                   width={1200}
                   height={800}
