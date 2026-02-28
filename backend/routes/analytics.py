@@ -871,7 +871,7 @@ async def get_revenue_analytics(
     Data from payments collection (normalized from Stripe) and client_billing.
     """
     db = database.get_db()
-    if not db:
+    if db is None:
         raise HTTPException(status_code=503, detail="Database not available")
     start_dt, end_dt = _revenue_date_range(from_date, to_date, period)
     start_iso = start_dt.isoformat()
@@ -1245,7 +1245,7 @@ async def get_marketing_analytics(
     conversion_rate_after_cta; revenue placeholders; latest leads table.
     """
     db = database.get_db()
-    if not db:
+    if db is None:
         raise HTTPException(status_code=503, detail="Database not available")
     start_dt, end_dt = _parse_from_to(None, None, period)
     start_iso = start_dt.isoformat()
@@ -1302,7 +1302,7 @@ async def get_marketing_funnel(
     conversion_timing (avg_days_lead_to_trial, avg_days_trial_to_paid).
     """
     db = database.get_db()
-    if not db:
+    if db is None:
         raise HTTPException(status_code=503, detail="Database not available")
     start_dt, end_dt = _parse_from_to(from_date, to_date, period)
     start_iso = start_dt.isoformat()
@@ -1499,7 +1499,7 @@ async def get_executive_overview(request: Request):
     revenue composition (donut), and 12-month revenue trend. Investor-ready.
     """
     db = database.get_db()
-    if not db:
+    if db is None:
         raise HTTPException(status_code=503, detail="Database not available")
     try:
         now = datetime.now(timezone.utc)

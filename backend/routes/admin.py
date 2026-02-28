@@ -288,7 +288,7 @@ async def get_email_delivery(
         items_from_audit = []
         count_audit = 0
         if status is None or status == "skipped":
-            q = {"action": AuditAction.EMAIL_SKIPPED_NO_RECIPIENT.value, "timestamp": {"$gte": since}}
+            q = {"action": AuditAction.EMAIL_SKIPPED_NO_RECIPIENT.value, "timestamp": {"$gte": since_dt}}
             if client_id:
                 q["client_id"] = client_id
             if template_alias:
@@ -671,12 +671,12 @@ async def get_clients(
                 "clients": [
                     {"$skip": skip},
                     {"$limit": limit},
+                    {"$addFields": {"portfolio_score_band": None}},
                     {
                         "$project": {
                             "_id": 0,
                             "_billing": 0,
                             "_props": 0,
-                            "portfolio_score_band": {"$literal": None},
                         }
                     },
                 ]
