@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useParams, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { EntitlementsProvider } from './contexts/EntitlementsContext';
@@ -170,12 +170,22 @@ function RedirectToProperty() {
   return <Navigate to={propertyId ? `/properties/${propertyId}` : '/properties'} replace />;
 }
 
+/** Scroll window to top when the route (pathname) changes, so new pages start from the top. */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
         <EntitlementsProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <ErrorBoundary>
           <div className="App">
             <Routes>
