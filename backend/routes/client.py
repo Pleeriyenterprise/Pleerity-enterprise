@@ -146,43 +146,6 @@ async def get_score_changes(
         )
 
 
-@router.get("/score/timeline")
-async def get_score_timeline(
-    request: Request,
-    days: int = 90,
-    interval: str = "week",
-):
-    """Score trend (90 days): points from SCORE_RECALCULATED events, latest per bucket. Fallback: current score."""
-    user = await client_route_guard(request)
-    try:
-        from services.score_events_service import get_timeline
-        days = min(max(1, days), 90)
-        data = await get_timeline(client_id=user["client_id"], days=days, interval=interval)
-        return data
-    except Exception as e:
-        logger.error(f"Score timeline error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get score timeline"
-        )
-
-
-@router.get("/score/changes")
-async def get_score_changes(request: Request, limit: int = 20):
-    """What Changed: recent score-affecting events with title, details, delta, deep-link ids."""
-    user = await client_route_guard(request)
-    try:
-        from services.score_events_service import get_changes
-        data = await get_changes(client_id=user["client_id"], limit=min(max(1, limit), 100))
-        return data
-    except Exception as e:
-        logger.error(f"Score changes error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get score changes"
-        )
-
-
 @router.get("/compliance-score/explanation")
 async def get_compliance_score_explanation(
     request: Request,

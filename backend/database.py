@@ -165,7 +165,10 @@ class Database:
             await self.db.tenant_requests.create_index("request_id", unique=True)
             await self.db.tenant_requests.create_index([("client_id", 1), ("status", 1)])
 
-            # OTP codes - one active per (phone_hash, purpose); no raw phone stored
+            # OTP codes - one active per (phone_hash, purpose); no raw phone stored.
+            # If the collection has a legacy unique index on (phone_e164, purpose), drop it:
+            #   db.otp_codes.dropIndex("phone_e164_1_purpose_1")
+            # Otherwise upserts can raise DuplicateKeyError when phone_e164 is absent (null).
             try:
                 await self.db.otp_codes.create_index(
                     [("phone_hash", 1), ("purpose", 1)],

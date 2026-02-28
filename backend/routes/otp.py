@@ -62,7 +62,23 @@ async def otp_send_endpoint(request: Request, data: OtpSendBody):
         return {"ok": True, "message": "If eligible, an OTP was sent."}
     except Exception as e:
         logger.exception(f"OTP send error: {e}")
-        return {"ok": True, "message": "If eligible, an OTP was sent."}
+        # Do not return 200 on DB errors so the client does not show a false success
+        from pymongo.errors import DuplicateKeyError
+        if isinstance(e, DuplicateKeyError):
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "detail": "We couldn't send the verification code. Please try again later or contact support.",
+                    "code": "SMS_UNAVAILABLE",
+                },
+            )
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": "We couldn't send the verification code. Please try again later or contact support.",
+                "code": "SMS_UNAVAILABLE",
+            },
+        )
 
 
 @router.post("/verify")

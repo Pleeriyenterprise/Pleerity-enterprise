@@ -184,11 +184,21 @@ async def send_otp(
         "verified_at": None,
         "lockout_until": None,
     }
-    await db.otp_codes.update_one(
-        {"phone_hash": ph, "purpose": purpose},
-        {"$set": doc},
-        upsert=True,
-    )
+    try:
+        await db.otp_codes.update_one(
+            {"phone_hash": ph, "purpose": purpose},
+            {"$set": doc},
+            upsert=True,
+        )
+    except Exception as e:
+        from pymongo.errors import DuplicateKeyError
+        if isinstance(e, DuplicateKeyError):
+            logger.warning(
+                f"[{correlation_id}] otp_send duplicate_key phone_hash={_phone_hash_for_log(phone_e164)} purpose={purpose} "
+                "(legacy index phone_e164_1_purpose_1 may exist; drop it to use phone_hash index)"
+            )
+            return False, "sms_failed"
+        raise
 
     minutes = max(1, OTP_TTL_SECONDS // 60)
     if purpose == "step_up":

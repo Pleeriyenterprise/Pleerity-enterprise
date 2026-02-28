@@ -73,6 +73,21 @@ const ClientDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClientUser, user?.role, user?.client_id]);
 
+  // Refetch score trend and "What Changed" when user returns to the dashboard tab so the graph updates after recalc
+  useEffect(() => {
+    if (!isClientUser) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchScoreTimeline();
+        fetchScoreChanges();
+        fetchComplianceScore();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClientUser]);
+
   const fetchDashboard = async () => {
     try {
       setRestrictReason(null);
