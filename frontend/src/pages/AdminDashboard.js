@@ -3511,7 +3511,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
           role={onNavigateToTab ? 'button' : undefined}
           tabIndex={onNavigateToTab ? 0 : undefined}
           onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
           className={`bg-white rounded-xl border border-gray-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-teal-200 hover:shadow-sm transition-all' : ''}`}
           data-testid="stat-card-total-properties"
         >
@@ -3530,7 +3530,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
           role={onNavigateToTab ? 'button' : undefined}
           tabIndex={onNavigateToTab ? 0 : undefined}
           onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'compliance-GREEN' }) : undefined}
-          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('overview', { drilldown: 'compliance-GREEN' }); } : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'compliance-GREEN' }); } } : undefined}
           className={`bg-white rounded-xl border-2 border-green-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-green-300 hover:shadow-sm transition-all' : ''}`}
           data-testid="stat-card-compliant"
         >
@@ -3549,7 +3549,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
           role={onNavigateToTab ? 'button' : undefined}
           tabIndex={onNavigateToTab ? 0 : undefined}
           onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'compliance-AMBER' }) : undefined}
-          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('overview', { drilldown: 'compliance-AMBER' }); } : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'compliance-AMBER' }); } } : undefined}
           className={`bg-white rounded-xl border-2 border-amber-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-amber-300 hover:shadow-sm transition-all' : ''}`}
           data-testid="stat-card-attention"
         >
@@ -3568,7 +3568,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
           role={onNavigateToTab ? 'button' : undefined}
           tabIndex={onNavigateToTab ? 0 : undefined}
           onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'compliance-RED' }) : undefined}
-          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('overview', { drilldown: 'compliance-RED' }); } : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'compliance-RED' }); } } : undefined}
           className={`bg-white rounded-xl border-2 border-red-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-red-300 hover:shadow-sm transition-all' : ''}`}
           data-testid="stat-card-action-required"
         >
@@ -3587,7 +3587,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
           role={onNavigateToTab ? 'button' : undefined}
           tabIndex={onNavigateToTab ? 0 : undefined}
           onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
           className={`bg-white rounded-xl border border-gray-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-teal-200 hover:shadow-sm transition-all' : ''}`}
           data-testid="stat-card-expiring"
         >
@@ -3622,7 +3622,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
                 role={onNavigateToTab ? 'button' : undefined}
                 tabIndex={onNavigateToTab ? 0 : undefined}
                 onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
                 className={`flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-red-100 transition-colors' : ''}`}
               >
                 <div className="flex items-center gap-3">
@@ -3638,7 +3638,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
                 role={onNavigateToTab ? 'button' : undefined}
                 tabIndex={onNavigateToTab ? 0 : undefined}
                 onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
                 className={`flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-amber-100 transition-colors' : ''}`}
               >
                 <div className="flex items-center gap-3">
@@ -3654,7 +3654,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
                 role={onNavigateToTab ? 'button' : undefined}
                 tabIndex={onNavigateToTab ? 0 : undefined}
                 onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
                 className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
               >
                 <div className="flex items-center gap-3">
@@ -3693,7 +3693,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
               onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
               className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
             >
               <span className="text-sm text-gray-600">Total Clients</span>
@@ -3703,7 +3703,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
               onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
               className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
             >
               <span className="text-sm text-gray-600">Active Subscriptions</span>
@@ -3713,7 +3713,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
               onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
               className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
             >
               <span className="text-sm text-gray-600">Total Requirements</span>
@@ -3723,7 +3723,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
               onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
               className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
             >
               <span className="text-sm text-gray-600">Documents Uploaded</span>
@@ -3733,7 +3733,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
               onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigateToTab('clients'); } : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
               className={`flex items-center justify-between p-3 bg-teal-50 rounded-lg border border-teal-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-teal-100 transition-colors' : ''}`}
             >
               <span className="text-sm font-medium text-teal-700">Overall Compliance Rate</span>

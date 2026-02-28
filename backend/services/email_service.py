@@ -351,7 +351,12 @@ class EmailService:
             req_name = model.get("requirement_name", "Certificate")
             prop_addr = model.get("property_address", "Your property")
             due_date = model.get("due_date", "")
+            days_overdue = model.get("days_overdue")
             days_remaining = model.get("days_remaining", 0)
+            if days_overdue is not None and days_overdue >= 0:
+                urgency_line = f"<p><strong>This requirement is {'overdue' if days_overdue == 0 else f'{days_overdue} days overdue'}.</strong></p>"
+            else:
+                urgency_line = f"<p><strong>{days_remaining}</strong> days remaining to complete this requirement.</p>"
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -361,7 +366,7 @@ class EmailService:
                 <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
                     <p>Hello {model.get('client_name', 'Valued Customer')},</p>
                     <p>This is a reminder that <strong>{req_name}</strong> for your property at <strong>{prop_addr}</strong> is due on <strong>{due_date}</strong>.</p>
-                    <p><strong>{days_remaining}</strong> days remaining to complete this requirement.</p>
+                    {urgency_line}
                     <p style="margin: 24px 0;">
                         <a href="{model.get('portal_link', '#')}"
                            style="background-color: #00B8A9; color: white; padding: 12px 24px;
@@ -760,7 +765,12 @@ WHAT THIS MEANS:
             req_name = model.get("requirement_name", "Certificate")
             prop_addr = model.get("property_address", "Your property")
             due_date = model.get("due_date", "")
+            days_overdue = model.get("days_overdue")
             days_remaining = model.get("days_remaining", 0)
+            if days_overdue is not None and days_overdue >= 0:
+                urgency_line = f"This requirement is {'overdue' if days_overdue == 0 else f'{days_overdue} days overdue'}."
+            else:
+                urgency_line = f"{days_remaining} days remaining to complete this requirement."
             return f"""
 Compliance Action Required
 =========================
@@ -770,7 +780,7 @@ Hello {model.get('client_name', 'Valued Customer')},
 
 This is a reminder that {req_name} for your property at {prop_addr} is due on {due_date}.
 
-{days_remaining} days remaining to complete this requirement.
+{urgency_line}
 
 View in Portal: {model.get('portal_link', '#')}
 {footer}

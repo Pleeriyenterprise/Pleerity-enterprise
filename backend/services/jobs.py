@@ -429,11 +429,15 @@ class JobScheduler:
                 context["requirement_name"] = first_item.get("type", "Certificate")
                 context["property_address"] = first_item.get("property_address", "Your property")
                 context["due_date"] = first_item.get("due_date", "")
-                if first_item.get("days_overdue") is not None:
+                is_overdue = first_item.get("days_overdue") is not None
+                if is_overdue:
                     context["days_remaining"] = 0
+                    context["days_overdue"] = first_item.get("days_overdue", 0)
+                    context["subject"] = f"Action Required: {context['requirement_name']} Overdue"
                 else:
                     context["days_remaining"] = first_item.get("days_remaining", 0)
-                context["subject"] = f"Action Required: {context['requirement_name']} Due Soon"
+                    context["days_overdue"] = None
+                    context["subject"] = f"Action Required: {context['requirement_name']} Due Soon"
             await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER",
                 client_id=client["client_id"],
