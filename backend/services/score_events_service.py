@@ -167,6 +167,30 @@ def _event_to_title(event_type: str, metadata: Optional[Dict] = None) -> str:
     return EVENT_TITLES.get(event_type, event_type.replace("_", " ").title())
 
 
+# Customer-friendly text for "What Changed" (trigger_reason in SCORE_RECALCULATED)
+_TRIGGER_REASON_FRIENDLY = {
+    "DOC_DELETED": "Document removed",
+    "ADMIN_DELETE": "Document removed",
+    "DOC_UPLOADED": "Document uploaded",
+    "ADMIN_UPLOAD": "Document uploaded (by admin)",
+    "DOC_STATUS_CHANGED": "Document status updated",
+    "AI_APPLIED": "Certificate details applied",
+    "EXPIRY_JOB": "Expiry dates updated",
+    "PROVISIONING": "Portfolio updated",
+    "PROPERTY_CREATED": "Property added",
+    "PROPERTY_UPDATED": "Property updated",
+    "LAZY_BACKFILL": "Score refreshed",
+}
+
+
+def _trigger_reason_to_friendly_detail(trigger_reason: Optional[str]) -> Optional[str]:
+    """Return customer-friendly description for SCORE_RECALCULATED trigger_reason."""
+    if not trigger_reason or not isinstance(trigger_reason, str):
+        return None
+    s = trigger_reason.strip()
+    return _TRIGGER_REASON_FRIENDLY.get(s) or _TRIGGER_REASON_FRIENDLY.get(s.upper()) or None
+
+
 async def get_changes(
     client_id: str,
     limit: int = 20,
@@ -231,7 +255,7 @@ async def get_changes(
         elif event_type in (EVENT_PROPERTY_ADDED, EVENT_PROPERTY_UPDATED):
             details = prop_name or prop_id or "Property"
         elif event_type == EVENT_SCORE_RECALCULATED:
-            details = meta.get("trigger_reason") or "Recalculation completed"
+            details = _trigger_reason_to_friendly_detail(meta.get("trigger_reason")) or "Recalculation completed"
         else:
             details = prop_name or (prop_id or "")
 

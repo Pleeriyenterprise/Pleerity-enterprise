@@ -1466,8 +1466,11 @@ async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, prope
     )
     if remaining > 0:
         return
+    filter_query = {"requirement_id": requirement_id}
+    if property_id:
+        filter_query["property_id"] = property_id
     await db.requirements.update_one(
-        {"requirement_id": requirement_id},
+        filter_query,
         {"$set": {"status": RequirementStatus.PENDING.value}, "$unset": {"due_date": ""}}
     )
     if property_id:
