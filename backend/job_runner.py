@@ -161,6 +161,44 @@ async def run_compliance_recalc_worker():
                             "trigger_reason": trigger_reason,
                         },
                     )
+                # Score events: record SCORE_RECALCULATED for client-level trend and "What Changed"
+                try:
+                    from services.compliance_score import calculate_compliance_score
+                    from services.score_events_service import (
+                        write_score_event,
+                        EVENT_SCORE_RECALCULATED,
+                        ACTOR_ROLE_SYSTEM,
+                        ACTOR_ROLE_CLIENT,
+                        ACTOR_ROLE_ADMIN,
+                    )
+                    client_score_data = await calculate_compliance_score(client_id)
+                    score_after = client_score_data.get("score")
+                    if score_after is not None:
+                        last_recalc = await db.score_events.find_one(
+                            {"client_id": client_id, "event_type": EVENT_SCORE_RECALCULATED},
+                            {"_id": 0, "score_after": 1},
+                            sort=[("created_at", -1)],
+                        )
+                        score_before = last_recalc.get("score_after") if last_recalc else None
+                        delta = (score_after - score_before) if score_before is not None else None
+                        actor_role = ACTOR_ROLE_SYSTEM
+                        if actor_type == "CLIENT":
+                            actor_role = ACTOR_ROLE_CLIENT
+                        elif actor_type == "ADMIN":
+                            actor_role = ACTOR_ROLE_ADMIN
+                        await write_score_event(
+                            client_id=client_id,
+                            event_type=EVENT_SCORE_RECALCULATED,
+                            actor_user_id=actor_id,
+                            actor_role=actor_role,
+                            property_id=property_id,
+                            metadata={"trigger_reason": trigger_reason, "correlation_id": correlation_id},
+                            score_before=int(score_before) if score_before is not None else None,
+                            score_after=int(score_after),
+                            delta=int(delta) if delta is not None else None,
+                        )
+                except Exception as ev_err:
+                    logger.warning("Score event write failed after recalc: %s", ev_err)
                 await db.compliance_recalc_queue.update_one(
                     {"_id": jid},
                     {"$set": {"status": STATUS_DONE, "updated_at": datetime.now(timezone.utc).isoformat()}},

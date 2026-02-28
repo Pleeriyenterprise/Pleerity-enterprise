@@ -432,6 +432,20 @@ async def bulk_upload_documents(
                     actor_id=user.get("portal_user_id"),
                     correlation_id=f"DOC_UPLOADED:{r['document_id']}",
                 )
+                try:
+                    from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
+                    await write_score_event(
+                        client_id=user["client_id"],
+                        event_type=EVENT_DOCUMENT_UPLOADED,
+                        actor_user_id=user.get("portal_user_id"),
+                        actor_role=ACTOR_ROLE_CLIENT,
+                        property_id=property_id,
+                        requirement_id=r.get("requirement_id"),
+                        document_id=r["document_id"],
+                        metadata={"filename": r.get("filename")},
+                    )
+                except Exception as ev_err:
+                    logger.debug("Score event DOCUMENT_UPLOADED (bulk) skip: %s", ev_err)
         
         return {
             "message": f"Processed {len(files)} files",
@@ -729,6 +743,20 @@ async def upload_zip_archive(
                         actor_id=user.get("portal_user_id"),
                         correlation_id=f"DOC_UPLOADED:{r['document_id']}",
                     )
+                    try:
+                        from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
+                        await write_score_event(
+                            client_id=user["client_id"],
+                            event_type=EVENT_DOCUMENT_UPLOADED,
+                            actor_user_id=user.get("portal_user_id"),
+                            actor_role=ACTOR_ROLE_CLIENT,
+                            property_id=property_id,
+                            requirement_id=r.get("requirement_id"),
+                            document_id=r["document_id"],
+                            metadata={"filename": r.get("filename"), "zip": file.filename},
+                        )
+                    except Exception as ev_err:
+                        logger.debug("Score event DOCUMENT_UPLOADED (zip) skip: %s", ev_err)
             
             return {
                 "message": f"Processed ZIP archive: {file.filename}",
@@ -853,6 +881,20 @@ async def upload_document(
             actor_id=user.get("portal_user_id"),
             correlation_id=f"DOC_UPLOADED:{document.document_id}",
         )
+        try:
+            from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
+            await write_score_event(
+                client_id=user["client_id"],
+                event_type=EVENT_DOCUMENT_UPLOADED,
+                actor_user_id=user.get("portal_user_id"),
+                actor_role=ACTOR_ROLE_CLIENT,
+                property_id=property_id,
+                requirement_id=requirement_id or None,
+                document_id=document.document_id,
+                metadata={"filename": file.filename},
+            )
+        except Exception as ev_err:
+            logger.debug("Score event DOCUMENT_UPLOADED skip: %s", ev_err)
         
         # Audit log
         await create_audit_log(
@@ -2028,8 +2070,36 @@ async def apply_ai_extraction(
                 actor_id=user.get("portal_user_id"),
                 correlation_id=f"AI_APPLIED:{document_id}",
             )
+        try:
+            from services.score_events_service import write_score_event, EVENT_DOCUMENT_CONFIRMED, ACTOR_ROLE_CLIENT
+            req_doc = await db.requirements.find_one(
+                {"requirement_id": requirement_id},
+                {"_id": 0, "requirement_type": 1, "description": 1, "due_date": 1}
+            ) if requirement_id else None
+            prop_doc = await db.properties.find_one(
+                {"property_id": document.get("property_id")},
+                {"_id": 0, "nickname": 1, "address_line_1": 1}
+            ) if document.get("property_id") else None
+            await write_score_event(
+                client_id=document["client_id"],
+                event_type=EVENT_DOCUMENT_CONFIRMED,
+                actor_user_id=user.get("portal_user_id"),
+                actor_role=ACTOR_ROLE_CLIENT,
+                property_id=document.get("property_id"),
+                requirement_id=requirement_id,
+                document_id=document_id,
+                metadata={
+                    "requirement_type": req_doc.get("requirement_type") if req_doc else None,
+                    "requirement_description": req_doc.get("description") if req_doc else None,
+                    "expiry_date": update_fields.get("due_date") or (req_doc.get("due_date") if req_doc else None),
+                    "property_nickname": prop_doc.get("nickname") if prop_doc else None,
+                    "property_name": prop_doc.get("address_line_1") if prop_doc else None,
+                },
+            )
+        except Exception as ev_err:
+            logger.debug("Score event DOCUMENT_CONFIRMED skip: %s", ev_err)
         
-        # Send email notification to the client via orchestrator (respect document_updates preference)
+        # Send email notification
         try:
             prefs = await db.notification_preferences.find_one(
                 {"client_id": document["client_id"]},

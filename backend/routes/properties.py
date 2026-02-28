@@ -120,7 +120,19 @@ async def create_property(request: Request, data: CreatePropertyRequest):
             actor_id=user.get("portal_user_id"),
             correlation_id=f"PROPERTY_CREATED:{property_obj.property_id}",
         )
-        
+        try:
+            from services.score_events_service import write_score_event, EVENT_PROPERTY_ADDED, ACTOR_ROLE_CLIENT
+            await write_score_event(
+                client_id=user["client_id"],
+                event_type=EVENT_PROPERTY_ADDED,
+                actor_user_id=user.get("portal_user_id"),
+                actor_role=ACTOR_ROLE_CLIENT,
+                property_id=property_obj.property_id,
+                metadata={"address": f"{data.address_line_1}, {data.city}", "postcode": data.postcode},
+            )
+        except Exception as ev_err:
+            logger.debug("Score event PROPERTY_ADDED skip: %s", ev_err)
+
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -241,6 +253,18 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
             actor_id=user.get("portal_user_id"),
             correlation_id=f"PROPERTY_UPDATED:{property_id}",
         )
+        try:
+            from services.score_events_service import write_score_event, EVENT_PROPERTY_UPDATED, ACTOR_ROLE_CLIENT
+            await write_score_event(
+                client_id=user["client_id"],
+                event_type=EVENT_PROPERTY_UPDATED,
+                actor_user_id=user.get("portal_user_id"),
+                actor_role=ACTOR_ROLE_CLIENT,
+                property_id=property_id,
+                metadata={"trigger": "applicability_changed"},
+            )
+        except Exception as ev_err:
+            logger.debug("Score event PROPERTY_UPDATED skip: %s", ev_err)
 
     return {"message": "Property updated", "property_id": property_id}
 
@@ -466,6 +490,19 @@ async def patch_requirement(
         actor_id=user.get("portal_user_id"),
         correlation_id=f"REQUIREMENT_UPDATED:{requirement_id}",
     )
+    try:
+        from services.score_events_service import write_score_event, EVENT_REQUIREMENT_STATUS_CHANGED, ACTOR_ROLE_CLIENT
+        await write_score_event(
+            client_id=user["client_id"],
+            event_type=EVENT_REQUIREMENT_STATUS_CHANGED,
+            actor_user_id=user.get("portal_user_id"),
+            actor_role=ACTOR_ROLE_CLIENT,
+            property_id=property_id,
+            requirement_id=requirement_id,
+            metadata={"status_before": req.get("status"), "status_after": update.get("status"), "due_date": update.get("due_date")},
+        )
+    except Exception as ev_err:
+        logger.debug("Score event REQUIREMENT_STATUS_CHANGED skip: %s", ev_err)
 
     return {"message": "Requirement updated", "requirement_id": requirement_id}
 

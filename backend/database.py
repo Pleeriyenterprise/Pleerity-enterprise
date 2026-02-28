@@ -132,6 +132,9 @@ class Database:
                 pass
             await self.db.compliance_sla_alerts.create_index([("active", 1), ("last_detected_at", -1)])
             await self.db.compliance_sla_alerts.create_index([("severity", 1)])
+            # Score events - audit-grade log for score trend and "What Changed" (client dashboard)
+            await self.db.score_events.create_index([("client_id", 1), ("created_at", -1)])
+            await self.db.score_events.create_index([("client_id", 1), ("event_type", 1), ("created_at", -1)])
 
             # Submissions: contact, talent, partnership (list/dedupe/audit)
             await self.db.contact_submissions.create_index("submission_id", unique=True)

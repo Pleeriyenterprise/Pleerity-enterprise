@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
-import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload } from 'lucide-react';
+import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2 } from 'lucide-react';
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
@@ -37,6 +37,8 @@ const ClientDashboard = () => {
   const [notificationPrefs, setNotificationPrefs] = useState(null);
   const [complianceScore, setComplianceScore] = useState(null);
   const [scoreTrend, setScoreTrend] = useState(null);
+  const [scoreTimeline, setScoreTimeline] = useState(null);
+  const [scoreChanges, setScoreChanges] = useState(null);
   const [showScoreExplanation, setShowScoreExplanation] = useState(false);
   const [portfolioSummary, setPortfolioSummary] = useState(null);
   const [requirementsList, setRequirementsList] = useState([]);
@@ -63,6 +65,8 @@ const ClientDashboard = () => {
     fetchNotificationPrefs();
     fetchComplianceScore();
     fetchScoreTrend();
+    fetchScoreTimeline();
+    fetchScoreChanges();
     fetchPortfolioSummary();
     fetchRequirements();
     // Intentionally depend only on role/client_id; fetch functions are stable
@@ -129,6 +133,24 @@ const ClientDashboard = () => {
       setScoreTrend(response.data);
     } catch (err) {
       console.log('Could not load score trend');
+    }
+  };
+
+  const fetchScoreTimeline = async () => {
+    try {
+      const response = await api.get('/client/score/timeline?days=90&interval=week');
+      setScoreTimeline(response.data);
+    } catch (err) {
+      console.log('Could not load score timeline');
+    }
+  };
+
+  const fetchScoreChanges = async () => {
+    try {
+      const response = await api.get('/client/score/changes?limit=20');
+      setScoreChanges(response.data);
+    } catch (err) {
+      console.log('Could not load score changes');
     }
   };
 
@@ -432,6 +454,149 @@ const ClientDashboard = () => {
           <h2 className="text-3xl font-bold text-midnight-blue mb-2">Compliance Command Centre</h2>
           <p className="text-gray-600">Welcome, {data?.client?.full_name}. Here&apos;s your compliance overview.</p>
           <p className="text-xs text-gray-500 mt-2">This is an evidence-based status summary. It is not legal advice.</p>
+        </div>
+
+        {/* Score Trend (90 days) + What Changed */}
+        <div className="mb-8 grid lg:grid-cols-2 gap-6" data-testid="score-trend-and-changes">
+          {/* Left: Score Trend (90 days) */}
+          <Card className="border border-gray-200 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-electric-teal" />
+                Score Trend (90 days)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {scoreTimeline?.points?.length > 0 ? (
+                <>
+                  <Sparkline
+                    data={scoreTimeline.points.map((p) => p.score)}
+                    width={280}
+                    height={56}
+                    showArea={true}
+                    trendDirection={
+                      scoreTimeline.points.length >= 2
+                        ? scoreTimeline.points[scoreTimeline.points.length - 1].score > scoreTimeline.points[0].score
+                          ? 'up'
+                          : scoreTimeline.points[scoreTimeline.points.length - 1].score < scoreTimeline.points[0].score
+                            ? 'down'
+                            : 'stable'
+                        : 'neutral'
+                    }
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    {scoreTimeline.last_updated_at
+                      ? `Last updated ${(function () {
+                          try {
+                            const d = new Date(scoreTimeline.last_updated_at);
+                            const now = new Date();
+                            const days = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+                            if (days === 0) return 'today';
+                            if (days === 1) return 'yesterday';
+                            if (days < 7) return `${days} days ago`;
+                            if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+                            return d.toLocaleDateString();
+                          } catch (_) {
+                            return '';
+                          }
+                        })()}`
+                      : '—'}
+                  </p>
+                </>
+              ) : (
+                <div className="py-8 flex flex-col items-center justify-center text-center text-gray-500">
+                  <BarChart3 className="w-10 h-10 text-gray-300 mb-2" />
+                  <p className="text-sm">Trend will appear after the first score update.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Right: What Changed */}
+          <Card className="border border-gray-200 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="w-4 h-4 text-electric-teal" />
+                What Changed
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {scoreChanges?.items?.length > 0 ? (
+                <ul className="space-y-3 max-h-64 overflow-y-auto">
+                  {scoreChanges.items.map((item, idx) => {
+                    const hasLink = item.document_id || item.requirement_id || item.property_id;
+                    const Icon =
+                      item.event_type === 'DOCUMENT_CONFIRMED' || item.event_type === 'DOCUMENT_UPLOADED'
+                        ? FileText
+                        : item.event_type === 'REQUIREMENT_STATUS_CHANGED'
+                          ? ClipboardCheck
+                          : item.event_type === 'PROPERTY_ADDED' || item.event_type === 'PROPERTY_UPDATED'
+                            ? Building2
+                            : item.event_type === 'SCORE_RECALCULATED'
+                              ? TrendingUp
+                              : History;
+                    return (
+                      <li key={idx}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!hasLink) return;
+                            if (item.document_id && item.property_id) navigate(`/documents?property_id=${item.property_id}`);
+                            else if (item.requirement_id && item.property_id) navigate(`/requirements?property_id=${item.property_id}`);
+                            else if (item.property_id) navigate(`/properties/${item.property_id}`);
+                          }}
+                          className={`w-full text-left flex items-start gap-3 p-2 rounded-lg transition-colors ${
+                            hasLink ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-default'
+                          }`}
+                        >
+                          <div className="mt-0.5 rounded-full bg-gray-100 p-1.5">
+                            <Icon className="w-3.5 h-3.5 text-gray-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900">{item.title}</p>
+                            {item.details && <p className="text-xs text-gray-600 truncate">{item.details}</p>}
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {item.created_at &&
+                                (function () {
+                                  try {
+                                    const d = new Date(item.created_at);
+                                    const now = new Date();
+                                    const mins = Math.floor((now - d) / (1000 * 60));
+                                    if (mins < 1) return 'Just now';
+                                    if (mins < 60) return `${mins} min ago`;
+                                    const hours = Math.floor(mins / 60);
+                                    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+                                    const days = Math.floor(hours / 24);
+                                    if (days < 7) return `${days} day${days !== 1 ? 's' : ''} ago`;
+                                    return d.toLocaleDateString();
+                                  } catch (_) {
+                                    return '';
+                                  }
+                                })()}
+                            </p>
+                          </div>
+                          {item.delta != null && (
+                            <span
+                              className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded ${
+                                item.delta > 0 ? 'bg-green-100 text-green-800' : item.delta < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {item.delta > 0 ? `+${item.delta}` : item.delta}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="py-8 flex flex-col items-center justify-center text-center text-gray-500">
+                  <History className="w-10 h-10 text-gray-300 mb-2" />
+                  <p className="text-sm">Score change events will appear here.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* UNKNOWN applicability banner: prompt to confirm property details */}
