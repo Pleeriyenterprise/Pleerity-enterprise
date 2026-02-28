@@ -202,6 +202,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to seed service catalogue V2: {e}")
     
+    # Seed CMS pages (hub, category, service pages) so /services/* category pages show services. Idempotent.
+    try:
+        from scripts.seed_cms_pages import seed_cms_pages
+        await seed_cms_pages()
+        logger.info("CMS pages (services hub, categories, service pages) seeded")
+    except Exception as e:
+        logger.warning("CMS pages seed failed (category pages may show 'No services available'): %s", e)
+    
     # Create Prompt Manager indexes
     try:
         db = database.get_db()

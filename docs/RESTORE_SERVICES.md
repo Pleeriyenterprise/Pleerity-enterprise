@@ -2,26 +2,30 @@
 
 This restores the four service category pages and their service detail pages so `/services/ai-automation`, `/services/market-research`, `/services/document-packs`, and `/services/compliance-audits` show content and link to the order intake.
 
-## What it does
+## Automatic seeding (no intervention required)
 
-1. **Seed service catalogue V2** — Inserts all service definitions (AI, Market Research, Compliance, Document Packs, etc.) into the `service_catalogue_v2` collection if not already present. Idempotent.
-2. **Seed CMS pages** — Creates the Services Hub page, the four category pages, and one CMS service page per catalogue entry (linked by `service_code`). All are created as **published**. Idempotent (skips existing).
+**On every backend startup**, the server runs:
 
-## How to run
+1. **Service catalogue V2** — seeded from code (idempotent).
+2. **CMS pages** — hub, four category pages, and one SERVICE page per catalogue entry (idempotent; skips existing).
 
-**Prerequisites:** MongoDB reachable; `MONGO_URL` and `DB_NAME` set (e.g. in `.env` in the backend directory).
+So after you **deploy or restart the backend**, the live site will get the catalogue and CMS pages without running any script manually. First deploy or an empty DB will create everything; later restarts just skip existing records.
 
-From the **backend** directory:
+## Manual run (optional)
+
+If you need to run the seed without restarting the server (e.g. to fix a missing page), from the **backend** directory:
 
 ```bash
 python scripts/restore_services.py
 ```
 
-Or seed only CMS pages (if the catalogue is already populated, e.g. after the app has started at least once):
+Or seed only CMS pages (if the catalogue is already populated):
 
 ```bash
 python scripts/seed_cms_pages.py
 ```
+
+**Prerequisites:** MongoDB reachable; `MONGO_URL` and `DB_NAME` set (e.g. in `.env` in the backend directory).
 
 **In Docker / production:** Run the same command in the backend container or in a one-off job that has access to the same MongoDB and env.
 
