@@ -836,9 +836,13 @@ const DocumentsPage = () => {
                               Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
                             </p>
                             
-                            {/* AI Extraction Results - Enhanced Display */}
-                            {doc.ai_extraction?.status === 'completed' && doc.ai_extraction?.data && (
-                              <div className="mt-3 p-3 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-100">
+                            {/* AI Extraction Results - only when extraction succeeded (no false confidence when failed) */}
+                            {(() => {
+                              const extractionFailed = doc.extraction_status === 'FAILED' || doc.ai_extraction?.status === 'failed';
+                              const hasCompletedExtraction = doc.ai_extraction?.status === 'completed' && doc.ai_extraction?.data;
+                              if (extractionFailed || !hasCompletedExtraction) return null;
+                              return (
+                            <div className="mt-3 p-3 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-100">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <Sparkles className="w-4 h-4 text-electric-teal" />
@@ -919,7 +923,8 @@ const DocumentsPage = () => {
                                   </div>
                                 )}
                               </div>
-                            )}
+                            );
+                            })()}
                             
                             {(doc.extraction_status === 'EXTRACTED' || doc.extraction_status === 'NEEDS_REVIEW') && (
                               <div className="mt-3 p-3 bg-teal-50 rounded-lg border border-teal-100">

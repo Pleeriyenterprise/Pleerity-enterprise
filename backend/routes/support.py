@@ -23,12 +23,13 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 from middleware import admin_route_guard, require_support_or_above, get_current_user
+from utils.rate_limiter import rate_limiter
 from services.support_service import (
     ConversationService, MessageService, TicketService, SupportAuditService,
     ConversationCreate, MessageCreate, TicketCreate,
     ConversationChannel, UserIdentityType, MessageSender,
     ServiceArea, TicketCategory, TicketPriority, ContactMethod,
-    create_support_indexes
+    TICKETS_COLLECTION, create_support_indexes
 )
 from services.support_chatbot import (
     handle_chat_message, lookup_account_by_crn, get_client_snapshot,
@@ -304,10 +305,27 @@ async def public_lookup(
     """
     Public account lookup by CRN + email.
     Returns sanitized status only.
-    Rate limited and audit logged.
+    Rate limited (per IP) and audit logged.
     """
-    # Rate limiting would go here
-    
+    client_ip = request.client.host if request.client else "unknown"
+    rate_key = f"support_lookup:{client_ip}"
+    allowed, rate_err = await rate_limiter.check_rate_limit(
+        key=rate_key,
+        max_attempts=20,
+        window_minutes=60,
+    )
+    if not allowed:
+        await SupportAuditService.log_action(
+            action="public_lookup_rate_limited",
+            actor_type="user",
+            actor_id=None,
+            resource_type="lookup",
+            resource_id=body.crn,
+            details={"ip": client_ip},
+            ip_address=client_ip,
+        )
+        raise HTTPException(status_code=429, detail=rate_err or "Too many lookup attempts. Please try again later.")
+
     # Audit log the attempt
     await SupportAuditService.log_action(
         action="public_lookup_attempt",
@@ -426,6 +444,144 @@ async def create_ticket_endpoint(
     except Exception as e:
         logger.error(f"Ticket creation error: {e}")
         raise HTTPException(status_code=500, detail="Failed to create ticket")
+
+
+@public_router.post("/conversation/{conversation_id}/live-chat-handoff")
+async def live_chat_handoff(
+    request: Request,
+    conversation_id: str,
+):
+    """
+    Record that the user chose Live Chat. Creates a support ticket linked to the
+    conversation (so it appears in admin queue) and sets preferred_contact=livechat.
+    Idempotent: if a ticket is already linked, returns existing ticket_id.
+    """
+    conversation = await ConversationService.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    db = database.get_db()
+    existing_ticket = await db[TICKETS_COLLECTION].find_one(
+        {"conversation_id": conversation_id},
+        {"_id": 0, "ticket_id": 1},
+    )
+
+    await ConversationService.update_conversation(
+        conversation_id,
+        {"preferred_contact": "livechat"},
+    )
+
+    if existing_ticket:
+        await SupportAuditService.log_action(
+            action="live_chat_handoff_recorded",
+            actor_type="user",
+            actor_id=None,
+            resource_type="conversation",
+            resource_id=conversation_id,
+            details={"ticket_id": existing_ticket["ticket_id"], "already_linked": True},
+            ip_address=request.client.host if request.client else None,
+        )
+        return {"success": True, "ticket_id": existing_ticket["ticket_id"], "already_linked": True}
+
+    transcript = await MessageService.get_transcript(conversation_id)
+    desc = (transcript[:5000] + ("..." if len(transcript) > 5000 else "")) if transcript else "User chose Live Chat."
+    svc_area = conversation.get("service_area")
+    try:
+        service_area = ServiceArea(svc_area) if svc_area in [e.value for e in ServiceArea] else ServiceArea.OTHER
+    except Exception:
+        service_area = ServiceArea.OTHER
+
+    ticket_data = TicketCreate(
+        subject="Live chat handoff",
+        description=desc,
+        category=TicketCategory.OTHER,
+        priority=TicketPriority.MEDIUM,
+        contact_method=ContactMethod.LIVECHAT,
+        service_area=service_area,
+        email=conversation.get("email"),
+        crn=conversation.get("crn"),
+    )
+    ticket = await TicketService.create_ticket(ticket_data, conversation_id=conversation_id)
+
+    await SupportAuditService.log_action(
+        action="live_chat_handoff_recorded",
+        actor_type="user",
+        actor_id=None,
+        resource_type="conversation",
+        resource_id=conversation_id,
+        details={"ticket_id": ticket["ticket_id"]},
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"success": True, "ticket_id": ticket["ticket_id"], "already_linked": False}
+
+
+@public_router.post("/conversation/{conversation_id}/live-chat-handoff")
+async def live_chat_handoff(
+    request: Request,
+    conversation_id: str,
+):
+    """
+    Record that the user chose Live Chat. Creates a support ticket linked to the
+    conversation and sets preferred_contact=livechat. Idempotent: if a ticket
+    is already linked, returns existing ticket_id.
+    """
+    conversation = await ConversationService.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    db = database.get_db()
+    existing_ticket = await db[TICKETS_COLLECTION].find_one(
+        {"conversation_id": conversation_id},
+        {"_id": 0, "ticket_id": 1},
+    )
+
+    await ConversationService.update_conversation(
+        conversation_id,
+        {"preferred_contact": "livechat"},
+    )
+
+    if existing_ticket:
+        await SupportAuditService.log_action(
+            action="live_chat_handoff_recorded",
+            actor_type="user",
+            actor_id=None,
+            resource_type="conversation",
+            resource_id=conversation_id,
+            details={"ticket_id": existing_ticket["ticket_id"], "already_linked": True},
+            ip_address=request.client.host if request.client else None,
+        )
+        return {"success": True, "ticket_id": existing_ticket["ticket_id"], "already_linked": True}
+
+    transcript = await MessageService.get_transcript(conversation_id)
+    desc = (transcript[:5000] if transcript else "User chose Live Chat.") or "User chose Live Chat."
+    sa = conversation.get("service_area") or "other"
+    try:
+        service_area = ServiceArea(sa) if sa in [e.value for e in ServiceArea] else ServiceArea.OTHER
+    except (ValueError, TypeError):
+        service_area = ServiceArea.OTHER
+
+    ticket_data = TicketCreate(
+        subject="Live chat handoff",
+        description=desc,
+        category=TicketCategory.OTHER,
+        priority=TicketPriority.MEDIUM,
+        contact_method=ContactMethod.LIVECHAT,
+        service_area=service_area,
+        email=conversation.get("email"),
+        crn=conversation.get("crn"),
+    )
+    ticket = await TicketService.create_ticket(ticket_data, conversation_id=conversation_id)
+
+    await SupportAuditService.log_action(
+        action="live_chat_handoff_recorded",
+        actor_type="user",
+        actor_id=None,
+        resource_type="conversation",
+        resource_id=conversation_id,
+        details={"ticket_id": ticket["ticket_id"]},
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"success": True, "ticket_id": ticket["ticket_id"], "already_linked": False}
 
 
 class WhatsAppHandoffAuditRequest(BaseModel):
@@ -830,9 +986,9 @@ async def add_ticket_note(
 @admin_router.post("/lookup-by-crn")
 async def admin_lookup_by_crn(
     body: AdminLookupRequest,
-    current_user: dict = Depends(require_support_or_above)
+    current_user: dict = Depends(admin_route_guard)
 ):
-    """Admin-only full account lookup by CRN."""
+    """Admin-only (ROLE_ADMIN) account lookup by CRN. Support role cannot access."""
     db = database.get_db()
     crn_upper = (body.crn or "").strip().upper()
     client = await db["clients"].find_one(

@@ -534,7 +534,12 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   // Handle handoff selection
   const handleHandoffSelect = (option) => {
     if (option === 'livechat') {
-      // Open Tawk.to widget with context
+      // Record handoff and create ticket so it appears in admin queue (non-blocking)
+      if (conversationId) {
+        client.post(`/support/conversation/${conversationId}/live-chat-handoff`)
+          .then(() => {})
+          .catch(() => {});
+      }
       TawkToAPI.openWithContext({
         conversationId: conversationId,
         serviceArea: 'support',
