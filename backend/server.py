@@ -532,16 +532,22 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
     
-    scheduler.start()
-    jobs = scheduler.get_jobs()
-    logger.info("Background job scheduler started with %s job(s). Next runs: %s", len(jobs), [j.next_run_time.isoformat() if j.next_run_time else None for j in jobs[:5]])
+    scheduler_started = False
+    try:
+        scheduler.start()
+        scheduler_started = True
+        jobs = scheduler.get_jobs()
+        logger.info("Background job scheduler started with %s job(s). Next runs: %s", len(jobs), [j.next_run_time.isoformat() if j.next_run_time else None for j in jobs[:5]])
+    except Exception as e:
+        logger.exception("Background job scheduler failed to start: %s. API will run without scheduled jobs.", e)
     
     yield
     
     # Shutdown
     logger.info("Shutting down Compliance Vault Pro API")
-    scheduler.shutdown(wait=False)
-    logger.info("Background job scheduler stopped")
+    if scheduler_started:
+        scheduler.shutdown(wait=False)
+        logger.info("Background job scheduler stopped")
     await database.close()
 
 # Create FastAPI app

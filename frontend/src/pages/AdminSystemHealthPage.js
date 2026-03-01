@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { adminAPI } from '../../api/client';
+import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { Activity, AlertTriangle, CheckCircle, RefreshCw, Clock } from 'lucide-react';
 import { toast } from 'sonner';
