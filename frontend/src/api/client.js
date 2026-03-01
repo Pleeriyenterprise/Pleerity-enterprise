@@ -175,6 +175,12 @@ export const clientAPI = {
   /** Client-scoped audit timeline (read-only). */
   getAuditTimeline: (limit = 50) =>
     apiClient.get('/portfolio/audit-timeline', { params: { limit } }),
+  /** Score ledger: paginated list of score change events. */
+  getLedger: (params = {}) =>
+    apiClient.get('/client/ledger', { params: { limit: 50, ...params } }),
+  /** Export score ledger as CSV (blob). */
+  exportLedgerCsv: (params = {}) =>
+    apiClient.get('/client/ledger/export.csv', { params, responseType: 'blob' }),
 };
 
 export const adminAPI = {
@@ -196,4 +202,16 @@ export const adminAPI = {
   resendAdminInvite: (portalUserId) => apiClient.post(`/admin/admins/${portalUserId}/resend-invite`),
   getComplianceScoreHistory: (propertyId, limit = 20) =>
     apiClient.get(`/admin/properties/${propertyId}/compliance-score-history`, { params: { limit } }),
+  // Observability (job runs, incidents, system health)
+  getObservabilityHealthSummary: () => apiClient.get('/admin/observability/health-summary'),
+  getJobRuns: (params = {}) => apiClient.get('/admin/observability/job-runs', { params }),
+  getIncidents: (params = {}) => apiClient.get('/admin/observability/incidents', { params }),
+  getIncident: (incidentId) => apiClient.get(`/admin/observability/incidents/${incidentId}`),
+  acknowledgeIncident: (incidentId, note) =>
+    apiClient.post(`/admin/observability/incidents/${incidentId}/ack`, note != null ? { note } : {}),
+  resolveIncident: (incidentId, note) =>
+    apiClient.post(`/admin/observability/incidents/${incidentId}/resolve`, note != null ? { note } : {}),
+  getScoreEvents: (params = {}) => apiClient.get('/admin/observability/score-events', { params }),
+  runJobNow: (jobId) => apiClient.post('/admin/jobs/run', { job: jobId }),
+  getJobsStatus: () => apiClient.get('/admin/jobs/status'),
 };

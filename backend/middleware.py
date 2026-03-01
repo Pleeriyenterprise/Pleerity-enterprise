@@ -1,13 +1,29 @@
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Optional, Callable
 from datetime import datetime, timezone
 import logging
+import uuid
 from auth import decode_access_token
 from models import UserRole, OnboardingStatus, PasswordStatus
 from database import database
 
 logger = logging.getLogger(__name__)
+
+CORRELATION_ID_HEADER = "X-Correlation-Id"
+
+
+class CorrelationIdMiddleware(BaseHTTPMiddleware):
+    """Set or forward X-Correlation-Id on every request; add to response for tracing."""
+
+    async def dispatch(self, request: Request, call_next):
+        correlation_id = (request.headers.get(CORRELATION_ID_HEADER) or "").strip() or str(uuid.uuid4())
+        request.state.correlation_id = correlation_id
+        response = await call_next(request)
+        if CORRELATION_ID_HEADER not in response.headers:
+            response.headers[CORRELATION_ID_HEADER] = correlation_id
+        return response
 
 async def get_current_user(request: Request) -> Optional[dict]:
     """Extract and validate current user from JWT token. Validates session_version when present (force-logout)."""

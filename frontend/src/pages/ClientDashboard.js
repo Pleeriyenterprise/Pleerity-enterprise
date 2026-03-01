@@ -27,6 +27,17 @@ function scoreToGradeColorMessage(score) {
   return { grade: 'F', color: 'red', message: 'High urgency: overdue items detected' };
 }
 
+/** Customer-friendly property label: nickname, else address + postcode, else address/postcode/name/id. */
+function getPropertyDisplayLabel(p) {
+  if (!p) return '';
+  if (p.nickname && p.nickname.trim()) return p.nickname.trim();
+  if (p.address_line_1 && p.postcode) return `${p.address_line_1.trim()}, ${p.postcode.trim()}`;
+  if (p.address_line_1 && p.address_line_1.trim()) return p.address_line_1.trim();
+  if (p.postcode && p.postcode.trim()) return p.postcode.trim();
+  if (p.name && p.name.trim()) return p.name.trim();
+  return p.property_id || '';
+}
+
 const ClientDashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -611,7 +622,7 @@ const ClientDashboard = () => {
                     <option value="">Select property</option>
                     {(portfolioSummary?.properties ?? []).map((p) => (
                       <option key={p.property_id} value={p.property_id}>
-                        {p.nickname || p.address_line_1 || p.property_id}
+                        {getPropertyDisplayLabel(p)}
                       </option>
                     ))}
                   </select>
@@ -635,10 +646,21 @@ const ClientDashboard = () => {
           {/* Right: What Changed */}
           <Card className="border border-gray-200 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <History className="w-4 h-4 text-electric-teal" />
-                What Changed
-              </CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <History className="w-4 h-4 text-electric-teal" />
+                  What Changed
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-electric-teal hover:text-electric-teal/90 text-xs"
+                  onClick={() => navigate('/audit-log?tab=score-history')}
+                  data-testid="view-score-history-link"
+                >
+                  View full history →
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {scoreChanges?.items?.length > 0 ? (

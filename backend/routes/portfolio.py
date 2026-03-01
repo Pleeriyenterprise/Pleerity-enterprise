@@ -50,6 +50,9 @@ async def get_compliance_summary(request: Request):
                 {
                     "property_id": p["property_id"],
                     "name": p.get("name"),
+                    "nickname": p.get("nickname"),
+                    "address_line_1": p.get("address_line_1"),
+                    "postcode": p.get("postcode"),
                     "property_score": p.get("score"),
                     "score": p.get("score"),
                     "risk_level": p["risk_level"],
@@ -102,6 +105,9 @@ async def get_compliance_summary(request: Request):
         property_summaries.append({
             "property_id": pid,
             "name": name,
+            "nickname": prop.get("nickname"),
+            "address_line_1": prop.get("address_line_1"),
+            "postcode": prop.get("postcode"),
             "property_score": property_score,
             "risk_level": risk_level,
             "overdue_count": overdue_count,

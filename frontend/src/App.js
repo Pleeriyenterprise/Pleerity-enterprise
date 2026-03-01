@@ -150,6 +150,9 @@ import AdminConsentDashboard from './pages/AdminConsentDashboard';
 import AdminSiteBuilderPage from './pages/AdminSiteBuilderPage';
 import AdminEnablementDashboard from './pages/AdminEnablementDashboard';
 import AdminNotificationHealthPage from './pages/AdminNotificationHealthPage';
+import AdminSystemHealthPage from './pages/AdminSystemHealthPage';
+import AdminAutomationCentrePage from './pages/AdminAutomationCentrePage';
+import AdminIncidentsPage from './pages/AdminIncidentsPage';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminExtractionQueuePage from './pages/AdminExtractionQueuePage';
 import AdminTeamPage from './pages/AdminTeamPage';
@@ -531,6 +534,9 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route path="/admin/system-health" element={<ProtectedRoute requireAdmin><AdminSystemHealthPage /></ProtectedRoute>} />
+            <Route path="/admin/automation" element={<ProtectedRoute requireAdmin><AdminAutomationCentrePage /></ProtectedRoute>} />
+            <Route path="/admin/incidents" element={<ProtectedRoute requireAdmin><AdminIncidentsPage /></ProtectedRoute>} />
 
             {/* ClearForm Admin Routes */}
             <Route 

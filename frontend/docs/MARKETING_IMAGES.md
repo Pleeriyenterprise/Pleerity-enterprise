@@ -2,15 +2,15 @@
 
 ## Overview
 
-The marketing site shows product visuals in three places: homepage hero, homepage “Portfolio in one view”, and CVP page hero + calendar section. **SVG placeholders** are committed in `public/images/marketing/` so these images always load without any build step:
+The marketing site shows product visuals in three places: homepage hero, homepage “Portfolio in one view”, and CVP page hero + calendar section. **PNG is the single source of truth**; all references use absolute paths from `public/images/marketing/`:
 
-- `hero-command-centre.svg` – dashboard preview
-- `feature-expiry-list.svg` – upcoming expiries preview
-- `support-calendar.svg` – calendar preview
+- `hero-command-centre.png` – dashboard preview (fallback: `.svg` if PNG missing)
+- `feature-expiry-list.png` – upcoming expiries preview
+- `support-calendar.png` – calendar preview
 
-HomePage and CVPLandingPage reference these SVGs by default. To use **real cropped screenshots** instead, add raw screenshots to `public/images/raw/`, run the script below to generate PNGs, then change the page `src` from `.svg` to `.png` for the slots you want to replace.
+The `<MarketingImage>` component loads the PNG first; if it fails (e.g. PNG not yet generated), it falls back to the SVG and in development logs a console warning. This keeps rendering reliable on all routes (no relative paths).
 
-Cropped marketing screenshots (PNG) are produced by a **build-time** Node script using **sharp**. Raw full-page screenshots go in `public/images/raw/`; cropped outputs are written to `public/images/marketing/`.
+To get **real cropped PNGs** in `public/images/marketing/`: add raw screenshots to `public/images/raw/` and run `npm run generate-marketing-images`. The script writes the three PNGs with the exact names above. Until then, the committed SVGs are used as fallback.
 
 ## Commands
 
@@ -40,19 +40,20 @@ The script looks for files in `public/images/raw/` with any of these names (firs
 
 ## Files created by implementation
 
-- `frontend/scripts/generateMarketingImages.js` – crop script
+- `frontend/scripts/generateMarketingImages.js` – crop script (run to produce PNGs from raw screenshots)
 - `frontend/public/images/raw/.gitkeep` – placeholder so `raw/` is committed
 - `frontend/public/images/marketing/.gitkeep` – placeholder so `marketing/` is committed
-- `frontend/public/images/marketing/hero-command-centre.svg`, `feature-expiry-list.svg`, `support-calendar.svg` – committed SVG placeholders (used by default)
-- `frontend/src/components/public/ProductScreenshot.js` – reusable screenshot wrapper (rounded-xl, border, shadow-md, white background)
+- `frontend/public/images/marketing/hero-command-centre.svg`, `feature-expiry-list.svg`, `support-calendar.svg` – committed SVG fallbacks
+- `frontend/src/components/public/MarketingImage.js` – PNG-first image with SVG fallback and dev-only onError warning
+- `frontend/src/components/public/ProductScreenshot.js` – reusable screenshot wrapper (rounded-xl, border, shadow-md)
 - `frontend/docs/MARKETING_IMAGES.md` – this file
 
 ## Files modified
 
 - `frontend/package.json` – added script `generate-marketing-images`; `sharp` in devDependencies
-- `frontend/src/pages/public/HomePage.js` – hero uses `/images/marketing/hero-command-centre.svg`; feature section uses `/images/marketing/feature-expiry-list.svg`; ProductScreenshot wrapper; priority/lazy and width/height on images
-- `frontend/src/pages/public/CVPLandingPage.js` – hero uses `hero-command-centre.svg`; Reminders section uses `support-calendar.svg`; ProductScreenshot wrapper
-- `frontend/src/components/public/index.js` – export `ProductScreenshot`
+- `frontend/src/pages/public/HomePage.js` – uses `<MarketingImage name="hero-command-centre" />` and `<MarketingImage name="feature-expiry-list" />` (absolute paths)
+- `frontend/src/pages/public/CVPLandingPage.js` – uses `<MarketingImage name="hero-command-centre" />` and `<MarketingImage name="support-calendar" />` (absolute paths)
+- `frontend/src/components/public/index.js` – export `MarketingImage`
 
 ## Routes changed
 
@@ -60,6 +61,8 @@ None. `/demo` already redirects to `/risk-check`. No new or removed routes.
 
 ## Usage in pages
 
+- All marketing screenshots use `<MarketingImage name="…" />` with **exact names** (no extension): `hero-command-centre`, `feature-expiry-list`, `support-calendar`. Paths are always absolute (`/images/marketing/<name>.png` then `.svg` on error).
 - **Hero image**: `fetchPriority="high"`, explicit `width`/`height`, caption “Illustrative portfolio example. Live score generated after structured assessment.”
 - **Other images**: `loading="lazy"`, `width`/`height` to avoid layout shift.
-- All screenshots use `<ProductScreenshot>` for consistent styling.
+- All are wrapped in `<ProductScreenshot>` for consistent styling.
+- **Dev-only:** If a PNG fails to load, the console shows a warning and the component falls back to SVG.

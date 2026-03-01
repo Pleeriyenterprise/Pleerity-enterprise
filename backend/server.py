@@ -6,6 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
+from routes import observability
 
 # ClearForm - Separate Product Routes
 from clearform.routes import auth as clearform_auth
@@ -73,6 +74,7 @@ scheduler = AsyncIOScheduler(jobstores=jobstores)
 
 # Import job runners from shared module (used by scheduler and admin run-now)
 from job_runner import (
+    make_instrumented,
     run_daily_reminders,
     run_pending_verification_digest,
     run_monthly_digests,
@@ -327,7 +329,7 @@ async def lifespan(app: FastAPI):
         logger.warning("No running event loop for scheduler: %s. Jobs may not run automatically.", e)
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
-        run_daily_reminders,
+        make_instrumented("daily_reminders", "schedule"),
         CronTrigger(hour=9, minute=0),
         id="daily_reminders",
         name="Daily Compliance Reminders",
@@ -336,7 +338,7 @@ async def lifespan(app: FastAPI):
     
     # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
     scheduler.add_job(
-        run_pending_verification_digest,
+        make_instrumented("pending_verification_digest", "schedule"),
         CronTrigger(hour=9, minute=30),
         id="pending_verification_digest",
         name="Pending Verification Digest",
@@ -345,7 +347,7 @@ async def lifespan(app: FastAPI):
     
     # Monthly digest on the 1st of each month at 10:00 AM UTC
     scheduler.add_job(
-        run_monthly_digests,
+        make_instrumented("monthly_digest", "schedule"),
         CronTrigger(day=1, hour=10, minute=0),
         id="monthly_digest",
         name="Monthly Compliance Digest",
@@ -353,9 +355,8 @@ async def lifespan(app: FastAPI):
     )
     
     # Compliance status check - runs twice daily at 8:00 AM and 6:00 PM UTC
-    # This detects status changes and sends email alerts when status degrades
     scheduler.add_job(
-        run_compliance_status_check,
+        make_instrumented("compliance_check_morning", "schedule"),
         CronTrigger(hour=8, minute=0),
         id="compliance_check_morning",
         name="Compliance Status Check (Morning)",
@@ -363,54 +364,52 @@ async def lifespan(app: FastAPI):
     )
     
     scheduler.add_job(
-        run_compliance_status_check,
+        make_instrumented("compliance_check_evening", "schedule"),
         CronTrigger(hour=18, minute=0),
         id="compliance_check_evening",
         name="Compliance Status Check (Evening)",
         replace_existing=True
     )
     
-    # Scheduled reports - runs every hour to check for due reports
-    # Reports are sent based on their individual schedule (daily/weekly/monthly)
+    # Scheduled reports - runs every hour
     scheduler.add_job(
-        run_scheduled_reports,
-        CronTrigger(minute=0),  # Every hour on the hour
+        make_instrumented("scheduled_reports", "schedule"),
+        CronTrigger(minute=0),
         id="scheduled_reports",
         name="Process Scheduled Reports",
         replace_existing=True
     )
     
     # Daily compliance score snapshots at 2:00 AM UTC
-    # Captures score history for trend analysis
     scheduler.add_job(
-        run_compliance_score_snapshots,
+        make_instrumented("compliance_score_snapshots", "schedule"),
         CronTrigger(hour=2, minute=0),
         id="compliance_score_snapshots",
         name="Daily Compliance Score Snapshots",
         replace_existing=True
     )
     
-    # Expiry rollover: recalc score for properties with due_date in window (daily 00:10 UTC)
+    # Expiry rollover - daily 00:10 UTC
     scheduler.add_job(
-        run_expiry_rollover_recalc,
+        make_instrumented("expiry_rollover_recalc", "schedule"),
         CronTrigger(hour=0, minute=10),
         id="expiry_rollover_recalc",
         name="Expiry Rollover Compliance Recalc",
         replace_existing=True
     )
     
-    # Async compliance recalc worker - runs every 15 seconds (Option B)
+    # Async compliance recalc worker - every 15 seconds
     scheduler.add_job(
-        run_compliance_recalc_worker,
+        make_instrumented("compliance_recalc_worker", "schedule"),
         IntervalTrigger(seconds=15),
         id="compliance_recalc_worker",
         name="Compliance Recalc Worker",
         replace_existing=True
     )
     
-    # Compliance recalc SLA monitor - every 5 minutes (stuck jobs + alerts)
+    # Compliance recalc SLA monitor - every 5 minutes
     scheduler.add_job(
-        run_compliance_recalc_sla_monitor,
+        make_instrumented("compliance_recalc_sla_monitor", "schedule"),
         CronTrigger(minute="*/5"),
         id="compliance_recalc_sla_monitor",
         name="Compliance Recalc SLA Monitor",
@@ -419,102 +418,106 @@ async def lifespan(app: FastAPI):
     
     # Notification failure spike monitor - every 5 minutes
     scheduler.add_job(
-        run_notification_failure_spike_monitor,
+        make_instrumented("notification_failure_spike_monitor", "schedule"),
         CronTrigger(minute="*/5"),
         id="notification_failure_spike_monitor",
         name="Notification Failure Spike Monitor",
         replace_existing=True
     )
     
-    # Notification retry worker (outbox) - every minute
+    # SLA watchdog (job run SLA) - every 10 minutes
     scheduler.add_job(
-        run_notification_retry_worker,
+        make_instrumented("sla_watchdog", "schedule"),
+        CronTrigger(minute="*/10"),
+        id="sla_watchdog",
+        name="SLA Watchdog (job run monitoring)",
+        replace_existing=True
+    )
+    
+    # Notification retry worker - every minute
+    scheduler.add_job(
+        make_instrumented("notification_retry_worker", "schedule"),
         CronTrigger(minute="*"),
         id="notification_retry_worker",
         name="Notification Retry Worker",
         replace_existing=True
     )
     
-    # Order delivery processing - runs every 5 minutes
-    # Automatically delivers orders in FINALISING status
+    # Order delivery processing - every 5 minutes
     scheduler.add_job(
-        run_order_delivery_processing,
-        CronTrigger(minute="*/5"),  # Every 5 minutes
+        make_instrumented("order_delivery_processing", "schedule"),
+        CronTrigger(minute="*/5"),
         id="order_delivery_processing",
         name="Order Delivery Processing",
         replace_existing=True
     )
     
-    # SLA monitoring - runs every 15 minutes
-    # Sends warnings at 75% SLA, breach notifications at 100%
+    # SLA monitoring - every 15 minutes
     scheduler.add_job(
-        run_sla_monitoring,
-        CronTrigger(minute="*/15"),  # Every 15 minutes
+        make_instrumented("sla_monitoring", "schedule"),
+        CronTrigger(minute="*/15"),
         id="sla_monitoring",
         name="SLA Monitoring",
         replace_existing=True
     )
     
-    # Stuck order detection - runs every 30 minutes
-    # Detects orders stuck in FINALISING without proper documents
+    # Stuck order detection - every 30 minutes
     scheduler.add_job(
-        run_stuck_order_detection,
-        CronTrigger(minute="*/30"),  # Every 30 minutes
+        make_instrumented("stuck_order_detection", "schedule"),
+        CronTrigger(minute="*/30"),
         id="stuck_order_detection",
         name="Stuck Order Detection",
         replace_existing=True
     )
     
-    # Queued order processing - runs every 10 minutes
-    # Processes queued orders through document generation
+    # Queued order processing - every 10 minutes
     scheduler.add_job(
-        run_queued_order_processing,
-        CronTrigger(minute="*/10"),  # Every 10 minutes
+        make_instrumented("queued_order_processing", "schedule"),
+        CronTrigger(minute="*/10"),
         id="queued_order_processing",
         name="Queued Order Processing",
         replace_existing=True
     )
     
-    # Lead automation jobs
-    # Abandoned intake detection - runs every 15 minutes
+    # Abandoned intake detection - every 15 minutes
     scheduler.add_job(
-        run_abandoned_intake_detection,
-        CronTrigger(minute="*/15"),  # Every 15 minutes
+        make_instrumented("abandoned_intake_detection", "schedule"),
+        CronTrigger(minute="*/15"),
         id="abandoned_intake_detection",
         name="Abandoned Intake Detection",
         replace_existing=True
     )
     
-    # Lead follow-up processing - runs every 15 minutes
+    # Lead follow-up processing - every 15 minutes
     scheduler.add_job(
-        run_lead_followup_processing,
-        CronTrigger(minute="*/15"),  # Every 15 minutes
+        make_instrumented("lead_followup_processing", "schedule"),
+        CronTrigger(minute="*/15"),
         id="lead_followup_processing",
         name="Lead Follow-up Processing",
         replace_existing=True
     )
     
-    # Pending payment lifecycle - daily at 3:00 AM UTC
+    # Pending payment lifecycle - daily 3:00 AM UTC
     scheduler.add_job(
-        run_pending_payment_lifecycle,
+        make_instrumented("pending_payment_lifecycle", "schedule"),
         CronTrigger(hour=3, minute=0),
         id="pending_payment_lifecycle",
         name="Pending Payment Lifecycle (abandoned/archived)",
         replace_existing=True
     )
     
-    # Lead SLA breach check - runs every hour
+    # Lead SLA breach check - every hour
     scheduler.add_job(
-        run_lead_sla_check,
-        CronTrigger(minute=0),  # Every hour on the hour
+        make_instrumented("lead_sla_check", "schedule"),
+        CronTrigger(minute=0),
         id="lead_sla_check",
         name="Lead SLA Breach Check",
         replace_existing=True
     )
     
-    # Checklist nurture (Day 2, 4, 6, 9 emails) - daily at 9:00 AM UTC
+    # Checklist nurture - daily 9:00 AM UTC
     scheduler.add_job(
-        run_checklist_nurture_processing,
+        make_instrumented("checklist_nurture_processing", "schedule"),
         CronTrigger(hour=9, minute=0),
         id="checklist_nurture_processing",
         name="Checklist Nurture (compliance checklist leads)",
@@ -522,7 +525,7 @@ async def lifespan(app: FastAPI):
     )
     # Risk-check lead nurture (steps 2–5 at day 2, 4, 6, 10) - daily at 9:15 AM UTC
     scheduler.add_job(
-        run_risk_lead_nurture_processing,
+        make_instrumented("risk_lead_nurture_processing", "schedule"),
         CronTrigger(hour=9, minute=15),
         id="risk_lead_nurture_processing",
         name="Risk Lead Nurture (risk-check conversion leads)",
@@ -557,6 +560,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Correlation ID for tracing (set or forward X-Correlation-Id on every request/response)
+from middleware import CorrelationIdMiddleware
+app.add_middleware(CorrelationIdMiddleware)
 
 # Include routers
 app.include_router(auth.router)
@@ -567,6 +573,7 @@ app.include_router(webhooks.router)
 app.include_router(client.router)
 app.include_router(portfolio.router)
 app.include_router(admin.router)
+app.include_router(observability.router)
 app.include_router(documents.router)
 app.include_router(assistant.router)
 app.include_router(profile.router)
@@ -625,6 +632,7 @@ app.include_router(admin_submissions.router)  # Unified submissions list/get/pat
 app.include_router(intake_uploads.router)  # Intake document uploads
 app.include_router(risk_check.router)  # Compliance Risk Check (standalone demo, no client/provisioning)
 app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, resend report
+app.include_router(observability.router)  # Admin: job-runs, incidents, score-events (observability)
 
 # ============================================================================
 # ClearForm Routes - Separate Product (Isolated)

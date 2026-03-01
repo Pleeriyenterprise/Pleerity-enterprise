@@ -898,6 +898,104 @@ async def get_audit_logs(
         )
 
 
+@router.get("/ledger")
+async def get_admin_ledger(
+    request: Request,
+    client_id: str = Query(..., description="Client ID to scope ledger (required)"),
+    property_id: Optional[str] = Query(None),
+    trigger_type: Optional[str] = Query(None),
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    cursor: Optional[str] = Query(None),
+):
+    """Admin: paginated score ledger for a client (same shape as client ledger API)."""
+    await admin_route_guard(request)
+    try:
+        from services.score_ledger_service import list_ledger
+        data = await list_ledger(
+            client_id=client_id,
+            property_id=property_id,
+            trigger_type=trigger_type,
+            from_date=from_date,
+            to_date=to_date,
+            limit=limit,
+            cursor=cursor,
+        )
+        return data
+    except Exception as e:
+        logger.error(f"Admin ledger error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load score ledger",
+        )
+
+
+@router.get("/ledger/export.csv")
+async def export_admin_ledger_csv(
+    request: Request,
+    client_id: str = Query(..., description="Client ID to export ledger for (required)"),
+    property_id: Optional[str] = Query(None),
+    trigger_type: Optional[str] = Query(None),
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+):
+    """Admin: export score ledger as CSV for a client (max 5000 rows)."""
+    await admin_route_guard(request)
+    try:
+        from services.score_ledger_service import list_ledger_export
+        import csv as csv_module
+        import io
+        items = await list_ledger_export(
+            client_id=client_id,
+            property_id=property_id,
+            trigger_type=trigger_type,
+            from_date=from_date,
+            to_date=to_date,
+            limit=5000,
+        )
+        out = io.StringIO()
+        w = csv_module.writer(out)
+        w.writerow([
+            "created_at", "property_id", "trigger_type", "trigger_label", "actor_type",
+            "before_score", "after_score", "delta", "before_grade", "after_grade",
+            "drivers_before_status", "drivers_before_timeline", "drivers_before_documents", "drivers_before_overdue_penalty",
+            "drivers_after_status", "drivers_after_timeline", "drivers_after_documents", "drivers_after_overdue_penalty",
+            "rule_version",
+        ])
+        for r in items:
+            db = r.get("drivers_before") or {}
+            da = r.get("drivers_after") or {}
+            w.writerow([
+                r.get("created_at", ""),
+                r.get("property_id", ""),
+                r.get("trigger_type", ""),
+                r.get("trigger_label", ""),
+                r.get("actor_type", ""),
+                r.get("before_score", ""),
+                r.get("after_score", ""),
+                r.get("delta", ""),
+                r.get("before_grade", ""),
+                r.get("after_grade", ""),
+                db.get("status"), db.get("timeline"), db.get("documents"), db.get("overdue_penalty"),
+                da.get("status"), da.get("timeline"), da.get("documents"), da.get("overdue_penalty"),
+                r.get("rule_version", ""),
+            ])
+        out.seek(0)
+        from fastapi.responses import StreamingResponse
+        return StreamingResponse(
+            iter([out.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=score_ledger_export.csv"},
+        )
+    except Exception as e:
+        logger.error(f"Admin ledger export error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to export score ledger",
+        )
+
+
 @router.get("/properties/{property_id}/compliance-score-history")
 async def get_property_compliance_score_history(
     request: Request,
@@ -2501,9 +2599,9 @@ class RunJobRequest(BaseModel):
 
 @router.post("/jobs/run")
 async def run_job_now(request: Request, body: RunJobRequest):
-    """Run a single background job by id (admin only). Returns job-specific message for toast."""
+    """Run a single background job by id (admin only). Returns job-specific message for toast. Persists to job_runs."""
     user = await admin_route_guard(request)
-    from job_runner import JOB_RUNNERS
+    from job_runner import JOB_RUNNERS, run_instrumented
 
     job_id = (body.job or "").strip()
     if not job_id or job_id not in JOB_RUNNERS:
@@ -2512,7 +2610,7 @@ async def run_job_now(request: Request, body: RunJobRequest):
             detail=f"Invalid job. Use one of: {', '.join(sorted(JOB_RUNNERS.keys()))}"
         )
     try:
-        result = await JOB_RUNNERS[job_id]()
+        result = await run_instrumented(job_id, "manual", triggered_by=user.get("portal_user_id"))
         message = (result.get("message") if result else None) or f"Job {job_id} completed"
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -2543,9 +2641,9 @@ async def trigger_job(request: Request, job_type: str):
             detail="Invalid job type. Use 'daily', 'monthly', or 'compliance'"
         )
     job_id = {"daily": "daily_reminders", "monthly": "monthly_digest", "compliance": "compliance_check_morning"}[job_type]
-    from job_runner import JOB_RUNNERS
+    from job_runner import run_instrumented
     try:
-        result = await JOB_RUNNERS[job_id]()
+        result = await run_instrumented(job_id, "manual", triggered_by=user.get("portal_user_id"))
         message = (result.get("message") if result else None) or f"{job_type} job completed"
         count = result.get("count") if result else None
         await create_audit_log(

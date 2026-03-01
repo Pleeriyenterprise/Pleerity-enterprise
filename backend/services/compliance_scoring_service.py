@@ -209,6 +209,43 @@ async def recalculate_and_persist(
     }
     await db.score_change_log.insert_one(score_change_log_doc)
 
+    from services.score_ledger_service import log_score_change
+    from utils.risk_bands import score_to_grade_color_message
+    before_grade = None
+    if previous_score is not None:
+        g, _, _ = score_to_grade_color_message(int(round(previous_score)))
+        before_grade = g
+    after_grade_g, _, _ = score_to_grade_color_message(int(round(new_score)))
+    drivers_before_ledger = {
+        "status": previous_breakdown.get("status_score"),
+        "timeline": previous_breakdown.get("expiry_score"),
+        "documents": previous_breakdown.get("document_score"),
+        "overdue_penalty": previous_breakdown.get("overdue_penalty_score"),
+    }
+    drivers_after_ledger = {
+        "status": new_breakdown.get("status_score"),
+        "timeline": new_breakdown.get("expiry_score"),
+        "documents": new_breakdown.get("document_score"),
+        "overdue_penalty": new_breakdown.get("overdue_penalty_score"),
+    }
+    await log_score_change(
+        client_id=client_id,
+        property_id=property_id,
+        actor_type=(actor or {}).get("role") or "SYSTEM",
+        actor_id=(actor or {}).get("id") or (actor or {}).get("portal_user_id"),
+        trigger_reason=reason,
+        before_score=previous_score,
+        after_score=new_score,
+        before_grade=before_grade,
+        after_grade=after_grade_g,
+        drivers_before=drivers_before_ledger,
+        drivers_after=drivers_after_ledger,
+        rule_version=result.get("weights_version", WEIGHTS_VERSION),
+        requirement_id=(context or {}).get("requirement_id"),
+        document_id=(context or {}).get("document_id"),
+        correlation_id=(context or {}).get("correlation_id"),
+    )
+
     from models import AuditAction
     from utils.audit import create_audit_log
     await create_audit_log(

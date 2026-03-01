@@ -261,6 +261,9 @@ async def get_portfolio_compliance_from_catalog(
         property_list.append({
             "property_id": prop["property_id"],
             "name": detail["property_name"],
+            "nickname": prop.get("nickname"),
+            "address_line_1": prop.get("address_line_1"),
+            "postcode": prop.get("postcode"),
             "score": detail["property_score"],
             "risk_level": detail["risk_level"],
             "overdue_count": detail["kpis"].get("overdue", 0),

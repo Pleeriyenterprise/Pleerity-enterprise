@@ -198,6 +198,100 @@ async def get_score_changes(
         )
 
 
+@router.get("/ledger")
+async def get_ledger(
+    request: Request,
+    property_id: Optional[str] = None,
+    trigger_type: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    limit: int = 50,
+    cursor: Optional[str] = None,
+):
+    """Score ledger: paginated list of score change events (before/after, delta, trigger, drivers)."""
+    user = await client_route_guard(request)
+    try:
+        from services.score_ledger_service import list_ledger
+        data = await list_ledger(
+            client_id=user["client_id"],
+            property_id=property_id,
+            trigger_type=trigger_type,
+            from_date=from_date,
+            to_date=to_date,
+            limit=min(max(1, limit), 200),
+            cursor=cursor,
+        )
+        return data
+    except Exception as e:
+        logger.error(f"Ledger error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load score ledger"
+        )
+
+
+@router.get("/ledger/export.csv")
+async def export_ledger_csv(
+    request: Request,
+    property_id: Optional[str] = None,
+    trigger_type: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+):
+    """Export score ledger as CSV (current filters; max 5000 rows)."""
+    user = await client_route_guard(request)
+    try:
+        from services.score_ledger_service import list_ledger_export
+        import csv as csv_module
+        items = await list_ledger_export(
+            client_id=user["client_id"],
+            property_id=property_id,
+            trigger_type=trigger_type,
+            from_date=from_date,
+            to_date=to_date,
+            limit=5000,
+        )
+        out = io.StringIO()
+        w = csv_module.writer(out)
+        w.writerow([
+            "created_at", "property_id", "trigger_type", "trigger_label", "actor_type",
+            "before_score", "after_score", "delta", "before_grade", "after_grade",
+            "drivers_before_status", "drivers_before_timeline", "drivers_before_documents", "drivers_before_overdue_penalty",
+            "drivers_after_status", "drivers_after_timeline", "drivers_after_documents", "drivers_after_overdue_penalty",
+            "rule_version",
+        ])
+        for r in items:
+            db = r.get("drivers_before") or {}
+            da = r.get("drivers_after") or {}
+            w.writerow([
+                r.get("created_at", ""),
+                r.get("property_id", ""),
+                r.get("trigger_type", ""),
+                r.get("trigger_label", ""),
+                r.get("actor_type", ""),
+                r.get("before_score", ""),
+                r.get("after_score", ""),
+                r.get("delta", ""),
+                r.get("before_grade", ""),
+                r.get("after_grade", ""),
+                db.get("status"), db.get("timeline"), db.get("documents"), db.get("overdue_penalty"),
+                da.get("status"), da.get("timeline"), da.get("documents"), da.get("overdue_penalty"),
+                r.get("rule_version", ""),
+            ])
+        out.seek(0)
+        return StreamingResponse(
+            iter([out.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=score_ledger_export.csv"},
+        )
+    except Exception as e:
+        logger.error(f"Ledger export error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to export score ledger"
+        )
+
+
 @router.get("/score-trend/portfolio")
 async def get_score_trend_portfolio(request: Request, days: int = 90):
     """Portfolio score trend for last N days (snapshot-based). Returns points + summary stats for Score Trend card."""

@@ -2,11 +2,55 @@
 Shared job runner for scheduled background jobs.
 Used by server (scheduler) and admin (manual run).
 Each run_* returns a dict with "message" (and optionally "count") for admin toast.
+Job execution is persisted via job_run_service for observability and SLA watchdog.
 """
 import logging
+import traceback
 from datetime import datetime, timezone, timedelta
+from typing import Optional, Callable, Awaitable
 
 logger = logging.getLogger(__name__)
+
+
+async def run_instrumented(
+    job_id: str,
+    run_type: str,
+    triggered_by: Optional[str] = None,
+) -> dict:
+    """
+    Run a job by id with start/finish persistence. Used by scheduler and admin.
+    run_type: "schedule" | "manual" | "webhook"
+    """
+    from job_runner import JOB_RUNNERS
+    from services.job_run_service import (
+        start_job_run,
+        finish_job_run_success,
+        finish_job_run_failure,
+    )
+    fn = JOB_RUNNERS.get(job_id)
+    if not fn:
+        raise ValueError(f"Unknown job_id: {job_id}")
+    job_run_id = await start_job_run(job_id, run_type, triggered_by=triggered_by)
+    try:
+        result = await fn()
+        count = result.get("count") if isinstance(result, dict) else None
+        await finish_job_run_success(job_run_id, affected_clients_count=count)
+        return result
+    except Exception as e:
+        await finish_job_run_failure(
+            job_run_id,
+            error_code=type(e).__name__,
+            error_message=str(e),
+            stack_trace=traceback.format_exc(),
+        )
+        raise
+
+
+def make_instrumented(job_id: str, run_type: str = "schedule"):
+    """Return an async callable that runs the job with instrumentation (for scheduler)."""
+    async def _run():
+        return await run_instrumented(job_id, run_type, triggered_by=None)
+    return _run
 
 
 async def run_daily_reminders():
@@ -442,6 +486,19 @@ async def run_notification_failure_spike_monitor():
         raise
 
 
+async def run_sla_watchdog():
+    """Enterprise observability: detect missed job SLAs and create incidents + admin alert."""
+    try:
+        from services.sla_watchdog import run_sla_watchdog as _run
+        result = await _run()
+        if result.get("incidents_created", 0) > 0:
+            logger.info("SLA watchdog: %s incident(s) created", result["incidents_created"])
+        return result
+    except Exception as e:
+        logger.error("SLA watchdog failed: %s", e)
+        raise
+
+
 async def run_notification_retry_worker():
     """Process notification retry queue (outbox pattern). Picks items with next_run_at <= now and re-attempts send."""
     from database import database
@@ -584,6 +641,7 @@ JOB_RUNNERS = {
     "checklist_nurture_processing": run_checklist_nurture_processing,
     "risk_lead_nurture_processing": run_risk_lead_nurture_processing,
     "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
+    "sla_watchdog": run_sla_watchdog,
     "notification_failure_spike_monitor": run_notification_failure_spike_monitor,
     "notification_retry_worker": run_notification_retry_worker,
     "pending_payment_lifecycle": run_pending_payment_lifecycle,

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import ProductScreenshot from '../../components/public/ProductScreenshot';
+import MarketingImage from '../../components/public/MarketingImage';
 import { SEOHead, productSchema } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -28,8 +29,6 @@ import {
 } from '../../components/ui/accordion';
 
 const CVPLandingPage = () => {
-  const [heroImageError, setHeroImageError] = useState(false);
-  const [calendarImageError, setCalendarImageError] = useState(false);
   const trustBullets = [
     'Expiry reminders',
     'Evidence vault',
@@ -184,21 +183,15 @@ const CVPLandingPage = () => {
             </div>
             <div className="relative hidden lg:block">
               <ProductScreenshot className="max-h-[380px]">
-                {heroImageError ? (
-                  <div className="w-full min-h-[280px] flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-lg">
-                    Dashboard preview
-                  </div>
-                ) : (
-                  <img
-                    src="/images/marketing/hero-command-centre.svg"
-                    alt="Compliance dashboard showing score and quick actions"
-                    width={1200}
-                    height={850}
-                    className="w-full h-auto object-contain object-top"
-                    fetchPriority="high"
-                    onError={() => setHeroImageError(true)}
-                  />
-                )}
+                <MarketingImage
+                  name="hero-command-centre"
+                  alt="Compliance dashboard showing score and quick actions"
+                  width={1200}
+                  height={850}
+                  className="w-full h-auto object-contain object-top"
+                  fetchPriority="high"
+                  placeholderText="Dashboard preview"
+                />
               </ProductScreenshot>
             </div>
           </div>
@@ -370,21 +363,15 @@ const CVPLandingPage = () => {
           </p>
           <div className="mt-8 max-w-2xl mx-auto">
             <ProductScreenshot>
-              {calendarImageError ? (
-                <div className="w-full min-h-[200px] flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-lg">
-                  Calendar preview
-                </div>
-              ) : (
-                <img
-                  src="/images/marketing/support-calendar.svg"
-                  alt="Compliance calendar view with upcoming expiries"
-                  width={1200}
-                  height={800}
-                  className="w-full h-auto"
-                  loading="lazy"
-                  onError={() => setCalendarImageError(true)}
-                />
-              )}
+              <MarketingImage
+                name="support-calendar"
+                alt="Compliance calendar view with upcoming expiries"
+                width={1200}
+                height={800}
+                className="w-full h-auto"
+                loading="lazy"
+                placeholderText="Calendar preview"
+              />
             </ProductScreenshot>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import NotificationBell from './NotificationBell';
-import api from '../../api/client';
+import api, { adminAPI } from '../../api/client';
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -38,6 +38,7 @@ import {
   Handshake,
   Activity,
   Clock,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -131,6 +132,9 @@ const navSections = [
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
       { href: '/admin/dashboard', label: 'Email delivery', icon: Mail, tabTarget: 'emailDelivery' },
       { href: '/admin/notification-health', label: 'Notification Health', icon: Activity },
+      { href: '/admin/system-health', label: 'System Health', icon: Activity },
+      { href: '/admin/automation', label: 'Automation Control Centre', icon: Zap },
+      { href: '/admin/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
       { href: '/admin/dashboard', label: 'Audit Logs', icon: History, tabTarget: 'audit' },
       { href: '/admin/notifications/preferences', label: 'Notifications', icon: Bell },
     ],
@@ -292,7 +296,8 @@ const UnifiedAdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState(['dashboard', 'customers']);
-  const [badges, setBadges] = useState({ leads: 0, postal: 0 });
+  const [badges, setBadges] = useState({ leads: 0, postal: 0, incidents: 0 });
+  const [openP0P1Count, setOpenP0P1Count] = useState(0);
 
   const visibleSections = (() => {
     let sections = navSections;
@@ -305,18 +310,22 @@ const UnifiedAdminLayout = ({ children }) => {
     }));
   })();
 
-  // Fetch badge counts
+  // Fetch badge counts and observability (P0/P1 incidents)
   useEffect(() => {
     const fetchBadges = async () => {
       try {
-        const [leadsRes, postalRes] = await Promise.all([
+        const [leadsRes, postalRes, healthRes] = await Promise.all([
           api.get('/admin/leads/notifications').catch(() => ({ data: { total_alerts: 0 } })),
           api.get('/admin/orders/postal/pending').catch(() => ({ data: { total: 0 } })),
+          adminAPI.getObservabilityHealthSummary().catch(() => ({ data: { open_p0_p1_count: 0 } })),
         ]);
+        const p0p1 = healthRes.data?.open_p0_p1_count ?? 0;
         setBadges({
           leads: leadsRes.data?.total_alerts || 0,
           postal: postalRes.data?.total || 0,
+          incidents: p0p1,
         });
+        setOpenP0P1Count(p0p1);
       } catch (err) {
         console.error('Failed to fetch badges:', err);
       }
@@ -454,8 +463,26 @@ const UnifiedAdminLayout = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          {children}
+        <main className="flex-1 flex flex-col min-w-0 overflow-auto">
+          {openP0P1Count > 0 && (
+            <div className="flex-shrink-0 bg-red-600 text-white px-4 py-2 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                <span className="font-medium">
+                  {openP0P1Count} open P0/P1 incident{openP0P1Count !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <Link
+                to="/admin/incidents?status=open"
+                className="text-sm font-medium underline hover:no-underline"
+              >
+                View incidents →
+              </Link>
+            </div>
+          )}
+          <div className="flex-1 p-4 lg:p-6 overflow-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>
