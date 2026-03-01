@@ -184,13 +184,13 @@ const CVPLandingPage = () => {
             <div className="relative hidden lg:block">
               <ProductScreenshot className="max-h-[380px]">
                 <MarketingImage
-                  name="hero-command-centre"
-                  alt="Compliance dashboard showing score and quick actions"
+                  name="feature-expiry-list"
+                  alt="Upcoming expiries and portfolio view from Compliance Vault Pro"
                   width={1200}
-                  height={850}
+                  height={800}
                   className="w-full h-auto object-contain object-top"
                   fetchPriority="high"
-                  placeholderText="Dashboard preview"
+                  placeholderText="Platform preview"
                 />
               </ProductScreenshot>
             </div>
