@@ -177,7 +177,7 @@ const HomePage = () => {
                 />
               </ProductScreenshot>
               <p className="text-xs text-gray-500 text-center mt-4 px-2">
-                Illustrative portfolio example. Live score generated after structured assessment.
+                Illustrative preview. Live score generated after structured assessment.
               </p>
             </div>
           </div>

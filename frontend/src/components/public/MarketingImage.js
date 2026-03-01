@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 const BASE = '/images/marketing';
 
 /**
- * Marketing screenshot image: PNG first (single source of truth), SVG fallback if PNG missing.
- * Uses absolute paths only. Dev-only: logs console warning on first load error.
+ * Marketing screenshot image: production PNG only (absolute paths).
+ * onError → neutral fallback (no external/SVG). Prevents layout shift via width/height.
  */
 function MarketingImage({
   name,
@@ -16,25 +16,14 @@ function MarketingImage({
   loading,
   placeholderText = 'Image unavailable',
 }) {
-  const [useSvg, setUseSvg] = useState(false);
   const [showPlaceholder, setShowPlaceholder] = useState(false);
-
   const pngSrc = `${BASE}/${name}.png`;
-  const svgSrc = `${BASE}/${name}.svg`;
-  const src = showPlaceholder ? '' : (useSvg ? svgSrc : pngSrc);
 
   const handleError = () => {
-    if (!useSvg) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`[MarketingImage] PNG failed to load: ${pngSrc}, falling back to SVG`);
-      }
-      setUseSvg(true);
-    } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`[MarketingImage] SVG also failed: ${svgSrc}`);
-      }
-      setShowPlaceholder(true);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[MarketingImage] Failed to load: ${pngSrc}`);
     }
+    setShowPlaceholder(true);
   };
 
   if (showPlaceholder) {
@@ -47,13 +36,14 @@ function MarketingImage({
 
   return (
     <img
-      src={src}
+      src={pngSrc}
       alt={alt}
       width={width}
       height={height}
       className={className}
       fetchPriority={fetchPriority}
       loading={loading}
+      decoding="async"
       onError={handleError}
     />
   );
