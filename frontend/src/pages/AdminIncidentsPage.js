@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
@@ -26,18 +26,18 @@ export default function AdminIncidentsPage() {
   useEffect(() => {
     const s = searchParams.get('status');
     if (s && VALID_STATUS.includes(s) && s !== statusFilter) setStatusFilter(s);
-  }, [searchParams]);
+  }, [searchParams, statusFilter]);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     adminAPI
       .getIncidents({ status: statusFilter, limit: 50 })
       .then((res) => setData(res.data))
       .catch(() => toast.error('Failed to load incidents'))
       .finally(() => setLoading(false));
-  };
+  }, [statusFilter]);
 
-  useEffect(() => { load(); }, [statusFilter]);
+  useEffect(() => { load(); }, [load]);
 
   const handleAck = (incidentId) => {
     const note = ackNote[incidentId];

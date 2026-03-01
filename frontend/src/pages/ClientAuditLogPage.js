@@ -73,7 +73,7 @@ export default function ClientAuditLogPage() {
 
   useEffect(() => {
     if (activeTab === TAB_SCORE_HISTORY) loadLedger();
-  }, [activeTab, ledgerFilters.property_id, ledgerFilters.trigger_type, ledgerFilters.from_date, ledgerFilters.to_date]);
+  }, [activeTab, loadLedger]);
 
   const handleExportCsv = () => {
     setExportingCsv(true);
