@@ -5,12 +5,15 @@ Provides "what changed" explanations for score movements.
 """
 from database import database
 from services.compliance_score import calculate_compliance_score
+from services.compliance_scoring_service import calculate_property_compliance
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 import logging
 import uuid
 
 logger = logging.getLogger(__name__)
+
+PROPERTY_SCORE_DAILY_COLLECTION = "property_score_daily"
 
 
 async def capture_daily_snapshot(client_id: str) -> Dict[str, Any]:
@@ -85,6 +88,31 @@ async def capture_daily_snapshot(client_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to capture compliance snapshot for {client_id}: {e}")
         raise
+
+
+async def capture_property_daily_snapshot(client_id: str, property_id: str) -> Optional[Dict[str, Any]]:
+    """Capture a daily score snapshot for one property. Idempotent per (property_id, date)."""
+    db = database.get_db()
+    try:
+        result = await calculate_property_compliance(property_id)
+        score = result.get("score", 0)
+        if "error" in result:
+            logger.debug("Skip property snapshot %s: %s", property_id, result.get("error"))
+            return None
+        now = datetime.now(timezone.utc)
+        date_key = now.strftime("%Y-%m-%d")
+        await db[PROPERTY_SCORE_DAILY_COLLECTION].update_one(
+            {"client_id": client_id, "property_id": property_id, "date": date_key},
+            {
+                "$set": {"score": score, "updated_at": now.isoformat()},
+                "$setOnInsert": {"client_id": client_id, "property_id": property_id, "date": date_key, "created_at": now.isoformat()},
+            },
+            upsert=True,
+        )
+        return {"property_id": property_id, "date": date_key, "score": score}
+    except Exception as e:
+        logger.warning("Property daily snapshot failed %s: %s", property_id, e)
+        return None
 
 
 async def get_score_trend(
@@ -227,6 +255,72 @@ async def get_score_trend(
             "data_points": [],
             "trend_direction": "neutral"
         }
+
+
+def _trend_summary_from_points(points: List[Dict[str, Any]], now: datetime) -> Dict[str, Any]:
+    """Build current, delta_30, best_90, worst_90 from sorted points (date ascending)."""
+    if not points:
+        return {"current": None, "delta_30": None, "best_90": None, "worst_90": None, "last_updated_at": None}
+    scores = [p.get("score", 0) for p in points]
+    current = scores[-1] if scores else None
+    cutoff_30 = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    # Baseline for 30-day delta: most recent snapshot on or before (today - 30 days)
+    idx_30 = next(
+        (i for i in range(len(points) - 1, -1, -1) if (points[i].get("date") or "") <= cutoff_30),
+        None,
+    )
+    score_30d_ago = scores[idx_30] if idx_30 is not None and 0 <= idx_30 < len(scores) else None
+    delta_30 = (current - score_30d_ago) if current is not None and score_30d_ago is not None else None
+    best_90 = max(scores) if scores else None
+    worst_90 = min(scores) if scores else None
+    last_updated_at = points[-1].get("created_at") or points[-1].get("timestamp") if points else None
+    return {
+        "current": current,
+        "delta_30": delta_30,
+        "best_90": best_90,
+        "worst_90": worst_90,
+        "last_updated_at": last_updated_at,
+        "last_date": points[-1].get("date") if points else None,
+    }
+
+
+async def get_portfolio_trend_with_summary(client_id: str, days: int = 90) -> Dict[str, Any]:
+    """Portfolio trend from compliance_score_history with summary stats for Score Trend card."""
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    start_date = (now - timedelta(days=days)).strftime("%Y-%m-%d")
+    snapshots = await db.compliance_score_history.find(
+        {"client_id": client_id, "date_key": {"$gte": start_date}},
+        {"_id": 0, "date_key": 1, "score": 1, "created_at": 1, "timestamp": 1},
+    ).sort("date_key", 1).to_list(days + 5)
+    points = [{"date": s["date_key"], "score": s.get("score", 0), "created_at": s.get("created_at"), "timestamp": s.get("timestamp")} for s in snapshots]
+    summary = _trend_summary_from_points(points, now)
+    if not points and summary["current"] is None:
+        try:
+            await capture_daily_snapshot(client_id)
+            snapshots = await db.compliance_score_history.find(
+                {"client_id": client_id, "date_key": {"$gte": start_date}},
+                {"_id": 0, "date_key": 1, "score": 1, "created_at": 1, "timestamp": 1},
+            ).sort("date_key", 1).to_list(days + 5)
+            points = [{"date": s["date_key"], "score": s.get("score", 0), "created_at": s.get("created_at"), "timestamp": s.get("timestamp")} for s in snapshots]
+            summary = _trend_summary_from_points(points, now)
+        except Exception as e:
+            logger.debug("Lazy portfolio snapshot for trend: %s", e)
+    return {"points": points, **summary}
+
+
+async def get_property_trend_with_summary(client_id: str, property_id: str, days: int = 90) -> Dict[str, Any]:
+    """Property trend from property_score_daily with summary stats. Caller must verify property belongs to client."""
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    start_date = (now - timedelta(days=days)).strftime("%Y-%m-%d")
+    snapshots = await db[PROPERTY_SCORE_DAILY_COLLECTION].find(
+        {"client_id": client_id, "property_id": property_id, "date": {"$gte": start_date}},
+        {"_id": 0, "date": 1, "score": 1, "created_at": 1},
+    ).sort("date", 1).to_list(days + 5)
+    points = [{"date": s["date"], "score": s.get("score", 0), "created_at": s.get("created_at")} for s in snapshots]
+    summary = _trend_summary_from_points(points, now)
+    return {"points": points, **summary}
 
 
 async def get_score_change_explanation(
@@ -414,6 +508,16 @@ async def capture_all_client_snapshots() -> Dict[str, Any]:
             try:
                 await capture_daily_snapshot(client["client_id"])
                 success_count += 1
+                # Property daily snapshots for score trend (per property)
+                try:
+                    props = await db.properties.find(
+                        {"client_id": client["client_id"]},
+                        {"_id": 0, "property_id": 1},
+                    ).to_list(500)
+                    for prop in props:
+                        await capture_property_daily_snapshot(client["client_id"], prop["property_id"])
+                except Exception as prop_err:
+                    logger.debug("Property snapshots for client %s: %s", client["client_id"], prop_err)
             except Exception as e:
                 error_count += 1
                 errors.append({

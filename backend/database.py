@@ -112,6 +112,10 @@ class Database:
             # Property-level score history (event-driven)
             await self.db.property_compliance_score_history.create_index([("property_id", 1), ("created_at", -1)])
             await self.db.property_compliance_score_history.create_index([("client_id", 1), ("created_at", -1)])
+            # Property daily score snapshots (score trend 90-day chart per property)
+            await self.db.property_score_daily.create_index([("client_id", 1), ("property_id", 1), ("date", 1)], unique=True)
+            await self.db.property_score_daily.create_index([("client_id", 1), ("date", -1)])
+            await self.db.property_score_daily.create_index([("property_id", 1), ("date", -1)])
             # Async compliance recalc queue (Option B)
             try:
                 await self.db.compliance_recalc_queue.create_index(

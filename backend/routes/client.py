@@ -127,6 +127,58 @@ async def get_score_timeline(
         )
 
 
+@router.get("/score-trend/portfolio")
+async def get_score_trend_portfolio(
+    request: Request,
+    days: int = 90,
+):
+    """Portfolio score trend for last N days (daily snapshots) with summary stats for Score Trend card."""
+    user = await client_route_guard(request)
+    try:
+        from services.compliance_trending import get_portfolio_trend_with_summary
+        days = min(max(1, days), 90)
+        data = await get_portfolio_trend_with_summary(client_id=user["client_id"], days=days)
+        return data
+    except Exception as e:
+        logger.error(f"Score trend portfolio error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get portfolio score trend"
+        )
+
+
+@router.get("/score-trend/property/{property_id}")
+async def get_score_trend_property(
+    request: Request,
+    property_id: str,
+    days: int = 90,
+):
+    """Property score trend for last N days (daily snapshots) with summary stats. Property must belong to client."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    try:
+        from services.compliance_trending import get_property_trend_with_summary
+        days = min(max(1, days), 90)
+        data = await get_property_trend_with_summary(
+            client_id=user["client_id"],
+            property_id=property_id,
+            days=days,
+        )
+        return data
+    except Exception as e:
+        logger.error(f"Score trend property error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get property score trend"
+        )
+
+
 @router.get("/score/changes")
 async def get_score_changes(
     request: Request,
@@ -143,6 +195,47 @@ async def get_score_changes(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get score changes"
+        )
+
+
+@router.get("/score-trend/portfolio")
+async def get_score_trend_portfolio(request: Request, days: int = 90):
+    """Portfolio score trend for last N days (snapshot-based). Returns points + summary stats for Score Trend card."""
+    user = await client_route_guard(request)
+    try:
+        from services.compliance_trending import get_portfolio_trend_with_summary
+        days = min(max(1, days), 90)
+        data = await get_portfolio_trend_with_summary(user["client_id"], days=days)
+        return data
+    except Exception as e:
+        logger.error(f"Score trend portfolio error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get portfolio score trend"
+        )
+
+
+@router.get("/score-trend/property/{property_id}")
+async def get_score_trend_property(request: Request, property_id: str, days: int = 90):
+    """Property score trend for last N days (snapshot-based). Returns points + summary stats. Property must belong to client."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    try:
+        from services.compliance_trending import get_property_trend_with_summary
+        days = min(max(1, days), 90)
+        data = await get_property_trend_with_summary(user["client_id"], property_id, days=days)
+        return data
+    except Exception as e:
+        logger.error(f"Score trend property error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get property score trend"
         )
 
 

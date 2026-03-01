@@ -12,6 +12,7 @@ import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Cloc
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
+import ScoreTrendChart from '../components/ScoreTrendChart';
 import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
 
 const SETUP_CHECKLIST_DONE_KEY = 'pleerity_setup_checklist_done';
@@ -38,6 +39,9 @@ const ClientDashboard = () => {
   const [complianceScore, setComplianceScore] = useState(null);
   const [scoreTrend, setScoreTrend] = useState(null);
   const [scoreTimeline, setScoreTimeline] = useState(null);
+  const [scoreTrendData, setScoreTrendData] = useState(null); // { points, current, delta_30, best_90, worst_90 } from score-trend API
+  const [scoreTrendView, setScoreTrendView] = useState('portfolio'); // 'portfolio' | 'property'
+  const [selectedTrendPropertyId, setSelectedTrendPropertyId] = useState(null);
   const [scoreChanges, setScoreChanges] = useState(null);
   const [showScoreExplanation, setShowScoreExplanation] = useState(false);
   const [portfolioSummary, setPortfolioSummary] = useState(null);
@@ -73,12 +77,20 @@ const ClientDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClientUser, user?.role, user?.client_id]);
 
+  // Refetch score trend card when user switches Portfolio vs Property or selects another property
+  useEffect(() => {
+    if (!isClientUser) return;
+    fetchScoreTrendCard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClientUser, scoreTrendView, selectedTrendPropertyId]);
+
   // Refetch score trend and "What Changed" when user returns to the dashboard tab so the graph updates after recalc
   useEffect(() => {
     if (!isClientUser) return;
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
         fetchScoreTimeline();
+        fetchScoreTrendCard();
         fetchScoreChanges();
         fetchComplianceScore();
       }
@@ -157,6 +169,23 @@ const ClientDashboard = () => {
       setScoreTimeline(response.data);
     } catch (err) {
       console.log('Could not load score timeline');
+    }
+  };
+
+  const fetchScoreTrendCard = async (view = null, propertyId = null) => {
+    const viewToUse = view ?? scoreTrendView;
+    const propId = propertyId ?? selectedTrendPropertyId;
+    try {
+      if (viewToUse === 'property' && propId) {
+        const response = await api.get(`/client/score-trend/property/${propId}?days=90`);
+        setScoreTrendData(response.data);
+      } else {
+        const response = await api.get('/client/score-trend/portfolio?days=90');
+        setScoreTrendData(response.data);
+      }
+    } catch (err) {
+      console.log('Could not load score trend');
+      setScoreTrendData(null);
     }
   };
 
@@ -543,58 +572,63 @@ const ClientDashboard = () => {
           <Card className="border border-gray-200 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-electric-teal" />
+                <BarChart3 className="w-4 h-4 text-teal-600" />
                 Score Trend (90 days)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {scoreTimeline?.points?.length > 0 ? (
-                <>
-                  <Sparkline
-                    data={scoreTimeline.points.map((p) => p.score)}
-                    width={280}
-                    height={56}
-                    showArea={true}
-                    trendDirection={
-                      scoreTimeline.points.length >= 2
-                        ? scoreTimeline.points[scoreTimeline.points.length - 1].score > scoreTimeline.points[0].score
-                          ? 'up'
-                          : scoreTimeline.points[scoreTimeline.points.length - 1].score < scoreTimeline.points[0].score
-                            ? 'down'
-                            : 'stable'
-                        : 'neutral'
-                    }
-                  />
-                  {netChange30 != null && (
-                    <p className="text-sm font-medium mt-2 text-gray-700" data-testid="net-change-30">
-                      Net change last 30 days: {netChange30 > 0 ? `+${netChange30}` : netChange30}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    {scoreTimeline.last_updated_at
-                      ? `Last updated ${(function () {
-                          try {
-                            const d = new Date(scoreTimeline.last_updated_at);
-                            const now = new Date();
-                            const days = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-                            if (days === 0) return 'today';
-                            if (days === 1) return 'yesterday';
-                            if (days < 7) return `${days} days ago`;
-                            if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-                            return d.toLocaleDateString();
-                          } catch (_) {
-                            return '';
-                          }
-                        })()}`
-                      : '—'}
-                  </p>
-                </>
-              ) : (
-                <div className="py-8 flex flex-col items-center justify-center text-center text-gray-500">
-                  <BarChart3 className="w-10 h-10 text-gray-300 mb-2" />
-                  <p className="text-sm">Trend will appear after the first score update.</p>
+              {/* Portfolio | Property toggle */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
+                <div className="flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+                  <button
+                    type="button"
+                    onClick={() => { setScoreTrendView('portfolio'); setSelectedTrendPropertyId(null); }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      scoreTrendView === 'portfolio' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    data-testid="score-trend-toggle-portfolio"
+                  >
+                    Portfolio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScoreTrendView('property')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      scoreTrendView === 'property' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    data-testid="score-trend-toggle-property"
+                  >
+                    Property
+                  </button>
                 </div>
-              )}
+                {scoreTrendView === 'property' && (
+                  <select
+                    value={selectedTrendPropertyId ?? ''}
+                    onChange={(e) => setSelectedTrendPropertyId(e.target.value || null)}
+                    className="sm:ml-2 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-w-0 max-w-full"
+                    data-testid="score-trend-property-select"
+                  >
+                    <option value="">Select property</option>
+                    {(portfolioSummary?.properties ?? []).map((p) => (
+                      <option key={p.property_id} value={p.property_id}>
+                        {p.nickname || p.address_line_1 || p.property_id}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <ScoreTrendChart
+                points={scoreTrendData?.points ?? []}
+                summary={{
+                  current: scoreTrendData?.current,
+                  delta_30: scoreTrendData?.delta_30,
+                  best_90: scoreTrendData?.best_90,
+                  worst_90: scoreTrendData?.worst_90,
+                }}
+              />
+              <p className="text-xs text-gray-500 mt-3">
+                {scoreTrendView === 'portfolio' ? 'Calculated across all tracked items' : 'Single property score history'}
+              </p>
             </CardContent>
           </Card>
 
