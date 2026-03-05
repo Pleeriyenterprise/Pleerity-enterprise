@@ -79,6 +79,12 @@ export default function AdminSystemHealthPage() {
               )}
             </div>
 
+            {data.last_success && Object.values(data.last_success).every((v) => v == null) && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm">
+                No job runs have been recorded. The background scheduler may not be running (e.g. startup failure on deploy). Without it, automations do not run, the SLA watchdog cannot create incidents, and admin alert emails will not be sent. Check server logs and set <code className="bg-amber-100/80 px-1 rounded">ADMIN_ALERT_EMAILS</code> for incident alerts.
+              </div>
+            )}
+
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-3">Last successful run</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

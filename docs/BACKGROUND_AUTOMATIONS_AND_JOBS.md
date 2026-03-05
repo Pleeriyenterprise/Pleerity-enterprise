@@ -76,3 +76,11 @@ Automations run **only when the API process that started the scheduler is runnin
 ## Manual run (admin)
 
 Admin can trigger job runs via the job runner (see `job_runner.py` and admin API for “run now” style endpoints) for testing or one-off execution.
+
+---
+
+## Observability: job runs, SLA watchdog, and admin alerts
+
+- **Job runs:** Every scheduled job is run via `run_instrumented()` in `job_runner.py`, which records each execution in the `job_runs` collection (start + finish success/failure). System Health and Automation Control Centre read from `job_runs`. If **no job runs appear** (empty “Last successful run”, empty Automation Centre table), the **background scheduler likely did not start** (e.g. startup exception on deploy). Check server logs for “Background job scheduler started” or any error during scheduler startup.
+- **SLA watchdog:** A scheduled job `sla_watchdog` runs every 10 minutes. It checks `job_runs` for the last successful run of critical jobs (e.g. `daily_reminders`, `compliance_recalc_worker`). If a job has not succeeded within its max delay, it **creates an incident** and can **send an admin alert email**. The watchdog only runs if the scheduler is running; if no jobs run, it never runs, so no incidents are created.
+- **Admin incident alerts:** When the SLA watchdog (or other code) creates an incident, it creates **in-app notifications** for admin users (notification bell) and can send **email** to addresses in `ADMIN_ALERT_EMAILS` (or fallback `OPS_ALERT_EMAIL`). If **ADMIN_ALERT_EMAILS** and **OPS_ALERT_EMAIL** are not set in the environment, incident alert emails are not sent (a warning is logged). Set at least one of these for production so admins receive incident alerts by email.

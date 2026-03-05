@@ -52,6 +52,9 @@ export default function AdminAutomationCentrePage() {
 
   const formatTime = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
   const nextRuns = jobsStatus?.scheduled_jobs || [];
+  // Show all scheduled jobs even when there are no runs (so table is never empty if scheduler is up)
+  const jobIds = [...new Set([...Object.keys(byJob), ...nextRuns.map((j) => j.id)].filter(Boolean))].sort();
+  const hasNoRuns = !jobRuns.items?.length && jobIds.length > 0;
 
   return (
     <UnifiedAdminLayout>
@@ -78,6 +81,12 @@ export default function AdminAutomationCentrePage() {
           </div>
         )}
 
+        {hasNoRuns && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm">
+            No job runs have been recorded yet. If the background scheduler did not start (e.g. check deployment logs), jobs will not run and the SLA watchdog will not create incidents or send admin alerts. Ensure the API process runs with the scheduler enabled and set <code className="bg-amber-100/80 px-1 rounded">ADMIN_ALERT_EMAILS</code> for incident email alerts.
+          </div>
+        )}
+
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
@@ -91,29 +100,38 @@ export default function AdminAutomationCentrePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {Object.entries(byJob).map(([jobName, info]) => {
-                const next = nextRuns.find((j) => j.id === jobName);
-                return (
-                  <tr key={jobName}>
-                    <td className="px-4 py-2 font-mono text-xs">{jobName}</td>
-                    <td className="px-4 py-2 text-gray-600">{formatTime(info.lastRun?.finished_at || info.lastRun?.created_at)}</td>
-                    <td className="px-4 py-2 text-gray-600">{formatTime(info.lastSuccess?.finished_at)}</td>
-                    <td className="px-4 py-2">{info.failures24h > 0 ? <span className="text-red-600">{info.failures24h}</span> : '—'}</td>
-                    <td className="px-4 py-2 text-gray-600">{next?.next_run ? formatTime(next.next_run) : '—'}</td>
-                    <td className="px-4 py-2">
-                      <button
-                        type="button"
-                        onClick={() => handleRunNow(jobName)}
-                        disabled={running === jobName}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        {running === jobName ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                        Run now
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {jobIds.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                    No scheduled jobs loaded. The background scheduler may not be running—check server startup logs.
+                  </td>
+                </tr>
+              ) : (
+                jobIds.map((jobName) => {
+                  const info = byJob[jobName] || { lastRun: null, lastSuccess: null, failures24h: 0 };
+                  const next = nextRuns.find((j) => j.id === jobName);
+                  return (
+                    <tr key={jobName}>
+                      <td className="px-4 py-2 font-mono text-xs">{jobName}</td>
+                      <td className="px-4 py-2 text-gray-600">{formatTime(info.lastRun?.finished_at || info.lastRun?.created_at)}</td>
+                      <td className="px-4 py-2 text-gray-600">{formatTime(info.lastSuccess?.finished_at)}</td>
+                      <td className="px-4 py-2">{info.failures24h > 0 ? <span className="text-red-600">{info.failures24h}</span> : '—'}</td>
+                      <td className="px-4 py-2 text-gray-600">{next?.next_run ? formatTime(next.next_run) : '—'}</td>
+                      <td className="px-4 py-2">
+                        <button
+                          type="button"
+                          onClick={() => handleRunNow(jobName)}
+                          disabled={running === jobName}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          {running === jobName ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                          Run now
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
