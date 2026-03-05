@@ -227,7 +227,14 @@ export default function ClientAuditLogPage() {
                 <div className="animate-spin rounded-full h-10 w-10 border-2 border-electric-teal border-t-transparent" />
               </div>
             ) : ledger.items.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No score history entries found</p>
+              <div className="px-4 py-8 text-center">
+                <p className="text-gray-600 font-medium">No score history entries found</p>
+                <p className="text-gray-500 text-sm mt-2 max-w-md mx-auto">
+                  Entries appear when your compliance score is recalculated—for example after uploading documents,
+                  confirming certificate details, updating requirements, or when the system runs a scheduled refresh.
+                  Try clearing the filters above or check back after making changes to your portfolio.
+                </p>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">

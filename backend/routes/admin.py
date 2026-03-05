@@ -1317,6 +1317,39 @@ async def validate_compliance_score(
                     "actor": {"id": user.get("portal_user_id"), "role": "ADMIN"},
                 }
                 await db.property_compliance_score_history.insert_one(history_doc)
+                from services.score_ledger_service import log_score_change
+                from utils.risk_bands import score_to_grade_color_message
+                before_grade = None
+                if stored_score is not None:
+                    g, _, _ = score_to_grade_color_message(int(round(stored_score)))
+                    before_grade = g
+                after_grade_g, _, _ = score_to_grade_color_message(int(round(computed_score)))
+                await log_score_change(
+                    client_id=prop["client_id"],
+                    property_id=property_id,
+                    actor_type="ADMIN",
+                    actor_id=user.get("portal_user_id"),
+                    trigger_reason="VALIDATOR_REPAIR",
+                    trigger_type="SCHEDULED_RECALC",
+                    trigger_label="Score corrected (admin)",
+                    before_score=stored_score,
+                    after_score=computed_score,
+                    before_grade=before_grade,
+                    after_grade=after_grade_g,
+                    drivers_before={
+                        "status": stored_breakdown.get("status_score"),
+                        "timeline": stored_breakdown.get("expiry_score"),
+                        "documents": stored_breakdown.get("document_score"),
+                        "overdue_penalty": stored_breakdown.get("overdue_penalty_score"),
+                    },
+                    drivers_after={
+                        "status": computed_breakdown.get("status_score"),
+                        "timeline": computed_breakdown.get("expiry_score"),
+                        "documents": computed_breakdown.get("document_score"),
+                        "overdue_penalty": computed_breakdown.get("overdue_penalty_score"),
+                    },
+                    rule_version=result.get("weights_version", "v1"),
+                )
                 await create_audit_log(
                     action=AuditAction.COMPLIANCE_SCORE_REPAIRED,
                     actor_id=user.get("portal_user_id"),

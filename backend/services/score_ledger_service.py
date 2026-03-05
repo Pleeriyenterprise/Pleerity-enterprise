@@ -37,6 +37,25 @@ DEFAULT_TRIGGER_TYPE = "SCHEDULED_RECALC"
 DEFAULT_TRIGGER_LABEL = "Score recalculated"
 
 
+def _normalize_date_range(from_date: Optional[str], to_date: Optional[str]):
+    """Normalize YYYY-MM-DD strings to ISO bounds so to_date is inclusive of full day."""
+    start = None
+    end = None
+    if from_date and from_date.strip():
+        s = from_date.strip()
+        if len(s) == 10 and s[4] == "-" and s[7] == "-":
+            start = f"{s}T00:00:00.000Z"
+        else:
+            start = s
+    if to_date and to_date.strip():
+        s = to_date.strip()
+        if len(s) == 10 and s[4] == "-" and s[7] == "-":
+            end = f"{s}T23:59:59.999Z"
+        else:
+            end = s
+    return start, end
+
+
 def _drivers_from_breakdown(breakdown: Dict[str, Any]) -> Dict[str, Optional[float]]:
     """Map legacy breakdown keys to task driver names."""
     if not breakdown:
@@ -149,12 +168,13 @@ async def list_ledger(
         query["property_id"] = property_id
     if trigger_type:
         query["trigger_type"] = trigger_type
-    if from_date or to_date:
+    start, end = _normalize_date_range(from_date, to_date)
+    if start or end:
         query["created_at"] = {}
-        if from_date:
-            query["created_at"]["$gte"] = from_date
-        if to_date:
-            query["created_at"]["$lte"] = to_date
+        if start:
+            query["created_at"]["$gte"] = start
+        if end:
+            query["created_at"]["$lte"] = end
     if cursor:
         try:
             query["created_at"] = query.get("created_at") or {}
@@ -188,12 +208,13 @@ async def list_ledger_export(
         query["property_id"] = property_id
     if trigger_type:
         query["trigger_type"] = trigger_type
-    if from_date or to_date:
+    start, end = _normalize_date_range(from_date, to_date)
+    if start or end:
         query["created_at"] = {}
-        if from_date:
-            query["created_at"]["$gte"] = from_date
-        if to_date:
-            query["created_at"]["$lte"] = to_date
+        if start:
+            query["created_at"]["$gte"] = start
+        if end:
+            query["created_at"]["$lte"] = end
     limit = min(max(1, limit), 10000)
     cursor = db[COLLECTION].find(query, {"_id": 0}).sort("created_at", -1).limit(limit)
     return await cursor.to_list(limit)
