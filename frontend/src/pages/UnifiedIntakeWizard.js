@@ -1019,7 +1019,7 @@ export default function UnifiedIntakeWizard() {
     };
     loadDraftAndPrefill();
     return () => { cancelled = true; };
-  }, [draftRefFromUrl, services.length, draft?.draft_ref]);
+  }, [draftRefFromUrl, services, setSearchParams, draft?.draft_ref]);
 
   // Handle service selection
   const handleServiceSelect = async (service) => {
