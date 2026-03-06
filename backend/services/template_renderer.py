@@ -55,6 +55,14 @@ from database import database
 logger = logging.getLogger(__name__)
 
 
+# Required legal disclaimer for document pack outputs (authoritative; no variations).
+PACK_LEGAL_DISCLAIMER_FOOTER = (
+    "This document is provided as a general template for administrative and informational "
+    "purposes only. It does not constitute legal advice. Users may wish to seek independent "
+    "legal guidance where appropriate."
+)
+
+
 # ============================================================================
 # CONSTANTS & BRANDING
 # ============================================================================
@@ -468,6 +476,7 @@ class TemplateRenderer:
                 status=status,
                 use_generic_content=True,
                 template_bytes=template_bytes,
+                is_pack_document=True,
             )
             pdf_content = self._render_pdf(
                 order=order_for_render,
@@ -475,6 +484,7 @@ class TemplateRenderer:
                 intake_snapshot=intake_snapshot,
                 version=item_version,
                 status=status,
+                is_pack_document=True,
             )
         except Exception as e:
             logger.exception("Pack item render failed for %s: %s", item_id, e)
@@ -676,6 +686,7 @@ class TemplateRenderer:
         regeneration_notes: Optional[str] = None,
         use_generic_content: bool = False,
         template_bytes: Optional[bytes] = None,
+        is_pack_document: bool = False,
     ) -> bytes:
         """Render DOCX: from server-side template + placeholders if template_bytes else code-built."""
         if template_bytes:
@@ -689,6 +700,13 @@ class TemplateRenderer:
                 buffer = io.BytesIO()
                 tpl.save(buffer)
                 buffer.seek(0)
+                if is_pack_document:
+                    doc = Document(io.BytesIO(buffer.getvalue()))
+                    self._append_pack_legal_footer_docx(doc)
+                    out = io.BytesIO()
+                    doc.save(out)
+                    out.seek(0)
+                    return out.getvalue()
                 return buffer.getvalue()
             except Exception as e:
                 logger.warning("Template render failed, falling back to code-built DOCX: %s", e)
@@ -697,7 +715,7 @@ class TemplateRenderer:
         self._add_docx_header(doc, order, version, status)
         service_code = "GENERAL" if use_generic_content else order.get("service_code", "GENERAL")
         self._add_docx_content(doc, structured_output, service_code)
-        self._add_docx_footer(doc, order, version, status)
+        self._add_docx_footer(doc, order, version, status, is_pack_document=is_pack_document)
         if status != RenderStatus.FINAL:
             self._add_docx_watermark(doc, status.value)
         buffer = io.BytesIO()
@@ -1205,8 +1223,15 @@ class TemplateRenderer:
             for gap in output["data_gaps_flagged"]:
                 doc.add_paragraph(f"• {gap}", style='List Bullet')
     
-    def _add_docx_footer(self, doc: Document, order: Dict[str, Any], version: int, status: RenderStatus):
-        """Add footer with metadata."""
+    def _add_docx_footer(
+        self,
+        doc: Document,
+        order: Dict[str, Any],
+        version: int,
+        status: RenderStatus,
+        is_pack_document: bool = False,
+    ) -> None:
+        """Add footer with metadata. For pack documents, include required legal disclaimer."""
         doc.add_paragraph()
         doc.add_paragraph("_" * 80)
         
@@ -1217,14 +1242,30 @@ class TemplateRenderer:
         footer_run.font.color.rgb = RGBColor(128, 128, 128)
         footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
-        # Confidentiality notice
-        conf_para = doc.add_paragraph()
-        conf_run = conf_para.add_run("CONFIDENTIAL - This document contains proprietary information.")
-        conf_run.font.size = Pt(8)
-        conf_run.font.italic = True
-        conf_run.font.color.rgb = RGBColor(128, 128, 128)
-        conf_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+        if is_pack_document:
+            disc_para = doc.add_paragraph()
+            disc_run = disc_para.add_run(PACK_LEGAL_DISCLAIMER_FOOTER)
+            disc_run.font.size = Pt(8)
+            disc_run.font.color.rgb = RGBColor(128, 128, 128)
+            disc_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        else:
+            conf_para = doc.add_paragraph()
+            conf_run = conf_para.add_run("CONFIDENTIAL - This document contains proprietary information.")
+            conf_run.font.size = Pt(8)
+            conf_run.font.italic = True
+            conf_run.font.color.rgb = RGBColor(128, 128, 128)
+            conf_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    def _append_pack_legal_footer_docx(self, doc: Document) -> None:
+        """Append the required pack legal disclaimer to an existing DOCX (e.g. after template render)."""
+        doc.add_paragraph()
+        doc.add_paragraph("_" * 80)
+        disc_para = doc.add_paragraph()
+        disc_run = disc_para.add_run(PACK_LEGAL_DISCLAIMER_FOOTER)
+        disc_run.font.size = Pt(8)
+        disc_run.font.color.rgb = RGBColor(128, 128, 128)
+        disc_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
     def _add_docx_watermark(self, doc: Document, watermark_text: str):
         """Add watermark to document (simplified - adds to header)."""
         # Add watermark text to each section header
@@ -1248,6 +1289,7 @@ class TemplateRenderer:
         version: int,
         status: RenderStatus,
         regeneration_notes: Optional[str] = None,
+        is_pack_document: bool = False,
     ) -> bytes:
         """Render structured output to sealed PDF."""
         buffer = io.BytesIO()
@@ -1334,7 +1376,10 @@ class TemplateRenderer:
         
         footer_text = f"Generated by Pleerity Enterprise Ltd | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} | Document v{version}"
         story.append(Paragraph(footer_text, footer_style))
-        story.append(Paragraph("CONFIDENTIAL - This document contains proprietary information.", footer_style))
+        if is_pack_document:
+            story.append(Paragraph(PACK_LEGAL_DISCLAIMER_FOOTER, footer_style))
+        else:
+            story.append(Paragraph("CONFIDENTIAL - This document contains proprietary information.", footer_style))
         
         # Build PDF
         doc.build(story)

@@ -22,7 +22,13 @@ from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
 
 from database import database
-from services.gpt_prompt_registry import get_prompt_for_service, PromptDefinition
+from services.gpt_prompt_registry import (
+    get_prompt_for_service,
+    PromptDefinition,
+    AUTHORITATIVE_FRAMEWORK_V2,
+    DOCUMENT_PACK_ORCHESTRATOR_CONTEXT,
+    PACK_SERVICE_CODES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -239,13 +245,27 @@ class PromptManagerBridge:
         
         # The orchestrator will call _build_user_prompt_with_json which handles this
         
+        # Prepend Authoritative Prompt Framework so managed prompts get same guardrails as legacy.
+        # For document pack services, prepend Document Pack Orchestrator context first (role, input sources, access control, tone, prohibitions).
+        service_code = managed_prompt.get("service_code") or ""
+        if service_code in PACK_SERVICE_CODES:
+            system_prompt = (
+                DOCUMENT_PACK_ORCHESTRATOR_CONTEXT.strip()
+                + "\n\n"
+                + AUTHORITATIVE_FRAMEWORK_V2.strip()
+                + "\n\n"
+                + (managed_prompt.get("system_prompt") or "").strip()
+            ).strip()
+        else:
+            system_prompt = (AUTHORITATIVE_FRAMEWORK_V2 + "\n\n" + (managed_prompt.get("system_prompt") or "")).strip()
+        
         return PromptDefinition(
             prompt_id=managed_prompt["template_id"],
             prompt_type="MASTER",  # Managed prompts are always MASTER type
             service_code=managed_prompt["service_code"],
             name=managed_prompt["name"],
             description=managed_prompt.get("description", ""),
-            system_prompt=managed_prompt["system_prompt"],
+            system_prompt=system_prompt,
             user_prompt_template=user_template,
             output_schema=self._build_output_schema_dict(managed_prompt["output_schema"]),
             temperature=managed_prompt.get("temperature", 0.3),

@@ -219,10 +219,11 @@ CANONICAL_ORDER = {
     ],
 }
 
-# Service code to pack tier mapping
+# Service code to pack tier mapping (DOC_PACK_TENANCY is alias for PLUS for intake/seed compatibility)
 SERVICE_CODE_TO_PACK_TIER = {
     "DOC_PACK_ESSENTIAL": PackTier.ESSENTIAL,
     "DOC_PACK_PLUS": PackTier.PLUS,
+    "DOC_PACK_TENANCY": PackTier.PLUS,
     "DOC_PACK_PRO": PackTier.PRO,
 }
 

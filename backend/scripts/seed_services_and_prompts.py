@@ -24,6 +24,79 @@ SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
 SEED_FILE = SEED_DIR / "seed_data_v1.json"
 TEMPLATE_ID_PREFIX = "PTMPL"
 
+# Task-style category string -> service_catalogue_v2 category (enum value)
+CATEGORY_STRING_TO_ENUM = {
+    "automation services": "ai_automation",
+    "market research": "market_research",
+    "compliance services": "compliance",
+    "document packs": "document_pack",
+}
+
+
+def _normalize_service(svc: dict) -> dict:
+    """
+    Accept both task-style and legacy seed service shapes; return a single
+    internal shape for _minimal_service_doc.
+    Task shape: name, description_preview, base_price_gbp, currency, requires_review,
+                document_types[], is_active, seo_slug, category (display string).
+    Legacy shape: service_name, description, workflow_name, display_order, category (enum).
+    """
+    name = svc.get("name") or svc.get("service_name") or ""
+    desc = svc.get("description_preview") or svc.get("description") or ""
+    cat_raw = (svc.get("category") or "ai_automation").strip().lower()
+    category = CATEGORY_STRING_TO_ENUM.get(cat_raw) or (
+        cat_raw if cat_raw in ("ai_automation", "market_research", "compliance", "document_pack") else "ai_automation"
+    )
+    # base_price: task sends base_price_gbp (e.g. 79); we store pence (7900)
+    base_price_gbp = svc.get("base_price_gbp")
+    if base_price_gbp is not None:
+        base_price = int(round(float(base_price_gbp) * 100))
+    else:
+        base_price = svc.get("base_price", 0)
+    review_required = svc.get("requires_review", svc.get("review_required", True))
+    if isinstance(review_required, str):
+        review_required = review_required.strip().lower() in ("1", "true", "yes")
+    document_types = svc.get("document_types") or []
+    # Build documents_generated: list of { template_code, template_name, ... } for catalogue
+    documents_generated = svc.get("documents_generated")
+    if document_types and not documents_generated:
+        documents_generated = [
+            {
+                "template_code": dt,
+                "template_name": dt.replace("_", " ").title(),
+                "format": "docx",
+                "generation_order": i,
+                "gpt_sections": [],
+                "is_optional": False,
+            }
+            for i, dt in enumerate(document_types)
+        ]
+    elif not documents_generated:
+        documents_generated = []
+    is_active = svc.get("is_active", True)
+    if isinstance(is_active, str):
+        is_active = is_active.strip().lower() in ("1", "true", "yes")
+    seo_slug = svc.get("seo_slug") or ""
+    workflow_name = svc.get("workflow_name", "order_workflow_v2")
+    display_order = svc.get("display_order", 99)
+    return {
+        "service_code": svc["service_code"],
+        "service_name": name,
+        "description": desc,
+        "category": category,
+        "base_price": base_price,
+        "review_required": review_required,
+        "documents_generated": documents_generated,
+        "learn_more_slug": seo_slug or None,
+        "active": is_active,
+        "workflow_name": workflow_name,
+        "display_order": display_order,
+        "tags": svc.get("tags", []),
+        "pack_tier": svc.get("pack_tier"),
+        "intake_fields": svc.get("intake_fields", []),
+        "pricing_variants": svc.get("pricing_variants", []),
+    }
+
 
 def _generate_template_id() -> str:
     """Generate unique template_id with PTMPL prefix."""
@@ -34,22 +107,23 @@ def _generate_template_id() -> str:
 
 
 def _minimal_service_doc(svc: dict, now: datetime) -> dict:
-    """Build minimal service_catalogue_v2 document for upsert."""
+    """Build minimal service_catalogue_v2 document for upsert. Accepts task or legacy shape via _normalize_service."""
+    n = _normalize_service(svc)
     return {
-        "service_code": svc["service_code"],
-        "service_name": svc["service_name"],
-        "description": svc.get("description", ""),
+        "service_code": n["service_code"],
+        "service_name": n["service_name"],
+        "description": n["description"],
         "long_description": None,
         "icon": None,
-        "category": svc.get("category", "ai_automation"),
-        "tags": svc.get("tags", []),
+        "category": n["category"],
+        "tags": n["tags"],
         "website_preview": None,
-        "learn_more_slug": None,
+        "learn_more_slug": n["learn_more_slug"],
         "pricing_model": "one_time",
-        "base_price": svc.get("base_price", 0),
+        "base_price": n["base_price"],
         "price_currency": "gbp",
         "vat_rate": 0.20,
-        "pricing_variants": svc.get("pricing_variants", []),
+        "pricing_variants": n["pricing_variants"],
         "fast_track_available": False,
         "fast_track_price": 2000,
         "fast_track_hours": 24,
@@ -58,22 +132,22 @@ def _minimal_service_doc(svc: dict, now: datetime) -> dict:
         "delivery_type": "digital",
         "standard_turnaround_hours": 72,
         "delivery_format": "digital",
-        "workflow_name": svc.get("workflow_name", "order_workflow_v2"),
+        "workflow_name": n["workflow_name"],
         "product_type": "one_time",
-        "documents_generated": svc.get("documents_generated", []),
-        "pack_tier": svc.get("pack_tier"),
+        "documents_generated": n["documents_generated"],
+        "pack_tier": n["pack_tier"],
         "includes_lower_tiers": False,
         "parent_pack_code": None,
-        "intake_fields": svc.get("intake_fields", []),
+        "intake_fields": n["intake_fields"],
         "generation_mode": "GPT_FULL",
         "master_prompt_id": None,
         "gpt_sections": [],
-        "review_required": True,
+        "review_required": n["review_required"],
         "requires_cvp_subscription": False,
         "is_cvp_feature": False,
         "allowed_plans": [],
-        "active": True,
-        "display_order": svc.get("display_order", 99),
+        "active": n["active"],
+        "display_order": n["display_order"],
         "created_at": now,
         "updated_at": now,
         "created_by": "seed_script",
