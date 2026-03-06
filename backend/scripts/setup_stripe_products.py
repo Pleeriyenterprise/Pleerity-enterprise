@@ -42,7 +42,8 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY")
 if not stripe.api_key or stripe.api_key == "sk_test_emergent":
     logger.warning("STRIPE_API_KEY appears to be a placeholder. Please set a valid Stripe key in .env")
 
-# Service definitions with Stripe-specific metadata
+# Service definitions: aligned with intake_draft_service.SERVICE_BASE_PRICES and pack_registry.PACK_ADDONS.
+# Addons: FAST_TRACK +£20 (2000 pence), PRINTED_COPY +£25 (2500 pence). Document packs get standard / fast_track / printed.
 SERVICE_STRIPE_CONFIG = {
     # ========================================
     # AI Automation Services
@@ -52,8 +53,8 @@ SERVICE_STRIPE_CONFIG = {
         "description": "Comprehensive AI-generated workflow automation blueprint for your business",
         "category": "ai_automation",
         "prices": {
-            "standard": {"amount": 9900, "nickname": "Standard", "target_hours": 48},
-            "fast_track": {"amount": 11900, "nickname": "Fast Track (+£20)", "target_hours": 24},
+            "standard": {"amount": 7900, "nickname": "Standard", "target_hours": 48},
+            "fast_track": {"amount": 9900, "nickname": "Fast Track (+£20)", "target_hours": 24},
         }
     },
     "AI_PROC_MAP": {
@@ -65,16 +66,15 @@ SERVICE_STRIPE_CONFIG = {
             "fast_track": {"amount": 14900, "nickname": "Fast Track (+£20)", "target_hours": 24},
         }
     },
-    "AI_TOOL_RECOMMENDATION": {
+    "AI_TOOL_REPORT": {
         "name": "AI Tool Recommendation Report",
         "description": "Personalised AI tool recommendations based on your business needs",
         "category": "ai_automation",
         "prices": {
-            "standard": {"amount": 7900, "nickname": "Standard", "target_hours": 48},
-            "fast_track": {"amount": 9900, "nickname": "Fast Track (+£20)", "target_hours": 24},
+            "standard": {"amount": 5900, "nickname": "Standard", "target_hours": 48},
+            "fast_track": {"amount": 7900, "nickname": "Fast Track (+£20)", "target_hours": 24},
         }
     },
-    
     # ========================================
     # Market Research Services
     # ========================================
@@ -96,11 +96,10 @@ SERVICE_STRIPE_CONFIG = {
             "fast_track": {"amount": 16900, "nickname": "Fast Track (+£20)", "target_hours": 24},
         }
     },
-    
     # ========================================
     # Compliance Services
     # ========================================
-    "FULL_COMPLIANCE_AUDIT": {
+    "FULL_AUDIT": {
         "name": "Full Compliance Audit Report",
         "description": "Comprehensive compliance review covering certificates, licensing, and regulatory risk areas",
         "category": "compliance",
@@ -109,7 +108,7 @@ SERVICE_STRIPE_CONFIG = {
             "fast_track": {"amount": 11900, "nickname": "Fast Track (+£20)", "target_hours": 24},
         }
     },
-    "HMO_COMPLIANCE_AUDIT": {
+    "HMO_AUDIT": {
         "name": "HMO Compliance Audit",
         "description": "Specialist HMO compliance review for licensing requirements and safety standards",
         "category": "compliance",
@@ -118,7 +117,7 @@ SERVICE_STRIPE_CONFIG = {
             "fast_track": {"amount": 9900, "nickname": "Fast Track (+£20)", "target_hours": 24},
         }
     },
-    "MOVE_IN_OUT_CHECKLIST": {
+    "MOVE_CHECKLIST": {
         "name": "Move-In / Move-Out Checklist",
         "description": "Structured checklist documenting property condition at tenancy start and end",
         "category": "compliance",
@@ -127,9 +126,8 @@ SERVICE_STRIPE_CONFIG = {
             "fast_track": {"amount": 5500, "nickname": "Fast Track (+£20)", "target_hours": 24},
         }
     },
-    
     # ========================================
-    # Document Packs (with inheritance)
+    # Document Packs (addons: FAST_TRACK +£20, PRINTED_COPY +£25)
     # ========================================
     "DOC_PACK_ESSENTIAL": {
         "name": "Essential Landlord Document Pack",
@@ -147,7 +145,7 @@ SERVICE_STRIPE_CONFIG = {
         "name": "Tenancy Legal & Notices Pack",
         "description": "Essential + AST agreement, tenancy renewal, notice to quit, guarantor agreement, rent increase notice",
         "category": "document_pack",
-        "pack_tier": "PLUS",
+        "pack_tier": "TENANCY",
         "inherits_from": "DOC_PACK_ESSENTIAL",
         "includes_docs": 10,
         "prices": {
@@ -160,7 +158,7 @@ SERVICE_STRIPE_CONFIG = {
         "name": "Ultimate Document Pack",
         "description": "Complete coverage: Essential + Plus + inventory report, deposit info pack, property access notice, additional notices",
         "category": "document_pack",
-        "pack_tier": "PRO",
+        "pack_tier": "ULTIMATE",
         "inherits_from": "DOC_PACK_PLUS",
         "includes_docs": 14,
         "prices": {
@@ -185,15 +183,16 @@ class StripeProductSetup:
         """Create/update all products and prices in Stripe."""
         logger.info(f"Starting Stripe product setup (dry_run={self.dry_run}, force_update={force_update})")
         
-        if not stripe.api_key:
+        if not stripe.api_key and not self.dry_run:
             raise ValueError("STRIPE_SECRET_KEY or STRIPE_API_KEY not set")
         
-        # Test Stripe connection
-        try:
-            stripe.Account.retrieve()
-            logger.info("✅ Stripe connection verified")
-        except stripe.error.AuthenticationError:
-            raise ValueError("Invalid Stripe API key")
+        # Test Stripe connection (skip in dry-run so we can preview without a key)
+        if not self.dry_run:
+            try:
+                stripe.Account.retrieve()
+                logger.info("✅ Stripe connection verified")
+            except stripe.error.AuthenticationError:
+                raise ValueError("Invalid Stripe API key")
         
         for service_code, config in SERVICE_STRIPE_CONFIG.items():
             try:
@@ -224,8 +223,8 @@ class StripeProductSetup:
         """Setup a single product with its prices."""
         logger.info(f"\n📦 Processing: {service_code} - {config['name']}")
         
-        # Check if product already exists
-        existing_product = await self._find_existing_product(service_code)
+        # Check if product already exists (skip in dry-run to avoid API call without key)
+        existing_product = None if self.dry_run else await self._find_existing_product(service_code)
         
         if existing_product and not force_update:
             logger.info(f"  ⏭️  Product exists: {existing_product.id}")
@@ -435,7 +434,9 @@ async def main():
         if args.sync_db and not args.dry_run:
             await setup.sync_to_database()
         
-        await setup.validate_alignment()
+        # Validate alignment only when we have a Stripe key (skip in dry-run without key)
+        if not args.dry_run or (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip():
+            await setup.validate_alignment()
 
 
 if __name__ == "__main__":

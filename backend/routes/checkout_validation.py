@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 import os
 import logging
 
+import stripe
 from database import database
 from services.document_pack_orchestrator import (
     document_pack_orchestrator,
@@ -133,8 +134,14 @@ async def create_checkout_session(request: CreateCheckoutSessionRequest):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except stripe.error.StripeError as e:
+        logger.exception("Stripe API error creating checkout session: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail="Payment provider temporarily unavailable. Please try again or contact support.",
+        )
     except Exception as e:
-        logger.error("Failed to create checkout session: %s", e)
+        logger.exception("Failed to create checkout session: %s", e)
         raise HTTPException(status_code=500, detail="Failed to create checkout session")
 
 
