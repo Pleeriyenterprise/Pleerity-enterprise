@@ -1,0 +1,209 @@
+{
+  "version": "1.0",
+  "description": "Seed data for service catalogue and prompt templates (four services: AI automation, Market research, Compliance, Document packs).",
+  "services": [
+    {
+      "service_code": "AI_WF_BLUEPRINT",
+      "service_name": "AI Workflow Blueprint",
+      "category": "ai_automation",
+      "description": "AI-powered workflow blueprint and process design report.",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 10
+    },
+    {
+      "service_code": "AI_PROC_MAP",
+      "service_name": "Business Process Mapping",
+      "category": "ai_automation",
+      "description": "Business process mapping and optimisation report.",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 11
+    },
+    {
+      "service_code": "AI_TOOL_RECOMMENDATION",
+      "service_name": "AI Tool Recommendation",
+      "category": "ai_automation",
+      "description": "AI tool recommendation and fit report.",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 12
+    },
+    {
+      "service_code": "MR_BASIC",
+      "service_name": "Market Research Basic",
+      "category": "market_research",
+      "description": "Basic market research report.",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 20
+    },
+    {
+      "service_code": "MR_ADV",
+      "service_name": "Market Research Advanced",
+      "category": "market_research",
+      "description": "Advanced market research report.",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 21
+    },
+    {
+      "service_code": "HMO_COMPLIANCE_AUDIT",
+      "service_name": "HMO Compliance Audit",
+      "category": "compliance",
+      "description": "HMO licensing and compliance audit report.",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 30
+    },
+    {
+      "service_code": "FULL_COMPLIANCE_AUDIT",
+      "service_name": "Full Compliance Audit",
+      "category": "compliance",
+      "description": "Full property compliance audit report.",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 31
+    },
+    {
+      "service_code": "MOVE_IN_OUT_CHECKLIST",
+      "service_name": "Move In / Out Checklist",
+      "category": "compliance",
+      "description": "Move-in and move-out checklist document.",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 32
+    },
+    {
+      "service_code": "DOC_PACK_ESSENTIAL",
+      "service_name": "Document Pack Essential",
+      "category": "document_pack",
+      "description": "Essential document pack (rent arrears, deposit, reference, receipt, GDPR).",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 40
+    },
+    {
+      "service_code": "DOC_PACK_TENANCY",
+      "service_name": "Document Pack Tenancy (Plus)",
+      "category": "document_pack",
+      "description": "Tenancy document pack (AST, renewal, notice to quit, guarantor, rent increase).",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 41
+    },
+    {
+      "service_code": "DOC_PACK_PRO",
+      "service_name": "Document Pack Pro",
+      "category": "document_pack",
+      "description": "Pro document pack (inventory, deposit info, access notice, landlord notice).",
+      "workflow_name": "order_workflow_v2",
+      "display_order": 42
+    }
+  ],
+  "prompts": [
+    {
+      "service_code": "AI_WF_BLUEPRINT",
+      "doc_type": "AI_WORKFLOW_BLUEPRINT_REPORT",
+      "name": "AI Workflow Blueprint Report",
+      "description": "Generates AI workflow blueprint report from order and intake data.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Generate an AI Workflow Blueprint report based on the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "AI_PROC_MAP",
+      "doc_type": "BUSINESS_PROCESS_MAPPING_REPORT",
+      "name": "Business Process Mapping Report",
+      "description": "Generates business process mapping report.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Generate a Business Process Mapping report based on the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "AI_TOOL_RECOMMENDATION",
+      "doc_type": "AI_TOOL_RECOMMENDATION_REPORT",
+      "name": "AI Tool Recommendation Report",
+      "description": "Generates AI tool recommendation report.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Generate an AI Tool Recommendation report based on the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "MR_BASIC",
+      "doc_type": "MARKET_RESEARCH_BASIC_REPORT",
+      "name": "Market Research Basic Report",
+      "description": "Generates basic market research report.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Generate a Basic Market Research report based on the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "MR_ADV",
+      "doc_type": "MARKET_RESEARCH_ADVANCED_REPORT",
+      "name": "Market Research Advanced Report",
+      "description": "Generates advanced market research report.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Generate an Advanced Market Research report based on the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "HMO_COMPLIANCE_AUDIT",
+      "doc_type": "HMO_COMPLIANCE_AUDIT_REPORT",
+      "name": "HMO Compliance Audit Report",
+      "description": "Generates HMO compliance audit report.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Generate an HMO Compliance Audit report based on the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "FULL_COMPLIANCE_AUDIT",
+      "doc_type": "FULL_COMPLIANCE_AUDIT_REPORT",
+      "name": "Full Compliance Audit Report",
+      "description": "Generates full compliance audit report.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Generate a Full Compliance Audit report based on the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "MOVE_IN_OUT_CHECKLIST",
+      "doc_type": "MOVE_IN_OUT_CHECKLIST_DOC",
+      "name": "Move In/Out Checklist Document",
+      "description": "Generates move-in and move-out checklist document.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Generate a Move In/Out Checklist document based on the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "DOC_PACK_ESSENTIAL",
+      "doc_type": "DOC_PACK_ORCHESTRATOR",
+      "name": "Document Pack Essential (orchestrator)",
+      "description": "Orchestrator prompt for Essential document pack.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Process the document pack request using the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "DOC_PACK_TENANCY",
+      "doc_type": "DOC_PACK_ORCHESTRATOR",
+      "name": "Document Pack Tenancy (orchestrator)",
+      "description": "Orchestrator prompt for Tenancy document pack.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Process the document pack request using the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    },
+    {
+      "service_code": "DOC_PACK_PRO",
+      "doc_type": "DOC_PACK_ORCHESTRATOR",
+      "name": "Document Pack Pro (orchestrator)",
+      "description": "Orchestrator prompt for Pro document pack.",
+      "system_prompt": "You are a precise document assistant. Produce structured output as valid JSON only. Do not include markdown or extra text.",
+      "user_prompt_template": "Process the document pack request using the following input.\n\n{{INPUT_DATA_JSON}}\n\nReturn valid JSON matching the required output schema."
+    }
+  ],
+  "pack_doc_types": [
+    "doc_rent_arrears_letter_template",
+    "doc_deposit_refund_letter_template",
+    "doc_tenant_reference_letter_template",
+    "doc_rent_receipt_template",
+    "doc_gdpr_notice_template",
+    "doc_tenancy_agreement_ast_template",
+    "doc_tenancy_renewal_template",
+    "doc_notice_to_quit_template",
+    "doc_guarantor_agreement_template",
+    "doc_rent_increase_notice_template",
+    "doc_inventory_condition_report",
+    "doc_deposit_information_pack",
+    "doc_property_access_notice",
+    "doc_additional_landlord_notice"
+  ],
+  "default_output_schema": {
+    "schema_version": "1.0",
+    "root_type": "object",
+    "strict_validation": true,
+    "fields": [
+      { "field_name": "content", "field_type": "string", "description": "Main content", "required": true },
+      { "field_name": "summary", "field_type": "string", "description": "Brief summary", "required": false }
+    ]
+  }
+}

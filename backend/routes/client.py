@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
@@ -459,6 +460,12 @@ async def get_dashboard(request: Request):
             )
             properties_out.append(p)
         
+        # Onboarding checklist (server-driven; for banner and deep-links)
+        from services.onboarding_checklist_service import get_checklist_for_client
+        checklist = await get_checklist_for_client(user["client_id"])
+        if checklist.get("error"):
+            checklist = {"items": [], "completed_at": None, "all_required_complete": False}
+
         return {
             "client": client,
             "properties": properties_out,
@@ -467,7 +474,8 @@ async def get_dashboard(request: Request):
                 "compliant": compliant,
                 "overdue": overdue,
                 "expiring_soon": expiring
-            }
+            },
+            "onboarding_checklist": checklist,
         }
     
     except Exception as e:
@@ -476,6 +484,92 @@ async def get_dashboard(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load dashboard"
         )
+
+
+@router.get("/onboarding/checklist")
+async def get_onboarding_checklist(request: Request):
+    """Get server-driven onboarding checklist (items + completion)."""
+    user = await client_route_guard(request)
+    from services.onboarding_checklist_service import get_checklist_state
+    return await get_checklist_state(user["client_id"])
+
+
+@router.post("/onboarding/checklist/items/{item_id}/complete")
+async def complete_onboarding_item(request: Request, item_id: str):
+    """Mark one checklist item complete. Server-validates before accepting."""
+    user = await client_route_guard(request)
+    from services.onboarding_checklist_service import mark_item_complete
+    from models import AuditAction
+    from utils.audit import create_audit_log
+    result = await mark_item_complete(user["client_id"], item_id, actor_id=user.get("portal_user_id"))
+    if not result.get("ok"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("error", "Cannot complete this item"),
+        )
+    await create_audit_log(
+        action=AuditAction.ONBOARDING_CHECKLIST_ITEM_COMPLETED,
+        actor_id=user.get("portal_user_id"),
+        client_id=user["client_id"],
+        resource_type="onboarding_checklist",
+        resource_id=item_id,
+        metadata={"item_id": item_id, "checklist_completed": result.get("checklist_completed")},
+    )
+    if result.get("checklist_completed"):
+        await create_audit_log(
+            action=AuditAction.ONBOARDING_CHECKLIST_COMPLETED,
+            actor_id=user.get("portal_user_id"),
+            client_id=user["client_id"],
+            resource_type="onboarding_checklist",
+            resource_id="checklist",
+            metadata={"completed_at": result.get("completed_at")},
+        )
+    return result
+
+
+@router.get("/settings/jurisdiction")
+async def get_jurisdiction_settings(request: Request):
+    """Get client jurisdiction settings (default_jurisdiction, enabled_jurisdictions)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "default_jurisdiction": 1, "enabled_jurisdictions": 1},
+    )
+    return {
+        "default_jurisdiction": client.get("default_jurisdiction") or "Scotland",
+        "enabled_jurisdictions": client.get("enabled_jurisdictions") or ["Scotland", "England", "Wales", "Northern Ireland"],
+    }
+
+
+class JurisdictionSettingsBody(BaseModel):
+    default_jurisdiction: Optional[str] = None
+    enabled_jurisdictions: Optional[List[str]] = None
+
+
+@router.patch("/settings/jurisdiction")
+async def update_jurisdiction_settings(request: Request, body: JurisdictionSettingsBody):
+    """Update client jurisdiction settings. Valid: Scotland, England, Wales, Northern Ireland."""
+    user = await client_route_guard(request)
+    valid = {"Scotland", "England", "Wales", "Northern Ireland"}
+    updates = {}
+    if body.default_jurisdiction is not None:
+        if body.default_jurisdiction not in valid:
+            raise HTTPException(status_code=400, detail="Invalid default_jurisdiction")
+        updates["default_jurisdiction"] = body.default_jurisdiction
+    if body.enabled_jurisdictions is not None:
+        if not isinstance(body.enabled_jurisdictions, list) or not all(j in valid for j in body.enabled_jurisdictions):
+            raise HTTPException(status_code=400, detail="enabled_jurisdictions must be a list of Scotland, England, Wales, Northern Ireland")
+        updates["enabled_jurisdictions"] = body.enabled_jurisdictions
+    if not updates:
+        return {"ok": True}
+    db = database.get_db()
+    await db.clients.update_one(
+        {"client_id": user["client_id"]},
+        {"$set": updates},
+    )
+    return {"ok": True}
+
 
 @router.get("/properties")
 async def get_properties(request: Request):
@@ -706,17 +800,38 @@ async def get_client_entitlements(request: Request):
     """Get comprehensive feature entitlements for the client.
     
     Returns detailed feature availability with metadata for UI rendering.
-    This is the primary endpoint for feature gating in the frontend.
-    Uses plan_registry as single source of truth.
+    Uses plan_registry plus ops_compliance module flags (maintenance_workflows, predictive_maintenance).
     """
     user = await client_route_guard(request)
-    
     try:
         from services.plan_registry import plan_registry
-        
+        from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
+
         entitlements = await plan_registry.get_client_entitlements(user["client_id"])
+        flags = await get_effective_flags(user["client_id"])
+        features = entitlements.get("features") or {}
+        features["maintenance_workflows"] = {
+            "enabled": bool(flags.get(MAINTENANCE_WORKFLOWS)),
+            "name": "Maintenance Workflows",
+            "description": "Report and track work orders; tenants can report repairs.",
+            "category": "ops",
+            "minimum_plan": None,
+        }
+        features["predictive_maintenance"] = {
+            "enabled": bool(flags.get(PREDICTIVE_MAINTENANCE)),
+            "name": "Predictive Maintenance",
+            "description": "View predictive insights for property assets and maintenance.",
+            "category": "ops",
+            "minimum_plan": None,
+        }
+        entitlements["features"] = features
+        enabled_count = sum(1 for f in features.values() if f.get("enabled"))
+        entitlements["feature_summary"] = {
+            "total": len(features),
+            "enabled": enabled_count,
+            "disabled": len(features) - enabled_count,
+        }
         return entitlements
-    
     except Exception as e:
         logger.error(f"Entitlements error: {e}")
         raise HTTPException(

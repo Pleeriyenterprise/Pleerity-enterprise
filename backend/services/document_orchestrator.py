@@ -810,16 +810,42 @@ class DocumentOrchestrator:
             # Regeneration context
             "is_regeneration": regeneration,
             "regeneration_notes": regeneration_notes,
-            # Metrics
+            # Metrics (task: store provider, model, token usage, input snapshot hash)
             "execution_time_ms": execution_time,
             "render_time_ms": render_result.render_time_ms,
             "prompt_tokens": tokens.get("prompt_tokens", 0),
             "completion_tokens": tokens.get("completion_tokens", 0),
+            "provider": "gemini",
+            "model": "gemini-2.0-flash",
             # Audit
             "created_at": datetime.now(timezone.utc),
         }
         
         await db[self.COLLECTION].insert_one(execution_record)
+        
+        # Dual-write to generation_runs for reporting (task: store generation_runs with provider, model, token_usage)
+        now_utc = datetime.now(timezone.utc)
+        try:
+            gen_run = {
+                "run_id": execution_id,
+                "order_id": order_id,
+                "template_id": (prompt_version_used or {}).get("template_id"),
+                "prompt_version": (prompt_version_used or {}).get("version"),
+                "doc_type": doc_type,
+                "status": "COMPLETED",
+                "provider": "gemini",
+                "model": "gemini-2.0-flash",
+                "prompt_tokens": tokens.get("prompt_tokens", 0),
+                "completion_tokens": tokens.get("completion_tokens", 0),
+                "intake_snapshot_hash": intake_hash,
+                "started_at": start_time,
+                "completed_at": now_utc,
+                "created_at": now_utc,
+                "updated_at": now_utc,
+            }
+            await db.generation_runs.insert_one(gen_run)
+        except Exception as e:
+            logger.warning("generation_runs dual-write failed (non-fatal): %s", e)
         
         # Record execution metrics for Prompt Performance Analytics
         if prompt_info:

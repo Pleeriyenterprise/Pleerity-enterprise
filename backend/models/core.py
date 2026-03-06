@@ -62,6 +62,7 @@ class UserRole(str, Enum):
     ROLE_ADMIN = "ROLE_ADMIN"
     ROLE_SUPPORT = "ROLE_SUPPORT"  # Support Dashboard, Notification Health, view-only where allowed
     ROLE_CONTENT = "ROLE_CONTENT"  # Site Builder, Blog, FAQ, Legal, Canned Responses
+    ROLE_AUDITOR = "ROLE_AUDITOR"  # Read-only admin: dashboards and audit logs; cannot edit
     ROLE_TENANT = "ROLE_TENANT"  # Read-only access to property compliance status
 
 class UserStatus(str, Enum):
@@ -257,9 +258,18 @@ class AuditAction(str, Enum):
     # Tenant portal → landlord
     TENANT_CONTACT_LANDLORD = "TENANT_CONTACT_LANDLORD"
     TENANT_REQUEST_CERTIFICATE = "TENANT_REQUEST_CERTIFICATE"
+    TENANT_REPORT_MAINTENANCE = "TENANT_REPORT_MAINTENANCE"
 
     # Report exports (score explanation PDF, score drivers CSV)
     REPORT_EXPORTED = "REPORT_EXPORTED"
+
+    # Operations & Compliance (admin + onboarding)
+    FEATURE_FLAG_CHANGED = "FEATURE_FLAG_CHANGED"
+    ROLE_CHANGED = "ROLE_CHANGED"
+    PLAN_LIMIT_OVERRIDE = "PLAN_LIMIT_OVERRIDE"
+    ONBOARDING_CHECKLIST_COMPLETED = "ONBOARDING_CHECKLIST_COMPLETED"
+    ONBOARDING_CHECKLIST_ITEM_COMPLETED = "ONBOARDING_CHECKLIST_ITEM_COMPLETED"
+    JURISDICTION_SETTINGS_CHANGED = "JURISDICTION_SETTINGS_CHANGED"
 
 
 class EmailTemplateAlias(str, Enum):
@@ -550,7 +560,8 @@ class Property(BaseModel):
     has_communal_areas: bool = False  # For fire safety requirements
     local_authority: Optional[str] = None  # For location-specific rules (council name)
     local_authority_code: Optional[str] = None  # Council code for lookup
-    
+    jurisdiction: Optional[str] = None  # Scotland | England | Wales | Northern_Ireland (first-class for rules)
+
     # Licensing information
     licence_required: Optional[str] = None  # "YES", "NO", "UNSURE"
     licence_type: Optional[str] = None  # selective, additional, mandatory_hmo
@@ -578,6 +589,25 @@ class Property(BaseModel):
     
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+
+
+class Contractor(BaseModel):
+    """Contractor / trade for maintenance workflows. Optional client_id = preferred contractor for that client."""
+    model_config = ConfigDict(extra="ignore")
+
+    contractor_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: Optional[str] = None  # None = system-wide; set = client-preferred contractor
+    name: str
+    trade_types: List[str] = Field(default_factory=list)  # e.g. ["plumbing", "electrical", "gas"]
+    vetted: bool = False
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    company_name: Optional[str] = None
+    areas_served: Optional[List[str]] = None  # postcode prefixes or region names
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+
 
 class Requirement(BaseModel):
     model_config = ConfigDict(extra="ignore")

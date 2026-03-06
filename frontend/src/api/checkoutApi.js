@@ -61,8 +61,26 @@ export async function getDocumentPacks() {
 }
 
 /**
+ * Create Stripe Checkout Session for a draft (gated by draft_ref).
+ * Backend validates draft exists, service is active, price + add-ons; then creates session
+ * with metadata (draft_ref, service_code, environment) and returns redirect URL.
+ *
+ * @param {string} draftRef - Draft reference (e.g. INT-YYYYMMDD-####)
+ * @param {Object} options - Optional success_url, cancel_url
+ * @returns {Promise<{ checkout_url: string, session_id: string }>}
+ */
+export async function createCheckoutSession(draftRef, options = {}) {
+  const response = await client.post('/checkout/create-session', {
+    draft_ref: draftRef,
+    success_url: options.success_url,
+    cancel_url: options.cancel_url,
+  });
+  return response.data;
+}
+
+/**
  * Validate Stripe alignment status
- * 
+ *
  * @returns {Promise<Object>} Stripe alignment status
  */
 export async function validateStripeAlignment() {
@@ -117,6 +135,7 @@ export function getVariantDisplayName(variantCode) {
 
 export default {
   validateCheckout,
+  createCheckoutSession,
   getServiceCheckoutInfo,
   getDocumentPacks,
   validateStripeAlignment,

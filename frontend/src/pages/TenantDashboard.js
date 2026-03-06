@@ -23,7 +23,8 @@ import {
   MessageSquare,
   Send,
   FileText,
-  X
+  X,
+  Wrench
 } from 'lucide-react';
 
 /**
@@ -61,9 +62,11 @@ const TenantDashboard = () => {
   const [expandedProperty, setExpandedProperty] = useState(null);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [contactForm, setContactForm] = useState({ subject: '', message: '' });
   const [requestForm, setRequestForm] = useState({ certificate_type: '', message: '' });
+  const [reportForm, setReportForm] = useState({ description: '' });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -217,6 +220,34 @@ const TenantDashboard = () => {
   const openRequestModal = (property) => {
     setSelectedProperty(property);
     setShowRequestModal(true);
+  };
+
+  const openReportModal = (property) => {
+    setSelectedProperty(property);
+    setReportForm({ description: '' });
+    setShowReportModal(true);
+  };
+
+  const handleReportMaintenance = async (e) => {
+    e.preventDefault();
+    if (!reportForm.description?.trim()) {
+      toast.error('Please describe the issue');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post('/tenant/report-maintenance', {
+        property_id: selectedProperty.property_id,
+        description: reportForm.description.trim(),
+      });
+      toast.success('Repair reported. Your landlord will be notified.');
+      setShowReportModal(false);
+      setReportForm({ description: '' });
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to report issue');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -436,6 +467,16 @@ const TenantDashboard = () => {
                               <MessageSquare className="w-4 h-4 mr-2" />
                               Contact Landlord
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openReportModal(property)}
+                              className="text-amber-700 border-amber-300 hover:bg-amber-50"
+                              data-testid={`report-repair-${property.property_id}`}
+                            >
+                              <Wrench className="w-4 h-4 mr-2" />
+                              Report a repair
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -621,6 +662,74 @@ const TenantDashboard = () => {
               </div>
               <p className="text-xs text-gray-500 text-center">
                 Your landlord will be notified of this request via email.
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Report a repair modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" data-testid="report-repair-modal">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-midnight-blue flex items-center gap-2">
+                <Wrench className="w-5 h-5 text-amber-600" />
+                Report a repair
+              </h3>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleReportMaintenance} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                  {selectedProperty?.address}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Describe the issue *</label>
+                <textarea
+                  value={reportForm.description}
+                  onChange={(e) => setReportForm((prev) => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent h-32 resize-none"
+                  placeholder="e.g. Boiler not heating, leak under sink..."
+                  required
+                  data-testid="report-repair-description"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowReportModal(false)}
+                  className="flex-1"
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-amber-600 hover:bg-amber-700"
+                  disabled={submitting}
+                  data-testid="submit-report-repair-btn"
+                >
+                  {submitting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Wrench className="w-4 h-4 mr-2" />
+                      Submit
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 text-center">
+                A work order will be created. Your landlord can assign a contractor and track the repair.
               </p>
             </form>
           </div>

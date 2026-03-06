@@ -69,11 +69,14 @@ class LLMProviderInterface(ABC):
 
 class GeminiProvider(LLMProviderInterface):
     """Gemini LLM provider using Google Generative AI (utils.llm_chat)."""
-    
+
+    def __init__(self, model: Optional[str] = None):
+        self._model = model or "gemini-2.5-flash"
+
     @property
     def provider_name(self) -> str:
         return "gemini"
-    
+
     async def generate(
         self,
         system_prompt: str,
@@ -87,13 +90,59 @@ class GeminiProvider(LLMProviderInterface):
         response_text = await chat(
             system_prompt=system_prompt,
             user_text=user_prompt,
-            model="gemini-2.5-flash",
+            model=self._model,
         )
         tokens = {
             "prompt_tokens": len(system_prompt.split()) + len(user_prompt.split()),
             "completion_tokens": len(response_text.split()) if response_text else 0,
         }
         return response_text, tokens
+
+
+class OpenAIProvider(LLMProviderInterface):
+    """OpenAI LLM provider for prompt playground (OPENAI_API_KEY or ai_config)."""
+
+    def __init__(self, model: Optional[str] = None):
+        from utils import ai_config
+        self._model = model or getattr(ai_config, "AI_MODEL", "gpt-4o-mini")
+
+    @property
+    def provider_name(self) -> str:
+        return "openai"
+
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> Tuple[str, Dict[str, int]]:
+        import asyncio
+        from utils import ai_config
+        api_key = getattr(ai_config, "get_openai_api_key", lambda: None)() or os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY not set (required for OpenAI provider)")
+        try:
+            from openai import AsyncOpenAI
+        except ImportError:
+            raise ValueError("openai package not installed. pip install openai")
+        client = AsyncOpenAI(api_key=api_key)
+        response = await client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=min(max(temperature, 0.0), 2.0),
+            max_tokens=max_tokens,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        usage = getattr(response, "usage", None)
+        tokens = {
+            "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+            "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+        }
+        return text, tokens
 
 
 # ============================================
@@ -191,39 +240,46 @@ class PromptService:
     
     # Canonical service code to document type mapping
     # RULE: doc_type must match exactly as defined in Service Catalogue
+    # Includes task doc_types (AI_WORKFLOW_BLUEPRINT_REPORT, etc.) for seed and API.
     SERVICE_DOC_TYPE_MAP = {
         # AI Automation Services
-        "AI_WF_BLUEPRINT": ["AI_WF_BLUEPRINT", "AI_WORKFLOW_BLUEPRINT"],
-        "AI_PROC_MAP": ["BUSINESS_PROCESS_MAPPING"],
+        "AI_WF_BLUEPRINT": ["AI_WF_BLUEPRINT", "AI_WORKFLOW_BLUEPRINT", "AI_WORKFLOW_BLUEPRINT_REPORT"],
+        "AI_PROC_MAP": ["BUSINESS_PROCESS_MAPPING", "BUSINESS_PROCESS_MAPPING_REPORT"],
         "AI_TOOL_RECOMMENDATION": ["AI_TOOL_RECOMMENDATION_REPORT"],
-        
         # Market Research Services
-        "MR_BASIC": ["MARKET_RESEARCH_BASIC"],
-        "MR_ADV": ["MARKET_RESEARCH_ADVANCED"],
-        
+        "MR_BASIC": ["MARKET_RESEARCH_BASIC", "MARKET_RESEARCH_BASIC_REPORT"],
+        "MR_ADV": ["MARKET_RESEARCH_ADVANCED", "MARKET_RESEARCH_ADVANCED_REPORT"],
         # Compliance Services
         "FULL_COMPLIANCE_AUDIT": ["FULL_COMPLIANCE_AUDIT_REPORT"],
         "HMO_COMPLIANCE_AUDIT": ["HMO_COMPLIANCE_AUDIT_REPORT"],
-        "MOVE_IN_OUT_CHECKLIST": ["MOVE_IN_MOVE_OUT_CHECKLIST"],
-        
-        # Document Packs - Essential
+        "MOVE_IN_OUT_CHECKLIST": ["MOVE_IN_MOVE_OUT_CHECKLIST", "MOVE_IN_OUT_CHECKLIST_DOC"],
+        # Document Packs - orchestrator and micro-doc doc_types
         "DOC_PACK_ESSENTIAL": [
+            "DOC_PACK_ORCHESTRATOR",
             "RENT_ARREARS_LETTER",
             "DEPOSIT_REFUND_EXPLANATION_LETTER",
             "TENANT_REFERENCE_LETTER",
             "RENT_RECEIPT",
             "GDPR_NOTICE",
         ],
-        # Document Packs - Plus (5 document types)
-        "DOC_PACK_PLUS": [
+        "DOC_PACK_TENANCY": [
+            "DOC_PACK_ORCHESTRATOR",
             "TENANCY_AGREEMENT_AST",
             "TENANCY_RENEWAL",
             "NOTICE_TO_QUIT",
             "GUARANTOR_AGREEMENT",
             "RENT_INCREASE_NOTICE",
         ],
-        # Document Packs - Pro (4 document types)
+        "DOC_PACK_PLUS": [
+            "DOC_PACK_ORCHESTRATOR",
+            "TENANCY_AGREEMENT_AST",
+            "TENANCY_RENEWAL",
+            "NOTICE_TO_QUIT",
+            "GUARANTOR_AGREEMENT",
+            "RENT_INCREASE_NOTICE",
+        ],
         "DOC_PACK_PRO": [
+            "DOC_PACK_ORCHESTRATOR",
             "INVENTORY_CONDITION_REPORT",
             "DEPOSIT_INFORMATION_PACK",
             "PROPERTY_ACCESS_NOTICE",
@@ -244,7 +300,7 @@ class PromptService:
             self._llm_provider = GeminiProvider()
         return self._llm_provider
     
-    def _generate_id(self, prefix: str = "PT") -> str:
+    def _generate_id(self, prefix: str = "PTMPL") -> str:
         """Generate unique ID with timestamp component."""
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         random_part = hashlib.sha256(
@@ -324,7 +380,7 @@ class PromptService:
         if not is_valid:
             raise ValueError(error_msg)
         
-        template_id = self._generate_id("PT")
+        template_id = self._generate_id("PTMPL")
         now = datetime.now(timezone.utc)
         
         # Build document
@@ -592,7 +648,7 @@ class PromptService:
         # TESTED/ACTIVE: Create new version
         else:
             new_version = existing["version"] + 1
-            new_template_id = self._generate_id("PT")
+            new_template_id = self._generate_id("PTMPL")
             
             # Copy existing and apply updates
             new_doc = {**existing}
@@ -636,6 +692,50 @@ class PromptService:
             logger.info(f"Created new version {new_template_id} v{new_version} from {template_id}")
             
             return self._doc_to_response(new_doc)
+    
+    async def clone_version(
+        self,
+        template_id: str,
+        created_by: str,
+    ) -> Optional[PromptTemplateResponse]:
+        """
+        Clone the current template into a new version (new template_id, version+1, DRAFT).
+        Does not require any update body; creates a copy for editing.
+        """
+        db = database.get_db()
+        existing = await db[self.COLLECTION].find_one({"template_id": template_id}, {"_id": 0})
+        if not existing:
+            return None
+        now = datetime.now(timezone.utc)
+        new_version = existing["version"] + 1
+        new_template_id = self._generate_id("PTMPL")
+        new_doc = {**existing}
+        new_doc["template_id"] = new_template_id
+        new_doc["version"] = new_version
+        new_doc["status"] = PromptStatus.DRAFT.value
+        new_doc["created_at"] = now
+        new_doc["created_by"] = created_by
+        new_doc["updated_at"] = None
+        new_doc["updated_by"] = None
+        new_doc["activated_at"] = None
+        new_doc["activated_by"] = None
+        new_doc["deprecated_at"] = None
+        new_doc["deprecated_by"] = None
+        new_doc["last_test_status"] = None
+        new_doc["last_test_at"] = None
+        new_doc["test_count"] = 0
+        new_doc.pop("_id", None)
+        await db[self.COLLECTION].insert_one(new_doc)
+        await self._log_audit(
+            template_id=new_template_id,
+            version=new_version,
+            action=PromptAuditAction.CREATED,
+            changes_summary=f"Cloned as new version from {template_id} v{existing['version']}",
+            changes_detail={"source_template_id": template_id, "source_version": existing["version"]},
+            performed_by=created_by,
+        )
+        logger.info(f"Cloned new version {new_template_id} v{new_version} from {template_id}")
+        return self._doc_to_response(new_doc)
     
     # ========================================
     # DELETE / ARCHIVE
@@ -722,10 +822,17 @@ class PromptService:
         # Use overrides if provided
         temperature = request.temperature_override or template["temperature"]
         max_tokens = request.max_tokens_override or template["max_tokens"]
-        
+        provider_name = (getattr(request, "provider", None) or "gemini").lower()
+        model_override = getattr(request, "model", None)
+
+        # Select LLM provider for this test run (OpenAI or Gemini)
+        if provider_name == "openai":
+            llm = OpenAIProvider(model=model_override)
+        else:
+            llm = GeminiProvider(model=model_override or "gemini-2.5-flash")
+
         # Execute LLM call
         try:
-            llm = await self._get_llm_provider()
             raw_output, tokens = await llm.generate(
                 system_prompt=template["system_prompt"],
                 user_prompt=rendered_prompt,
@@ -759,7 +866,7 @@ class PromptService:
         
         execution_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
         
-        # Build result
+        # Build result (include provider/model for audit and UI)
         result = PromptTestResult(
             test_id=test_id,
             template_id=request.template_id,
@@ -774,6 +881,8 @@ class PromptService:
             execution_time_ms=execution_time,
             prompt_tokens=tokens.get("prompt_tokens", 0),
             completion_tokens=tokens.get("completion_tokens", 0),
+            provider=provider_name,
+            model=model_override or (llm._model if hasattr(llm, "_model") else None),
             error_message=error_message,
             executed_at=start_time.isoformat(),
             executed_by=executed_by,

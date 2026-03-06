@@ -378,7 +378,7 @@ async def export_ical_calendar(
                 continue
             
             # Create unique event ID
-            event_uid = f"{req['requirement_id']}@compliance-vault-pro.pleerity.com"
+            event_uid = f"{req['requirement_id']}@pleerityenterprise.co.uk"
             
             # Format dates for iCal (YYYYMMDD for all-day events)
             dtstart = due_date.strftime("%Y%m%d")

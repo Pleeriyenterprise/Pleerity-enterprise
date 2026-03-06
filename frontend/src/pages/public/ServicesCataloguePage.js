@@ -35,28 +35,28 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Category icons
+// Category icons (four services)
 const categoryIcons = {
-  CVP_FEATURE: Shield,
-  CVP_ADDON: ClipboardCheck,
-  STANDALONE_REPORT: Sparkles,
-  DOCUMENT_PACK: FileText,
+  ai_automation: Sparkles,
+  market_research: Building2,
+  compliance: Shield,
+  document_pack: FileText,
 };
 
 // Category colors
 const categoryColors = {
-  CVP_FEATURE: 'bg-blue-500',
-  CVP_ADDON: 'bg-amber-500',
-  STANDALONE_REPORT: 'bg-purple-500',
-  DOCUMENT_PACK: 'bg-green-500',
+  ai_automation: 'bg-purple-500',
+  market_research: 'bg-blue-500',
+  compliance: 'bg-amber-500',
+  document_pack: 'bg-green-500',
 };
 
 // Category labels
 const categoryLabels = {
-  CVP_FEATURE: 'CVP Features',
-  CVP_ADDON: 'CVP Add-ons',
-  STANDALONE_REPORT: 'Standalone Reports',
-  DOCUMENT_PACK: 'Document Packs',
+  ai_automation: 'AI & Automation',
+  market_research: 'Market Research',
+  compliance: 'Compliance',
+  document_pack: 'Document Packs',
 };
 
 const ServicesCataloguePage = () => {
@@ -67,12 +67,12 @@ const ServicesCataloguePage = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   
-  // Fetch services from API
+  // Fetch services from canonical API (service_code authoritative)
   useEffect(() => {
     const fetchServices = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/api/public/services`);
+        const response = await fetch(`${API_URL}/api/services`);
         
         if (!response.ok) {
           throw new Error('Failed to load services');
@@ -97,27 +97,33 @@ const ServicesCataloguePage = () => {
     return `£${(pence / 100).toFixed(2)}`;
   };
   
-  // Filter and sort services
+  // Normalize: canonical API uses name, description_preview, base_price
+  const norm = (s) => ({
+    ...s,
+    service_name: s.name ?? s.service_name,
+    description: s.description_preview ?? s.description,
+    price_amount: s.base_price ?? s.price_amount,
+    documents_generated: Array.isArray(s.document_types) ? s.document_types.map((code) => ({ template_code: code })) : s.documents_generated,
+  });
+
   const filteredServices = services
+    .map(norm)
     .filter(service => {
-      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
-          service.service_name.toLowerCase().includes(query) ||
-          service.description?.toLowerCase().includes(query) ||
-          service.service_code.toLowerCase().includes(query)
+          (service.service_name || '').toLowerCase().includes(query) ||
+          (service.description || '').toLowerCase().includes(query) ||
+          (service.service_code || '').toLowerCase().includes(query)
         );
       }
       return true;
     })
     .filter(service => {
-      // Category filter
       if (selectedCategory === 'all') return true;
       return service.category === selectedCategory;
     })
     .sort((a, b) => {
-      // Sort
       switch (sortBy) {
         case 'price-low':
           return (a.price_amount || 0) - (b.price_amount || 0);
@@ -125,23 +131,24 @@ const ServicesCataloguePage = () => {
           return (b.price_amount || 0) - (a.price_amount || 0);
         case 'name':
         default:
-          return a.service_name.localeCompare(b.service_name);
+          return (a.service_name || '').localeCompare(b.service_name || '');
       }
     });
-  
-  // Group services by category
+
+  // Group by category (four services: ai_automation, market_research, compliance, document_pack)
   const servicesByCategory = {
-    STANDALONE_REPORT: filteredServices.filter(s => s.category === 'STANDALONE_REPORT'),
-    DOCUMENT_PACK: filteredServices.filter(s => s.category === 'DOCUMENT_PACK'),
-    CVP_ADDON: filteredServices.filter(s => s.category === 'CVP_ADDON'),
-    CVP_FEATURE: filteredServices.filter(s => s.category === 'CVP_FEATURE'),
+    ai_automation: filteredServices.filter(s => s.category === 'ai_automation'),
+    market_research: filteredServices.filter(s => s.category === 'market_research'),
+    compliance: filteredServices.filter(s => s.category === 'compliance'),
+    document_pack: filteredServices.filter(s => s.category === 'document_pack'),
   };
   
-  // Render service card
+  // Render service card (Learn More -> /services/detail/[slug], Get Started -> /order/intake?service=CODE)
   const renderServiceCard = (service) => {
     const Icon = categoryIcons[service.category] || Package;
     const colorClass = categoryColors[service.category] || 'bg-gray-500';
-    const canOrder = service.pricing_model !== 'included' && service.price_amount > 0;
+    const canOrder = service.pricing !== 'included' && (service.price_amount || 0) > 0;
+    const slug = service.seo_slug || service.service_code?.toLowerCase().replace(/_/g, '-');
     
     return (
       <Card 
@@ -155,7 +162,7 @@ const ServicesCataloguePage = () => {
               <Icon className="w-6 h-6 text-white" />
             </div>
             <Badge variant="outline" className="text-xs">
-              {categoryLabels[service.category]}
+              {categoryLabels[service.category] || service.category}
             </Badge>
           </div>
           <CardTitle className="text-lg mt-3">{service.service_name}</CardTitle>
@@ -164,7 +171,6 @@ const ServicesCataloguePage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
-          {/* Features */}
           <div className="flex items-center gap-3 text-xs text-gray-500 mb-4">
             {service.documents_generated && service.documents_generated.length > 0 && (
               <div className="flex items-center gap-1">
@@ -178,7 +184,7 @@ const ServicesCataloguePage = () => {
                 <span>{service.turnaround_hours}h</span>
               </div>
             )}
-            {service.review_required && (
+            {service.requires_review && (
               <div className="flex items-center gap-1">
                 <Shield className="h-3 w-3" />
                 <span>Reviewed</span>
@@ -186,37 +192,32 @@ const ServicesCataloguePage = () => {
             )}
           </div>
           
-          {/* Price & CTA */}
           <div className="flex items-center justify-between pt-4 border-t">
             <div>
               <p className="text-xl font-bold text-midnight-blue">
                 {formatPrice(service.price_amount)}
               </p>
-              {service.price_amount > 0 && (
+              {(service.price_amount || 0) > 0 && (
                 <p className="text-xs text-gray-500">+ VAT</p>
               )}
             </div>
-            {canOrder ? (
-              <Button
-                asChild
-                className="bg-electric-teal hover:bg-electric-teal/90 group-hover:translate-x-1 transition-transform"
-                data-testid={`btn-order-${service.service_code}`}
-              >
-                <Link to={`/order/intake?service=${service.service_code}`}>
-                  Order Now
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Link>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/services/detail/${slug}`}>Learn More</Link>
               </Button>
-            ) : service.requires_cvp_subscription ? (
-              <Button variant="outline" asChild>
-                <Link to="/compliance-vault-pro">
-                  Get CVP
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Link>
-              </Button>
-            ) : (
-              <Badge variant="secondary">Included in CVP</Badge>
-            )}
+              {canOrder && (
+                <Button
+                  asChild
+                  className="bg-electric-teal hover:bg-electric-teal/90 group-hover:translate-x-1 transition-transform"
+                  data-testid={`btn-order-${service.service_code}`}
+                >
+                  <Link to={`/order/intake?service=${service.service_code}`}>
+                    Get Started
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -284,10 +285,10 @@ const ServicesCataloguePage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="STANDALONE_REPORT">Standalone Reports</SelectItem>
-                  <SelectItem value="DOCUMENT_PACK">Document Packs</SelectItem>
-                  <SelectItem value="CVP_ADDON">CVP Add-ons</SelectItem>
-                  <SelectItem value="CVP_FEATURE">CVP Features</SelectItem>
+                  <SelectItem value="ai_automation">AI & Automation</SelectItem>
+                  <SelectItem value="market_research">Market Research</SelectItem>
+                  <SelectItem value="compliance">Compliance</SelectItem>
+                  <SelectItem value="document_pack">Document Packs</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
@@ -315,44 +316,41 @@ const ServicesCataloguePage = () => {
               <p className="text-gray-500">Try adjusting your search or filters</p>
             </div>
           ) : selectedCategory === 'all' ? (
-            // Show by category
-            <Tabs defaultValue="reports" className="w-full">
+            // Show by category (four services)
+            <Tabs defaultValue="ai_automation" className="w-full">
               <TabsList className="grid w-full grid-cols-4 mb-8">
-                <TabsTrigger value="reports" className="text-xs sm:text-sm">
-                  Reports ({servicesByCategory.STANDALONE_REPORT.length})
+                <TabsTrigger value="ai_automation" className="text-xs sm:text-sm">
+                  AI & Automation ({servicesByCategory.ai_automation.length})
                 </TabsTrigger>
-                <TabsTrigger value="documents" className="text-xs sm:text-sm">
-                  Documents ({servicesByCategory.DOCUMENT_PACK.length})
+                <TabsTrigger value="market_research" className="text-xs sm:text-sm">
+                  Market Research ({servicesByCategory.market_research.length})
                 </TabsTrigger>
-                <TabsTrigger value="addons" className="text-xs sm:text-sm">
-                  Add-ons ({servicesByCategory.CVP_ADDON.length})
+                <TabsTrigger value="compliance" className="text-xs sm:text-sm">
+                  Compliance ({servicesByCategory.compliance.length})
                 </TabsTrigger>
-                <TabsTrigger value="cvp" className="text-xs sm:text-sm">
-                  CVP ({servicesByCategory.CVP_FEATURE.length})
+                <TabsTrigger value="document_pack" className="text-xs sm:text-sm">
+                  Document Packs ({servicesByCategory.document_pack.length})
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="reports">
+              <TabsContent value="ai_automation">
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {servicesByCategory.STANDALONE_REPORT.map(renderServiceCard)}
+                  {servicesByCategory.ai_automation.map(renderServiceCard)}
                 </div>
               </TabsContent>
-              
-              <TabsContent value="documents">
+              <TabsContent value="market_research">
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {servicesByCategory.DOCUMENT_PACK.map(renderServiceCard)}
+                  {servicesByCategory.market_research.map(renderServiceCard)}
                 </div>
               </TabsContent>
-              
-              <TabsContent value="addons">
+              <TabsContent value="compliance">
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {servicesByCategory.CVP_ADDON.map(renderServiceCard)}
+                  {servicesByCategory.compliance.map(renderServiceCard)}
                 </div>
               </TabsContent>
-              
-              <TabsContent value="cvp">
+              <TabsContent value="document_pack">
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {servicesByCategory.CVP_FEATURE.map(renderServiceCard)}
+                  {servicesByCategory.document_pack.map(renderServiceCard)}
                 </div>
               </TabsContent>
             </Tabs>

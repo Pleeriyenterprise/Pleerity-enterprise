@@ -159,6 +159,53 @@ async def postmark_webhook(
                     client_id=log.get("client_id"),
                     metadata={"message_id": log.get("message_id"), "provider_message_id": message_id},
                 )
+            # Update delivery record and order (DELIVERING -> COMPLETED)
+            try:
+                from repositories.services_repositories import delivery_repository
+                from services.order_service import get_order, transition_order_state
+                from services.order_workflow import OrderStatus
+                delivery = await delivery_repository.find_by_postmark_message_id(message_id)
+                if delivery:
+                    delivered_at = body.get("DeliveredAt") or now
+                    if isinstance(delivered_at, str):
+                        from dateutil import parser as date_parser
+                        try:
+                            delivered_at = date_parser.parse(delivered_at)
+                        except Exception:
+                            delivered_at = now
+                    await delivery_repository.update_delivery_status(
+                        delivery["delivery_id"], "DELIVERED", delivered_at=delivered_at
+                    )
+                    order_id = delivery.get("order_id")
+                    if order_id:
+                        order = await get_order(order_id)
+                        if order and order.get("status") == OrderStatus.DELIVERING.value:
+                            await transition_order_state(
+                                order_id=order_id,
+                                new_status=OrderStatus.COMPLETED,
+                                triggered_by_type="system",
+                                reason="Delivery confirmed via Postmark webhook",
+                                metadata={"postmark_message_id": message_id, "delivered_at": (delivered_at.isoformat() if hasattr(delivered_at, "isoformat") else str(delivered_at))},
+                            )
+                            await db.orders.update_one(
+                                {"order_id": order_id},
+                                {"$set": {"delivered_at": delivered_at, "completed_at": delivered_at}},
+                            )
+                            try:
+                                from services.order_notification_service import order_notification_service, OrderNotificationEvent
+                                order = await get_order(order_id)
+                                if order:
+                                    await order_notification_service.notify_order_event(
+                                        event_type=OrderNotificationEvent.ORDER_DELIVERED,
+                                        order_id=order_id,
+                                        order=order,
+                                        message=f"Documents delivered to {order.get('customer', {}).get('email', '')}",
+                                    )
+                            except Exception as notif_err:
+                                logger.warning(f"Order delivery notification failed: {notif_err}")
+                            logger.info(f"Order {order_id} marked COMPLETED from webhook delivery")
+            except Exception as e:
+                logger.warning(f"Postmark webhook: delivery record/order update failed: {e}")
             logger.info(f"Email delivered: {message_id}")
             return {"status": "received"}
         if record_type in ("Bounce", "HardBounce", "SoftBounce", "bounce"):
@@ -177,6 +224,40 @@ async def postmark_webhook(
                     client_id=log.get("client_id"),
                     metadata={"message_id": log.get("message_id"), "provider_message_id": message_id},
                 )
+            # Update delivery record and order (DELIVERING -> DELIVERY_FAILED)
+            try:
+                from repositories.services_repositories import delivery_repository
+                from services.order_service import get_order, transition_order_state
+                from services.order_workflow import OrderStatus
+                delivery = await delivery_repository.find_by_postmark_message_id(message_id)
+                if delivery:
+                    bounced_at = body.get("BouncedAt") or body.get("OccurredAt") or now
+                    if isinstance(bounced_at, str):
+                        from dateutil import parser as date_parser
+                        try:
+                            bounced_at = date_parser.parse(bounced_at)
+                        except Exception:
+                            bounced_at = now
+                    err_msg = body.get("Description") or body.get("DescriptionPlain") or "Bounced"
+                    await delivery_repository.update_delivery_status(
+                        delivery["delivery_id"], "BOUNCED",
+                        bounced_at=bounced_at,
+                        error_message=err_msg,
+                    )
+                    order_id = delivery.get("order_id")
+                    if order_id:
+                        order = await get_order(order_id)
+                        if order and order.get("status") == OrderStatus.DELIVERING.value:
+                            await transition_order_state(
+                                order_id=order_id,
+                                new_status=OrderStatus.DELIVERY_FAILED,
+                                triggered_by_type="system",
+                                reason=f"Email bounced: {err_msg[:200]}",
+                                metadata={"postmark_message_id": message_id, "bounced_at": (bounced_at.isoformat() if hasattr(bounced_at, "isoformat") else str(bounced_at))},
+                            )
+                            logger.info(f"Order {order_id} marked DELIVERY_FAILED from webhook bounce")
+            except Exception as e:
+                logger.warning(f"Postmark webhook: delivery record/order update (bounce) failed: {e}")
             logger.warning(f"Email bounced: {message_id}")
             return {"status": "received"}
         if record_type in ("SpamComplaint", "Spam", "spam_complaint"):
@@ -191,6 +272,30 @@ async def postmark_webhook(
                     client_id=log.get("client_id"),
                     metadata={"message_id": log.get("message_id"), "provider_message_id": message_id},
                 )
+            # Update delivery record and order (DELIVERING -> DELIVERY_FAILED)
+            try:
+                from repositories.services_repositories import delivery_repository
+                from services.order_service import get_order, transition_order_state
+                from services.order_workflow import OrderStatus
+                delivery = await delivery_repository.find_by_postmark_message_id(message_id)
+                if delivery:
+                    await delivery_repository.update_delivery_status(
+                        delivery["delivery_id"], "BOUNCED",
+                        error_message="Spam complaint",
+                    )
+                    order_id = delivery.get("order_id")
+                    if order_id:
+                        order = await get_order(order_id)
+                        if order and order.get("status") == OrderStatus.DELIVERING.value:
+                            await transition_order_state(
+                                order_id=order_id,
+                                new_status=OrderStatus.DELIVERY_FAILED,
+                                triggered_by_type="system",
+                                reason="Email spam complaint",
+                                metadata={"postmark_message_id": message_id},
+                            )
+            except Exception as e:
+                logger.warning(f"Postmark webhook: delivery record/order update (spam) failed: {e}")
             logger.warning(f"Email spam complaint: {message_id}")
             return {"status": "received"}
         return {"status": "ignored", "RecordType": record_type}

@@ -327,7 +327,7 @@ class OrderNotificationService:
                                 "client_name": admin.get("name", "Admin"),
                                 "title": f"{config.get('icon', '')} {title}",
                                 "message": f"Order: {order_id}\n\n{message}",
-                                "portal_link": f"{os.environ.get('FRONTEND_URL', '')}/admin/orders",
+                                "portal_link": f"{os.environ.get('FRONTEND_URL', 'https://pleerityenterprise.co.uk')}/admin/orders",
                                 "subject": f"[Pleerity] {title}: {order_id}",
                             },
                             idempotency_key=idempotency_key,

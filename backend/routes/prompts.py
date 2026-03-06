@@ -223,6 +223,50 @@ async def get_version_history(
     }
 
 
+@router.get("/{template_id}/audit")
+async def get_template_audit(
+    template_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    current_user: dict = Depends(require_super_admin),
+):
+    """Get audit log entries for a specific template (path-style)."""
+    entries = await prompt_service.get_audit_log(template_id=template_id, limit=limit)
+    return {"entries": entries, "total": len(entries), "template_id": template_id}
+
+
+@router.post("/{template_id}/version", response_model=PromptTemplateResponse)
+async def clone_prompt_version(
+    template_id: str,
+    current_user: dict = Depends(require_super_admin),
+):
+    """Clone template into a new version (new template_id, version+1, DRAFT). No body required."""
+    result = await prompt_service.clone_version(
+        template_id=template_id,
+        created_by=current_user.get("email", "admin"),
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return result
+
+
+@router.post("/{template_id}/archive")
+async def archive_prompt_template_post(
+    template_id: str,
+    current_user: dict = Depends(require_super_admin),
+):
+    """Archive a prompt template (soft delete). Same as DELETE /{template_id}."""
+    success = await prompt_service.archive_template(
+        template_id=template_id,
+        archived_by=current_user.get("email", "admin"),
+    )
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot archive. Template not found or is currently ACTIVE.",
+        )
+    return {"success": True, "message": "Template archived"}
+
+
 @router.get("/{template_id}", response_model=PromptTemplateResponse)
 async def get_prompt_template(
     template_id: str,
@@ -315,11 +359,17 @@ async def test_prompt(
             executed_by=current_user.get("email", "admin"),
         )
         # Missing LLM config => 503 so clients can show "AI unavailable"
-        if getattr(result, "status", None) == "FAILED" and result.error_message and "LLM_API_KEY" in result.error_message:
-            raise HTTPException(
-                status_code=503,
-                detail="AI service unavailable. Set LLM_API_KEY to use prompt testing.",
-            )
+        if getattr(result, "status", None) == "FAILED" and result.error_message:
+            if "OPENAI_API_KEY" in result.error_message:
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI service unavailable. Set OPENAI_API_KEY for OpenAI provider.",
+                )
+            if "LLM_API_KEY" in result.error_message:
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI service unavailable. Set LLM_API_KEY for Gemini provider.",
+                )
         return result
     except HTTPException:
         raise

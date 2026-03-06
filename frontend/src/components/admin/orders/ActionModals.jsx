@@ -66,6 +66,16 @@ const REGEN_REASONS = [
   { value: 'other', label: 'Other' },
 ];
 
+// Optional "sections to improve" for regeneration (sent as affected_sections)
+const REGEN_SECTIONS_TO_IMPROVE = [
+  { id: 'executive_summary', label: 'Executive summary' },
+  { id: 'main_body', label: 'Main body / Content' },
+  { id: 'recommendations', label: 'Recommendations' },
+  { id: 'appendix', label: 'Appendix' },
+  { id: 'tables_figures', label: 'Tables / Figures' },
+  { id: 'other', label: 'Other' },
+];
+
 // Common requested fields for client info
 const COMMON_REQUESTED_FIELDS = [
   { id: 'tenant_name', label: 'Tenant Full Name' },
@@ -185,6 +195,30 @@ export const RegenerationModal = ({
               <p className="text-xs text-gray-500">
                 Minimum 10 characters. Be specific about required changes.
               </p>
+            </div>
+
+            {/* Sections to improve (optional) */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Sections to improve (optional)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {REGEN_SECTIONS_TO_IMPROVE.map((opt) => (
+                  <div key={opt.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`regen-section-${opt.id}`}
+                      checked={sections.includes(opt.id)}
+                      onCheckedChange={(checked) => {
+                        setSections((prev) =>
+                          checked ? [...prev, opt.id] : prev.filter((s) => s !== opt.id)
+                        );
+                      }}
+                      data-testid={`regen-section-${opt.id}`}
+                    />
+                    <label htmlFor={`regen-section-${opt.id}`} className="text-sm cursor-pointer">
+                      {opt.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Guardrails */}

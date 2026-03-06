@@ -35,7 +35,8 @@ from services.service_definitions_v2 import (
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/admin/services/v2", tags=["admin-services-v2"])
+# Prefix left empty so server can mount at /api/admin/services and /api/admin/services/v2
+router = APIRouter(prefix="", tags=["admin-services-v2"])
 
 
 # ============================================================================
@@ -192,6 +193,100 @@ class UpdateServiceRequest(BaseModel):
     
     active: Optional[bool] = None
     display_order: Optional[int] = None
+
+
+# ============================================================================
+# SHARED IMPL (for canonical /api/admin/services and v2)
+# ============================================================================
+
+async def create_service_impl(request: CreateServiceRequest, created_by: str):
+    """Create a service. Used by both canonical and v2 POST."""
+    entry = ServiceCatalogueEntryV2(
+        service_code=request.service_code.upper(),
+        service_name=request.service_name,
+        description=request.description,
+        long_description=request.long_description,
+        icon=request.icon,
+        category=ServiceCategory(request.category),
+        tags=request.tags,
+        website_preview=request.website_preview,
+        learn_more_slug=request.learn_more_slug,
+        pricing_model=PricingModel(request.pricing_model),
+        base_price=request.base_price,
+        price_currency=request.price_currency,
+        vat_rate=request.vat_rate,
+        pricing_variants=[PricingVariant(**v.model_dump()) for v in request.pricing_variants],
+        fast_track_available=request.fast_track_available,
+        fast_track_price=request.fast_track_price,
+        fast_track_hours=request.fast_track_hours,
+        printed_copy_available=request.printed_copy_available,
+        printed_copy_price=request.printed_copy_price,
+        delivery_type=DeliveryType(request.delivery_type),
+        standard_turnaround_hours=request.standard_turnaround_hours,
+        delivery_format=request.delivery_format,
+        workflow_name=request.workflow_name,
+        product_type=ProductType(request.product_type),
+        documents_generated=[DocumentTemplate(**d.model_dump()) for d in request.documents_generated],
+        pack_tier=PackTier(request.pack_tier) if request.pack_tier else None,
+        includes_lower_tiers=request.includes_lower_tiers,
+        parent_pack_code=request.parent_pack_code,
+        intake_fields=[
+            IntakeFieldSchema(
+                field_id=f.field_id,
+                label=f.label,
+                field_type=IntakeFieldType(f.field_type),
+                required=f.required,
+                placeholder=f.placeholder,
+                help_text=f.help_text,
+                options=f.options,
+                validation_regex=f.validation_regex,
+                min_value=f.min_value,
+                max_value=f.max_value,
+                default_value=f.default_value,
+                order=f.order,
+                conditional_on=f.conditional_on,
+                conditional_value=f.conditional_value,
+            )
+            for f in request.intake_fields
+        ],
+        generation_mode=GenerationMode(request.generation_mode),
+        master_prompt_id=request.master_prompt_id,
+        gpt_sections=request.gpt_sections,
+        review_required=request.review_required,
+        requires_cvp_subscription=request.requires_cvp_subscription,
+        is_cvp_feature=request.is_cvp_feature,
+        allowed_plans=request.allowed_plans,
+        active=request.active,
+        display_order=request.display_order,
+    )
+    return await service_catalogue_v2.create_service(entry=entry, created_by=created_by)
+
+
+async def update_service_impl(service_code: str, request: UpdateServiceRequest, updated_by: str):
+    """Update a service. Used by both canonical and v2 PUT. Raises ValueError if no updates."""
+    updates = {}
+    for field, value in request.model_dump().items():
+        if value is not None:
+            updates[field] = value
+    if not updates:
+        raise ValueError("No updates provided")
+    if "pricing_variants" in updates:
+        updates["pricing_variants"] = [
+            v if isinstance(v, dict) else v.model_dump() for v in updates["pricing_variants"]
+        ]
+    if "documents_generated" in updates:
+        updates["documents_generated"] = [
+            d if isinstance(d, dict) else d.model_dump() for d in updates["documents_generated"]
+        ]
+    if "intake_fields" in updates:
+        updates["intake_fields"] = [
+            f if isinstance(f, dict) else f.model_dump() for f in updates["intake_fields"]
+        ]
+    return await service_catalogue_v2.update_service(
+        service_code=service_code,
+        updates=updates,
+        updated_by=updated_by,
+    )
 
 
 # ============================================================================
@@ -355,77 +450,12 @@ async def create_service(
 ):
     """Create a new service in the catalogue."""
     try:
-        # Convert request to entry
-        entry = ServiceCatalogueEntryV2(
-            service_code=request.service_code.upper(),
-            service_name=request.service_name,
-            description=request.description,
-            long_description=request.long_description,
-            icon=request.icon,
-            category=ServiceCategory(request.category),
-            tags=request.tags,
-            website_preview=request.website_preview,
-            learn_more_slug=request.learn_more_slug,
-            pricing_model=PricingModel(request.pricing_model),
-            base_price=request.base_price,
-            price_currency=request.price_currency,
-            vat_rate=request.vat_rate,
-            pricing_variants=[PricingVariant(**v.model_dump()) for v in request.pricing_variants],
-            fast_track_available=request.fast_track_available,
-            fast_track_price=request.fast_track_price,
-            fast_track_hours=request.fast_track_hours,
-            printed_copy_available=request.printed_copy_available,
-            printed_copy_price=request.printed_copy_price,
-            delivery_type=DeliveryType(request.delivery_type),
-            standard_turnaround_hours=request.standard_turnaround_hours,
-            delivery_format=request.delivery_format,
-            workflow_name=request.workflow_name,
-            product_type=ProductType(request.product_type),
-            documents_generated=[DocumentTemplate(**d.model_dump()) for d in request.documents_generated],
-            pack_tier=PackTier(request.pack_tier) if request.pack_tier else None,
-            includes_lower_tiers=request.includes_lower_tiers,
-            parent_pack_code=request.parent_pack_code,
-            intake_fields=[
-                IntakeFieldSchema(
-                    field_id=f.field_id,
-                    label=f.label,
-                    field_type=IntakeFieldType(f.field_type),
-                    required=f.required,
-                    placeholder=f.placeholder,
-                    help_text=f.help_text,
-                    options=f.options,
-                    validation_regex=f.validation_regex,
-                    min_value=f.min_value,
-                    max_value=f.max_value,
-                    default_value=f.default_value,
-                    order=f.order,
-                    conditional_on=f.conditional_on,
-                    conditional_value=f.conditional_value,
-                )
-                for f in request.intake_fields
-            ],
-            generation_mode=GenerationMode(request.generation_mode),
-            master_prompt_id=request.master_prompt_id,
-            gpt_sections=request.gpt_sections,
-            review_required=request.review_required,
-            requires_cvp_subscription=request.requires_cvp_subscription,
-            is_cvp_feature=request.is_cvp_feature,
-            allowed_plans=request.allowed_plans,
-            active=request.active,
-            display_order=request.display_order,
-        )
-        
-        created = await service_catalogue_v2.create_service(
-            entry=entry,
-            created_by=current_user.get("email"),
-        )
-        
+        created = await create_service_impl(request, current_user.get("email", "admin"))
         return {
             "success": True,
             "service": created.to_dict(),
             "message": f"Service {request.service_code} created successfully",
         }
-        
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -437,41 +467,14 @@ async def update_service(
     current_user: dict = Depends(admin_route_guard),
 ):
     """Update a service. service_code cannot be changed."""
-    # Build updates dict, excluding None values
-    updates = {}
-    for field, value in request.model_dump().items():
-        if value is not None:
-            updates[field] = value
-    
-    if not updates:
-        raise HTTPException(status_code=400, detail="No updates provided")
-    
-    # Convert nested models if present
-    if "pricing_variants" in updates:
-        updates["pricing_variants"] = [
-            v if isinstance(v, dict) else v.model_dump()
-            for v in updates["pricing_variants"]
-        ]
-    if "documents_generated" in updates:
-        updates["documents_generated"] = [
-            d if isinstance(d, dict) else d.model_dump()
-            for d in updates["documents_generated"]
-        ]
-    if "intake_fields" in updates:
-        updates["intake_fields"] = [
-            f if isinstance(f, dict) else f.model_dump()
-            for f in updates["intake_fields"]
-        ]
-    
-    updated = await service_catalogue_v2.update_service(
-        service_code=service_code,
-        updates=updates,
-        updated_by=current_user.get("email"),
-    )
-    
+    try:
+        updated = await update_service_impl(
+            service_code, request, current_user.get("email", "admin")
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not updated:
         raise HTTPException(status_code=404, detail=f"Service not found: {service_code}")
-    
     return {
         "success": True,
         "service": updated.to_dict(),
@@ -479,44 +482,62 @@ async def update_service(
     }
 
 
+async def _do_activate(service_code: str, updated_by: str):
+    """Shared logic for activate."""
+    success = await service_catalogue_v2.activate_service(
+        service_code=service_code,
+        updated_by=updated_by,
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Service not found: {service_code}")
+    return {"success": True, "message": f"Service {service_code} activated"}
+
+
+async def _do_deactivate(service_code: str, updated_by: str):
+    """Shared logic for deactivate."""
+    success = await service_catalogue_v2.deactivate_service(
+        service_code=service_code,
+        updated_by=updated_by,
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Service not found: {service_code}")
+    return {"success": True, "message": f"Service {service_code} deactivated"}
+
+
 @router.post("/{service_code}/activate")
-async def activate_service(
+async def activate_service_post(
     service_code: str,
     current_user: dict = Depends(admin_route_guard),
 ):
-    """Activate a service."""
-    success = await service_catalogue_v2.activate_service(
-        service_code=service_code,
-        updated_by=current_user.get("email"),
-    )
-    
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Service not found: {service_code}")
-    
-    return {
-        "success": True,
-        "message": f"Service {service_code} activated",
-    }
+    """Activate a service (POST)."""
+    return await _do_activate(service_code, current_user.get("email", "admin"))
+
+
+@router.patch("/{service_code}/activate")
+async def activate_service_patch(
+    service_code: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Activate a service (PATCH)."""
+    return await _do_activate(service_code, current_user.get("email", "admin"))
 
 
 @router.post("/{service_code}/deactivate")
-async def deactivate_service(
+async def deactivate_service_post(
     service_code: str,
     current_user: dict = Depends(admin_route_guard),
 ):
-    """Deactivate a service (soft delete)."""
-    success = await service_catalogue_v2.deactivate_service(
-        service_code=service_code,
-        updated_by=current_user.get("email"),
-    )
-    
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Service not found: {service_code}")
-    
-    return {
-        "success": True,
-        "message": f"Service {service_code} deactivated",
-    }
+    """Deactivate a service (soft delete) (POST)."""
+    return await _do_deactivate(service_code, current_user.get("email", "admin"))
+
+
+@router.patch("/{service_code}/deactivate")
+async def deactivate_service_patch(
+    service_code: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Deactivate a service (PATCH)."""
+    return await _do_deactivate(service_code, current_user.get("email", "admin"))
 
 
 @router.post("/seed")

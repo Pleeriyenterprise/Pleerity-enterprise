@@ -524,7 +524,7 @@ async def request_client_info(
         )
         
         # Build and send client email
-        frontend_url = os.getenv("FRONTEND_URL", "https://pleerity.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
         provide_info_link = f"{frontend_url}/app/orders/{order_id}/provide-info"
         
         deadline_str = None
@@ -703,7 +703,7 @@ async def get_document_access_token(
     )
     
     # Build full URL
-    base_url = os.environ.get("FRONTEND_URL", "")
+    base_url = os.environ.get("FRONTEND_URL", "https://pleerityenterprise.co.uk")
     preview_url = f"{base_url}/api/admin/orders/{order_id}/documents/{version}/view?format={format}&token={token}"
     
     return {
@@ -1349,6 +1349,65 @@ async def retry_order_delivery(
         raise HTTPException(status_code=400, detail=result.get("error", "Retry failed"))
     
     return result
+
+
+@router.post("/{order_id}/retry-generation")
+async def retry_order_generation(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Retry generation for an order in FAILED state.
+    Transitions FAILED → QUEUED with reason and triggers processing immediately.
+    """
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order["status"] != OrderStatus.FAILED.value:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Order must be in FAILED status to retry generation (current: {order['status']})",
+        )
+
+    updated_order = await transition_order_state(
+        order_id=order_id,
+        new_status=OrderStatus.QUEUED,
+        triggered_by_type="admin",
+        triggered_by_user_id=current_user.get("user_id"),
+        triggered_by_email=current_user.get("email"),
+        reason="Admin retry generation",
+    )
+
+    from services.workflow_automation_service import workflow_automation_service
+    try:
+        result = await workflow_automation_service.wf2_queue_to_generation(order_id)
+        if result.get("success"):
+            # Optionally move to review if WF2+WF3 run in sequence; WF2 only goes to DRAFT_READY
+            review_result = await workflow_automation_service.wf3_draft_to_review(order_id)
+            return {
+                "success": True,
+                "message": "Order re-queued and processing triggered",
+                "order_id": order_id,
+                "status": updated_order.get("status"),
+                "generation": result,
+                "review": review_result,
+            }
+        return {
+            "success": False,
+            "message": result.get("error", "Generation failed"),
+            "order_id": order_id,
+            "status": updated_order.get("status"),
+            "generation": result,
+        }
+    except Exception as e:
+        logger.exception("Retry generation failed for order %s: %s", order_id, e)
+        return {
+            "success": True,
+            "message": "Order re-queued; generation will run on next scheduled job",
+            "order_id": order_id,
+            "status": "QUEUED",
+            "error": str(e),
+        }
 
 
 class ManualCompleteRequest(BaseModel):

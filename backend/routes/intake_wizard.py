@@ -484,7 +484,7 @@ async def create_draft_checkout(draft_id: str, request: CreateCheckoutRequest):
         )
     
     # Build URLs
-    frontend_url = os.getenv("FRONTEND_URL", "https://pleerity.com")
+    frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
     success_url = request.success_url or f"{frontend_url}/order/confirmation?draft_id={draft_id}"
     cancel_url = request.cancel_url or f"{frontend_url}/order/intake/{draft_id}?cancelled=true"
     

@@ -136,13 +136,18 @@ export default function AdminPromptManagerPage() {
     },
   });
   
-  // Test form
+  // Test form (provider/model for playground: OpenAI or Gemini)
   const [testForm, setTestForm] = useState({
     test_input_data: '{\n  "example_field": "example_value"\n}',
     temperature_override: null,
+    provider: 'gemini',
+    model: '',
   });
   const [testResult, setTestResult] = useState(null);
   const [testRunning, setTestRunning] = useState(false);
+  const [sampleOrders, setSampleOrders] = useState([]);
+  const [loadingSampleOrders, setLoadingSampleOrders] = useState(false);
+  const [selectedSampleOrderId, setSelectedSampleOrderId] = useState('');
   
   // Activation form
   const [activationReason, setActivationReason] = useState('');
@@ -319,6 +324,20 @@ export default function AdminPromptManagerPage() {
     }
   };
   
+  // Load sample orders for "Use payload from order" in Playground
+  const loadSampleOrders = useCallback(async () => {
+    setLoadingSampleOrders(true);
+    try {
+      const res = await client.get('/admin/orders/search', { params: { limit: 50 } });
+      setSampleOrders(Array.isArray(res.data?.orders) ? res.data.orders : []);
+    } catch (err) {
+      console.error('Failed to load sample orders:', err);
+      setSampleOrders([]);
+    } finally {
+      setLoadingSampleOrders(false);
+    }
+  }, []);
+
   // Open test dialog
   const openTestDialog = (template) => {
     setSelectedTemplate(template);
@@ -327,7 +346,27 @@ export default function AdminPromptManagerPage() {
       temperature_override: null,
     });
     setTestResult(null);
+    setSelectedSampleOrderId('');
     setShowTestDialog(true);
+    loadSampleOrders();
+  };
+
+  // Apply selected order's intake payload as test input
+  const handleUseOrderPayload = async (orderId) => {
+    if (!orderId) {
+      setSelectedSampleOrderId('');
+      return;
+    }
+    setSelectedSampleOrderId(orderId);
+    try {
+      const res = await client.get(`/admin/orders/${orderId}`);
+      const order = res.data;
+      const payload = order.intake_data ?? order.parameters ?? order.intake_snapshot?.intake_payload ?? {};
+      setTestForm(f => ({ ...f, test_input_data: JSON.stringify(payload, null, 2) }));
+      toast.success('Test input set from order payload');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to load order payload');
+    }
   };
   
   // Run test
@@ -346,11 +385,14 @@ export default function AdminPromptManagerPage() {
     setTestResult(null);
     
     try {
-      const res = await client.post('/admin/prompts/test', {
+      const payload = {
         template_id: selectedTemplate.template_id,
         test_input_data: parsedInput,
         temperature_override: testForm.temperature_override,
-      });
+        provider: testForm.provider || undefined,
+        model: testForm.model?.trim() || undefined,
+      };
+      const res = await client.post('/admin/prompts/test', payload);
       
       setTestResult(res.data);
       
@@ -1369,6 +1411,26 @@ Provide workflow recommendations in JSON format.`}
               {/* Input Side */}
               <div className="space-y-4">
                 <div className="space-y-2">
+                  <Label>Use payload from order</Label>
+                  <Select
+                    value={selectedSampleOrderId || 'none'}
+                    onValueChange={(v) => handleUseOrderPayload(v === 'none' ? '' : v)}
+                    disabled={loadingSampleOrders}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingSampleOrders ? 'Loading orders…' : 'Select an order…'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Paste JSON below</SelectItem>
+                      {sampleOrders.map((o) => (
+                        <SelectItem key={o.order_id} value={o.order_id}>
+                          {o.order_id} — {o.service_code || 'N/A'} {o.created_at ? `(${formatDate(o.created_at)})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Test Input Data (JSON)</Label>
                   <Textarea
                     value={testForm.test_input_data}
@@ -1376,6 +1438,29 @@ Provide workflow recommendations in JSON format.`}
                     placeholder='{"field": "value"}'
                     className="min-h-[300px] font-mono text-sm"
                     data-testid="test-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Provider</Label>
+                  <Select
+                    value={testForm.provider || 'gemini'}
+                    onValueChange={(v) => setTestForm(f => ({ ...f, provider: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gemini">Gemini</SelectItem>
+                      <SelectItem value="openai">OpenAI</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Model override (optional)</Label>
+                  <Input
+                    placeholder={testForm.provider === 'openai' ? 'e.g. gpt-4o, gpt-4o-mini' : 'e.g. gemini-2.5-flash'}
+                    value={testForm.model || ''}
+                    onChange={(e) => setTestForm(f => ({ ...f, model: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1414,13 +1499,23 @@ Provide workflow recommendations in JSON format.`}
                   <Label>Test Result</Label>
                   {testResult ? (
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge className={testStatusColors[testResult.status] || ''}>
                           {testResult.status}
                         </Badge>
                         <span className="text-xs text-gray-500">
                           {testResult.execution_time_ms}ms
                         </span>
+                        {(testResult.provider || testResult.model) && (
+                          <span className="text-xs text-gray-500">
+                            {testResult.provider || ''}{testResult.model ? ` / ${testResult.model}` : ''}
+                          </span>
+                        )}
+                        {(testResult.prompt_tokens != null || testResult.completion_tokens != null) && (
+                          <span className="text-xs text-gray-500">
+                            Tokens: {Number(testResult.prompt_tokens || 0).toLocaleString()} in / {Number(testResult.completion_tokens || 0).toLocaleString()} out
+                          </span>
+                        )}
                       </div>
                       
                       {testResult.schema_validation_passed ? (

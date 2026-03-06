@@ -29,7 +29,7 @@ import {
 import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
 import client from '../api/client';
-import { validateCheckout, isDocumentPack, getPackTierName } from '../api/checkoutApi';
+import { validateCheckout, createCheckoutSession, isDocumentPack, getPackTierName } from '../api/checkoutApi';
 
 // ============================================================================
 // STEP COMPONENTS
@@ -967,6 +967,60 @@ export default function UnifiedIntakeWizard() {
     }
   }, [services, searchParams, selectedService]);
 
+  // Resume by draft_ref: /order/intake?draft=INT-YYYYMMDD-XXXX — load draft and prefill (save and resume)
+  const draftRefFromUrl = searchParams.get('draft');
+  useEffect(() => {
+    if (!draftRefFromUrl || services.length === 0 || draft?.draft_ref === draftRefFromUrl) return;
+
+    let cancelled = false;
+    const loadDraftAndPrefill = async () => {
+      try {
+        const res = await client.get(`/intake/draft/by-ref/${encodeURIComponent(draftRefFromUrl)}`);
+        const data = res.data;
+        if (cancelled) return;
+        if (data.status === 'CONVERTED') {
+          toast.info('This order has already been paid. You can start a new order.');
+          setSearchParams((prev) => {
+            const p = new URLSearchParams(prev);
+            p.delete('draft');
+            return p;
+          }, { replace: true });
+          return;
+        }
+        const serviceMatch = services.find(s => s.service_code === data.service_code);
+        if (!serviceMatch) {
+          toast.error('Service for this draft is no longer available');
+          return;
+        }
+        setDraft(data);
+        setSelectedService(serviceMatch);
+        if (data.schema) setSchema(data.schema);
+        else {
+          client.get(`/intake/schema/${data.service_code}`)
+            .then((res) => { if (!cancelled) setSchema(res.data); })
+            .catch(() => {});
+        }
+        setClientData(data.client_identity || {});
+        setIntakeData(data.intake_payload || {});
+        setSelectedAddons(Array.isArray(data.selected_addons) ? data.selected_addons : []);
+        setPricing(data.pricing_snapshot || null);
+        if (data.delivery_consent) setConsent(data.delivery_consent);
+        if (Array.isArray(data.selected_documents)) setSelectedDocuments(data.selected_documents);
+        if (data.postal_address && typeof data.postal_address === 'object') setPostalAddress(data.postal_address);
+        setCurrentStep(4); // Review step — user can proceed to checkout
+        setSearchParams({ service: data.service_code, draft: draftRefFromUrl }, { replace: true });
+        toast.success('Draft restored. Review and proceed to checkout when ready.');
+      } catch (err) {
+        if (!cancelled) {
+          const msg = err.response?.data?.detail || err.message || 'Draft not found';
+          toast.error(typeof msg === 'string' ? msg : 'Could not load draft');
+        }
+      }
+    };
+    loadDraftAndPrefill();
+    return () => { cancelled = true; };
+  }, [draftRefFromUrl, services.length, draft?.draft_ref]);
+
   // Handle service selection
   const handleServiceSelect = async (service) => {
     setSelectedService(service);
@@ -1200,9 +1254,10 @@ export default function UnifiedIntakeWizard() {
         if (!validation.valid) {
           console.error('Checkout validation failed:', validation.errors);
           toast.error(validation.errors?.[0] || 'Checkout validation failed');
+          setLoading(false);
           return;
         }
-        
+
         // Log validation warnings
         if (validation.warnings?.length > 0) {
           console.warn('Checkout validation warnings:', validation.warnings);
@@ -1216,14 +1271,9 @@ export default function UnifiedIntakeWizard() {
         });
       }
       
-      // Create checkout session
-      const res = await client.post(`/intake/draft/${draft.draft_id}/checkout`, {});
-      
-      // Clear saved state before redirecting to payment
+      // Route to checkout page (no payment yet); user can pay or resume later via link
       clearSavedState();
-      
-      // Redirect to Stripe
-      window.location.href = res.data.checkout_url;
+      navigate(`/order/checkout?draft=${encodeURIComponent(draft.draft_ref)}`, { replace: true });
       
     } catch (err) {
       console.error('Payment error:', err);
@@ -1343,7 +1393,7 @@ export default function UnifiedIntakeWizard() {
               className="bg-teal-600 hover:bg-teal-700"
             >
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
-              Proceed to Payment
+              Continue to Checkout
             </Button>
           ) : null}
         </div>

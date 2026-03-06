@@ -370,8 +370,55 @@ class WorkflowAutomationService:
             reason="WF2: Starting document generation",
         )
         
+        # Document pack orders: generate all docs in canonical order via pack orchestrator
+        DOC_PACK_CODES = {"DOC_PACK_ESSENTIAL", "DOC_PACK_PLUS", "DOC_PACK_PRO"}
+        if order.get("service_code") in DOC_PACK_CODES:
+            try:
+                from services.document_pack_orchestrator import document_pack_orchestrator
+                input_data = order.get("parameters") or order.get("intake_snapshot", {}).get("intake_payload") or {}
+                if isinstance(input_data, dict) and not input_data and order.get("intake_snapshot"):
+                    input_data = order["intake_snapshot"] if isinstance(order["intake_snapshot"], dict) else {}
+                results = await document_pack_orchestrator.generate_all_documents(
+                    order_id=order_id,
+                    input_data=input_data,
+                    generated_by="system",
+                )
+                failed = [r for r in results if r.get("status") == "FAILED"]
+                if failed:
+                    err_msg = failed[0].get("error_message", "One or more pack documents failed")
+                    await transition_order_state(
+                        order_id=order_id,
+                        new_status=OrderStatus.FAILED,
+                        triggered_by_type="system",
+                        reason=f"WF2: Pack generation failed: {err_msg}",
+                    )
+                    try:
+                        notif_service = self._get_notification_service()
+                        await notif_service.notify_order_failed(order_id=order_id, error=err_msg, order=order)
+                    except Exception as e:
+                        logger.warning("WF2: Failed to send failure notification: %s", e)
+                    return {"success": False, "status": "FAILED", "workflow": "WF2", "error": err_msg}
+                await transition_order_state(
+                    order_id=order_id,
+                    new_status=OrderStatus.DRAFT_READY,
+                    triggered_by_type="system",
+                    reason="WF2: All pack documents generated successfully",
+                    metadata={"pack_items": len(results)},
+                )
+                logger.info("WF2: Order %s pack generated successfully (%s items)", order_id, len(results))
+                return {"success": True, "status": "DRAFT_READY", "workflow": "WF2", "pack_items": len(results)}
+            except Exception as e:
+                logger.exception("WF2: Pack generation error for %s: %s", order_id, e)
+                await transition_order_state(
+                    order_id=order_id,
+                    new_status=OrderStatus.FAILED,
+                    triggered_by_type="system",
+                    reason=f"WF2: Pack generation exception: {str(e)}",
+                )
+                return {"success": False, "status": "FAILED", "workflow": "WF2", "error": str(e)}
+        
         try:
-            # Run document orchestration
+            # Run single-document orchestration (non-pack)
             orchestrator = self._get_orchestrator()
             result = await orchestrator.execute_generation(
                 order_id=order_id,

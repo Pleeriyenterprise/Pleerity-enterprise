@@ -66,6 +66,9 @@ const ClientDashboard = () => {
   // First-login guided activation: 'checklist' | 'portfolio' | 'documents' | null (null = show main dashboard)
   const [setupView, setSetupView] = useState(null);
   const [setupChecklistSeen, setSetupChecklistSeen] = useState(false);
+  const [skippedChecklistThisSession, setSkippedChecklistThisSession] = useState(false);
+  const [onboardingChecklist, setOnboardingChecklist] = useState(null);
+  const [completingItemId, setCompletingItemId] = useState(null);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -84,6 +87,7 @@ const ClientDashboard = () => {
     fetchScoreChanges();
     fetchPortfolioSummary();
     fetchRequirements();
+    clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
     // Intentionally depend only on role/client_id; fetch functions are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClientUser, user?.role, user?.client_id]);
@@ -95,7 +99,7 @@ const ClientDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClientUser, scoreTrendView, selectedTrendPropertyId]);
 
-  // Refetch score trend and "What Changed" when user returns to the dashboard tab so the graph updates after recalc
+  // Refetch score trend, "What Changed", and onboarding checklist when user returns to the dashboard tab
   useEffect(() => {
     if (!isClientUser) return;
     const onVisible = () => {
@@ -104,6 +108,7 @@ const ClientDashboard = () => {
         fetchScoreTrendCard();
         fetchScoreChanges();
         fetchComplianceScore();
+        clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -227,21 +232,31 @@ const ClientDashboard = () => {
     }
   };
 
-  // First-login: show setup checklist when ?first_login=1 and user has not completed/dismissed it
-  const firstLogin = searchParams.get('first_login') === '1' || searchParams.get('first_login') === 'true';
+  // Server-driven checklist: when API says completed, always show main dashboard (no overlay)
+  useEffect(() => {
+    if (onboardingChecklist?.completed_at) {
+      setSetupView(null);
+      setSetupChecklistSeen(false);
+      setSkippedChecklistThisSession(false);
+    }
+  }, [onboardingChecklist?.completed_at]);
+
+  // Show checklist when server says not completed (completed_at null), we have items, and user has not skipped this session
   useEffect(() => {
     if (!isClientUser || loading || restrictReason) return;
+    if (onboardingChecklist?.completed_at) return;
+    const hasItems = onboardingChecklist?.items?.length > 0;
+    if (!hasItems || setupView !== null || skippedChecklistThisSession) return;
+    setSetupView('checklist');
+  }, [isClientUser, loading, restrictReason, onboardingChecklist?.completed_at, onboardingChecklist?.items?.length, setupView, skippedChecklistThisSession]);
+
+  // Sync sessionStorage-based "incomplete" for fallback banner (no server checklist items)
+  useEffect(() => {
     try {
-      const checklistDone = sessionStorage.getItem(SETUP_CHECKLIST_DONE_KEY) === 'true';
       const incomplete = sessionStorage.getItem(SETUP_INCOMPLETE_KEY) === 'true';
       setSetupChecklistSeen(incomplete);
-      if (firstLogin && !checklistDone && setupView === null) {
-        setSetupView('checklist');
-      }
-    } catch (e) {
-      // sessionStorage not available (e.g. private mode)
-    }
-  }, [isClientUser, loading, restrictReason, firstLogin, setupView]);
+    } catch (e) {}
+  }, []);
 
   const dismissSetupChecklist = (markIncomplete = false) => {
     try {
@@ -250,8 +265,14 @@ const ClientDashboard = () => {
       else sessionStorage.removeItem(SETUP_INCOMPLETE_KEY);
       setSetupChecklistSeen(markIncomplete);
     } catch (e) {}
+    setSkippedChecklistThisSession(true);
     setSetupView(null);
     setSearchParams({}, { replace: true });
+  };
+
+  const showChecklistView = () => {
+    setSkippedChecklistThisSession(false);
+    setSetupView('checklist');
   };
 
   const completeSetupFlow = () => {
@@ -262,6 +283,21 @@ const ClientDashboard = () => {
     } catch (e) {}
     setSetupView(null);
     setSearchParams({}, { replace: true });
+  };
+
+  const refetchOnboardingChecklist = () => {
+    if (!isClientUser) return;
+    clientAPI.getOnboardingChecklist()
+      .then((r) => setOnboardingChecklist(r.data))
+      .catch(() => {});
+  };
+
+  const completeOnboardingItem = (itemId) => {
+    setCompletingItemId(itemId);
+    clientAPI.completeOnboardingItem(itemId)
+      .then(() => refetchOnboardingChecklist())
+      .catch(() => {})
+      .finally(() => setCompletingItemId(null));
   };
 
   // Whether to show the "documents missing" step: requirements that may need docs/confirmation (REQUIRED/UNKNOWN without confirmed expiry)
@@ -420,7 +456,7 @@ const ClientDashboard = () => {
           </Alert>
         )}
 
-        {/* First-login guided activation: Setup Checklist / Portfolio / Documents */}
+        {/* First-login guided activation: Setup Checklist / Portfolio / Documents (server-driven when available) */}
         {setupView === 'checklist' && (
           <Card className="max-w-2xl mx-auto mt-8 border-2 border-electric-teal/30 shadow-lg" data-testid="setup-checklist-card">
             <CardHeader className="pb-2">
@@ -428,16 +464,45 @@ const ClientDashboard = () => {
               <p className="text-sm text-gray-600 mt-1">Complete these steps to get an accurate compliance overview. You can also skip and return later.</p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li className="flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-electric-teal" /> Confirm your portfolio details</li>
-                <li className="flex items-center gap-2"><Upload className="w-4 h-4 text-electric-teal" /> Upload or confirm documents</li>
-                <li className="flex items-center gap-2"><FileText className="w-4 h-4 text-electric-teal" /> Confirm certificate dates</li>
-                <li className="flex items-center gap-2"><Bell className="w-4 h-4 text-electric-teal" /> Turn on reminders</li>
-                <li className="flex items-center gap-2"><Shield className="w-4 h-4 text-electric-teal" /> View your compliance report</li>
-              </ul>
+              {onboardingChecklist?.items?.length > 0 ? (
+                <ul className="space-y-3 text-sm text-gray-700">
+                  {onboardingChecklist.items.map((item) => (
+                    <li key={item.id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-gray-50">
+                      <span className="flex items-center gap-2 flex-1">
+                        {item.completed_at ? (
+                          <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                        ) : (
+                          <ClipboardCheck className="w-4 h-4 text-electric-teal shrink-0" />
+                        )}
+                        <span className={item.completed_at ? 'text-gray-500 line-through' : ''}>{item.label}</span>
+                      </span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        {!item.completed_at && (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => navigate(item.deep_link || '/properties')}>
+                              Go
+                            </Button>
+                            <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => completeOnboardingItem(item.id)} disabled={completingItemId === item.id}>
+                              {completingItemId === item.id ? '…' : 'Mark done'}
+                            </Button>
+                          </>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-electric-teal" /> Confirm your portfolio details</li>
+                  <li className="flex items-center gap-2"><Upload className="w-4 h-4 text-electric-teal" /> Upload or confirm documents</li>
+                  <li className="flex items-center gap-2"><FileText className="w-4 h-4 text-electric-teal" /> Confirm certificate dates</li>
+                  <li className="flex items-center gap-2"><Bell className="w-4 h-4 text-electric-teal" /> Turn on reminders</li>
+                  <li className="flex items-center gap-2"><Shield className="w-4 h-4 text-electric-teal" /> View your compliance report</li>
+                </ul>
+              )}
               <div className="flex flex-wrap gap-3 pt-4">
                 <Button onClick={() => setSetupView('portfolio')} className="bg-electric-teal hover:bg-electric-teal/90" data-testid="setup-start-btn">
-                  Start Setup
+                  {onboardingChecklist?.items?.length ? 'Continue' : 'Start Setup'}
                 </Button>
                 <Button variant="outline" onClick={() => dismissSetupChecklist(true)} data-testid="setup-skip-btn">
                   Skip for now
@@ -513,8 +578,38 @@ const ClientDashboard = () => {
         {/* Main dashboard (hidden when in setup flow) */}
         {!setupView && (
         <>
-        {/* Persistent banner when user skipped setup or chose "upload later" */}
-        {setupChecklistSeen && (
+        {/* Server-driven "Complete setup" banner when checklist is not completed (deep-links to each incomplete item) */}
+        {onboardingChecklist && !onboardingChecklist.completed_at && (onboardingChecklist.items?.length > 0) && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="setup-incomplete-banner">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <span className="font-medium text-amber-800">Complete setup to get an accurate score.</span>
+              <span className="text-amber-700 ml-1">Finish these steps so your compliance overview is accurate.</span>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Button
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={showChecklistView}
+                >
+                  Complete setup
+                </Button>
+                {onboardingChecklist.items.filter((i) => !i.completed_at).map((item) => (
+                  <Button
+                    key={item.id}
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-300 text-amber-800 hover:bg-amber-100"
+                    onClick={() => navigate(item.deep_link || '/properties')}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        {/* Fallback: persistent banner when user skipped setup (sessionStorage) and server checklist not incomplete */}
+        {!onboardingChecklist?.completed_at && !(onboardingChecklist?.items?.length > 0) && setupChecklistSeen && (
           <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="setup-incomplete-banner">
             <AlertCircle className="h-4 w-4 text-amber-600" />
             <AlertDescription>
@@ -531,7 +626,7 @@ const ClientDashboard = () => {
         )}
 
         {/* Documents awaiting confirmation (any user who has uploads but not yet confirmed expiry) */}
-        {!setupChecklistSeen && documentsAwaitingConfirmationCount > 0 && (
+        {documentsAwaitingConfirmationCount > 0 && (
           <Alert className="mb-6 border-blue-200 bg-blue-50" data-testid="documents-awaiting-confirmation-banner">
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription>

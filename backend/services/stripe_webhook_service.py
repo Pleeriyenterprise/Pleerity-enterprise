@@ -267,6 +267,10 @@ class StripeWebhookService:
         if not draft_id:
             logger.error(f"No draft_id in order payment metadata: {session.get('id')}")
             raise ValueError("MANDATORY: draft_id missing from session.metadata")
+        if not draft_ref:
+            logger.warning(f"Order payment metadata missing draft_ref for session {session.get('id')}")
+        if not service_code:
+            logger.warning(f"Order payment metadata missing service_code for session {session.get('id')}")
         
         # Get payment intent ID
         payment_intent_id = session.get("payment_intent")
@@ -288,18 +292,19 @@ class StripeWebhookService:
                 "already_processed": True,
             }
         
-        # Convert draft to order
+        # Convert draft to order (idempotency: stripe_events by event_id; orders by session_id/source_draft_id)
+        event_id = (event or {}).get("id")
         try:
             order = await convert_draft_to_order(
                 draft_id=draft_id,
                 stripe_payment_intent_id=payment_intent_id,
                 stripe_checkout_session_id=session_id,
+                stripe_event_id=event_id,
             )
             
             logger.info(f"Created order {order['order_ref']} from draft {draft_ref}")
             
             # Normalized payment for Revenue Analytics (one-time / pack)
-            event_id = (event or {}).get("id")
             if event_id and order.get("client_id"):
                 order_service_code = order.get("service_code") or service_code
                 payment_type = "pack" if order_service_code in document_pack_webhook_handler.VALID_PACK_CODES else "one_time"

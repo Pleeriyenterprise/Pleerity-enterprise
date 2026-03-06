@@ -181,6 +181,25 @@ export const clientAPI = {
   /** Export score ledger as CSV (blob). */
   exportLedgerCsv: (params = {}) =>
     apiClient.get('/client/ledger/export.csv', { params, responseType: 'blob' }),
+  /** Server-driven onboarding checklist (items + completion). */
+  getOnboardingChecklist: () => apiClient.get('/client/onboarding/checklist'),
+  /** Mark a checklist item complete (server-validates). */
+  completeOnboardingItem: (itemId) =>
+    apiClient.post(`/client/onboarding/checklist/items/${encodeURIComponent(itemId)}/complete`),
+  /** Jurisdiction settings (default + enabled list). */
+  getJurisdictionSettings: () => apiClient.get('/client/settings/jurisdiction'),
+  updateJurisdictionSettings: (body) => apiClient.patch('/client/settings/jurisdiction', body),
+  /** Maintenance work orders (requires MAINTENANCE_WORKFLOWS). */
+  getMaintenanceWorkOrders: (params = {}) => apiClient.get('/client/maintenance/work-orders', { params }),
+  createMaintenanceWorkOrder: (body) => apiClient.post('/client/maintenance/work-orders', body),
+  /** Predictive maintenance insights (requires PREDICTIVE_MAINTENANCE). */
+  getPredictiveInsights: (params = {}) => apiClient.get('/client/maintenance/predictive-insights', { params }),
+  /** Property assets for predictive (requires PREDICTIVE_MAINTENANCE). */
+  getPropertyAssets: (propertyId) => apiClient.get(`/client/maintenance/properties/${propertyId}/assets`),
+  addPropertyAsset: (propertyId, body) => apiClient.post(`/client/maintenance/properties/${propertyId}/assets`, body),
+  /** Maintenance events for predictive (requires PREDICTIVE_MAINTENANCE). */
+  getPropertyEvents: (propertyId, params = {}) => apiClient.get(`/client/maintenance/properties/${propertyId}/events`, { params }),
+  addPropertyEvent: (propertyId, body) => apiClient.post(`/client/maintenance/properties/${propertyId}/events`, body),
 };
 
 export const adminAPI = {
@@ -214,4 +233,23 @@ export const adminAPI = {
   getScoreEvents: (params = {}) => apiClient.get('/admin/observability/score-events', { params }),
   runJobNow: (jobId) => apiClient.post('/admin/jobs/run', { job: jobId }),
   getJobsStatus: () => apiClient.get('/admin/jobs/status'),
+  // Operations & Compliance
+  getOpsOverview: () => apiClient.get('/admin/ops/overview'),
+  getClientFeatureFlags: (clientId) => apiClient.get(`/admin/ops/clients/${clientId}/feature-flags`),
+  updateClientFeatureFlags: (clientId, updates) =>
+    apiClient.patch(`/admin/ops/clients/${clientId}/feature-flags`, { updates }),
+  getClientPlanUsage: (clientId) => apiClient.get(`/admin/ops/clients/${clientId}/plan-usage`),
+  // Contractors (Ops Contractor Network)
+  getContractors: (params = {}) => apiClient.get('/admin/ops/contractors', { params }),
+  getContractor: (contractorId) => apiClient.get(`/admin/ops/contractors/${contractorId}`),
+  createContractor: (body) => apiClient.post('/admin/ops/contractors', body),
+  updateContractor: (contractorId, body) => apiClient.patch(`/admin/ops/contractors/${contractorId}`, body),
+  deleteContractor: (contractorId) => apiClient.delete(`/admin/ops/contractors/${contractorId}`),
+  // Work orders (Ops Maintenance)
+  getWorkOrders: (params = {}) => apiClient.get('/admin/ops/work-orders', { params }),
+  getWorkOrder: (workOrderId) => apiClient.get(`/admin/ops/work-orders/${workOrderId}`),
+  createWorkOrder: (body) => apiClient.post('/admin/ops/work-orders', body),
+  updateWorkOrder: (workOrderId, body) => apiClient.patch(`/admin/ops/work-orders/${workOrderId}`, body),
+  // Predictive insights (admin: per client; client: own)
+  getClientPredictiveInsights: (clientId, params = {}) => apiClient.get(`/admin/ops/clients/${clientId}/predictive-insights`, { params }),
 };

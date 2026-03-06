@@ -620,6 +620,27 @@ async def run_risk_lead_nurture_processing():
     return {"message": f"Risk lead nurture: {sent} email(s) sent", "count": sent}
 
 
+async def run_predictive_insights_job():
+    """Precompute predictive maintenance insights for all clients with PREDICTIVE_MAINTENANCE. Writes to cache."""
+    from database import database
+    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+    from services.predictive_service import get_insights_for_client
+
+    db = database.get_db()
+    clients = await db.clients.find({}, {"_id": 0, "client_id": 1, "billing_plan": 1}).to_list(10000)
+    count = 0
+    for c in clients:
+        try:
+            flags = await get_effective_flags(c["client_id"], c.get("billing_plan"))
+            if not flags.get(PREDICTIVE_MAINTENANCE):
+                continue
+            await get_insights_for_client(c["client_id"])
+            count += 1
+        except Exception as e:
+            logger.warning("Predictive insights skip client %s: %s", c.get("client_id"), e)
+    return {"message": f"Predictive insights precomputed for {count} client(s)", "count": count}
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -645,4 +666,5 @@ JOB_RUNNERS = {
     "notification_failure_spike_monitor": run_notification_failure_spike_monitor,
     "notification_retry_worker": run_notification_retry_worker,
     "pending_payment_lifecycle": run_pending_payment_lifecycle,
+    "predictive_insights_job": run_predictive_insights_job,
 }

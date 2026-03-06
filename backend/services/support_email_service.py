@@ -12,7 +12,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://pleerity.com")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://pleerityenterprise.co.uk")
 
 
 async def send_ticket_confirmation_email(

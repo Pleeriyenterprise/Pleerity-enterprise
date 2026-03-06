@@ -116,8 +116,11 @@ import BrandingSettingsPage from './pages/BrandingSettingsPage';
 import BillingPage from './pages/BillingPage';
 import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
 import ClientOrdersPage from './pages/ClientOrdersPage';
+import ClientMaintenancePage from './pages/ClientMaintenancePage';
+import ViewOrderPage from './pages/ViewOrderPage';
 import UnifiedIntakeWizard from './pages/UnifiedIntakeWizard';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
+import OrderCheckoutPage from './pages/OrderCheckoutPage';
 import ClientAuditLogPage from './pages/ClientAuditLogPage';
 
 // Admin pages
@@ -153,6 +156,11 @@ import AdminNotificationHealthPage from './pages/AdminNotificationHealthPage';
 import AdminSystemHealthPage from './pages/AdminSystemHealthPage';
 import AdminAutomationCentrePage from './pages/AdminAutomationCentrePage';
 import AdminIncidentsPage from './pages/AdminIncidentsPage';
+import AdminOpsOverviewPage from './pages/admin/AdminOpsOverviewPage';
+import AdminOpsPlaceholderPage from './pages/admin/AdminOpsPlaceholderPage';
+import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
+import AdminOpsContractorsPage from './pages/admin/AdminOpsContractorsPage';
+import AdminOpsMaintenancePage from './pages/admin/AdminOpsMaintenancePage';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminExtractionQueuePage from './pages/AdminExtractionQueuePage';
 import AdminTeamPage from './pages/AdminTeamPage';
@@ -209,6 +217,8 @@ function App() {
               
               {/* CMS-Driven Marketing Pages */}
               <Route path="/services" element={<ServicesHubPageCMS />} />
+              {/* Learn More: /services/detail/[slug] — must be before :categorySlug */}
+              <Route path="/services/detail/:serviceSlug" element={<ServiceDetailPage />} />
               {/* Legacy route must come BEFORE dynamic routes */}
               <Route path="/services/catalogue" element={<ServicesCataloguePage />} />
               <Route path="/services/:categorySlug" element={<CategoryPageCMS />} />
@@ -246,6 +256,9 @@ function App() {
               
               {/* Shared Reports (Public) */}
               <Route path="/shared/report/:shareId" element={<SharedReportPage />} />
+
+              {/* View Order (public, token from delivery email) */}
+              <Route path="/view-order" element={<ViewOrderPage />} />
 
               {/* ========================================
                   AUTH & ONBOARDING ROUTES
@@ -294,6 +307,7 @@ function App() {
             <Route path="/integrations" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="webhooks"><IntegrationsPage /></EntitlementProtectedRoute></ClientPortal>} />
             <Route path="/orders/:orderId/provide-info" element={<ClientPortal><ClientProvideInfoPage /></ClientPortal>} />
             <Route path="/orders" element={<ClientPortal><ClientOrdersPage /></ClientPortal>} />
+            <Route path="/maintenance" element={<ClientPortal><ClientMaintenancePage /></ClientPortal>} />
 
             {/* Redirect legacy /app/* to new paths */}
             <Route path="/app/dashboard" element={<Navigate to="/dashboard" replace />} />
@@ -317,6 +331,7 @@ function App() {
             <Route path="/app/billing" element={<Navigate to="/settings/billing" replace />} />
             <Route path="/app/orders/:orderId/provide-info" element={<Navigate to="/orders/:orderId/provide-info" replace />} />
             <Route path="/app/orders" element={<Navigate to="/orders" replace />} />
+            <Route path="/app/maintenance" element={<Navigate to="/maintenance" replace />} />
 
             {/* ========================================
                   ORDER INTAKE WIZARD (Public)
@@ -328,6 +343,10 @@ function App() {
             <Route 
               path="/order/intake/:draftId" 
               element={<UnifiedIntakeWizard />} 
+            />
+            <Route 
+              path="/order/checkout" 
+              element={<OrderCheckoutPage />} 
             />
             <Route 
               path="/order/confirmation" 
@@ -537,6 +556,14 @@ function App() {
             <Route path="/admin/system-health" element={<ProtectedRoute requireAdmin><AdminSystemHealthPage /></ProtectedRoute>} />
             <Route path="/admin/automation" element={<ProtectedRoute requireAdmin><AdminAutomationCentrePage /></ProtectedRoute>} />
             <Route path="/admin/incidents" element={<ProtectedRoute requireAdmin><AdminIncidentsPage /></ProtectedRoute>} />
+            {/* Operations & Compliance */}
+            <Route path="/admin/ops" element={<ProtectedRoute requireAdmin><AdminOpsOverviewPage /></ProtectedRoute>} />
+            <Route path="/admin/ops/compliance" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Compliance" /></ProtectedRoute>} />
+            <Route path="/admin/ops/maintenance" element={<ProtectedRoute requireAdmin><AdminOpsMaintenancePage /></ProtectedRoute>} />
+            <Route path="/admin/ops/contractors" element={<ProtectedRoute requireAdmin><AdminOpsContractorsPage /></ProtectedRoute>} />
+            <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Risk & Insights" /></ProtectedRoute>} />
+            <Route path="/admin/ops/audit" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Audit & Logs" /></ProtectedRoute>} />
+            <Route path="/admin/ops/feature-controls" element={<ProtectedRoute requireAdmin><AdminOpsFeatureControlsPage /></ProtectedRoute>} />
 
             {/* ClearForm Admin Routes */}
             <Route 

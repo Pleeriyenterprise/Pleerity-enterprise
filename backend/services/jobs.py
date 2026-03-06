@@ -410,7 +410,7 @@ class JobScheduler:
                 return
             key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}"
-            base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://app.pleerity.co.uk").strip().rstrip("/")
+            base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://pleerityenterprise.co.uk").strip().rstrip("/")
             portal_link = f"{base_url}/dashboard"
             context = {
                 "client_name": client.get("full_name", "Valued Customer"),
@@ -468,7 +468,7 @@ class JobScheduler:
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             key_suffix = (recipient_phone or "").replace("+", "").replace(" ", "")[:20] if recipient_phone else "client"
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}_{key_suffix}"
-            base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://app.pleerity.co.uk").strip().rstrip("/")
+            base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://pleerityenterprise.co.uk").strip().rstrip("/")
             portal_link = f"{base_url}/dashboard"
             total = len(expiring) + len(overdue)
             context = {"count": total, "portal_link": portal_link}

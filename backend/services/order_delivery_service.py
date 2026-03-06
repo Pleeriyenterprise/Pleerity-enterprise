@@ -2,13 +2,14 @@
 Order Delivery Service
 Handles the delivery automation for the Orders system.
 
-Flow: FINALISING → DELIVERING → COMPLETED (or DELIVERY_FAILED)
+Flow: FINALISING → DELIVERING → (webhook Delivery) → COMPLETED, or (send failure / webhook Bounce) → DELIVERY_FAILED
 
 Features:
 - Auto-detects orders in FINALISING status with approved documents
-- Sends delivery email with document links
-- Transitions order to COMPLETED on successful delivery
-- Handles delivery failures gracefully
+- Sends delivery email with document links (token-based view-order URL for one-time users)
+- Creates delivery record on send; order stays DELIVERING until Postmark webhook "Delivery"
+- Webhook handler transitions DELIVERING → COMPLETED (or DELIVERY_FAILED on Bounce)
+- Resolves document list from document_versions_v2 when order.document_versions is empty
 """
 
 import os
@@ -139,11 +140,9 @@ class OrderDeliveryService:
             logger.error(f"Failed to transition order {order_id} to DELIVERING: {e}")
             return {"success": False, "error": f"State transition failed: {e}"}
         
-        # Build document list for email
+        # Build document list for email (from order.document_versions or document_versions_v2)
         documents = []
         document_versions = order.get("document_versions", [])
-        approved_doc = None
-        
         for doc in document_versions:
             if doc.get("version") == approved_version:
                 if doc.get("filename_pdf"):
@@ -159,7 +158,27 @@ class OrderDeliveryService:
                         "format": "docx"
                     })
                 break
-        
+
+        if not documents:
+            # Resolve from document_versions_v2 when order has no or legacy document_versions
+            from services.document_generator import get_document_versions
+            versions_v2 = await get_document_versions(order_id)
+            for dv in versions_v2:
+                if getattr(dv, "version", None) == approved_version:
+                    if getattr(dv, "filename_pdf", None):
+                        documents.append({
+                            "name": f"{order.get('service_name', 'Document')} (PDF)",
+                            "filename": dv.filename_pdf,
+                            "format": "pdf"
+                        })
+                    if getattr(dv, "filename_docx", None):
+                        documents.append({
+                            "name": f"{order.get('service_name', 'Document')} (DOCX)",
+                            "filename": dv.filename_docx,
+                            "format": "docx"
+                        })
+                    break
+
         if not documents:
             # Rollback to FINALISING
             await transition_order_state(
@@ -170,8 +189,10 @@ class OrderDeliveryService:
             )
             return {"success": False, "error": "No documents found for approved version"}
         
-        # Build email
-        download_link = f"{FRONTEND_URL}/orders/{order_id}/documents"
+        # Build email: use token-based view-order URL so one-time users can access without login
+        from services.order_view_token import generate_order_view_token
+        view_token = generate_order_view_token(order_id, customer_email)
+        download_link = f"{FRONTEND_URL}/view-order?token={view_token}"
         portal_link = f"{FRONTEND_URL}/dashboard"
         
         email_content = build_order_delivered_email(
@@ -184,8 +205,10 @@ class OrderDeliveryService:
         )
         
         from services.notification_orchestrator import notification_orchestrator
+        from repositories.services_repositories import delivery_repository
         delivery_success = False
         delivery_error = None
+        postmark_message_id = None
         client_id = order.get("client_id")
         idempotency_key = f"{order_id}_ORDER_DELIVERED"
         try:
@@ -204,73 +227,39 @@ class OrderDeliveryService:
                 event_type="order_delivered",
             )
             delivery_success = result.outcome in ("sent", "duplicate_ignored")
+            postmark_message_id = (result.details or {}).get("provider_message_id") if result.details else None
             if delivery_success:
                 logger.info(f"Delivery email sent for order {order_id} to {customer_email}")
         except Exception as e:
             delivery_error = str(e)
             logger.error(f"Failed to send delivery email for order {order_id}: {e}")
         
-        # Update order with delivery info
         delivery_timestamp = datetime.now(timezone.utc)
         
         if delivery_success:
-            # Transition to COMPLETED
-            try:
-                await transition_order_state(
-                    order_id=order_id,
-                    new_status=OrderStatus.COMPLETED,
-                    triggered_by_type="system",
-                    reason="Documents delivered successfully via email",
-                    metadata={
-                        "delivered_to": customer_email,
-                        "delivered_at": delivery_timestamp.isoformat(),
-                        "documents_count": len(documents),
-                    }
-                )
-                
-                # Update deliverables array and timestamps
-                await db.orders.update_one(
-                    {"order_id": order_id},
-                    {
-                        "$set": {
-                            "delivered_at": delivery_timestamp,
-                            "completed_at": delivery_timestamp,
-                            "deliverables": [
-                                {
-                                    "type": doc["format"].upper(),
-                                    "filename": doc["filename"],
-                                    "delivered_at": delivery_timestamp.isoformat(),
-                                    "version": approved_version,
-                                }
-                                for doc in documents
-                            ]
-                        }
-                    }
-                )
-                
-                # Send notification (fire and forget - don't fail delivery on notification error)
+            # Create delivery record; order stays DELIVERING until Postmark webhook "Delivery"
+            if postmark_message_id:
                 try:
-                    from services.order_notification_service import order_notification_service, OrderNotificationEvent
-                    await order_notification_service.notify_order_event(
-                        event_type=OrderNotificationEvent.ORDER_DELIVERED,
-                        order_id=order_id,
-                        order=order,
-                        message=f"Documents delivered to {customer_email}",
-                    )
-                except Exception as notif_error:
-                    logger.warning(f"Failed to send delivery notification for {order_id}: {notif_error}")
-                
-                return {
-                    "success": True,
-                    "order_id": order_id,
-                    "delivered_to": customer_email,
-                    "documents_count": len(documents),
-                    "status": "COMPLETED"
-                }
-                
-            except Exception as e:
-                logger.error(f"Failed to complete order {order_id}: {e}")
-                return {"success": False, "error": f"Completion failed: {e}"}
+                    await delivery_repository.insert({
+                        "order_id": order_id,
+                        "channel": "email",
+                        "status": "SENT",
+                        "recipient": customer_email,
+                        "postmark_message_id": postmark_message_id,
+                        "provider_message_id": postmark_message_id,
+                        "sent_at": delivery_timestamp,
+                        "idempotency_key": idempotency_key,
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to create delivery record for {order_id}: {e}")
+            return {
+                "success": True,
+                "order_id": order_id,
+                "delivered_to": customer_email,
+                "documents_count": len(documents),
+                "status": "DELIVERING",
+                "message": "Email sent; order will complete when delivery is confirmed (webhook)",
+            }
         
         else:
             # Transition to DELIVERY_FAILED

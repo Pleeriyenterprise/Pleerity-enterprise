@@ -16,6 +16,9 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 
+import os
+import logging
+
 from database import database
 from services.document_pack_orchestrator import (
     document_pack_orchestrator,
@@ -24,8 +27,13 @@ from services.document_pack_orchestrator import (
     CANONICAL_ORDER,
 )
 from services.document_pack_webhook_handler import document_pack_webhook_handler
-
-import logging
+from services.intake_draft_service import (
+    get_draft_by_ref,
+    get_draft,
+    validate_draft,
+    create_checkout_session as create_checkout_session_impl,
+    DraftStatus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +76,67 @@ class ValidationResult(BaseModel):
     checkout_metadata: Dict[str, Any] = {}
 
 
+class CreateCheckoutSessionRequest(BaseModel):
+    """Request to create Stripe checkout session for a draft (by draft_ref)."""
+    draft_ref: str = Field(..., description="Draft reference (e.g. INT-YYYYMMDD-####)")
+    success_url: Optional[str] = None
+    cancel_url: Optional[str] = None
+
+
 # ============================================
 # Validation Endpoints
 # ============================================
+
+@router.post("/create-session")
+async def create_checkout_session(request: CreateCheckoutSessionRequest):
+    """
+    Create Stripe Checkout Session for a validated draft (gated by draft_ref).
+    
+    Flow: validate draft exists, service is active, price + add-ons; then create
+    Stripe session with metadata (draft_ref, service_code, environment). Redirect URL returned.
+    """
+    draft = await get_draft_by_ref(request.draft_ref)
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    if draft["status"] == DraftStatus.CONVERTED:
+        raise HTTPException(status_code=400, detail="Draft already converted to order")
+    draft_id = draft["draft_id"]
+    service_code = draft.get("service_code")
+    if not service_code:
+        raise HTTPException(status_code=400, detail="Draft missing service_code")
+    db = database.get_db()
+    service = await db.service_catalogue_v2.find_one(
+        {"service_code": service_code, "active": True},
+        {"_id": 1}
+    )
+    if not service:
+        raise HTTPException(status_code=400, detail=f"Service not active: {service_code}")
+    validation = await validate_draft(draft_id)
+    if not validation.get("ready_for_payment"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Draft not ready for payment",
+                "errors": validation.get("errors", []),
+                "missing_sections": validation.get("missing_sections", []),
+            },
+        )
+    frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+    success_url = request.success_url or f"{frontend_url}/order/confirmation?draft_id={draft_id}"
+    cancel_url = request.cancel_url or f"{frontend_url}/order/intake?cancelled=true"
+    try:
+        result = await create_checkout_session_impl(
+            draft_id,
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Failed to create checkout session: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to create checkout session")
+
 
 @router.post("/validate", response_model=ValidationResult)
 async def validate_checkout(request: ValidateCheckoutRequest):

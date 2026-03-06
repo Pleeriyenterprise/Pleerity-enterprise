@@ -266,7 +266,31 @@ async def create_workflow_execution(
     }
     
     await db.workflow_executions.insert_one(execution_doc)
-    
+
+    # Task: each transition also writes workflow_events record (same event, dual-write for consumers)
+    now = execution_doc["created_at"]
+    event_id = execution_id  # reuse so one logical event has same id in both collections
+    actor_id = triggered_by_user_id or triggered_by_email
+    workflow_event_doc = {
+        "event_id": event_id,
+        "order_id": order_id,
+        "from_status": previous_state,
+        "to_status": new_state,
+        "transition_type": transition_type,
+        "actor_id": actor_id,
+        "metadata": {
+            "reason": reason,
+            "notes": notes,
+            "triggered_by_type": triggered_by_type,
+            **(metadata or {}),
+        },
+        "created_at": now,
+    }
+    try:
+        await db.workflow_events.insert_one(workflow_event_doc)
+    except Exception as e:
+        logger.warning("workflow_events insert failed (non-fatal): %s", e)
+
     return execution_id
 
 

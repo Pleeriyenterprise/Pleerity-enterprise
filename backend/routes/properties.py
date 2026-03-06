@@ -120,6 +120,8 @@ async def create_property(request: Request, data: CreatePropertyRequest):
             actor_id=user.get("portal_user_id"),
             correlation_id=f"PROPERTY_CREATED:{property_obj.property_id}",
         )
+        from services.provisioning_status_hook import update_provisioning_status_for_property
+        await update_provisioning_status_for_property(user["client_id"], property_obj.property_id)
         try:
             from services.score_events_service import write_score_event, EVENT_PROPERTY_ADDED, ACTOR_ROLE_CLIENT
             await write_score_event(
@@ -238,6 +240,8 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
         {"property_id": property_id, "client_id": user["client_id"]},
         {"$set": update},
     )
+    from services.provisioning_status_hook import update_provisioning_status_for_property
+    await update_provisioning_status_for_property(user["client_id"], property_id)
 
     if applicability_changed:
         from services.compliance_recalc_queue import (

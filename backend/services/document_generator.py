@@ -139,6 +139,7 @@ class DocumentVersion:
         approved_by: Optional[str] = None,
         content_hash: Optional[str] = None,
         input_data_hash: Optional[str] = None,  # Hash of input data for traceability
+        prompt_version_used: Optional[Any] = None,  # template_id + version for audit (dict or str)
     ):
         self.version = version
         self.document_type = document_type
@@ -157,6 +158,7 @@ class DocumentVersion:
         self.approved_by = approved_by
         self.content_hash = content_hash
         self.input_data_hash = input_data_hash
+        self.prompt_version_used = prompt_version_used
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -177,6 +179,7 @@ class DocumentVersion:
             "approved_by": self.approved_by,
             "content_hash": self.content_hash,
             "input_data_hash": self.input_data_hash,
+            "prompt_version_used": self.prompt_version_used,
         }
     
     @classmethod
@@ -206,6 +209,7 @@ class DocumentVersion:
             approved_by=data.get("approved_by"),
             content_hash=data.get("content_hash"),
             input_data_hash=data.get("input_data_hash"),
+            prompt_version_used=data.get("prompt_version_used"),
         )
 
 
@@ -728,6 +732,7 @@ async def get_document_versions(order_id: str) -> List[DocumentVersion]:
                 regeneration_notes=v.get("regeneration_notes"),
                 content_hash=v.get("json_output_hash"),
                 input_data_hash=v.get("intake_snapshot_hash"),
+                prompt_version_used=v.get("prompt_version_used"),
             )
             result.append(dv)
         return result

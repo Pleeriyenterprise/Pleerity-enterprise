@@ -392,6 +392,14 @@ class DocumentPackOrchestrator:
         ).hexdigest()[:8].upper()
         return f"DI-{timestamp}-{random_part}"
     
+    def _generate_run_id(self) -> str:
+        """Generate unique run ID for generation_runs."""
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        random_part = hashlib.sha256(
+            f"{timestamp}{__import__('os').urandom(8).hex()}".encode()
+        ).hexdigest()[:8].upper()
+        return f"GR-{timestamp}-{random_part}"
+    
     async def create_document_items(
         self,
         order_id: str,
@@ -545,7 +553,7 @@ class DocumentPackOrchestrator:
             if missing_keys:
                 logger.warning(f"Missing output keys for {item_id}: {missing_keys}")
             
-            # Update item with success
+            # Update item with success (JSON output)
             update_data = {
                 "status": "COMPLETED",
                 "generated_output": parsed_output,
@@ -560,6 +568,27 @@ class DocumentPackOrchestrator:
                 {"$set": update_data}
             )
             
+            # Render DOCX + PDF and store file references on item
+            try:
+                from services.template_renderer import template_renderer
+                from services.template_renderer import RenderStatus as TRenderStatus
+                order_doc = await db.orders.find_one({"order_id": item["order_id"]}, {"_id": 0, "service_code": 1})
+                pack_service_code = (order_doc or {}).get("service_code", self._get_service_code_for_doc_type(definition.doc_type))
+                render_result = await template_renderer.render_pack_item(
+                    order_id=item["order_id"],
+                    item_id=item_id,
+                    service_code=pack_service_code,
+                    doc_type=definition.doc_type,
+                    structured_output=parsed_output,
+                    intake_snapshot=input_data,
+                    item_version=1,
+                    status=TRenderStatus.DRAFT,
+                )
+                if not render_result.success:
+                    logger.warning("Pack item render failed for %s: %s", item_id, render_result.error_message)
+            except Exception as render_err:
+                logger.exception("Pack item render error for %s: %s", item_id, render_err)
+            
             # Record execution metrics
             await bridge.record_execution_metrics(
                 prompt_info=prompt_info,
@@ -569,6 +598,33 @@ class DocumentPackOrchestrator:
                 completion_tokens=tokens.get("completion_tokens", 0),
                 success=True,
             )
+            
+            # Dual-write to generation_runs for reporting (provider, model, token usage, input hash)
+            now_utc = datetime.now(timezone.utc)
+            input_hash = self.compute_input_hash(input_data)
+            try:
+                run_id = self._generate_run_id()
+                llm = await prompt_service._get_llm_provider()
+                model_used = getattr(llm, "_model", None) or "gemini-2.5-flash"
+                await db.generation_runs.insert_one({
+                    "run_id": run_id,
+                    "order_id": item["order_id"],
+                    "template_id": prompt_info.template_id if prompt_info else None,
+                    "prompt_version": prompt_info.version if prompt_info else None,
+                    "doc_type": definition.doc_type,
+                    "status": "COMPLETED",
+                    "provider": getattr(llm, "provider_name", "gemini"),
+                    "model": model_used,
+                    "prompt_tokens": tokens.get("prompt_tokens", 0),
+                    "completion_tokens": tokens.get("completion_tokens", 0),
+                    "intake_snapshot_hash": input_hash,
+                    "started_at": now,
+                    "completed_at": now_utc,
+                    "created_at": now_utc,
+                    "updated_at": now_utc,
+                })
+            except Exception as e:
+                logger.warning("generation_runs dual-write failed (non-fatal): %s", e)
             
             logger.info(f"Generated document {item_id} ({definition.doc_type})")
             
@@ -584,6 +640,29 @@ class DocumentPackOrchestrator:
                     "error_message": str(e),
                 }}
             )
+            
+            # Dual-write FAILED run to generation_runs
+            try:
+                run_id = self._generate_run_id()
+                await db.generation_runs.insert_one({
+                    "run_id": run_id,
+                    "order_id": item["order_id"],
+                    "template_id": None,
+                    "doc_type": item.get("doc_type", ""),
+                    "status": "FAILED",
+                    "provider": None,
+                    "model": None,
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "intake_snapshot_hash": None,
+                    "started_at": now,
+                    "completed_at": datetime.now(timezone.utc),
+                    "error_message": (str(e))[:1000],
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc),
+                })
+            except Exception as ex:
+                logger.warning("generation_runs FAILED dual-write failed: %s", ex)
             
             raise
     

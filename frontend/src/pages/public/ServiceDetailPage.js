@@ -158,11 +158,34 @@ const ServiceDetailPage = () => {
       setLoading(true);
       setError(null);
       
-      // Try to map slug to service code
+      // Try canonical API by slug first (GET /api/services/by-slug/:slug)
+      try {
+        const bySlugRes = await client.get(`/services/by-slug/${encodeURIComponent(serviceSlug || '')}`);
+        const data = bySlugRes.data;
+        setService({
+          code: data.service_code,
+          title: data.name || data.service_name,
+          description: data.description_preview || data.description,
+          longDescription: data.description_full || data.long_description || data.description,
+          category: data.category,
+          pricing: data.base_price != null ? `£${(data.base_price / 100).toFixed(data.base_price % 100 === 0 ? 0 : 2)}` : 'From £0',
+          turnaround: data.turnaround_hours ? `${data.turnaround_hours} hours` : 'Standard delivery',
+          features: (data.document_types || []).map((code) => ({ title: code, description: 'Included' })),
+          benefits: ['Professional quality documents', 'Legally compliant content', 'Fast turnaround time', 'Digital delivery'],
+          fastTrack: data.fast_track_available,
+          fastTrackPrice: data.fast_track_price,
+          printedCopy: data.printed_copy_available,
+          printedCopyPrice: data.printed_copy_price,
+          fromApi: true,
+        });
+        return;
+      } catch (_) {
+        /* fall through to V2 or fallback */
+      }
+      
       const serviceCode = SLUG_TO_CODE[serviceSlug] || serviceSlug?.toUpperCase().replace(/-/g, '_');
       
       try {
-        // Try V2 API first
         const response = await client.get(`/public/v2/services/${serviceCode}`);
         const data = response.data;
         

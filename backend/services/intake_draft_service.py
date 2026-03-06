@@ -561,6 +561,7 @@ async def convert_draft_to_order(
     draft_id: str,
     stripe_payment_intent_id: str,
     stripe_checkout_session_id: str,
+    stripe_event_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Convert a draft to an order after successful payment.
@@ -570,7 +571,8 @@ async def convert_draft_to_order(
     Args:
         draft_id: The draft to convert
         stripe_payment_intent_id: Stripe payment intent ID
-        stripe_checkout_session_id: Stripe checkout session ID
+        stripe_checkout_session_id: Stripe checkout session ID (unique index for idempotency)
+        stripe_event_id: Optional Stripe event ID for audit/idempotency
     
     Returns:
         Created order document
@@ -654,6 +656,7 @@ async def convert_draft_to_order(
             "currency": "gbp",
             "stripe_payment_intent_id": stripe_payment_intent_id,
             "stripe_checkout_session_id": stripe_checkout_session_id,
+            "stripe_event_id": stripe_event_id,
         },
         
         # Customer snapshot (immutable)
@@ -775,7 +778,7 @@ async def _send_order_confirmation_email(order: Dict[str, Any]) -> bool:
         estimated_delivery = f"{sla_hours} hours"
     
     # Build view order link
-    frontend_url = os.getenv("FRONTEND_URL", "https://pleerity.com")
+    frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
     view_order_link = f"{frontend_url}/app/orders"
     
     # Build email content
@@ -896,7 +899,8 @@ async def create_checkout_session(
             "quantity": 1,
         })
     
-    # Create Stripe checkout session
+    # Create Stripe checkout session (metadata for webhook idempotency and routing)
+    environment = os.getenv("ENVIRONMENT", os.getenv("NODE_ENV", "production"))
     session = stripe.checkout.Session.create(
         mode="payment",
         payment_method_types=["card"],
@@ -909,6 +913,7 @@ async def create_checkout_session(
             "draft_ref": draft["draft_ref"],
             "service_code": draft["service_code"],
             "type": "order_intake",
+            "environment": environment,
         },
         expires_at=int((datetime.now(timezone.utc).timestamp()) + 3600),  # 1 hour
     )

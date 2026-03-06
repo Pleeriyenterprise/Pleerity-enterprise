@@ -36,6 +36,12 @@ class RequestCertificateBody(BaseModel):
     message: Optional[str] = None
 
 
+class ReportMaintenanceBody(BaseModel):
+    property_id: str
+    description: str
+    category: Optional[str] = None
+
+
 async def _ensure_tenant_property_access(request: Request, property_id: str):
     """Verify the authenticated tenant has access to the property. Returns (db, user, client_id)."""
     user = await tenant_route_guard(request)
@@ -438,6 +444,44 @@ async def request_certificate_update(request: Request):
     return {"request_id": request_id, "status": "PENDING"}
 
 
+@router.post("/report-maintenance")
+async def report_maintenance(request: Request):
+    """Report a maintenance issue for an assigned property. Creates a work order. Requires MAINTENANCE_WORKFLOWS for the landlord."""
+    body = await request.json()
+    property_id = (body.get("property_id") or "").strip()
+    description = (body.get("description") or "").strip()
+    if not property_id or not description:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id and description are required")
+    db, user, client_id, property_doc = await _ensure_tenant_property_access(request, property_id)
+    from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS
+    flags = await get_effective_flags(client_id)
+    if not flags.get(MAINTENANCE_WORKFLOWS):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Maintenance reporting is not enabled for this property's account",
+        )
+    from services import maintenance_service
+    severity = maintenance_service._categorise_severity(description)
+    doc = await maintenance_service.create_work_order(
+        client_id=client_id,
+        property_id=property_id,
+        description=description,
+        source=maintenance_service.SOURCE_TENANT_REQUEST,
+        reporter_id=user.get("portal_user_id"),
+        category=body.get("category"),
+        severity=body.get("severity") or severity,
+    )
+    await create_audit_log(
+        action=AuditAction.TENANT_REPORT_MAINTENANCE,
+        client_id=client_id,
+        actor_id=user.get("portal_user_id"),
+        resource_type="work_order",
+        resource_id=doc.get("work_order_id"),
+        metadata={"property_id": property_id, "source": "tenant_request"},
+    )
+    return doc
+
+
 @router.get("/requests")
 async def get_tenant_requests(request: Request):
     """List the authenticated tenant's certificate requests (for their assigned properties)."""
@@ -536,3 +580,49 @@ async def contact_landlord(request: Request):
         },
     )
     return {"message_id": message_id}
+
+
+@router.post("/report-maintenance")
+async def report_maintenance(request: Request):
+    """Report a maintenance issue for an assigned property. Creates a work order. Requires MAINTENANCE_WORKFLOWS for the landlord."""
+    body = await request.json()
+    try:
+        data = ReportMaintenanceBody(
+            property_id=body.get("property_id", ""),
+            description=(body.get("description") or "").strip(),
+            category=body.get("category"),
+        )
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid body: property_id and description required")
+    if not data.property_id or not data.description:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id and description are required")
+
+    db, user, client_id, property_doc = await _ensure_tenant_property_access(request, data.property_id)
+    from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS
+    flags = await get_effective_flags(client_id)
+    if not flags.get(MAINTENANCE_WORKFLOWS):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Maintenance reporting is not enabled for this property's account",
+        )
+
+    from services import maintenance_service
+    severity = maintenance_service._categorise_severity(data.description)
+    doc = await maintenance_service.create_work_order(
+        client_id=client_id,
+        property_id=data.property_id,
+        description=data.description,
+        source=maintenance_service.SOURCE_TENANT_REQUEST,
+        reporter_id=user.get("portal_user_id"),
+        category=data.category or maintenance_service.CATEGORY_GENERAL,
+        severity=severity,
+    )
+    await create_audit_log(
+        action=AuditAction.TENANT_REPORT_MAINTENANCE,
+        client_id=client_id,
+        actor_id=user.get("portal_user_id"),
+        resource_type="work_order",
+        resource_id=doc["work_order_id"],
+        metadata={"property_id": data.property_id, "source": "tenant_request"},
+    )
+    return {"work_order_id": doc["work_order_id"], "status": doc["status"]}

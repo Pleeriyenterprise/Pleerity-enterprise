@@ -2158,7 +2158,7 @@ async def apply_ai_extraction(
                             "certificate_number": cert_number or "N/A",
                             "expiry_date": expiry_display,
                             "requirement_status": after_state.get("status", "UPDATED"),
-                            "portal_link": os.getenv("FRONTEND_URL", "https://compliance-vault-pro.pleerity.com") + "/app/dashboard",
+                            "portal_link": os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk") + "/app/dashboard",
                         },
                         idempotency_key=f"{document_id}_AI_EXTRACTION_APPLIED",
                         event_type="ai_extraction_applied",

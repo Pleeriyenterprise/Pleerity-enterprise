@@ -15,7 +15,7 @@ NON-NEGOTIABLES:
 - Full audit log: who, what changed, when, evidence
 """
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any, Literal
+from typing import Optional, List, Dict, Any, Literal  # Literal for provider
 from datetime import datetime
 from enum import Enum
 import re
@@ -237,12 +237,15 @@ class PromptTestRequest(BaseModel):
     """Request to test a prompt in the Playground."""
     template_id: str = Field(..., description="Template ID to test")
     test_input_data: Dict[str, Any] = Field(
-        ..., 
+        ...,
         description="Test input data - will be injected as INPUT_DATA_JSON"
     )
     # Optional override for testing different configurations
     temperature_override: Optional[float] = Field(None, ge=0.0, le=2.0)
     max_tokens_override: Optional[int] = Field(None, ge=100, le=32000)
+    # Playground: run on OpenAI or Gemini (default: gemini)
+    provider: Optional[Literal["gemini", "openai"]] = Field(None, description="LLM provider for this test run")
+    model: Optional[str] = Field(None, max_length=100, description="Model override (e.g. gpt-4o, gemini-2.5-flash)")
 
 
 class PromptTestResult(BaseModel):
@@ -268,10 +271,12 @@ class PromptTestResult(BaseModel):
     execution_time_ms: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
-    
+    provider: Optional[str] = None   # gemini | openai
+    model: Optional[str] = None      # model used for this run
+
     # Error handling
     error_message: Optional[str] = None
-    
+
     # Audit
     executed_at: str
     executed_by: str

@@ -38,6 +38,8 @@ from reportlab.platypus import (
     PageBreak, HRFlowable, ListFlowable, ListItem
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.charts.barcharts import VerticalBarChart
 
 # DOCX generation
 from docx import Document
@@ -133,20 +135,27 @@ def generate_deterministic_filename(
     version: int,
     status: RenderStatus,
     extension: str,
+    doc_type: Optional[str] = None,
 ) -> str:
     """
     Generate deterministic filename following the canonical format:
-    {order_ref}_{service_code}_v{version}_{status}_{YYYYMMDD-HHMM}.{ext}
+    {order_ref}_{service_code}[_{doc_type}]_v{version}_{status}_{YYYYMMDD-HHMM}.{ext}
     
     Example: ORD-2026-001234_AI_WF_BLUEPRINT_v1_DRAFT_20260122-1845.docx
+    With doc_type: ORD-2026-001234_DOC_PACK_ESSENTIAL_RENT_ARREARS_LETTER_v1_DRAFT_20260122-1845.docx
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     
     # Sanitize order_ref and service_code
     safe_order_ref = order_ref.replace(" ", "-").replace("/", "-")
     safe_service_code = service_code.upper()
+    mid = f"{safe_order_ref}_{safe_service_code}"
+    if doc_type:
+        safe_doc_type = (doc_type or "").replace(" ", "_").upper()
+        if safe_doc_type:
+            mid = f"{mid}_{safe_doc_type}"
     
-    return f"{safe_order_ref}_{safe_service_code}_v{version}_{status.value}_{timestamp}.{extension}"
+    return f"{mid}_v{version}_{status.value}_{timestamp}.{extension}"
 
 
 def compute_sha256(content: bytes) -> str:
@@ -236,8 +245,16 @@ class TemplateRenderer:
             json.dumps(structured_output, sort_keys=True, default=str).encode()
         )
         
+        # Load server-side template if present (per service_code/doc_type)
+        template_bytes = None
         try:
-            # Generate DOCX
+            from services.document_template_service import get_template_bytes
+            template_bytes = await get_template_bytes(service_code, service_code)
+        except Exception as e:
+            logger.debug("No document template for %s: %s", service_code, e)
+        
+        try:
+            # Generate DOCX (from template + placeholders if template_bytes else code-built)
             docx_content = self._render_docx(
                 order=order,
                 structured_output=structured_output,
@@ -245,6 +262,7 @@ class TemplateRenderer:
                 version=new_version,
                 status=status,
                 regeneration_notes=regeneration_notes,
+                template_bytes=template_bytes,
             )
             
             docx_filename = generate_deterministic_filename(
@@ -402,6 +420,139 @@ class TemplateRenderer:
             json_output_hash=json_output_hash,
         )
     
+    async def render_pack_item(
+        self,
+        order_id: str,
+        item_id: str,
+        service_code: str,
+        doc_type: str,
+        structured_output: Dict[str, Any],
+        intake_snapshot: Dict[str, Any],
+        item_version: int = 1,
+        status: RenderStatus = RenderStatus.DRAFT,
+    ) -> RenderResult:
+        """
+        Render a single document pack item to DOCX + PDF, store in GridFS, and update document_pack_items.
+        Uses generic content rendering for single-item output. Filename includes doc_type.
+        """
+        start_time = datetime.now(timezone.utc)
+        db = database.get_db()
+        order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+        if not order:
+            return RenderResult(
+                success=False,
+                order_id=order_id,
+                version=item_version,
+                status=status,
+                error_message=f"Order not found: {order_id}",
+            )
+        order_ref = order.get("order_ref", order_id)
+        order_for_render = {
+            "order_id": order_id,
+            "order_ref": order_ref,
+            "service_code": service_code,
+            "service_name": order.get("service_name", doc_type.replace("_", " ").title()),
+        }
+        template_bytes = None
+        try:
+            from services.document_template_service import get_template_bytes
+            template_bytes = await get_template_bytes(service_code, doc_type)
+        except Exception:
+            pass
+        try:
+            docx_content = self._render_docx(
+                order=order_for_render,
+                structured_output=structured_output,
+                intake_snapshot=intake_snapshot,
+                version=item_version,
+                status=status,
+                use_generic_content=True,
+                template_bytes=template_bytes,
+            )
+            pdf_content = self._render_pdf(
+                order=order_for_render,
+                structured_output=structured_output,
+                intake_snapshot=intake_snapshot,
+                version=item_version,
+                status=status,
+            )
+        except Exception as e:
+            logger.exception("Pack item render failed for %s: %s", item_id, e)
+            return RenderResult(
+                success=False,
+                order_id=order_id,
+                version=item_version,
+                status=status,
+                error_message=str(e),
+            )
+        docx_filename = generate_deterministic_filename(
+            order_ref=order_ref,
+            service_code=service_code,
+            version=item_version,
+            status=status,
+            extension="docx",
+            doc_type=doc_type,
+        )
+        pdf_filename = generate_deterministic_filename(
+            order_ref=order_ref,
+            service_code=service_code,
+            version=item_version,
+            status=status,
+            extension="pdf",
+            doc_type=doc_type,
+        )
+        docx_doc = RenderedDocument(
+            filename=docx_filename,
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            content=docx_content,
+            sha256_hash=compute_sha256(docx_content),
+            size_bytes=len(docx_content),
+            format="docx",
+        )
+        pdf_doc = RenderedDocument(
+            filename=pdf_filename,
+            content_type="application/pdf",
+            content=pdf_content,
+            sha256_hash=compute_sha256(pdf_content),
+            size_bytes=len(pdf_content),
+            format="pdf",
+        )
+        try:
+            from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+            fs = AsyncIOMotorGridFSBucket(db, bucket_name="order_files")
+            docx_meta = {"order_id": order_id, "item_id": item_id, "doc_type": doc_type, "format": "docx"}
+            pdf_meta = {"order_id": order_id, "item_id": item_id, "doc_type": doc_type, "format": "pdf"}
+            docx_grid_id = await fs.upload_from_stream(
+                docx_doc.filename, io.BytesIO(docx_doc.content), metadata=docx_meta
+            )
+            pdf_grid_id = await fs.upload_from_stream(
+                pdf_doc.filename, io.BytesIO(pdf_doc.content), metadata=pdf_meta
+            )
+            await db.document_pack_items.update_one(
+                {"item_id": item_id},
+                {"$set": {
+                    "filename_docx": docx_doc.filename,
+                    "filename_pdf": pdf_doc.filename,
+                    "docx_sha256_hash": docx_doc.sha256_hash,
+                    "pdf_sha256_hash": pdf_doc.sha256_hash,
+                    "docx_gridfs_id": str(docx_grid_id),
+                    "pdf_gridfs_id": str(pdf_grid_id),
+                    "rendered_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+        except Exception as e:
+            logger.error("Failed to store pack item files for %s: %s", item_id, e)
+        render_time_ms = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+        return RenderResult(
+            success=True,
+            order_id=order_id,
+            version=item_version,
+            status=status,
+            docx=docx_doc,
+            pdf=pdf_doc,
+            render_time_ms=render_time_ms,
+        )
+
     async def _get_version_count(self, order_id: str) -> int:
         """Get current version count for an order."""
         db = database.get_db()
@@ -473,6 +624,48 @@ class TemplateRenderer:
     # DOCX RENDERING
     # ========================================================================
     
+    def _build_template_context(
+        self,
+        order: Dict[str, Any],
+        structured_output: Dict[str, Any],
+        intake_snapshot: Dict[str, Any],
+        version: int,
+        status: RenderStatus,
+        regeneration_notes: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Build Jinja2-safe context for docxtpl (server-side .docx templates). Use {{ order_id }}, {{ output.executive_summary }}, etc."""
+        def safe_value(v: Any) -> Any:
+            if v is None or isinstance(v, (str, int, float, bool)):
+                return v
+            if isinstance(v, dict):
+                return {k: safe_value(x) for k, x in v.items()}
+            if isinstance(v, list):
+                return [safe_value(x) for x in v]
+            return str(v)
+
+        safe_output = {k: safe_value(v) for k, v in structured_output.items() if k not in ("raw_response", "parse_error")}
+        safe_intake = {k: safe_value(v) for k, v in (intake_snapshot or {}).items() if not (isinstance(k, str) and k.startswith("_"))}
+        ctx = {
+            "order": order,
+            "output": safe_output,
+            "intake": safe_intake,
+            "version": version,
+            "status": status.value,
+            "regeneration_notes": regeneration_notes or "",
+            "order_id": order.get("order_id", ""),
+            "order_ref": order.get("order_ref", order.get("order_id", "")),
+            "service_code": order.get("service_code", ""),
+            "service_name": order.get("service_name", order.get("service_code", "")),
+            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        }
+        for k, v in safe_output.items():
+            if k not in ctx:
+                ctx[k] = v
+        for k, v in safe_intake.items():
+            if k not in ctx:
+                ctx[k] = v
+        return ctx
+    
     def _render_docx(
         self,
         order: Dict[str, Any],
@@ -481,32 +674,35 @@ class TemplateRenderer:
         version: int,
         status: RenderStatus,
         regeneration_notes: Optional[str] = None,
+        use_generic_content: bool = False,
+        template_bytes: Optional[bytes] = None,
     ) -> bytes:
-        """Render structured output to professional DOCX."""
+        """Render DOCX: from server-side template + placeholders if template_bytes else code-built."""
+        if template_bytes:
+            try:
+                from docxtpl import DocxTemplate
+                context = self._build_template_context(
+                    order, structured_output, intake_snapshot, version, status, regeneration_notes
+                )
+                tpl = DocxTemplate(io.BytesIO(template_bytes))
+                tpl.render(context)
+                buffer = io.BytesIO()
+                tpl.save(buffer)
+                buffer.seek(0)
+                return buffer.getvalue()
+            except Exception as e:
+                logger.warning("Template render failed, falling back to code-built DOCX: %s", e)
         doc = Document()
-        
-        # Set up styles
         self._setup_docx_styles(doc)
-        
-        # Add header with branding
         self._add_docx_header(doc, order, version, status)
-        
-        # Add document content based on service type
-        service_code = order.get("service_code", "GENERAL")
+        service_code = "GENERAL" if use_generic_content else order.get("service_code", "GENERAL")
         self._add_docx_content(doc, structured_output, service_code)
-        
-        # Add footer with metadata
         self._add_docx_footer(doc, order, version, status)
-        
-        # Add watermark for non-final documents
         if status != RenderStatus.FINAL:
             self._add_docx_watermark(doc, status.value)
-        
-        # Save to buffer
         buffer = io.BytesIO()
         doc.save(buffer)
         buffer.seek(0)
-        
         return buffer.getvalue()
     
     def _setup_docx_styles(self, doc: Document):
@@ -1146,9 +1342,62 @@ class TemplateRenderer:
         
         return buffer.getvalue()
     
+    def _make_tool_recommendations_chart(self, tools: List[Dict[str, Any]]):
+        """Build a simple vertical bar chart flowable from tool_recommendations (for PDF)."""
+        if not tools:
+            return None
+        try:
+            names = []
+            values = []
+            for i, t in enumerate(tools[:12]):
+                if isinstance(t, dict):
+                    name = str(t.get("recommended_tool", t.get("tool_name", t.get("name", f"Tool {i+1}"))))[:20]
+                    val = 1
+                    if "score" in t and isinstance(t["score"], (int, float)):
+                        val = float(t["score"])
+                    elif "priority" in t and isinstance(t["priority"], (int, float)):
+                        val = float(t["priority"])
+                    names.append(name)
+                    values.append(max(0.1, val))
+                else:
+                    names.append(str(t)[:20])
+                    values.append(1.0)
+            if not values:
+                return None
+            drawing = Drawing(400, 220)
+            bc = VerticalBarChart()
+            bc.x = 50
+            bc.y = 30
+            bc.height = 170
+            bc.width = 340
+            bc.data = [values]
+            bc.strokeColor = colors.HexColor("#E5E7EB")
+            bc.valueAxis.valueMin = 0
+            bc.valueAxis.valueMax = max(values) * 1.2 if max(values) > 0 else 1
+            bc.categoryAxis.labels.boxAnchor = "ne"
+            bc.categoryAxis.labels.dx = -2
+            bc.categoryAxis.labels.dy = 2
+            bc.categoryAxis.labels.angle = 30
+            bc.categoryAxis.categoryNames = names
+            bc.bars[0].fillColor = colors.HexColor(BRAND_TEAL_HEX)
+            drawing.add(bc)
+            return drawing
+        except Exception as e:
+            logger.debug("Tool recommendations chart build failed: %s", e)
+            return None
+
     def _add_pdf_content(self, story: List, styles, output: Dict[str, Any], service_code: str):
-        """Add content to PDF based on service type."""
-        
+        """Add content to PDF based on service type. Includes charts for tool reports and comparisons where present."""
+        # Chart: AI tool recommendations (bar chart when present)
+        if service_code.startswith("AI_") and "tool_recommendations" in output:
+            tools = output.get("tool_recommendations") or []
+            if isinstance(tools, list) and len(tools) <= 15:
+                chart_flow = self._make_tool_recommendations_chart(tools)
+                if chart_flow:
+                    story.append(Paragraph("Tool recommendations overview", styles['BrandHeading']))
+                    story.append(chart_flow)
+                    story.append(Spacer(1, 16))
+
         # Process main sections
         for key, value in output.items():
             if key in ["data_gaps_flagged", "raw_response", "parse_error"]:

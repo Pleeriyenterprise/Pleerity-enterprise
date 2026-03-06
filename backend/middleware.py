@@ -70,6 +70,7 @@ def _role_hierarchy() -> dict:
         UserRole.ROLE_ADMIN.value: 3,
         UserRole.ROLE_SUPPORT.value: 2,
         UserRole.ROLE_CONTENT.value: 2,
+        UserRole.ROLE_AUDITOR.value: 1,  # Read-only admin; cannot pass require_owner_or_admin
         UserRole.ROLE_CLIENT_ADMIN.value: 1,
         UserRole.ROLE_CLIENT.value: 1,
         UserRole.ROLE_TENANT.value: 0,
@@ -97,8 +98,11 @@ async def require_role_in(request: Request, allowed_roles: tuple) -> dict:
     return user
 
 async def require_admin(request: Request) -> dict:
-    """Require admin or owner role (admin routes)."""
-    return await require_role(request, UserRole.ROLE_ADMIN)
+    """Require admin-capable role: Owner, Admin, Support, Content, or Auditor (read-only)."""
+    return await require_role_in(
+        request,
+        (UserRole.ROLE_OWNER, UserRole.ROLE_ADMIN, UserRole.ROLE_SUPPORT, UserRole.ROLE_CONTENT, UserRole.ROLE_AUDITOR),
+    )
 
 
 async def require_support_or_above(request: Request) -> dict:
@@ -111,8 +115,8 @@ async def require_content_or_above(request: Request) -> dict:
     return await require_role_in(request, (UserRole.ROLE_OWNER, UserRole.ROLE_ADMIN, UserRole.ROLE_CONTENT))
 
 async def require_owner_or_admin(request: Request) -> dict:
-    """Explicit RBAC: require OWNER or ADMIN role (admin-only routes)."""
-    return await require_role(request, UserRole.ROLE_ADMIN)
+    """Explicit RBAC: require OWNER or ADMIN (writes). Auditor cannot pass."""
+    return await require_role_in(request, (UserRole.ROLE_OWNER, UserRole.ROLE_ADMIN))
 
 async def require_owner(request: Request) -> dict:
     """Require owner role (OWNER-only actions)."""

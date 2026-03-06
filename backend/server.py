@@ -5,8 +5,8 @@ from fastapi.exceptions import RequestValidationError
 import uuid
 from contextlib import asynccontextmanager
 from database import database
-from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
-from routes import observability
+from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, predictive_data, admin_document_templates, public_orders
 
 # ClearForm - Separate Product Routes
 from clearform.routes import auth as clearform_auth
@@ -245,6 +245,16 @@ async def lifespan(app: FastAPI):
         logger.info("Document Pack Orchestrator indexes created")
     except Exception as e:
         logger.error(f"Failed to create Document Pack Orchestrator indexes: {e}")
+    
+    # Document templates (server-side .docx per service_code/doc_type)
+    try:
+        db = database.get_db()
+        await db.document_templates.create_index("template_id", unique=True)
+        await db.document_templates.create_index([("service_code", 1), ("doc_type", 1)], unique=True)
+        await db.document_templates.create_index("service_code")
+        logger.info("Document templates indexes created")
+    except Exception as e:
+        logger.error("Document templates indexes: %s", e)
     
     # Create ClearForm indexes
     try:
@@ -531,7 +541,15 @@ async def lifespan(app: FastAPI):
         name="Risk Lead Nurture (risk-check conversion leads)",
         replace_existing=True
     )
-    
+    # Predictive maintenance insights - daily 4:00 AM UTC (warms insights for clients with PREDICTIVE_MAINTENANCE)
+    scheduler.add_job(
+        make_instrumented("predictive_insights_job", "schedule"),
+        CronTrigger(hour=4, minute=0),
+        id="predictive_insights_job",
+        name="Predictive Maintenance Insights (precompute)",
+        replace_existing=True
+    )
+
     scheduler_started = False
     try:
         scheduler.start()
@@ -559,10 +577,24 @@ app = FastAPI(
 )
 
 # CORS configuration
+# Required production origins (custom domains + Vercel + local dev). When CORS_ORIGINS is set,
+# these are merged in so all are allowed; when CORS_ORIGINS is '*' or unset, use this list for safety.
+_CORS_REQUIRED_ORIGINS = [
+    "https://pleerityenterprise.co.uk",
+    "https://www.pleerityenterprise.co.uk",
+    "https://pleerity-enterprise.vercel.app",
+    "http://localhost:3000",
+]
+_cors_env = (os.environ.get("CORS_ORIGINS") or "").strip()
+if _cors_env and _cors_env != "*":
+    _origins_from_env = [o.strip() for o in _cors_env.split(",") if o.strip()]
+    _cors_origins = list(dict.fromkeys(_origins_from_env + _CORS_REQUIRED_ORIGINS))
+else:
+    _cors_origins = _CORS_REQUIRED_ORIGINS
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -595,15 +627,17 @@ app.include_router(webhooks_config.router)
 app.include_router(billing.router)
 app.include_router(admin_billing.router)
 app.include_router(public.router)
+app.include_router(public_orders.router)
 app.include_router(admin_orders.router)
 app.include_router(orders.router)
 app.include_router(client_orders.router)
 app.include_router(admin_notifications.router)
-app.include_router(admin_services.router)
+app.include_router(admin_services.router)  # Canonical /api/admin/services (task paths)
 app.include_router(public_services.router)
 app.include_router(blog.router)
-app.include_router(admin_services_v2.router)
+app.include_router(admin_services_v2.router, prefix="/api/admin/services/v2")  # V2 at /v2 only
 app.include_router(public_services_v2.router)
+app.include_router(services_public.router)
 app.include_router(orchestration.router)
 app.include_router(intake_wizard.router)
 app.include_router(admin_intake_schema.router)
@@ -626,6 +660,7 @@ app.include_router(reporting.router)  # Full Reporting System - Export & Schedul
 app.include_router(reporting.public_router)  # Public Report Sharing
 app.include_router(team.router)  # Team Permissions & Role Management
 app.include_router(prompts.router)  # Enterprise Prompt Manager
+app.include_router(admin_document_templates.router)  # Server-side DOCX templates (per service/doc_type)
 app.include_router(document_packs.router)  # Document Pack Orchestrator
 app.include_router(checkout_validation.router)  # Checkout Validation
 app.include_router(marketing.router)  # Marketing Website CMS
@@ -639,6 +674,11 @@ app.include_router(intake_uploads.router)  # Intake document uploads
 app.include_router(risk_check.router)  # Compliance Risk Check (standalone demo, no client/provisioning)
 app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, resend report
 app.include_router(observability.router)  # Admin: job-runs, incidents, score-events (observability)
+app.include_router(ops_compliance.router)  # Admin: Operations & Compliance (feature flags, plan usage)
+app.include_router(contractors.router)  # Admin: Contractors (Ops Contractor Network)
+app.include_router(maintenance.router)  # Admin: Work orders (Ops Maintenance)
+app.include_router(client_maintenance.router)  # Client: Maintenance work orders (gated by MAINTENANCE_WORKFLOWS)
+app.include_router(predictive_data.router)  # Admin: Property assets & maintenance events (data for predictive)
 
 # ============================================================================
 # ClearForm Routes - Separate Product (Isolated)

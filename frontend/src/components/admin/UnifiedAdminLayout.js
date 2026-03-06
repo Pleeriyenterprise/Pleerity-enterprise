@@ -84,6 +84,21 @@ const navSections = [
     ],
   },
   {
+    id: 'ops',
+    label: 'Operations & Compliance',
+    icon: ClipboardCheck,
+    ownerOrAdminOnly: true,
+    items: [
+      { href: '/admin/ops', label: 'Overview', icon: LayoutDashboard },
+      { href: '/admin/ops/compliance', label: 'Compliance', icon: FileText },
+      { href: '/admin/ops/maintenance', label: 'Maintenance', icon: Settings },
+      { href: '/admin/ops/contractors', label: 'Contractors', icon: Users },
+      { href: '/admin/ops/risk', label: 'Risk & Insights', icon: BarChart3 },
+      { href: '/admin/ops/audit', label: 'Audit & Logs', icon: History },
+      { href: '/admin/ops/feature-controls', label: 'Feature Controls', icon: Zap },
+    ],
+  },
+  {
     id: 'clearform',
     label: 'ClearForm',
     icon: FileSignature,
@@ -144,6 +159,8 @@ const navSections = [
 // Section IDs that each staff role can see (OWNER/ADMIN see all)
 const SECTIONS_FOR_SUPPORT = ['dashboard', 'support'];
 const SECTIONS_FOR_CONTENT = ['dashboard', 'content'];
+// Auditor: read-only; dashboard, Operations & Compliance (view-only), and Audit Logs (settings)
+const SECTIONS_FOR_AUDITOR = ['dashboard', 'ops', 'settings'];
 
 // Sidebar content component - defined outside to avoid re-creation
 const SidebarContent = ({ 
@@ -292,7 +309,7 @@ const SidebarContent = ({
 const UnifiedAdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user, isSupport, isContent, isAdmin, isOwner } = useAuth();
+  const { logout, user, isSupport, isContent, isAuditor, isAdmin, isOwner } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState(['dashboard', 'customers']);
@@ -303,10 +320,17 @@ const UnifiedAdminLayout = ({ children }) => {
     let sections = navSections;
     if (isSupport?.()) sections = navSections.filter((s) => SECTIONS_FOR_SUPPORT.includes(s.id));
     else if (isContent?.()) sections = navSections.filter((s) => SECTIONS_FOR_CONTENT.includes(s.id));
+    else if (isAuditor?.()) sections = navSections.filter((s) => SECTIONS_FOR_AUDITOR.includes(s.id));
     const isOwnerOrAdmin = isOwner?.() || isAdmin?.();
+    const isAuditorRole = isAuditor?.();
     return sections.map((sec) => ({
       ...sec,
-      items: (sec.items || []).filter((item) => isOwnerOrAdmin || !item.ownerOrAdminOnly),
+      items: (sec.items || []).filter((item) => {
+        if (isAuditorRole && sec.id === 'settings') return item.tabTarget === 'audit';
+        // Auditor can see all ops items (read-only; write actions 403 on backend)
+        if (isAuditorRole && sec.id === 'ops') return true;
+        return isOwnerOrAdmin || !item.ownerOrAdminOnly;
+      }),
     }));
   })();
 

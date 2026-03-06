@@ -26,6 +26,7 @@ import {
   ChevronDown,
   History,
   Users,
+  Wrench,
 } from 'lucide-react';
 
 const PORTAL_TABS = [
@@ -35,6 +36,7 @@ const PORTAL_TABS = [
   { path: '/documents', label: 'Documents', icon: FileText },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/maintenance', label: 'Maintenance', icon: Wrench, feature: 'maintenance_workflows' },
   { path: '/tenants', label: 'Tenants', icon: Users, feature: 'tenant_portal' },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
