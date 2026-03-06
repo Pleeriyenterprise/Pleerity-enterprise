@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { adminAPI } from '../api/client';
-import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import { adminAPI } from '../../api/client';
+import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { Users, Plus, Pencil, Trash2, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '../components/ui/button';
+import { Button } from '../../components/ui/button';
 
 export default function AdminOpsContractorsPage() {
   const [contractors, setContractors] = useState([]);
