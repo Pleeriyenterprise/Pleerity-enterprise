@@ -245,7 +245,8 @@ async def run():
             print(f"  Prompt skipped (exists): {entry['service_code']} / {entry['doc_type']}")
             continue
         template_id = _generate_template_id()
-        doc = _prompt_doc(entry, template_id, default_schema, now, seed_activate)
+        schema = entry.get("output_schema") or default_schema
+        doc = _prompt_doc(entry, template_id, schema, now, seed_activate)
         await db.prompt_templates.insert_one(doc)
         existing_pairs.add(key)
         inserted += 1

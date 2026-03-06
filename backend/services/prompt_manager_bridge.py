@@ -302,21 +302,56 @@ class PromptManagerBridge:
     ) -> str:
         """
         Build user prompt using the {{INPUT_DATA_JSON}} injection pattern.
-        
-        This is the ONLY approved method for injecting data into managed prompts.
         """
-        # Convert intake data to JSON string
         input_json = json.dumps(intake_data, indent=2, default=str)
-        
-        # Replace the single injection point
         user_prompt = template.replace("{{INPUT_DATA_JSON}}", input_json)
-        
-        # Add regeneration context if applicable
         if regeneration and regeneration_notes:
             user_prompt += f"\n\nREGENERATION REQUEST:\nPrevious version feedback: {regeneration_notes}\nPlease address the above feedback in this generation.\n"
-        
         return user_prompt
-    
+
+    def build_user_prompt(
+        self,
+        template: str,
+        intake_data: Dict[str, Any],
+        regeneration: bool = False,
+        regeneration_notes: Optional[str] = None,
+    ) -> str:
+        """
+        Build user prompt from template and intake data.
+        Supports two patterns:
+        - If template contains {{INPUT_DATA_JSON}}: replace with JSON of intake_data.
+        - Else: named prefill — replace {field_name} placeholders from intake_data
+          (missing keys become "Not provided"). Ensures personalised, coherent generation.
+        """
+        if "{{INPUT_DATA_JSON}}" in (template or ""):
+            return self.build_user_prompt_with_json(
+                template, intake_data, regeneration=regeneration, regeneration_notes=regeneration_notes
+            )
+        # Named prefill: same behaviour as legacy _build_user_prompt
+        data = {k: (v if v is not None else "") for k, v in (intake_data or {}).items()}
+        if regeneration and regeneration_notes:
+            data["regeneration_context"] = (
+                "\n\nREGENERATION REQUEST:\nPrevious version feedback: "
+                f"{regeneration_notes}\nPlease address the above feedback in this generation.\n"
+            )
+        else:
+            data["regeneration_context"] = ""
+        try:
+            user_prompt = (template or "").format(**data)
+        except KeyError:
+            user_prompt = template or ""
+            for key, value in data.items():
+                placeholder = "{" + key + "}"
+                user_prompt = user_prompt.replace(
+                    placeholder, str(value) if value else "Not provided"
+                )
+        if regeneration and regeneration_notes and "{regeneration_context}" not in (template or ""):
+            user_prompt += (
+                "\n\nREGENERATION REQUEST:\nPrevious version feedback: "
+                f"{regeneration_notes}\nPlease address the above feedback in this generation.\n"
+            )
+        return user_prompt
+
     async def record_execution_metrics(
         self,
         prompt_info: ManagedPromptInfo,

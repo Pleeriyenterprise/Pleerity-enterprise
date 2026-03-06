@@ -522,32 +522,11 @@ class DocumentOrchestrator:
         
         # ================================================================
         # STEP 5: Build the prompt
-        # NEW: Use {{INPUT_DATA_JSON}} pattern for managed prompts
+        # Supports {{INPUT_DATA_JSON}} (JSON injection) or {field_name} (named prefill).
         # ================================================================
         try:
             if using_managed_prompt:
-                if "{{INPUT_DATA_JSON}}" not in (prompt_def.user_prompt_template or ""):
-                    await self._mark_orchestration_failed(
-                        order_id=order_id,
-                        service_code=service_code,
-                        doc_type=doc_type,
-                        prompt_version_used=prompt_version_used,
-                        stage="prompt_build",
-                        error_code="PROMPT_CONFIG",
-                        error_message="Managed prompt template must contain {{INPUT_DATA_JSON}} for data injection (configuration error).",
-                        execution_id=execution_id,
-                        idempotency_key=idempotency_key,
-                    )
-                    return OrchestrationResult(
-                        success=False,
-                        status=OrchestrationStatus.FAILED,
-                        service_code=service_code,
-                        order_id=order_id,
-                        error_message="Managed prompt template must contain {{INPUT_DATA_JSON}} for data injection (configuration error).",
-                        execution_id=execution_id,
-                    )
-                # Use the single injection pattern for managed prompts
-                user_prompt = prompt_manager_bridge.build_user_prompt_with_json(
+                user_prompt = prompt_manager_bridge.build_user_prompt(
                     template=prompt_def.user_prompt_template,
                     intake_data=intake_snapshot,
                     regeneration=regeneration,

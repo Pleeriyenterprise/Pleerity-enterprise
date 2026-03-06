@@ -15,6 +15,7 @@ we simulate webhook events to test the orchestrator flow.
 """
 import pytest
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Test credentials
 ADMIN_EMAIL = "admin@pleerity.com"
@@ -637,3 +638,105 @@ class TestPackTierValidation:
         if data["valid"]:
             # If valid, documents_selected should be 0 (filtered out)
             assert data["documents_selected"] == 0 or len(data.get("warnings", [])) > 0
+
+
+# ============================================================================
+# BUILD DOCUMENT PLAN (Phase B — deterministic, no LLM)
+# ============================================================================
+
+class TestBuildDocumentPlan:
+    """Tests for document_pack_orchestrator.build_document_plan(order_id)."""
+
+    def test_build_document_plan_returns_plan_structure(self):
+        """build_document_plan returns pack_code, document_plan, delivery_mode, bundle_format."""
+        import asyncio
+        mock_order = {
+            "order_id": "ord-plan-test-1",
+            "service_code": "DOC_PACK_ESSENTIAL",
+            "document_pack_info": {"selected_docs": ["doc_rent_arrears_letter_template", "doc_deposit_refund_letter_template"]},
+        }
+        mock_db = MagicMock()
+        mock_db.orders.find_one = AsyncMock(return_value=mock_order)
+        mock_db.document_templates.find_one = AsyncMock(return_value=None)
+
+        async def run():
+            with patch("services.document_pack_orchestrator.database") as mock_database:
+                mock_database.get_db.return_value = mock_db
+
+                from services.document_pack_orchestrator import document_pack_orchestrator
+
+                return await document_pack_orchestrator.build_document_plan("ord-plan-test-1")
+
+        plan = asyncio.run(run())
+
+        assert plan["pack_code"] == "DOC_PACK_ESSENTIAL"
+        assert plan["delivery_mode"] == ["DOCX", "PDF"]
+        assert plan["bundle_format"] == "ZIP"
+        assert isinstance(plan["document_plan"], list)
+        assert len(plan["document_plan"]) == 2
+        doc0 = plan["document_plan"][0]
+        assert doc0["doc_key"] == "doc_rent_arrears_letter_template"
+        assert doc0["doc_type"] == "RENT_ARREARS_LETTER"
+        assert doc0["prompt_service_code"] == "DOC_PACK_ESSENTIAL"
+        assert doc0["prompt_doc_type"] == "RENT_ARREARS_LETTER"
+        assert "canonical_index" in doc0
+        assert "template_id" in doc0
+
+    def test_build_document_plan_order_not_found_raises(self):
+        """build_document_plan raises ValueError when order does not exist."""
+        import asyncio
+        mock_db = MagicMock()
+        mock_db.orders.find_one = AsyncMock(return_value=None)
+
+        async def run():
+            with patch("services.document_pack_orchestrator.database") as mock_database:
+                mock_database.get_db.return_value = mock_db
+
+                from services.document_pack_orchestrator import document_pack_orchestrator
+
+                await document_pack_orchestrator.build_document_plan("nonexistent")
+
+        with pytest.raises(ValueError, match="Order not found"):
+            asyncio.run(run())
+
+    def test_build_document_plan_non_pack_order_raises(self):
+        """build_document_plan raises ValueError when service_code is not a document pack."""
+        import asyncio
+        mock_order = {"order_id": "ord-1", "service_code": "AI_WF_BLUEPRINT"}
+        mock_db = MagicMock()
+        mock_db.orders.find_one = AsyncMock(return_value=mock_order)
+
+        async def run():
+            with patch("services.document_pack_orchestrator.database") as mock_database:
+                mock_database.get_db.return_value = mock_db
+
+                from services.document_pack_orchestrator import document_pack_orchestrator
+
+                await document_pack_orchestrator.build_document_plan("ord-1")
+
+        with pytest.raises(ValueError, match="not a document pack"):
+            asyncio.run(run())
+
+
+# ============================================================================
+# Bundle ZIP Download Endpoint
+# ============================================================================
+
+class TestBundleZipEndpoint:
+    """Tests for GET /api/admin/document-packs/order/{order_id}/bundle/zip."""
+
+    def test_bundle_zip_order_not_found_returns_404(self, client, admin_headers):
+        """ZIP download returns 404 when order does not exist."""
+        response = client.get(
+            "/api/admin/document-packs/order/nonexistent-order-id/bundle/zip",
+            headers=admin_headers,
+        )
+        assert response.status_code == 404
+        assert "not found" in response.json().get("detail", "").lower()
+
+    def test_bundle_zip_requires_admin_auth(self, client):
+        """ZIP download requires admin authentication."""
+        response = client.get(
+            "/api/admin/document-packs/order/some-order-id/bundle/zip",
+        )
+        assert response.status_code in [401, 403]

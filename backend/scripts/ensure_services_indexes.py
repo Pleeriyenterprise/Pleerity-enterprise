@@ -16,6 +16,7 @@ Indexes created:
 - document_pack_items: item_id, order_id, status, doc_type, doc_key
 - generated_documents: document_id, order_id, version, created_at
 - document_pack_definitions: doc_key, pack_tier, soft delete
+- pack_bundles: bundle_id, order_id, bundle_version
 - workflow_events: event_id, order_id, created_at
 - deliveries: delivery_id, order_id, status, created_at
 - audit_logs: client_id, action, timestamp, resource_type+resource_id
@@ -108,6 +109,12 @@ async def ensure_indexes():
     await db.document_pack_definitions.create_index([("pack_tier", 1), ("canonical_index", 1)])
     await db.document_pack_definitions.create_index("deleted_at", sparse=True)
     logger.info("document_pack_definitions indexes OK")
+
+    # --- pack_bundles ---
+    await db.pack_bundles.create_index("bundle_id", unique=True)
+    await db.pack_bundles.create_index([("order_id", 1), ("bundle_version", -1)])
+    await db.pack_bundles.create_index("order_id")
+    logger.info("pack_bundles indexes OK")
 
     # --- workflow_events ---
     await db.workflow_events.create_index("event_id", unique=True)

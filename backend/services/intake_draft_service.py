@@ -62,6 +62,13 @@ SERVICE_BASE_PRICES = {
     "DOC_PACK_PRO": 7900,        # £79
 }
 
+# Map document-pack service_code to pack_registry pack_type (PACK_ADDONS.applies_to uses ESSENTIAL, TENANCY, ULTIMATE)
+SERVICE_CODE_TO_PACK_TYPE = {
+    "DOC_PACK_ESSENTIAL": "ESSENTIAL",
+    "DOC_PACK_PLUS": "TENANCY",
+    "DOC_PACK_PRO": "ULTIMATE",
+}
+
 
 # ============================================================================
 # DRAFT REFERENCE GENERATOR
@@ -373,9 +380,11 @@ async def update_draft_addons(
     
     service_code = draft["service_code"]
     
-    # For document packs, validate addons
+    # For document packs, validate addons (use pack_registry pack_type: ESSENTIAL, TENANCY, ULTIMATE)
     if service_code.startswith("DOC_PACK"):
-        pack_type = service_code.replace("DOC_PACK_", "")
+        pack_type = SERVICE_CODE_TO_PACK_TYPE.get(service_code)
+        if not pack_type:
+            raise ValueError(f"Unknown document pack service: {service_code}")
         validation = validate_pack_addons(pack_type, addons)
         if not validation["valid"]:
             raise ValueError(f"Invalid addons: {validation['errors']}")

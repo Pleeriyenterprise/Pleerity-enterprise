@@ -18,13 +18,16 @@ NON-NEGOTIABLES:
 - Never overwrite prior versions
 """
 import hashlib
+import io
 import json
 import logging
+import zipfile
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 
+from bson import ObjectId
 from database import database
 
 logger = logging.getLogger(__name__)
@@ -327,6 +330,79 @@ class DocumentPackOrchestrator:
             return order.index(doc_key)
         except ValueError:
             return -1  # Not in this tier
+    
+    def _get_selected_docs_for_plan(self, order: Dict[str, Any], service_code: str) -> List[str]:
+        """
+        Resolve selected doc_keys from order for use in document plan.
+        Uses document_pack_info.selected_docs if set (after webhook), else selected_documents,
+        else all allowed docs for the pack tier.
+        """
+        pack_info = order.get("document_pack_info") or {}
+        if pack_info.get("selected_docs"):
+            return list(pack_info["selected_docs"])
+        if order.get("selected_documents"):
+            return list(order["selected_documents"])
+        return self.get_allowed_docs(self.get_pack_tier(service_code))
+    
+    # ============================================
+    # Document Plan (deterministic, no LLM)
+    # ============================================
+    
+    async def build_document_plan(self, order_id: str) -> Dict[str, Any]:
+        """
+        Build deterministic document plan for an order. No LLM; no side effects.
+        
+        Returns:
+            {
+                "pack_code": str,
+                "document_plan": [{"doc_key", "doc_type", "prompt_service_code", "prompt_doc_type", "template_id"}, ...],
+                "delivery_mode": ["DOCX", "PDF"],
+                "bundle_format": "ZIP"
+            }
+        Raises:
+            ValueError: If order not found or service_code is not a document pack.
+        """
+        db = database.get_db()
+        order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+        if not order:
+            raise ValueError(f"Order not found: {order_id}")
+        
+        service_code = order.get("service_code")
+        if not service_code or service_code not in SERVICE_CODE_TO_PACK_TIER:
+            raise ValueError(f"Order {order_id} is not a document pack order (service_code={service_code})")
+        
+        selected_docs = self._get_selected_docs_for_plan(order, service_code)
+        docs_ordered = self.filter_and_order_docs(service_code, selected_docs)
+        
+        document_plan = []
+        for doc_key, canonical_index, definition in docs_ordered:
+            prompt_service_code = self._get_service_code_for_doc_type(definition.doc_type)
+            template_id = None
+            try:
+                meta = await db.document_templates.find_one(
+                    {"service_code": prompt_service_code, "doc_type": definition.doc_type},
+                    {"_id": 0, "template_id": 1},
+                )
+                if meta:
+                    template_id = meta.get("template_id")
+            except Exception:
+                pass
+            
+            document_plan.append({
+                "doc_key": doc_key,
+                "doc_type": definition.doc_type,
+                "canonical_index": canonical_index,
+                "prompt_service_code": prompt_service_code,
+                "prompt_doc_type": definition.doc_type,
+                "template_id": template_id,
+            })
+        
+        return {
+            "pack_code": service_code,
+            "document_plan": document_plan,
+            "delivery_mode": ["DOCX", "PDF"],
+            "bundle_format": "ZIP",
+        }
     
     # ========================================
     # Filtering & Ordering
@@ -866,6 +942,110 @@ class DocumentPackOrchestrator:
         
         logger.info(f"Rejected document {item_id} by {rejected_by}: {rejection_reason}")
         return await self.get_document_item(item_id)
+    
+    # ========================================
+    # ZIP Bundle (pack_bundles)
+    # ========================================
+    
+    async def build_and_store_bundle(self, order_id: str) -> Dict[str, Any]:
+        """
+        Build a ZIP bundle from approved document_pack_items (DOCX + PDF per doc),
+        store in GridFS, and insert a pack_bundles record.
+        
+        Only includes items with status APPROVED and with docx_gridfs_id and pdf_gridfs_id.
+        Order is canonical (canonical_index ascending).
+        
+        Returns:
+            The pack_bundles document (bundle_id, order_id, pack_code, bundle_version, zip_file_id, zip_filename, filenames, created_at).
+        Raises:
+            ValueError: If order not found, not a pack order, or no approved items with files.
+        """
+        db = database.get_db()
+        order = await db.orders.find_one({"order_id": order_id}, {"_id": 0, "order_ref": 1, "service_code": 1})
+        if not order:
+            raise ValueError(f"Order not found: {order_id}")
+        service_code = order.get("service_code")
+        if not service_code or service_code not in SERVICE_CODE_TO_PACK_TIER:
+            raise ValueError(f"Order {order_id} is not a document pack order")
+        
+        order_ref = order.get("order_ref", order_id)
+        
+        items = await self.get_document_items(order_id)
+        approved_with_files = [
+            it for it in items
+            if it.get("status") == "APPROVED"
+            and it.get("docx_gridfs_id") and it.get("pdf_gridfs_id")
+        ]
+        if not approved_with_files:
+            raise ValueError(f"No approved document items with rendered files for order {order_id}")
+        
+        approved_with_files.sort(key=lambda x: x.get("canonical_index", 0))
+        
+        from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+        fs = AsyncIOMotorGridFSBucket(db, bucket_name="order_files")
+        
+        zip_buffer = io.BytesIO()
+        filenames_in_zip: List[str] = []
+        
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for it in approved_with_files:
+                docx_id = it.get("docx_gridfs_id")
+                pdf_id = it.get("pdf_gridfs_id")
+                fn_docx = it.get("filename_docx") or f"{it.get('doc_type', 'doc')}.docx"
+                fn_pdf = it.get("filename_pdf") or f"{it.get('doc_type', 'doc')}.pdf"
+                try:
+                    out_docx = io.BytesIO()
+                    await fs.download_to_stream(ObjectId(docx_id), out_docx)
+                    out_docx.seek(0)
+                    zf.writestr(fn_docx, out_docx.getvalue())
+                    filenames_in_zip.append(fn_docx)
+                except Exception as e:
+                    logger.warning("Failed to add DOCX to bundle for item %s: %s", it.get("item_id"), e)
+                try:
+                    out_pdf = io.BytesIO()
+                    await fs.download_to_stream(ObjectId(pdf_id), out_pdf)
+                    out_pdf.seek(0)
+                    zf.writestr(fn_pdf, out_pdf.getvalue())
+                    filenames_in_zip.append(fn_pdf)
+                except Exception as e:
+                    logger.warning("Failed to add PDF to bundle for item %s: %s", it.get("item_id"), e)
+        
+        if not filenames_in_zip:
+            raise ValueError(f"Could not add any files to bundle for order {order_id}")
+        
+        zip_buffer.seek(0)
+        zip_bytes = zip_buffer.getvalue()
+        zip_filename = f"{order_ref}_{service_code}_bundle.zip"
+        
+        zip_grid_id = await fs.upload_from_stream(
+            zip_filename,
+            io.BytesIO(zip_bytes),
+            metadata={"order_id": order_id, "pack_code": service_code, "type": "pack_bundle"},
+        )
+        
+        latest = await db.pack_bundles.find_one(
+            {"order_id": order_id},
+            {"bundle_version": 1},
+            sort=[("bundle_version", -1)],
+        )
+        bundle_version = (latest["bundle_version"] + 1) if latest else 1
+        
+        bundle_id = f"BDL-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{hashlib.sha256(f'{order_id}{bundle_version}'.encode()).hexdigest()[:8].upper()}"
+        
+        bundle_doc = {
+            "bundle_id": bundle_id,
+            "order_id": order_id,
+            "pack_code": service_code,
+            "bundle_version": bundle_version,
+            "zip_file_id": str(zip_grid_id),
+            "zip_filename": zip_filename,
+            "filenames": filenames_in_zip,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.pack_bundles.insert_one(bundle_doc)
+        bundle_doc["created_at"] = bundle_doc["created_at"].isoformat()
+        logger.info("Built and stored bundle %s for order %s (v%d, %d files)", bundle_id, order_id, bundle_version, len(filenames_in_zip))
+        return {k: v for k, v in bundle_doc.items() if k != "_id"}
     
     # ========================================
     # Utility Methods

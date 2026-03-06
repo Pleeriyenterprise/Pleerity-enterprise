@@ -275,6 +275,24 @@ class DeliverySchema(BaseModel):
 
 
 # =============================================================================
+# Pack bundles (collection: pack_bundles) — ZIP bundle per order/pack
+# =============================================================================
+
+class PackBundleSchema(BaseModel):
+    """Schema for a generated document pack ZIP bundle. Collection: pack_bundles."""
+    model_config = ConfigDict(extra="allow")
+
+    bundle_id: str = Field(..., description="Unique bundle ID")
+    order_id: str = Field(...)
+    pack_code: str = Field(..., description="DOC_PACK_ESSENTIAL | DOC_PACK_TENANCY | DOC_PACK_PRO")
+    bundle_version: int = Field(1, description="Increments when bundle is rebuilt")
+    zip_file_id: str = Field(..., description="GridFS file ID for the ZIP")
+    zip_filename: str = Field(..., description="Suggested download filename")
+    filenames: List[str] = Field(default_factory=list, description="List of filenames inside the ZIP in canonical order")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# =============================================================================
 # Audit logs (collection: audit_logs) — shared with CVP; every admin action
 # =============================================================================
 

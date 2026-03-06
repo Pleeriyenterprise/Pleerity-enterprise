@@ -22,6 +22,7 @@ from models.services_models import (
     IntakeDraftSchema,
     OrderSchema,
     OrderStatus,
+    PackBundleSchema,
     PromptTemplateSchema,
     ServiceSchema,
     WorkflowEventSchema,
@@ -330,6 +331,38 @@ class DocumentPackDefinitionRepository:
 
 
 # =============================================================================
+# Pack bundles (pack_bundles)
+# =============================================================================
+
+class PackBundleRepository:
+    COLLECTION = "pack_bundles"
+
+    def _db(self):
+        return database.get_db()[self.COLLECTION]
+
+    async def insert(self, bundle: Dict[str, Any]) -> Dict[str, Any]:
+        bundle.setdefault("created_at", _now())
+        await self._db().insert_one(bundle)
+        return _omit_id(bundle)
+
+    async def get_by_id(self, bundle_id: str) -> Optional[Dict[str, Any]]:
+        doc = await self._db().find_one({"bundle_id": bundle_id}, {"_id": 0})
+        return _omit_id(doc) if doc else None
+
+    async def get_latest_by_order(self, order_id: str) -> Optional[Dict[str, Any]]:
+        doc = await self._db().find_one(
+            {"order_id": order_id},
+            {"_id": 0},
+            sort=[("bundle_version", -1)],
+        )
+        return _omit_id(doc) if doc else None
+
+    async def list_by_order(self, order_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        cursor = self._db().find({"order_id": order_id}, {"_id": 0}).sort("bundle_version", -1).limit(limit)
+        return await cursor.to_list(length=limit)
+
+
+# =============================================================================
 # Workflow events (workflow_events) — every state change
 # =============================================================================
 
@@ -450,6 +483,7 @@ generation_run_repository = GenerationRunRepository()
 document_pack_item_repository = DocumentPackItemRepository()
 generated_document_repository = GeneratedDocumentRepository()
 document_pack_definition_repository = DocumentPackDefinitionRepository()
+pack_bundle_repository = PackBundleRepository()
 workflow_event_repository = WorkflowEventRepository()
 delivery_repository = DeliveryRepository()
 audit_log_repository = AuditLogRepository()
