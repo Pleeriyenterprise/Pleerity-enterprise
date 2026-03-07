@@ -42,12 +42,12 @@ async def require_super_admin(current_user: dict = Depends(admin_route_guard)):
     Per user requirements: Only Super Admin can create/edit/activate prompts.
     
     Checks:
-    1. role_id == "super_admin" (team permissions system)
-    2. role == "ROLE_ADMIN" (legacy admin check - existing admins are considered super admins)
+    1. role == "ROLE_OWNER" or "ROLE_ADMIN" (owner has highest privilege; admin is super admin)
+    2. role_id == "super_admin" (team permissions system)
     3. team.manage permission (full team control implies super admin level)
     """
-    # Check legacy admin role - existing ROLE_ADMIN users are super admins
-    if current_user.get("role") == "ROLE_ADMIN":
+    # Owner and Admin both have super-admin level access (consistent with require_owner_or_admin elsewhere)
+    if current_user.get("role") in ("ROLE_OWNER", "ROLE_ADMIN"):
         return current_user
     
     # Check new team permissions role_id

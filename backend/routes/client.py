@@ -805,11 +805,18 @@ async def get_client_entitlements(request: Request):
     user = await client_route_guard(request)
     try:
         from services.plan_registry import plan_registry
-        from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
+        from services.ops_compliance_feature_flags import (
+            get_effective_flags,
+            MAINTENANCE_WORKFLOWS,
+            PREDICTIVE_MAINTENANCE,
+            CONTRACTOR_NETWORK,
+            INVOICING,
+        )
 
         entitlements = await plan_registry.get_client_entitlements(user["client_id"])
         flags = await get_effective_flags(user["client_id"])
         features = entitlements.get("features") or {}
+        # Plan-based defaults + admin overrides (single source of truth for client menu)
         features["maintenance_workflows"] = {
             "enabled": bool(flags.get(MAINTENANCE_WORKFLOWS)),
             "name": "Maintenance Workflows",
@@ -821,6 +828,20 @@ async def get_client_entitlements(request: Request):
             "enabled": bool(flags.get(PREDICTIVE_MAINTENANCE)),
             "name": "Predictive Maintenance",
             "description": "View predictive insights for property assets and maintenance.",
+            "category": "ops",
+            "minimum_plan": None,
+        }
+        features["contractor_network"] = {
+            "enabled": bool(flags.get(CONTRACTOR_NETWORK)),
+            "name": "Contractor Network",
+            "description": "View vetted contractors and preferred trades for your account.",
+            "category": "ops",
+            "minimum_plan": None,
+        }
+        features["invoicing"] = {
+            "enabled": bool(flags.get(INVOICING)),
+            "name": "Billing & Invoicing",
+            "description": "View billing history and invoices.",
             "category": "ops",
             "minimum_plan": None,
         }
@@ -838,6 +859,33 @@ async def get_client_entitlements(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load entitlements"
         )
+
+
+@router.get("/contractors")
+async def get_client_contractors(
+    request: Request,
+    vetted_only: bool = False,
+    skip: int = 0,
+    limit: int = 100,
+):
+    """List contractors available to this client (assigned or system-wide). Requires CONTRACTOR_NETWORK flag."""
+    user = await client_route_guard(request)
+    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
+    from services import contractor_service
+
+    flags = await get_effective_flags(user["client_id"])
+    if not flags.get(CONTRACTOR_NETWORK):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contractor network is not enabled for your account. Contact your administrator.",
+        )
+    result = await contractor_service.list_contractors_for_client(
+        client_id=user["client_id"],
+        vetted_only=vetted_only,
+        skip=skip,
+        limit=min(limit, 200),
+    )
+    return result
 
 
 @router.get("/documents")

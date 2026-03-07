@@ -34,6 +34,21 @@ export function EntitlementsProvider({ children }) {
     fetchEntitlements();
   }, [fetchEntitlements]);
 
+  // Refetch when window gains focus so client sees menu changes after admin toggles (without full refresh)
+  useEffect(() => {
+    let lastFocusRefetch = 0;
+    const throttleMs = 10000; // at most once per 10s on focus
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastFocusRefetch < throttleMs) return;
+      lastFocusRefetch = now;
+      fetchEntitlements();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [fetchEntitlements]);
+
   const hasFeature = useCallback(
     (featureKey) => Boolean(entitlements?.features?.[featureKey]?.enabled),
     [entitlements]

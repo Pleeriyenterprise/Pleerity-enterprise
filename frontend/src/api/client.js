@@ -200,6 +200,8 @@ export const clientAPI = {
   /** Maintenance events for predictive (requires PREDICTIVE_MAINTENANCE). */
   getPropertyEvents: (propertyId, params = {}) => apiClient.get(`/client/maintenance/properties/${propertyId}/events`, { params }),
   addPropertyEvent: (propertyId, body) => apiClient.post(`/client/maintenance/properties/${propertyId}/events`, body),
+  /** Contractors available to client (requires CONTRACTOR_NETWORK). */
+  getContractors: (params = {}) => apiClient.get('/client/contractors', { params }),
 };
 
 export const adminAPI = {

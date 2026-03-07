@@ -28,6 +28,25 @@ async def list_contractors(
     return {"contractors": items, "total": total, "skip": skip, "limit": limit}
 
 
+async def list_contractors_for_client(
+    client_id: str,
+    vetted_only: bool = False,
+    skip: int = 0,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    """List contractors visible to a client: those assigned to them or system-wide (client_id null)."""
+    db = database.get_db()
+    q = {"$or": [{"client_id": client_id}, {"client_id": None}]}
+    if vetted_only:
+        q["vetted"] = True
+    cursor = db.contractors.find(q).sort("name", 1).skip(skip).limit(limit)
+    items = await cursor.to_list(limit)
+    total = await db.contractors.count_documents(q)
+    for doc in items:
+        doc.pop("_id", None)
+    return {"contractors": items, "total": total, "skip": skip, "limit": limit}
+
+
 async def get_contractor(contractor_id: str) -> Optional[Dict[str, Any]]:
     """Get a single contractor by id."""
     db = database.get_db()

@@ -27,6 +27,7 @@ import {
   History,
   Users,
   Wrench,
+  Briefcase,
 } from 'lucide-react';
 
 const PORTAL_TABS = [
@@ -37,8 +38,10 @@ const PORTAL_TABS = [
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/maintenance', label: 'Maintenance', icon: Wrench, feature: 'maintenance_workflows' },
+  { path: '/contractors', label: 'Contractors', icon: Briefcase, feature: 'contractor_network' },
   { path: '/tenants', label: 'Tenants', icon: Users, feature: 'tenant_portal' },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { path: '/settings/billing', label: 'Billing', icon: CreditCard, feature: 'invoicing' },
+  { path: '/settings', label: 'Settings', icon: Settings, end: true },
 ];
 
 const TENANT_PORTAL_TABS = [

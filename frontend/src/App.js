@@ -117,6 +117,7 @@ import BillingPage from './pages/BillingPage';
 import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
 import ClientOrdersPage from './pages/ClientOrdersPage';
 import ClientMaintenancePage from './pages/ClientMaintenancePage';
+import ClientContractorsPage from './pages/ClientContractorsPage';
 import ViewOrderPage from './pages/ViewOrderPage';
 import UnifiedIntakeWizard from './pages/UnifiedIntakeWizard';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
@@ -308,6 +309,7 @@ function App() {
             <Route path="/orders/:orderId/provide-info" element={<ClientPortal><ClientProvideInfoPage /></ClientPortal>} />
             <Route path="/orders" element={<ClientPortal><ClientOrdersPage /></ClientPortal>} />
             <Route path="/maintenance" element={<ClientPortal><ClientMaintenancePage /></ClientPortal>} />
+            <Route path="/contractors" element={<ClientPortal><ClientContractorsPage /></ClientPortal>} />
 
             {/* Redirect legacy /app/* to new paths */}
             <Route path="/app/dashboard" element={<Navigate to="/dashboard" replace />} />
@@ -332,6 +334,7 @@ function App() {
             <Route path="/app/orders/:orderId/provide-info" element={<Navigate to="/orders/:orderId/provide-info" replace />} />
             <Route path="/app/orders" element={<Navigate to="/orders" replace />} />
             <Route path="/app/maintenance" element={<Navigate to="/maintenance" replace />} />
+            <Route path="/app/contractors" element={<Navigate to="/contractors" replace />} />
 
             {/* ========================================
                   ORDER INTAKE WIZARD (Public)
