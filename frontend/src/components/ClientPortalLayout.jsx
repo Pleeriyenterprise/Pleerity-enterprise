@@ -141,6 +141,10 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const isSettingsActive = (pathname) => {
     const p = pathname || location.pathname;
     if (isTenant) return p === '/tenant/settings' || p.startsWith('/tenant/settings/');
+    // When Billing has its own top-level tab (invoicing enabled), don't mark Settings active on /settings/billing
+    if (hasFeature('invoicing') && (p === '/settings/billing' || p.startsWith('/settings/billing/'))) {
+      return false;
+    }
     return p === '/settings' || p.startsWith('/settings/');
   };
 

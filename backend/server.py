@@ -555,7 +555,8 @@ async def lifespan(app: FastAPI):
         scheduler.start()
         scheduler_started = True
         jobs = scheduler.get_jobs()
-        logger.info("Background job scheduler started with %s job(s). Next runs: %s", len(jobs), [j.next_run_time.isoformat() if j.next_run_time else None for j in jobs[:5]])
+        next_runs = [getattr(j, "next_run_time", None) for j in jobs[:5]]
+        logger.info("Background job scheduler started with %s job(s). Next runs: %s", len(jobs), [t.isoformat() if t else None for t in next_runs])
     except Exception as e:
         logger.exception("Background job scheduler failed to start: %s. API will run without scheduled jobs.", e)
     

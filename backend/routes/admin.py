@@ -2568,16 +2568,19 @@ async def get_jobs_status(request: Request):
             except Exception:
                 pass
         
-        # Get scheduler status
+        # Get scheduler status (use getattr for next_run_time; some APScheduler backends may not expose it on Job)
         from server import scheduler
         scheduler_jobs = []
         for job in scheduler.get_jobs():
+            next_run = getattr(job, "next_run_time", None)
             scheduler_jobs.append({
-                "id": job.id,
-                "name": job.name,
-                "next_run": job.next_run_time.isoformat() if job.next_run_time else None
+                "id": getattr(job, "id", None),
+                "name": getattr(job, "name", None),
+                "next_run": next_run.isoformat() if next_run else None,
             })
-        
+        # If scheduler returned no jobs, treat as issues (scheduler may not be running)
+        system_status = "operational" if scheduler_jobs else "issues"
+
         return {
             "daily_reminders": {
                 "last_run": last_reminder["timestamp"] if last_reminder else None,
@@ -2588,7 +2591,7 @@ async def get_jobs_status(request: Request):
                 "total_sent": await db.digest_logs.count_documents({})
             },
             "scheduled_jobs": scheduler_jobs,
-            "system_status": "operational"
+            "system_status": system_status,
         }
     
     except Exception as e:

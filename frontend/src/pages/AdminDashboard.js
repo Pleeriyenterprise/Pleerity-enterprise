@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import api, { adminAPI } from '../api/client';
 import { toast } from 'sonner';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
@@ -1266,14 +1266,18 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
 // Tab Components
 const JobsMonitoring = () => {
   const [jobsStatus, setJobsStatus] = useState(null);
+  const [jobsStatusError, setJobsStatusError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(null);
 
   const fetchJobsStatus = async () => {
+    setJobsStatusError(null);
     try {
       const response = await api.get('/admin/jobs/status');
       setJobsStatus(response.data);
     } catch (error) {
+      setJobsStatusError(error.response?.data?.detail || 'Failed to load job status. Check Automation Control Centre or server logs.');
+      setJobsStatus(null);
       toast.error('Failed to load jobs status');
     } finally {
       setLoading(false);
@@ -1329,7 +1333,26 @@ const JobsMonitoring = () => {
           <span className="font-medium text-midnight-blue">
             System Status: {jobsStatus?.system_status === 'operational' ? 'Operational' : 'Issues Detected'}
           </span>
+          {(jobsStatusError || jobsStatus?.system_status === 'issues') && (
+            <Link
+              to="/admin/automation"
+              className="ml-2 text-sm text-electric-teal hover:underline"
+              title="Open Automation Control Centre"
+            >
+              View details →
+            </Link>
+          )}
         </div>
+        {jobsStatusError && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+            {jobsStatusError}
+          </p>
+        )}
+        {!jobsStatusError && jobsStatus?.system_status === 'issues' && (jobsStatus?.scheduled_jobs?.length === 0) && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+            No scheduled jobs loaded. The background scheduler may not be running—check server startup logs. <Link to="/admin/automation" className="text-electric-teal hover:underline">Automation Control Centre</Link> · <Link to="/admin/system-health" className="text-electric-teal hover:underline">System Health</Link>
+          </p>
+        )}
 
         {/* Scheduled Jobs */}
         <div className="space-y-4">

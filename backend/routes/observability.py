@@ -187,8 +187,6 @@ async def get_health_summary(request: Request):
     from services.incident_service import count_open_by_severity, STATUS_OPEN
 
     open_p0_p1 = await count_open_by_severity(["P0", "P1"])
-    status_badge = "incident" if open_p0_p1 > 0 else "ok"
-
     key_jobs = ["daily_reminders", "monthly_digest", "compliance_score_snapshots", "compliance_recalc_worker", "expiry_rollover_recalc"]
     last_success = {}
     for job_name in key_jobs:
@@ -198,6 +196,14 @@ async def get_health_summary(request: Request):
             sort=[("finished_at", -1)],
         )
         last_success[job_name] = doc.get("finished_at") if doc else None
+
+    no_job_runs_recorded = last_success and all(v is None for v in last_success.values())
+    if open_p0_p1 > 0:
+        status_badge = "incident"
+    elif no_job_runs_recorded:
+        status_badge = "degraded"  # Scheduler may not be running; automations not executing
+    else:
+        status_badge = "ok"
 
     open_incidents = await db.incidents.count_documents({"status": "open"})
     recent_failures = await db.job_runs.find(

@@ -8,6 +8,29 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+try:
+    from bson import ObjectId
+except ImportError:
+    ObjectId = None  # type: ignore[misc, assignment]
+
+
+def _make_json_safe(obj: Any) -> Any:
+    """Convert MongoDB ObjectId and other non-JSON types so FastAPI can serialize responses."""
+    if ObjectId is not None and isinstance(obj, ObjectId):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: _make_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_make_json_safe(x) for x in obj]
+    return obj
+
+
+def _sanitize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a JSON-safe copy of a contractor document (no raw ObjectId)."""
+    out = dict(doc)
+    out.pop("_id", None)
+    return _make_json_safe(out)
+
 
 async def list_contractors(
     client_id: Optional[str] = None,
@@ -25,7 +48,12 @@ async def list_contractors(
     cursor = db.contractors.find(q).sort("name", 1).skip(skip).limit(limit)
     items = await cursor.to_list(limit)
     total = await db.contractors.count_documents(q)
-    return {"contractors": items, "total": total, "skip": skip, "limit": limit}
+    return {
+        "contractors": [_sanitize_doc(d) for d in items],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 async def list_contractors_for_client(
@@ -42,18 +70,21 @@ async def list_contractors_for_client(
     cursor = db.contractors.find(q).sort("name", 1).skip(skip).limit(limit)
     items = await cursor.to_list(limit)
     total = await db.contractors.count_documents(q)
-    for doc in items:
-        doc.pop("_id", None)
-    return {"contractors": items, "total": total, "skip": skip, "limit": limit}
+    return {
+        "contractors": [_sanitize_doc(d) for d in items],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 async def get_contractor(contractor_id: str) -> Optional[Dict[str, Any]]:
     """Get a single contractor by id."""
     db = database.get_db()
     doc = await db.contractors.find_one({"contractor_id": contractor_id})
-    if doc and "_id" in doc:
-        doc.pop("_id")
-    return doc
+    if not doc:
+        return None
+    return _sanitize_doc(doc)
 
 
 async def create_contractor(
@@ -87,8 +118,8 @@ async def create_contractor(
     }
     db = database.get_db()
     await db.contractors.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+    # Return JSON-safe payload (PyMongo adds _id in place; avoid returning raw ObjectId)
+    return _sanitize_doc(doc)
 
 
 async def update_contractor(
@@ -132,9 +163,9 @@ async def update_contractor(
         {"$set": update},
         return_document=True,
     )
-    if result and "_id" in result:
-        result.pop("_id")
-    return result
+    if not result:
+        return None
+    return _sanitize_doc(result)
 
 
 async def delete_contractor(contractor_id: str) -> bool:

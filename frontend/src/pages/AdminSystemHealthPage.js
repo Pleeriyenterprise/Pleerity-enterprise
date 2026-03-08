@@ -66,6 +66,12 @@ export default function AdminSystemHealthPage() {
                   OK
                 </span>
               )}
+              {data.status === 'degraded' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                  <AlertTriangle className="w-4 h-4" />
+                  Degraded
+                </span>
+              )}
               {data.status === 'incident' && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
                   <AlertTriangle className="w-4 h-4" />
