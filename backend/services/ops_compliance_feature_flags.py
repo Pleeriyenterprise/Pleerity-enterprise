@@ -34,7 +34,7 @@ PLAN_1_SOLO = "PLAN_1_SOLO"
 PLAN_2_PORTFOLIO = "PLAN_2_PORTFOLIO"
 PLAN_3_PRO = "PLAN_3_PRO"
 
-# Defaults by plan: Solo = compliance only; Portfolio = + optional maintenance; Pro = + maintenance on, contractor optional
+# Defaults by plan: Solo = compliance only; Portfolio = maintenance + predictive; Pro = all including contractors
 DEFAULTS_BY_PLAN: Dict[str, Dict[str, bool]] = {
     PLAN_1_SOLO: {
         COMPLIANCE_ENGINE: True,
@@ -47,8 +47,8 @@ DEFAULTS_BY_PLAN: Dict[str, Dict[str, bool]] = {
     PLAN_2_PORTFOLIO: {
         COMPLIANCE_ENGINE: True,
         COMPLIANCE_PACKS: True,
-        MAINTENANCE_WORKFLOWS: False,  # optional flag
-        PREDICTIVE_MAINTENANCE: False,
+        MAINTENANCE_WORKFLOWS: True,
+        PREDICTIVE_MAINTENANCE: True,
         CONTRACTOR_NETWORK: False,
         INVOICING: False,
     },
@@ -56,8 +56,8 @@ DEFAULTS_BY_PLAN: Dict[str, Dict[str, bool]] = {
         COMPLIANCE_ENGINE: True,
         COMPLIANCE_PACKS: True,
         MAINTENANCE_WORKFLOWS: True,
-        PREDICTIVE_MAINTENANCE: False,
-        CONTRACTOR_NETWORK: False,  # optional
+        PREDICTIVE_MAINTENANCE: True,
+        CONTRACTOR_NETWORK: True,
         INVOICING: False,
     },
 }
@@ -82,9 +82,15 @@ def _defaults_for_plan(plan_code: Optional[str]) -> Dict[str, bool]:
 async def get_effective_flags(client_id: str, plan_code: Optional[str] = None) -> Dict[str, bool]:
     """
     Return effective feature flags for a client: plan defaults merged with overrides.
-    If plan_code not provided, will try to read from client doc.
+    If plan_code not provided, resolves from clients.billing_plan so plan-based defaults apply.
     """
     db = database.get_db()
+    if plan_code is None:
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "billing_plan": 1},
+        )
+        plan_code = (client or {}).get("billing_plan")
     defaults = _defaults_for_plan(plan_code)
     overrides = await db[COLLECTION].find({"client_id": client_id}).to_list(100)
     result = defaults.copy()
@@ -100,6 +106,12 @@ async def get_effective_flags_with_meta(
 ) -> Dict[str, Any]:
     """Effective flags plus source (plan_default | override) per key for admin UI."""
     db = database.get_db()
+    if plan_code is None:
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "billing_plan": 1},
+        )
+        plan_code = (client or {}).get("billing_plan")
     defaults = _defaults_for_plan(plan_code)
     overrides = await db[COLLECTION].find({"client_id": client_id}).to_list(100)
     override_map = {r["flag_key"]: r for r in overrides if r.get("flag_key") in defaults}

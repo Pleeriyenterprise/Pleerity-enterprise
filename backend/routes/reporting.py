@@ -346,6 +346,34 @@ DATA_FETCHERS = {
     "consent": fetch_consent_data,
 }
 
+# Legacy/alternate report_type values (e.g. from older schedules or UI labels) -> canonical key
+REPORT_TYPE_ALIASES = {
+    "compliance_summary": "compliance",
+    "requirements": "compliance",
+    "sla": "compliance",
+    "leads report": "leads",
+    "revenue report": "revenue",
+    "orders report": "orders",
+    "clients report": "clients",
+    "compliance report": "compliance",
+    "enablement report": "enablement",
+    "consent report": "consent",
+}
+
+
+def _normalize_report_type(report_type: Optional[str]) -> str:
+    """Return canonical report_type for DATA_FETCHERS lookup; raises ValueError if unknown."""
+    if report_type is None:
+        raise ValueError("report_type required")
+    key = str(report_type).strip().lower()
+    if not key:
+        raise ValueError("report_type required")
+    key = REPORT_TYPE_ALIASES.get(key, key)
+    if key not in DATA_FETCHERS:
+        valid = ", ".join(sorted(DATA_FETCHERS.keys()))
+        raise ValueError(f"Unknown report type: {report_type}. Valid types: {valid}")
+    return key
+
 
 # ============================================
 # Export Formatters
@@ -607,9 +635,10 @@ async def generate_report(
     admin: dict = Depends(admin_route_guard)
 ):
     """Generate a report and return as download."""
-    
-    if request.report_type not in DATA_FETCHERS:
-        raise HTTPException(status_code=400, detail=f"Unknown report type: {request.report_type}")
+    try:
+        report_type = _normalize_report_type(request.report_type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
     # Determine date range
     if request.start_date and request.end_date:
@@ -619,17 +648,17 @@ async def generate_report(
         start, end = get_date_range(request.period)
     
     # Fetch data
-    fetcher = DATA_FETCHERS[request.report_type]
+    fetcher = DATA_FETCHERS[report_type]
     data = await fetcher(start, end, request.filters)
     
     # Format output based on requested format
     if request.format == "xlsx":
-        output = format_xlsx(data, request.report_type, start, end)
+        output = format_xlsx(data, report_type, start, end)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         extension = "xlsx"
         content = output.getvalue()
     elif request.format == "pdf":
-        output = format_pdf(data, request.report_type, start, end)
+        output = format_pdf(data, report_type, start, end)
         media_type = "application/pdf"
         extension = "pdf"
         content = output.getvalue()
@@ -644,7 +673,7 @@ async def generate_report(
         extension = "csv"
         content = output.getvalue().encode('utf-8') if isinstance(output.getvalue(), str) else output.getvalue()
     
-    filename = f"{request.report_type}_report_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.{extension}"
+    filename = f"{report_type}_report_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.{extension}"
     
     # Audit log
     await create_audit_log(
@@ -654,7 +683,7 @@ async def generate_report(
         resource_type="report",
         resource_id=generate_report_id(),
         metadata={
-            "report_type": request.report_type,
+            "report_type": report_type,
             "format": request.format,
             "period": f"{start.isoformat()} to {end.isoformat()}",
             "row_count": len(data)
@@ -966,14 +995,22 @@ async def run_scheduled_report_now(
 ):
     """Manually trigger a scheduled report to run immediately."""
     db = database.get_db()
-    
+
     schedule = await db.report_schedules.find_one({"schedule_id": schedule_id}, {"_id": 0})
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
-    
-    report_type = schedule["report_type"]
-    if report_type not in DATA_FETCHERS:
-        raise HTTPException(status_code=400, detail=f"Unknown report type: {report_type}")
+
+    # Normalize report_type: use schedule report_type, or fall back to name for legacy schedules
+    raw_type = schedule.get("report_type") or schedule.get("name")
+    if not raw_type or not str(raw_type).strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Schedule has no report type or name. Edit the schedule and set a report type (e.g. leads, compliance).",
+        )
+    try:
+        report_type = _normalize_report_type(raw_type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
     # Get data for last period based on frequency
     now = now_utc()

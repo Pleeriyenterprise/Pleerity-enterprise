@@ -29,8 +29,6 @@ import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
 import client from '../api/client';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
-
 // Format icons
 const formatIcons = {
   csv: FileSpreadsheet,
@@ -227,8 +225,6 @@ export default function AdminReportingPage() {
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
-      
       let requestBody = {
         report_type: selectedType,
         format: selectedFormat,
@@ -241,23 +237,13 @@ export default function AdminReportingPage() {
         requestBody.end_date = customEndDate;
       }
       
-      const response = await fetch(`${API_URL}/api/admin/reports/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      if (!response.ok) throw new Error('Download failed');
-      
-      const blob = await response.blob();
-      const contentDisposition = response.headers.get('Content-Disposition');
+      const response = await client.post('/admin/reports/generate', requestBody, { responseType: 'blob' });
+      const blob = response.data;
+      const contentDisposition = response.headers['content-disposition'];
       let filename = `${selectedType}_report.${selectedFormat}`;
       if (contentDisposition) {
         const match = contentDisposition.match(/filename=(.+)/);
-        if (match) filename = match[1];
+        if (match) filename = match[1].trim().replace(/^["']|["']$/g, '');
       }
       
       const url = window.URL.createObjectURL(blob);
@@ -273,7 +259,7 @@ export default function AdminReportingPage() {
       fetchHistory();
     } catch (error) {
       console.error('Download failed:', error);
-      toast.error('Failed to download report');
+      toast.error(error.response?.data?.detail || 'Failed to download report');
     } finally {
       setLoading(false);
     }
@@ -327,11 +313,13 @@ export default function AdminReportingPage() {
     setLoading(true);
     try {
       const { data } = await client.post(`/admin/reports/schedules/${scheduleId}/run`);
-      toast.success(`Report sent to ${data.recipients.join(', ')}`);
+      toast.success(`Report sent to ${(data.recipients || []).join(', ')}`);
+      fetchSchedules();
       fetchExecutions();
     } catch (error) {
       console.error('Failed to run schedule:', error);
-      toast.error('Failed to run scheduled report');
+      const detail = error.response?.data?.detail || error.message;
+      toast.error(typeof detail === 'string' ? detail : 'Failed to run scheduled report');
     } finally {
       setLoading(false);
     }
