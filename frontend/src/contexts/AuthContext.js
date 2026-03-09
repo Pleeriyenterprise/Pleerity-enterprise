@@ -49,10 +49,19 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: userData };
     } catch (error) {
       const status = error.response?.status;
-      const detail = error.response?.data?.detail || 'Login failed';
+      const data = error.response?.data;
+      const detail = data?.detail;
+      let message = 'Login failed';
+      if (typeof detail === 'string') {
+        message = detail;
+      } else if (detail && typeof detail === 'object' && detail.message) {
+        message = detail.message;
+      } else if (status === 500 && detail) {
+        message = typeof detail === 'string' ? detail : (detail.message || 'Server error. Try again.');
+      }
       return {
         success: false,
-        error: detail,
+        error: message,
         status,
       };
     }

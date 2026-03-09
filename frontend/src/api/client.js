@@ -100,7 +100,9 @@ apiClient.interceptors.response.use(
       error.isPlanGateDenied = true;
       error.upgradeDetail = typeof detail === 'object' ? detail : { message, feature: data.feature ?? data.feature_key, upgrade_required: true };
     }
-    if (status === 401) {
+    // On 401: only redirect if this was NOT a login request (wrong credentials on login page should show error, not redirect)
+    const isLoginRequest = (error.config?.url || '').includes('/auth/login') || (error.config?.url || '').includes('/auth/admin/login');
+    if (status === 401 && !isLoginRequest) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
       const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
