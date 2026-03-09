@@ -1,4 +1,8 @@
-from passlib.context import CryptContext
+"""
+Password hashing and JWT auth. Uses bcrypt directly to avoid passlib/bcrypt 4.1+
+compatibility issues (passlib reads bcrypt.__about__ which was removed in bcrypt 4.1).
+"""
+import bcrypt
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict
@@ -7,19 +11,28 @@ import secrets
 import hashlib
 from models import UserRole, PasswordStatus
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 
+
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    """Hash a password using bcrypt (compatible with existing passlib-stored hashes)."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a password against its bcrypt hash. Returns False on any error."""
+    if not plain_password or not hashed_password:
+        return False
+    try:
+        if isinstance(hashed_password, str):
+            hashed_bytes = hashed_password.encode("utf-8")
+        else:
+            hashed_bytes = hashed_password
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_bytes)
+    except Exception:
+        return False
 
 def create_access_token(data: Dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""

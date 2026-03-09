@@ -8,10 +8,11 @@ from datetime import datetime, timezone
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from passlib.context import CryptContext
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Use auth.hash_password for compatibility (bcrypt directly; no passlib)
+from auth import hash_password
 
 # Test ADMIN (for local/dev); override with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD
 SEED_ADMIN_EMAIL = os.environ.get("SEED_ADMIN_EMAIL", "admin@pleerity.com")
@@ -45,7 +46,7 @@ async def seed_database():
                     "portal_user_id": pid,
                     "client_id": None,
                     "auth_email": seed_owner_email,
-                    "password_hash": pwd_context.hash(os.environ.get("SEED_OWNER_PASSWORD", "Owner123!")),
+                    "password_hash": hash_password(os.environ.get("SEED_OWNER_PASSWORD", "Owner123!")),
                     "role": "ROLE_OWNER",
                     "status": "ACTIVE",
                     "password_status": "SET",
@@ -65,7 +66,7 @@ async def seed_database():
             "portal_user_id": "admin-001",
             "client_id": None,
             "auth_email": SEED_ADMIN_EMAIL,
-            "password_hash": pwd_context.hash(SEED_ADMIN_PASSWORD),
+            "password_hash": hash_password(SEED_ADMIN_PASSWORD),
             "role": "ROLE_ADMIN",
             "status": "ACTIVE",
             "password_status": "SET",
