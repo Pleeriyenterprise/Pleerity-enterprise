@@ -1635,14 +1635,37 @@ async def get_executive_overview(request: Request):
             for k, v in comp.items() if v > 0
         ]
 
-        # 12-month monthly trend (recurring, one-time, total)
+        # If no payment-derived revenue but we have MRR, show MRR-derived breakdown so the section isn't empty
+        if total_comp == 0 and mrr_pence > 0:
+            months_ytd = max(1, now.month)
+            implied_ytd_pence = mrr_pence * months_ytd
+            revenue_composition = [
+                {
+                    "label": "Subscription (from current MRR; no payment records yet)",
+                    "value_pence": implied_ytd_pence,
+                    "percent": 100,
+                }
+            ]
+            total_comp = implied_ytd_pence
+            revenue_ytd = implied_ytd_pence
+            change_ytd_pct = 0
+            trend_ytd = "flat"
+
+        # 12-month monthly trend (recurring, one-time, total) — use calendar months to avoid duplicates/skips
         monthly_trend = []
         first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         for i in range(11, -1, -1):
-            # i=11 -> 11 months ago, i=0 -> current month
-            month_start = first_of_this_month - timedelta(days=30 * i)
-            month_start = month_start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            # i=11 -> 11 calendar months ago, i=0 -> current month
+            y, m = first_of_this_month.year, first_of_this_month.month
+            m -= i
+            while m <= 0:
+                m += 12
+                y -= 1
+            month_start = first_of_this_month.replace(year=y, month=m, day=1, hour=0, minute=0, second=0, microsecond=0)
+            if month_start.month == 12:
+                next_month = month_start.replace(year=month_start.year + 1, month=1, day=1)
+            else:
+                next_month = month_start.replace(month=month_start.month + 1, day=1)
             month_end = next_month - timedelta(microseconds=1)
             if month_end > now:
                 month_end = now
@@ -1663,6 +1686,20 @@ async def get_executive_overview(request: Request):
                 "one_time_pence": one,
                 "total_pence": rec + one,
             })
+
+        # If no payment-derived trend but we have MRR, use current MRR per month so the chart isn't empty
+        trend_total = sum(m.get("total_pence") or 0 for m in monthly_trend)
+        if trend_total == 0 and mrr_pence > 0:
+            monthly_trend = [
+                {
+                    "month": m["month"],
+                    "label": m["label"],
+                    "recurring_pence": mrr_pence,
+                    "one_time_pence": 0,
+                    "total_pence": mrr_pence,
+                }
+                for m in monthly_trend
+            ]
 
         # Gross profit YTD: revenue_ytd - cost_ytd (cost_pence on payments when set)
         gross_profit_ytd_pence = revenue_ytd - cost_ytd

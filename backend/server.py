@@ -697,6 +697,18 @@ app.include_router(clearform_organizations_router)  # ClearForm Organizations (I
 app.include_router(clearform_audit_router)  # ClearForm Audit Logs
 app.include_router(clearform_admin_router)  # ClearForm Admin Panel
 
+# Root path (/) — so health checks and GET / don't get 404
+@app.get("/")
+@app.head("/")
+async def root_path():
+    return {
+        "service": "Compliance Vault Pro",
+        "api": "/api",
+        "health": "/api/health",
+        "docs": "/docs",
+        "status": "operational",
+    }
+
 # Root endpoint
 @app.get("/api")
 async def root():

@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Tuple
 
 from database import database
-from services.incident_service import create_incident, SOURCE_JOB_MONITOR, SEVERITY_P0, SEVERITY_P1
+from services.incident_service import create_incident, SOURCE_JOB_MONITOR, SEVERITY_P0, SEVERITY_P1, SEVERITY_P2
 from services.job_run_service import COLLECTION as JOB_RUNS_COLLECTION, STATUS_SUCCESS
 
 logger = logging.getLogger(__name__)

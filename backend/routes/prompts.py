@@ -152,7 +152,7 @@ async def seed_default_prompts(current_user: dict = Depends(require_super_admin)
     defaults = [
         PromptTemplateCreate(
             service_code="CLEARFORM",
-            doc_type="default",
+            doc_type="CLEARFORM",
             name="Default document generation",
             description="Default prompt for AI document generation with {{INPUT_DATA_JSON}}.",
             system_prompt="You are a precise document assistant. Output valid JSON only.",
