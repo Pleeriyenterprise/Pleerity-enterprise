@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -6,6 +7,7 @@ import { Wrench, Plus, Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ClientMaintenancePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [workOrders, setWorkOrders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,21 @@ export default function ClientMaintenancePage() {
 
   useEffect(() => { loadWorkOrders(); loadProperties(); }, [loadWorkOrders, loadProperties]);
   useEffect(() => { loadInsights(); }, [loadInsights]);
+
+  // Prefill create form from URL (e.g. from Risk Signals "Create work order")
+  useEffect(() => {
+    const propertyId = searchParams.get('property_id');
+    const description = searchParams.get('description');
+    if (propertyId || description) {
+      setCreateForm((f) => ({
+        ...f,
+        ...(propertyId && { property_id: propertyId }),
+        ...(description && { description: description }),
+      }));
+      setCreateOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();

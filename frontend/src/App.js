@@ -118,6 +118,9 @@ import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
 import ClientOrdersPage from './pages/ClientOrdersPage';
 import ClientMaintenancePage from './pages/ClientMaintenancePage';
 import ClientContractorsPage from './pages/ClientContractorsPage';
+import ClientIssuesPage from './pages/ClientIssuesPage';
+import ClientRiskSignalsPage from './pages/ClientRiskSignalsPage';
+import ClientApprovalsPage from './pages/ClientApprovalsPage';
 import ViewOrderPage from './pages/ViewOrderPage';
 import UnifiedIntakeWizard from './pages/UnifiedIntakeWizard';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
@@ -308,8 +311,15 @@ function App() {
             <Route path="/integrations" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="webhooks"><IntegrationsPage /></EntitlementProtectedRoute></ClientPortal>} />
             <Route path="/orders/:orderId/provide-info" element={<ClientPortal><ClientProvideInfoPage /></ClientPortal>} />
             <Route path="/orders" element={<ClientPortal><ClientOrdersPage /></ClientPortal>} />
-            <Route path="/maintenance" element={<ClientPortal><ClientMaintenancePage /></ClientPortal>} />
-            <Route path="/contractors" element={<ClientPortal><ClientContractorsPage /></ClientPortal>} />
+            {/* Operations (unified) */}
+            <Route path="/operations/issues" element={<ClientPortal><ClientIssuesPage /></ClientPortal>} />
+            <Route path="/operations/work-orders" element={<ClientPortal><ClientMaintenancePage /></ClientPortal>} />
+            <Route path="/operations/contractors" element={<ClientPortal><ClientContractorsPage /></ClientPortal>} />
+            <Route path="/operations/risk-signals" element={<ClientPortal><ClientRiskSignalsPage /></ClientPortal>} />
+            <Route path="/operations/approvals" element={<ClientPortal><ClientApprovalsPage /></ClientPortal>} />
+            {/* Legacy maintenance/contractors → redirect to operations */}
+            <Route path="/maintenance" element={<Navigate to="/operations/work-orders" replace />} />
+            <Route path="/contractors" element={<Navigate to="/operations/contractors" replace />} />
 
             {/* Redirect legacy /app/* to new paths */}
             <Route path="/app/dashboard" element={<Navigate to="/dashboard" replace />} />
@@ -333,8 +343,8 @@ function App() {
             <Route path="/app/billing" element={<Navigate to="/settings/billing" replace />} />
             <Route path="/app/orders/:orderId/provide-info" element={<Navigate to="/orders/:orderId/provide-info" replace />} />
             <Route path="/app/orders" element={<Navigate to="/orders" replace />} />
-            <Route path="/app/maintenance" element={<Navigate to="/maintenance" replace />} />
-            <Route path="/app/contractors" element={<Navigate to="/contractors" replace />} />
+            <Route path="/app/maintenance" element={<Navigate to="/operations/work-orders" replace />} />
+            <Route path="/app/contractors" element={<Navigate to="/operations/contractors" replace />} />
 
             {/* ========================================
                   ORDER INTAKE WIZARD (Public)

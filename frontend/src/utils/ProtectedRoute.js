@@ -10,7 +10,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const location = useLocation();
   const hasLoggedBlock = useRef(false);
   const pathname = location.pathname;
-  const clientPathPrefixes = ['/app', '/dashboard', '/properties', '/requirements', '/documents', '/calendar', '/reports', '/settings', '/assistant', '/help', '/compliance-score', '/tenant', '/tenants', '/integrations', '/orders'];
+  const clientPathPrefixes = ['/app', '/dashboard', '/properties', '/requirements', '/documents', '/calendar', '/reports', '/settings', '/assistant', '/help', '/compliance-score', '/tenant', '/tenants', '/integrations', '/orders', '/operations'];
   const isClientPath = clientPathPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
   const isAdminPath = pathname.startsWith('/admin');
 

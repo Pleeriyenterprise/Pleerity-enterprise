@@ -47,10 +47,22 @@ async def run_instrumented(
 
 
 def make_instrumented(job_id: str, run_type: str = "schedule"):
-    """Return an async callable that runs the job with instrumentation (for scheduler)."""
+    """Return an async callable that runs the job with instrumentation (for scheduler).
+    Note: When using a persistent job store (e.g. MongoDB), do NOT pass this callable to
+    add_job—it cannot be pickled. Use run_scheduled_job with a string reference instead.
+    """
     async def _run():
         return await run_instrumented(job_id, run_type, triggered_by=None)
     return _run
+
+
+async def run_scheduled_job(job_id: str, run_type: str = "schedule"):
+    """
+    Top-level entry point for the scheduler. Must be a module-level function so that
+    APScheduler can store jobs in MongoDB (pickle requires a resolvable module:func reference).
+    Use in server.py as: add_job("job_runner:run_scheduled_job", ..., args=[job_id], kwargs={"run_type": "schedule"}).
+    """
+    return await run_instrumented(job_id, run_type, triggered_by=None)
 
 
 async def run_daily_reminders():

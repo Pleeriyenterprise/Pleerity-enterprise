@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
-import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2 } from 'lucide-react';
+import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2, Wrench } from 'lucide-react';
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
@@ -69,6 +69,9 @@ const ClientDashboard = () => {
   const [skippedChecklistThisSession, setSkippedChecklistThisSession] = useState(false);
   const [onboardingChecklist, setOnboardingChecklist] = useState(null);
   const [completingItemId, setCompletingItemId] = useState(null);
+  // Operations data for dashboard KPIs and action queue
+  const [workOrdersList, setWorkOrdersList] = useState([]);
+  const [predictiveInsightsData, setPredictiveInsightsData] = useState(null);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -91,6 +94,21 @@ const ClientDashboard = () => {
     // Intentionally depend only on role/client_id; fetch functions are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClientUser, user?.role, user?.client_id]);
+
+  // Operations data for Executive KPIs and Action Required (feature-gated)
+  useEffect(() => {
+    if (!isClientUser) return;
+    if (hasFeature('maintenance_workflows')) {
+      clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 500 })
+        .then((res) => setWorkOrdersList(res.data?.work_orders || []))
+        .catch(() => setWorkOrdersList([]));
+    }
+    if (hasFeature('predictive_maintenance')) {
+      clientAPI.getPredictiveInsights({ limit: 100 })
+        .then((res) => setPredictiveInsightsData(res.data))
+        .catch(() => setPredictiveInsightsData(null));
+    }
+  }, [isClientUser, hasFeature]);
 
   // Refetch score trend card when user switches Portfolio vs Property or selects another property
   useEffect(() => {
@@ -395,6 +413,30 @@ const ClientDashboard = () => {
     return { level, drivers, overdue, missingPct, confirmedPct };
   }, [complianceScore?.stats, portfolioSummary?.kpis, actionableMissingCount]);
 
+  // Operations: open issues count, work order funnel, risk signals count
+  const openIssuesCount = useMemo(() => {
+    return workOrdersList.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status)).length;
+  }, [workOrdersList]);
+  const workOrderFunnel = useMemo(() => {
+    const open = workOrdersList.filter((wo) => wo.status === 'OPEN').length;
+    const assigned = workOrdersList.filter((wo) => wo.status === 'ASSIGNED').length;
+    const inProgress = workOrdersList.filter((wo) => wo.status === 'IN_PROGRESS').length;
+    const completed = workOrdersList.filter((wo) => wo.status === 'COMPLETED').length;
+    const cancelled = workOrdersList.filter((wo) => wo.status === 'CANCELLED').length;
+    return { open, assigned, inProgress, completed, cancelled };
+  }, [workOrdersList]);
+  const riskSignalsCount = useMemo(() => {
+    if (!predictiveInsightsData?.properties?.length) return 0;
+    return predictiveInsightsData.properties.reduce((sum, p) => sum + (p.insights?.length || 0), 0);
+  }, [predictiveInsightsData]);
+  const openJobsByProperty = useMemo(() => {
+    const map = {};
+    workOrdersList.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status)).forEach((wo) => {
+      if (wo.property_id) map[wo.property_id] = (map[wo.property_id] || 0) + 1;
+    });
+    return map;
+  }, [workOrdersList]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -669,6 +711,56 @@ const ClientDashboard = () => {
             {(portfolioSummary?.properties?.length != null || complianceScore?.properties_count != null) && (
               <span className="text-xs text-gray-500">{portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0} propert{(portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0) === 1 ? 'y' : 'ies'}</span>
             )}
+          </div>
+        )}
+
+        {/* Executive KPI row (compliance + operations) */}
+        {!setupView && (
+          <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" data-testid="executive-kpi-row">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/compliance-score')}>
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Portfolio compliance</p>
+                <p className="text-xl font-bold text-midnight-blue">{displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score ?? '—'}</p>
+              </CardContent>
+            </Card>
+            {hasFeature('maintenance_workflows') && (
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/issues')}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
+                  <p className="text-xl font-bold text-midnight-blue">{openIssuesCount}</p>
+                </CardContent>
+              </Card>
+            )}
+            {hasFeature('maintenance_workflows') && (
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/work-orders')}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">SLA breaches</p>
+                  <p className="text-xl font-bold text-midnight-blue">—</p>
+                </CardContent>
+              </Card>
+            )}
+            {hasFeature('predictive_maintenance') && (
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/risk-signals')}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Predicted risks</p>
+                  <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
+                </CardContent>
+              </Card>
+            )}
+            {hasFeature('contractor_network') && (
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/contractors')}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Contractor perf.</p>
+                  <p className="text-xl font-bold text-midnight-blue">—</p>
+                </CardContent>
+              </Card>
+            )}
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/settings/billing')}>
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">This month&apos;s spend</p>
+                <p className="text-xl font-bold text-midnight-blue">—</p>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -1104,6 +1196,83 @@ const ClientDashboard = () => {
           </Card>
         )}
 
+        {/* Operations overview: work order funnel + risk signals (feature-gated) */}
+        {!setupView && (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) && (
+          <div className="mb-8 grid md:grid-cols-2 gap-6">
+            {hasFeature('maintenance_workflows') && (
+              <Card className="border border-gray-200 shadow-sm" data-testid="operations-overview-wo">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Wrench className="w-4 h-4 text-electric-teal" />
+                    Work orders
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <span className="font-medium text-amber-700">Open: {workOrderFunnel.open}</span>
+                    <span className="font-medium text-blue-700">Assigned: {workOrderFunnel.assigned}</span>
+                    <span className="font-medium text-blue-600">In progress: {workOrderFunnel.inProgress}</span>
+                    <span className="font-medium text-green-700">Completed: {workOrderFunnel.completed}</span>
+                  </div>
+                  <Button variant="outline" size="sm" className="mt-3 text-electric-teal border-electric-teal" onClick={() => navigate('/operations/work-orders')}>
+                    View all work orders
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            {hasFeature('predictive_maintenance') && (
+              <Card className="border border-gray-200 shadow-sm" data-testid="operations-overview-risk">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-electric-teal" />
+                    Risk signals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-midnight-blue">{riskSignalsCount}</p>
+                  <p className="text-sm text-gray-500 mt-1">Predicted risks across your properties</p>
+                  <Button variant="outline" size="sm" className="mt-3 text-electric-teal border-electric-teal" onClick={() => navigate('/operations/risk-signals')}>
+                    View risk signals
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Action Required: operations items (deep links to Issues, Risk Signals) */}
+        {!setupView && (openIssuesCount > 0 || riskSignalsCount > 0) && (
+          <Card className="mb-8 border-amber-200 bg-amber-50/50" data-testid="action-required-operations">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-900">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                Action required
+              </CardTitle>
+              <p className="text-sm text-amber-800">Items needing your attention</p>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {openIssuesCount > 0 && hasFeature('maintenance_workflows') && (
+                  <li className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
+                    <span className="text-sm text-gray-800">{openIssuesCount} open issue{openIssuesCount !== 1 ? 's' : ''}</span>
+                    <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => navigate('/operations/issues')}>
+                      View issues
+                    </Button>
+                  </li>
+                )}
+                {riskSignalsCount > 0 && hasFeature('predictive_maintenance') && (
+                  <li className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
+                    <span className="text-sm text-gray-800">{riskSignalsCount} risk signal{riskSignalsCount !== 1 ? 's' : ''} flagged</span>
+                    <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => navigate('/operations/risk-signals')}>
+                      View risk signals
+                    </Button>
+                  </li>
+                )}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
         {/* De-duplicated: score/risk/last updated/properties are in top strip and KPI tiles below */}
         {/* Compliance Framework explanation (static, no legal advice) */}
         <div className="mb-8 rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -1150,6 +1319,8 @@ const ClientDashboard = () => {
                     <th className="p-3">Overdue</th>
                     <th className="p-3">Expiring soon</th>
                     <th className="p-3">Missing evidence</th>
+                    {hasFeature('maintenance_workflows') && <th className="p-3">Open jobs</th>}
+                    <th className="p-3">View</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1165,6 +1336,16 @@ const ClientDashboard = () => {
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
                       <td className="p-3">{p.missing_count ?? 0}</td>
+                      {hasFeature('maintenance_workflows') && (
+                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          {openJobsByProperty[p.property_id] ?? 0}
+                        </td>
+                      )}
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="text-electric-teal hover:bg-teal-50" onClick={() => navigate(`/properties/${p.property_id}`)}>
+                          View
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

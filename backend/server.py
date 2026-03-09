@@ -74,7 +74,6 @@ scheduler = AsyncIOScheduler(jobstores=jobstores)
 
 # Import job runners from shared module (used by scheduler and admin run-now)
 from job_runner import (
-    make_instrumented,
     run_daily_reminders,
     run_pending_verification_digest,
     run_monthly_digests,
@@ -339,215 +338,263 @@ async def lifespan(app: FastAPI):
         logger.warning("No running event loop for scheduler: %s. Jobs may not run automatically.", e)
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
-        make_instrumented("daily_reminders", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=9, minute=0),
         id="daily_reminders",
         name="Daily Compliance Reminders",
-        replace_existing=True
+        replace_existing=True,
+        args=["daily_reminders"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
     scheduler.add_job(
-        make_instrumented("pending_verification_digest", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=9, minute=30),
         id="pending_verification_digest",
         name="Pending Verification Digest",
-        replace_existing=True
+        replace_existing=True,
+        args=["pending_verification_digest"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Monthly digest on the 1st of each month at 10:00 AM UTC
     scheduler.add_job(
-        make_instrumented("monthly_digest", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(day=1, hour=10, minute=0),
         id="monthly_digest",
         name="Monthly Compliance Digest",
-        replace_existing=True
+        replace_existing=True,
+        args=["monthly_digest"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Compliance status check - runs twice daily at 8:00 AM and 6:00 PM UTC
     scheduler.add_job(
-        make_instrumented("compliance_check_morning", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=8, minute=0),
         id="compliance_check_morning",
         name="Compliance Status Check (Morning)",
-        replace_existing=True
+        replace_existing=True,
+        args=["compliance_check_morning"],
+        kwargs={"run_type": "schedule"},
     )
     
     scheduler.add_job(
-        make_instrumented("compliance_check_evening", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=18, minute=0),
         id="compliance_check_evening",
         name="Compliance Status Check (Evening)",
-        replace_existing=True
+        replace_existing=True,
+        args=["compliance_check_evening"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Scheduled reports - runs every hour
     scheduler.add_job(
-        make_instrumented("scheduled_reports", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute=0),
         id="scheduled_reports",
         name="Process Scheduled Reports",
-        replace_existing=True
+        replace_existing=True,
+        args=["scheduled_reports"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Daily compliance score snapshots at 2:00 AM UTC
     scheduler.add_job(
-        make_instrumented("compliance_score_snapshots", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=2, minute=0),
         id="compliance_score_snapshots",
         name="Daily Compliance Score Snapshots",
-        replace_existing=True
+        replace_existing=True,
+        args=["compliance_score_snapshots"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Expiry rollover - daily 00:10 UTC
     scheduler.add_job(
-        make_instrumented("expiry_rollover_recalc", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=0, minute=10),
         id="expiry_rollover_recalc",
         name="Expiry Rollover Compliance Recalc",
-        replace_existing=True
+        replace_existing=True,
+        args=["expiry_rollover_recalc"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Async compliance recalc worker - every 15 seconds
     scheduler.add_job(
-        make_instrumented("compliance_recalc_worker", "schedule"),
+        "job_runner:run_scheduled_job",
         IntervalTrigger(seconds=15),
         id="compliance_recalc_worker",
         name="Compliance Recalc Worker",
-        replace_existing=True
+        replace_existing=True,
+        args=["compliance_recalc_worker"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Compliance recalc SLA monitor - every 5 minutes
     scheduler.add_job(
-        make_instrumented("compliance_recalc_sla_monitor", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/5"),
         id="compliance_recalc_sla_monitor",
         name="Compliance Recalc SLA Monitor",
-        replace_existing=True
+        replace_existing=True,
+        args=["compliance_recalc_sla_monitor"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Notification failure spike monitor - every 5 minutes
     scheduler.add_job(
-        make_instrumented("notification_failure_spike_monitor", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/5"),
         id="notification_failure_spike_monitor",
         name="Notification Failure Spike Monitor",
-        replace_existing=True
+        replace_existing=True,
+        args=["notification_failure_spike_monitor"],
+        kwargs={"run_type": "schedule"},
     )
     
     # SLA watchdog (job run SLA) - every 10 minutes
     scheduler.add_job(
-        make_instrumented("sla_watchdog", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/10"),
         id="sla_watchdog",
         name="SLA Watchdog (job run monitoring)",
-        replace_existing=True
+        replace_existing=True,
+        args=["sla_watchdog"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Notification retry worker - every minute
     scheduler.add_job(
-        make_instrumented("notification_retry_worker", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*"),
         id="notification_retry_worker",
         name="Notification Retry Worker",
-        replace_existing=True
+        replace_existing=True,
+        args=["notification_retry_worker"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Order delivery processing - every 5 minutes
     scheduler.add_job(
-        make_instrumented("order_delivery_processing", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/5"),
         id="order_delivery_processing",
         name="Order Delivery Processing",
-        replace_existing=True
+        replace_existing=True,
+        args=["order_delivery_processing"],
+        kwargs={"run_type": "schedule"},
     )
     
     # SLA monitoring - every 15 minutes
     scheduler.add_job(
-        make_instrumented("sla_monitoring", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/15"),
         id="sla_monitoring",
         name="SLA Monitoring",
-        replace_existing=True
+        replace_existing=True,
+        args=["sla_monitoring"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Stuck order detection - every 30 minutes
     scheduler.add_job(
-        make_instrumented("stuck_order_detection", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/30"),
         id="stuck_order_detection",
         name="Stuck Order Detection",
-        replace_existing=True
+        replace_existing=True,
+        args=["stuck_order_detection"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Queued order processing - every 10 minutes
     scheduler.add_job(
-        make_instrumented("queued_order_processing", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/10"),
         id="queued_order_processing",
         name="Queued Order Processing",
-        replace_existing=True
+        replace_existing=True,
+        args=["queued_order_processing"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Abandoned intake detection - every 15 minutes
     scheduler.add_job(
-        make_instrumented("abandoned_intake_detection", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/15"),
         id="abandoned_intake_detection",
         name="Abandoned Intake Detection",
-        replace_existing=True
+        replace_existing=True,
+        args=["abandoned_intake_detection"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Lead follow-up processing - every 15 minutes
     scheduler.add_job(
-        make_instrumented("lead_followup_processing", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute="*/15"),
         id="lead_followup_processing",
         name="Lead Follow-up Processing",
-        replace_existing=True
+        replace_existing=True,
+        args=["lead_followup_processing"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Pending payment lifecycle - daily 3:00 AM UTC
     scheduler.add_job(
-        make_instrumented("pending_payment_lifecycle", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=3, minute=0),
         id="pending_payment_lifecycle",
         name="Pending Payment Lifecycle (abandoned/archived)",
-        replace_existing=True
+        replace_existing=True,
+        args=["pending_payment_lifecycle"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Lead SLA breach check - every hour
     scheduler.add_job(
-        make_instrumented("lead_sla_check", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(minute=0),
         id="lead_sla_check",
         name="Lead SLA Breach Check",
-        replace_existing=True
+        replace_existing=True,
+        args=["lead_sla_check"],
+        kwargs={"run_type": "schedule"},
     )
     
     # Checklist nurture - daily 9:00 AM UTC
     scheduler.add_job(
-        make_instrumented("checklist_nurture_processing", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=9, minute=0),
         id="checklist_nurture_processing",
         name="Checklist Nurture (compliance checklist leads)",
-        replace_existing=True
+        replace_existing=True,
+        args=["checklist_nurture_processing"],
+        kwargs={"run_type": "schedule"},
     )
     # Risk-check lead nurture (steps 2–5 at day 2, 4, 6, 10) - daily at 9:15 AM UTC
     scheduler.add_job(
-        make_instrumented("risk_lead_nurture_processing", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=9, minute=15),
         id="risk_lead_nurture_processing",
         name="Risk Lead Nurture (risk-check conversion leads)",
-        replace_existing=True
+        replace_existing=True,
+        args=["risk_lead_nurture_processing"],
+        kwargs={"run_type": "schedule"},
     )
     # Predictive maintenance insights - daily 4:00 AM UTC (warms insights for clients with PREDICTIVE_MAINTENANCE)
     scheduler.add_job(
-        make_instrumented("predictive_insights_job", "schedule"),
+        "job_runner:run_scheduled_job",
         CronTrigger(hour=4, minute=0),
         id="predictive_insights_job",
         name="Predictive Maintenance Insights (precompute)",
-        replace_existing=True
+        replace_existing=True,
+        args=["predictive_insights_job"],
+        kwargs={"run_type": "schedule"},
     )
 
     scheduler_started = False

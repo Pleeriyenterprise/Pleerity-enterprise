@@ -24,21 +24,33 @@ import {
   CreditCard,
   HelpCircle,
   ChevronDown,
+  ChevronRight,
   History,
   Users,
   Wrench,
   Briefcase,
+  AlertCircle,
+  TrendingUp,
+  ClipboardCheck,
 } from 'lucide-react';
+
+// Operations sub-items (feature-gated). Shown under Operations group; no standalone Maintenance/Contractors.
+const OPERATIONS_CHILDREN = [
+  { path: '/operations/issues', label: 'Issues', icon: AlertCircle, feature: 'maintenance_workflows' },
+  { path: '/operations/work-orders', label: 'Work Orders', icon: Wrench, feature: 'maintenance_workflows' },
+  { path: '/operations/contractors', label: 'Contractors', icon: Briefcase, feature: 'contractor_network' },
+  { path: '/operations/risk-signals', label: 'Risk Signals', icon: TrendingUp, feature: 'predictive_maintenance' },
+  { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },
+];
 
 const PORTAL_TABS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/properties', label: 'Properties', icon: Building2 },
-  { path: '/requirements', label: 'Requirements', icon: FileCheck },
+  { path: '/requirements', label: 'Compliance', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/maintenance', label: 'Maintenance', icon: Wrench, feature: 'maintenance_workflows' },
-  { path: '/contractors', label: 'Contractors', icon: Briefcase, feature: 'contractor_network' },
+  { type: 'group', label: 'Operations', icon: Wrench, children: OPERATIONS_CHILDREN },
   { path: '/tenants', label: 'Tenants', icon: Users, feature: 'tenant_portal' },
   { path: '/settings/billing', label: 'Billing', icon: CreditCard, feature: 'invoicing' },
   { path: '/settings', label: 'Settings', icon: Settings, end: true },
@@ -61,6 +73,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [operationsDropdownOpen, setOperationsDropdownOpen] = useState(false);
   const [crnState, setCrnState] = useState(crnProp);
   const [profile, setProfile] = useState(null);
   const [headerAvatarUrl, setHeaderAvatarUrl] = useState(null);
@@ -130,13 +143,28 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const location = useLocation();
   const showReports = hasFeature('reports_pdf') || hasFeature('reports_csv');
   const isTenant = user?.role === 'ROLE_TENANT';
+
+  // Build tabs: filter by feature; for Operations group, show only if at least one child is enabled and filter children
   const tabs = isTenant
     ? TENANT_PORTAL_TABS
-    : PORTAL_TABS.filter((t) => {
-        if (t.path === '/reports') return showReports;
-        if (t.feature) return hasFeature(t.feature);
-        return true;
-      });
+    : PORTAL_TABS.map((t) => {
+        if (t.type === 'group' && t.children) {
+          const children = t.children.filter((c) => (c.feature ? hasFeature(c.feature) : true));
+          if (children.length === 0) return null;
+          return { ...t, children };
+        }
+        if (t.path === '/reports') return showReports ? t : null;
+        if (t.feature) return hasFeature(t.feature) ? t : null;
+        return t;
+      }).filter(Boolean);
+
+  const operationsOpen = location.pathname.startsWith('/operations');
+  const hasOperationsAccess = tabs.some((t) => t.type === 'group' && t.label === 'Operations');
+
+  const isOperationsActive = (pathname) => {
+    const p = pathname || location.pathname;
+    return p.startsWith('/operations');
+  };
 
   const isSettingsActive = (pathname) => {
     const p = pathname || location.pathname;
@@ -224,25 +252,83 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         {/* Tabs: visible on desktop; collapsible on mobile */}
         <nav className={`border-t border-white/10 ${mobileNavOpen ? 'block' : 'hidden'} lg:block`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col lg:flex-row lg:space-x-1">
-              {tabs.map(({ path, label, icon: Icon, end }) => (
-                <NavLink
-                  key={path}
-                  to={path}
-                  end={end}
-                  onClick={() => setMobileNavOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center px-3 py-3 lg:py-4 text-sm font-medium border-b-2 lg:border-b-2 transition-colors ${
-                      isActive || ((path === '/settings' || path === '/tenant/settings') && isSettingsActive(location.pathname))
-                        ? 'border-electric-teal text-electric-teal'
-                        : 'border-transparent text-gray-300 hover:text-white hover:border-gray-400'
-                    }`
-                  }
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {label}
-                </NavLink>
-              ))}
+            <div className="flex flex-col lg:flex-row lg:items-stretch lg:space-x-1">
+              {tabs.map((tab) => {
+                if (tab.type === 'group' && tab.children?.length > 0) {
+                  const Icon = tab.icon;
+                  const isActive = isOperationsActive(location.pathname);
+                  return (
+                    <div
+                      key="operations-group"
+                      className="relative"
+                      onMouseEnter={() => setOperationsDropdownOpen(true)}
+                      onMouseLeave={() => setOperationsDropdownOpen(false)}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOperationsDropdownOpen((o) => !o)}
+                        className={`flex items-center px-3 py-3 lg:py-4 text-sm font-medium border-b-2 transition-colors w-full lg:w-auto ${
+                          isActive
+                            ? 'border-electric-teal text-electric-teal'
+                            : 'border-transparent text-gray-300 hover:text-white hover:border-gray-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 mr-2" />
+                        {tab.label}
+                        <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${operationsDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      <div
+                        className={`lg:absolute lg:left-0 lg:top-full lg:pt-0 lg:bg-midnight-blue lg:border lg:border-white/10 lg:rounded-b-lg lg:shadow-lg lg:min-w-[180px] z-40 ${
+                          operationsDropdownOpen ? 'block' : 'hidden'
+                        }`}
+                      >
+                        {tab.children.map((child) => {
+                          const ChildIcon = child.icon;
+                          return (
+                            <NavLink
+                              key={child.path}
+                              to={child.path}
+                              onClick={() => {
+                                setMobileNavOpen(false);
+                                setOperationsDropdownOpen(false);
+                              }}
+                              className={({ isActive: childActive }) =>
+                                `flex items-center px-3 py-2.5 text-sm border-l-2 lg:border-l-0 lg:border-b-0 transition-colors ${
+                                  childActive
+                                    ? 'border-electric-teal text-electric-teal bg-white/10'
+                                    : 'border-transparent text-gray-300 hover:text-white hover:bg-white/5'
+                                }`
+                              }
+                            >
+                              <ChildIcon className="w-4 h-4 mr-2 shrink-0" />
+                              {child.label}
+                            </NavLink>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+                const { path, label, icon: Icon, end } = tab;
+                return (
+                  <NavLink
+                    key={path}
+                    to={path}
+                    end={end}
+                    onClick={() => setMobileNavOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center px-3 py-3 lg:py-4 text-sm font-medium border-b-2 lg:border-b-2 transition-colors ${
+                        isActive || ((path === '/settings' || path === '/tenant/settings') && isSettingsActive(location.pathname))
+                          ? 'border-electric-teal text-electric-teal'
+                          : 'border-transparent text-gray-300 hover:text-white hover:border-gray-400'
+                      }`
+                    }
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {label}
+                  </NavLink>
+                );
+              })}
             </div>
           </div>
         </nav>
