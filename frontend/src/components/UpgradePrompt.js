@@ -315,6 +315,10 @@ const FEATURE_MIN_PLAN = {
   audit_log_export: 'PLAN_3_PRO',
   audit_exports: 'PLAN_3_PRO',
   white_label: 'PLAN_3_PRO',
+  maintenance_workflows: 'PLAN_2_PORTFOLIO',
+  contractor_network: 'PLAN_2_PORTFOLIO',
+  predictive_maintenance: 'PLAN_2_PORTFOLIO',
+  invoicing: 'PLAN_3_PRO',
 };
 
 const FEATURE_DISPLAY = {
@@ -334,6 +338,10 @@ const FEATURE_DISPLAY = {
   white_label: { name: 'White-label branding', description: 'Customise report branding.' },
   audit_log_export: { name: 'Audit export', description: 'Export audit logs.' },
   audit_exports: { name: 'Audit export', description: 'Export audit logs.' },
+  maintenance_workflows: { name: 'Maintenance & work orders', description: 'Create and manage work orders and issues per property.' },
+  contractor_network: { name: 'Contractor network', description: 'View and manage contractors assigned to properties.' },
+  predictive_maintenance: { name: 'Risk signals & assets', description: 'Predictive maintenance insights and property assets.' },
+  invoicing: { name: 'Invoice & work order approvals', description: 'Review and approve invoices and cost submissions linked to work orders. Compare amounts to benchmarks and maintain an audit trail.' },
 };
 
 export function getFeatureDisplayInfo(featureKey, entitlements = null) {

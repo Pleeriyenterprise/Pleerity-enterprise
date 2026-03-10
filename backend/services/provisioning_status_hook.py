@@ -51,3 +51,9 @@ async def update_provisioning_status_for_property(client_id: str, property_id: s
             upsert=True,
         )
     logger.debug("Provisioning status updated client_id=%s property_id=%s status=%s", client_id, property_id, status)
+    # Ensure default assets exist for this property (idempotent).
+    try:
+        from services.property_assets_service import ensure_default_assets_for_property
+        await ensure_default_assets_for_property(client_id, property_id)
+    except Exception as e:
+        logger.warning("ensure_default_assets_for_property failed: %s", e)

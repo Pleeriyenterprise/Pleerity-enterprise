@@ -1,19 +1,39 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { clientAPI } from '../api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Briefcase, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Briefcase, Loader2, AlertCircle, CheckCircle, Plus } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { toast } from 'sonner';
 
 export default function ClientContractorsPage() {
   const [contractors, setContractors] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('my'); // 'my' | 'network'
+  const [addFormOpen, setAddFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [addForm, setAddForm] = useState({
+    company_name: '',
+    trade_types_text: '',
+    phone: '',
+    email: '',
+    contact_name: '',
+    region: '',
+    credentials_text: '',
+    insurance_details: '',
+    areas_text: '',
+    notes: '',
+  });
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
+    const params = { skip: 0, limit: 100 };
+    if (activeTab === 'my') params.source_type = 'landlord_added';
+    if (activeTab === 'network') params.source_type = 'platform_network';
     clientAPI
-      .getContractors({ skip: 0, limit: 100 })
+      .getContractors(params)
       .then((res) => {
         setContractors(res.data?.contractors || []);
         setTotal(res.data?.total ?? 0);
@@ -29,11 +49,47 @@ export default function ClientContractorsPage() {
         setTotal(0);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeTab]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const parseList = (text) => (text || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+  const handleAddSubmit = (e) => {
+    e.preventDefault();
+    const payload = {
+      company_name: addForm.company_name.trim(),
+      trade_types: parseList(addForm.trade_types_text) || ['general'],
+      phone: addForm.phone.trim() || null,
+      email: addForm.email.trim() || null,
+      contact_name: addForm.contact_name.trim() || null,
+      region: addForm.region.trim() || null,
+      credentials: parseList(addForm.credentials_text),
+      insurance_details: addForm.insurance_details.trim() || null,
+      areas_served: parseList(addForm.areas_text),
+      notes: addForm.notes.trim() || null,
+    };
+    if (!payload.company_name) {
+      toast.error('Company name is required');
+      return;
+    }
+    if (!payload.phone && !payload.email) {
+      toast.error('Phone or email is required');
+      return;
+    }
+    setSaving(true);
+    clientAPI.createContractor(payload)
+      .then(() => {
+        toast.success('Contractor added');
+        setAddFormOpen(false);
+        setAddForm({ company_name: '', trade_types_text: '', phone: '', email: '', contact_name: '', region: '', credentials_text: '', insurance_details: '', areas_text: '', notes: '' });
+        load();
+      })
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to add contractor'))
+      .finally(() => setSaving(false));
+  };
 
   if (error && !loading) {
     return (
@@ -64,13 +120,36 @@ export default function ClientContractorsPage() {
         <Briefcase className="w-7 h-7" />
         Contractors
       </h1>
-      <p className="text-gray-600 mb-6">
-        Vetted contractors and preferred trades available for your account. Your admin can assign contractors to you or make system-wide contractors visible here.
+      <p className="text-gray-600 mb-4">
+        Your added contractors and the platform network. Add your own trades or use network contractors for jobs.
       </p>
+
+      <div className="flex gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setActiveTab('my')}
+          className={`px-3 py-1.5 rounded text-sm font-medium ${activeTab === 'my' ? 'bg-electric-teal text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          My Contractors
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('network')}
+          className={`px-3 py-1.5 rounded text-sm font-medium ${activeTab === 'network' ? 'bg-electric-teal text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          Network Contractors
+        </button>
+        {activeTab === 'my' && (
+          <Button size="sm" className="ml-auto bg-electric-teal hover:bg-electric-teal/90" onClick={() => setAddFormOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add contractor
+          </Button>
+        )}
+      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Available contractors</CardTitle>
+          <CardTitle>{activeTab === 'my' ? 'My contractors' : 'Network contractors'}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -79,7 +158,11 @@ export default function ClientContractorsPage() {
               Loading…
             </div>
           ) : contractors.length === 0 ? (
-            <p className="text-gray-500 py-6">No contractors available yet. Your administrator can add and assign contractors from Operations & Compliance → Contractors.</p>
+            <p className="text-gray-500 py-6">
+              {activeTab === 'my'
+                ? 'No contractors added yet. Click "Add contractor" to add your own trades.'
+                : 'No network contractors available. Your administrator can add platform network contractors from Operations & Compliance → Contractors.'}
+            </p>
           ) : (
             <ul className="space-y-3">
               {contractors.map((c) => (
@@ -116,6 +199,116 @@ export default function ClientContractorsPage() {
           {total > 0 && <p className="text-sm text-gray-500 mt-2">Total: {total}</p>}
         </CardContent>
       </Card>
+
+      {addFormOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Add contractor</h2>
+            <p className="text-sm text-gray-600 mb-4">Add a contractor visible only to your organisation. Phone or email required.</p>
+            <form onSubmit={handleAddSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company name *</label>
+                <input
+                  type="text"
+                  value={addForm.company_name}
+                  onChange={(e) => setAddForm((f) => ({ ...f, company_name: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Trade types (comma-separated)</label>
+                <input
+                  type="text"
+                  value={addForm.trade_types_text}
+                  onChange={(e) => setAddForm((f) => ({ ...f, trade_types_text: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  placeholder="e.g. plumbing, electrical, gas"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact name</label>
+                <input
+                  type="text"
+                  value={addForm.contact_name}
+                  onChange={(e) => setAddForm((f) => ({ ...f, contact_name: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="text"
+                  value={addForm.phone}
+                  onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                <input
+                  type="text"
+                  value={addForm.region}
+                  onChange={(e) => setAddForm((f) => ({ ...f, region: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Credentials (comma-separated)</label>
+                <input
+                  type="text"
+                  value={addForm.credentials_text}
+                  onChange={(e) => setAddForm((f) => ({ ...f, credentials_text: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  placeholder="e.g. Gas Safe, NICEIC"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Insurance details</label>
+                <textarea
+                  value={addForm.insurance_details}
+                  onChange={(e) => setAddForm((f) => ({ ...f, insurance_details: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Areas served (comma-separated)</label>
+                <input
+                  type="text"
+                  value={addForm.areas_text}
+                  onChange={(e) => setAddForm((f) => ({ ...f, areas_text: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={addForm.notes}
+                  onChange={(e) => setAddForm((f) => ({ ...f, notes: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button type="submit" disabled={saving} className="bg-electric-teal hover:bg-electric-teal/90">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setAddFormOpen(false)}>Cancel</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

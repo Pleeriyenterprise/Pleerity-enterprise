@@ -52,6 +52,8 @@ const DocumentsPage = () => {
   const [uploadForm, setUploadForm] = useState({
     property_id: '',
     requirement_id: '',
+    document_type: '',
+    notes: '',
     file: null
   });
   const [filterPropertyId, setFilterPropertyId] = useState('');
@@ -66,6 +68,17 @@ const DocumentsPage = () => {
   const extractingContextRef = useRef(null);
   const pollRef = useRef(null);
   const timeoutRef = useRef(null);
+
+  const EVIDENCE_DOCUMENT_TYPES = [
+    { value: '', label: 'Select type (optional)' },
+    { value: 'Gas Safety Certificate', label: 'Gas Safety Certificate' },
+    { value: 'EICR', label: 'EICR' },
+    { value: 'EPC', label: 'EPC' },
+    { value: 'Fire Risk Assessment', label: 'Fire Risk Assessment' },
+    { value: 'Legionella Assessment', label: 'Legionella Assessment' },
+    { value: 'Smoke/CO evidence', label: 'Smoke/CO evidence' },
+    { value: 'Other', label: 'Other (link requirement later)' },
+  ];
 
   useEffect(() => {
     fetchData();
@@ -254,8 +267,13 @@ const DocumentsPage = () => {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!uploadForm.file || !uploadForm.property_id || !uploadForm.requirement_id) {
-      toast.error('Please fill all fields');
+    const requireRequirement = uploadForm.document_type !== 'Other';
+    if (!uploadForm.file || !uploadForm.property_id) {
+      toast.error('Please select property and file');
+      return;
+    }
+    if (requireRequirement && !uploadForm.requirement_id) {
+      toast.error('Please select a requirement (or choose document type "Other" to link later)');
       return;
     }
 
@@ -264,7 +282,9 @@ const DocumentsPage = () => {
       const formData = new FormData();
       formData.append('file', uploadForm.file);
       formData.append('property_id', uploadForm.property_id);
-      formData.append('requirement_id', uploadForm.requirement_id);
+      if (uploadForm.requirement_id) formData.append('requirement_id', uploadForm.requirement_id);
+      if (uploadForm.document_type) formData.append('document_type', uploadForm.document_type);
+      if (uploadForm.notes && uploadForm.notes.trim()) formData.append('notes', uploadForm.notes.trim());
 
       const res = await api.post('/documents/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -277,14 +297,14 @@ const DocumentsPage = () => {
       extractingContextRef.current = {
         property_id: uploadForm.property_id,
         property_name: prop ? `${prop.address_line_1 || ''}, ${prop.city || ''}`.trim() || prop.property_id : uploadForm.property_id,
-        requirement_id: uploadForm.requirement_id,
-        requirement_type: req?.description || req?.requirement_type || uploadForm.requirement_id,
+        requirement_id: uploadForm.requirement_id || '',
+        requirement_type: req?.description || req?.requirement_type || uploadForm.requirement_id || '—',
       };
       setExtractingDocumentId(documentId);
       setConfirmExpiryDate('');
       setConfirmIssueDate('');
       setConfirmCertificateNumber('');
-      setUploadForm({ property_id: '', requirement_id: '', file: null });
+      setUploadForm({ property_id: '', requirement_id: '', document_type: '', notes: '', file: null });
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to upload document');
@@ -647,17 +667,43 @@ const DocumentsPage = () => {
                       value={uploadForm.requirement_id}
                       onChange={(e) => setUploadForm({ ...uploadForm, requirement_id: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
-                      required
+                      required={uploadForm.document_type !== 'Other'}
                       disabled={!uploadForm.property_id}
                       data-testid="requirement-select"
                     >
-                      <option value="">Select requirement...</option>
+                      <option value="">{uploadForm.document_type === 'Other' ? 'Link later (optional)' : 'Select requirement...'}</option>
                       {filteredRequirements.map(r => (
                         <option key={r.requirement_id} value={r.requirement_id}>
                           {r.description}
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Document type (optional)</label>
+                    <select
+                      value={uploadForm.document_type}
+                      onChange={(e) => setUploadForm({ ...uploadForm, document_type: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                      data-testid="document-type-select"
+                    >
+                      {EVIDENCE_DOCUMENT_TYPES.map(opt => (
+                        <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                    <textarea
+                      value={uploadForm.notes}
+                      onChange={(e) => setUploadForm({ ...uploadForm, notes: e.target.value })}
+                      placeholder="e.g. Annual check, contractor reference"
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                      data-testid="upload-notes"
+                    />
                   </div>
 
                   <div>

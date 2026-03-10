@@ -72,6 +72,7 @@ const ClientDashboard = () => {
   // Operations data for dashboard KPIs and action queue
   const [workOrdersList, setWorkOrdersList] = useState([]);
   const [predictiveInsightsData, setPredictiveInsightsData] = useState(null);
+  const [riskSignalsData, setRiskSignalsData] = useState(null);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -107,6 +108,9 @@ const ClientDashboard = () => {
       clientAPI.getPredictiveInsights({ limit: 100 })
         .then((res) => setPredictiveInsightsData(res.data))
         .catch(() => setPredictiveInsightsData(null));
+      clientAPI.getRiskSignals({ limit: 1 })
+        .then((res) => setRiskSignalsData(res.data))
+        .catch(() => setRiskSignalsData(null));
     }
   }, [isClientUser, hasFeature]);
 
@@ -426,9 +430,10 @@ const ClientDashboard = () => {
     return { open, assigned, inProgress, completed, cancelled };
   }, [workOrdersList]);
   const riskSignalsCount = useMemo(() => {
+    if (riskSignalsData?.summary?.total != null) return riskSignalsData.summary.total;
     if (!predictiveInsightsData?.properties?.length) return 0;
     return predictiveInsightsData.properties.reduce((sum, p) => sum + (p.insights?.length || 0), 0);
-  }, [predictiveInsightsData]);
+  }, [riskSignalsData, predictiveInsightsData]);
   const openJobsByProperty = useMemo(() => {
     const map = {};
     workOrdersList.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status)).forEach((wo) => {

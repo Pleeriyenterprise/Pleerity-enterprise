@@ -4,13 +4,16 @@ List own work orders, create new (client or property manager).
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 from database import database
 from middleware import client_route_guard
 from services import maintenance_service
-from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
+from services import maintenance_issues_service
+from services import contractor_service
+from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE, CONTRACTOR_NETWORK
 from services import property_assets_service
+from services import risk_signal_service
 
 router = APIRouter(prefix="/api/client", tags=["client-maintenance"], dependencies=[Depends(client_route_guard)])
 
@@ -20,6 +23,10 @@ class CreateWorkOrderBody(BaseModel):
     description: str
     category: Optional[str] = None
     severity: Optional[str] = None
+    asset_id: Optional[str] = None
+    issue_id: Optional[str] = None
+    cost_estimate_min: Optional[float] = None
+    cost_estimate_max: Optional[float] = None
 
 
 async def _require_maintenance_enabled(request: Request):
@@ -84,8 +91,134 @@ async def create_work_order(request: Request, body: CreateWorkOrderBody):
         reporter_id=user.get("portal_user_id"),
         category=body.category,
         severity=body.severity,
+        asset_id=body.asset_id,
+        issue_id=body.issue_id,
+        cost_estimate_min=body.cost_estimate_min,
+        cost_estimate_max=body.cost_estimate_max,
     )
     return doc
+
+
+class CreateIssueBody(BaseModel):
+    property_id: str
+    description: str
+    category: Optional[str] = None
+    asset_id: Optional[str] = None
+    reporter_name: Optional[str] = None
+    reporter_contact: Optional[str] = None
+    reported_urgency: Optional[str] = None
+    photos: Optional[List[str]] = None
+
+
+@router.post("/maintenance/issues")
+async def create_issue(request: Request, body: CreateIssueBody):
+    """Create a maintenance issue (triage runs automatically). Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    try:
+        doc = await maintenance_issues_service.create_issue(
+            client_id=client_id,
+            property_id=body.property_id,
+            description=body.description,
+            source=maintenance_issues_service.SOURCE_CLIENT,
+            category=body.category,
+            asset_id=body.asset_id,
+            reporter_name=body.reporter_name,
+            reporter_contact=body.reporter_contact,
+            reported_urgency=body.reported_urgency,
+            photos=body.photos,
+        )
+        return doc
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/maintenance/issues")
+async def list_my_issues(
+    request: Request,
+    property_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """List maintenance issues for the authenticated client. Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    if property_id:
+        db = database.get_db()
+        prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 1})
+        if not prop:
+            raise HTTPException(status_code=404, detail="Property not found")
+    result = await maintenance_issues_service.list_issues(
+        client_id=client_id,
+        property_id=property_id,
+        status=status,
+        category=category,
+        severity=severity,
+        skip=skip,
+        limit=limit,
+    )
+    return result
+
+
+@router.get("/maintenance/issues/{issue_id}")
+async def get_issue(request: Request, issue_id: str):
+    """Get a single maintenance issue with triage result. Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    doc = await maintenance_issues_service.get_issue(issue_id, client_id=user["client_id"])
+    if not doc:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    return doc
+
+
+@router.post("/maintenance/issues/{issue_id}/create-work-order")
+async def create_work_order_from_issue(request: Request, issue_id: str):
+    """Create a work order from an issue; links issue_id to the work order. Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    try:
+        doc = await maintenance_issues_service.create_work_order_from_issue(
+            issue_id=issue_id,
+            client_id=user["client_id"],
+            reporter_id=user.get("portal_user_id"),
+        )
+        return doc
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/maintenance/work-orders/{work_order_id}")
+async def get_my_work_order(request: Request, work_order_id: str):
+    """Get a single work order by id (own client only). Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    doc = await maintenance_service.get_work_order(work_order_id)
+    if not doc or doc.get("client_id") != user["client_id"]:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    return doc
+
+
+@router.get("/maintenance/work-orders/{work_order_id}/recommend-contractors")
+async def recommend_contractors_for_work_order(
+    request: Request,
+    work_order_id: str,
+    limit: int = Query(10, ge=1, le=50),
+):
+    """Get suggested contractors for this work order. Requires MAINTENANCE_WORKFLOWS and CONTRACTOR_NETWORK."""
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    flags = await get_effective_flags(client_id)
+    if not flags.get(CONTRACTOR_NETWORK):
+        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo or wo.get("client_id") != client_id:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    result = await contractor_service.recommend_contractors_for_work_order(
+        work_order_id=work_order_id,
+        client_id=client_id,
+        limit=limit,
+    )
+    return result
 
 
 @router.get("/maintenance/predictive-insights")
@@ -121,29 +254,51 @@ async def _require_predictive_enabled(request: Request):
     return user
 
 
+async def _require_assets_enabled(request: Request):
+    """Allow assets when MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE (Assets tab visible with maintenance)."""
+    user = await client_route_guard(request)
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=403, detail="Client context required")
+    flags = await get_effective_flags(client_id)
+    if not flags.get(MAINTENANCE_WORKFLOWS) and not flags.get(PREDICTIVE_MAINTENANCE):
+        raise HTTPException(
+            status_code=403,
+            detail="Maintenance or predictive maintenance is required to access assets",
+        )
+    return user
+
+
 @router.get("/maintenance/properties/{property_id}/assets")
 async def list_property_assets(request: Request, property_id: str):
-    """List assets for a property (e.g. boiler). Requires PREDICTIVE_MAINTENANCE."""
-    user = await _require_predictive_enabled(request)
+    """List assets for a property with summary. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
+    user = await _require_assets_enabled(request)
     db = database.get_db()
     prop = await db.properties.find_one({"property_id": property_id, "client_id": user["client_id"]}, {"_id": 1})
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
     items = await property_assets_service.list_assets(property_id, user["client_id"])
-    return {"assets": items}
+    summary = await property_assets_service.get_assets_summary(property_id, user["client_id"], items)
+    return {"assets": items, "summary": summary}
 
 
 class AddAssetBody(BaseModel):
     asset_type: str
+    name: Optional[str] = None
+    status: Optional[str] = None
     install_date: Optional[str] = None
     last_service_date: Optional[str] = None
+    make: Optional[str] = None
+    model: Optional[str] = None
+    installed_year: Optional[int] = None
+    age_estimate: Optional[int] = None
     notes: Optional[str] = None
 
 
 @router.post("/maintenance/properties/{property_id}/assets")
 async def add_property_asset(request: Request, property_id: str, body: AddAssetBody):
-    """Add an asset (e.g. boiler) for a property. Requires PREDICTIVE_MAINTENANCE."""
-    user = await _require_predictive_enabled(request)
+    """Add an asset for a property. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
+    user = await _require_assets_enabled(request)
     doc = await property_assets_service.add_asset(
         property_id=property_id,
         client_id=user["client_id"],
@@ -151,10 +306,79 @@ async def add_property_asset(request: Request, property_id: str, body: AddAssetB
         install_date=body.install_date,
         last_service_date=body.last_service_date,
         notes=body.notes,
+        name=body.name,
+        status=body.status,
+        make=body.make,
+        model=body.model,
+        installed_year=body.installed_year,
+        age_estimate=body.age_estimate,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Property not found")
     return doc
+
+
+@router.get("/maintenance/properties/{property_id}/assets/{asset_id}")
+async def get_property_asset(request: Request, property_id: str, asset_id: str):
+    """Get a single asset with recent events. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
+    user = await _require_assets_enabled(request)
+    asset = await property_assets_service.get_asset(property_id, asset_id, user["client_id"])
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    events = await property_assets_service.list_asset_events(
+        asset_id, property_id, user["client_id"], limit=20
+    )
+    return {"asset": asset, "events": events}
+
+
+class UpdateAssetBody(BaseModel):
+    name: Optional[str] = None
+    status: Optional[str] = None
+    last_service_date: Optional[str] = None
+    make: Optional[str] = None
+    model: Optional[str] = None
+    installed_year: Optional[int] = None
+    age_estimate: Optional[int] = None
+    notes: Optional[str] = None
+
+
+@router.patch("/maintenance/properties/{property_id}/assets/{asset_id}")
+async def update_property_asset(request: Request, property_id: str, asset_id: str, body: UpdateAssetBody):
+    """Update an asset. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
+    user = await _require_assets_enabled(request)
+    doc = await property_assets_service.update_asset(
+        property_id=property_id,
+        asset_id=asset_id,
+        client_id=user["client_id"],
+        name=body.name,
+        status=body.status,
+        last_service_date=body.last_service_date,
+        make=body.make,
+        model=body.model,
+        installed_year=body.installed_year,
+        age_estimate=body.age_estimate,
+        notes=body.notes,
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return doc
+
+
+@router.get("/maintenance/properties/{property_id}/assets/{asset_id}/events")
+async def list_asset_events_route(
+    request: Request, property_id: str, asset_id: str, limit: int = Query(50, ge=1, le=100)
+):
+    """List events for an asset. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
+    user = await _require_assets_enabled(request)
+    prop = await database.get_db().properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]}, {"_id": 1}
+    )
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+    items = await property_assets_service.list_asset_events(
+        asset_id, property_id, user["client_id"], limit=limit
+    )
+    return {"events": items}
 
 
 @router.get("/maintenance/properties/{property_id}/events")
@@ -193,3 +417,89 @@ async def add_property_event(request: Request, property_id: str, body: AddEventB
     if not doc:
         raise HTTPException(status_code=404, detail="Property not found")
     return doc
+
+
+# ---------- Risk Signals (stored, rule-based risk intelligence) ----------
+
+@router.get("/maintenance/properties/{property_id}/risk-signals")
+async def get_property_risk_signals(request: Request, property_id: str, status: Optional[str] = Query(None)):
+    """Get stored risk signals for a property with summary. Requires PREDICTIVE_MAINTENANCE."""
+    user = await _require_predictive_enabled(request)
+    client_id = user["client_id"]
+    db = database.get_db()
+    prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 1})
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+    result = await risk_signal_service.get_risk_signals_for_property(
+        property_id=property_id, client_id=client_id, status_filter=status
+    )
+    return result
+
+
+@router.get("/maintenance/risk-signals")
+async def get_portfolio_risk_signals(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Filter by property"),
+    status: Optional[str] = Query(None, description="active | acknowledged | resolved"),
+    risk_level: Optional[str] = Query(None, description="low | medium | high | critical"),
+    risk_type: Optional[str] = Query(None, description="e.g. Boiler Failure Risk"),
+    trend: Optional[str] = Query(None, description="rising | stable | improving"),
+    q: Optional[str] = Query(None, description="Search risk type, action, reasons"),
+    from_date: Optional[str] = Query(None, alias="from", description="From date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(None, alias="to", description="To date YYYY-MM-DD"),
+    limit: int = Query(500, ge=1, le=500),
+):
+    """Get stored risk signals for the client (portfolio) with summary and highPriority. Requires PREDICTIVE_MAINTENANCE."""
+    user = await _require_predictive_enabled(request)
+    result = await risk_signal_service.get_risk_signals_for_client(
+        client_id=user["client_id"],
+        property_id_filter=property_id,
+        status_filter=status,
+        risk_level=risk_level,
+        risk_type=risk_type,
+        trend=trend,
+        q=q,
+        from_date=from_date,
+        to_date=to_date,
+        limit=limit,
+    )
+    return result
+
+
+@router.get("/maintenance/risk-signals/{signal_id}")
+async def get_risk_signal_by_id_route(request: Request, signal_id: str):
+    """Get a single risk signal for the detail drawer. Requires PREDICTIVE_MAINTENANCE."""
+    user = await _require_predictive_enabled(request)
+    doc = await risk_signal_service.get_risk_signal_by_id(signal_id=signal_id, client_id=user["client_id"])
+    if not doc:
+        raise HTTPException(status_code=404, detail="Risk signal not found")
+    return doc
+
+
+@router.post("/maintenance/risk-signals/recalculate/{property_id}")
+async def recalculate_property_risk_signals(request: Request, property_id: str):
+    """Regenerate risk signals for a property. Requires PREDICTIVE_MAINTENANCE."""
+    user = await _require_predictive_enabled(request)
+    client_id = user["client_id"]
+    db = database.get_db()
+    prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 1})
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+    out = await risk_signal_service.generate_risk_signals_for_property(property_id=property_id, client_id=client_id)
+    return {"ok": True, "property_id": property_id, "generated": out["generated"], "signals": out["signals"]}
+
+
+class UpdateRiskSignalStatusBody(BaseModel):
+    status: str  # "acknowledged" | "resolved"
+
+
+@router.patch("/maintenance/risk-signals/{signal_id}")
+async def update_risk_signal_status(request: Request, signal_id: str, body: UpdateRiskSignalStatusBody):
+    """Set risk signal status to acknowledged or resolved. Requires PREDICTIVE_MAINTENANCE."""
+    user = await _require_predictive_enabled(request)
+    updated = await risk_signal_service.update_signal_status(
+        signal_id=signal_id, client_id=user["client_id"], new_status=body.status.strip().lower()
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Risk signal not found or invalid status")
+    return updated

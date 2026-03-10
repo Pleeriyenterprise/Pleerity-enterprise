@@ -196,6 +196,15 @@ class AuditAction(str, Enum):
     NOTIFICATION_THROTTLED = "NOTIFICATION_THROTTLED"
     NOTIFICATION_FAILURE_SPIKE_DETECTED = "NOTIFICATION_FAILURE_SPIKE_DETECTED"
     PLAN_GATE_DENIED = "PLAN_GATE_DENIED"
+    # Risk signals (predictive / risk intelligence engine)
+    RISK_SIGNAL_CREATED = "RISK_SIGNAL_CREATED"
+    RISK_SIGNAL_UPDATED = "RISK_SIGNAL_UPDATED"
+    RISK_SIGNAL_ACKNOWLEDGED = "RISK_SIGNAL_ACKNOWLEDGED"
+    RISK_SIGNAL_RESOLVED = "RISK_SIGNAL_RESOLVED"
+    # Invoice approvals (Operations → Approvals)
+    INVOICE_APPROVED = "INVOICE_APPROVED"
+    INVOICE_REJECTED = "INVOICE_REJECTED"
+    INVOICE_NEEDS_INFO = "INVOICE_NEEDS_INFO"
     # OTP
     OTP_SEND_REQUESTED = "OTP_SEND_REQUESTED"
     OTP_SENT = "OTP_SENT"
@@ -670,6 +679,9 @@ class Document(BaseModel):
     confidence_score: Optional[float] = None
     manual_review_flag: bool = False
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    document_type: Optional[str] = None  # e.g. Gas Safety Certificate, EICR, EPC, Other (evidence vault / compliance pack)
+    source: Optional[str] = None  # e.g. portal, intake, system
+    notes: Optional[str] = None
 
 class AuditLog(BaseModel):
     model_config = ConfigDict(extra="ignore")

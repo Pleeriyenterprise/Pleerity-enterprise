@@ -119,6 +119,7 @@ import ClientOrdersPage from './pages/ClientOrdersPage';
 import ClientMaintenancePage from './pages/ClientMaintenancePage';
 import ClientContractorsPage from './pages/ClientContractorsPage';
 import ClientIssuesPage from './pages/ClientIssuesPage';
+import ClientIssueDetailPage from './pages/ClientIssueDetailPage';
 import ClientRiskSignalsPage from './pages/ClientRiskSignalsPage';
 import ClientApprovalsPage from './pages/ClientApprovalsPage';
 import ViewOrderPage from './pages/ViewOrderPage';
@@ -165,6 +166,7 @@ import AdminOpsPlaceholderPage from './pages/admin/AdminOpsPlaceholderPage';
 import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
 import AdminOpsContractorsPage from './pages/admin/AdminOpsContractorsPage';
 import AdminOpsMaintenancePage from './pages/admin/AdminOpsMaintenancePage';
+import AdminWorkOrderDetailPage from './pages/admin/AdminWorkOrderDetailPage';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminExtractionQueuePage from './pages/AdminExtractionQueuePage';
 import AdminTeamPage from './pages/AdminTeamPage';
@@ -313,6 +315,7 @@ function App() {
             <Route path="/orders" element={<ClientPortal><ClientOrdersPage /></ClientPortal>} />
             {/* Operations (unified) */}
             <Route path="/operations/issues" element={<ClientPortal><ClientIssuesPage /></ClientPortal>} />
+            <Route path="/operations/issues/:issueId" element={<ClientPortal><ClientIssueDetailPage /></ClientPortal>} />
             <Route path="/operations/work-orders" element={<ClientPortal><ClientMaintenancePage /></ClientPortal>} />
             <Route path="/operations/contractors" element={<ClientPortal><ClientContractorsPage /></ClientPortal>} />
             <Route path="/operations/risk-signals" element={<ClientPortal><ClientRiskSignalsPage /></ClientPortal>} />
@@ -573,6 +576,7 @@ function App() {
             <Route path="/admin/ops" element={<ProtectedRoute requireAdmin><AdminOpsOverviewPage /></ProtectedRoute>} />
             <Route path="/admin/ops/compliance" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Compliance" /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance" element={<ProtectedRoute requireAdmin><AdminOpsMaintenancePage /></ProtectedRoute>} />
+            <Route path="/admin/ops/maintenance/work-orders/:workOrderId" element={<ProtectedRoute requireAdmin><AdminWorkOrderDetailPage /></ProtectedRoute>} />
             <Route path="/admin/ops/contractors" element={<ProtectedRoute requireAdmin><AdminOpsContractorsPage /></ProtectedRoute>} />
             <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Risk & Insights" /></ProtectedRoute>} />
             <Route path="/admin/ops/audit" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Audit & Logs" /></ProtectedRoute>} />

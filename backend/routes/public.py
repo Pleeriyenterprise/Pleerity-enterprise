@@ -5,7 +5,7 @@ NO CVP COLLECTIONS TOUCHED - Writes only to new collections
 """
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 from database import database
 from utils.submission_utils import (
@@ -451,3 +451,54 @@ async def get_service_detail(service_code: str):
         "review_required": service.review_required,
         "requires_cvp_subscription": service.requires_cvp_subscription,
     }
+
+
+# ============================================
+# CONTRACTOR SELF-REGISTRATION (gated by CONTRACTOR_SELF_REGISTRATION_ENABLED env)
+# ============================================
+
+contractor_public_router = APIRouter(prefix="/contractors", tags=["public-contractors"])
+
+
+class ContractorRegisterBody(BaseModel):
+    company_name: str = Field(..., min_length=1, max_length=200)
+    contact_name: str = Field(..., min_length=1, max_length=200)
+    trade_types: List[str] = Field(..., min_length=1)
+    phone: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = None
+    coverage_regions: Optional[List[str]] = None
+    credentials: Optional[List[str]] = None
+    insurance_details: Optional[str] = Field(None, max_length=1000)
+
+
+def _rate_limit_contractor_register(ip: str) -> bool:
+    return check_rate_limit(ip, "contractor_register")
+
+
+@contractor_public_router.post("/register")
+async def register_contractor_public(body: ContractorRegisterBody, request: Request):
+    """Public self-registration for contractors. Creates contractor with status=pending_review. Requires CONTRACTOR_SELF_REGISTRATION_ENABLED=true."""
+    from services.ops_compliance_feature_flags import is_contractor_self_registration_enabled
+    from services import contractor_service
+
+    if not is_contractor_self_registration_enabled():
+        raise HTTPException(status_code=403, detail="Contractor self-registration is not available.")
+    if not body.phone and not body.email:
+        raise HTTPException(status_code=400, detail="phone or email is required")
+    client_ip = request.client.host if request.client else "unknown"
+    if not _rate_limit_contractor_register(client_ip):
+        raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
+    doc = await contractor_service.create_contractor_self_registered(
+        company_name=body.company_name.strip(),
+        contact_name=body.contact_name.strip(),
+        trade_types=[t.strip() for t in body.trade_types if t and t.strip()] or ["general"],
+        phone=body.phone.strip() if body.phone else None,
+        email=body.email.strip() if body.email else None,
+        coverage_regions=body.coverage_regions,
+        credentials=body.credentials,
+        insurance_details=body.insurance_details.strip() if body.insurance_details else None,
+    )
+    return doc
+
+
+router.include_router(contractor_public_router)

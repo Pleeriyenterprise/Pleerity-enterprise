@@ -6,7 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, predictive_data, admin_document_templates, public_orders
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_approvals, predictive_data, admin_document_templates, public_orders
 
 # ClearForm - Separate Product Routes
 from clearform.routes import auth as clearform_auth
@@ -596,6 +596,26 @@ async def lifespan(app: FastAPI):
         args=["predictive_insights_job"],
         kwargs={"run_type": "schedule"},
     )
+    # Risk signals - daily 4:30 AM UTC (generates stored risk signals for clients with PREDICTIVE_MAINTENANCE)
+    scheduler.add_job(
+        "job_runner:run_scheduled_job",
+        CronTrigger(hour=4, minute=30),
+        id="risk_signals_job",
+        name="Risk Signals (generate)",
+        replace_existing=True,
+        args=["risk_signals_job"],
+        kwargs={"run_type": "schedule"},
+    )
+    # Work order SLA breach / at-risk - every hour
+    scheduler.add_job(
+        "job_runner:run_scheduled_job",
+        CronTrigger(minute=0),
+        id="work_order_sla_breach_job",
+        name="Work Order SLA Breach & At-Risk",
+        replace_existing=True,
+        args=["work_order_sla_breach_job"],
+        kwargs={"run_type": "schedule"},
+    )
 
     scheduler_started = False
     try:
@@ -726,6 +746,7 @@ app.include_router(ops_compliance.router)  # Admin: Operations & Compliance (fea
 app.include_router(contractors.router)  # Admin: Contractors (Ops Contractor Network)
 app.include_router(maintenance.router)  # Admin: Work orders (Ops Maintenance)
 app.include_router(client_maintenance.router)  # Client: Maintenance work orders (gated by MAINTENANCE_WORKFLOWS)
+app.include_router(client_approvals.router)  # Client: Invoice approvals (gated by INVOICING)
 app.include_router(predictive_data.router)  # Admin: Property assets & maintenance events (data for predictive)
 
 # ============================================================================

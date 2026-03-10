@@ -1,5 +1,6 @@
 /**
- * Operations → Risk Signals: predictive insights with actions (create inspection / work order).
+ * Operations → Risk Signals: portfolio-wide predictive maintenance and risk intelligence.
+ * Uses GET /client/maintenance/risk-signals (filters, summary, highPriority), GET by signal_id for drawer.
  * Gated by predictive_maintenance.
  */
 import React, { useState, useEffect, useCallback } from 'react';
@@ -7,22 +8,118 @@ import { useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { TrendingUp, Loader2, AlertCircle, ClipboardCheck, Wrench } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from '../components/ui/sheet';
+import { Badge } from '../components/ui/badge';
+import {
+  TrendingUp,
+  Loader2,
+  AlertCircle,
+  ClipboardCheck,
+  Wrench,
+  Search,
+  Building2,
+  Package,
+  Eye,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 
+const RISK_LEVELS = [
+  { value: '', label: 'All levels' },
+  { value: 'critical', label: 'Critical' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
+const TRENDS = [
+  { value: '', label: 'All trends' },
+  { value: 'rising', label: 'Rising' },
+  { value: 'stable', label: 'Stable' },
+  { value: 'improving', label: 'Improving' },
+];
+const STATUSES = [
+  { value: '', label: 'All statuses' },
+  { value: 'active', label: 'Active' },
+  { value: 'acknowledged', label: 'Acknowledged' },
+  { value: 'resolved', label: 'Resolved' },
+];
+
+function riskLevelBadgeClass(level) {
+  const l = (level || '').toLowerCase();
+  if (l === 'critical' || l === 'high') return 'bg-amber-100 text-amber-800 border-amber-200';
+  if (l === 'medium') return 'bg-gray-100 text-gray-800 border-gray-200';
+  return 'bg-gray-50 text-gray-600 border-gray-100';
+}
+
 function ClientRiskSignalsPageInner() {
   const navigate = useNavigate();
-  const [insights, setInsights] = useState(null);
+  const [data, setData] = useState(null);
+  const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [drawerSignalId, setDrawerSignalId] = useState(null);
+  const [drawerSignal, setDrawerSignal] = useState(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    risk_level: '',
+    risk_type: '',
+    property_id: '',
+    trend: '',
+    status: '',
+    q: '',
+    from: '',
+    to: '',
+  });
+
+  const buildParams = useCallback(() => {
+    const params = { limit: 500 };
+    if (filters.risk_level) params.risk_level = filters.risk_level;
+    if (filters.risk_type) params.risk_type = filters.risk_type;
+    if (filters.property_id) params.property_id = filters.property_id;
+    if (filters.trend) params.trend = filters.trend;
+    if (filters.status) params.status = filters.status;
+    if (filters.q?.trim()) params.q = filters.q.trim();
+    if (filters.from) params.from = filters.from;
+    if (filters.to) params.to = filters.to;
+    return params;
+  }, [filters]);
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    clientAPI
-      .getPredictiveInsights({ limit: 100 })
-      .then((res) => setInsights(res.data))
+    const params = buildParams();
+    Promise.all([
+      clientAPI.getRiskSignals(params),
+      clientAPI.getProperties().catch(() => ({ data: { properties: [] } })),
+    ])
+      .then(([signalsRes, propsRes]) => {
+        setData(signalsRes.data || null);
+        setProperties(propsRes.data?.properties || []);
+      })
       .catch((err) => {
         if (err?.response?.status === 403) {
           setError(err?.response?.data?.detail || 'Predictive maintenance is not enabled for your account.');
@@ -30,20 +127,77 @@ function ClientRiskSignalsPageInner() {
           setError('Failed to load risk signals.');
           toast.error(err?.response?.data?.detail || 'Failed to load risk signals');
         }
-        setInsights(null);
+        setData(null);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [buildParams]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!drawerSignalId) {
+      setDrawerSignal(null);
+      return;
+    }
+    setDrawerLoading(true);
+    clientAPI
+      .getRiskSignal(drawerSignalId)
+      .then((res) => setDrawerSignal(res.data || null))
+      .catch(() => {
+        setDrawerSignal(null);
+        toast.error('Failed to load signal details');
+      })
+      .finally(() => setDrawerLoading(false));
+  }, [drawerSignalId]);
+
+  const propertyLabel = (propertyId) => {
+    if (!properties?.length) return propertyId;
+    const p = properties.find((x) => x.property_id === propertyId);
+    return p?.nickname || p?.address_line_1 || propertyId;
+  };
 
   const openCreateWorkOrder = (propertyId, description) => {
     const params = new URLSearchParams();
     if (propertyId) params.set('property_id', propertyId);
     if (description) params.set('description', description);
     navigate(`/operations/work-orders?${params.toString()}`);
+  };
+
+  const applyFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const refreshAfterStatusChange = () => {
+    load();
+    setDrawerSignalId(null);
+  };
+
+  const handleAcknowledge = async (signalId) => {
+    try {
+      await clientAPI.updateRiskSignalStatus(signalId, 'acknowledged');
+      toast.success('Signal acknowledged');
+      refreshAfterStatusChange();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Failed to acknowledge');
+    }
+  };
+
+  const handleResolve = async (signalId) => {
+    try {
+      await clientAPI.updateRiskSignalStatus(signalId, 'resolved');
+      toast.success('Signal resolved');
+      refreshAfterStatusChange();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Failed to resolve');
+    }
+  };
+
+  const riskTypesFromSignals = (signals) => {
+    const set = new Set();
+    (signals || []).forEach((s) => s.risk_type && set.add(s.risk_type));
+    return Array.from(set).sort();
   };
 
   if (error && !loading) {
@@ -69,35 +223,225 @@ function ClientRiskSignalsPageInner() {
     );
   }
 
-  const items = [];
-  if (insights?.properties?.length) {
-    insights.properties.forEach((prop) => {
-      (prop.insights || []).forEach((i, idx) => {
-        items.push({
-          key: `${prop.property_id}-${idx}`,
-          propertyId: prop.property_id,
-          propertyLabel: prop.nickname || prop.address_line_1 || prop.property_id,
-          recommendation: i.recommendation,
-          detail: i.detail,
-          risk: i.risk,
-        });
-      });
-    });
-  }
+  const summary = data?.summary || {};
+  const signals = data?.signals || [];
+  const highPriority = data?.highPriority || [];
+  const hasFilters =
+    filters.risk_level ||
+    filters.risk_type ||
+    filters.property_id ||
+    filters.trend ||
+    filters.status ||
+    (filters.q || '').trim() ||
+    filters.from ||
+    filters.to;
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-6 max-w-[1400px]">
       <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
         <TrendingUp className="w-7 h-7" />
         Risk Signals
       </h1>
       <p className="text-gray-600 mb-6">
-        Predicted risks and recommended actions from your property data. Create inspections or work orders to address them.
+        Portfolio-wide risk intelligence and recommended actions. Filter, review, and create work orders to address issues.
       </p>
 
+      {/* KPI row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        {[
+          { key: 'total', label: 'Total', value: summary.total ?? 0, filter: null },
+          { key: 'high', label: 'High', value: summary.high ?? 0, filter: { risk_level: 'high' } },
+          { key: 'medium', label: 'Medium', value: summary.medium ?? 0, filter: { risk_level: 'medium' } },
+          { key: 'low', label: 'Low', value: summary.low ?? 0, filter: { risk_level: 'low' } },
+          { key: 'properties', label: 'Properties affected', value: summary.propertiesAffected ?? 0, filter: null },
+          { key: 'preventive', label: 'Preventive actions', value: summary.preventiveActions ?? 0, filter: null },
+        ].map(({ key, label, value, filter }) => (
+          <Card
+            key={key}
+            className={`cursor-pointer transition-colors hover:shadow-md ${filter && value > 0 ? 'hover:border-electric-teal' : ''}`}
+            onClick={() => filter && value > 0 && setFilters((f) => ({ ...f, ...filter }))}
+          >
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+              <p className="text-xl font-semibold text-midnight-blue mt-1">{value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Filter bar */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-end gap-3">
+          <div className="w-full sm:w-48">
+            <label className="text-xs text-muted-foreground block mb-1">Risk level</label>
+            <Select value={filters.risk_level || ' '} onValueChange={(v) => applyFilter('risk_level', v === ' ' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="All levels" /></SelectTrigger>
+              <SelectContent>
+                {RISK_LEVELS.map((o) => (
+                  <SelectItem key={o.value || 'all'} value={o.value || ' '}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-48">
+            <label className="text-xs text-muted-foreground block mb-1">Risk type</label>
+            <Select value={filters.risk_type || ' '} onValueChange={(v) => applyFilter('risk_type', v === ' ' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="All types" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value=" ">All types</SelectItem>
+                {riskTypesFromSignals(signals).map((rt) => (
+                  <SelectItem key={rt} value={rt}>{rt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-48">
+            <label className="text-xs text-muted-foreground block mb-1">Property</label>
+            <Select value={filters.property_id || ' '} onValueChange={(v) => applyFilter('property_id', v === ' ' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="All properties" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value=" ">All properties</SelectItem>
+                {properties.map((p) => (
+                  <SelectItem key={p.property_id} value={p.property_id}>
+                    {p.nickname || p.address_line_1 || p.property_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-36">
+            <label className="text-xs text-muted-foreground block mb-1">Trend</label>
+            <Select value={filters.trend || ' '} onValueChange={(v) => applyFilter('trend', v === ' ' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                {TRENDS.map((o) => (
+                  <SelectItem key={o.value || 'all'} value={o.value || ' '}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-36">
+            <label className="text-xs text-muted-foreground block mb-1">Status</label>
+            <Select value={filters.status || ' '} onValueChange={(v) => applyFilter('status', v === ' ' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((o) => (
+                  <SelectItem key={o.value || 'all'} value={o.value || ' '}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-48 flex-1 min-w-[120px]">
+            <label className="text-xs text-muted-foreground block mb-1">Search</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Risk type, action, reasons…"
+                value={filters.q}
+                onChange={(e) => applyFilter('q', e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">From</label>
+              <Input
+                type="date"
+                value={filters.from}
+                onChange={(e) => applyFilter('from', e.target.value)}
+                className="w-36"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">To</label>
+              <Input
+                type="date"
+                value={filters.to}
+                onChange={(e) => applyFilter('to', e.target.value)}
+                className="w-36"
+              />
+            </div>
+          </div>
+          <Button onClick={load} variant="secondary" size="sm">Apply</Button>
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setFilters({
+                  risk_level: '',
+                  risk_type: '',
+                  property_id: '',
+                  trend: '',
+                  status: '',
+                  q: '',
+                  from: '',
+                  to: '',
+                })
+              }
+            >
+              Clear
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* High Priority panel */}
+      {highPriority.length > 0 && (
+        <Card className="mb-6 border-amber-200 bg-amber-50/50">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600" />
+              High Priority Risks
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {highPriority.slice(0, 15).map((s) => (
+                <li
+                  key={s.signal_id}
+                  className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-white border border-amber-100"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900">{s.risk_type}</p>
+                    <p className="text-sm text-gray-700">{propertyLabel(s.property_id)}</p>
+                    <p className="text-sm text-gray-600 mt-0.5">{s.recommended_action}</p>
+                    {Array.isArray(s.reasons) && s.reasons[0] && (
+                      <p className="text-xs text-gray-500 mt-1">{s.reasons[0]}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => setDrawerSignalId(s.signal_id)}>
+                      <Eye className="w-4 h-4 mr-1" /> View
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
+                    >
+                      <Wrench className="w-4 h-4 mr-1" /> Work order
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Signals</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle>Active risk signals</CardTitle>
+          {summary.lastRecalculatedAt && (
+            <span className="text-xs text-muted-foreground">
+              Last recalculated: {new Date(summary.lastRecalculatedAt).toLocaleString()}
+            </span>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -105,55 +449,214 @@ function ClientRiskSignalsPageInner() {
               <Loader2 className="w-5 h-5 animate-spin" />
               Loading…
             </div>
-          ) : items.length === 0 ? (
-            <p className="text-gray-500 py-6">
-              No risk signals yet. Add property assets (e.g. boiler, last service date) or ensure building age is set to get recommendations.
-            </p>
+          ) : signals.length === 0 ? (
+            <div className="py-12 text-center">
+              {hasFilters ? (
+                <>
+                  <p className="text-gray-600 font-medium">No risk signals match your current filters.</p>
+                  <p className="text-sm text-gray-500 mt-1">Try clearing filters or adjusting the date range.</p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={() => setFilters({ risk_level: '', risk_type: '', property_id: '', trend: '', status: '', q: '', from: '', to: '' })}>
+                    Clear filters
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Package className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-600 font-medium">No active risk signals</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Signals are generated from property data (assets, work orders, compliance). Run Recalculate from a property’s Risk Signals tab or wait for the nightly job.
+                  </p>
+                  <div className="flex gap-2 justify-center mt-4">
+                    <Button variant="outline" size="sm" onClick={() => navigate('/properties')}>
+                      <Building2 className="w-4 h-4 mr-1" /> View properties
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
-            <ul className="space-y-3">
-              {items.map((item) => (
-                <li
-                  key={item.key}
-                  className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">{item.propertyLabel}</p>
-                    <p className="text-sm text-gray-700">{item.recommendation}</p>
-                    {item.detail && <p className="text-xs text-gray-500 mt-0.5">{item.detail}</p>}
-                    <span
-                      className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${
-                        item.risk === 'high' || item.risk === 'urgent' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {item.risk || 'medium'}
-                    </span>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openCreateWorkOrder(item.propertyId, item.recommendation)}
-                    >
-                      <Wrench className="w-4 h-4 mr-1" />
-                      Create work order
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/properties/${item.propertyId}`)}
-                    >
-                      <ClipboardCheck className="w-4 h-4 mr-1" />
-                      View property
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Risk type</TableHead>
+                  <TableHead>Property</TableHead>
+                  <TableHead>Asset</TableHead>
+                  <TableHead>Risk level</TableHead>
+                  <TableHead>Trend</TableHead>
+                  <TableHead>Why flagged</TableHead>
+                  <TableHead>Recommended action</TableHead>
+                  <TableHead>Last updated</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {signals.map((s) => (
+                  <TableRow key={s.signal_id}>
+                    <TableCell className="font-medium">{s.risk_type}</TableCell>
+                    <TableCell>{propertyLabel(s.property_id)}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.asset_id || '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={riskLevelBadgeClass(s.risk_level)}>
+                        {s.risk_level || 'medium'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{s.trend || 'stable'}</TableCell>
+                    <TableCell className="max-w-[180px] truncate" title={Array.isArray(s.reasons) ? s.reasons.join('; ') : ''}>
+                      {Array.isArray(s.reasons) && s.reasons[0] ? s.reasons[0] : '—'}
+                    </TableCell>
+                    <TableCell className="max-w-[180px] truncate" title={s.recommended_action}>
+                      {s.recommended_action || '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        <Button size="sm" variant="ghost" onClick={() => setDrawerSignalId(s.signal_id)}>
+                          <Eye className="w-4 h-4 mr-1" /> View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
+                        >
+                          <Wrench className="w-4 h-4 mr-1" /> Work order
+                        </Button>
+                        {s.status === 'active' && (
+                          <>
+                            <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleAcknowledge(s.signal_id)}>
+                              <CheckCircle className="w-4 h-4 mr-1" /> Acknowledge
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleResolve(s.signal_id)}>
+                              <XCircle className="w-4 h-4 mr-1" /> Resolve
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
+
+      {/* Detail drawer */}
+      <Sheet open={!!drawerSignalId} onOpenChange={(open) => !open && setDrawerSignalId(null)}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Risk signal details</SheetTitle>
+          </SheetHeader>
+          {drawerLoading ? (
+            <div className="flex gap-2 text-gray-500 py-8">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading…
+            </div>
+          ) : drawerSignal ? (
+            <div className="space-y-4 py-4">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Risk type</p>
+                <p className="font-medium">{drawerSignal.risk_type}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Property</p>
+                <p className="font-medium">{propertyLabel(drawerSignal.property_id)}</p>
+              </div>
+              {drawerSignal.asset_id && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase">Asset</p>
+                  <p className="font-medium">{drawerSignal.asset_id}</p>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase">Level</p>
+                  <Badge variant="outline" className={riskLevelBadgeClass(drawerSignal.risk_level)}>
+                    {drawerSignal.risk_level || 'medium'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase">Trend</p>
+                  <p className="font-medium">{drawerSignal.trend || 'stable'}</p>
+                </div>
+              </div>
+              {drawerSignal.generated_at && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase">Generated</p>
+                  <p className="text-sm">{new Date(drawerSignal.generated_at).toLocaleString()}</p>
+                </div>
+              )}
+              {drawerSignal.updated_at && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase">Last updated</p>
+                  <p className="text-sm">{new Date(drawerSignal.updated_at).toLocaleString()}</p>
+                </div>
+              )}
+              {drawerSignal.status && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase">Status</p>
+                  <p className="font-medium">{drawerSignal.status}</p>
+                </div>
+              )}
+              {Array.isArray(drawerSignal.reasons) && drawerSignal.reasons.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase mb-1">Why flagged</p>
+                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    {drawerSignal.reasons.map((r, i) => (
+                      <li key={i}>{r}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {drawerSignal.recommended_action && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase">Recommended action</p>
+                  <p className="text-sm">{drawerSignal.recommended_action}</p>
+                </div>
+              )}
+              <div className="pt-4 border-t space-y-2">
+                <p className="text-xs text-muted-foreground uppercase">Related</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/properties/${drawerSignal.property_id}`)}>
+                    <Building2 className="w-4 h-4 mr-1" /> View property
+                  </Button>
+                  {drawerSignal.asset_id && drawerSignal.property_id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate(`/properties/${drawerSignal.property_id}?tab=assets`)}
+                    >
+                      <Package className="w-4 h-4 mr-1" /> View assets
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openCreateWorkOrder(drawerSignal.property_id, drawerSignal.recommended_action)}
+                  >
+                    <Wrench className="w-4 h-4 mr-1" /> Create work order
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-500 py-4">Could not load signal details.</p>
+          )}
+          <SheetFooter className="pt-4 border-t">
+            {drawerSignal?.status === 'active' && (
+              <>
+                <Button variant="outline" onClick={() => handleAcknowledge(drawerSignalId)}>
+                  <CheckCircle className="w-4 h-4 mr-2" /> Acknowledge
+                </Button>
+                <Button variant="default" onClick={() => handleResolve(drawerSignalId)}>
+                  <XCircle className="w-4 h-4 mr-2" /> Mark resolved
+                </Button>
+              </>
+            )}
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -157,7 +157,8 @@ export const clientAPI = {
   markRequirementNotApplicable: (propertyId, body) =>
     apiClient.post(`/client/properties/${propertyId}/requirements/mark-not-applicable`, body),
   getRequirements: () => apiClient.get('/client/requirements'),
-  getDocuments: () => apiClient.get('/documents'),
+  /** List documents. Optional params: { property_id, requirement_id } to filter. */
+  getDocuments: (params) => apiClient.get('/documents', { params: params || {} }),
   /** Audit Intelligence: portfolio score, risk_level, properties summary */
   getComplianceSummary: () => apiClient.get('/portfolio/compliance-summary'),
   /** Property compliance detail: matrix, property_score, risk_index, risk_level (catalog-driven when available). */
@@ -166,6 +167,12 @@ export const clientAPI = {
   /** Score change history for property (score_change_log entries). */
   getScoreHistory: (propertyId, limit = 20) =>
     apiClient.get(`/portfolio/properties/${propertyId}/score-history`, { params: { limit } }),
+  /** Unified property timeline (ledger + score log + work orders). */
+  getPropertyTimeline: (propertyId, params = {}) =>
+    apiClient.get(`/portfolio/properties/${propertyId}/timeline`, { params }),
+  /** Evidence vault for property: summary, documents, recentEvents (Evidence tab). */
+  getPropertyEvidence: (propertyId) =>
+    apiClient.get(`/portfolio/properties/${propertyId}/evidence`),
   /** Generate Evidence Readiness PDF (POST body: { scope: 'portfolio' | 'property', property_id? }). Returns blob. */
   generateEvidenceReadinessReport: (body) =>
     apiClient.post('/reports/generate', body, { responseType: 'blob' }),
@@ -193,17 +200,42 @@ export const clientAPI = {
   updateJurisdictionSettings: (body) => apiClient.patch('/client/settings/jurisdiction', body),
   /** Maintenance work orders (requires MAINTENANCE_WORKFLOWS). */
   getMaintenanceWorkOrders: (params = {}) => apiClient.get('/client/maintenance/work-orders', { params }),
+  getMaintenanceWorkOrder: (workOrderId) => apiClient.get(`/client/maintenance/work-orders/${workOrderId}`),
   createMaintenanceWorkOrder: (body) => apiClient.post('/client/maintenance/work-orders', body),
+  getRecommendContractors: (workOrderId, params = {}) => apiClient.get(`/client/maintenance/work-orders/${workOrderId}/recommend-contractors`, { params }),
+  /** Maintenance issues (create issue → triage → create work order). */
+  getMaintenanceIssues: (params = {}) => apiClient.get('/client/maintenance/issues', { params }),
+  getMaintenanceIssue: (issueId) => apiClient.get(`/client/maintenance/issues/${issueId}`),
+  createMaintenanceIssue: (body) => apiClient.post('/client/maintenance/issues', body),
+  createWorkOrderFromIssue: (issueId) => apiClient.post(`/client/maintenance/issues/${issueId}/create-work-order`),
   /** Predictive maintenance insights (requires PREDICTIVE_MAINTENANCE). */
   getPredictiveInsights: (params = {}) => apiClient.get('/client/maintenance/predictive-insights', { params }),
-  /** Property assets for predictive (requires PREDICTIVE_MAINTENANCE). */
+  /** Property assets for predictive (requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE). */
   getPropertyAssets: (propertyId) => apiClient.get(`/client/maintenance/properties/${propertyId}/assets`),
+  getPropertyAsset: (propertyId, assetId) => apiClient.get(`/client/maintenance/properties/${propertyId}/assets/${assetId}`),
   addPropertyAsset: (propertyId, body) => apiClient.post(`/client/maintenance/properties/${propertyId}/assets`, body),
+  updatePropertyAsset: (propertyId, assetId, body) => apiClient.patch(`/client/maintenance/properties/${propertyId}/assets/${assetId}`, body),
+  getPropertyAssetEvents: (propertyId, assetId, params = {}) => apiClient.get(`/client/maintenance/properties/${propertyId}/assets/${assetId}/events`, { params }),
   /** Maintenance events for predictive (requires PREDICTIVE_MAINTENANCE). */
   getPropertyEvents: (propertyId, params = {}) => apiClient.get(`/client/maintenance/properties/${propertyId}/events`, { params }),
   addPropertyEvent: (propertyId, body) => apiClient.post(`/client/maintenance/properties/${propertyId}/events`, body),
+  /** Risk signals (stored, rule-based). Requires PREDICTIVE_MAINTENANCE. */
+  getPropertyRiskSignals: (propertyId, params = {}) => apiClient.get(`/client/maintenance/properties/${propertyId}/risk-signals`, { params }),
+  getRiskSignals: (params = {}) => apiClient.get('/client/maintenance/risk-signals', { params }),
+  getRiskSignal: (signalId) => apiClient.get(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}`),
+  recalculatePropertyRiskSignals: (propertyId) => apiClient.post(`/client/maintenance/risk-signals/recalculate/${propertyId}`),
+  updateRiskSignalStatus: (signalId, status) => apiClient.patch(`/client/maintenance/risk-signals/${signalId}`, { status }),
   /** Contractors available to client (requires CONTRACTOR_NETWORK). */
   getContractors: (params = {}) => apiClient.get('/client/contractors', { params }),
+  /** Landlord-add contractor (requires CONTRACTOR_NETWORK). */
+  createContractor: (body) => apiClient.post('/client/contractors', body),
+  /** Rate a contractor (e.g. after work order). */
+  rateContractor: (contractorId, body) => apiClient.post(`/client/contractors/${contractorId}/rate`, body),
+  /** Approvals (invoice/work order). Requires INVOICING. */
+  getApprovals: (params = {}) => apiClient.get('/client/approvals', { params }),
+  getApproval: (invoiceId) => apiClient.get(`/client/approvals/${encodeURIComponent(invoiceId)}`),
+  updateApproval: (invoiceId, body) => apiClient.patch(`/client/approvals/${encodeURIComponent(invoiceId)}`, body),
+  exportApprovals: (params = {}) => apiClient.get('/client/approvals/export', { params, responseType: 'blob' }),
 };
 
 export const adminAPI = {
@@ -247,11 +279,14 @@ export const adminAPI = {
   getContractors: (params = {}) => apiClient.get('/admin/ops/contractors', { params }),
   getContractor: (contractorId) => apiClient.get(`/admin/ops/contractors/${contractorId}`),
   createContractor: (body) => apiClient.post('/admin/ops/contractors', body),
+  createNetworkContractor: (body) => apiClient.post('/admin/ops/contractors/network', body),
+  approveContractor: (contractorId) => apiClient.patch(`/admin/ops/contractors/${contractorId}/approve`),
   updateContractor: (contractorId, body) => apiClient.patch(`/admin/ops/contractors/${contractorId}`, body),
   deleteContractor: (contractorId) => apiClient.delete(`/admin/ops/contractors/${contractorId}`),
   // Work orders (Ops Maintenance)
   getWorkOrders: (params = {}) => apiClient.get('/admin/ops/work-orders', { params }),
   getWorkOrder: (workOrderId) => apiClient.get(`/admin/ops/work-orders/${workOrderId}`),
+  getRecommendContractors: (workOrderId, params = {}) => apiClient.get(`/admin/ops/work-orders/${workOrderId}/recommend-contractors`, { params }),
   createWorkOrder: (body) => apiClient.post('/admin/ops/work-orders', body),
   updateWorkOrder: (workOrderId, body) => apiClient.patch(`/admin/ops/work-orders/${workOrderId}`, body),
   // Predictive insights (admin: per client; client: own)

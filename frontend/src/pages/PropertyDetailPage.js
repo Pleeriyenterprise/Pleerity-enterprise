@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { clientAPI } from '../api/client';
+import apiClient, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -24,7 +24,14 @@ import {
   AlertCircle,
   Loader2,
   Plus,
+  Lock,
+  Package,
+  BarChart3,
+  Eye,
+  Download,
+  Link2,
 } from 'lucide-react';
+import UpgradePrompt, { getFeatureDisplayInfo } from '../components/UpgradePrompt';
 import { SUPPORT_EMAIL } from '../config';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import { formatRiskLabel } from '../utils/riskLabel';
@@ -44,6 +51,7 @@ const TAB_EVIDENCE = 'evidence';
 const TAB_CONTRACTORS = 'contractors';
 const TAB_TIMELINE = 'timeline';
 const TAB_RISK_SIGNALS = 'risk_signals';
+const TAB_ASSETS = 'assets';
 
 export default function PropertyDetailPage() {
   const { propertyId } = useParams();
@@ -67,9 +75,34 @@ export default function PropertyDetailPage() {
   const [workOrdersLoading, setWorkOrdersLoading] = useState(false);
   const [predictiveInsights, setPredictiveInsights] = useState(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [riskSignalsData, setRiskSignalsData] = useState(null);
+  const [riskSignalsLoading, setRiskSignalsLoading] = useState(false);
+  const [riskSignalsRecalculating, setRiskSignalsRecalculating] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
   const [createWoForm, setCreateWoForm] = useState({ description: '', category: 'general', severity: 'medium' });
   const [createWoSaving, setCreateWoSaving] = useState(false);
+  const [assets, setAssets] = useState([]);
+  const [assetsSummary, setAssetsSummary] = useState(null);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetDetailDrawer, setAssetDetailDrawer] = useState(null);
+  const [assetDetailData, setAssetDetailData] = useState(null);
+  const [assetDetailLoading, setAssetDetailLoading] = useState(false);
+  const [editAssetModal, setEditAssetModal] = useState(null);
+  const [editAssetForm, setEditAssetForm] = useState({});
+  const [editAssetSaving, setEditAssetSaving] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [evidenceData, setEvidenceData] = useState(null);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
+
+  const [timelineItems, setTimelineItems] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState(null);
+  const [timelineFilters, setTimelineFilters] = useState({ category: '', dateRange: '30', actor_type: '' });
+  const [timelineNextCursor, setTimelineNextCursor] = useState(null);
+  const [complianceStatusFilter, setComplianceStatusFilter] = useState('');
+  const [complianceSearchQuery, setComplianceSearchQuery] = useState('');
+  const [complianceExpandedReqId, setComplianceExpandedReqId] = useState(null);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -143,6 +176,45 @@ export default function PropertyDetailPage() {
       .finally(() => setInsightsLoading(false));
   }, [propertyId, hasFeature]);
 
+  const loadRiskSignals = useCallback(() => {
+    if (!propertyId || !hasFeature('predictive_maintenance')) return;
+    setRiskSignalsLoading(true);
+    clientAPI.getPropertyRiskSignals(propertyId)
+      .then((res) => setRiskSignalsData(res.data || null))
+      .catch(() => setRiskSignalsData(null))
+      .finally(() => setRiskSignalsLoading(false));
+  }, [propertyId, hasFeature]);
+
+  const loadAssets = useCallback(() => {
+    if (!propertyId || (!hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance'))) return;
+    setAssetsLoading(true);
+    clientAPI.getPropertyAssets(propertyId)
+      .then((res) => {
+        setAssets(res.data?.assets || []);
+        setAssetsSummary(res.data?.summary || null);
+      })
+      .catch(() => { setAssets([]); setAssetsSummary(null); })
+      .finally(() => setAssetsLoading(false));
+  }, [propertyId, hasFeature]);
+
+  const loadDocuments = useCallback(() => {
+    if (!propertyId) return;
+    setDocumentsLoading(true);
+    clientAPI.getDocuments({ property_id: propertyId })
+      .then((res) => setDocuments(res.data?.documents || []))
+      .catch(() => setDocuments([]))
+      .finally(() => setDocumentsLoading(false));
+  }, [propertyId]);
+
+  const loadEvidence = useCallback(() => {
+    if (!propertyId) return;
+    setEvidenceLoading(true);
+    clientAPI.getPropertyEvidence(propertyId)
+      .then((res) => setEvidenceData(res.data || null))
+      .catch(() => setEvidenceData(null))
+      .finally(() => setEvidenceLoading(false));
+  }, [propertyId]);
+
   useEffect(() => {
     if (!propertyId) return;
     if (hasFeature('maintenance_workflows')) loadWorkOrders();
@@ -150,8 +222,59 @@ export default function PropertyDetailPage() {
 
   useEffect(() => {
     if (!propertyId) return;
-    if (hasFeature('predictive_maintenance')) loadInsights();
-  }, [propertyId, hasFeature, loadInsights]);
+    if (hasFeature('predictive_maintenance')) {
+      loadInsights();
+      loadRiskSignals();
+    }
+  }, [propertyId, hasFeature, loadInsights, loadRiskSignals]);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    if (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) loadAssets();
+  }, [propertyId, hasFeature, loadAssets]);
+
+  useEffect(() => {
+    if (propertyId && activeTab === TAB_EVIDENCE) loadEvidence();
+  }, [propertyId, activeTab, loadEvidence]);
+
+  const loadTimeline = useCallback((appendCursor = null) => {
+    if (!propertyId) return;
+    setTimelineError(null);
+    if (!appendCursor) setTimelineLoading(true);
+    const range = timelineFilters.dateRange;
+    const to = new Date();
+    const from = new Date();
+    if (range === '7') from.setDate(from.getDate() - 7);
+    else if (range === '90') from.setDate(from.getDate() - 90);
+    else from.setDate(from.getDate() - 30);
+    const params = {
+      limit: 50,
+      from_date: from.toISOString().slice(0, 10),
+      to_date: to.toISOString().slice(0, 10),
+    };
+    if (timelineFilters.category) params.category = timelineFilters.category;
+    if (timelineFilters.actor_type) params.actor_type = timelineFilters.actor_type;
+    if (appendCursor) params.cursor = appendCursor;
+    clientAPI.getPropertyTimeline(propertyId, params)
+      .then((res) => {
+        const items = res.data?.items || [];
+        if (appendCursor) {
+          setTimelineItems((prev) => [...prev, ...items]);
+        } else {
+          setTimelineItems(items);
+        }
+        setTimelineNextCursor(res.data?.next_cursor || null);
+      })
+      .catch((err) => {
+        setTimelineError(err?.response?.data?.detail || 'Failed to load timeline');
+        if (!appendCursor) setTimelineItems([]);
+      })
+      .finally(() => setTimelineLoading(false));
+  }, [propertyId, timelineFilters.category, timelineFilters.dateRange, timelineFilters.actor_type]);
+
+  useEffect(() => {
+    if (propertyId && activeTab === TAB_TIMELINE) loadTimeline();
+  }, [propertyId, activeTab, loadTimeline]);
 
   const handleCreateWorkOrder = (e) => {
     e.preventDefault();
@@ -178,6 +301,18 @@ export default function PropertyDetailPage() {
 
   const getStatus = (r) => getEvidenceStatus(r.status);
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+  const formatRelativeTime = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const now = new Date();
+    const sec = Math.floor((now - d) / 1000);
+    if (sec < 60) return 'Just now';
+    if (sec < 3600) return `${Math.floor(sec / 60)} min ago`;
+    if (sec < 86400) return `${Math.floor(sec / 3600)} hours ago`;
+    if (sec < 172800) return 'Yesterday';
+    if (sec < 604800) return `${Math.floor(sec / 86400)} days ago`;
+    return formatDate(iso);
+  };
   const daysLeft = (d) => {
     if (!d) return null;
     const diff = Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24));
@@ -188,6 +323,85 @@ export default function PropertyDetailPage() {
   const rowExpiry = (r) => r.expiry_date || r.due_date;
   const rowDays = (r) => (r.days_to_expiry != null ? r.days_to_expiry : daysLeft(rowExpiry(r)));
   const rowReqId = (r) => r.requirement_id || r.id;
+
+  const evidenceDocStatusLabel = (doc) => {
+    const s = (doc?.status || '').toUpperCase();
+    if (s === 'VERIFIED') return 'Confirmed';
+    if (s === 'REJECTED') return 'Rejected';
+    if (s === 'EXPIRED') return 'Expired';
+    const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
+    if (hasExtraction && s !== 'VERIFIED') return 'Pending Confirmation';
+    if (s === 'UPLOADED') return 'Extracted';
+    if (!doc?.requirement_id) return 'Unlinked';
+    return 'Uploaded';
+  };
+
+  const handleEvidenceDocumentDownload = (doc) => {
+    if (!doc?.document_id) return;
+    apiClient.get(`/documents/${doc.document_id}/file`, { params: { download: true }, responseType: 'blob' })
+      .then((res) => {
+        const url = window.URL.createObjectURL(res.data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = doc.file_name || doc.original_filename || 'document';
+        a.click();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(() => toast.error('Could not download document'));
+  };
+
+  const isPendingConfirmation = (doc) => {
+    const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
+    return !!hasExtraction && (doc?.status || '').toUpperCase() !== 'VERIFIED';
+  };
+
+  const complianceImpactLabel = (r) => {
+    const c = (r.criticality || '').toUpperCase();
+    if (c === 'HIGH') return { label: 'High', className: 'bg-red-100 text-red-700 border-red-200' };
+    if (c === 'MED' || c === 'MEDIUM') return { label: 'Medium', className: 'bg-amber-100 text-amber-700 border-amber-200' };
+    return { label: 'Low', className: 'bg-gray-100 text-gray-600 border-gray-200' };
+  };
+
+  const getComplianceSummary = () => {
+    const kpis = complianceDetail?.kpis || {};
+    const total = requirements.length;
+    return {
+      totalApplicable: total,
+      valid: kpis.compliant ?? requirements.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase())).length,
+      expiringSoon: kpis.expiring_30 ?? requirements.filter((r) => (r.status || '').toUpperCase() === 'EXPIRING_SOON').length,
+      overdue: kpis.overdue ?? requirements.filter((r) => ['OVERDUE', 'EXPIRED'].includes((r.status || '').toUpperCase())).length,
+      missingEvidence: kpis.missing ?? requirements.filter((r) => ['PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).length,
+    };
+  };
+
+  const getNextDueDate = () => {
+    const withDue = requirements
+      .filter((r) => r.expiry_date || r.due_date)
+      .sort((a, b) => new Date(a.expiry_date || a.due_date) - new Date(b.expiry_date || b.due_date));
+    return withDue[0] ? (withDue[0].expiry_date || withDue[0].due_date) : null;
+  };
+
+  const getFilteredRequirements = () => {
+    let list = requirements;
+    if (complianceStatusFilter) {
+      const s = complianceStatusFilter.toUpperCase();
+      if (s === 'VALID') list = list.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase()));
+      else if (s === 'MISSING') list = list.filter((r) => ['PENDING', 'MISSING'].includes((r.status || '').toUpperCase()));
+      else list = list.filter((r) => (r.status || '').toUpperCase() === s);
+    }
+    if (complianceSearchQuery.trim()) {
+      const q = complianceSearchQuery.trim().toLowerCase();
+      list = list.filter((r) => (rowTitle(r) || '').toLowerCase().includes(q) || (r.requirement_code || '').toLowerCase().includes(q));
+    }
+    return list;
+  };
+
+  const getUrgentRequirements = () => {
+    return requirements.filter((r) => {
+      const s = (r.status || '').toUpperCase();
+      return s === 'OVERDUE' || s === 'EXPIRED' || (s === 'EXPIRING_SOON' && (r.days_to_expiry == null || r.days_to_expiry <= 30)) || s === 'MISSING' || s === 'PENDING';
+    });
+  };
 
   if (loading) {
     return (
@@ -233,16 +447,60 @@ export default function PropertyDetailPage() {
         </Button>
       </div>
 
-      {/* Property header card */}
+      {/* Property header card – executive summary + actions */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 mb-6">
-        <div className="flex items-start justify-between flex-wrap gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-midnight-blue">{address}</h1>
             <div className="flex flex-wrap gap-2 mt-2 text-sm text-gray-600">
               {property?.property_type && <span>{property.property_type}</span>}
+              {property?.jurisdiction && <span>{property.jurisdiction}</span>}
               {property?.is_hmo && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded">HMO</span>}
+              {property?.occupancy != null && <span>Occupancy: {property.occupancy}</span>}
               {property?.has_gas !== undefined && <span>{property.has_gas ? 'Gas' : 'No gas'}</span>}
             </div>
+            <div className="flex flex-wrap gap-4 mt-3 text-sm">
+              {complianceDetail && (
+                <span className="font-medium text-midnight-blue">
+                  Score: {(complianceDetail.score ?? complianceDetail.property_score) ?? '—'}/100 · {formatRiskLabel(complianceDetail.risk_level)}
+                </span>
+              )}
+              {hasFeature('maintenance_workflows') && (
+                <span>Open work orders: {workOrders.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status)).length}</span>
+              )}
+              {(() => {
+                const nextDue = requirements
+                  .filter((r) => (r.expiry_date || r.due_date) && ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase()))
+                  .sort((a, b) => new Date(a.expiry_date || a.due_date) - new Date(b.expiry_date || b.due_date))[0];
+                return nextDue ? (
+                  <span className="text-amber-700">Next due: {rowTitle(nextDue)} — {formatDate(nextDue.expiry_date || nextDue.due_date)}</span>
+                ) : null;
+              })()}
+              {complianceDetail?.last_updated_at && (
+                <span className="text-gray-500">Updated: {new Date(complianceDetail.last_updated_at).toLocaleDateString()}</span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+              <Upload className="w-4 h-4 mr-1.5" />
+              Upload Evidence
+            </Button>
+            {hasFeature('maintenance_workflows') ? (
+              <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); }}>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add Issue
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => navigate('/app/billing?upgrade_to=PLAN_2_PORTFOLIO')}>
+                <Lock className="w-4 h-4 mr-1.5" />
+                Add Issue
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate('/reports')}>
+              <BarChart3 className="w-4 h-4 mr-1.5" />
+              View Reports
+            </Button>
           </div>
         </div>
       </div>
@@ -251,31 +509,38 @@ export default function PropertyDetailPage() {
         This is an evidence-based status summary. It is not legal advice.
       </p>
 
-      {/* Tab navigation */}
+      {/* Tab navigation – all 8 tabs; locked icon when feature disabled */}
       <nav className="flex flex-wrap gap-1 border-b border-gray-200 mb-6">
         {[
-          { id: TAB_OVERVIEW, label: 'Overview', icon: Building2 },
-          { id: TAB_COMPLIANCE, label: 'Compliance', icon: ClipboardCheck },
-          ...(hasFeature('maintenance_workflows') ? [{ id: TAB_MAINTENANCE, label: 'Maintenance', icon: Wrench }] : []),
-          { id: TAB_EVIDENCE, label: 'Evidence', icon: FileText },
-          ...(hasFeature('contractor_network') ? [{ id: TAB_CONTRACTORS, label: 'Contractors', icon: Users }] : []),
-          { id: TAB_TIMELINE, label: 'Timeline', icon: Calendar },
-          ...(hasFeature('predictive_maintenance') ? [{ id: TAB_RISK_SIGNALS, label: 'Risk Signals', icon: AlertCircle }] : []),
-        ].map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === id
-                ? 'border-electric-teal text-electric-teal'
-                : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-            }`}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </button>
-        ))}
+          { id: TAB_OVERVIEW, label: 'Overview', icon: Building2, feature: null },
+          { id: TAB_COMPLIANCE, label: 'Compliance', icon: ClipboardCheck, feature: null },
+          { id: TAB_MAINTENANCE, label: 'Maintenance', icon: Wrench, feature: 'maintenance_workflows' },
+          { id: TAB_EVIDENCE, label: 'Evidence', icon: FileText, feature: null },
+          { id: TAB_CONTRACTORS, label: 'Contractors', icon: Users, feature: 'contractor_network' },
+          { id: TAB_TIMELINE, label: 'Timeline', icon: Calendar, feature: null },
+          { id: TAB_RISK_SIGNALS, label: 'Risk Signals', icon: AlertCircle, feature: 'predictive_maintenance' },
+          { id: TAB_ASSETS, label: 'Assets', icon: Package, feature: 'maintenance_workflows' },
+        ].map(({ id, label, icon: Icon, feature }) => {
+          const enabled = id === TAB_ASSETS
+            ? (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance'))
+            : (!feature || hasFeature(feature));
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === id
+                  ? 'border-electric-teal text-electric-teal'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+              {!enabled && <Lock className="w-3.5 h-3.5 text-amber-600" />}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Tab: Overview */}
@@ -292,6 +557,15 @@ export default function PropertyDetailPage() {
                 </CardContent>
               </Card>
             )}
+            <Card className="border border-gray-200">
+              <CardContent className="pt-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Maintenance risk</p>
+                <p className="text-2xl font-bold text-midnight-blue">{complianceDetail ? formatRiskLabel(complianceDetail.risk_level) : '—'}</p>
+                {hasFeature('maintenance_workflows') && (
+                  <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_MAINTENANCE)}>View maintenance →</Button>
+                )}
+              </CardContent>
+            </Card>
             {hasFeature('maintenance_workflows') && (
               <Card className="border border-gray-200">
                 <CardContent className="pt-4">
@@ -301,22 +575,123 @@ export default function PropertyDetailPage() {
                 </CardContent>
               </Card>
             )}
+            <Card className="border border-gray-200">
+              <CardContent className="pt-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Upcoming compliance</p>
+                <p className="text-2xl font-bold text-midnight-blue">{requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).length}</p>
+                <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_COMPLIANCE)}>View requirements →</Button>
+              </CardContent>
+            </Card>
             {hasFeature('predictive_maintenance') && (
               <Card className="border border-gray-200">
                 <CardContent className="pt-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Risk signals</p>
-                  <p className="text-2xl font-bold text-midnight-blue">{(predictiveInsights?.insights?.length) ?? 0}</p>
+                  <p className="text-2xl font-bold text-midnight-blue">{(riskSignalsData?.summary?.total ?? predictiveInsights?.insights?.length) ?? 0}</p>
                   <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>View risk signals →</Button>
+                </CardContent>
+              </Card>
+            )}
+            {hasFeature('contractor_network') && (
+              <Card className="border border-gray-200">
+                <CardContent className="pt-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Contractor activity</p>
+                  <p className="text-sm text-gray-600">View contractors and jobs</p>
+                  <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_CONTRACTORS)}>View contractors →</Button>
                 </CardContent>
               </Card>
             )}
             <Card className="border border-gray-200">
               <CardContent className="pt-4">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Evidence & documents</p>
-                <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>View documents →</Button>
+                <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_EVIDENCE)}>View documents →</Button>
               </CardContent>
             </Card>
           </div>
+
+          {/* Current Alerts */}
+          {(() => {
+            const overdueReqs = requirements.filter((r) => (r.status || '').toUpperCase() === 'OVERDUE');
+            const expiringReqs = requirements.filter((r) => (r.status || '').toUpperCase() === 'EXPIRING_SOON');
+            const highRiskSignals = riskSignalsData?.signals?.filter((s) => ['high', 'critical'].includes((s.risk_level || '').toLowerCase())) ?? (predictiveInsights?.insights || []).filter((i) => (i.risk || '').toLowerCase() === 'high' || (i.risk || '').toLowerCase() === 'urgent');
+            const openWOs = workOrders.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status));
+            const hasAlerts = overdueReqs.length > 0 || expiringReqs.length > 0 || highRiskSignals.length > 0 || openWOs.length > 0;
+            if (!hasAlerts) return null;
+            return (
+              <Card className="border border-amber-200 bg-amber-50/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2"><AlertCircle className="w-4 h-4 text-amber-600" />Current alerts</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm">
+                    {overdueReqs.length > 0 && (
+                      <li>
+                        <button type="button" className="text-left text-amber-800 hover:underline font-medium" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
+                          {overdueReqs.length} requirement{overdueReqs.length !== 1 ? 's' : ''} overdue
+                        </button>
+                        <span className="text-amber-700"> — fix in Compliance</span>
+                      </li>
+                    )}
+                    {expiringReqs.length > 0 && (
+                      <li>
+                        <button type="button" className="text-left text-amber-800 hover:underline font-medium" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
+                          {expiringReqs.length} expiring soon
+                        </button>
+                        <span className="text-amber-700"> — review in Compliance</span>
+                      </li>
+                    )}
+                    {highRiskSignals.length > 0 && hasFeature('predictive_maintenance') && (
+                      <li>
+                        <button type="button" className="text-left text-amber-800 hover:underline font-medium" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>
+                          {highRiskSignals.length} elevated risk signal{highRiskSignals.length !== 1 ? 's' : ''}
+                        </button>
+                        <span className="text-amber-700"> — view Risk Signals</span>
+                      </li>
+                    )}
+                    {openWOs.length > 0 && hasFeature('maintenance_workflows') && (
+                      <li>
+                        <button type="button" className="text-left text-amber-800 hover:underline font-medium" onClick={() => setActiveTab(TAB_MAINTENANCE)}>
+                          {openWOs.length} open work order{openWOs.length !== 1 ? 's' : ''}
+                        </button>
+                        <span className="text-amber-700"> — manage in Maintenance</span>
+                      </li>
+                    )}
+                  </ul>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Recommended Next Actions */}
+          {(() => {
+            const actions = [];
+            requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'MISSING', 'PENDING'].includes((r.status || '').toUpperCase())).slice(0, 3).forEach((r) => {
+              if (r.evidence_doc_id) actions.push({ label: `Confirm expiry for ${rowTitle(r)}`, tab: TAB_EVIDENCE });
+              else actions.push({ label: `Upload evidence for ${rowTitle(r)}`, tab: TAB_EVIDENCE });
+            });
+            (riskSignalsData?.signals || predictiveInsights?.insights || []).filter((s) => ['high', 'critical'].includes((s.risk_level || s.risk || '').toLowerCase())).slice(0, 2).forEach((i) => {
+              actions.push({ label: i.recommended_action || i.recommendation || 'Create inspection for risk', tab: TAB_RISK_SIGNALS });
+            });
+            if (actions.length === 0) return null;
+            return (
+              <Card className="border border-gray-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Recommended next actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm">
+                    {actions.slice(0, 5).map((a, i) => (
+                      <li key={i}>
+                        <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => setActiveTab(a.tab)}>
+                          {a.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).length > 0 && (
             <Card className="border border-amber-200 bg-amber-50/50">
               <CardHeader className="pb-2">
@@ -340,151 +715,326 @@ export default function PropertyDetailPage() {
 
       {/* Tab: Compliance */}
       {activeTab === TAB_COMPLIANCE && (
-        <>
-      {complianceDetail && (
-        <>
-          <div className="mb-4 flex flex-wrap gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
-            <span className="font-medium text-midnight-blue">Evidence readiness score: {(complianceDetail.score != null ? complianceDetail.score : complianceDetail.property_score) ?? '—'}/100</span>
-            <span className="font-medium text-midnight-blue">Risk level: {formatRiskLabel(complianceDetail.risk_level)}</span>
-            {complianceDetail.risk_index != null && complianceDetail.risk_index > 0 && (
-              <span className="text-gray-600">Risk index: {complianceDetail.risk_index}</span>
-            )}
-            {complianceDetail.last_updated_at && (
-              <span className="text-sm text-gray-500">Last updated: {new Date(complianceDetail.last_updated_at).toLocaleString()}</span>
-            )}
-          </div>
-          {(complianceDetail.score_delta != null || complianceDetail.score_change_summary) && (
-            <div className="mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white">
-              {complianceDetail.score_delta != null && complianceDetail.score_delta !== 0 && (
-                <span className={`inline-flex items-center gap-1 font-medium ${complianceDetail.score_delta > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {complianceDetail.score_delta > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {complianceDetail.score_delta > 0 ? '+' : ''}{complianceDetail.score_delta} pts
-                </span>
+        <div className="space-y-6">
+          {complianceDetail && (
+            <>
+              <div className="mb-4 flex flex-wrap gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+                <span className="font-medium text-midnight-blue">Evidence readiness score: {(complianceDetail.score != null ? complianceDetail.score : complianceDetail.property_score) ?? '—'}/100</span>
+                <span className="font-medium text-midnight-blue">Risk level: {formatRiskLabel(complianceDetail.risk_level)}</span>
+                {complianceDetail.risk_index != null && complianceDetail.risk_index > 0 && (
+                  <span className="text-gray-600">Risk index: {complianceDetail.risk_index}</span>
+                )}
+                {complianceDetail.last_updated_at && (
+                  <span className="text-sm text-gray-500">Last updated: {new Date(complianceDetail.last_updated_at).toLocaleString()}</span>
+                )}
+              </div>
+              {(complianceDetail.score_delta != null || complianceDetail.score_change_summary) && (
+                <div className="mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white">
+                  {complianceDetail.score_delta != null && complianceDetail.score_delta !== 0 && (
+                    <span className={`inline-flex items-center gap-1 font-medium ${complianceDetail.score_delta > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {complianceDetail.score_delta > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                      {complianceDetail.score_delta > 0 ? '+' : ''}{complianceDetail.score_delta} pts
+                    </span>
+                  )}
+                  {complianceDetail.score_change_summary && (
+                    <span className="text-sm text-gray-600">{complianceDetail.score_change_summary}</span>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-electric-teal border-electric-teal"
+                    onClick={async () => {
+                      setScoreHistoryModal(true);
+                      setScoreHistoryLoading(true);
+                      try {
+                        const res = await clientAPI.getScoreHistory(propertyId);
+                        setScoreHistoryEntries(res.data?.entries ?? []);
+                      } catch (_) {
+                        setScoreHistoryEntries([]);
+                      } finally {
+                        setScoreHistoryLoading(false);
+                      }
+                    }}
+                  >
+                    <History className="w-3.5 h-3.5 mr-1" />
+                    View change history
+                  </Button>
+                </div>
               )}
-              {complianceDetail.score_change_summary && (
-                <span className="text-sm text-gray-600">{complianceDetail.score_change_summary}</span>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-electric-teal border-electric-teal"
-                onClick={async () => {
-                  setScoreHistoryModal(true);
-                  setScoreHistoryLoading(true);
-                  try {
-                    const res = await clientAPI.getScoreHistory(propertyId);
-                    setScoreHistoryEntries(res.data?.entries ?? []);
-                  } catch (_) {
-                    setScoreHistoryEntries([]);
-                  } finally {
-                    setScoreHistoryLoading(false);
-                  }
-                }}
-              >
-                <History className="w-3.5 h-3.5 mr-1" />
-                View change history
-              </Button>
-            </div>
+            </>
           )}
-        </>
-      )}
 
-      {/* Requirements matrix (from compliance-detail API when available, else requirements list) */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 font-medium text-midnight-blue">
-          Requirements
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-600">
-                <th className="p-3">Requirement</th>
-                <th className="p-3">Evidence status</th>
-                <th className="p-3">Expiry date</th>
-                <th className="p-3">Days left</th>
-                <th className="p-3">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requirements.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="p-6 text-center text-gray-500">
-                    No requirements returned for this property.
-                  </td>
-                </tr>
+          {/* A) Compliance Summary Row */}
+          {(() => {
+            const sum = getComplianceSummary();
+            const nextDue = getNextDueDate();
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <button type="button" onClick={() => setComplianceStatusFilter('')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Applicable</p>
+                  <p className="text-lg font-semibold text-midnight-blue">{sum.totalApplicable}</p>
+                </button>
+                <button type="button" onClick={() => setComplianceStatusFilter('VALID')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Valid</p>
+                  <p className="text-lg font-semibold text-green-600">{sum.valid}</p>
+                </button>
+                <button type="button" onClick={() => setComplianceStatusFilter('EXPIRING_SOON')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Expiring soon</p>
+                  <p className="text-lg font-semibold text-amber-600">{sum.expiringSoon}</p>
+                </button>
+                <button type="button" onClick={() => setComplianceStatusFilter('OVERDUE')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Overdue</p>
+                  <p className="text-lg font-semibold text-red-600">{sum.overdue}</p>
+                </button>
+                <button type="button" onClick={() => setComplianceStatusFilter('MISSING')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Missing evidence</p>
+                  <p className="text-lg font-semibold text-gray-700">{sum.missingEvidence}</p>
+                </button>
+                <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Next due</p>
+                  <p className="text-lg font-semibold text-midnight-blue">{nextDue ? formatDate(nextDue) : '—'}</p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* B) Requirement Status Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            {['', 'VALID', 'EXPIRING_SOON', 'OVERDUE', 'MISSING'].map((f) => (
+              <Button
+                key={f || 'all'}
+                variant={complianceStatusFilter === f ? 'default' : 'outline'}
+                size="sm"
+                className={complianceStatusFilter === f ? 'bg-electric-teal text-white' : 'border-gray-200'}
+                onClick={() => setComplianceStatusFilter(f)}
+              >
+                {f === '' ? 'All' : f === 'VALID' ? 'Valid' : f === 'EXPIRING_SOON' ? 'Expiring soon' : f === 'OVERDUE' ? 'Overdue' : 'Missing evidence'}
+              </Button>
+            ))}
+            <input
+              type="text"
+              placeholder="Search obligation..."
+              value={complianceSearchQuery}
+              onChange={(e) => setComplianceSearchQuery(e.target.value)}
+              className="ml-2 max-w-[200px] px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+            />
+          </div>
+
+          {/* C) Obligation Table / Cards */}
+          {requirements.length === 0 ? (
+            <Card className="border border-gray-200">
+              <CardContent className="py-12 text-center">
+                <p className="text-gray-600 mb-2">No compliance obligations are currently configured for this property.</p>
+                <Button variant="outline" onClick={handleRefresh}>Review property setup</Button>
+              </CardContent>
+            </Card>
+          ) : getFilteredRequirements().length === 0 ? (
+            <Card className="border border-gray-200">
+              <CardContent className="py-8 text-center text-gray-500">
+                No obligations match the current filter. Clear filters to see all.
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {!requirements.some((r) => r.evidence_doc_id) && (
+                <Card className="border-amber-200 bg-amber-50/30">
+                  <CardContent className="py-6 text-center">
+                    <p className="text-gray-700 mb-2">No evidence has been uploaded for this property yet.</p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <Button className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>Upload Evidence</Button>
+                      <Button variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>View Evidence tab</Button>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-              {requirements.map((r, idx) => {
-                const status = getStatus(r);
-                const Icon = status.icon;
-                const days = rowDays(r);
-                return (
-                  <tr key={rowReqId(r) || r.requirement_code || idx} className="border-b border-gray-100 hover:bg-gray-50" data-req-code={r.requirement_code || r.requirement_type || ''}>
-                    <td className="p-3 font-medium text-midnight-blue">{rowTitle(r)}</td>
-                    <td className="p-3">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs ${status.className}`}>
-                        <Icon className="w-3.5 h-3.5" />
-                        {status.text}
-                      </span>
-                    </td>
-                    <td className="p-3 text-gray-600">{formatDate(rowExpiry(r))}</td>
-                    <td className="p-3">{days != null ? (days < 0 ? `${Math.abs(days)} days overdue` : `${days} days`) : '—'}</td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-2 items-center">
-                        {(r.evidence_doc_id && status.text !== 'Missing evidence') ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-electric-teal border-electric-teal"
-                            onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}
-                          >
-                            <FileText className="w-3.5 h-3.5 mr-1" />
-                            View document
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-electric-teal border-electric-teal"
-                            onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}
-                          >
-                            <Upload className="w-3.5 h-3.5 mr-1" />
-                            Upload
-                          </Button>
-                        )}
-                        {status.text === 'Missing evidence' && (r.requirement_code || r.requirement_type) && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-gray-600 hover:text-gray-800"
-                            onClick={() => {
-                              setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) });
-                              setNotApplicableReason('not_applicable');
-                            }}
-                            data-testid="mark-not-applicable"
-                          >
-                            <MinusCircle className="w-3.5 h-3.5 mr-1" />
-                            Mark as not applicable
-                          </Button>
-                        )}
-                        <a
-                          href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`}
-                          className="text-sm text-gray-500 hover:text-electric-teal"
-                        >
-                          Request help
-                        </a>
+
+          {getFilteredRequirements().length > 0 && (
+            <>
+              <div className="hidden md:block rounded-xl border border-gray-200 bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 font-medium text-midnight-blue">Obligations</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-gray-600">
+                        <th className="p-3">Requirement</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Due date</th>
+                        <th className="p-3">Evidence</th>
+                        <th className="p-3">Impact</th>
+                        <th className="p-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getFilteredRequirements().map((r, idx) => {
+                        const status = getStatus(r);
+                        const Icon = status.icon;
+                        const days = rowDays(r);
+                        const impact = complianceImpactLabel(r);
+                        const hasEvidence = !!r.evidence_doc_id;
+                        const statusKey = (r.status || '').toUpperCase();
+                        const isOverdue = ['OVERDUE', 'EXPIRED'].includes(statusKey);
+                        const isExpiringSoon = statusKey === 'EXPIRING_SOON';
+                        const isMissing = ['PENDING', 'MISSING'].includes(statusKey);
+                        const isValid = ['COMPLIANT', 'VALID'].includes(statusKey);
+                        return (
+                          <React.Fragment key={rowReqId(r) || r.requirement_code || idx}>
+                            <tr
+                              className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                              onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}
+                              data-req-code={r.requirement_code || r.requirement_type || ''}
+                            >
+                              <td className="p-3 font-medium text-midnight-blue">{rowTitle(r)}</td>
+                              <td className="p-3 text-gray-600">{r.requirement_code || r.requirement_type || '—'}</td>
+                              <td className="p-3">
+                                <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs ${status.className}`}>
+                                  <Icon className="w-3.5 h-3.5" />
+                                  {status.text}
+                                </span>
+                              </td>
+                              <td className="p-3 text-gray-600">{formatDate(rowExpiry(r))}</td>
+                              <td className="p-3 text-gray-600">{hasEvidence ? 'Linked' : '—'}</td>
+                              <td className="p-3">
+                                <span className={`inline-flex px-2 py-1 rounded border text-xs ${impact.className}`}>{impact.label}</span>
+                              </td>
+                              <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-wrap gap-1">
+                                  {isMissing && (
+                                    <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>
+                                      <Upload className="w-3.5 h-3.5 mr-1" /> Upload
+                                    </Button>
+                                  )}
+                                  {hasEvidence && !isMissing && (
+                                    <>
+                                      <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>
+                                        <Eye className="w-3.5 h-3.5 mr-1" /> View
+                                      </Button>
+                                      {(isOverdue || isExpiringSoon) && (
+                                        <Button size="sm" variant="outline" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>Replace</Button>
+                                      )}
+                                    </>
+                                  )}
+                                  {isValid && hasEvidence && (
+                                    <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>View details</Button>
+                                  )}
+                                  {isMissing && (r.requirement_code || r.requirement_type) && (
+                                    <Button size="sm" variant="ghost" className="text-gray-600" onClick={(e) => { e.stopPropagation(); setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) }); setNotApplicableReason('not_applicable'); }} data-testid="mark-not-applicable">
+                                      <MinusCircle className="w-3.5 h-3.5 mr-1" /> Not applicable
+                                    </Button>
+                                  )}
+                                  <a href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`} className="text-sm text-gray-500 hover:text-electric-teal" onClick={(e) => e.stopPropagation()}>Request help</a>
+                                </div>
+                              </td>
+                            </tr>
+                            {complianceExpandedReqId === (rowReqId(r) || r.requirement_code) && (
+                              <tr className="bg-gray-50 border-b border-gray-200">
+                                <td colSpan={7} className="p-4">
+                                  <div className="text-sm space-y-2">
+                                    <p><strong>Description:</strong> {rowTitle(r)}</p>
+                                    <p><strong>Status:</strong> {status.text}. Status based on portal records.</p>
+                                    <p><strong>Due date:</strong> {formatDate(rowExpiry(r))} {days != null && (days < 0 ? `(${Math.abs(days)} days overdue)` : `(${days} days left)`)}</p>
+                                    <p><strong>Evidence:</strong> {hasEvidence ? 'Document linked' : 'No document linked'}</p>
+                                    <p><strong>Impact:</strong> {impact.label}</p>
+                                    <div className="flex flex-wrap gap-2 pt-2">
+                                      <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>View Evidence tab</Button>
+                                      <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'COMPLIANCE' })); }}>View in Timeline</Button>
+                                      <a href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`} className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 text-gray-600">Request help</a>
+                                      <Button size="sm" variant="ghost" onClick={() => setComplianceExpandedReqId(null)}><X className="w-4 h-4" /> Close</Button>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="md:hidden space-y-2">
+                {getFilteredRequirements().map((r, idx) => {
+                  const status = getStatus(r);
+                  const Icon = status.icon;
+                  const impact = complianceImpactLabel(r);
+                  const hasEvidence = !!r.evidence_doc_id;
+                  const statusKey = (r.status || '').toUpperCase();
+                  const isMissing = ['PENDING', 'MISSING'].includes(statusKey);
+                  return (
+                    <Card key={rowReqId(r) || idx} className="border border-gray-200 p-3">
+                      <div className="font-medium text-midnight-blue">{rowTitle(r)}</div>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${status.className}`}><Icon className="w-3 h-3" />{status.text}</span>
+                        <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${impact.className}`}>{impact.label}</span>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <div className="text-xs text-gray-500 mt-1">{formatDate(rowExpiry(r))} · {hasEvidence ? 'Linked' : 'No evidence'}</div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {isMissing ? (
+                          <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>Upload</Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>View</Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}>Details</Button>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* D) Urgent Items Panel */}
+          {getUrgentRequirements().length > 0 && (
+            <Card className="border-amber-200 bg-amber-50/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Urgent items</CardTitle>
+                <p className="text-sm text-gray-600 font-normal">Overdue, expiring within 30 days, or missing evidence. Review required.</p>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {getUrgentRequirements().slice(0, 10).map((r, i) => {
+                  const status = getStatus(r);
+                  const days = rowDays(r);
+                  const statusKey = (r.status || '').toUpperCase();
+                  const isOverdue = ['OVERDUE', 'EXPIRED'].includes(statusKey);
+                  const isExpiring = statusKey === 'EXPIRING_SOON';
+                  const isMissing = ['PENDING', 'MISSING'].includes(statusKey);
+                  let explanation = '';
+                  if (isOverdue && days != null) explanation = `Overdue by ${Math.abs(days)} days`;
+                  else if (isExpiring && days != null) explanation = `Expires in ${days} days`;
+                  else if (isMissing) explanation = 'Missing evidence';
+                  else explanation = status.text;
+                  return (
+                    <div key={rowReqId(r) || i} className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-200 bg-white p-3">
+                      <div>
+                        <span className="font-medium text-midnight-blue">{rowTitle(r)}</span>
+                        <span className="text-sm text-gray-600 ml-2">— {explanation}</span>
+                      </div>
+                      <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>
+                        {isMissing ? 'Upload evidence' : 'View / replace'}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* E) Compliance notes strip */}
+          <p className="text-xs text-gray-500">Status based on portal records. Informational indicator only. Not legal advice.</p>
         </div>
-      </div>
-        </>
       )}
 
       {/* Tab: Maintenance */}
+      {activeTab === TAB_MAINTENANCE && !hasFeature('maintenance_workflows') && (
+        <UpgradePrompt
+          featureName={getFeatureDisplayInfo('maintenance_workflows').featureName}
+          featureDescription="Create and manage work orders and issues for this property."
+          requiredPlan={getFeatureDisplayInfo('maintenance_workflows').requiredPlan}
+          requiredPlanName={getFeatureDisplayInfo('maintenance_workflows').requiredPlanName}
+          variant="card"
+        />
+      )}
       {activeTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows') && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -549,20 +1099,213 @@ export default function PropertyDetailPage() {
 
       {/* Tab: Evidence */}
       {activeTab === TAB_EVIDENCE && (
-        <Card className="border border-gray-200">
-          <CardHeader><CardTitle className="text-lg">Documents & evidence</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">View and upload documents for this property. Evidence is linked to requirements in the Compliance tab.</p>
-            <Button variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
-              <FileText className="w-4 h-4 mr-2" />
-              Open documents
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-midnight-blue">Evidence vault</h2>
+            <div className="flex items-center gap-2">
+              <Button
+                className="bg-electric-teal text-white hover:bg-electric-teal/90"
+                onClick={() => navigate(`/documents?property_id=${propertyId}`)}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Evidence
+              </Button>
+              <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+                Open full list
+              </Button>
+            </div>
+          </div>
+
+          {evidenceLoading ? (
+            <div className="flex items-center gap-2 text-gray-500 py-8">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading…
+            </div>
+          ) : !evidenceData ? (
+            <Card className="border border-gray-200">
+              <CardContent className="py-8 text-center text-gray-500">
+                Unable to load evidence. Try again or open the Documents page.
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* A) Evidence Summary Bar */}
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="flex flex-wrap gap-6 text-sm">
+                  <span><strong className="text-midnight-blue">Total documents:</strong> {evidenceData.summary?.totalDocuments ?? 0}</span>
+                  <span><strong className="text-midnight-blue">Linked:</strong> {evidenceData.summary?.linked ?? 0}</span>
+                  <span><strong className="text-midnight-blue">Pending confirmation:</strong> {evidenceData.summary?.pendingConfirmation ?? 0}</span>
+                  <span><strong className="text-midnight-blue">Missing critical evidence:</strong> {evidenceData.summary?.missingCriticalEvidence ?? 0}</span>
+                  <span><strong className="text-midnight-blue">Last uploaded:</strong> {evidenceData.summary?.lastUploadedAt ? formatRelativeTime(evidenceData.summary.lastUploadedAt) : '—'}</span>
+                </div>
+              </div>
+
+              {/* B) Upload / Add Evidence – CTA already above */}
+
+              {/* Missing critical CTA */}
+              {(evidenceData.summary?.missingCriticalEvidence ?? 0) > 0 && (
+                <Card className="border-amber-200 bg-amber-50/50">
+                  <CardContent className="py-3 flex items-center justify-between gap-4">
+                    <span className="text-sm text-amber-800">Some requirements are missing evidence. Upload documents to update score and risk.</span>
+                    <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+                      Upload required evidence
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* C) Evidence Table / Cards */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">All evidence</h3>
+                {(evidenceData.documents?.length ?? 0) === 0 ? (
+                  <Card className="border border-gray-200">
+                    <CardContent className="py-12 text-center">
+                      <p className="text-gray-600 mb-2">No evidence has been uploaded for this property yet.</p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <Button className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+                          Upload Evidence
+                        </Button>
+                        <Button variant="outline" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
+                          View Compliance Requirements
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    <div className="hidden md:block rounded-xl border border-gray-200 bg-white overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-200 text-left text-gray-600 bg-gray-50">
+                              <th className="p-3">Document</th>
+                              <th className="p-3">Document type</th>
+                              <th className="p-3">Linked requirement</th>
+                              <th className="p-3">Status</th>
+                              <th className="p-3">Uploaded by</th>
+                              <th className="p-3">Uploaded at</th>
+                              <th className="p-3">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {evidenceData.documents.map((doc) => (
+                              <tr key={doc.document_id} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="p-3 font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</td>
+                                <td className="p-3 text-gray-600">{doc.document_type || '—'}</td>
+                                <td className="p-3 text-gray-600">{doc.requirement_id || '—'}</td>
+                                <td className="p-3">
+                                  <span className="inline-flex px-2 py-1 rounded border text-xs bg-gray-100 text-gray-700 border-gray-200">{evidenceDocStatusLabel(doc)}</span>
+                                </td>
+                                <td className="p-3 text-gray-600">{doc.uploaded_by || '—'}</td>
+                                <td className="p-3 text-gray-600">{doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</td>
+                                <td className="p-3">
+                                  <div className="flex flex-wrap gap-1">
+                                    <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}><Eye className="w-3 h-3 mr-1" /> View</Button>
+                                    <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}><Download className="w-3 h-3 mr-1" /> Download</Button>
+                                    {isPendingConfirmation(doc) && (
+                                      <Button variant="outline" size="sm" className="border-amber-300 text-amber-700" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>Confirm details</Button>
+                                    )}
+                                    <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}><Link2 className="w-3 h-3 mr-1" /> Link</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}><History className="w-3 h-3 mr-1" /> History</Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div className="md:hidden space-y-2">
+                      {evidenceData.documents.map((doc) => (
+                        <Card key={doc.document_id} className="border border-gray-200 p-3">
+                          <div className="font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</div>
+                          <div className="text-xs text-gray-600 mt-1">Type: {doc.document_type || '—'} · {evidenceDocStatusLabel(doc)} · {doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</div>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>View</Button>
+                            <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}>Download</Button>
+                            {isPendingConfirmation(doc) && <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>Confirm</Button>}
+                            <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}>History</Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* D) Pending Confirmations */}
+              {(() => {
+                const pending = (evidenceData.documents || []).filter(isPendingConfirmation);
+                if (pending.length === 0) return null;
+                return (
+                  <Card className="border-amber-200 bg-amber-50/30">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Pending confirmation</CardTitle>
+                      <p className="text-sm text-gray-600 font-normal">Documents with extracted details not yet confirmed. Confirm to update requirement status and score.</p>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {pending.map((doc) => {
+                        const ext = doc.ai_extracted_data || doc.ai_extraction?.data || {};
+                        const conf = doc.confidence_score ?? doc.ai_extraction?.confidence;
+                        return (
+                          <div key={doc.document_id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-200 bg-white p-3">
+                            <div>
+                              <span className="font-medium text-midnight-blue">{doc.file_name || doc.document_id}</span>
+                              {(ext.expiry_date || ext.issue_date) && (
+                                <span className="text-xs text-gray-500 ml-2">Expiry: {ext.expiry_date || '—'} · Issue: {ext.issue_date || '—'}</span>
+                              )}
+                              {conf != null && <span className="text-xs text-gray-500 ml-2">Confidence: {Math.round(Number(conf) * 100)}%</span>}
+                            </div>
+                            <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>
+                              Confirm details
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
+              {/* E) Evidence History / Audit strip */}
+              {(evidenceData.recentEvents?.length ?? 0) > 0 && (
+                <Card className="border border-gray-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Recent evidence activity</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-1 text-sm">
+                      {evidenceData.recentEvents.slice(0, 15).map((ev, i) => (
+                        <li key={ev.id || i} className="flex flex-wrap gap-2 text-gray-600">
+                          <span className="text-gray-400">{ev.timestamp ? formatRelativeTime(ev.timestamp) : '—'}</span>
+                          <span>{ev.actorType || ev.actor_type || 'system'}</span>
+                          <span>{ev.title || ev.eventType || ev.trigger_label || 'Event'}</span>
+                          {ev.linkedEntityLabel && <span className="text-gray-500">· {ev.linkedEntityLabel}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button variant="ghost" size="sm" className="mt-2 text-electric-teal" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}>
+                      View full timeline
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {/* Tab: Contractors */}
-      {activeTab === TAB_CONTRACTORS && (
+      {activeTab === TAB_CONTRACTORS && !hasFeature('contractor_network') && (
+        <UpgradePrompt
+          featureName={getFeatureDisplayInfo('contractor_network').featureName}
+          featureDescription="View and manage contractors assigned to this property."
+          requiredPlan={getFeatureDisplayInfo('contractor_network').requiredPlan}
+          requiredPlanName={getFeatureDisplayInfo('contractor_network').requiredPlanName}
+          variant="card"
+        />
+      )}
+      {activeTab === TAB_CONTRACTORS && hasFeature('contractor_network') && (
         <Card className="border border-gray-200">
           <CardHeader><CardTitle className="text-lg">Contractors</CardTitle></CardHeader>
           <CardContent>
@@ -576,43 +1319,451 @@ export default function PropertyDetailPage() {
 
       {/* Tab: Timeline */}
       {activeTab === TAB_TIMELINE && (
-        <Card className="border border-gray-200">
-          <CardHeader><CardTitle className="text-lg">Timeline</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-gray-500">A unified timeline of documents, compliance updates, maintenance, and contractor activity will appear here. Coming soon.</p>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-midnight-blue">Timeline</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={timelineFilters.category}
+                onChange={(e) => setTimelineFilters((f) => ({ ...f, category: e.target.value }))}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
+                aria-label="Event type"
+              >
+                <option value="">All events</option>
+                <option value="EVIDENCE">Evidence</option>
+                <option value="COMPLIANCE">Compliance</option>
+                <option value="MAINTENANCE">Maintenance</option>
+                <option value="SCORE_RISK">Score & risk</option>
+                <option value="SYSTEM">System</option>
+              </select>
+              <select
+                value={timelineFilters.dateRange}
+                onChange={(e) => setTimelineFilters((f) => ({ ...f, dateRange: e.target.value }))}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
+                aria-label="Date range"
+              >
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+              <select
+                value={timelineFilters.actor_type}
+                onChange={(e) => setTimelineFilters((f) => ({ ...f, actor_type: e.target.value }))}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
+                aria-label="Actor"
+              >
+                <option value="">All actors</option>
+                <option value="user">You</option>
+                <option value="admin">Admin</option>
+                <option value="system">System</option>
+              </select>
+              <Button variant="outline" size="sm" onClick={loadTimeline} disabled={timelineLoading}>
+                <RefreshCw className={`w-4 h-4 mr-1 ${timelineLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {timelineError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              {timelineError}
+            </div>
+          )}
+
+          {timelineLoading ? (
+            <div className="flex items-center gap-2 text-gray-500 py-12">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              Loading timeline…
+            </div>
+          ) : timelineItems.length === 0 ? (
+            <Card className="border border-gray-200">
+              <CardContent className="py-12 text-center">
+                <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-700 font-medium">No activity has been recorded for this property yet.</p>
+                <p className="text-sm text-gray-500 mt-1 mb-4">Upload evidence, report an issue, or complete property setup to see events here.</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Evidence
+                  </Button>
+                  {hasFeature('maintenance_workflows') && (
+                    <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Issue
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setActiveTab(TAB_OVERVIEW)}>
+                    View property setup
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <ul className="space-y-3">
+              {timelineItems.map((item) => {
+                const cat = item.category || 'SCORE_RISK';
+                const Icon = cat === 'EVIDENCE' ? FileText : cat === 'COMPLIANCE' ? ClipboardCheck : cat === 'MAINTENANCE' ? Wrench : cat === 'SYSTEM' ? Building2 : BarChart3;
+                const actionTab = cat === 'EVIDENCE' ? TAB_EVIDENCE : cat === 'COMPLIANCE' ? TAB_COMPLIANCE : cat === 'MAINTENANCE' ? TAB_MAINTENANCE : cat === 'SCORE_RISK' ? TAB_RISK_SIGNALS : null;
+                const showLink = !actionTab || (actionTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows')) || (actionTab === TAB_RISK_SIGNALS && hasFeature('predictive_maintenance')) || actionTab === TAB_EVIDENCE || actionTab === TAB_COMPLIANCE;
+                return (
+                  <li key={item.id} className="border border-gray-200 rounded-lg bg-white overflow-hidden hover:border-gray-300 transition-colors">
+                    <div className="p-4 flex gap-4">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-midnight-blue">{item.title}</p>
+                        {item.description && <p className="text-sm text-gray-600 mt-0.5">{item.description}</p>}
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
+                          <span>{formatRelativeTime(item.timestamp)}</span>
+                          <span>{item.actorLabel || item.actorType || 'System'}</span>
+                          {item.linkedEntityLabel && <span className="text-gray-600">{item.linkedEntityLabel}</span>}
+                        </div>
+                        {item.impact?.scoreDelta != null && item.impact.scoreDelta !== 0 && (
+                          <span className={`inline-block mt-2 text-xs font-medium px-2 py-0.5 rounded ${item.impact.scoreDelta > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            Score {item.impact.scoreDelta > 0 ? '+' : ''}{item.impact.scoreDelta}
+                          </span>
+                        )}
+                        {showLink && actionTab && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2 text-electric-teal hover:text-electric-teal/90 -ml-2"
+                            onClick={() => setActiveTab(actionTab)}
+                          >
+                            View {actionTab === TAB_EVIDENCE ? 'Evidence' : actionTab === TAB_COMPLIANCE ? 'Compliance' : actionTab === TAB_MAINTENANCE ? 'Maintenance' : 'Risk Signals'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {!timelineLoading && timelineItems.length > 0 && timelineNextCursor && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" size="sm" onClick={() => loadTimeline(timelineNextCursor)}>
+                Load more
+              </Button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Tab: Risk Signals */}
+      {activeTab === TAB_RISK_SIGNALS && !hasFeature('predictive_maintenance') && (
+        <UpgradePrompt
+          featureName={getFeatureDisplayInfo('predictive_maintenance').featureName}
+          featureDescription="View risk signals and recommendations for this property."
+          requiredPlan={getFeatureDisplayInfo('predictive_maintenance').requiredPlan}
+          requiredPlanName={getFeatureDisplayInfo('predictive_maintenance').requiredPlanName}
+          variant="card"
+        />
+      )}
       {activeTab === TAB_RISK_SIGNALS && hasFeature('predictive_maintenance') && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-midnight-blue">Risk signals</h2>
-          {insightsLoading ? (
+          {riskSignalsLoading ? (
             <div className="flex items-center gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
-          ) : !predictiveInsights?.insights?.length ? (
-            <Card className="border border-gray-200"><CardContent className="py-8 text-center text-gray-500">No risk signals for this property. Add property assets (e.g. boiler, last service date) to get recommendations.</CardContent></Card>
+          ) : !(riskSignalsData?.signals?.length) ? (
+            <Card className="border border-gray-200"><CardContent className="py-8 text-center text-gray-500">No risk signals for this property. Use Recalculate to generate from property data, or add assets and work orders.</CardContent></Card>
           ) : (
-            <ul className="space-y-3">
-              {predictiveInsights.insights.map((i, idx) => (
-                <li key={idx} className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <div>
-                    <p className="font-medium text-gray-900">{i.recommendation}</p>
-                    {i.detail && <p className="text-sm text-gray-600">{i.detail}</p>}
-                    <span className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${i.risk === 'high' || i.risk === 'urgent' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{i.risk || 'medium'}</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); setCreateWoForm((f) => ({ ...f, description: i.recommendation })); }}
-                  >
-                    <Wrench className="w-4 h-4 mr-1" />
-                    Create work order
-                  </Button>
-                </li>
-              ))}
-            </ul>
+            <>
+              {riskSignalsData?.summary && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  <div className="p-3 rounded-lg border border-gray-200 bg-gray-50"><p className="text-xs text-gray-500 uppercase">Total</p><p className="text-lg font-semibold text-midnight-blue">{riskSignalsData.summary.total ?? 0}</p></div>
+                  <div className="p-3 rounded-lg border border-gray-200 bg-gray-50"><p className="text-xs text-gray-500 uppercase">High</p><p className="text-lg font-semibold text-amber-700">{riskSignalsData.summary.high ?? 0}</p></div>
+                  <div className="p-3 rounded-lg border border-gray-200 bg-gray-50"><p className="text-xs text-gray-500 uppercase">Medium</p><p className="text-lg font-semibold text-gray-700">{riskSignalsData.summary.medium ?? 0}</p></div>
+                  <div className="p-3 rounded-lg border border-gray-200 bg-gray-50"><p className="text-xs text-gray-500 uppercase">Last updated</p><p className="text-sm text-gray-600">{riskSignalsData.summary.lastRecalculatedAt ? new Date(riskSignalsData.summary.lastRecalculatedAt).toLocaleString() : '—'}</p></div>
+                </div>
+              )}
+              <div className="flex justify-end mb-2">
+                <Button size="sm" variant="outline" className="border-electric-teal text-electric-teal" disabled={riskSignalsRecalculating} onClick={async () => { setRiskSignalsRecalculating(true); try { await clientAPI.recalculatePropertyRiskSignals(propertyId); toast.success('Recalculated'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setRiskSignalsRecalculating(false); }}}>
+                  {riskSignalsRecalculating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Recalculate
+                </Button>
+              </div>
+              <ul className="space-y-3">
+                {riskSignalsData.signals.map((s) => (
+                  <li key={s.signal_id} className="flex flex-wrap items-start justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900">{s.risk_type}</p>
+                      <p className="text-sm text-gray-700 mt-0.5">{s.recommended_action}</p>
+                      {Array.isArray(s.reasons) && s.reasons.length > 0 && <ul className="mt-1 text-xs text-gray-600 list-disc list-inside">{s.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
+                      <span className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${['high','critical'].includes((s.risk_level||'').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{s.risk_level || 'medium'}</span>
+                      {s.status && s.status !== 'active' && <span className="ml-2 text-xs text-gray-500">{s.status}</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); setCreateWoForm((f) => ({ ...f, description: s.recommended_action })); }}><Wrench className="w-4 h-4 mr-1" /> Create work order</Button>
+                      {s.status === 'active' && (
+                        <>
+                          <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged'); loadRiskSignals(); } catch (_) {} }}>Acknowledge</Button>
+                          <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'resolved'); loadRiskSignals(); } catch (_) {} }}>Resolve</Button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
+        </div>
+      )}
+
+      {/* Tab: Assets */}
+      {activeTab === TAB_ASSETS && !hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance') && (
+        <UpgradePrompt
+          featureName="Maintenance or Predictive"
+          featureDescription="Track property assets (e.g. boiler, electrical) and link to maintenance and risk signals."
+          requiredPlan="PLAN_2_PORTFOLIO"
+          requiredPlanName="Portfolio"
+          variant="card"
+        />
+      )}
+      {activeTab === TAB_ASSETS && (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-midnight-blue">Property assets</h2>
+          <p className="text-sm text-gray-600">Key systems and equipment. Assets are created automatically during property setup or you can add more.</p>
+          {assetsLoading ? (
+            <div className="flex items-center gap-2 text-gray-500 py-8">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading…
+            </div>
+          ) : assets.length === 0 ? (
+            <Card className="border border-gray-200">
+              <CardContent className="py-10 text-center">
+                <Package className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-600 font-medium">No assets yet</p>
+                <p className="text-sm text-gray-500 mt-1">Assets will be automatically created when property setup completes.</p>
+                <Button variant="outline" size="sm" className="mt-4 text-electric-teal border-electric-teal" onClick={loadAssets}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh Assets
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* A) Asset Summary Row */}
+              {assetsSummary && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div className="p-3 rounded-lg border border-gray-200 bg-white">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Total assets</p>
+                    <p className="text-lg font-semibold text-midnight-blue">{assetsSummary.total ?? 0}</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-gray-200 bg-white">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
+                    <p className="text-lg font-semibold text-amber-600">{assetsSummary.with_open_issues ?? 0}</p>
+                  </div>
+                  {hasFeature('predictive_maintenance') && (
+                    <div className="p-3 rounded-lg border border-gray-200 bg-white">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Elevated risk</p>
+                      <p className="text-lg font-semibold text-red-600">{assetsSummary.with_elevated_risk ?? 0}</p>
+                    </div>
+                  )}
+                  <div className="p-3 rounded-lg border border-gray-200 bg-white">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Recent work orders</p>
+                    <p className="text-lg font-semibold text-midnight-blue">{assetsSummary.recent_work_orders ?? 0}</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-gray-200 bg-white">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Compliance linked</p>
+                    <p className="text-lg font-semibold text-midnight-blue">{assetsSummary.with_compliance_linkage ?? 0}</p>
+                  </div>
+                </div>
+              )}
+              {/* B) Asset Table */}
+              <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-gray-600 bg-gray-50">
+                        <th className="p-3">Asset</th>
+                        <th className="p-3">Type</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Last service</th>
+                        <th className="p-3">Open issues</th>
+                        {hasFeature('predictive_maintenance') && <th className="p-3">Risk</th>}
+                        <th className="p-3">Linked evidence</th>
+                        <th className="p-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {assets.map((a) => {
+                        const per = assetsSummary?.per_asset?.[a.asset_id] || {};
+                        const status = (a.status || 'active').toLowerCase();
+                        const statusLabel = status === 'active' ? 'Active' : status === 'inactive' ? 'Inactive' : status === 'replaced' ? 'Replaced' : status === 'removed' ? 'Removed' : 'Active';
+                        return (
+                          <tr key={a.asset_id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="p-3 font-medium text-midnight-blue">{a.name || (a.asset_type || '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</td>
+                            <td className="p-3 text-gray-600">{(a.asset_type || '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</td>
+                            <td className="p-3 text-gray-600">{statusLabel}</td>
+                            <td className="p-3 text-gray-600">{a.last_service_date ? formatDate(a.last_service_date) : '—'}</td>
+                            <td className="p-3 text-gray-600">{per.open_issues != null && per.open_issues > 0 ? per.open_issues : '—'}</td>
+                            {hasFeature('predictive_maintenance') && (
+                              <td className="p-3">
+                                {per.risk ? (
+                                  <span className={`inline-flex px-2 py-0.5 rounded text-xs ${per.risk === 'high' || per.risk === 'urgent' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
+                                    {(per.risk || '').replace(/^\w/, (c) => c.toUpperCase())}
+                                  </span>
+                                ) : '—'}
+                              </td>
+                            )}
+                            <td className="p-3 text-gray-600">—</td>
+                            <td className="p-3">
+                              <div className="flex flex-wrap gap-1">
+                                <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => {
+                                  setAssetDetailDrawer(a.asset_id);
+                                  setAssetDetailData(null);
+                                  setAssetDetailLoading(true);
+                                  clientAPI.getPropertyAsset(propertyId, a.asset_id)
+                                    .then((res) => setAssetDetailData(res.data))
+                                    .catch(() => setAssetDetailData(null))
+                                    .finally(() => setAssetDetailLoading(false));
+                                }}>
+                                  <Eye className="w-3.5 h-3.5 mr-1" /> View
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => { setEditAssetModal(a); setEditAssetForm({ name: a.name ?? '', status: a.status ?? 'active', last_service_date: a.last_service_date ?? '', make: a.make ?? '', model: a.model ?? '' }); }}>
+                                  Edit
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => setActiveTab(TAB_MAINTENANCE)}>
+                                  View issues
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-2">
+                {assets.map((a) => {
+                  const per = assetsSummary?.per_asset?.[a.asset_id] || {};
+                  const statusLabel = (a.status || 'active') === 'active' ? 'Active' : (a.status || 'active');
+                  return (
+                    <Card key={a.asset_id} className="border border-gray-200 p-3">
+                      <div className="font-medium text-midnight-blue">{a.name || (a.asset_type || '').replace(/_/g, ' ')}</div>
+                      <div className="text-xs text-gray-500 mt-1">Type: {(a.asset_type || '').replace(/_/g, ' ')} · Status: {statusLabel} · Last service: {a.last_service_date ? formatDate(a.last_service_date) : '—'}</div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        <Button variant="outline" size="sm" onClick={() => { setAssetDetailDrawer(a.asset_id); setAssetDetailData(null); setAssetDetailLoading(true); clientAPI.getPropertyAsset(propertyId, a.asset_id).then((res) => setAssetDetailData(res.data)).catch(() => setAssetDetailData(null)).finally(() => setAssetDetailLoading(false)); }}>View</Button>
+                        <Button variant="outline" size="sm" onClick={() => { setEditAssetModal(a); setEditAssetForm({ name: a.name ?? '', status: a.status ?? 'active', last_service_date: a.last_service_date ?? '', make: a.make ?? '', model: a.model ?? '' }); }}>Edit</Button>
+                        <Button variant="outline" size="sm" onClick={() => setActiveTab(TAB_MAINTENANCE)}>View issues</Button>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Asset Detail Drawer */}
+      {assetDetailDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setAssetDetailDrawer(null)}>
+          <div className="w-full max-w-md bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold text-midnight-blue">Asset details</h3>
+              <button type="button" onClick={() => setAssetDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-4">
+              {assetDetailLoading ? (
+                <div className="flex items-center gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
+              ) : assetDetailData?.asset ? (
+                <>
+                  <dl className="space-y-2 text-sm">
+                    <div><dt className="text-gray-500">Name</dt><dd className="font-medium">{assetDetailData.asset.name || assetDetailData.asset.asset_type || '—'}</dd></div>
+                    <div><dt className="text-gray-500">Type</dt><dd>{(assetDetailData.asset.asset_type || '—').replace(/_/g, ' ')}</dd></div>
+                    <div><dt className="text-gray-500">Status</dt><dd>{(assetDetailData.asset.status || 'active').replace(/^\w/, (c) => c.toUpperCase())}</dd></div>
+                    <div><dt className="text-gray-500">Last service</dt><dd>{assetDetailData.asset.last_service_date ? formatDate(assetDetailData.asset.last_service_date) : '—'}</dd></div>
+                    <div><dt className="text-gray-500">Installed year</dt><dd>{assetDetailData.asset.installed_year ?? '—'}</dd></div>
+                    <div><dt className="text-gray-500">Make / model</dt><dd>{(assetDetailData.asset.make || assetDetailData.asset.model) ? [assetDetailData.asset.make, assetDetailData.asset.model].filter(Boolean).join(' · ') : '—'}</dd></div>
+                  </dl>
+                  <h4 className="font-medium mt-4 mb-2">Linked compliance</h4>
+                  <p className="text-sm text-gray-500">—</p>
+                  <h4 className="font-medium mt-4 mb-2">Maintenance history</h4>
+                  {(assetDetailData.events?.length ?? 0) > 0 ? (
+                    <ul className="space-y-1 text-sm">
+                      {assetDetailData.events.slice(0, 10).map((ev, i) => (
+                        <li key={ev.event_id || i}>{ev.event_type} · {ev.timestamp ? formatRelativeTime(ev.timestamp) : '—'}</li>
+                      ))}
+                    </ul>
+                  ) : <p className="text-sm text-gray-500">No events yet.</p>}
+                  {hasFeature('predictive_maintenance') && (
+                    <>
+                      <h4 className="font-medium mt-4 mb-2">Risk signals</h4>
+                      <p className="text-sm text-gray-500">View risk signals in the Risk Signals tab.</p>
+                    </>
+                  )}
+                  <div className="mt-4 flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { const a = assets.find((x) => x.asset_id === assetDetailDrawer); if (a) { setEditAssetModal(a); setEditAssetForm({ name: a.name ?? '', status: a.status ?? 'active', last_service_date: a.last_service_date ?? '', make: a.make ?? '', model: a.model ?? '' }); } setAssetDetailDrawer(null); }}>Edit asset</Button>
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_MAINTENANCE)}>View issues</Button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-gray-500">Could not load asset.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Asset Modal */}
+      {editAssetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !editAssetSaving && setEditAssetModal(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full m-4 p-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-midnight-blue mb-4">Edit asset</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" value={editAssetForm.name ?? ''} onChange={(e) => setEditAssetForm((f) => ({ ...f, name: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="e.g. Main boiler" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select value={editAssetForm.status ?? 'active'} onChange={(e) => setEditAssetForm((f) => ({ ...f, status: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="replaced">Replaced</option>
+                  <option value="removed">Removed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last service date</label>
+                <input type="date" value={(editAssetForm.last_service_date || '').toString().slice(0, 10)} onChange={(e) => setEditAssetForm((f) => ({ ...f, last_service_date: e.target.value || null }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+                <input type="text" value={editAssetForm.make ?? ''} onChange={(e) => setEditAssetForm((f) => ({ ...f, make: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                <input type="text" value={editAssetForm.model ?? ''} onChange={(e) => setEditAssetForm((f) => ({ ...f, model: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setEditAssetModal(null)} disabled={editAssetSaving}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  setEditAssetSaving(true);
+                  clientAPI.updatePropertyAsset(propertyId, editAssetModal.asset_id, {
+                    name: editAssetForm.name || null,
+                    status: editAssetForm.status || null,
+                    last_service_date: editAssetForm.last_service_date || null,
+                    make: editAssetForm.make || null,
+                    model: editAssetForm.model || null,
+                  })
+                    .then(() => { toast.success('Asset updated'); setEditAssetModal(null); loadAssets(); })
+                    .catch((err) => toast.error(err?.response?.data?.detail || 'Update failed'))
+                    .finally(() => setEditAssetSaving(false));
+                }}
+                disabled={editAssetSaving}
+              >
+                {editAssetSaving ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

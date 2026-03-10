@@ -867,6 +867,7 @@ async def get_client_contractors(
     vetted_only: bool = False,
     skip: int = 0,
     limit: int = 100,
+    source_type: Optional[str] = None,
 ):
     """List contractors available to this client (assigned or system-wide). Requires CONTRACTOR_NETWORK flag."""
     user = await client_route_guard(request)
@@ -884,8 +885,90 @@ async def get_client_contractors(
         vetted_only=vetted_only,
         skip=skip,
         limit=min(limit, 200),
+        source_type=source_type,
     )
     return result
+
+
+class CreateContractorBody(BaseModel):
+    company_name: str
+    trade_types: List[str]
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    contact_name: Optional[str] = None
+    region: Optional[str] = None
+    credentials: Optional[List[str]] = None
+    insurance_details: Optional[str] = None
+    areas_served: Optional[List[str]] = None
+    notes: Optional[str] = None
+
+
+@router.post("/contractors")
+async def create_client_contractor(request: Request, body: CreateContractorBody):
+    """Landlord adds a contractor. Requires CONTRACTOR_NETWORK. Contractor is visible only to this organisation."""
+    user = await client_route_guard(request)
+    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
+    from services import contractor_service
+
+    flags = await get_effective_flags(user["client_id"])
+    if not flags.get(CONTRACTOR_NETWORK):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contractor network is not enabled for your account.",
+        )
+    if not body.phone and not body.email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone or email is required")
+    doc = await contractor_service.create_contractor_landlord(
+        client_id=user["client_id"],
+        company_name=body.company_name.strip(),
+        trade_types=[t.strip() for t in body.trade_types if t and t.strip()] or ["general"],
+        phone=body.phone.strip() if body.phone else None,
+        email=body.email.strip() if body.email else None,
+        contact_name=body.contact_name.strip() if body.contact_name else None,
+        region=body.region.strip() if body.region else None,
+        credentials=body.credentials,
+        insurance_details=body.insurance_details.strip() if body.insurance_details else None,
+        areas_served=body.areas_served,
+        notes=body.notes.strip() if body.notes else None,
+    )
+    return doc
+
+
+class RateContractorBody(BaseModel):
+    rating: int  # 1-5
+    work_order_id: Optional[str] = None
+    property_id: Optional[str] = None
+    completion_speed: Optional[int] = None  # 1-5
+    professionalism: Optional[int] = None   # 1-5
+    notes: Optional[str] = None
+
+
+@router.post("/contractors/{contractor_id}/rate")
+async def rate_contractor(request: Request, contractor_id: str, body: RateContractorBody):
+    """Submit a rating for a contractor (e.g. after work order). Requires CONTRACTOR_NETWORK."""
+    user = await client_route_guard(request)
+    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
+    from services import contractor_service
+
+    flags = await get_effective_flags(user["client_id"])
+    if not flags.get(CONTRACTOR_NETWORK):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor network is not enabled.")
+    if not (1 <= body.rating <= 5):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="rating must be between 1 and 5")
+    try:
+        doc = await contractor_service.create_contractor_rating(
+            contractor_id=contractor_id,
+            client_id=user["client_id"],
+            rating=body.rating,
+            work_order_id=body.work_order_id,
+            property_id=body.property_id,
+            completion_speed=body.completion_speed,
+            professionalism=body.professionalism,
+            notes=body.notes,
+        )
+        return doc
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.get("/documents")

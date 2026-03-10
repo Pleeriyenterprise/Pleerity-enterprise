@@ -789,14 +789,17 @@ async def upload_document(
     request: Request,
     file: UploadFile = File(...),
     property_id: str = Form(...),
-    requirement_id: str = Form(...)
+    requirement_id: Optional[str] = Form(None),
+    document_type: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    source: Optional[str] = Form(None),
 ):
-    """Upload a compliance document (client or admin)."""
+    """Upload a compliance document (client or admin). requirement_id optional for 'Other' docs (link later)."""
     user = await client_route_guard(request)
     db = database.get_db()
     
     try:
-        # Verify property and requirement belong to client
+        # Verify property belongs to client
         property_doc = await db.properties.find_one(
             {"property_id": property_id, "client_id": user["client_id"]},
             {"_id": 0}
@@ -817,16 +820,20 @@ async def upload_document(
                 },
             )
         
-        requirement = await db.requirements.find_one(
-            {"requirement_id": requirement_id, "client_id": user["client_id"]},
-            {"_id": 0}
-        )
-        
-        if not requirement:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Requirement not found"
+        requirement = None
+        if requirement_id and requirement_id.strip():
+            requirement = await db.requirements.find_one(
+                {"requirement_id": requirement_id, "client_id": user["client_id"]},
+                {"_id": 0}
             )
+            if not requirement:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Requirement not found"
+                )
+            requirement_id = requirement_id.strip()
+        else:
+            requirement_id = None
         
         # Create unique filename
         file_extension = Path(file.filename).suffix
@@ -852,7 +859,10 @@ async def upload_document(
             file_size=len(contents),
             mime_type=file.content_type or "application/octet-stream",
             status=DocumentStatus.UPLOADED,
-            uploaded_by=user["portal_user_id"]
+            uploaded_by=user["portal_user_id"],
+            document_type=document_type.strip() if document_type and isinstance(document_type, str) else None,
+            source=(source or "portal").strip() if source else "portal",
+            notes=notes.strip() if notes and isinstance(notes, str) else None,
         )
         
         doc = document.model_dump()
@@ -889,7 +899,7 @@ async def upload_document(
                 actor_user_id=user.get("portal_user_id"),
                 actor_role=ACTOR_ROLE_CLIENT,
                 property_id=property_id,
-                requirement_id=requirement_id or None,
+                requirement_id=requirement_id,
                 document_id=document.document_id,
                 metadata={"filename": file.filename},
             )
@@ -938,9 +948,12 @@ async def admin_upload_document(
     file: UploadFile = File(...),
     client_id: str = Form(...),
     property_id: str = Form(...),
-    requirement_id: str = Form(...)
+    requirement_id: str = Form(...),
+    document_type: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    source: Optional[str] = Form(None),
 ):
-    """Admin uploads document on behalf of client."""
+    """Admin uploads document on behalf of client. Optional document_type, notes, source (default source=admin)."""
     user = await admin_route_guard(request)
     db = database.get_db()
     
@@ -991,7 +1004,10 @@ async def admin_upload_document(
             mime_type=file.content_type or "application/octet-stream",
             status=DocumentStatus.UPLOADED,
             uploaded_by=user["portal_user_id"],
-            manual_review_flag=False
+            manual_review_flag=False,
+            document_type=document_type.strip() if document_type and isinstance(document_type, str) else None,
+            source=(source or "admin").strip() if source else "admin",
+            notes=notes.strip() if notes and isinstance(notes, str) else None,
         )
         
         doc = document.model_dump()
@@ -2081,6 +2097,21 @@ async def apply_ai_extraction(
                 actor_id=user.get("portal_user_id"),
                 correlation_id=f"AI_APPLIED:{document_id}",
             )
+            try:
+                from services.property_assets_service import update_asset_last_service_from_requirement
+                req_type = requirement.get("requirement_type") or requirement.get("requirement_code")
+                last_date = update_fields.get("due_date") or (data.get("expiry_date") if data else None)
+                if req_type and last_date:
+                    last_date_str = last_date.isoformat() if hasattr(last_date, "isoformat") else (last_date if isinstance(last_date, str) else None)
+                    if last_date_str:
+                        await update_asset_last_service_from_requirement(
+                            property_id=property_id,
+                            client_id=document["client_id"],
+                            requirement_type=req_type,
+                            last_service_date=last_date_str,
+                        )
+            except Exception as asset_err:
+                logger.debug("Evidence→asset update skip: %s", asset_err)
         try:
             from services.score_events_service import write_score_event, EVENT_DOCUMENT_CONFIRMED, ACTOR_ROLE_CLIENT
             req_doc = await db.requirements.find_one(

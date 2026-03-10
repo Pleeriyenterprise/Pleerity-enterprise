@@ -650,7 +650,135 @@ async def run_predictive_insights_job():
             count += 1
         except Exception as e:
             logger.warning("Predictive insights skip client %s: %s", c.get("client_id"), e)
+async def run_predictive_insights_job():
+    """Precompute predictive maintenance insights for all clients with PREDICTIVE_MAINTENANCE. Writes to cache."""
+    from database import database
+    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+    from services.predictive_service import get_insights_for_client
+
+    db = database.get_db()
+    clients = await db.clients.find({}, {"_id": 0, "client_id": 1, "billing_plan": 1}).to_list(10000)
+    count = 0
+    for c in clients:
+        try:
+            flags = await get_effective_flags(c["client_id"], c.get("billing_plan"))
+            if not flags.get(PREDICTIVE_MAINTENANCE):
+                continue
+            await get_insights_for_client(c["client_id"])
+            count += 1
+        except Exception as e:
+            logger.warning("Predictive insights skip client %s: %s", c.get("client_id"), e)
     return {"message": f"Predictive insights precomputed for {count} client(s)", "count": count}
+
+
+async def run_risk_signals_job():
+    """Generate stored risk signals for all clients with PREDICTIVE_MAINTENANCE. Writes to risk_signals collection."""
+    from database import database
+    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+    from services import risk_signal_service
+
+    db = database.get_db()
+    clients = await db.clients.find({}, {"_id": 0, "client_id": 1, "billing_plan": 1}).to_list(10000)
+    total_signals = 0
+    count = 0
+    for c in clients:
+        try:
+            flags = await get_effective_flags(c["client_id"], c.get("billing_plan"))
+            if not flags.get(PREDICTIVE_MAINTENANCE):
+                continue
+            out = await risk_signal_service.generate_risk_signals_for_org(c["client_id"])
+            total_signals += out.get("total_signals", 0)
+            count += 1
+        except Exception as e:
+            logger.warning("Risk signals skip client %s: %s", c.get("client_id"), e)
+    return {"message": f"Risk signals generated for {count} client(s), {total_signals} total signals", "count": count, "total_signals": total_signals}
+
+
+async def run_work_order_sla_breach_job():
+    """
+    Work order SLA: set sla_breach_risk_at when approaching respond/complete deadline,
+    sla_breached_at when deadline has passed. Only for status not in (COMPLETED, CANCELLED).
+    """
+    from database import database
+    from services.maintenance_service import STATUS_COMPLETED, STATUS_CANCELLED
+
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    risk_threshold_respond = now + timedelta(hours=4)
+    risk_threshold_complete = now + timedelta(days=1)
+
+    cursor = db.work_orders.find(
+        {"status": {"$nin": [STATUS_COMPLETED, STATUS_CANCELLED]}},
+        {"_id": 1, "work_order_id": 1, "sla_respond_by": 1, "sla_complete_by": 1, "sla_breached_at": 1, "sla_breach_risk_at": 1},
+    )
+    work_orders = await cursor.to_list(500)
+    at_risk_updated = 0
+    breached_updated = 0
+    for wo in work_orders:
+        respond_by = wo.get("sla_respond_by")
+        complete_by = wo.get("sla_complete_by")
+        already_breached = wo.get("sla_breached_at")
+        update = {}
+        # Breached: respond_by or complete_by in the past
+        if not already_breached:
+            is_breached = False
+            if respond_by:
+                try:
+                    r = respond_by if isinstance(respond_by, datetime) else datetime.fromisoformat(respond_by.replace("Z", "+00:00"))
+                    if r.tzinfo is None:
+                        r = r.replace(tzinfo=timezone.utc)
+                    if r <= now:
+                        is_breached = True
+                except Exception:
+                    pass
+            if not is_breached and complete_by:
+                try:
+                    c = complete_by if isinstance(complete_by, datetime) else datetime.fromisoformat(complete_by.replace("Z", "+00:00"))
+                    if c.tzinfo is None:
+                        c = c.replace(tzinfo=timezone.utc)
+                    if c <= now:
+                        is_breached = True
+                except Exception:
+                    pass
+            if is_breached:
+                update["sla_breached_at"] = now_iso
+                update["updated_at"] = now_iso
+                breached_updated += 1
+        # At risk: deadline within next 4h (respond) or 1d (complete), not yet breached
+        if not update and not wo.get("sla_breach_risk_at") and not already_breached:
+            at_risk = False
+            if respond_by:
+                try:
+                    r = respond_by if isinstance(respond_by, datetime) else datetime.fromisoformat(respond_by.replace("Z", "+00:00"))
+                    if r.tzinfo is None:
+                        r = r.replace(tzinfo=timezone.utc)
+                    if now < r <= risk_threshold_respond:
+                        at_risk = True
+                except Exception:
+                    pass
+            if not at_risk and complete_by:
+                try:
+                    c = complete_by if isinstance(complete_by, datetime) else datetime.fromisoformat(complete_by.replace("Z", "+00:00"))
+                    if c.tzinfo is None:
+                        c = c.replace(tzinfo=timezone.utc)
+                    if now < c <= risk_threshold_complete:
+                        at_risk = True
+                except Exception:
+                    pass
+            if at_risk:
+                update["sla_breach_risk_at"] = now_iso
+                update["updated_at"] = now_iso
+                at_risk_updated += 1
+        if update:
+            await db.work_orders.update_one(
+                {"work_order_id": wo["work_order_id"]},
+                {"$set": update},
+            )
+    msg = f"Work order SLA: {at_risk_updated} at-risk, {breached_updated} breached"
+    if at_risk_updated or breached_updated:
+        logger.info(msg)
+    return {"message": msg, "count": at_risk_updated + breached_updated}
 
 
 # Map scheduler job id -> run function (for admin manual run)
@@ -679,4 +807,6 @@ JOB_RUNNERS = {
     "notification_retry_worker": run_notification_retry_worker,
     "pending_payment_lifecycle": run_pending_payment_lifecycle,
     "predictive_insights_job": run_predictive_insights_job,
+    "risk_signals_job": run_risk_signals_job,
+    "work_order_sla_breach_job": run_work_order_sla_breach_job,
 }

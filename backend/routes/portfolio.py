@@ -4,6 +4,7 @@ GET /api/portfolio/compliance-summary: catalog-driven when catalog present, else
 GET /api/portfolio/properties/{id}/compliance-detail: matrix, score, risk (catalog-driven).
 """
 from fastapi import APIRouter, Request, Depends, status, HTTPException
+from fastapi import Query
 from database import database
 from middleware import client_route_guard
 from utils.risk_bands import score_to_risk_level
@@ -12,6 +13,7 @@ from services.catalog_compliance import (
     get_portfolio_compliance_from_catalog,
 )
 from datetime import datetime, timezone
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -235,6 +237,135 @@ async def get_property_score_history_route(request: Request, property_id: str, l
         {"_id": 0, "previous_score": 1, "new_score": 1, "delta": 1, "reason": 1, "changed_requirements": 1, "created_at": 1},
     ).sort("created_at", -1).limit(limit).to_list(limit)
     return {"property_id": property_id, "entries": entries}
+
+
+@router.get("/properties/{property_id}/timeline")
+async def get_property_timeline_route(
+    request: Request,
+    property_id: str,
+    category: Optional[str] = Query(None, description="Filter by category: EVIDENCE, COMPLIANCE, MAINTENANCE, SCORE_RISK, SYSTEM"),
+    actor_type: Optional[str] = Query(None, description="Filter by actor: user, admin, system"),
+    from_date: Optional[str] = Query(None, description="From date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(None, description="To date YYYY-MM-DD"),
+    limit: int = Query(50, ge=1, le=100),
+    cursor: Optional[str] = Query(None, description="Pagination cursor (last timestamp)"),
+):
+    """Unified property timeline: evidence, compliance, maintenance, score events. Chronological, newest first."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    try:
+        from services.property_timeline_service import get_property_timeline
+        data = await get_property_timeline(
+            client_id=user["client_id"],
+            property_id=property_id,
+            category=category,
+            actor_type=actor_type,
+            from_date=from_date,
+            to_date=to_date,
+            limit=limit,
+            cursor=cursor,
+        )
+        return data
+    except Exception as e:
+        logger.exception("Property timeline error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load timeline",
+        )
+
+
+@router.get("/properties/{property_id}/evidence")
+async def get_property_evidence(request: Request, property_id: str):
+    """
+    Evidence vault data for the Property Evidence tab: summary, documents, recent events.
+    Composes existing documents list + requirements + timeline (EVIDENCE category).
+    Additive; does not replace GET /documents.
+    """
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    # Documents for this property (exclude file_path)
+    documents = await db.documents.find(
+        {"client_id": client_id, "property_id": property_id},
+        {"_id": 0, "file_path": 0},
+    ).sort("uploaded_at", -1).to_list(500)
+
+    # Requirements for this property (for missing-critical count)
+    requirements = await db.requirements.find(
+        {"client_id": client_id, "property_id": property_id},
+        {"_id": 0, "requirement_id": 1, "status": 1, "applicability": 1},
+    ).to_list(200)
+
+    # Linked: documents that have a requirement linked
+    linked = sum(1 for d in documents if d.get("requirement_id"))
+    # Requirement IDs that have at least one document linked
+    linked_req_ids = {d.get("requirement_id") for d in documents if d.get("requirement_id")}
+    need_evidence_statuses = {"MISSING", "PENDING", "OVERDUE", "EXPIRING_SOON"}
+    missing_critical = sum(
+        1 for r in requirements
+        if (r.get("status") or "").upper() in need_evidence_statuses
+        and (r.get("applicability") or "").upper() != "NOT_REQUIRED"
+        and r.get("requirement_id") not in linked_req_ids
+    )
+
+    # Pending confirmation: has extraction but status != VERIFIED
+    def _has_extraction(doc):
+        if doc.get("extraction_id"):
+            return True
+        ai = doc.get("ai_extraction") or {}
+        return ai.get("status") == "completed" and ai.get("data")
+    pending_confirmation = sum(
+        1 for d in documents
+        if _has_extraction(d) and (d.get("status") or "").upper() != "VERIFIED"
+    )
+
+    last_uploaded_at = None
+    for d in documents:
+        u = d.get("uploaded_at")
+        if u:
+            last_uploaded_at = u
+            break
+
+    summary = {
+        "totalDocuments": len(documents),
+        "linked": linked,
+        "pendingConfirmation": pending_confirmation,
+        "missingCriticalEvidence": missing_critical,
+        "lastUploadedAt": last_uploaded_at,
+    }
+
+    # Recent evidence events from timeline
+    try:
+        from services.property_timeline_service import get_property_timeline
+        timeline_data = await get_property_timeline(
+            client_id=client_id,
+            property_id=property_id,
+            category="EVIDENCE",
+            limit=20,
+        )
+        recent_events = (timeline_data.get("items") or [])[:20]
+    except Exception as e:
+        logger.warning("Evidence timeline fallback: %s", e)
+        recent_events = []
+
+    return {
+        "summary": summary,
+        "documents": documents,
+        "recentEvents": recent_events,
+    }
 
 
 # Client-visible audit timeline (same event types as admin timeline, excluding admin-only actions)

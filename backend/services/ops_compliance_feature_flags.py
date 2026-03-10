@@ -7,6 +7,7 @@ PREDICTIVE_MAINTENANCE, CONTRACTOR_NETWORK, INVOICING.
 from typing import Dict, List, Optional, Any
 from database import database
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ MAINTENANCE_WORKFLOWS = "MAINTENANCE_WORKFLOWS"
 PREDICTIVE_MAINTENANCE = "PREDICTIVE_MAINTENANCE"
 CONTRACTOR_NETWORK = "CONTRACTOR_NETWORK"
 INVOICING = "INVOICING"
+CONTRACTOR_SELF_REGISTRATION = "CONTRACTOR_SELF_REGISTRATION"
 
 ALL_FLAG_KEYS = [
     COMPLIANCE_ENGINE,
@@ -27,6 +29,7 @@ ALL_FLAG_KEYS = [
     PREDICTIVE_MAINTENANCE,
     CONTRACTOR_NETWORK,
     INVOICING,
+    CONTRACTOR_SELF_REGISTRATION,
 ]
 
 # Plan codes (match plan_registry)
@@ -41,25 +44,28 @@ DEFAULTS_BY_PLAN: Dict[str, Dict[str, bool]] = {
         COMPLIANCE_PACKS: True,
         MAINTENANCE_WORKFLOWS: False,
         PREDICTIVE_MAINTENANCE: False,
-        CONTRACTOR_NETWORK: False,
-        INVOICING: False,
-    },
-    PLAN_2_PORTFOLIO: {
+    CONTRACTOR_NETWORK: False,
+    INVOICING: False,
+    CONTRACTOR_SELF_REGISTRATION: False,
+},
+PLAN_2_PORTFOLIO: {
         COMPLIANCE_ENGINE: True,
         COMPLIANCE_PACKS: True,
         MAINTENANCE_WORKFLOWS: True,
         PREDICTIVE_MAINTENANCE: True,
-        CONTRACTOR_NETWORK: False,
-        INVOICING: False,
-    },
-    PLAN_3_PRO: {
+    CONTRACTOR_NETWORK: False,
+    INVOICING: False,
+    CONTRACTOR_SELF_REGISTRATION: False,
+},
+PLAN_3_PRO: {
         COMPLIANCE_ENGINE: True,
         COMPLIANCE_PACKS: True,
         MAINTENANCE_WORKFLOWS: True,
         PREDICTIVE_MAINTENANCE: True,
-        CONTRACTOR_NETWORK: True,
-        INVOICING: False,
-    },
+    CONTRACTOR_NETWORK: True,
+    INVOICING: False,
+    CONTRACTOR_SELF_REGISTRATION: False,
+},
 }
 
 # Human-readable labels for admin UI
@@ -70,6 +76,7 @@ FLAG_LABELS: Dict[str, str] = {
     PREDICTIVE_MAINTENANCE: "Predictive Maintenance",
     CONTRACTOR_NETWORK: "Contractor Network",
     INVOICING: "Invoicing",
+    CONTRACTOR_SELF_REGISTRATION: "Contractor Self-Registration",
 }
 
 
@@ -164,3 +171,8 @@ async def set_flag(
         upsert=True,
     )
     logger.info("Feature flag set client_id=%s flag_key=%s enabled=%s", client_id, flag_key, enabled)
+
+
+def is_contractor_self_registration_enabled() -> bool:
+    """System-wide: is public contractor self-registration allowed? No client context. Uses env CONTRACTOR_SELF_REGISTRATION_ENABLED."""
+    return os.environ.get("CONTRACTOR_SELF_REGISTRATION_ENABLED", "").strip().lower() in ("1", "true", "yes")

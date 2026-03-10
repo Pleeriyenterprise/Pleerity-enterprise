@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { Wrench, Plus, Loader2, UserPlus, RefreshCw } from 'lucide-react';
@@ -13,6 +13,11 @@ const STATUS_OPTIONS = [
   { value: 'IN_PROGRESS', label: 'In progress' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'SCHEDULED', label: 'Scheduled' },
+  { value: 'AWAITING_PARTS', label: 'Awaiting parts' },
+  { value: 'VERIFIED', label: 'Verified' },
+  { value: 'CLOSED', label: 'Closed' },
 ];
 
 export default function AdminOpsMaintenancePage() {
@@ -215,7 +220,7 @@ export default function AdminOpsMaintenancePage() {
                 {workOrders.map((wo) => (
                   <tr key={wo.work_order_id}>
                     <td className="px-4 py-2 text-sm">
-                      <span className="text-gray-500 font-mono text-xs">{wo.work_order_id?.slice(0, 8)}…</span>
+                      <Link to={`/admin/ops/maintenance/work-orders/${wo.work_order_id}`} className="text-electric-teal hover:underline font-mono text-xs">{wo.work_order_id?.slice(0, 8)}…</Link>
                       <br />
                       <span className="text-gray-700">{wo.property_id}</span>
                     </td>
@@ -257,7 +262,7 @@ export default function AdminOpsMaintenancePage() {
                     </td>
                     <td className="px-4 py-2 text-sm text-gray-500">{formatDate(wo.created_at)}</td>
                     <td className="px-4 py-2 text-right text-sm">
-                      <span className="text-gray-400 text-xs">{wo.source === 'tenant_request' ? 'Tenant' : wo.source || '—'}</span>
+                      <Link to={`/admin/ops/maintenance/work-orders/${wo.work_order_id}`} className="text-electric-teal hover:underline text-xs">View</Link>
                     </td>
                   </tr>
                 ))}
