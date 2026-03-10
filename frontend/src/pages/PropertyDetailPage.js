@@ -715,6 +715,7 @@ export default function PropertyDetailPage() {
 
       {/* Tab: Compliance */}
       {activeTab === TAB_COMPLIANCE && (
+        <>
         <div className="space-y-6">
           {complianceDetail && (
             <>
@@ -835,7 +836,7 @@ export default function PropertyDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <>
+            <div className="space-y-4">
               {!requirements.some((r) => r.evidence_doc_id) && (
                 <Card className="border-amber-200 bg-amber-50/30">
                   <CardContent className="py-6 text-center">
@@ -983,6 +984,8 @@ export default function PropertyDetailPage() {
               </div>
             </>
           )}
+            </div>
+          )}
 
           {/* D) Urgent Items Panel */}
           {getUrgentRequirements().length > 0 && (
@@ -1023,6 +1026,7 @@ export default function PropertyDetailPage() {
           {/* E) Compliance notes strip */}
           <p className="text-xs text-gray-500">Status based on portal records. Informational indicator only. Not legal advice.</p>
         </div>
+        </>
       )}
 
       {/* Tab: Maintenance */}
