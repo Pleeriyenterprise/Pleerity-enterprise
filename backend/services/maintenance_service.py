@@ -146,11 +146,35 @@ async def create_work_order(
     return doc
 
 
+def _apply_sla_state_query(q: dict, sla_state: Optional[str]) -> None:
+    """Add SLA state filter to query. sla_state: 'breached' | 'near_breach' | 'on_track'."""
+    if not sla_state:
+        return
+    s = sla_state.strip().lower()
+    if s == "breached":
+        q["sla_breached_at"] = {"$exists": True, "$ne": None}
+    elif s == "near_breach":
+        q["sla_breach_risk_at"] = {"$exists": True, "$ne": None}
+        q["$or"] = [
+            {"sla_breached_at": None},
+            {"sla_breached_at": {"$exists": False}},
+        ]
+    elif s == "on_track":
+        q["$and"] = [
+            {"$or": [{"sla_breached_at": None}, {"sla_breached_at": {"$exists": False}}]},
+            {"$or": [{"sla_breach_risk_at": None}, {"sla_breach_risk_at": {"$exists": False}}]},
+        ]
+
+
 async def list_work_orders(
     client_id: Optional[str] = None,
     property_id: Optional[str] = None,
     status: Optional[str] = None,
     contractor_id: Optional[str] = None,
+    asset_id: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    sla_state: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
 ) -> Dict[str, Any]:
@@ -162,9 +186,22 @@ async def list_work_orders(
     if property_id is not None:
         q["property_id"] = property_id
     if status is not None:
-        q["status"] = status
+        q["status"] = status.strip().upper()
     if contractor_id is not None:
         q["contractor_id"] = contractor_id
+    if asset_id is not None:
+        q["asset_id"] = asset_id
+    if from_date or to_date:
+        q.setdefault("created_at", {})
+        if from_date:
+            q["created_at"]["$gte"] = (
+                from_date + "T00:00:00.000Z" if "T" not in from_date else from_date
+            )
+        if to_date:
+            q["created_at"]["$lte"] = (
+                to_date + "T23:59:59.999Z" if "T" not in to_date else to_date
+            )
+    _apply_sla_state_query(q, sla_state)
     cursor = db.work_orders.find(q).sort("created_at", -1).skip(skip).limit(limit)
     items = await cursor.to_list(limit)
     for d in items:
@@ -293,6 +330,15 @@ async def update_work_order(
                     await _update_contractor_performance_on_completion(db, result)
                 except Exception as e:
                     logger.warning("Failed to update contractor performance for completed work order: %s", e)
+        if status == STATUS_VERIFIED and result.get("issue_id"):
+            try:
+                await db.maintenance_issues.update_one(
+                    {"issue_id": result["issue_id"]},
+                    {"$set": {"status": "closed", "updated_at": now}},
+                )
+                logger.info("Closed linked issue %s when work order %s set to VERIFIED", result["issue_id"], work_order_id)
+            except Exception as e:
+                logger.warning("Failed to close linked issue when work order verified: %s", e)
     return result
 
 

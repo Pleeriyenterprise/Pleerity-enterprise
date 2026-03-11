@@ -903,6 +903,37 @@ class CreateContractorBody(BaseModel):
     notes: Optional[str] = None
 
 
+@router.post("/contractors/{contractor_id}/submit-to-network")
+async def submit_contractor_to_network(request: Request, contractor_id: str):
+    """Submit a private contractor for network review. Contractor remains private until admin approves. Requires CONTRACTOR_NETWORK."""
+    user = await client_route_guard(request)
+    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
+    from services import contractor_service
+
+    flags = await get_effective_flags(user["client_id"])
+    if not flags.get(CONTRACTOR_NETWORK):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contractor network is not enabled for your account.",
+        )
+    doc = await contractor_service.submit_contractor_to_network(contractor_id, user["client_id"])
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Contractor not found or not eligible for network submission.",
+        )
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_SUBMITTED_TO_NETWORK,
+        client_id=user["client_id"],
+        resource_type="contractor",
+        resource_id=contractor_id,
+        metadata={"submitted_to_network_at": doc.get("submitted_to_network_at")},
+    )
+    return doc
+
+
 @router.post("/contractors")
 async def create_client_contractor(request: Request, body: CreateContractorBody):
     """Landlord adds a contractor. Requires CONTRACTOR_NETWORK. Contractor is visible only to this organisation."""
@@ -930,6 +961,15 @@ async def create_client_contractor(request: Request, body: CreateContractorBody)
         insurance_details=body.insurance_details.strip() if body.insurance_details else None,
         areas_served=body.areas_served,
         notes=body.notes.strip() if body.notes else None,
+    )
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_CREATED,
+        client_id=user["client_id"],
+        resource_type="contractor",
+        resource_id=doc.get("contractor_id"),
+        metadata={"source_type": "landlord_added"},
     )
     return doc
 

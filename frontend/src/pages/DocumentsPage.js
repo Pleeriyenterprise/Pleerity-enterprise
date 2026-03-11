@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -640,6 +640,7 @@ const DocumentsPage = () => {
                   <Upload className="w-5 h-5" />
                   Upload Document
                 </CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Need help? See: <Link to="/help" className="text-electric-teal hover:underline">Uploading Evidence guide</Link> in Help Centre.</p>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleUpload} className="space-y-4" data-testid="upload-form">

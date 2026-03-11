@@ -87,6 +87,17 @@ def _visibility_query(client_id: str) -> Dict[str, Any]:
     }
 
 
+async def contractor_visible_to_client(contractor_id: str, client_id: str) -> bool:
+    """Return True if the contractor is visible to the client (own private, network, or approved marketplace). Used to enforce assignment rules."""
+    if not contractor_id or not client_id:
+        return False
+    db = database.get_db()
+    q = {"contractor_id": contractor_id}
+    q.update(_visibility_query(client_id))
+    doc = await db.contractors.find_one(q, {"_id": 1})
+    return doc is not None
+
+
 async def list_contractors_for_client(
     client_id: str,
     vetted_only: bool = False,
@@ -167,6 +178,12 @@ async def create_contractor(
         "sla_compliance_rate": None,
         "rework_rate": None,
     }
+    if client_id and (source_type or "").strip().lower() == SOURCE_LANDLORD_ADDED:
+        doc["visibility_scope"] = "private"
+    elif not client_id and (source_type or "").strip().lower() == SOURCE_PLATFORM_NETWORK:
+        doc["visibility_scope"] = "network"
+    elif not client_id and (source_type or "").strip().lower() == SOURCE_SELF_REGISTERED and vetted:
+        doc["visibility_scope"] = "marketplace"
     db = database.get_db()
     await db.contractors.insert_one(doc)
     return _sanitize_doc(doc)
@@ -188,6 +205,10 @@ async def update_contractor(
     insurance_details: Optional[str] = None,
     contact_name: Optional[str] = None,
     region: Optional[str] = None,
+    submitted_to_network_at: Optional[str] = None,
+    approved_for_network_at: Optional[str] = None,
+    approved_by_admin_id: Optional[str] = None,
+    network_submission_rejection_reason: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Update a contractor. Only provided fields are updated."""
     from datetime import datetime, timezone
@@ -222,6 +243,14 @@ async def update_contractor(
         update["contact_name"] = contact_name
     if region is not None:
         update["region"] = region
+    if submitted_to_network_at is not None:
+        update["submitted_to_network_at"] = submitted_to_network_at
+    if approved_for_network_at is not None:
+        update["approved_for_network_at"] = approved_for_network_at
+    if approved_by_admin_id is not None:
+        update["approved_by_admin_id"] = approved_by_admin_id
+    if network_submission_rejection_reason is not None:
+        update["network_submission_rejection_reason"] = network_submission_rejection_reason
 
     result = await db.contractors.find_one_and_update(
         {"contractor_id": contractor_id},
@@ -340,6 +369,83 @@ async def create_contractor_self_registered(
 async def approve_contractor(contractor_id: str) -> Optional[Dict[str, Any]]:
     """Set contractor status=active and vetted=True (e.g. after admin review of self-registered)."""
     return await update_contractor(contractor_id, status=STATUS_ACTIVE, vetted=True)
+
+
+async def submit_contractor_to_network(contractor_id: str, client_id: str) -> Optional[Dict[str, Any]]:
+    """Landlord submits their private contractor for network review. Sets submitted_to_network_at. Contractor remains private until admin approves."""
+    db = database.get_db()
+    doc = await db.contractors.find_one({"contractor_id": contractor_id})
+    if not doc:
+        return None
+    if doc.get("client_id") != client_id:
+        return None
+    if doc.get("source_type") != SOURCE_LANDLORD_ADDED:
+        return None
+    if doc.get("submitted_to_network_at"):
+        return _sanitize_doc(doc)
+    now = datetime.now(timezone.utc).isoformat()
+    await db.contractors.update_one(
+        {"contractor_id": contractor_id},
+        {"$set": {"submitted_to_network_at": now, "updated_at": now}},
+    )
+    return await get_contractor(contractor_id)
+
+
+async def approve_contractor_to_network(
+    contractor_id: str,
+    approved_by_admin_id: str,
+) -> Optional[Dict[str, Any]]:
+    """Admin approves a private contractor for the network. Creates a new platform_network contractor (copy) and marks the private record as approved. Private record is unchanged except approved_for_network_at and approved_by_admin_id."""
+    db = database.get_db()
+    private = await db.contractors.find_one({"contractor_id": contractor_id})
+    if not private or private.get("source_type") != SOURCE_LANDLORD_ADDED or not private.get("submitted_to_network_at"):
+        return None
+    now = datetime.now(timezone.utc).isoformat()
+    new_network = await create_contractor_network(
+        company_name=private.get("company_name") or private.get("name") or "Contractor",
+        trade_types=private.get("trade_types") or ["general"],
+        phone=private.get("phone"),
+        email=private.get("email"),
+        region=private.get("region"),
+        credentials=private.get("credentials"),
+        insurance_details=private.get("insurance_details"),
+        areas_served=private.get("areas_served"),
+        contact_name=private.get("contact_name"),
+        notes=private.get("notes"),
+    )
+    await db.contractors.update_one(
+        {"contractor_id": contractor_id},
+        {
+            "$set": {
+                "approved_for_network_at": now,
+                "approved_by_admin_id": approved_by_admin_id,
+                "updated_at": now,
+                "promoted_to_network_contractor_id": new_network.get("contractor_id"),
+            },
+        },
+    )
+    return new_network
+
+
+async def reject_contractor_network_submission(
+    contractor_id: str,
+    reason: Optional[str] = None,
+    rejected_by_admin_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Admin rejects a network submission. Sets network_submission_rejection_reason; submitted_to_network_at is left for audit."""
+    db = database.get_db()
+    doc = await db.contractors.find_one({"contractor_id": contractor_id})
+    if not doc or doc.get("source_type") != SOURCE_LANDLORD_ADDED:
+        return None
+    now = datetime.now(timezone.utc).isoformat()
+    update = {"updated_at": now, "network_submission_rejection_reason": reason or ""}
+    if rejected_by_admin_id is not None:
+        update["network_submission_rejected_by_admin_id"] = rejected_by_admin_id
+    await db.contractors.update_one(
+        {"contractor_id": contractor_id},
+        {"$set": update},
+    )
+    return await get_contractor(contractor_id)
 
 
 RECOMMENDED_TYPE_TO_TRADES = {

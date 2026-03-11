@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import apiClient, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
@@ -1466,7 +1466,16 @@ export default function PropertyDetailPage() {
                       disabled={woUpdateSaving}
                       className="border border-gray-200 rounded-md px-3 py-2 text-sm"
                     >
-                      <option value="OPEN">Open</option><option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In progress</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="OPEN">Open</option>
+                      <option value="ASSIGNED">Assigned</option>
+                      <option value="SCHEDULED">Scheduled</option>
+                      <option value="IN_PROGRESS">In progress</option>
+                      <option value="AWAITING_PARTS">Awaiting parts</option>
+                      <option value="COMPLETED">Completed</option>
+                      <option value="VERIFIED">Verified</option>
+                      <option value="CLOSED">Closed</option>
+                      <option value="CANCELLED">Cancelled</option>
                     </select>
                   </div>
                   {hasFeature('contractor_network') && (
@@ -1513,6 +1522,7 @@ export default function PropertyDetailPage() {
               </Button>
             </div>
           </div>
+          <p className="text-sm text-gray-500">Need help? See: <Link to="/help" className="text-electric-teal hover:underline">Uploading Evidence guide</Link> in Help Centre.</p>
 
           {evidenceLoading ? (
             <div className="flex items-center gap-2 text-gray-500 py-8">

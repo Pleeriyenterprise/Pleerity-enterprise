@@ -49,6 +49,11 @@ async def list_my_work_orders(
     request: Request,
     property_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    contractor_id: Optional[str] = Query(None),
+    asset_id: Optional[str] = Query(None),
+    from_date: Optional[str] = Query(None, description="Filter by created_at >= date (YYYY-MM-DD)"),
+    to_date: Optional[str] = Query(None, description="Filter by created_at <= date (YYYY-MM-DD)"),
+    sla_state: Optional[str] = Query(None, description="breached | near_breach | on_track"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ):
@@ -56,7 +61,6 @@ async def list_my_work_orders(
     user = await _require_maintenance_enabled(request)
     client_id = user["client_id"]
     db = database.get_db()
-    # Ensure property belongs to client if filter applied
     if property_id:
         prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 1})
         if not prop:
@@ -65,6 +69,11 @@ async def list_my_work_orders(
         client_id=client_id,
         property_id=property_id,
         status=status,
+        contractor_id=contractor_id,
+        asset_id=asset_id,
+        from_date=from_date,
+        to_date=to_date,
+        sla_state=sla_state,
         skip=skip,
         limit=limit,
     )
@@ -221,6 +230,13 @@ async def update_my_work_order(request: Request, work_order_id: str, body: Updat
     existing = await maintenance_service.get_work_order(work_order_id)
     if not existing or existing.get("client_id") != user["client_id"]:
         raise HTTPException(status_code=404, detail="Work order not found")
+    if body.contractor_id:
+        visible = await contractor_service.contractor_visible_to_client(body.contractor_id, existing["client_id"])
+        if not visible:
+            raise HTTPException(
+                status_code=403,
+                detail="You cannot assign this contractor to the work order. The contractor is not available to your organisation.",
+            )
     assigned_by = (user.get("email") or user.get("portal_user_id") or user.get("user_id")) if body.contractor_id else None
     doc = await maintenance_service.update_work_order(
         work_order_id,
@@ -233,6 +249,16 @@ async def update_my_work_order(request: Request, work_order_id: str, body: Updat
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
+    if body.contractor_id:
+        from utils.audit import create_audit_log
+        from models import AuditAction
+        await create_audit_log(
+            action=AuditAction.CONTRACTOR_ASSIGNED_TO_WORK_ORDER,
+            client_id=existing["client_id"],
+            resource_type="work_order",
+            resource_id=work_order_id,
+            metadata={"contractor_id": body.contractor_id},
+        )
     return doc
 
 

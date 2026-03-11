@@ -229,6 +229,8 @@ export const clientAPI = {
   updateRiskSignalStatus: (signalId, status) => apiClient.patch(`/client/maintenance/risk-signals/${signalId}`, { status }),
   /** Contractors available to client (requires CONTRACTOR_NETWORK). */
   getContractors: (params = {}) => apiClient.get('/client/contractors', { params }),
+  /** Submit private contractor for network review (requires CONTRACTOR_NETWORK). */
+  submitContractorToNetwork: (contractorId) => apiClient.post(`/client/contractors/${contractorId}/submit-to-network`),
   /** Landlord-add contractor (requires CONTRACTOR_NETWORK). */
   createContractor: (body) => apiClient.post('/client/contractors', body),
   /** Rate a contractor (e.g. after work order). */

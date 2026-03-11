@@ -1,18 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Briefcase, Loader2, AlertCircle, CheckCircle, Plus } from 'lucide-react';
+import { Briefcase, Loader2, AlertCircle, CheckCircle, Plus, Send, UserPlus, Eye, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 
+function sourceLabel(sourceType) {
+  const s = (sourceType || '').toLowerCase();
+  if (s === 'landlord_added') return { label: 'My contractor', class: 'bg-slate-100 text-slate-700' };
+  if (s === 'platform_network') return { label: 'Network', class: 'bg-blue-100 text-blue-800' };
+  if (s === 'self_registered') return { label: 'Marketplace', class: 'bg-emerald-100 text-emerald-800' };
+  return { label: sourceType || '—', class: 'bg-gray-100 text-gray-600' };
+}
+
 export default function ClientContractorsPage() {
+  const navigate = useNavigate();
   const [contractors, setContractors] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('my'); // 'my' | 'network'
+  const [activeTab, setActiveTab] = useState('my'); // 'my' | 'network' | 'marketplace'
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submittingId, setSubmittingId] = useState(null);
   const [addForm, setAddForm] = useState({
     company_name: '',
     trade_types_text: '',
@@ -32,6 +43,7 @@ export default function ClientContractorsPage() {
     const params = { skip: 0, limit: 100 };
     if (activeTab === 'my') params.source_type = 'landlord_added';
     if (activeTab === 'network') params.source_type = 'platform_network';
+    if (activeTab === 'marketplace') params.source_type = 'self_registered';
     clientAPI
       .getContractors(params)
       .then((res) => {
@@ -91,6 +103,29 @@ export default function ClientContractorsPage() {
       .finally(() => setSaving(false));
   };
 
+  const handleSubmitToNetwork = (contractorId) => {
+    setSubmittingId(contractorId);
+    clientAPI.submitContractorToNetwork(contractorId)
+      .then(() => {
+        toast.success('Contractor submitted for network review');
+        load();
+      })
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Submission failed'))
+      .finally(() => setSubmittingId(null));
+  };
+
+  const getCardTitle = () => {
+    if (activeTab === 'my') return 'My contractors';
+    if (activeTab === 'network') return 'Network contractors';
+    return 'Marketplace contractors';
+  };
+
+  const getEmptyMessage = () => {
+    if (activeTab === 'my') return 'No contractors added yet. Click "Add contractor" to add your own trades.';
+    if (activeTab === 'network') return 'No network contractors available. Your administrator can add platform network contractors from Operations & Compliance → Contractors.';
+    return 'No marketplace contractors available yet. Self-registered contractors appear here after admin approval.';
+  };
+
   if (error && !loading) {
     return (
       <div className="p-6 max-w-2xl">
@@ -124,7 +159,7 @@ export default function ClientContractorsPage() {
         Your added contractors and the platform network. Add your own trades or use network contractors for jobs.
       </p>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4 items-center">
         <button
           type="button"
           onClick={() => setActiveTab('my')}
@@ -139,6 +174,13 @@ export default function ClientContractorsPage() {
         >
           Network Contractors
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('marketplace')}
+          className={`px-3 py-1.5 rounded text-sm font-medium ${activeTab === 'marketplace' ? 'bg-electric-teal text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          Marketplace
+        </button>
         {activeTab === 'my' && (
           <Button size="sm" className="ml-auto bg-electric-teal hover:bg-electric-teal/90" onClick={() => setAddFormOpen(true)}>
             <Plus className="w-4 h-4 mr-1" />
@@ -149,7 +191,7 @@ export default function ClientContractorsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{activeTab === 'my' ? 'My contractors' : 'Network contractors'}</CardTitle>
+          <CardTitle>{getCardTitle()}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -159,41 +201,79 @@ export default function ClientContractorsPage() {
             </div>
           ) : contractors.length === 0 ? (
             <p className="text-gray-500 py-6">
-              {activeTab === 'my'
-                ? 'No contractors added yet. Click "Add contractor" to add your own trades.'
-                : 'No network contractors available. Your administrator can add platform network contractors from Operations & Compliance → Contractors.'}
+              {getEmptyMessage()}
             </p>
           ) : (
             <ul className="space-y-3">
-              {contractors.map((c) => (
-                <li
-                  key={c.contractor_id}
-                  className="flex flex-wrap items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900 flex items-center gap-2">
-                      {c.name}
-                      {c.vetted && (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Vetted
+              {contractors.map((c) => {
+                const src = sourceLabel(c.source_type);
+                const isMy = (c.source_type || '').toLowerCase() === 'landlord_added';
+                const canSubmitToNetwork = isMy && !c.submitted_to_network_at;
+                return (
+                  <li
+                    key={c.contractor_id}
+                    className="flex flex-wrap items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                        {c.name}
+                        <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${src.class}`}>
+                          {src.label}
                         </span>
+                        {c.vetted && (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Vetted
+                          </span>
+                        )}
+                        {c.submitted_to_network_at && (
+                          <span className="text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Submitted for review</span>
+                        )}
+                      </p>
+                      {c.company_name && <p className="text-sm text-gray-600">{c.company_name}</p>}
+                      {(c.trade_types?.length > 0) && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {c.trade_types.join(', ')}
+                        </p>
                       )}
-                    </p>
-                    {c.company_name && <p className="text-sm text-gray-600">{c.company_name}</p>}
-                    {(c.trade_types?.length > 0) && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {c.trade_types.join(', ')}
-                      </p>
-                    )}
-                    {(c.phone || c.email) && (
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {[c.phone, c.email].filter(Boolean).join(' · ')}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
+                      {(c.phone || c.email) && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {[c.phone, c.email].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 items-center shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => navigate('/operations/work-orders')}>
+                        <UserPlus className="w-3.5 h-3.5 mr-1" />
+                        Assign
+                      </Button>
+                      {(activeTab === 'network' || activeTab === 'marketplace') && (
+                        <Button size="sm" variant="ghost" onClick={() => navigate('/operations/work-orders')}>
+                          <Eye className="w-3.5 h-3.5 mr-1" />
+                          View
+                        </Button>
+                      )}
+                      {activeTab === 'marketplace' && (
+                        <Button size="sm" variant="ghost" disabled className="text-gray-400">
+                          <FileText className="w-3.5 h-3.5 mr-1" />
+                          Request Quote
+                        </Button>
+                      )}
+                      {canSubmitToNetwork && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSubmitToNetwork(c.contractor_id)}
+                          disabled={submittingId === c.contractor_id}
+                        >
+                          {submittingId === c.contractor_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />}
+                          Submit to Network
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {total > 0 && <p className="text-sm text-gray-500 mt-2">Total: {total}</p>}

@@ -137,6 +137,62 @@ async def approve_contractor(request: Request, contractor_id: str):
     return doc
 
 
+class RejectNetworkSubmissionBody(BaseModel):
+    reason: Optional[str] = None
+
+
+@router.patch("/contractors/{contractor_id}/approve-to-network", dependencies=[Depends(require_owner_or_admin)])
+async def approve_contractor_to_network(request: Request, contractor_id: str):
+    """Approve a landlord-submitted contractor for the platform network. Creates a new network contractor and marks the private record as approved."""
+    user = await admin_route_guard(request)
+    admin_id = user.get("user_id") or user.get("email") or user.get("portal_user_id") or "admin"
+    doc = await contractor_service.approve_contractor_to_network(contractor_id, approved_by_admin_id=admin_id)
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="Contractor not found or not submitted for network review.",
+        )
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_APPROVED_FOR_NETWORK,
+        actor_role=user.get("role"),
+        actor_id=admin_id,
+        resource_type="contractor",
+        resource_id=contractor_id,
+        metadata={"new_network_contractor_id": doc.get("contractor_id")},
+    )
+    return doc
+
+
+@router.patch("/contractors/{contractor_id}/reject-network-submission", dependencies=[Depends(require_owner_or_admin)])
+async def reject_contractor_network_submission(request: Request, contractor_id: str, body: RejectNetworkSubmissionBody):
+    """Reject a landlord-submitted contractor's network submission."""
+    user = await admin_route_guard(request)
+    admin_id = user.get("user_id") or user.get("email") or user.get("portal_user_id")
+    doc = await contractor_service.reject_contractor_network_submission(
+        contractor_id,
+        reason=body.reason,
+        rejected_by_admin_id=admin_id,
+    )
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="Contractor not found or not submitted for network review.",
+        )
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_NETWORK_SUBMISSION_REJECTED,
+        actor_role=user.get("role"),
+        actor_id=admin_id,
+        resource_type="contractor",
+        resource_id=contractor_id,
+        metadata={"reason": (body.reason or "")[:500]},
+    )
+    return doc
+
+
 @router.patch("/contractors/{contractor_id}", dependencies=[Depends(require_owner_or_admin)])
 async def update_contractor(request: Request, contractor_id: str, body: ContractorUpdate):
     """Update a contractor. Owner or Admin only."""
@@ -162,6 +218,16 @@ async def update_contractor(request: Request, contractor_id: str, body: Contract
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Contractor not found")
+    if body.status and body.status.strip().lower() == "suspended":
+        from utils.audit import create_audit_log
+        from models import AuditAction
+        await create_audit_log(
+            action=AuditAction.CONTRACTOR_SUSPENDED,
+            actor_role=user.get("role"),
+            actor_id=user.get("user_id") or user.get("email") or user.get("portal_user_id"),
+            resource_type="contractor",
+            resource_id=contractor_id,
+        )
     return doc
 
 

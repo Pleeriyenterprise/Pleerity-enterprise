@@ -1,13 +1,6 @@
 /**
- * Admin Knowledge Base Management Page
- * 
- * Features:
- * - Article CRUD with rich text editor
- * - Category management
- * - Draft/publish workflow
- * - Search analytics (top searches, no results)
- * - Soft delete
- * - Full audit logging
+ * Admin Knowledge Centre – Internal training and operational documentation.
+ * Article CRUD, categories, draft/publish/archive, PDF export, audit.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -34,13 +27,14 @@ import {
   Tag,
   FolderOpen,
   BarChart3,
-  ArrowUpRight,
   CheckCircle,
   FileText,
   Globe,
   Save,
   XCircle,
   RefreshCw,
+  Download,
+  Archive,
 } from 'lucide-react';
 
 export default function AdminKnowledgeBasePage() {
@@ -53,6 +47,7 @@ export default function AdminKnowledgeBasePage() {
   const [articleSearch, setArticleSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [audienceFilter, setAudienceFilter] = useState('all');
   
   // Categories state
   const [categories, setCategories] = useState([]);
@@ -76,12 +71,15 @@ export default function AdminKnowledgeBasePage() {
     content: '',
     tags: '',
     status: 'draft',
+    audience: 'USER',
+    version: '1.0',
   });
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     icon: '📁',
     description: '',
     order: 0,
+    audience: 'USER',
   });
   const [saving, setSaving] = useState(false);
 
@@ -93,7 +91,8 @@ export default function AdminKnowledgeBasePage() {
       if (articleSearch) params.append('search', articleSearch);
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (categoryFilter !== 'all') params.append('category', categoryFilter);
-      
+      if (audienceFilter !== 'all') params.append('audience', audienceFilter);
+
       const response = await client.get(`/admin/kb/articles?${params.toString()}`);
       setArticles(response.data.articles || []);
     } catch (error) {
@@ -102,7 +101,7 @@ export default function AdminKnowledgeBasePage() {
     } finally {
       setArticlesLoading(false);
     }
-  }, [articleSearch, statusFilter, categoryFilter]);
+  }, [articleSearch, statusFilter, categoryFilter, audienceFilter]);
 
   // Fetch categories
   const fetchCategories = useCallback(async () => {
@@ -148,6 +147,8 @@ export default function AdminKnowledgeBasePage() {
       const payload = {
         ...articleForm,
         tags: articleForm.tags ? articleForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        audience: articleForm.audience || 'USER',
+        version: articleForm.version || '1.0',
       };
 
       if (editingArticle) {
@@ -160,7 +161,7 @@ export default function AdminKnowledgeBasePage() {
 
       setArticleDialogOpen(false);
       setEditingArticle(null);
-      setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft' });
+      setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft', audience: 'USER', version: '1.0' });
       fetchArticles();
     } catch (error) {
       console.error('Failed to save article:', error);
@@ -199,8 +200,9 @@ export default function AdminKnowledgeBasePage() {
     }
   };
 
-  // Publish/unpublish article
+  // Publish/unpublish/archive article
   const toggleArticleStatus = async (article) => {
+    if (article.status === 'archived') return;
     try {
       if (article.status === 'published') {
         await client.post(`/admin/kb/articles/${article.article_id}/unpublish`);
@@ -213,6 +215,37 @@ export default function AdminKnowledgeBasePage() {
     } catch (error) {
       console.error('Failed to toggle status:', error);
       toast.error('Failed to update article status');
+    }
+  };
+
+  const archiveArticle = async (article) => {
+    try {
+      await client.post(`/admin/kb/articles/${article.article_id}/archive`);
+      toast.success('Article archived');
+      fetchArticles();
+    } catch (error) {
+      console.error('Failed to archive article:', error);
+      toast.error('Failed to archive article');
+    }
+  };
+
+  const exportArticlePdf = async (article) => {
+    try {
+      const response = await client.get(
+        `/admin/kb/articles/${article.article_id}/export-pdf`,
+        { responseType: 'blob' }
+      );
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `training-guide-${article.slug || article.article_id}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Download started');
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast.error('Failed to export PDF');
     }
   };
 
@@ -257,6 +290,8 @@ export default function AdminKnowledgeBasePage() {
         content: fullArticle.content || '',
         tags: (fullArticle.tags || []).join(', '),
         status: fullArticle.status || 'draft',
+        audience: fullArticle.audience || 'USER',
+        version: fullArticle.version || '1.0',
       });
       setArticleDialogOpen(true);
     } catch (error) {
@@ -272,7 +307,8 @@ export default function AdminKnowledgeBasePage() {
       name: category.name || '',
       icon: category.icon || '📁',
       description: category.description || '',
-      order: category.order || 0,
+      order: category.order ?? 0,
+      audience: category.audience || 'USER',
     });
     setCategoryDialogOpen(true);
   };
@@ -285,9 +321,9 @@ export default function AdminKnowledgeBasePage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Book className="h-6 w-6 text-teal-600" />
-            Knowledge Base
+            Knowledge Centre
           </h1>
-          <p className="text-gray-500 mt-1">Manage FAQ articles and categories</p>
+          <p className="text-gray-500 mt-1">Internal training, playbooks, and user help documentation</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -304,7 +340,7 @@ export default function AdminKnowledgeBasePage() {
           <Button
             onClick={() => {
               setEditingArticle(null);
-              setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft' });
+              setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft', audience: 'USER', version: '1.0' });
               setArticleDialogOpen(true);
             }}
             className="bg-teal-600 hover:bg-teal-700"
@@ -355,6 +391,18 @@ export default function AdminKnowledgeBasePage() {
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={audienceFilter} onValueChange={setAudienceFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Audience" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Audiences</SelectItem>
+                <SelectItem value="ADMIN">ADMIN</SelectItem>
+                <SelectItem value="STAFF">STAFF</SelectItem>
+                <SelectItem value="USER">USER</SelectItem>
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -403,13 +451,19 @@ export default function AdminKnowledgeBasePage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <Badge variant={article.status === 'published' ? 'default' : 'secondary'}>
+                          <Badge variant={article.status === 'published' ? 'default' : article.status === 'archived' ? 'outline' : 'secondary'}>
                             {article.status === 'published' ? (
                               <><Globe className="h-3 w-3 mr-1" /> Published</>
+                            ) : article.status === 'archived' ? (
+                              <><Archive className="h-3 w-3 mr-1" /> Archived</>
                             ) : (
                               <><EyeOff className="h-3 w-3 mr-1" /> Draft</>
                             )}
                           </Badge>
+                          <Badge variant="outline" className="text-xs">{article.audience || 'USER'}</Badge>
+                          <span className="text-xs text-gray-400">
+                            v{article.version || '1.0'}
+                          </span>
                           <span className="text-xs text-gray-400">
                             {categories.find(c => c.category_id === article.category_id)?.icon}{' '}
                             {categories.find(c => c.category_id === article.category_id)?.name}
@@ -419,7 +473,7 @@ export default function AdminKnowledgeBasePage() {
                         <p className="text-sm text-gray-500 mt-1 line-clamp-2">{article.excerpt}</p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                           <span><Eye className="h-3 w-3 inline mr-1" />{article.view_count || 0} views</span>
-                          <span>Updated: {new Date(article.updated_at).toLocaleDateString()}</span>
+                          <span>Last updated: {article.updated_at ? new Date(article.updated_at).toLocaleDateString() : '—'}</span>
                           {article.tags?.length > 0 && (
                             <span><Tag className="h-3 w-3 inline mr-1" />{article.tags.join(', ')}</span>
                           )}
@@ -429,15 +483,35 @@ export default function AdminKnowledgeBasePage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => toggleArticleStatus(article)}
-                          title={article.status === 'published' ? 'Unpublish' : 'Publish'}
+                          onClick={() => exportArticlePdf(article)}
+                          title="Download Training Guide (PDF)"
                         >
-                          {article.status === 'published' ? (
-                            <EyeOff className="h-4 w-4 text-amber-500" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          )}
+                          <Download className="h-4 w-4 text-gray-500" />
                         </Button>
+                        {article.status !== 'archived' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleArticleStatus(article)}
+                            title={article.status === 'published' ? 'Unpublish' : 'Publish'}
+                          >
+                            {article.status === 'published' ? (
+                              <EyeOff className="h-4 w-4 text-amber-500" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            )}
+                          </Button>
+                        )}
+                        {article.status === 'published' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => archiveArticle(article)}
+                            title="Archive"
+                          >
+                            <Archive className="h-4 w-4 text-gray-500" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -468,7 +542,7 @@ export default function AdminKnowledgeBasePage() {
             <Button
               onClick={() => {
                 setEditingCategory(null);
-                setCategoryForm({ name: '', icon: '📁', description: '', order: 0 });
+                setCategoryForm({ name: '', icon: '📁', description: '', order: 0, audience: 'USER' });
                 setCategoryDialogOpen(true);
               }}
               className="bg-teal-600 hover:bg-teal-700"
@@ -698,8 +772,36 @@ export default function AdminKnowledgeBasePage() {
                   <SelectContent>
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label>Audience</Label>
+                <Select
+                  value={articleForm.audience}
+                  onValueChange={(val) => setArticleForm({ ...articleForm, audience: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ADMIN">ADMIN</SelectItem>
+                    <SelectItem value="STAFF">STAFF</SelectItem>
+                    <SelectItem value="USER">USER</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="version">Version</Label>
+                <Input
+                  id="version"
+                  value={articleForm.version}
+                  onChange={(e) => setArticleForm({ ...articleForm, version: e.target.value })}
+                  placeholder="1.0"
+                />
               </div>
             </div>
 
