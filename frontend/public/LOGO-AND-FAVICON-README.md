@@ -13,4 +13,5 @@ Place your brand assets in **`frontend/public/branding/`** so the app can use th
 
 - **Favicon**: `index.html` uses `%PUBLIC_URL%/branding/favicon.png`. Prefer PNG (e.g. 32×32; 180×180 for apple-touch). Same file is used for both.
 - **Logo**: Components use `BRAND_LOGO_URL` from `src/config/branding.js`, which points to `/branding/pleerity-logo.png`. To use a different name or format, update `branding.js` and any direct references.
+- **Social/OG image**: Optional `frontend/public/branding/og-default.png` is used for Open Graph/social sharing when present; otherwise the app falls back to the logo.
 - After adding files, restart the dev server if they don’t appear (browser may cache the old favicon).
