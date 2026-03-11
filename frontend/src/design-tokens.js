@@ -1,20 +1,30 @@
 /**
  * Compliance Vault Pro – design tokens.
- * Navy header, teal accent, clean cards, soft borders.
+ * Aligned with Pleerity brand: primary #0B1D3A, secondary #00B8A9.
+ * @see src/config/branding.js for canonical brand values.
  */
 
 export const colors = {
-  // Brand
-  navy: '#0f172a',           // header, primary text (midnight-blue)
-  teal: '#0d9488',          // electric-teal, CTAs
+  // Brand (official Pleerity)
+  navy: '#0B1D3A',
+  teal: '#00B8A9',
   tealLight: '#ccfbf1',
-  tealMuted: 'rgba(13, 148, 136, 0.2)',
+  tealMuted: 'rgba(0, 184, 169, 0.2)',
   // Surfaces
   cardBg: '#ffffff',
   pageBg: '#f8fafc',
   border: '#e2e8f0',
   borderSoft: '#f1f5f9',
-  // Status (evidence / risk – no legal verdict)
+  // Semantic / status (brand-aligned where applicable)
+  success: '#10B981',
+  successBg: '#f0fdf4',
+  warning: '#F59E0B',
+  warningBg: '#fffbeb',
+  danger: '#EF4444',
+  dangerBg: '#fef2f2',
+  info: '#3B82F6',
+  infoBg: '#eff6ff',
+  // Evidence / risk (no legal verdict)
   valid: '#15803d',
   validBg: '#f0fdf4',
   missing: '#b91c1c',

@@ -1,45 +1,37 @@
 """
-Knowledge Base / FAQ System Routes
+Knowledge Base / Knowledge & Training Centre
 
-Public endpoints for searching and viewing KB articles.
-Admin endpoints for managing articles and categories.
+Public endpoints: USER audience articles only.
+Admin endpoints: full CRUD, all audiences.
+Client Help Centre (/api/client/help): authenticated users, USER articles only.
 
-Features:
-- Full CRUD for articles with rich text
-- Category management
-- Draft/publish workflow
-- Search with analytics (top searches, no results)
-- View tracking
-- Soft delete
-- Full audit logging
+Features: CRUD, audience (ADMIN|STAFF|USER), categories by scope, version, summary,
+draft/publish/archive, search + analytics, PDF export, audit logging.
 """
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
-from middleware import admin_route_guard
+from middleware import admin_route_guard, client_route_guard
 from database import database
 import logging
 import uuid
 import json
 import re
+import io
 
 logger = logging.getLogger(__name__)
 
-# Routers
 public_router = APIRouter(prefix="/api/kb", tags=["knowledge-base-public"])
 admin_router = APIRouter(prefix="/api/admin/kb", tags=["admin-knowledge-base"])
+client_help_router = APIRouter(prefix="/api/client/help", tags=["client-help-centre"])
 
-# Collections
 ARTICLES_COLLECTION = "kb_articles"
 CATEGORIES_COLLECTION = "kb_categories"
 SEARCH_ANALYTICS_COLLECTION = "kb_search_analytics"
 
-
-# ============================================================================
-# ENUMS
-# ============================================================================
 
 class ArticleStatus(str, Enum):
     DRAFT = "draft"
@@ -47,21 +39,39 @@ class ArticleStatus(str, Enum):
     ARCHIVED = "archived"
 
 
-# ============================================================================
-# DEFAULT CATEGORIES
-# ============================================================================
+class ArticleAudience(str, Enum):
+    ADMIN = "ADMIN"
+    STAFF = "STAFF"
+    USER = "USER"
 
-DEFAULT_CATEGORIES = [
-    {"id": "getting-started", "name": "Getting Started", "icon": "🚀", "order": 1},
-    {"id": "billing-subscriptions", "name": "Billing & Subscriptions", "icon": "💳", "order": 2},
-    {"id": "account-login", "name": "Account & Login", "icon": "🔑", "order": 3},
-    {"id": "cvp", "name": "Compliance Vault Pro (CVP)", "icon": "🏠", "order": 4},
-    {"id": "documents-uploads", "name": "Documents & Uploads", "icon": "📄", "order": 5},
-    {"id": "orders-delivery", "name": "Orders & Delivery", "icon": "📦", "order": 6},
-    {"id": "reports-calendar", "name": "Reports & Calendar", "icon": "📊", "order": 7},
-    {"id": "integrations", "name": "Integrations (Webhooks, WhatsApp)", "icon": "🔗", "order": 8},
-    {"id": "troubleshooting", "name": "Troubleshooting", "icon": "🔧", "order": 9},
+
+# ADMIN Knowledge Centre categories (task)
+DEFAULT_CATEGORIES_ADMIN = [
+    {"id": "staff-training", "name": "Staff Training", "icon": "📚", "order": 1, "audience": "ADMIN"},
+    {"id": "operations-playbooks", "name": "Operations Playbooks", "icon": "📋", "order": 2, "audience": "ADMIN"},
+    {"id": "admin-console", "name": "Admin Console", "icon": "⚙️", "order": 3, "audience": "ADMIN"},
+    {"id": "provisioning", "name": "Provisioning", "icon": "🔧", "order": 4, "audience": "ADMIN"},
+    {"id": "compliance-engine", "name": "Compliance Engine", "icon": "✅", "order": 5, "audience": "ADMIN"},
+    {"id": "job-monitoring", "name": "Job Monitoring", "icon": "📊", "order": 6, "audience": "ADMIN"},
+    {"id": "feature-flags", "name": "Feature Flags", "icon": "🚩", "order": 7, "audience": "ADMIN"},
+    {"id": "support-procedures", "name": "Support Procedures", "icon": "🎧", "order": 8, "audience": "ADMIN"},
+    {"id": "release-notes", "name": "Release Notes", "icon": "📦", "order": 9, "audience": "ADMIN"},
 ]
+
+# USER Help Centre categories (task)
+DEFAULT_CATEGORIES_USER = [
+    {"id": "getting-started", "name": "Getting Started", "icon": "🚀", "order": 1, "audience": "USER"},
+    {"id": "adding-properties", "name": "Adding Properties", "icon": "🏠", "order": 2, "audience": "USER"},
+    {"id": "documents-uploads", "name": "Uploading Evidence", "icon": "📄", "order": 3, "audience": "USER"},
+    {"id": "compliance-score", "name": "Compliance Score", "icon": "📈", "order": 4, "audience": "USER"},
+    {"id": "dashboard-guide", "name": "Dashboard Guide", "icon": "📊", "order": 5, "audience": "USER"},
+    {"id": "reminders", "name": "Reminders", "icon": "🔔", "order": 6, "audience": "USER"},
+    {"id": "compliance-packs", "name": "Compliance Packs", "icon": "📁", "order": 7, "audience": "USER"},
+    {"id": "billing-subscriptions", "name": "Billing", "icon": "💳", "order": 8, "audience": "USER"},
+    {"id": "troubleshooting", "name": "Troubleshooting", "icon": "🔧", "order": 9, "audience": "USER"},
+]
+
+DEFAULT_CATEGORIES = DEFAULT_CATEGORIES_ADMIN + DEFAULT_CATEGORIES_USER
 
 
 # ============================================================================
@@ -71,14 +81,24 @@ DEFAULT_CATEGORIES = [
 class ArticleCreate(BaseModel):
     """Request to create a KB article."""
     title: str = Field(..., min_length=5, max_length=200)
-    slug: Optional[str] = None  # Auto-generated if not provided
+    slug: Optional[str] = None
     category_id: str
     excerpt: str = Field(..., min_length=10, max_length=500)
-    content: str = Field(..., min_length=50)  # Rich text content
+    content: str = Field(..., min_length=50)
     tags: Optional[List[str]] = None
     status: ArticleStatus = ArticleStatus.DRAFT
+    audience: ArticleAudience = ArticleAudience.USER
+    version: Optional[str] = "1.0"
+    summary: Optional[str] = None  # alias/supplement to excerpt for task compatibility
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
+    product_module: Optional[str] = None
+    related_feature_flags: Optional[List[str]] = None
+    article_type: Optional[str] = None  # "release_notes" | None
+    release_version: Optional[str] = None
+    release_date: Optional[str] = None
+    changes: Optional[List[str]] = None
+    affected_modules: Optional[List[str]] = None
 
 
 class ArticleUpdate(BaseModel):
@@ -88,9 +108,18 @@ class ArticleUpdate(BaseModel):
     excerpt: Optional[str] = Field(None, min_length=10, max_length=500)
     content: Optional[str] = Field(None, min_length=50)
     tags: Optional[List[str]] = None
+    audience: Optional[ArticleAudience] = None
+    version: Optional[str] = None
+    summary: Optional[str] = None
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
-    # Note: slug is NOT updatable for URL stability
+    product_module: Optional[str] = None
+    related_feature_flags: Optional[List[str]] = None
+    article_type: Optional[str] = None
+    release_version: Optional[str] = None
+    release_date: Optional[str] = None
+    changes: Optional[List[str]] = None
+    affected_modules: Optional[List[str]] = None
 
 
 class CategoryCreate(BaseModel):
@@ -99,6 +128,7 @@ class CategoryCreate(BaseModel):
     icon: str = "📁"
     description: Optional[str] = None
     order: int = 0
+    audience: Optional[str] = None  # ADMIN | USER
 
 
 class CategoryUpdate(BaseModel):
@@ -107,6 +137,7 @@ class CategoryUpdate(BaseModel):
     icon: Optional[str] = None
     description: Optional[str] = None
     order: Optional[int] = None
+    audience: Optional[str] = None
 
 
 # ============================================================================
@@ -157,10 +188,10 @@ async def log_kb_action(
 
 
 async def ensure_default_categories():
-    """Ensure default categories exist."""
+    """Ensure default categories exist (ADMIN + USER sets)."""
     db = database.get_db()
     now = datetime.now(timezone.utc).isoformat()
-    
+
     for cat in DEFAULT_CATEGORIES:
         existing = await db[CATEGORIES_COLLECTION].find_one({"category_id": cat["id"]})
         if not existing:
@@ -169,6 +200,7 @@ async def ensure_default_categories():
                 "name": cat["name"],
                 "icon": cat["icon"],
                 "order": cat["order"],
+                "audience": cat.get("audience", "USER"),
                 "description": None,
                 "is_active": True,
                 "article_count": 0,
@@ -190,6 +222,88 @@ async def log_search_analytics(query: str, results_count: int, ip_address: str =
     })
 
 
+def _build_article_pdf(article: dict) -> io.BytesIO:
+    """Build a PDF for a KB article (title, version, date, content, page numbers, Pleerity branding)."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageTemplate, Frame
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from xml.sax.saxutils import escape
+    from utils.branding import COMPANY_NAME
+
+    output = io.BytesIO()
+    doc = SimpleDocTemplate(
+        output,
+        pagesize=A4,
+        rightMargin=inch,
+        leftMargin=inch,
+        topMargin=inch,
+        bottomMargin=inch,
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "KbTitle",
+        parent=styles["Heading1"],
+        fontSize=16,
+        spaceAfter=6,
+        textColor=colors.HexColor("#0B1D3A"),
+    )
+    meta_style = ParagraphStyle(
+        "KbMeta",
+        parent=styles["Normal"],
+        fontSize=9,
+        spaceAfter=4,
+        textColor=colors.grey,
+    )
+    body_style = ParagraphStyle(
+        "KbBody",
+        parent=styles["Normal"],
+        fontSize=10,
+        spaceAfter=8,
+        textColor=colors.HexColor("#1a1a1a"),
+    )
+
+    elements = []
+    elements.append(Paragraph(escape(article.get("title", "Untitled")), title_style))
+    version = article.get("version") or "1.0"
+    updated = article.get("updated_at") or article.get("created_at") or ""
+    if updated:
+        try:
+            from dateutil import parser as date_parser
+            dt = date_parser.parse(updated)
+            updated = dt.strftime("%d %b %Y")
+        except Exception:
+            updated = str(updated)[:10]
+    elements.append(Paragraph(f"Version {escape(version)} &middot; Last updated: {escape(updated)}", meta_style))
+    elements.append(Spacer(1, 12))
+
+    content = article.get("content") or ""
+    # Simple markdown-ish to plain: strip headers markers, bold/italic markers, keep newlines
+    content_plain = re.sub(r"^#{1,6}\s*", "", content, flags=re.MULTILINE)
+    content_plain = re.sub(r"\*+", "", content_plain)
+    content_plain = re.sub(r"^-\s*", "", content_plain, flags=re.MULTILINE)
+    for block in content_plain.split("\n\n"):
+        block = block.strip()
+        if not block:
+            continue
+        block = escape(block).replace("\n", "<br/>")
+        elements.append(Paragraph(block, body_style))
+
+    def add_footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.HexColor("#0B1D3A"))
+        canvas.drawString(inch, inch * 0.5, COMPANY_NAME)
+        page_num = canvas.getPageNumber()
+        canvas.drawRightString(A4[0] - inch, inch * 0.5, f"Page {page_num}")
+        canvas.restoreState()
+
+    doc.build(elements, onFirstPage=add_footer, onLaterPages=add_footer)
+    output.seek(0)
+    return output
+
+
 # ============================================================================
 # PUBLIC ENDPOINTS
 # ============================================================================
@@ -203,45 +317,47 @@ async def list_public_articles(
     skip: int = Query(0, ge=0),
     request: Request = None,
 ):
-    """List published KB articles."""
+    """List published KB articles visible to end users (USER audience only)."""
     db = database.get_db()
-    
-    # Build filter - only published and active
+
     filter_query = {
         "status": ArticleStatus.PUBLISHED.value,
         "is_active": True,
+        "$or": [
+            {"audience": ArticleAudience.USER.value},
+            {"audience": {"$exists": False}},
+        ],
     }
-    
+
     if category:
         filter_query["category_id"] = category
     if tag:
         filter_query["tags"] = tag
     if search:
-        filter_query["$or"] = [
-            {"title": {"$regex": search, "$options": "i"}},
-            {"excerpt": {"$regex": search, "$options": "i"}},
-            {"content": {"$regex": search, "$options": "i"}},
-            {"tags": {"$regex": search, "$options": "i"}},
+        filter_query["$and"] = [
+            {"$or": [
+                {"title": {"$regex": search, "$options": "i"}},
+                {"excerpt": {"$regex": search, "$options": "i"}},
+                {"content": {"$regex": search, "$options": "i"}},
+                {"tags": {"$regex": search, "$options": "i"}},
+            ]}
         ]
-    
-    # Get articles
+
+    # Sort: when search present, prefer relevance (title match first, then excerpt); else by published_at
+    sort_spec = [("order", 1), ("published_at", -1)]
     cursor = db[ARTICLES_COLLECTION].find(
         filter_query,
-        {"_id": 0, "content": 0}  # Exclude full content for list view
-    ).sort([("order", 1), ("published_at", -1)]).skip(skip).limit(limit)
-    
+        {"_id": 0, "content": 0}
+    ).sort(sort_spec).skip(skip).limit(limit)
+
     articles = await cursor.to_list(length=limit)
     total = await db[ARTICLES_COLLECTION].count_documents(filter_query)
-    
-    # Log search if query provided
+
     if search:
         ip = request.client.host if request and request.client else None
         await log_search_analytics(search, len(articles), ip)
-    
-    return {
-        "articles": articles,
-        "total": total,
-    }
+
+    return {"articles": articles, "total": total}
 
 
 @public_router.get("/articles/{slug}")
@@ -249,11 +365,19 @@ async def get_public_article(
     slug: str,
     request: Request = None,
 ):
-    """Get a single published article by slug (increments view count)."""
+    """Get a single published article by slug (USER audience or no audience). Increments view count."""
     db = database.get_db()
-    
+
     article = await db[ARTICLES_COLLECTION].find_one(
-        {"slug": slug, "status": ArticleStatus.PUBLISHED.value, "is_active": True},
+        {
+            "slug": slug,
+            "status": ArticleStatus.PUBLISHED.value,
+            "is_active": True,
+            "$or": [
+                {"audience": ArticleAudience.USER.value},
+                {"audience": {"$exists": False}},
+            ],
+        },
         {"_id": 0}
     )
     
@@ -266,14 +390,19 @@ async def get_public_article(
         {"$inc": {"view_count": 1}}
     )
     
-    # Get related articles (same category, limit 3)
+    # Get related articles (same category, limit 3, USER or no audience)
+    related_filter = {
+        "category_id": article["category_id"],
+        "slug": {"$ne": slug},
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [
+            {"audience": ArticleAudience.USER.value},
+            {"audience": {"$exists": False}},
+        ],
+    }
     related_cursor = db[ARTICLES_COLLECTION].find(
-        {
-            "category_id": article["category_id"],
-            "slug": {"$ne": slug},
-            "status": ArticleStatus.PUBLISHED.value,
-            "is_active": True,
-        },
+        related_filter,
         {"_id": 0, "content": 0}
     ).limit(3)
     related = await related_cursor.to_list(length=3)
@@ -286,75 +415,190 @@ async def get_public_article(
 
 @public_router.get("/categories")
 async def list_public_categories():
-    """List all active categories with article counts."""
+    """List active USER-scoped categories with article counts (published USER articles only)."""
     db = database.get_db()
     await ensure_default_categories()
-    
+
+    # Categories with audience USER or no audience (backward compat)
     cursor = db[CATEGORIES_COLLECTION].find(
-        {"is_active": True},
+        {"is_active": True, "$or": [{"audience": "USER"}, {"audience": {"$exists": False}}]},
         {"_id": 0}
     ).sort("order", 1)
-    
+
     categories = await cursor.to_list(length=50)
-    
-    # Get article counts per category
+
+    article_match = {
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [{"audience": ArticleAudience.USER.value}, {"audience": {"$exists": False}}],
+    }
     pipeline = [
-        {"$match": {"status": ArticleStatus.PUBLISHED.value, "is_active": True}},
+        {"$match": article_match},
         {"$group": {"_id": "$category_id", "count": {"$sum": 1}}},
     ]
     counts = {}
     async for doc in db[ARTICLES_COLLECTION].aggregate(pipeline):
         counts[doc["_id"]] = doc["count"]
-    
+
     for cat in categories:
-        cat["article_count"] = counts.get(cat["category_id"], 0)
-    
+        cat["article_count"] = counts.get(cat.get("category_id"), 0)
+
     return {"categories": categories}
 
 
 @public_router.get("/featured")
 async def get_featured_articles():
-    """Get featured/popular articles for homepage."""
+    """Get featured/popular articles (USER audience only)."""
     db = database.get_db()
-    
-    # Get top viewed articles
+
+    user_filter = {
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [{"audience": ArticleAudience.USER.value}, {"audience": {"$exists": False}}],
+    }
     popular_cursor = db[ARTICLES_COLLECTION].find(
-        {"status": ArticleStatus.PUBLISHED.value, "is_active": True},
+        user_filter,
         {"_id": 0, "content": 0}
     ).sort("view_count", -1).limit(5)
     popular = await popular_cursor.to_list(length=5)
-    
-    # Get recent articles
+
     recent_cursor = db[ARTICLES_COLLECTION].find(
-        {"status": ArticleStatus.PUBLISHED.value, "is_active": True},
+        user_filter,
         {"_id": 0, "content": 0}
     ).sort("published_at", -1).limit(5)
     recent = await recent_cursor.to_list(length=5)
-    
-    return {
-        "popular": popular,
-        "recent": recent,
-    }
+
+    return {"popular": popular, "recent": recent}
 
 
 @public_router.get("/tags/popular")
 async def get_popular_tags():
-    """Get most used tags."""
+    """Get most used tags (USER audience articles only)."""
     db = database.get_db()
-    
+
+    match = {
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [{"audience": ArticleAudience.USER.value}, {"audience": {"$exists": False}}],
+    }
     pipeline = [
-        {"$match": {"status": ArticleStatus.PUBLISHED.value, "is_active": True}},
+        {"$match": match},
         {"$unwind": "$tags"},
         {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 20},
     ]
-    
     tags = []
     async for doc in db[ARTICLES_COLLECTION].aggregate(pipeline):
         tags.append({"tag": doc["_id"], "count": doc["count"]})
-    
     return {"tags": tags}
+
+
+# ============================================================================
+# CLIENT HELP CENTRE (authenticated portal users, USER audience only)
+# ============================================================================
+
+@client_help_router.get("/articles")
+async def client_help_list_articles(
+    category: Optional[str] = None,
+    tag: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = Query(20, le=100),
+    skip: int = Query(0, ge=0),
+    request: Request = None,
+    current_user: dict = Depends(client_route_guard),
+):
+    """List published USER-scoped articles for Help Centre (authenticated client)."""
+    db = database.get_db()
+
+    filter_query = {
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [{"audience": ArticleAudience.USER.value}, {"audience": {"$exists": False}}],
+    }
+    if category:
+        filter_query["category_id"] = category
+    if tag:
+        filter_query["tags"] = tag
+    if search:
+        filter_query["$and"] = [
+            {"$or": [
+                {"title": {"$regex": search, "$options": "i"}},
+                {"excerpt": {"$regex": search, "$options": "i"}},
+                {"content": {"$regex": search, "$options": "i"}},
+                {"tags": {"$regex": search, "$options": "i"}},
+            ]}
+        ]
+
+    cursor = db[ARTICLES_COLLECTION].find(
+        filter_query,
+        {"_id": 0, "content": 0}
+    ).sort([("order", 1), ("published_at", -1)]).skip(skip).limit(limit)
+    articles = await cursor.to_list(length=limit)
+    total = await db[ARTICLES_COLLECTION].count_documents(filter_query)
+    return {"articles": articles, "total": total}
+
+
+@client_help_router.get("/articles/{slug}")
+async def client_help_get_article(
+    slug: str,
+    request: Request = None,
+    current_user: dict = Depends(client_route_guard),
+):
+    """Get one published USER article by slug (for Help Centre)."""
+    db = database.get_db()
+
+    article = await db[ARTICLES_COLLECTION].find_one(
+        {
+            "slug": slug,
+            "status": ArticleStatus.PUBLISHED.value,
+            "is_active": True,
+            "$or": [{"audience": ArticleAudience.USER.value}, {"audience": {"$exists": False}}],
+        },
+        {"_id": 0}
+    )
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    await db[ARTICLES_COLLECTION].update_one({"slug": slug}, {"$inc": {"view_count": 1}})
+
+    related_filter = {
+        "category_id": article["category_id"],
+        "slug": {"$ne": slug},
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [{"audience": ArticleAudience.USER.value}, {"audience": {"$exists": False}}],
+    }
+    related = await db[ARTICLES_COLLECTION].find(related_filter, {"_id": 0, "content": 0}).limit(3).to_list(length=3)
+    return {**article, "related_articles": related}
+
+
+@client_help_router.get("/categories")
+async def client_help_list_categories(
+    current_user: dict = Depends(client_route_guard),
+):
+    """List USER-scoped categories with article counts for Help Centre."""
+    db = database.get_db()
+    await ensure_default_categories()
+
+    cursor = db[CATEGORIES_COLLECTION].find(
+        {"is_active": True, "$or": [{"audience": "USER"}, {"audience": {"$exists": False}}]},
+        {"_id": 0}
+    ).sort("order", 1)
+    categories = await cursor.to_list(length=50)
+
+    article_match = {
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [{"audience": ArticleAudience.USER.value}, {"audience": {"$exists": False}}],
+    }
+    pipeline = [{"$match": article_match}, {"$group": {"_id": "$category_id", "count": {"$sum": 1}}}]
+    counts = {}
+    async for doc in db[ARTICLES_COLLECTION].aggregate(pipeline):
+        counts[doc["_id"]] = doc["count"]
+    for cat in categories:
+        cat["article_count"] = counts.get(cat.get("category_id"), 0)
+    return {"categories": categories}
 
 
 # ============================================================================
@@ -365,15 +609,16 @@ async def get_popular_tags():
 async def admin_list_articles(
     status: Optional[ArticleStatus] = None,
     category: Optional[str] = None,
+    audience: Optional[str] = None,
     search: Optional[str] = None,
     include_inactive: bool = False,
     limit: int = Query(50, le=200),
     skip: int = Query(0, ge=0),
     current_user: dict = Depends(admin_route_guard)
 ):
-    """List all articles for admin (includes drafts)."""
+    """List all articles for admin (includes drafts). Returns audience, version, updated_at."""
     db = database.get_db()
-    
+
     filter_query = {}
     if not include_inactive:
         filter_query["is_active"] = True
@@ -381,31 +626,29 @@ async def admin_list_articles(
         filter_query["status"] = status.value
     if category:
         filter_query["category_id"] = category
+    if audience:
+        filter_query["audience"] = audience
     if search:
         filter_query["$or"] = [
             {"title": {"$regex": search, "$options": "i"}},
             {"excerpt": {"$regex": search, "$options": "i"}},
         ]
-    
+
     cursor = db[ARTICLES_COLLECTION].find(
         filter_query,
         {"_id": 0, "content": 0}
-    ).sort([("status", 1), ("updated_at", -1)]).skip(skip).limit(limit)
-    
+    ).sort([("updated_at", -1), ("status", 1)]).skip(skip).limit(limit)
+
     articles = await cursor.to_list(length=limit)
     total = await db[ARTICLES_COLLECTION].count_documents(filter_query)
-    
-    # Get stats
+
     total_published = await db[ARTICLES_COLLECTION].count_documents({"status": "published", "is_active": True})
     total_draft = await db[ARTICLES_COLLECTION].count_documents({"status": "draft", "is_active": True})
-    
+
     return {
         "articles": articles,
         "total": total,
-        "stats": {
-            "published": total_published,
-            "draft": total_draft,
-        },
+        "stats": {"published": total_published, "draft": total_draft},
     }
 
 
@@ -426,6 +669,26 @@ async def admin_get_article(
         raise HTTPException(status_code=404, detail="Article not found")
     
     return article
+
+
+@admin_router.get("/articles/{article_id}/export-pdf")
+async def admin_export_article_pdf(
+    article_id: str,
+    current_user: dict = Depends(admin_route_guard)
+):
+    """Export article as PDF (Download Training Guide). Branded with title, version, date, content, page numbers."""
+    db = database.get_db()
+    article = await db[ARTICLES_COLLECTION].find_one({"article_id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    buf = _build_article_pdf(article)
+    filename = f"training-guide-{article.get('slug', article_id)}.pdf"
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @admin_router.post("/articles")
@@ -455,10 +718,20 @@ async def admin_create_article(
         "content": request.content,
         "tags": request.tags or [],
         "status": request.status.value,
+        "audience": request.audience.value,
+        "version": request.version or "1.0",
+        "summary": request.summary or request.excerpt[:500] if request.excerpt else None,
         "meta_title": request.meta_title or request.title,
         "meta_description": request.meta_description or request.excerpt,
         "view_count": 0,
         "is_active": True,
+        "product_module": request.product_module,
+        "related_feature_flags": request.related_feature_flags or [],
+        "article_type": request.article_type,
+        "release_version": request.release_version,
+        "release_date": request.release_date,
+        "changes": request.changes or [],
+        "affected_modules": request.affected_modules or [],
         "created_at": now,
         "created_by": current_user.get("email"),
         "updated_at": now,
@@ -518,11 +791,31 @@ async def admin_update_article(
         update_data["content"] = request.content
     if request.tags is not None:
         update_data["tags"] = request.tags
+    if request.audience is not None:
+        update_data["audience"] = request.audience.value
+    if request.version is not None:
+        update_data["version"] = request.version
+    if request.summary is not None:
+        update_data["summary"] = request.summary
     if request.meta_title is not None:
         update_data["meta_title"] = request.meta_title
     if request.meta_description is not None:
         update_data["meta_description"] = request.meta_description
-    
+    if request.product_module is not None:
+        update_data["product_module"] = request.product_module
+    if request.related_feature_flags is not None:
+        update_data["related_feature_flags"] = request.related_feature_flags
+    if request.article_type is not None:
+        update_data["article_type"] = request.article_type
+    if request.release_version is not None:
+        update_data["release_version"] = request.release_version
+    if request.release_date is not None:
+        update_data["release_date"] = request.release_date
+    if request.changes is not None:
+        update_data["changes"] = request.changes
+    if request.affected_modules is not None:
+        update_data["affected_modules"] = request.affected_modules
+
     await db[ARTICLES_COLLECTION].update_one(
         {"article_id": article_id},
         {"$set": update_data}
@@ -614,6 +907,33 @@ async def admin_unpublish_article(
     return {"success": True, "status": "draft"}
 
 
+@admin_router.post("/articles/{article_id}/archive")
+async def admin_archive_article(
+    article_id: str,
+    current_user: dict = Depends(admin_route_guard)
+):
+    """Set article status to archived (visible in admin only, not in public or help centre)."""
+    db = database.get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    current = await db[ARTICLES_COLLECTION].find_one({"article_id": article_id})
+    if not current:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    await db[ARTICLES_COLLECTION].update_one(
+        {"article_id": article_id},
+        {"$set": {"status": ArticleStatus.ARCHIVED.value, "updated_at": now, "updated_by": current_user.get("email")}}
+    )
+
+    await log_kb_action(
+        action="KB_ARTICLE_ARCHIVED",
+        resource_type="kb_article",
+        resource_id=article_id,
+        actor_email=current_user.get("email"),
+    )
+    return {"success": True, "status": "archived"}
+
+
 @admin_router.delete("/articles/{article_id}")
 async def admin_deactivate_article(
     article_id: str,
@@ -697,6 +1017,7 @@ async def admin_create_category(
         "icon": request.icon,
         "description": request.description,
         "order": request.order,
+        "audience": request.audience or "USER",
         "is_active": True,
         "article_count": 0,
         "created_at": now,
@@ -728,6 +1049,8 @@ async def admin_update_category(
         update_data["description"] = request.description
     if request.order is not None:
         update_data["order"] = request.order
+    if request.audience is not None:
+        update_data["audience"] = request.audience
     
     result = await db[CATEGORIES_COLLECTION].update_one(
         {"category_id": category_id},

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { BRAND_LOGO_URL, branding } from '../../config/branding';
 
 /**
  * Minimal layout for conversion funnels (e.g. /risk-check).
@@ -12,7 +13,7 @@ const FunnelLayout = ({ children, className = '' }) => {
       <header className="border-b border-gray-200 sticky top-0 z-50 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 flex justify-between items-center h-14">
           <Link to="/" className="flex items-center" data-testid="funnel-logo">
-            <img src="/pleerity-logo.jpg" alt="Pleerity" className="h-8 w-auto" />
+            <img src={BRAND_LOGO_URL} alt={branding.companyName} className="h-8 w-auto" />
           </Link>
           <Link
             to="/"

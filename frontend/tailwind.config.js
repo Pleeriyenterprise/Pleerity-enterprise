@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-/** Brand colors aligned with src/design-tokens.js (navy, teal). */
+/** Brand colors: midnight-blue #0B1D3A, electric-teal #00B8A9. See src/config/branding.js */
 module.exports = {
   darkMode: ["class"],
   content: [

@@ -33,6 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { documentsApi } from '../api/clearformApi';
 import { toast } from 'sonner';
+import { BRAND_LOGO_URL } from '../../config/branding';
 
 // Configure PDF.js worker - use local worker file
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -258,7 +259,7 @@ const ClearFormDocumentPage = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/clearform/dashboard" className="flex items-center gap-3">
             <img 
-              src="/pleerity-logo.jpg" 
+              src={BRAND_LOGO_URL} 
               alt="Pleerity" 
               className="h-8 w-auto"
             />

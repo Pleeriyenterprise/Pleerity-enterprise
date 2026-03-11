@@ -1,5 +1,6 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { SITE_URL, SCHEMA_LOGO_URL, branding } from '../../config/branding';
 
 /**
  * SEOHead - Manages all SEO meta tags for public pages
@@ -9,15 +10,15 @@ export const SEOHead = ({
   title,
   description,
   canonicalUrl,
-  ogImage = '/og-default.png',
+  ogImage,
   ogType = 'website',
   schema = null,
   noIndex = false,
 }) => {
-  const siteUrl = 'https://pleerity.com';
-  const fullTitle = title ? `${title} | Pleerity Enterprise` : 'Pleerity Enterprise - AI-Powered Landlord Compliance';
-  const fullCanonical = canonicalUrl ? `${siteUrl}${canonicalUrl}` : siteUrl;
-  const fullOgImage = ogImage.startsWith('http') ? ogImage : `${siteUrl}${ogImage}`;
+  const defaultOgImage = (typeof ogImage === 'string' && ogImage) ? ogImage : branding.ogImageUrlFallback;
+  const fullTitle = title ? `${title} | ${branding.companyName}` : `${branding.companyName} - ${branding.tagline}`;
+  const fullCanonical = canonicalUrl ? `${SITE_URL}${canonicalUrl}` : SITE_URL;
+  const fullOgImage = defaultOgImage.startsWith('http') ? defaultOgImage : `${SITE_URL}${defaultOgImage}`;
 
   return (
     <Helmet>
@@ -25,7 +26,7 @@ export const SEOHead = ({
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={fullCanonical} />
-      
+
       {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
       {/* Open Graph / Facebook */}
@@ -34,7 +35,7 @@ export const SEOHead = ({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={fullOgImage} />
-      <meta property="og:site_name" content="Pleerity Enterprise" />
+      <meta property="og:site_name" content={branding.companyName} />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
@@ -59,7 +60,7 @@ export const organizationSchema = {
   "@type": "Organization",
   "name": "Pleerity Enterprise Ltd",
   "url": "https://pleerity.com",
-  "logo": "https://pleerity.com/logo.png",
+  "logo": SCHEMA_LOGO_URL,
   "description": "AI-powered compliance and workflow automation for UK landlords and letting agents.",
   "address": {
     "@type": "PostalAddress",
@@ -119,7 +120,7 @@ export const createArticleSchema = (title, excerpt, publishedAt, updatedAt) => (
     "name": "Pleerity Enterprise Ltd",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://pleerity.com/logo.png"
+      "url": SCHEMA_LOGO_URL
     }
   }
 });

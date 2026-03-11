@@ -10,6 +10,7 @@ import { FileText, Zap, CreditCard, Folder, ArrowRight, Check } from 'lucide-rea
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { documentsApi, subscriptionsApi } from '../api/clearformApi';
+import { BRAND_LOGO_URL } from '../../config/branding';
 
 const ClearFormLandingPage = () => {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ const ClearFormLandingPage = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/clearform" className="flex items-center gap-3">
             <img 
-              src="/pleerity-logo.jpg" 
+              src={BRAND_LOGO_URL} 
               alt="Pleerity" 
               className="h-8 w-auto"
             />

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../ui/button';
+import { BRAND_LOGO_URL, branding } from '../../config/branding';
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -59,9 +60,9 @@ const PublicHeader = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2" data-testid="header-logo">
-            <img 
-              src="/pleerity-logo.jpg" 
-              alt="Pleerity" 
+            <img
+              src={BRAND_LOGO_URL}
+              alt={branding.companyName}
               className="h-10 w-auto"
             />
           </Link>

@@ -5,6 +5,7 @@ import { Card } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Shield, User, AlertCircle, Lock, Key, FileCheck } from 'lucide-react';
 import { SUPPORT_EMAIL } from '../config';
+import { BRAND_LOGO_URL, branding } from '../config/branding';
 
 /**
  * Portal Selector — Compliance Vault Pro Secure Access.
@@ -31,7 +32,7 @@ const PortalSelectorPage = () => {
         {/* Hero */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-midnight-blue mb-4">
-            <img src="/pleerity-logo.jpg" alt="Pleerity" className="h-12 w-auto" />
+            <img src={BRAND_LOGO_URL} alt={branding.companyName} className="h-12 w-auto" />
           </div>
           <h1 className="text-3xl font-bold text-midnight-blue mb-2">
             Compliance Vault Pro Secure Access

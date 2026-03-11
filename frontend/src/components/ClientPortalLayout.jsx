@@ -5,6 +5,7 @@ import { useEntitlements } from '../contexts/EntitlementsContext';
 import api, { clientAPI } from '../api/client';
 import { Button } from './ui/button';
 import { SUPPORT_EMAIL } from '../config';
+import { branding, BRAND_LOGO_URL } from '../config/branding';
 import { toast } from 'sonner';
 import {
   LayoutDashboard,
@@ -184,8 +185,9 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
           <div className="flex justify-between items-center gap-4">
             <div className="flex items-center gap-4">
               <NavLink to="/dashboard" className="flex items-center gap-2 shrink-0">
-                <h1 className="text-xl font-bold">Compliance Vault Pro</h1>
-                <span className="text-sm text-gray-300 hidden sm:inline">AI-Driven Solutions & Compliance</span>
+                <img src={BRAND_LOGO_URL} alt="" className="h-8 w-auto" />
+                <h1 className="text-xl font-bold">{branding.productName}</h1>
+                <span className="text-sm text-gray-300 hidden sm:inline">{branding.tagline}</span>
               </NavLink>
               {crn && !isTenant && (
                 <div className="flex items-center gap-1">
@@ -341,7 +343,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       {/* Footer: Support email, CRN copy, Audit log, Help */}
       <footer className="border-t border-gray-200 bg-white py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-gray-500">Compliance Vault Pro</span>
+          <span className="text-sm text-gray-500">{branding.productName}</span>
           <div className="flex items-center gap-4 flex-wrap">
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
@@ -368,7 +370,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
             </NavLink>
             <NavLink to="/help" className="text-sm text-electric-teal hover:underline flex items-center gap-1">
               <HelpCircle className="w-4 h-4" />
-              Help
+              Help Centre
             </NavLink>
           </div>
         </div>

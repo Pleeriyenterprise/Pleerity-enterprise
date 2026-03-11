@@ -41,6 +41,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { BRAND_LOGO_URL } from '../../config/branding';
 
 /**
  * UnifiedAdminLayout - Enterprise-grade admin console with consolidated navigation
@@ -116,7 +117,7 @@ const navSections = [
     icon: FileText,
     items: [
       { href: '/admin/site-builder', label: 'Site Builder', icon: PenTool },
-      { href: '/admin/knowledge-base', label: 'Knowledge Base', icon: BookOpen },
+      { href: '/admin/knowledge-base', label: 'Knowledge Centre', icon: BookOpen },
       { href: '/admin/blog', label: 'Blog / Insights', icon: FileText },
       { href: '/admin/content/faqs', label: 'FAQ Management', icon: HelpCircle },
       { href: '/admin/content/feedback', label: 'Insights Feedback', icon: MessageSquare },
@@ -180,7 +181,7 @@ const SidebarContent = ({
     <div className="p-4 border-b border-gray-200">
       <Link to="/admin/dashboard" className="flex items-center space-x-2">
         <img 
-          src="/pleerity-logo.jpg" 
+          src={BRAND_LOGO_URL} 
           alt="Pleerity" 
           className={cn(
             "transition-all duration-300",

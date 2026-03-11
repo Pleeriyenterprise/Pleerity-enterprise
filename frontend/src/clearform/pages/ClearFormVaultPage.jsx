@@ -31,6 +31,7 @@ import {
 } from '../../components/ui/select';
 import { useClearFormAuth } from '../contexts/ClearFormAuthContext';
 import { documentsApi } from '../api/clearformApi';
+import { BRAND_LOGO_URL } from '../../config/branding';
 
 const ClearFormVaultPage = () => {
   const navigate = useNavigate();
@@ -117,7 +118,7 @@ const ClearFormVaultPage = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/clearform/dashboard" className="flex items-center gap-3">
             <img 
-              src="/pleerity-logo.jpg" 
+              src={BRAND_LOGO_URL} 
               alt="Pleerity" 
               className="h-8 w-auto"
             />

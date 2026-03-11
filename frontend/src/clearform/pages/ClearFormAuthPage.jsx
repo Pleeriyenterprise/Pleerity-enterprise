@@ -13,6 +13,7 @@ import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { useClearFormAuth } from '../contexts/ClearFormAuthContext';
 import { toast } from 'sonner';
+import { BRAND_LOGO_URL } from '../../config/branding';
 
 const ClearFormAuthPage = () => {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ const ClearFormAuthPage = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/clearform" className="flex items-center gap-3">
             <img 
-              src="/pleerity-logo.jpg" 
+              src={BRAND_LOGO_URL} 
               alt="Pleerity" 
               className="h-8 w-auto"
             />

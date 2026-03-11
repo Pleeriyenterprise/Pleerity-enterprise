@@ -1,14 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, MessageCircle } from 'lucide-react';
+import { branding, SUPPORT_EMAIL } from '../../config/branding';
 
 const PublicFooter = () => {
   const currentYear = new Date().getFullYear();
 
   const contactInfo = {
-    company: 'Pleerity Enterprise Ltd',
-    tagline: 'AI-Driven Solutions & Compliance',
-    email: 'info@pleerityenterprise.co.uk',
+    company: branding.companyName,
+    tagline: branding.tagline,
+    email: SUPPORT_EMAIL,
     phone: '020 3337 6060',
   };
 
@@ -188,7 +189,7 @@ const PublicFooter = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-2 md:space-y-0">
             <p className="text-gray-500 text-sm">
-              &copy; {currentYear} Pleerity Enterprise Ltd. All rights reserved.
+              &copy; {currentYear} {branding.companyName}. All rights reserved.
             </p>
             <p className="text-gray-500 text-xs">
               Registered in Scotland | Company No. SC855023
