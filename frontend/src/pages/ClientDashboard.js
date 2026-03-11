@@ -828,6 +828,7 @@ const ClientDashboard = () => {
                   best_90: scoreTrendData?.best_90,
                   worst_90: scoreTrendData?.worst_90,
                 }}
+                onPointClick={() => navigate('/compliance-score')}
               />
               <p className="text-xs text-gray-500 mt-3">
                 {scoreTrendView === 'portfolio' ? 'Calculated across all tracked items' : 'Single property score history'}

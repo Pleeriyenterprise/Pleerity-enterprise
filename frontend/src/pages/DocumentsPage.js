@@ -720,7 +720,7 @@ const DocumentsPage = () => {
                     <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG (max 10MB)</p>
                   </div>
 
-                  <Button type="submit" disabled={uploading} className="w-full" data-testid="upload-btn">
+                  <Button type="submit" disabled={uploading} className="w-full bg-electric-teal hover:bg-electric-teal/90 text-white" data-testid="upload-btn">
                     {uploading ? (
                       <RefreshCw className="w-4 h-4 animate-spin mr-2" />
                     ) : (

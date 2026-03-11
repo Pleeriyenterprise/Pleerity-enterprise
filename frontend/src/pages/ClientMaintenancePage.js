@@ -1,12 +1,13 @@
 /**
  * Operations → Work Orders: portfolio-wide execution and job control workspace.
  * Summary KPIs, filters, table, SLA risk panel, work order detail drawer.
- * Gated by maintenance_workflows (API 403 shows locked state).
+ * Gated by maintenance_workflows (EntitlementProtectedRoute; upgrade prompt when not entitled).
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
+import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import {
@@ -77,6 +78,14 @@ function hoursRemainingOrOverdue(slaCompleteBy) {
 }
 
 export default function ClientMaintenancePage() {
+  return (
+    <EntitlementProtectedRoute requiredFeature="maintenance_workflows">
+      <ClientMaintenancePageInner />
+    </EntitlementProtectedRoute>
+  );
+}
+
+function ClientMaintenancePageInner() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasFeature } = useEntitlements();

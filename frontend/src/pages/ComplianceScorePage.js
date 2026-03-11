@@ -704,7 +704,7 @@ const ComplianceScorePage = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="mr-1"
+                                  className="mr-1 border-electric-teal text-electric-teal hover:bg-electric-teal/10"
                                   onClick={(e) => { e.stopPropagation(); navigate(`/documents?property_id=${d.property_id}&requirement_id=${d.requirement_id}`); }}
                                 >
                                   <Upload className="w-3.5 h-3.5 mr-1" />
@@ -725,6 +725,7 @@ const ComplianceScorePage = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
                                   onClick={(e) => { e.stopPropagation(); navigate(`/properties/${d.property_id}`); }}
                                 >
                                   <ExternalLink className="w-3.5 h-3.5 mr-1" />
@@ -759,7 +760,7 @@ const ComplianceScorePage = () => {
                       </p>
                       <div className="flex flex-wrap gap-2 pt-1">
                         {d.actions?.includes('UPLOAD') && (
-                          <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${d.property_id}&requirement_id=${d.requirement_id}`)}>
+                          <Button variant="outline" size="sm" className="border-electric-teal text-electric-teal hover:bg-electric-teal/10" onClick={() => navigate(`/documents?property_id=${d.property_id}&requirement_id=${d.requirement_id}`)}>
                             <Upload className="w-3.5 h-3.5 mr-1" /> Upload document
                           </Button>
                         )}
@@ -767,7 +768,7 @@ const ComplianceScorePage = () => {
                           <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${d.property_id}&requirement_id=${d.requirement_id}`)}>Confirm details</Button>
                         )}
                         {d.actions?.includes('VIEW') && (
-                          <Button variant="outline" size="sm" onClick={() => navigate(`/properties/${d.property_id}`)}>
+                          <Button variant="outline" size="sm" className="border-electric-teal text-electric-teal hover:bg-electric-teal/10" onClick={() => navigate(`/properties/${d.property_id}`)}>
                             <ExternalLink className="w-3.5 h-3.5 mr-1" /> View requirement
                           </Button>
                         )}

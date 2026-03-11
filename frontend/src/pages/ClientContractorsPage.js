@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
+import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Briefcase, Loader2, AlertCircle, CheckCircle, Plus, Send, UserPlus, Eye, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -15,6 +16,14 @@ function sourceLabel(sourceType) {
 }
 
 export default function ClientContractorsPage() {
+  return (
+    <EntitlementProtectedRoute requiredFeature="contractor_network">
+      <ClientContractorsPageInner />
+    </EntitlementProtectedRoute>
+  );
+}
+
+function ClientContractorsPageInner() {
   const navigate = useNavigate();
   const [contractors, setContractors] = useState([]);
   const [total, setTotal] = useState(0);

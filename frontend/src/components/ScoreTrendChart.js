@@ -1,6 +1,15 @@
 /**
  * Score Trend (90 days) line chart with muted risk bands.
  * Single line, subtle grid, summary stats. Uses recharts.
+ *
+ * Appearance:
+ * - One data point in 90 days → line has nothing to connect, so the chart shows a single dot
+ *   (we show dot when data.length === 1 so the point is always visible).
+ * - Multiple points, same score → horizontal line; multiple points, varying score → trend line.
+ *
+ * Interactivity:
+ * - Hover over the line or a point: tooltip shows date and score.
+ * - If onPointClick is provided, clicking the line or a point calls it (e.g. navigate to score explanation).
  */
 import React from 'react';
 import {
@@ -21,7 +30,7 @@ const RISK_BANDS = [
   { yMin: 80, yMax: 100, fill: 'rgba(21, 128, 61, 0.05)', label: 'Healthy (80-100)' },
 ];
 
-const LINE_COLOR = '#0d9488'; // electric-teal
+const LINE_COLOR = '#00B8A9'; // brand electric-teal
 const CHART_HEIGHT = 220;
 
 function formatDateShort(dateStr) {
@@ -34,7 +43,7 @@ function formatDateShort(dateStr) {
   }
 }
 
-export default function ScoreTrendChart({ points = [], summary = {}, className = '' }) {
+export default function ScoreTrendChart({ points = [], summary = {}, className = '', onPointClick }) {
   const data = Array.isArray(points) ? points.map((p) => ({ ...p, dateLabel: formatDateShort(p.date) })) : [];
   const hasData = data.length > 0;
   const current = summary.current ?? (data.length ? data[data.length - 1].score : null);
@@ -65,12 +74,18 @@ export default function ScoreTrendChart({ points = [], summary = {}, className =
       </div>
 
       {/* Chart */}
-      <div style={{ width: '100%', height: CHART_HEIGHT }}>
+      <div
+        style={{ width: '100%', height: CHART_HEIGHT }}
+        className={onPointClick ? 'cursor-pointer' : undefined}
+        role={onPointClick ? 'button' : undefined}
+        aria-label={onPointClick ? 'View score explanation' : undefined}
+      >
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={data}
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              onClick={onPointClick}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
               <XAxis
@@ -112,7 +127,7 @@ export default function ScoreTrendChart({ points = [], summary = {}, className =
                 dataKey="score"
                 stroke={LINE_COLOR}
                 strokeWidth={2}
-                dot={false}
+                dot={data.length === 1 ? { r: 4, fill: LINE_COLOR, stroke: '#fff', strokeWidth: 1 } : false}
                 activeDot={{ r: 4, fill: LINE_COLOR, stroke: '#fff', strokeWidth: 1 }}
               />
             </LineChart>
