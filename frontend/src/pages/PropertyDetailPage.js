@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -81,9 +81,26 @@ export default function PropertyDetailPage() {
   const [createWoOpen, setCreateWoOpen] = useState(false);
   const [createWoForm, setCreateWoForm] = useState({ description: '', category: 'general', severity: 'medium' });
   const [createWoSaving, setCreateWoSaving] = useState(false);
+  const [maintenanceIssues, setMaintenanceIssues] = useState([]);
+  const [maintenanceIssuesLoading, setMaintenanceIssuesLoading] = useState(false);
+  const [maintenanceIssueFilter, setMaintenanceIssueFilter] = useState({ status: '', severity: '', category: '' });
+  const [maintenanceWoFilter, setMaintenanceWoFilter] = useState({ status: '' });
+  const [issueDetailDrawer, setIssueDetailDrawer] = useState(null);
+  const [issueDetailData, setIssueDetailData] = useState(null);
+  const [issueDetailLoading, setIssueDetailLoading] = useState(false);
+  const [woDetailDrawer, setWoDetailDrawer] = useState(null);
+  const [woDetailData, setWoDetailData] = useState(null);
+  const [woDetailLoading, setWoDetailLoading] = useState(false);
+  const [createIssueOpen, setCreateIssueOpen] = useState(false);
+  const [createIssueForm, setCreateIssueForm] = useState({ description: '', category: 'general' });
+  const [createIssueSaving, setCreateIssueSaving] = useState(false);
+  const [woRecommendList, setWoRecommendList] = useState(null);
+  const [woRecommendLoading, setWoRecommendLoading] = useState(false);
+  const [woUpdateSaving, setWoUpdateSaving] = useState(false);
   const [assets, setAssets] = useState([]);
   const [assetsSummary, setAssetsSummary] = useState(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetsInitialising, setAssetsInitialising] = useState(false);
   const [assetDetailDrawer, setAssetDetailDrawer] = useState(null);
   const [assetDetailData, setAssetDetailData] = useState(null);
   const [assetDetailLoading, setAssetDetailLoading] = useState(false);
@@ -163,6 +180,19 @@ export default function PropertyDetailPage() {
       .finally(() => setWorkOrdersLoading(false));
   }, [propertyId, hasFeature]);
 
+  const loadMaintenanceIssues = useCallback(() => {
+    if (!propertyId || !hasFeature('maintenance_workflows')) return;
+    setMaintenanceIssuesLoading(true);
+    const params = { property_id: propertyId, limit: 100 };
+    if (maintenanceIssueFilter.status) params.status = maintenanceIssueFilter.status;
+    if (maintenanceIssueFilter.severity) params.severity = maintenanceIssueFilter.severity;
+    if (maintenanceIssueFilter.category) params.category = maintenanceIssueFilter.category;
+    clientAPI.getMaintenanceIssues(params)
+      .then((res) => setMaintenanceIssues(res.data?.issues || []))
+      .catch(() => setMaintenanceIssues([]))
+      .finally(() => setMaintenanceIssuesLoading(false));
+  }, [propertyId, hasFeature, maintenanceIssueFilter.status, maintenanceIssueFilter.severity, maintenanceIssueFilter.category]);
+
   const loadInsights = useCallback(() => {
     if (!propertyId || !hasFeature('predictive_maintenance')) return;
     setInsightsLoading(true);
@@ -219,6 +249,29 @@ export default function PropertyDetailPage() {
     if (!propertyId) return;
     if (hasFeature('maintenance_workflows')) loadWorkOrders();
   }, [propertyId, hasFeature, loadWorkOrders]);
+
+  useEffect(() => {
+    if (propertyId && activeTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows')) loadMaintenanceIssues();
+  }, [propertyId, activeTab, hasFeature, loadMaintenanceIssues]);
+
+  useEffect(() => {
+    if (!issueDetailDrawer) { setIssueDetailData(null); return; }
+    setIssueDetailLoading(true);
+    clientAPI.getMaintenanceIssue(issueDetailDrawer)
+      .then((res) => setIssueDetailData(res.data || null))
+      .catch(() => setIssueDetailData(null))
+      .finally(() => setIssueDetailLoading(false));
+  }, [issueDetailDrawer]);
+
+  useEffect(() => {
+    if (!woDetailDrawer) { setWoDetailData(null); setWoRecommendList(null); return; }
+    setWoDetailLoading(true);
+    setWoRecommendList(null);
+    clientAPI.getMaintenanceWorkOrder(woDetailDrawer)
+      .then((res) => { setWoDetailData(res.data || null); if (hasFeature('contractor_network')) { setWoRecommendLoading(true); clientAPI.getRecommendContractors(woDetailDrawer, { limit: 10 }).then((r) => setWoRecommendList(r.data?.contractors || [])).catch(() => setWoRecommendList([])).finally(() => setWoRecommendLoading(false)); } })
+      .catch(() => setWoDetailData(null))
+      .finally(() => setWoDetailLoading(false));
+  }, [woDetailDrawer, hasFeature]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -297,6 +350,99 @@ export default function PropertyDetailPage() {
       })
       .catch((err) => toast.error(err?.response?.data?.detail || 'Create failed'))
       .finally(() => setCreateWoSaving(false));
+  };
+
+  const handleCreateIssue = (e) => {
+    e.preventDefault();
+    if (!createIssueForm.description?.trim()) {
+      toast.error('Enter a description');
+      return;
+    }
+    setCreateIssueSaving(true);
+    clientAPI.createMaintenanceIssue({
+      property_id: propertyId,
+      description: createIssueForm.description.trim(),
+      category: createIssueForm.category || undefined,
+    })
+      .then((res) => {
+        toast.success('Issue created and triaged');
+        setCreateIssueOpen(false);
+        setCreateIssueForm({ description: '', category: 'general' });
+        loadMaintenanceIssues();
+        const issueId = res.data?.issue_id;
+        if (issueId) setIssueDetailDrawer(issueId);
+      })
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Create failed'))
+      .finally(() => setCreateIssueSaving(false));
+  };
+
+  const handleCreateWoFromIssue = (issueId) => {
+    clientAPI.createWorkOrderFromIssue(issueId)
+      .then(() => {
+        toast.success('Work order created from issue');
+        loadWorkOrders();
+        loadMaintenanceIssues();
+        setIssueDetailDrawer(null);
+      })
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed'));
+  };
+
+  const handleUpdateWorkOrderStatus = (workOrderId, status) => {
+    setWoUpdateSaving(true);
+    clientAPI.updateMaintenanceWorkOrder(workOrderId, { status })
+      .then(() => {
+        toast.success('Status updated');
+        loadWorkOrders();
+        if (woDetailDrawer === workOrderId) clientAPI.getMaintenanceWorkOrder(workOrderId).then((r) => setWoDetailData(r.data || null));
+      })
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Update failed'))
+      .finally(() => setWoUpdateSaving(false));
+  };
+
+  const handleAssignContractor = (workOrderId, contractorId) => {
+    setWoUpdateSaving(true);
+    clientAPI.updateMaintenanceWorkOrder(workOrderId, { contractor_id: contractorId })
+      .then(() => {
+        toast.success('Contractor assigned');
+        loadWorkOrders();
+        if (woDetailDrawer === workOrderId) clientAPI.getMaintenanceWorkOrder(workOrderId).then((r) => setWoDetailData(r.data || null));
+        setWoRecommendList(null);
+      })
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Update failed'))
+      .finally(() => setWoUpdateSaving(false));
+  };
+
+  const maintenanceSummary = useMemo(() => {
+    const openIssues = maintenanceIssues.filter((i) => (i.status || '').toLowerCase() !== 'closed').length;
+    const draftWos = workOrders.filter((wo) => (wo.status || '') === 'DRAFT').length;
+    const activeStatuses = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'SCHEDULED', 'AWAITING_PARTS'];
+    const activeWos = workOrders.filter((wo) => activeStatuses.includes(wo.status || '')).length;
+    const slaBreaches = workOrders.filter((wo) => wo.sla_breached_at && !['COMPLETED', 'CANCELLED'].includes(wo.status || '')).length;
+    const highSeverity = maintenanceIssues.filter((i) => ['high', 'urgent'].includes((i.severity || '').toLowerCase()) && (i.status || '').toLowerCase() !== 'closed').length;
+    let lastActivityAt = null;
+    [...maintenanceIssues, ...workOrders].forEach((x) => {
+      const t = x.updated_at || x.created_at;
+      if (t && (!lastActivityAt || new Date(t) > new Date(lastActivityAt))) lastActivityAt = t;
+    });
+    return { openIssues, draftWos, activeWos, slaBreaches, highSeverity, lastActivityAt };
+  }, [maintenanceIssues, workOrders]);
+
+  const filteredWorkOrders = useMemo(() => {
+    if (!maintenanceWoFilter.status) return workOrders;
+    return workOrders.filter((wo) => (wo.status || '') === maintenanceWoFilter.status);
+  }, [workOrders, maintenanceWoFilter.status]);
+
+  const slaAtRiskOrBreached = useMemo(() => {
+    return workOrders.filter((wo) => {
+      if (['COMPLETED', 'CANCELLED'].includes(wo.status || '')) return false;
+      return wo.sla_breached_at || wo.sla_breach_risk_at;
+    });
+  }, [workOrders]);
+
+  const assetLabel = (assetId) => {
+    if (!assetId) return '—';
+    const a = assets.find((x) => x.asset_id === assetId);
+    return a ? (a.name || (a.asset_type || '').replace(/_/g, ' ')) : assetId;
   };
 
   const getStatus = (r) => getEvidenceStatus(r.status);
@@ -1040,64 +1186,312 @@ export default function PropertyDetailPage() {
         />
       )}
       {activeTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows') && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-midnight-blue">Work orders</h2>
-            <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => setCreateWoOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add issue
-            </Button>
-          </div>
-          {workOrdersLoading ? (
-            <div className="flex items-center gap-2 text-gray-500 py-8">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Loading…
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-midnight-blue">Maintenance</h2>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setCreateIssueOpen(true)}>
+                <FileText className="w-4 h-4 mr-2" />
+                Report issue
+              </Button>
+              <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => setCreateWoOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add work order
+              </Button>
             </div>
-          ) : workOrders.length === 0 ? (
-            <Card className="border border-gray-200"><CardContent className="py-8 text-center text-gray-500">No work orders for this property. Use &quot;Add issue&quot; to create one.</CardContent></Card>
-          ) : (
-            <ul className="space-y-2">
-              {workOrders.map((wo) => (
-                <li key={wo.work_order_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <div>
-                    <p className="font-medium text-gray-900">{wo.description || '—'}</p>
-                    <p className="text-xs text-gray-500">Created {wo.created_at ? new Date(wo.created_at).toLocaleDateString() : '—'} · {wo.status}</p>
+          </div>
+
+          {/* Summary row */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="p-3 rounded-lg border border-gray-200 bg-white"><p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p><p className="text-lg font-semibold text-midnight-blue">{maintenanceSummary.openIssues}</p></div>
+            <div className="p-3 rounded-lg border border-gray-200 bg-white"><p className="text-xs text-gray-500 uppercase tracking-wide">Draft WOs</p><p className="text-lg font-semibold text-midnight-blue">{maintenanceSummary.draftWos}</p></div>
+            <div className="p-3 rounded-lg border border-gray-200 bg-white"><p className="text-xs text-gray-500 uppercase tracking-wide">Active WOs</p><p className="text-lg font-semibold text-midnight-blue">{maintenanceSummary.activeWos}</p></div>
+            <div className="p-3 rounded-lg border border-gray-200 bg-white"><p className="text-xs text-gray-500 uppercase tracking-wide">SLA breaches</p><p className="text-lg font-semibold text-red-600">{maintenanceSummary.slaBreaches}</p></div>
+            <div className="p-3 rounded-lg border border-gray-200 bg-white"><p className="text-xs text-gray-500 uppercase tracking-wide">High severity</p><p className="text-lg font-semibold text-amber-600">{maintenanceSummary.highSeverity}</p></div>
+            <div className="p-3 rounded-lg border border-gray-200 bg-white"><p className="text-xs text-gray-500 uppercase tracking-wide">Last activity</p><p className="text-sm text-gray-700">{maintenanceSummary.lastActivityAt ? formatRelativeTime(maintenanceSummary.lastActivityAt) : '—'}</p></div>
+          </div>
+
+          {/* Issues queue */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Issues</CardTitle>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <select value={maintenanceIssueFilter.status} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
+                  <option value="">All statuses</option><option value="new">New</option><option value="triaged">Triaged</option><option value="ready_for_work_order">Ready for WO</option><option value="closed">Closed</option>
+                </select>
+                <select value={maintenanceIssueFilter.severity} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, severity: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
+                  <option value="">All severities</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
+                </select>
+                <select value={maintenanceIssueFilter.category} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, category: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
+                  <option value="">All categories</option><option value="general">General</option><option value="plumbing">Plumbing</option><option value="electrical">Electrical</option><option value="heating">Heating</option>
+                </select>
+                <Button size="sm" variant="ghost" onClick={loadMaintenanceIssues}>Refresh</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(workOrdersLoading && maintenanceIssues.length === 0) || maintenanceIssuesLoading ? (
+                <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
+              ) : maintenanceIssues.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">
+                  <p className="font-medium">No maintenance issues recorded for this property.</p>
+                  <div className="flex flex-wrap gap-2 justify-center mt-3">
+                    <Button size="sm" variant="outline" onClick={() => setCreateIssueOpen(true)}>Report issue</Button>
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_ASSETS)}>View assets</Button>
                   </div>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                    wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' :
-                    'bg-amber-100 text-amber-800'
-                  }`}>{wo.status}</span>
-                </li>
-              ))}
-            </ul>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Summary</th><th className="p-2">Category</th><th className="p-2">Severity</th><th className="p-2">Priority</th><th className="p-2">Asset</th><th className="p-2">Source</th><th className="p-2">Status</th><th className="p-2">Created</th><th className="p-2 text-right">Actions</th></tr></thead>
+                    <tbody>
+                      {maintenanceIssues.map((iss) => (
+                        <tr key={iss.issue_id} className="border-b hover:bg-gray-50">
+                          <td className="p-2 font-medium max-w-[180px] truncate" title={iss.description}>{iss.description || '—'}</td>
+                          <td className="p-2 text-gray-600">{(iss.category || '—').replace(/_/g, ' ')}</td>
+                          <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{iss.severity || '—'}</span></td>
+                          <td className="p-2">{iss.priority_score != null ? iss.priority_score : '—'}</td>
+                          <td className="p-2 text-gray-600">{assetLabel(iss.asset_id)}</td>
+                          <td className="p-2 text-gray-600">{iss.source || '—'}</td>
+                          <td className="p-2">{(iss.status || '—').replace(/_/g, ' ')}</td>
+                          <td className="p-2 text-gray-600">{iss.created_at ? formatDate(iss.created_at) : '—'}</td>
+                          <td className="p-2 text-right">
+                            <Button size="sm" variant="ghost" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
+                            {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
+                              <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Create WO</Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Work orders queue */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Work orders</CardTitle>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <select value={maintenanceWoFilter.status} onChange={(e) => setMaintenanceWoFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
+                  <option value="">All statuses</option><option value="OPEN">Open</option><option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In progress</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option>
+                </select>
+                <Button size="sm" variant="ghost" onClick={loadWorkOrders}>Refresh</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {workOrdersLoading && workOrders.length === 0 ? (
+                <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
+              ) : filteredWorkOrders.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">
+                  <p className="font-medium">No work orders created yet.</p>
+                  <div className="flex flex-wrap gap-2 justify-center mt-3">
+                    <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Create work order</Button>
+                    {hasFeature('contractor_network') && <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_CONTRACTORS)}>Browse contractors</Button>}
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Description</th><th className="p-2">Linked issue</th><th className="p-2">Asset</th><th className="p-2">Severity</th><th className="p-2">Status</th><th className="p-2">SLA due</th><th className="p-2">Updated</th><th className="p-2 text-right">Actions</th></tr></thead>
+                    <tbody>
+                      {filteredWorkOrders.map((wo) => (
+                        <tr key={wo.work_order_id} className="border-b hover:bg-gray-50">
+                          <td className="p-2 font-medium max-w-[180px] truncate" title={wo.description}>{wo.description || '—'}</td>
+                          <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>Issue</button> : '—'}</td>
+                          <td className="p-2 text-gray-600">{assetLabel(wo.asset_id)}</td>
+                          <td className="p-2"><span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">{wo.severity || '—'}</span></td>
+                          <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{wo.status || '—'}</span></td>
+                          <td className="p-2 text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</td>
+                          <td className="p-2 text-gray-600">{wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'}</td>
+                          <td className="p-2 text-right"><Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* SLA panel */}
+          {slaAtRiskOrBreached.length > 0 && (
+            <Card className="border-amber-200 bg-amber-50/30">
+              <CardHeader><CardTitle className="text-base">SLA at risk or breached</CardTitle></CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {slaAtRiskOrBreached.slice(0, 10).map((wo) => (
+                    <li key={wo.work_order_id} className="flex flex-wrap items-center justify-between gap-2 p-2 rounded bg-white border border-amber-100">
+                      <span className="font-medium truncate max-w-[200px]">{wo.description || wo.work_order_id}</span>
+                      <span className="text-xs text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</span>
+                      {wo.sla_breached_at ? <span className="text-xs text-red-600 font-medium">Breached</span> : <span className="text-xs text-amber-600">At risk</span>}
+                      <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
           )}
+
+          {/* Recurring / risk strip */}
+          {hasFeature('predictive_maintenance') && (
+            <Card className="border-gray-200">
+              <CardContent className="py-3 flex items-center justify-between gap-4">
+                <span className="text-sm text-gray-600">Recurring issues and repair history feed into risk signals.</span>
+                <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>View risk signals</Button>
+              </CardContent>
+            </Card>
+          )}
+
           {createWoOpen && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Report an issue</h2>
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setCreateWoOpen(false)}>
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Add work order</h2>
                 <form onSubmit={handleCreateWorkOrder} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-                    <textarea
-                      value={createWoForm.description}
-                      onChange={(e) => setCreateWoForm((f) => ({ ...f, description: e.target.value }))}
-                      className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                      rows={3}
-                      placeholder="Describe the issue..."
-                      required
-                    />
+                    <textarea value={createWoForm.description} onChange={(e) => setCreateWoForm((f) => ({ ...f, description: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" rows={3} placeholder="Describe the issue..." required />
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Button type="submit" disabled={createWoSaving} className="bg-electric-teal hover:bg-electric-teal/90">
-                      {createWoSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
-                    </Button>
+                    <Button type="submit" disabled={createWoSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createWoSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}</Button>
                     <Button type="button" variant="outline" onClick={() => setCreateWoOpen(false)}>Cancel</Button>
                   </div>
                 </form>
               </div>
             </div>
           )}
+
+          {createIssueOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setCreateIssueOpen(false)}>
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Report issue (triaged)</h2>
+                <form onSubmit={handleCreateIssue} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                    <textarea value={createIssueForm.description} onChange={(e) => setCreateIssueForm((f) => ({ ...f, description: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" rows={3} placeholder="Describe the issue..." required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select value={createIssueForm.category} onChange={(e) => setCreateIssueForm((f) => ({ ...f, category: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full">
+                      <option value="general">General</option><option value="plumbing">Plumbing</option><option value="electrical">Electrical</option><option value="heating">Heating</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button type="submit" disabled={createIssueSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createIssueSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create issue'}</Button>
+                    <Button type="button" variant="outline" onClick={() => setCreateIssueOpen(false)}>Cancel</Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Issue detail drawer */}
+      {issueDetailDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setIssueDetailDrawer(null)}>
+          <div className="w-full max-w-lg bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold text-midnight-blue">Issue details</h3>
+              <button type="button" onClick={() => setIssueDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-4">
+              {issueDetailLoading ? (
+                <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
+              ) : issueDetailData ? (
+                <>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">{issueDetailData.description || '—'}</p>
+                  <dl className="grid grid-cols-2 gap-2 text-sm mb-4">
+                    <dt className="text-gray-500">Category</dt><dd>{(issueDetailData.category || '—').replace(/_/g, ' ')}</dd>
+                    <dt className="text-gray-500">Severity</dt><dd>{issueDetailData.severity || '—'}</dd>
+                    <dt className="text-gray-500">Priority score</dt><dd>{issueDetailData.priority_score != null ? issueDetailData.priority_score : '—'}</dd>
+                    <dt className="text-gray-500">Asset</dt><dd>{assetLabel(issueDetailData.asset_id)}</dd>
+                    <dt className="text-gray-500">Source</dt><dd>{issueDetailData.source || '—'}</dd>
+                    <dt className="text-gray-500">Status</dt><dd>{(issueDetailData.status || '—').replace(/_/g, ' ')}</dd>
+                    <dt className="text-gray-500">Created</dt><dd>{issueDetailData.created_at ? formatDate(issueDetailData.created_at) : '—'}</dd>
+                  </dl>
+                  {issueDetailData.triage?.reasoning?.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-gray-700 mb-1">Triage reasoning</h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">{issueDetailData.triage.reasoning.map((r, i) => <li key={i}>{r}</li>)}</ul>
+                    </div>
+                  )}
+                  {issueDetailData.triage?.recommended_contractor_type && (
+                    <p className="text-sm text-gray-600 mb-4">Recommended contractor: {(issueDetailData.triage.recommended_contractor_type || '').replace(/_/g, ' ')}</p>
+                  )}
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (
+                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)}>Create work order</Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_ASSETS); setIssueDetailDrawer(null); }}>View assets</Button>
+                    <Button size="sm" variant="outline" onClick={() => setIssueDetailDrawer(null)}>Close</Button>
+                  </div>
+                </>
+              ) : <p className="text-gray-500 py-4">Could not load issue.</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Work order detail drawer */}
+      {woDetailDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setWoDetailDrawer(null)}>
+          <div className="w-full max-w-lg bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold text-midnight-blue">Work order details</h3>
+              <button type="button" onClick={() => setWoDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-4">
+              {woDetailLoading ? (
+                <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
+              ) : woDetailData ? (
+                <>
+                  <p className="font-medium text-gray-900 mb-2">{woDetailData.description || '—'}</p>
+                  <dl className="grid grid-cols-2 gap-2 text-sm mb-4">
+                    <dt className="text-gray-500">Status</dt><dd><span className={`px-1.5 py-0.5 rounded text-xs ${woDetailData.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : woDetailData.status === 'CANCELLED' ? 'bg-gray-100' : 'bg-amber-100 text-amber-800'}`}>{woDetailData.status || '—'}</span></dd>
+                    <dt className="text-gray-500">Severity</dt><dd>{woDetailData.severity || '—'}</dd>
+                    <dt className="text-gray-500">SLA complete by</dt><dd>{woDetailData.sla_complete_by ? formatDate(woDetailData.sla_complete_by) : '—'}</dd>
+                    <dt className="text-gray-500">Asset</dt><dd>{assetLabel(woDetailData.asset_id)}</dd>
+                    <dt className="text-gray-500">Linked issue</dt><dd>{woDetailData.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => { setIssueDetailDrawer(woDetailData.issue_id); setWoDetailDrawer(null); }}>View issue</button> : '—'}</dd>
+                    <dt className="text-gray-500">Updated</dt><dd>{woDetailData.updated_at ? formatRelativeTime(woDetailData.updated_at) : '—'}</dd>
+                  </dl>
+                  {woDetailData.resolution_outcome && <p className="text-sm text-gray-600 mb-2">Outcome: {woDetailData.resolution_outcome}</p>}
+                  {woDetailData.cost_estimate_min != null && woDetailData.cost_estimate_max != null && <p className="text-sm text-gray-600 mb-4">Cost estimate: £{woDetailData.cost_estimate_min} – £{woDetailData.cost_estimate_max}</p>}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Update status</label>
+                    <select
+                      value={woDetailData.status || ''}
+                      onChange={(e) => handleUpdateWorkOrderStatus(woDetailData.work_order_id, e.target.value)}
+                      disabled={woUpdateSaving}
+                      className="border border-gray-200 rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="OPEN">Open</option><option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In progress</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option>
+                    </select>
+                  </div>
+                  {hasFeature('contractor_network') && (
+                    <div className="mt-4">
+                      <h4 className="font-medium text-gray-700 mb-2">Recommended contractors</h4>
+                      {woRecommendLoading ? <p className="text-sm text-gray-500">Loading…</p> : woRecommendList?.length > 0 ? (
+                        <ul className="space-y-1">
+                          {woRecommendList.slice(0, 5).map((c) => (
+                            <li key={c.contractor_id || c.id} className="flex items-center justify-between gap-2 text-sm">
+                              <span>{c.name || c.contractor_name || c.contractor_id}</span>
+                              <Button size="sm" variant="outline" onClick={() => handleAssignContractor(woDetailData.work_order_id, c.contractor_id || c.id)} disabled={woUpdateSaving}>Assign</Button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="text-sm text-gray-500">No recommendations.</p>}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_CONTRACTORS); setWoDetailDrawer(null); }}>Browse contractors</Button>
+                    <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(null)}>Close</Button>
+                  </div>
+                </>
+              ) : <p className="text-gray-500 py-4">Could not load work order.</p>}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1540,10 +1934,34 @@ export default function PropertyDetailPage() {
                 <Package className="w-12 h-12 mx-auto text-gray-400 mb-3" />
                 <p className="text-gray-600 font-medium">No assets yet</p>
                 <p className="text-sm text-gray-500 mt-1">Assets will be automatically created when property setup completes.</p>
-                <Button variant="outline" size="sm" className="mt-4 text-electric-teal border-electric-teal" onClick={loadAssets}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh Assets
-                </Button>
+                <div className="flex flex-wrap gap-2 justify-center mt-4">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-electric-teal hover:bg-electric-teal/90"
+                    disabled={assetsInitialising}
+                    onClick={async () => {
+                      setAssetsInitialising(true);
+                      try {
+                        const res = await clientAPI.ensureDefaultAssetsForProperty(propertyId);
+                        const created = res.data?.created ?? 0;
+                        if (created > 0) toast.success(`${created} asset${created !== 1 ? 's' : ''} created`);
+                        await loadAssets();
+                      } catch (e) {
+                        toast.error(e?.response?.data?.detail || 'Failed to initialise assets');
+                      } finally {
+                        setAssetsInitialising(false);
+                      }
+                    }}
+                  >
+                    {assetsInitialising ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    Initialise Assets
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={loadAssets}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh Assets
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : (

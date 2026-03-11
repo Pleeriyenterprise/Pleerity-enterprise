@@ -202,6 +202,7 @@ export const clientAPI = {
   getMaintenanceWorkOrders: (params = {}) => apiClient.get('/client/maintenance/work-orders', { params }),
   getMaintenanceWorkOrder: (workOrderId) => apiClient.get(`/client/maintenance/work-orders/${workOrderId}`),
   createMaintenanceWorkOrder: (body) => apiClient.post('/client/maintenance/work-orders', body),
+  updateMaintenanceWorkOrder: (workOrderId, body) => apiClient.patch(`/client/maintenance/work-orders/${workOrderId}`, body),
   getRecommendContractors: (workOrderId, params = {}) => apiClient.get(`/client/maintenance/work-orders/${workOrderId}/recommend-contractors`, { params }),
   /** Maintenance issues (create issue → triage → create work order). */
   getMaintenanceIssues: (params = {}) => apiClient.get('/client/maintenance/issues', { params }),
@@ -212,6 +213,7 @@ export const clientAPI = {
   getPredictiveInsights: (params = {}) => apiClient.get('/client/maintenance/predictive-insights', { params }),
   /** Property assets for predictive (requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE). */
   getPropertyAssets: (propertyId) => apiClient.get(`/client/maintenance/properties/${propertyId}/assets`),
+  ensureDefaultAssetsForProperty: (propertyId) => apiClient.post(`/client/maintenance/properties/${propertyId}/assets/ensure-defaults`),
   getPropertyAsset: (propertyId, assetId) => apiClient.get(`/client/maintenance/properties/${propertyId}/assets/${assetId}`),
   addPropertyAsset: (propertyId, body) => apiClient.post(`/client/maintenance/properties/${propertyId}/assets`, body),
   updatePropertyAsset: (propertyId, assetId, body) => apiClient.patch(`/client/maintenance/properties/${propertyId}/assets/${assetId}`, body),

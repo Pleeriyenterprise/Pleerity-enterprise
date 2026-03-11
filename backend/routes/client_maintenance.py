@@ -140,6 +140,10 @@ async def list_my_issues(
     status: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     severity: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
+    asset_id: Optional[str] = Query(None),
+    from_date: Optional[str] = Query(None, description="Filter by created_at >= (YYYY-MM-DD)"),
+    to_date: Optional[str] = Query(None, description="Filter by created_at <= (YYYY-MM-DD)"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ):
@@ -157,6 +161,10 @@ async def list_my_issues(
         status=status,
         category=category,
         severity=severity,
+        source=source,
+        asset_id=asset_id,
+        from_date=from_date,
+        to_date=to_date,
         skip=skip,
         limit=limit,
     )
@@ -194,6 +202,36 @@ async def get_my_work_order(request: Request, work_order_id: str):
     user = await _require_maintenance_enabled(request)
     doc = await maintenance_service.get_work_order(work_order_id)
     if not doc or doc.get("client_id") != user["client_id"]:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    return doc
+
+
+class UpdateWorkOrderBody(BaseModel):
+    status: Optional[str] = None
+    contractor_id: Optional[str] = None
+    resolution_outcome: Optional[str] = None
+    cost_estimate_min: Optional[float] = None
+    cost_estimate_max: Optional[float] = None
+
+
+@router.patch("/maintenance/work-orders/{work_order_id}")
+async def update_my_work_order(request: Request, work_order_id: str, body: UpdateWorkOrderBody):
+    """Update work order status and/or assign contractor (own client only). Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    existing = await maintenance_service.get_work_order(work_order_id)
+    if not existing or existing.get("client_id") != user["client_id"]:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    assigned_by = (user.get("email") or user.get("portal_user_id") or user.get("user_id")) if body.contractor_id else None
+    doc = await maintenance_service.update_work_order(
+        work_order_id,
+        status=body.status,
+        contractor_id=body.contractor_id,
+        resolution_outcome=body.resolution_outcome,
+        cost_estimate_min=body.cost_estimate_min,
+        cost_estimate_max=body.cost_estimate_max,
+        assigned_by=assigned_by,
+    )
+    if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
     return doc
 
@@ -316,6 +354,20 @@ async def add_property_asset(request: Request, property_id: str, body: AddAssetB
     if not doc:
         raise HTTPException(status_code=404, detail="Property not found")
     return doc
+
+
+@router.post("/maintenance/properties/{property_id}/assets/ensure-defaults")
+async def ensure_default_assets_route(request: Request, property_id: str):
+    """Create default assets for the property if missing (idempotent). For backfill / Initialise Assets. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
+    user = await _require_assets_enabled(request)
+    db = database.get_db()
+    prop = await db.properties.find_one({"property_id": property_id, "client_id": user["client_id"]}, {"_id": 1})
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+    created = await property_assets_service.ensure_default_assets_for_property(user["client_id"], property_id)
+    items = await property_assets_service.list_assets(property_id, user["client_id"])
+    summary = await property_assets_service.get_assets_summary(property_id, user["client_id"], items)
+    return {"created": created, "assets": items, "summary": summary}
 
 
 @router.get("/maintenance/properties/{property_id}/assets/{asset_id}")

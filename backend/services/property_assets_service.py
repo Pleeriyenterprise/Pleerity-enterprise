@@ -78,10 +78,11 @@ async def _per_asset_map(
     return out
 
 
-async def ensure_default_assets_for_property(client_id: str, property_id: str) -> None:
+async def ensure_default_assets_for_property(client_id: str, property_id: str) -> int:
     """
     Create default assets for a property if they do not exist (idempotent).
     Call after property create/update (e.g. from provisioning status hook).
+    Returns the number of assets created (0 if none or already present).
     """
     db = database.get_db()
     prop = await db.properties.find_one(
@@ -89,10 +90,11 @@ async def ensure_default_assets_for_property(client_id: str, property_id: str) -
         {"_id": 0, "has_gas_supply": 1},
     )
     if not prop:
-        return
+        return 0
     types_to_ensure = list(DEFAULT_ASSET_TYPES_ALL)
     if prop.get("has_gas_supply"):
         types_to_ensure.extend(DEFAULT_ASSET_TYPES_IF_GAS)
+    created = 0
     for asset_type in types_to_ensure:
         existing = await db.property_assets.find_one(
             {"property_id": property_id, "asset_type": asset_type}
@@ -107,7 +109,9 @@ async def ensure_default_assets_for_property(client_id: str, property_id: str) -
                 notes=None,
                 status=ASSET_STATUS_ACTIVE,
             )
+            created += 1
             logger.debug("Created default asset property_id=%s asset_type=%s", property_id, asset_type)
+    return created
 
 
 async def get_asset(

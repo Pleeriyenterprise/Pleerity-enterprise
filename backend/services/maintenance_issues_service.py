@@ -119,6 +119,10 @@ async def list_issues(
     status: Optional[str] = None,
     category: Optional[str] = None,
     severity: Optional[str] = None,
+    source: Optional[str] = None,
+    asset_id: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
 ) -> Dict[str, Any]:
@@ -133,6 +137,16 @@ async def list_issues(
         q["category"] = category
     if severity is not None:
         q["severity"] = severity
+    if source is not None:
+        q["source"] = source
+    if asset_id is not None:
+        q["asset_id"] = asset_id
+    if from_date or to_date:
+        q["created_at"] = {}
+        if from_date:
+            q["created_at"]["$gte"] = from_date + "T00:00:00.000Z" if "T" not in from_date else from_date
+        if to_date:
+            q["created_at"]["$lte"] = to_date + "T23:59:59.999Z" if "T" not in to_date else to_date
     cursor = db.maintenance_issues.find(q).sort("created_at", -1).skip(skip).limit(limit)
     items = await cursor.to_list(limit)
     for d in items:
