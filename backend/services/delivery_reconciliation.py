@@ -20,6 +20,9 @@ RECONCILIATION_JOBS: Dict[str, List[str]] = {
     "scheduled_reports": ["SCHEDULED_REPORT"],
 }
 
+# Hours after a run finishes: if delivery_unknown > 0 still, consider it "stale" and surface a warning
+DELIVERY_UNKNOWN_STALE_HOURS = 6
+
 
 def _parse_iso(s):
     if s is None:

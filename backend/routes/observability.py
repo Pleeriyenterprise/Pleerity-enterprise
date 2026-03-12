@@ -58,12 +58,26 @@ DELIVERY_STATE_DEFINITIONS = {
     "failed": "Send failed before provider acceptance (e.g. validation error, rate limit, or provider API error). No message was handed off.",
 }
 
+# Staff guidance for interpreting delivery states (when to act, especially "unknown")
+DELIVERY_STATE_GUIDANCE = {
+    "summary": "Use outcome_metrics.delivery_* to see how many messages were accepted, delivered, bounced, or still unknown. Failed means the send never reached the provider.",
+    "provider_accepted": "Normal. No action unless you need delivery proof; then wait for delivered/bounced or check again after the run.",
+    "delivered": "Best outcome. No action needed.",
+    "bounced": "Recipient address or mailbox issue. Consider updating or removing the address; no urgent automation fix unless bounces are widespread.",
+    "unknown": "Messages were accepted by the provider but we have not yet received a delivery or bounce webhook. This is normal for a short time (minutes to a few hours) after a run. If unknown remains high for more than 6 hours after the run finished, check: (1) provider webhook configuration and delivery, (2) message_logs for those messages. A persistent high unknown count may indicate webhook or provider delays.",
+    "failed": "The send failed before the provider accepted it. Check error_message and message_logs; fix configuration, rate limits, or template issues. Repeated failures for the same job need investigation.",
+}
 
 @router.get("/delivery-state-definitions")
 async def get_delivery_state_definitions(request: Request):
-    """Return human-readable explanations for delivery states used in outcome_metrics. Admin only."""
+    """Return human-readable definitions and staff guidance for delivery states. Admin only."""
     await admin_route_guard(request)
-    return {"definitions": DELIVERY_STATE_DEFINITIONS}
+    from services.delivery_reconciliation import DELIVERY_UNKNOWN_STALE_HOURS as RECONC_HOURS
+    return {
+        "definitions": DELIVERY_STATE_DEFINITIONS,
+        "guidance": DELIVERY_STATE_GUIDANCE,
+        "delivery_unknown_stale_hours": RECONC_HOURS,
+    }
 
 
 @router.get("/job-runs/{run_id}/message-logs")
@@ -355,6 +369,31 @@ async def get_health_summary(request: Request):
     alert_emails = (os.getenv("ADMIN_ALERT_EMAILS") or os.getenv("OPS_ALERT_EMAIL") or "").strip()
     alerting_configured = bool(alert_emails)
 
+    # Delivery unknown stale: runs with delivery_unknown > 0 that finished more than threshold hours ago
+    from services.delivery_reconciliation import RECONCILIATION_JOBS, DELIVERY_UNKNOWN_STALE_HOURS
+    stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=DELIVERY_UNKNOWN_STALE_HOURS)
+    stale_cutoff_str = stale_cutoff.isoformat()
+    delivery_unknown_stale_runs = []
+    try:
+        cursor = db.job_runs.find(
+            {
+                "job_name": {"$in": list(RECONCILIATION_JOBS.keys())},
+                "finished_at": {"$lt": stale_cutoff_str},
+                "outcome_metrics.delivery_unknown": {"$gt": 0},
+            },
+            {"_id": 1, "job_name": 1, "finished_at": 1, "outcome_metrics.delivery_unknown": 1},
+        ).sort("finished_at", -1).limit(20)
+        async for doc in cursor:
+            om = doc.get("outcome_metrics") or {}
+            delivery_unknown_stale_runs.append({
+                "job_name": doc.get("job_name"),
+                "run_id": str(doc.get("_id", "")),
+                "finished_at": doc.get("finished_at"),
+                "delivery_unknown": om.get("delivery_unknown", 0),
+            })
+    except Exception:
+        pass
+
     return {
         "status": status_badge,
         "open_incidents_count": open_incidents,
@@ -365,4 +404,6 @@ async def get_health_summary(request: Request):
         "last_heartbeat_at": last_heartbeat_at,
         "heartbeat_stale": heartbeat_stale,
         "alerting_configured": alerting_configured,
+        "delivery_unknown_stale_runs": delivery_unknown_stale_runs,
+        "delivery_unknown_stale_hours": DELIVERY_UNKNOWN_STALE_HOURS,
     }

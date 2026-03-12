@@ -169,6 +169,19 @@ export default function AdminAutomationCentrePage() {
           </div>
         )}
 
+        {(healthSummary?.delivery_unknown_stale_runs?.length > 0) && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <span>
+              {healthSummary.delivery_unknown_stale_runs.length} run(s) still have <strong>delivery unknown</strong> unresolved after {healthSummary.delivery_unknown_stale_hours ?? 6}h. Check Message logs or provider webhooks for those jobs.
+            </span>
+          </div>
+        )}
+
+        <p className="mb-3 text-sm text-gray-600">
+          <strong>Status:</strong> Degraded = some sends failed or skipped; review outcome counts and use Message logs when available. Take action if failures repeat or critical notifications are affected.
+        </p>
+
         {hasNoRuns && (
           <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm">
             No job runs have been recorded yet. If the background scheduler did not start (e.g. check deployment logs), jobs will not run and the SLA watchdog will not create incidents or send admin alerts. Ensure the API process runs with the scheduler enabled and set <code className="bg-amber-100/80 px-1 rounded">ADMIN_ALERT_EMAILS</code> for incident email alerts.
@@ -213,6 +226,16 @@ export default function AdminAutomationCentrePage() {
                         </span>
                         {info.degraded24h > 0 && state !== 'degraded' && (
                           <span className="ml-1 text-amber-600 text-xs">({info.degraded24h} degraded 24h)</span>
+                        )}
+                        {(state === 'degraded' || state === 'failed') && (
+                          <span className="ml-1.5 text-gray-500 text-xs" title="Review outcome_metrics and Message logs; act if failures repeat or key notifications are affected.">
+                            (review)
+                          </span>
+                        )}
+                        {state === 'degraded' && healthSummary?.delivery_unknown_stale_runs?.some((r) => r.job_name === jobName) && (
+                          <span className="ml-1 text-amber-600 text-xs" title="Delivery unknown still high after run; check webhooks or Message logs.">
+                            (unknown stale)
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-2 text-gray-600">{formatTime(info.lastRun?.finished_at || info.lastRun?.created_at)}</td>

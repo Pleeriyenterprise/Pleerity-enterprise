@@ -56,6 +56,15 @@ export default function AdminSystemHealthPage() {
           </div>
         )}
 
+        {data?.delivery_unknown_stale_runs?.length > 0 && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <span>
+              {data.delivery_unknown_stale_runs.length} run(s) have <strong>delivery unknown</strong> still unresolved after {data.delivery_unknown_stale_hours ?? 6}h. Check Message logs (Automation Centre) or provider webhooks.
+            </span>
+          </div>
+        )}
+
         {data && (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
