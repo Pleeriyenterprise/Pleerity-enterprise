@@ -69,30 +69,47 @@ export default function AdminSystemHealthPage() {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium text-gray-500">Status</span>
-              {(data.overall_health === 'healthy' || data.status === 'ok') && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                  <CheckCircle className="w-4 h-4" />
-                  Healthy
-                </span>
-              )}
-              {(data.overall_health === 'degraded' || data.status === 'degraded') && data.status !== 'incident' && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
-                  <AlertTriangle className="w-4 h-4" />
-                  Degraded
-                </span>
-              )}
-              {(data.overall_health === 'attention_required' || data.overall_health === 'failed') && data.status !== 'incident' && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                  <AlertTriangle className="w-4 h-4" />
-                  {data.overall_health === 'failed' ? 'Failed' : 'Attention required'}
-                </span>
-              )}
-              {data.status === 'incident' && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                  <AlertTriangle className="w-4 h-4" />
-                  Incident ({data.open_p0_p1_count} P0/P1 open)
-                </span>
-              )}
+              {(() => {
+                const health = data.overall_health ?? (data.status === 'ok' ? 'healthy' : data.status === 'incident' ? 'incident' : 'degraded');
+                if (data.status === 'incident' || health === 'incident') {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                      <AlertTriangle className="w-4 h-4" />
+                      Incident ({data.open_p0_p1_count} P0/P1 open)
+                    </span>
+                  );
+                }
+                if (health === 'failed') {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                      <AlertTriangle className="w-4 h-4" />
+                      Failed
+                    </span>
+                  );
+                }
+                if (health === 'attention_required') {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                      <AlertTriangle className="w-4 h-4" />
+                      Attention required
+                    </span>
+                  );
+                }
+                if (health === 'degraded') {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                      <AlertTriangle className="w-4 h-4" />
+                      Degraded
+                    </span>
+                  );
+                }
+                return (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <CheckCircle className="w-4 h-4" />
+                    Healthy
+                  </span>
+                );
+              })()}
               {data.open_incidents_count > 0 && (
                 <Link to="/admin/incidents?status=open" className="text-sm text-indigo-600 hover:underline">
                   View {data.open_incidents_count} open incident(s)

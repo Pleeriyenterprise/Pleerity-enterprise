@@ -314,6 +314,7 @@ def _compute_job_state_and_reason(
     detail: dict,
     now: datetime,
     registry_entry: Optional[object],
+    heartbeat_stale: bool = False,
 ) -> tuple:
     """Returns (state, reason). Uses job_schedule_registry for critical/max_delay/zero_output_ok."""
     last_completed = _parse_iso(detail.get("last_completed"))
@@ -323,8 +324,10 @@ def _compute_job_state_and_reason(
     last_status = (detail.get("last_outcome_status") or "").strip().lower()
     outcome_metrics = detail.get("outcome_metrics") or {}
 
-    # scheduler_heartbeat: special case - no "last_run" from job_runs; use heartbeat collection elsewhere
+    # scheduler_heartbeat: state must reflect heartbeat collection staleness, not just last job run
     if job_id == "scheduler_heartbeat":
+        if heartbeat_stale:
+            return (JOB_STATE_FAILED, "Scheduler heartbeat is stale; scheduler may be down.")
         if last_success:
             return (JOB_STATE_HEALTHY, JOB_STATE_REASONS[JOB_STATE_HEALTHY])
         return (JOB_STATE_NEVER_RAN, JOB_STATE_REASONS[JOB_STATE_NEVER_RAN])
@@ -478,11 +481,13 @@ async def get_health_summary(request: Request):
     except Exception:
         pass
 
-    # Per-job state and reason
+    # Per-job state and reason (pass heartbeat_stale so scheduler_heartbeat can be failed when stale)
     job_states = {}
     for jid in HEALTH_SUMMARY_JOBS:
         entry = registry.get(jid)
-        state, reason = _compute_job_state_and_reason(jid, jobs_detail[jid], now, entry)
+        state, reason = _compute_job_state_and_reason(
+            jid, jobs_detail[jid], now, entry, heartbeat_stale=heartbeat_stale
+        )
         job_states[jid] = {
             "state": state,
             "reason": reason,
