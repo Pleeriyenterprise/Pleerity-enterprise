@@ -358,11 +358,19 @@ async def get_email_delivery(
         merged.sort(key=_sort_key)
         page = merged[skip : skip + limit]
         returned = len(page)
+        # Diagnostic empty reason (Priority 5: make empty states diagnostic)
+        empty_reason = None
+        if total == 0:
+            if template_alias or client_id or status:
+                empty_reason = "template_or_filter_excluded_all"
+            else:
+                empty_reason = "no_sends_attempted"
         return {
             "total": total,
             "returned": returned,
             "has_more": skip + returned < total,
             "items": page,
+            "empty_reason": empty_reason,
         }
     except Exception as e:
         logger.error(f"Email delivery list error: {e}")
@@ -2291,7 +2299,13 @@ async def list_message_logs_delivery(
                 if it.get(k) and hasattr(it[k], "isoformat"):
                     it[k] = it[k].isoformat()
         total = await db.message_logs.count_documents(q)
-        return {"items": items, "total": total, "limit": limit, "offset": offset}
+        empty_reason = None
+        if total == 0:
+            if any([client_id, channel, template_key, status_filter, status_prefix, recipient]) or from_dt or to_dt:
+                empty_reason = "filters_excluded_all_results"
+            else:
+                empty_reason = "no_message_logs_match_filters_or_time_window"
+        return {"items": items, "total": total, "limit": limit, "offset": offset, "empty_reason": empty_reason}
     except Exception as e:
         logger.error(f"Message logs list error: {e}")
         raise HTTPException(
@@ -2398,6 +2412,17 @@ async def get_notification_health_summary(
             {"$limit": 10},
         ]):
             top_reasons.append({"reason": doc["_id"], "count": doc["count"]})
+        # Diagnostic empty reason when no activity in window (Priority 5)
+        empty_reason = None
+        if sent_total == 0 and failed_total == 0 and throttled_count == 0:
+            if status_value == "job_did_not_run":
+                empty_reason = "notification_jobs_ran_but_produced_no_logs"
+            elif status_value == "no_notifications_due":
+                empty_reason = "no_notifications_due_in_this_window"
+            elif not has_any_logs:
+                empty_reason = "no_message_logs_in_window_check_scheduler_and_jobs"
+            else:
+                empty_reason = "no_sent_or_failed_in_window"
         return {
             "window_minutes": window_minutes,
             "notification_health_status": status_value,
@@ -2408,6 +2433,7 @@ async def get_notification_health_summary(
             "throttled_count": throttled_count,
             "top_failed_templates": top_failed,
             "top_failure_reasons": top_reasons,
+            "empty_reason": empty_reason,
         }
     except Exception as e:
         logger.error("Notification health summary error: %s", e)

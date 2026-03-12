@@ -103,7 +103,19 @@ export default function AdminIncidentsPage() {
         )}
 
         {data.items && data.items.length === 0 && !loading && (
-          <p className="text-gray-500 py-8">No incidents found for this filter.</p>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">
+            <p className="font-medium text-gray-700 mb-1">No incidents found for this filter.</p>
+            <p className="text-gray-500">
+              {statusFilter === 'open'
+                ? 'No open incidents. If automation is healthy, critical jobs are within SLA and the scheduler heartbeat is fresh. Check System Health and Automation Control Centre for job states.'
+                : `No ${statusFilter} incidents. Change the filter to see other statuses.`}
+            </p>
+            <p className="mt-2">
+              <Link to="/admin/system-health" className="text-indigo-600 hover:underline">System Health</Link>
+              {' · '}
+              <Link to="/admin/automation" className="text-indigo-600 hover:underline">Automation Control Centre</Link>
+            </p>
+          </div>
         )}
 
         {data.items && data.items.length > 0 && (

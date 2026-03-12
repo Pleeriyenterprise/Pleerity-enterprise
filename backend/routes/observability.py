@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends, status, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime, timezone
 import io
 import csv as csv_module
 import logging
@@ -259,27 +260,134 @@ async def export_score_events_csv(
     )
 
 
-# Critical jobs for system health (expanded so admin sees all important automations)
-HEALTH_SUMMARY_JOBS = [
-    "daily_reminders",
-    "pending_verification_digest",
-    "monthly_digest",
-    "compliance_check_morning",
-    "compliance_check_evening",
-    "scheduled_reports",
-    "compliance_score_snapshots",
-    "expiry_rollover_recalc",
-    "compliance_recalc_worker",
-    "notification_retry_worker",
-    "notification_failure_spike_monitor",
-    "sla_watchdog",
-    "scheduler_heartbeat",
-]
+# Critical jobs for system health (must match job_schedule_registry.ALL_JOB_IDS_FOR_HEALTH)
+from services.job_schedule_registry import (
+    ALL_JOB_IDS_FOR_HEALTH,
+    get_registry_by_id,
+    get_critical_job_ids,
+    OVERALL_HEALTH_HEALTHY,
+    OVERALL_HEALTH_DEGRADED,
+    OVERALL_HEALTH_FAILED,
+    OVERALL_HEALTH_ATTENTION_REQUIRED,
+    JOB_STATE_HEALTHY,
+    JOB_STATE_DEGRADED,
+    JOB_STATE_FAILED,
+    JOB_STATE_MISSED,
+    JOB_STATE_NEVER_RAN,
+    JOB_STATE_NOT_DUE,
+    JOB_STATE_CONDITIONAL_NO_OUTPUT,
+    HEARTBEAT_STALE_SECONDS,
+)
+
+HEALTH_SUMMARY_JOBS = ALL_JOB_IDS_FOR_HEALTH
+
+# Human-readable reason for each job state (for UI)
+JOB_STATE_REASONS = {
+    JOB_STATE_HEALTHY: "Ran within SLA with acceptable outcome.",
+    JOB_STATE_DEGRADED: "Job ran but some outputs failed or were skipped; review outcome_metrics.",
+    JOB_STATE_FAILED: "Job raised or completed unsuccessfully.",
+    JOB_STATE_MISSED: "Expected run window exceeded; job did not run in time.",
+    JOB_STATE_NEVER_RAN: "Registered job has no run history.",
+    JOB_STATE_NOT_DUE: "Job not yet due based on schedule.",
+    JOB_STATE_CONDITIONAL_NO_OUTPUT: "Ran successfully; no qualifying records (e.g. no reminders due).",
+}
+
+
+def _parse_iso(ts) -> Optional[datetime]:
+    """Parse ISO timestamp to datetime (timezone-aware)."""
+    if ts is None:
+        return None
+    try:
+        if isinstance(ts, datetime):
+            t = ts
+        else:
+            t = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        return t
+    except Exception:
+        return None
+
+
+def _compute_job_state_and_reason(
+    job_id: str,
+    detail: dict,
+    now: datetime,
+    registry_entry: Optional[object],
+) -> tuple:
+    """Returns (state, reason). Uses job_schedule_registry for critical/max_delay/zero_output_ok."""
+    last_completed = _parse_iso(detail.get("last_completed"))
+    last_success = _parse_iso(detail.get("last_success"))
+    last_failure = _parse_iso(detail.get("last_failure"))
+    last_degraded = _parse_iso(detail.get("last_degraded"))
+    last_status = (detail.get("last_outcome_status") or "").strip().lower()
+    outcome_metrics = detail.get("outcome_metrics") or {}
+
+    # scheduler_heartbeat: special case - no "last_run" from job_runs; use heartbeat collection elsewhere
+    if job_id == "scheduler_heartbeat":
+        if last_success:
+            return (JOB_STATE_HEALTHY, JOB_STATE_REASONS[JOB_STATE_HEALTHY])
+        return (JOB_STATE_NEVER_RAN, JOB_STATE_REASONS[JOB_STATE_NEVER_RAN])
+
+    if not last_completed:
+        return (JOB_STATE_NEVER_RAN, JOB_STATE_REASONS[JOB_STATE_NEVER_RAN])
+
+    last_run_status = (detail.get("last_run_status") or "").strip().lower()
+    if last_run_status == "failed":
+        return (JOB_STATE_FAILED, JOB_STATE_REASONS[JOB_STATE_FAILED])
+    if last_run_status == "degraded":
+        return (JOB_STATE_DEGRADED, JOB_STATE_REASONS[JOB_STATE_DEGRADED])
+
+    # Success path: check missed (last success/degraded too old)
+    last_ok = last_success or last_degraded
+    if registry_entry and last_ok:
+        delay_minutes = (now - last_ok).total_seconds() / 60
+        if delay_minutes > registry_entry.max_delay_minutes:
+            return (JOB_STATE_MISSED, JOB_STATE_REASONS[JOB_STATE_MISSED])
+
+    # Zero output: conditional_no_output if registry says zero_output_ok and attempted/expected are 0
+    if registry_entry and registry_entry.zero_output_ok:
+        attempted = outcome_metrics.get("attempted_count") or outcome_metrics.get("expected_count") or 0
+        if last_success and attempted == 0:
+            return (JOB_STATE_CONDITIONAL_NO_OUTPUT, JOB_STATE_REASONS[JOB_STATE_CONDITIONAL_NO_OUTPUT])
+
+    return (JOB_STATE_HEALTHY, JOB_STATE_REASONS[JOB_STATE_HEALTHY])
+
+
+def _compute_overall_health(
+    job_states: dict,
+    heartbeat_stale: bool,
+    open_p0_p1: int,
+    delivery_unknown_stale_count: int,
+    critical_job_ids: list,
+) -> str:
+    """Strict overall health: never show healthy when critical jobs are never_ran, missed, or failed."""
+    if open_p0_p1 > 0:
+        return OVERALL_HEALTH_ATTENTION_REQUIRED  # or "failed" for P0; keep attention_required for P1
+    if heartbeat_stale:
+        return OVERALL_HEALTH_FAILED
+    any_critical_missed = any(
+        job_states.get(jid, {}).get("state") == JOB_STATE_MISSED for jid in critical_job_ids
+    )
+    any_critical_never_ran = any(
+        job_states.get(jid, {}).get("state") == JOB_STATE_NEVER_RAN for jid in critical_job_ids
+    )
+    any_critical_failed = any(
+        job_states.get(jid, {}).get("state") == JOB_STATE_FAILED for jid in critical_job_ids
+    )
+    any_critical_degraded = any(
+        job_states.get(jid, {}).get("state") == JOB_STATE_DEGRADED for jid in critical_job_ids
+    )
+    if any_critical_failed or any_critical_missed or any_critical_never_ran:
+        return OVERALL_HEALTH_DEGRADED if not any_critical_failed else OVERALL_HEALTH_ATTENTION_REQUIRED
+    if any_critical_degraded or delivery_unknown_stale_count > 0:
+        return OVERALL_HEALTH_DEGRADED
+    return OVERALL_HEALTH_HEALTHY
 
 
 @router.get("/health-summary")
 async def get_health_summary(request: Request):
-    """Summary for System Health dashboard: status badge, per-job last run/success/failure/degraded, heartbeat, alerting config."""
+    """Summary for System Health dashboard: strict overall health, per-job states (never_ran, missed, healthy, etc.), summary counts."""
     await admin_route_guard(request)
     import os
     from datetime import datetime, timezone, timedelta
@@ -289,6 +397,9 @@ async def get_health_summary(request: Request):
     from services.incident_service import count_open_by_severity
 
     open_p0_p1 = await count_open_by_severity(["P0", "P1"])
+    now = datetime.now(timezone.utc)
+    registry = get_registry_by_id()
+    critical_job_ids = get_critical_job_ids()
 
     # Per-job: last_run (any), last_success, last_failure, last_degraded, last_outcome_status, outcome_metrics
     jobs_detail = {}
@@ -316,6 +427,7 @@ async def get_health_summary(request: Request):
         jobs_detail[job_name] = {
             "last_triggered": last_run.get("started_at") if last_run else None,
             "last_completed": last_run.get("finished_at") if last_run else None,
+            "last_run_status": last_run.get("status") if last_run else None,
             "last_success": last_success_doc.get("finished_at") if last_success_doc else None,
             "last_failure": last_failure_doc.get("finished_at") if last_failure_doc else None,
             "last_failure_message": last_failure_doc.get("error_message") if last_failure_doc else None,
@@ -324,10 +436,9 @@ async def get_health_summary(request: Request):
             "outcome_metrics": last_run.get("outcome_metrics") if last_run else None,
         }
 
-    # Backward compat: last_success map for keys that UI may still expect
     last_success = {j: jobs_detail[j]["last_success"] for j in HEALTH_SUMMARY_JOBS}
 
-    # Scheduler heartbeat (from dedicated collection, not job_runs)
+    # Scheduler heartbeat
     heartbeat_doc = await db.scheduler_heartbeat.find_one(
         {"_id": "default"},
         {"_id": 0, "last_heartbeat_at": 1},
@@ -336,42 +447,15 @@ async def get_health_summary(request: Request):
     heartbeat_stale = False
     if last_heartbeat_at:
         try:
-            if isinstance(last_heartbeat_at, str):
-                t = datetime.fromisoformat(last_heartbeat_at.replace("Z", "+00:00"))
-            else:
-                t = last_heartbeat_at
-            if t.tzinfo is None:
-                t = t.replace(tzinfo=timezone.utc)
-            if (datetime.now(timezone.utc) - t).total_seconds() > 300:  # 5 min
+            t = _parse_iso(last_heartbeat_at)
+            if t and (now - t).total_seconds() > HEARTBEAT_STALE_SECONDS:
                 heartbeat_stale = True
         except Exception:
             heartbeat_stale = True
 
-    no_job_runs_recorded = all(jobs_detail[j]["last_success"] is None for j in HEALTH_SUMMARY_JOBS if j != "scheduler_heartbeat")
-    any_degraded = any(jobs_detail[j]["last_outcome_status"] == "degraded" for j in HEALTH_SUMMARY_JOBS if jobs_detail[j].get("last_outcome_status"))
-
-    if open_p0_p1 > 0:
-        status_badge = "incident"
-    elif no_job_runs_recorded or heartbeat_stale:
-        status_badge = "degraded"
-    elif any_degraded:
-        status_badge = "degraded"
-    else:
-        status_badge = "ok"
-
-    open_incidents = await db.incidents.count_documents({"status": "open"})
-    recent_failures = await db.job_runs.find(
-        {"status": STATUS_FAILED},
-        {"_id": 0, "job_name": 1, "finished_at": 1, "error_message": 1},
-    ).sort("finished_at", -1).limit(10).to_list(10)
-
-    # Alerting config: surface so admin knows if alerts are disabled
-    alert_emails = (os.getenv("ADMIN_ALERT_EMAILS") or os.getenv("OPS_ALERT_EMAIL") or "").strip()
-    alerting_configured = bool(alert_emails)
-
-    # Delivery unknown stale: runs with delivery_unknown > 0 that finished more than threshold hours ago
+    # Delivery unknown stale
     from services.delivery_reconciliation import RECONCILIATION_JOBS, DELIVERY_UNKNOWN_STALE_HOURS
-    stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=DELIVERY_UNKNOWN_STALE_HOURS)
+    stale_cutoff = now - timedelta(hours=DELIVERY_UNKNOWN_STALE_HOURS)
     stale_cutoff_str = stale_cutoff.isoformat()
     delivery_unknown_stale_runs = []
     try:
@@ -394,16 +478,67 @@ async def get_health_summary(request: Request):
     except Exception:
         pass
 
+    # Per-job state and reason
+    job_states = {}
+    for jid in HEALTH_SUMMARY_JOBS:
+        entry = registry.get(jid)
+        state, reason = _compute_job_state_and_reason(jid, jobs_detail[jid], now, entry)
+        job_states[jid] = {
+            "state": state,
+            "reason": reason,
+            "last_run": jobs_detail[jid].get("last_completed"),
+            "last_success": jobs_detail[jid].get("last_success"),
+            "last_degraded": jobs_detail[jid].get("last_degraded"),
+            "last_failure": jobs_detail[jid].get("last_failure"),
+            "schedule": entry.frequency_label if entry else None,
+            "critical": entry.critical if entry else False,
+        }
+
+    # Counts for summary cards (24h)
+    since_24h = now - timedelta(hours=24)
+    since_24h_str = since_24h.isoformat()
+    failed_24h = await db.job_runs.count_documents({"status": STATUS_FAILED, "finished_at": {"$gte": since_24h_str}})
+    degraded_24h = await db.job_runs.count_documents({"status": STATUS_DEGRADED, "finished_at": {"$gte": since_24h_str}})
+    critical_missed_count = sum(1 for jid in critical_job_ids if job_states.get(jid, {}).get("state") == JOB_STATE_MISSED)
+    never_ran_count = sum(1 for jid in critical_job_ids if job_states.get(jid, {}).get("state") == JOB_STATE_NEVER_RAN)
+    open_incidents = await db.incidents.count_documents({"status": "open"})
+
+    overall_health = _compute_overall_health(
+        job_states, heartbeat_stale, open_p0_p1, len(delivery_unknown_stale_runs), critical_job_ids
+    )
+    # Backward compat: status_badge for UI that still expects ok/degraded/incident
+    status_badge = "incident" if open_p0_p1 > 0 else ("degraded" if overall_health != OVERALL_HEALTH_HEALTHY else "ok")
+
+    recent_failures = await db.job_runs.find(
+        {"status": STATUS_FAILED},
+        {"_id": 0, "job_name": 1, "finished_at": 1, "error_message": 1},
+    ).sort("finished_at", -1).limit(10).to_list(10)
+
+    alert_emails = (os.getenv("ADMIN_ALERT_EMAILS") or os.getenv("OPS_ALERT_EMAIL") or "").strip()
+    alerting_configured = bool(alert_emails)
+
     return {
         "status": status_badge,
+        "overall_health": overall_health,
         "open_incidents_count": open_incidents,
         "open_p0_p1_count": open_p0_p1,
         "last_success": last_success,
         "recent_failures": recent_failures,
         "jobs": jobs_detail,
+        "job_states": job_states,
+        "summary_counts": {
+            "critical_missed": critical_missed_count,
+            "never_ran": never_ran_count,
+            "degraded_24h": degraded_24h,
+            "failed_24h": failed_24h,
+            "open_incidents": open_incidents,
+            "heartbeat_stale": 1 if heartbeat_stale else 0,
+            "delivery_unknown_stale": len(delivery_unknown_stale_runs),
+        },
         "last_heartbeat_at": last_heartbeat_at,
         "heartbeat_stale": heartbeat_stale,
         "alerting_configured": alerting_configured,
         "delivery_unknown_stale_runs": delivery_unknown_stale_runs,
         "delivery_unknown_stale_hours": DELIVERY_UNKNOWN_STALE_HOURS,
+        "job_state_reasons": JOB_STATE_REASONS,
     }

@@ -112,6 +112,7 @@ const AdminNotificationHealthPage = () => {
   const [spikeWarning, setSpikeWarning] = useState(null);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
+  const [emptyReason, setEmptyReason] = useState(null);
   const [offset, setOffset] = useState(0);
   const [detailLog, setDetailLog] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -211,6 +212,7 @@ const AdminNotificationHealthPage = () => {
       const res = await api.get('/admin/message-logs', { params });
       setItems(res.data?.items ?? []);
       setTotal(res.data?.total ?? 0);
+      setEmptyReason(res.data?.empty_reason ?? null);
       if (res.data?.total === 0 && (res.response?.status === 401 || res.response?.status === 403)) {
         setUnauthorized(true);
       }
@@ -222,6 +224,7 @@ const AdminNotificationHealthPage = () => {
       }
       setItems([]);
       setTotal(0);
+      setEmptyReason(null);
     } finally {
       setLoading(false);
     }
@@ -452,7 +455,16 @@ const AdminNotificationHealthPage = () => {
               </table>
             )}
             {!loading && items.length === 0 && (
-              <div className="py-8 text-center text-gray-500">No message logs match the filters.</div>
+              <div className="py-8 px-4 text-center">
+                <p className="text-gray-600 font-medium">No message logs in this window.</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  {emptyReason === 'filters_excluded_all_results'
+                    ? 'Filters excluded all results. Try widening the date range or removing filters.'
+                    : emptyReason === 'no_message_logs_match_filters_or_time_window'
+                    ? 'No message logs match the filters or time window. If notification jobs ran, logs may not exist yet or the window may have no activity.'
+                    : 'No notifications were sent or failed in this window, or notification jobs did not run. Check System Health and Automation Control Centre for job status.'}
+                </p>
+              </div>
             )}
           </div>
 

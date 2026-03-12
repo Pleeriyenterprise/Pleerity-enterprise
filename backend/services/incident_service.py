@@ -21,6 +21,8 @@ SEVERITY_P1 = "P1"
 SEVERITY_P2 = "P2"
 
 SOURCE_JOB_MONITOR = "job_monitor"
+SOURCE_HEARTBEAT = "heartbeat"
+SOURCE_DELIVERY_UNKNOWN = "delivery_unknown"
 SOURCE_API_ERROR = "api_error"
 SOURCE_WEBHOOK = "webhook"
 SOURCE_EMAIL = "email"

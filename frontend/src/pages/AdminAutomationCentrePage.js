@@ -20,20 +20,23 @@ const JOB_STATE = {
   degraded: { label: 'Degraded', className: 'bg-amber-100 text-amber-800', Icon: AlertTriangle },
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800', Icon: XCircle },
   missed: { label: 'Missed', className: 'bg-orange-100 text-orange-800', Icon: AlertTriangle },
+  never_ran: { label: 'Never ran', className: 'bg-gray-100 text-gray-700', Icon: HelpCircle },
   no_runs: { label: 'No runs', className: 'bg-gray-100 text-gray-600', Icon: HelpCircle },
+  not_due: { label: 'Not due', className: 'bg-slate-100 text-slate-700', Icon: Clock },
+  conditional_no_output: { label: 'No output (OK)', className: 'bg-slate-100 text-slate-600', Icon: CheckCircle },
 };
 
 function getJobState(info, jobName, heartbeatStale) {
   if (jobName === 'scheduler_heartbeat' && heartbeatStale) return 'failed';
   const last = info?.lastRun;
-  if (!last) return 'no_runs';
+  if (!last) return 'never_ran';
   const status = last.status || '';
   if (status === 'success') return 'healthy';
   if (status === 'degraded') return 'degraded';
   if (status === 'failed') return 'failed';
   const nextRun = info?.nextRun;
   if (nextRun && new Date(nextRun) < new Date() && !last) return 'missed';
-  return 'no_runs';
+  return 'never_ran';
 }
 
 export default function AdminAutomationCentrePage() {
@@ -64,7 +67,16 @@ export default function AdminAutomationCentrePage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleRunNow = (jobId) => {
+  const [runNowConfirm, setRunNowConfirm] = useState(null);
+
+  const handleRunNowClick = (jobId) => {
+    setRunNowConfirm(jobId);
+  };
+
+  const handleRunNowConfirm = () => {
+    if (!runNowConfirm) return;
+    const jobId = runNowConfirm;
+    setRunNowConfirm(null);
     setRunning(jobId);
     adminAPI
       .runJobNow(jobId)
@@ -178,8 +190,55 @@ export default function AdminAutomationCentrePage() {
           </div>
         )}
 
+        {healthSummary?.summary_counts && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-4">
+            {healthSummary.summary_counts.critical_missed > 0 && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm">
+                <span className="font-medium text-orange-800">{healthSummary.summary_counts.critical_missed}</span>
+                <span className="text-orange-700"> critical missed</span>
+              </div>
+            )}
+            {healthSummary.summary_counts.never_ran > 0 && (
+              <div className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm">
+                <span className="font-medium text-gray-800">{healthSummary.summary_counts.never_ran}</span>
+                <span className="text-gray-600"> never ran</span>
+              </div>
+            )}
+            {healthSummary.summary_counts.degraded_24h > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+                <span className="font-medium text-amber-800">{healthSummary.summary_counts.degraded_24h}</span>
+                <span className="text-amber-700"> degraded (24h)</span>
+              </div>
+            )}
+            {healthSummary.summary_counts.failed_24h > 0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
+                <span className="font-medium text-red-800">{healthSummary.summary_counts.failed_24h}</span>
+                <span className="text-red-700"> failed (24h)</span>
+              </div>
+            )}
+            {healthSummary.summary_counts.open_incidents > 0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
+                <span className="font-medium text-red-800">{healthSummary.summary_counts.open_incidents}</span>
+                <span className="text-red-700"> open incidents</span>
+              </div>
+            )}
+            {healthSummary.summary_counts.heartbeat_stale > 0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
+                <span className="font-medium text-red-800">Stale</span>
+                <span className="text-red-700"> heartbeat</span>
+              </div>
+            )}
+            {healthSummary.summary_counts.delivery_unknown_stale > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+                <span className="font-medium text-amber-800">{healthSummary.summary_counts.delivery_unknown_stale}</span>
+                <span className="text-amber-700"> delivery unknown stale</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <p className="mb-3 text-sm text-gray-600">
-          <strong>Status:</strong> Degraded = some sends failed or skipped; review outcome counts and use Message logs when available. Take action if failures repeat or critical notifications are affected.
+          Routine automation should run automatically. Use manual run only for <strong>recovery or testing</strong>. Degraded = some sends failed or skipped; review outcome counts and Message logs when available.
         </p>
 
         {hasNoRuns && (
@@ -199,13 +258,14 @@ export default function AdminAutomationCentrePage() {
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Last degraded</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Failures (24h)</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Next schedule</th>
+                <th className="px-4 py-2 text-left font-medium text-gray-700">Applicability / reason</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {jobIds.length === 0 ? (
+              {              jobIds.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-500">
                     No scheduled jobs loaded. The background scheduler may not be running—check server startup logs.
                   </td>
                 </tr>
@@ -213,7 +273,9 @@ export default function AdminAutomationCentrePage() {
                 jobIds.map((jobName) => {
                   const info = byJob[jobName] || { lastRun: null, lastSuccess: null, lastDegraded: null, lastFailed: null, failures24h: 0, degraded24h: 0 };
                   const next = nextRuns.find((j) => j.id === jobName);
-                  const state = getJobState(info, jobName, heartbeatStale);
+                  const backendState = healthSummary?.job_states?.[jobName];
+                  const state = backendState?.state || getJobState(info, jobName, heartbeatStale);
+                  const reason = backendState?.reason || '';
                   const stateConfig = JOB_STATE[state] || JOB_STATE.no_runs;
                   const StateIcon = stateConfig.Icon;
                   return (
@@ -243,13 +305,15 @@ export default function AdminAutomationCentrePage() {
                       <td className="px-4 py-2 text-amber-600">{formatTime(info.lastDegraded?.finished_at)}</td>
                       <td className="px-4 py-2">{info.failures24h > 0 ? <span className="text-red-600">{info.failures24h}</span> : '—'}</td>
                       <td className="px-4 py-2 text-gray-600">{next?.next_run ? formatTime(next.next_run) : '—'}</td>
+                      <td className="px-4 py-2 text-gray-500 text-xs max-w-[14rem]" title={reason}>{reason || '—'}</td>
                       <td className="px-4 py-2">
                         <div className="flex flex-wrap items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => handleRunNow(jobName)}
+                            onClick={() => handleRunNowClick(jobName)}
                             disabled={running === jobName}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-400 rounded bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            title="Use only for recovery or testing"
                           >
                             {running === jobName ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                             Run now
@@ -279,6 +343,21 @@ export default function AdminAutomationCentrePage() {
           {' · '}
           <Link to="/admin/incidents" className="text-indigo-600 hover:underline">Incidents</Link>
         </p>
+
+        {runNowConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="run-now-confirm-title">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full m-4 p-4">
+              <h2 id="run-now-confirm-title" className="text-lg font-semibold text-gray-900 mb-2">Run job now?</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Routine automation should run automatically. Use manual run only for <strong>recovery or testing</strong>. Running this job now will execute it once.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setRunNowConfirm(null)} className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                <button type="button" onClick={handleRunNowConfirm} className="px-3 py-1.5 text-sm bg-electric-teal text-white rounded hover:opacity-90">Run now</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {messageLogsRun && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="message-logs-title">

@@ -69,16 +69,22 @@ export default function AdminSystemHealthPage() {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium text-gray-500">Status</span>
-              {data.status === 'ok' && (
+              {(data.overall_health === 'healthy' || data.status === 'ok') && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                   <CheckCircle className="w-4 h-4" />
-                  OK
+                  Healthy
                 </span>
               )}
-              {data.status === 'degraded' && (
+              {(data.overall_health === 'degraded' || data.status === 'degraded') && data.status !== 'incident' && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
                   <AlertTriangle className="w-4 h-4" />
                   Degraded
+                </span>
+              )}
+              {(data.overall_health === 'attention_required' || data.overall_health === 'failed') && data.status !== 'incident' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                  <AlertTriangle className="w-4 h-4" />
+                  {data.overall_health === 'failed' ? 'Failed' : 'Attention required'}
                 </span>
               )}
               {data.status === 'incident' && (
@@ -93,6 +99,19 @@ export default function AdminSystemHealthPage() {
                 </Link>
               )}
             </div>
+
+            {data.summary_counts && (data.summary_counts.critical_missed > 0 || data.summary_counts.never_ran > 0 || data.summary_counts.failed_24h > 0 || data.summary_counts.degraded_24h > 0) && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+                <strong>Summary:</strong>{' '}
+                {[
+                  data.summary_counts.critical_missed > 0 && `${data.summary_counts.critical_missed} critical missed`,
+                  data.summary_counts.never_ran > 0 && `${data.summary_counts.never_ran} never ran`,
+                  data.summary_counts.failed_24h > 0 && `${data.summary_counts.failed_24h} failed (24h)`,
+                  data.summary_counts.degraded_24h > 0 && `${data.summary_counts.degraded_24h} degraded (24h)`,
+                ].filter(Boolean).join(', ')}
+                {data.summary_counts.open_incidents > 0 && ` · ${data.summary_counts.open_incidents} open incident(s)`}
+              </div>
+            )}
 
             {data.last_heartbeat_at != null && (
               <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600">

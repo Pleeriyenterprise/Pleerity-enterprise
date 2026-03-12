@@ -1266,6 +1266,7 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
 // Tab Components
 const JobsMonitoring = () => {
   const [jobsStatus, setJobsStatus] = useState(null);
+  const [healthSummary, setHealthSummary] = useState(null);
   const [jobsStatusError, setJobsStatusError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(null);
@@ -1273,11 +1274,16 @@ const JobsMonitoring = () => {
   const fetchJobsStatus = async () => {
     setJobsStatusError(null);
     try {
-      const response = await api.get('/admin/jobs/status');
-      setJobsStatus(response.data);
+      const [jobsRes, healthRes] = await Promise.all([
+        api.get('/admin/jobs/status'),
+        api.get('/admin/observability/health-summary').catch(() => ({ data: null })),
+      ]);
+      setJobsStatus(jobsRes.data);
+      setHealthSummary(healthRes?.data ?? null);
     } catch (error) {
       setJobsStatusError(error.response?.data?.detail || 'Failed to load job status. Check Automation Control Centre or server logs.');
       setJobsStatus(null);
+      setHealthSummary(null);
       toast.error('Failed to load jobs status');
     } finally {
       setLoading(false);
@@ -1326,14 +1332,23 @@ const JobsMonitoring = () => {
         </button>
       </div>
 
-      {/* System Status */}
+      {/* System Status - aligned with System Health / Automation Centre (single source of truth) */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className={`w-3 h-3 rounded-full ${jobsStatus?.system_status === 'operational' ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="font-medium text-midnight-blue">
-            System Status: {jobsStatus?.system_status === 'operational' ? 'Operational' : 'Issues Detected'}
-          </span>
-          {(jobsStatusError || jobsStatus?.system_status === 'issues') && (
+          {(() => {
+            const strictStatus = healthSummary?.overall_health ?? (jobsStatus?.system_status === 'operational' ? 'healthy' : 'degraded');
+            const isOk = strictStatus === 'healthy';
+            const label = strictStatus === 'healthy' ? 'Operational' : strictStatus === 'degraded' ? 'Degraded' : strictStatus === 'failed' ? 'Failed' : 'Attention required';
+            return (
+              <>
+                <div className={`w-3 h-3 rounded-full ${isOk ? 'bg-green-500' : strictStatus === 'failed' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                <span className="font-medium text-midnight-blue">
+                  System Status: {label}
+                </span>
+              </>
+            );
+          })()}
+          {(jobsStatusError || (healthSummary && healthSummary.overall_health !== 'healthy') || jobsStatus?.system_status === 'issues') && (
             <Link
               to="/admin/automation"
               className="ml-2 text-sm text-electric-teal hover:underline"
@@ -1357,6 +1372,7 @@ const JobsMonitoring = () => {
         {/* Scheduled Jobs */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Scheduled Jobs</h3>
+          <p className="text-xs text-gray-500">Routine automation runs automatically. Use Run Now only for recovery or testing.</p>
           {(jobsStatus?.scheduled_jobs ?? []).map((job) => {
             const jobId = job?.id;
             return (
@@ -1373,8 +1389,9 @@ const JobsMonitoring = () => {
                 <button
                   onClick={() => triggerJob(jobId)}
                   disabled={triggering !== null || !jobId}
-                  className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-400 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                   data-testid={`trigger-${jobId}-btn`}
+                  title="Use only for recovery or testing"
                 >
                   {triggering === jobId ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -2006,10 +2023,11 @@ const EmailDelivery = () => {
         returned: res.data?.returned ?? 0,
         has_more: res.data?.has_more ?? false,
         items: res.data?.items ?? [],
+        empty_reason: res.data?.empty_reason ?? null,
       });
     } catch (e) {
       toast.error('Failed to load email delivery list');
-      setData({ total: 0, returned: 0, has_more: false, items: [] });
+      setData({ total: 0, returned: 0, has_more: false, items: [], empty_reason: null });
     } finally {
       setLoading(false);
     }
@@ -2168,7 +2186,20 @@ const EmailDelivery = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {(data?.items ?? []).length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-6 text-gray-500 text-center">No records.</td></tr>
+                  <tr>
+                    <td colSpan={7} className="px-4 py-6 text-center">
+                      <p className="text-gray-600 font-medium">No records.</p>
+                      <p className="text-gray-500 text-sm mt-1">
+                        {data?.empty_reason === 'no_sends_attempted'
+                          ? 'No sends were attempted in this window. Automation may not have run or no notifications were due.'
+                          : data?.empty_reason === 'template_or_filter_excluded_all'
+                          ? 'Template or filter excluded all results. Try widening filters.'
+                          : data?.empty_reason === 'automation_did_not_run_or_no_provider_events'
+                          ? 'No message logs in window. Automation may not have run or provider events not yet received.'
+                          : 'No email delivery records for the selected filters and time range.'}
+                      </p>
+                    </td>
+                  </tr>
                 ) : (
                   (data?.items ?? []).map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
