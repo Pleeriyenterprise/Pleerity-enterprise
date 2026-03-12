@@ -85,6 +85,22 @@ export default function AdminSystemHealthPage() {
               )}
             </div>
 
+            {data.last_heartbeat_at != null && (
+              <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600">
+                <span className="font-medium">Scheduler heartbeat:</span>{' '}
+                {formatTime(data.last_heartbeat_at)}
+                {data.heartbeat_stale && (
+                  <span className="ml-2 text-amber-600 font-medium">(stale — scheduler may be down)</span>
+                )}
+              </div>
+            )}
+
+            {data.alerting_configured === false && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm">
+                Admin alerting is not configured. Set <code className="bg-amber-100/80 px-1 rounded">ADMIN_ALERT_EMAILS</code> or <code className="bg-amber-100/80 px-1 rounded">OPS_ALERT_EMAIL</code> so failed or missed automations trigger email alerts.
+              </div>
+            )}
+
             {data.last_success && Object.values(data.last_success).every((v) => v == null) && (
               <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm">
                 No job runs have been recorded. The background scheduler may not be running (e.g. startup failure on deploy). Without it, automations do not run, the SLA watchdog cannot create incidents, and admin alert emails will not be sent. Check server logs and set <code className="bg-amber-100/80 px-1 rounded">ADMIN_ALERT_EMAILS</code> for incident alerts.

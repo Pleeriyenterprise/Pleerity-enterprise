@@ -456,6 +456,26 @@ async def lifespan(app: FastAPI):
         kwargs={"run_type": "schedule"},
     )
     
+    # Scheduler heartbeat - every 2 minutes (for system health "scheduler alive" visibility)
+    scheduler.add_job(
+        "job_runner:run_scheduled_job",
+        IntervalTrigger(minutes=2),
+        id="scheduler_heartbeat",
+        name="Scheduler Heartbeat",
+        replace_existing=True,
+        args=["scheduler_heartbeat"],
+        kwargs={"run_type": "schedule"},
+    )
+    # Delivery reconciliation - every 15 min (enrich reminder/digest runs with delivered/bounced from message_logs)
+    scheduler.add_job(
+        "job_runner:run_scheduled_job",
+        CronTrigger(minute="*/15"),
+        id="delivery_reconciliation",
+        name="Delivery Reconciliation",
+        replace_existing=True,
+        args=["delivery_reconciliation"],
+        kwargs={"run_type": "schedule"},
+    )
     # SLA watchdog (job run SLA) - every 10 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",

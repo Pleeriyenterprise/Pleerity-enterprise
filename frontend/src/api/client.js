@@ -264,6 +264,14 @@ export const adminAPI = {
   // Observability (job runs, incidents, system health)
   getObservabilityHealthSummary: () => apiClient.get('/admin/observability/health-summary'),
   getJobRuns: (params = {}) => apiClient.get('/admin/observability/job-runs', { params }),
+  getJobRunMessageLogs: (runId, params = {}) =>
+    apiClient.get(`/admin/observability/job-runs/${runId}/message-logs`, { params }),
+  getJobRunMessageLogsCsv: (runId, limit = 2000) =>
+    apiClient.get(`/admin/observability/job-runs/${runId}/message-logs`, {
+      params: { format: 'csv', limit },
+      responseType: 'blob',
+    }),
+  getDeliveryStateDefinitions: () => apiClient.get('/admin/observability/delivery-state-definitions'),
   getIncidents: (params = {}) => apiClient.get('/admin/observability/incidents', { params }),
   getIncident: (incidentId) => apiClient.get(`/admin/observability/incidents/${incidentId}`),
   acknowledgeIncident: (incidentId, note) =>

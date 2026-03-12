@@ -76,9 +76,9 @@ export default function ScoreTrendChart({ points = [], summary = {}, className =
       {/* Chart */}
       <div
         style={{ width: '100%', height: CHART_HEIGHT }}
-        className={onPointClick ? 'cursor-pointer' : undefined}
-        role={onPointClick ? 'button' : undefined}
-        aria-label={onPointClick ? 'View score explanation' : undefined}
+        className={onPointClick && hasData ? 'cursor-pointer' : undefined}
+        role={onPointClick && hasData ? 'button' : undefined}
+        aria-label={onPointClick && hasData ? 'View score explanation' : undefined}
       >
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">

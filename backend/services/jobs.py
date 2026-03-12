@@ -67,8 +67,11 @@ class JobScheduler:
                 {"_id": 0}
             ).to_list(1000)
             
-            reminder_count = 0
-            
+            attempted_count = 0
+            success_count = 0
+            failed_count = 0
+            skipped_count = 0
+
             for client in clients:
                 # Check notification preferences
                 prefs = await self.db.notification_preferences.find_one(
@@ -184,15 +187,18 @@ class JobScheduler:
                 if expiring_requirements or overdue_requirements:
                     reminder_recipients = await self._resolve_reminder_recipients(client)
                     for recipient_email in reminder_recipients:
-                        await self._send_reminder_email(
+                        attempted_count += 1
+                        ok = await self._send_reminder_email(
                             client,
                             expiring_requirements,
                             overdue_requirements,
                             recipient_email=recipient_email,
                             reminder_refs=reminder_refs,
                         )
-                    if reminder_recipients:
-                        reminder_count += 1
+                        if ok:
+                            success_count += 1
+                        else:
+                            failed_count += 1
                     # Portfolio and above: runtime plan gating before SMS (survives downgrade/cancel)
                     from services.plan_registry import plan_registry
                     sms_allowed, _sms_err, _sms_details = await plan_registry.enforce_feature(
@@ -220,12 +226,42 @@ class JobScheduler:
                             client["client_id"],
                         )
             
-            logger.info(f"Daily reminder job complete. Sent {reminder_count} reminders.")
-            return reminder_count
-        
+            reminder_count = success_count  # for backward compat message
+            logger.info("Daily reminder job complete. attempted=%s success=%s failed=%s", attempted_count, success_count, failed_count)
+
+            # Outcome: success = all sent; degraded = some failed; failed = attempted but none sent
+            if attempted_count == 0:
+                return {
+                    "message": "Daily reminders: no reminders due",
+                    "count": 0,
+                    "outcome_status": "success",
+                    "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": skipped_count},
+                }
+            if failed_count > 0 and success_count > 0:
+                return {
+                    "message": f"Daily reminders: {success_count} sent, {failed_count} failed",
+                    "count": success_count,
+                    "outcome_status": "degraded",
+                    "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": success_count, "failed_count": failed_count, "skipped_count": skipped_count},
+                }
+            if failed_count > 0 and success_count == 0:
+                return {
+                    "message": f"Daily reminders: all {attempted_count} send(s) failed",
+                    "count": 0,
+                    "outcome_status": "failed",
+                    "error_message": f"All {attempted_count} reminder send(s) failed",
+                    "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": 0, "failed_count": failed_count, "skipped_count": skipped_count},
+                }
+            return {
+                "message": f"Daily reminders sent: {success_count}",
+                "count": success_count,
+                "outcome_status": "success",
+                "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": success_count, "failed_count": 0, "skipped_count": skipped_count},
+            }
+
         except Exception as e:
-            logger.error(f"Daily reminder job error: {e}")
-            return 0
+            logger.exception("Daily reminder job error: %s", e)
+            raise
     
     async def send_monthly_digests(self):
         """Send monthly compliance digest to all active clients.
@@ -248,7 +284,9 @@ class JobScheduler:
             ).to_list(1000)
             
             digest_count = 0
-            
+            attempted_digests = 0
+            failed_digests = 0
+
             for client in clients:
                 # Check notification preferences
                 prefs = await self.db.notification_preferences.find_one(
@@ -314,8 +352,10 @@ class JobScheduler:
                 # Send digest email (skip and audit if no recipient)
                 digest_id = str(uuid.uuid4())
                 digest_content["digest_id"] = digest_id
+                attempted_digests += 1
                 sent = await self._send_digest_email(client, digest_content)
                 if not sent:
+                    failed_digests += 1
                     continue
                 digest_log = {
                     "digest_id": digest_id,
@@ -338,13 +378,41 @@ class JobScheduler:
                 except Exception as audit_err:
                     logger.warning("Failed to log DIGEST_SENT audit for %s: %s", digest_id, audit_err)
                 digest_count += 1
-            
-            logger.info(f"Monthly digest job complete. Sent {digest_count} digests.")
-            return digest_count
-        
+
+            logger.info("Monthly digest job complete. attempted=%s success=%s failed=%s", attempted_digests, digest_count, failed_digests)
+
+            if attempted_digests == 0:
+                return {
+                    "message": "Monthly digests: none due",
+                    "count": 0,
+                    "outcome_status": "success",
+                    "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": 0},
+                }
+            if failed_digests > 0 and digest_count > 0:
+                return {
+                    "message": f"Monthly digests: {digest_count} sent, {failed_digests} failed",
+                    "count": digest_count,
+                    "outcome_status": "degraded",
+                    "outcome_metrics": {"expected_count": attempted_digests, "attempted_count": attempted_digests, "success_count": digest_count, "failed_count": failed_digests, "skipped_count": 0},
+                }
+            if failed_digests > 0 and digest_count == 0:
+                return {
+                    "message": f"Monthly digests: all {attempted_digests} send(s) failed",
+                    "count": 0,
+                    "outcome_status": "failed",
+                    "error_message": f"All {attempted_digests} digest send(s) failed",
+                    "outcome_metrics": {"expected_count": attempted_digests, "attempted_count": attempted_digests, "success_count": 0, "failed_count": failed_digests, "skipped_count": 0},
+                }
+            return {
+                "message": f"Monthly digests sent: {digest_count}",
+                "count": digest_count,
+                "outcome_status": "success",
+                "outcome_metrics": {"expected_count": attempted_digests, "attempted_count": attempted_digests, "success_count": digest_count, "failed_count": 0, "skipped_count": 0},
+            }
+
         except Exception as e:
-            logger.error(f"Monthly digest job error: {e}")
-            return 0
+            logger.exception("Monthly digest job error: %s", e)
+            raise
     
     async def _resolve_reminder_recipients(self, client) -> list:
         """
@@ -400,14 +468,14 @@ class JobScheduler:
         return phones
 
     async def _send_reminder_email(self, client, expiring, overdue, recipient_email=None, reminder_refs=None):
-        """Send reminder email via NotificationOrchestrator. Fills template placeholders (requirement_name, property_address, due_date, days_remaining, company_name) from the first overdue or expiring item so the email is professionally branded and not raw template vars."""
+        """Send reminder email via NotificationOrchestrator. Returns True if sent (or duplicate_ignored), False if skipped/failed."""
         try:
             from services.notification_orchestrator import notification_orchestrator
             from services.webhook_service import fire_reminder_sent
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             to_addr = (recipient_email or client.get("email") or client.get("contact_email") or "").strip()
             if not to_addr:
-                return
+                return False
             key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}"
             base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://pleerityenterprise.co.uk").strip().rstrip("/")
@@ -438,28 +506,32 @@ class JobScheduler:
                     context["days_remaining"] = first_item.get("days_remaining", 0)
                     context["days_overdue"] = None
                     context["subject"] = f"Action Required: {context['requirement_name']} Due Soon"
-            await notification_orchestrator.send(
+            result = await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER",
                 client_id=client["client_id"],
                 context=context,
                 idempotency_key=idempotency_key,
                 event_type="REMINDER",
             )
-            logger.info(f"Sending reminder to {to_addr}: {len(expiring)} expiring, {len(overdue)} overdue")
-            try:
-                await fire_reminder_sent(client_id=client["client_id"], recipient=to_addr, expiring_count=len(expiring), overdue_count=len(overdue))
-            except Exception as webhook_err:
-                logger.error(f"Webhook error for reminder: {webhook_err}")
-            audit_log = {
-                "audit_id": str(datetime.now(timezone.utc).timestamp()),
-                "action": "REMINDER_SENT",
-                "client_id": client["client_id"],
-                "metadata": {"expiring_count": len(expiring), "overdue_count": len(overdue), "recipient": to_addr},
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-            await self.db.audit_logs.insert_one(audit_log)
+            ok = result.outcome in ("sent", "duplicate_ignored")
+            if ok:
+                logger.info(f"Sending reminder to {to_addr}: {len(expiring)} expiring, {len(overdue)} overdue")
+                try:
+                    await fire_reminder_sent(client_id=client["client_id"], recipient=to_addr, expiring_count=len(expiring), overdue_count=len(overdue))
+                except Exception as webhook_err:
+                    logger.error(f"Webhook error for reminder: {webhook_err}")
+                audit_log = {
+                    "audit_id": str(datetime.now(timezone.utc).timestamp()),
+                    "action": "REMINDER_SENT",
+                    "client_id": client["client_id"],
+                    "metadata": {"expiring_count": len(expiring), "overdue_count": len(overdue), "recipient": to_addr},
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+                await self.db.audit_logs.insert_one(audit_log)
+            return ok
         except Exception as e:
-            logger.error(f"Failed to send reminder email: {e}")
+            logger.error("Failed to send reminder email: %s", e)
+            return False
 
     async def _maybe_send_reminder_sms(self, client, prefs, expiring, overdue, recipient_phone=None, reminder_refs=None):
         """Send SMS reminder via NotificationOrchestrator (plan-gated, 24h throttle inside orchestrator). Writes message_log with event_type REMINDER and reminder_refs in metadata."""
@@ -587,6 +659,7 @@ class JobScheduler:
 
             recipient_emails = [a["auth_email"] for a in admins if a.get("auth_email")]
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            attempted = len(recipient_emails)
             sent = 0
             for email in recipient_emails:
                 try:
@@ -607,8 +680,9 @@ class JobScheduler:
                     if result.outcome in ("sent", "duplicate_ignored"):
                         sent += 1
                 except Exception as e:
-                    logger.warning(f"Pending verification digest send failed to {email}: {e}")
+                    logger.warning("Pending verification digest send failed to %s: %s", email, e)
 
+            failed = max(0, attempted - sent)
             await create_audit_log(
                 action=AuditAction.PENDING_VERIFICATION_DIGEST_SENT,
                 actor_id="system",
@@ -618,11 +692,18 @@ class JobScheduler:
                     "count_older_24h": count_older_24h,
                 },
             )
-            logger.info(f"Pending verification digest sent to {sent} recipients (count_pending={count_pending}, count_older_24h={count_older_24h})")
-            return sent
+            logger.info("Pending verification digest sent to %s/%s recipients (count_pending=%s, count_older_24h=%s)", sent, attempted, count_pending, count_older_24h)
+
+            if attempted == 0:
+                return {"message": "Pending verification digest: no admin recipients", "count": 0, "outcome_status": "success", "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": 0}}
+            if failed > 0 and sent > 0:
+                return {"message": f"Pending verification digest: {sent} sent, {failed} failed", "count": sent, "outcome_status": "degraded", "outcome_metrics": {"expected_count": attempted, "attempted_count": attempted, "success_count": sent, "failed_count": failed, "skipped_count": 0}}
+            if failed > 0 and sent == 0:
+                return {"message": f"Pending verification digest: all {attempted} send(s) failed", "count": 0, "outcome_status": "failed", "error_message": f"All {attempted} digest send(s) failed", "outcome_metrics": {"expected_count": attempted, "attempted_count": attempted, "success_count": 0, "failed_count": failed, "skipped_count": 0}}
+            return {"message": f"Pending verification digest sent to {sent} recipients", "count": sent, "outcome_status": "success", "outcome_metrics": {"expected_count": attempted, "attempted_count": attempted, "success_count": sent, "failed_count": 0, "skipped_count": 0}}
         except Exception as e:
-            logger.error(f"Pending verification digest job error: {e}")
-            return 0
+            logger.exception("Pending verification digest job error: %s", e)
+            raise
 
     async def check_compliance_status_changes(self):
         """Check for compliance status changes and send alerts.
@@ -651,7 +732,9 @@ class JobScheduler:
             ).to_list(1000)
             
             alert_count = 0
-            
+            attempted_alerts = 0
+            failed_alerts = 0
+
             for client in clients:
                 # Check notification preferences
                 prefs = await self.db.notification_preferences.find_one(
@@ -740,46 +823,57 @@ class JobScheduler:
                 
                 # Send email alert via orchestrator if there are properties with degraded status
                 if properties_with_changes and status_alerts_enabled:
-                    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-                    from services.notification_orchestrator import notification_orchestrator
-                    date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                    ids_hash = "_".join(sorted(p.get("property_id", "") for p in properties_with_changes))[:32]
-                    idempotency_key = f"{client['client_id']}_COMPLIANCE_ALERT_{date_key}_{ids_hash}"
-                    await notification_orchestrator.send(
-                        template_key="COMPLIANCE_ALERT",
-                        client_id=client["client_id"],
-                        context={
-                            "client_name": client.get("full_name", "Valued Customer"),
-                            "affected_properties": properties_with_changes,
-                            "portal_link": f"{frontend_url}/app/dashboard",
-                        },
-                        idempotency_key=idempotency_key,
-                        event_type="compliance_status_changed",
-                    )
-                    # Audit log
-                    audit_log = {
-                        "audit_id": str(datetime.now(timezone.utc).timestamp()),
-                        "action": "COMPLIANCE_ALERT_SENT",
-                        "client_id": client["client_id"],
-                        "metadata": {
-                            "properties_affected": len(properties_with_changes),
-                            "changes": properties_with_changes
-                        },
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    }
-                    await self.db.audit_logs.insert_one(audit_log)
-                    
-                    alert_count += 1
-                    logger.info(f"Sent compliance alert to {client['email']} for {len(properties_with_changes)} properties")
+                    attempted_alerts += 1
+                    try:
+                        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+                        from services.notification_orchestrator import notification_orchestrator
+                        date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        ids_hash = "_".join(sorted(p.get("property_id", "") for p in properties_with_changes))[:32]
+                        idempotency_key = f"{client['client_id']}_COMPLIANCE_ALERT_{date_key}_{ids_hash}"
+                        await notification_orchestrator.send(
+                            template_key="COMPLIANCE_ALERT",
+                            client_id=client["client_id"],
+                            context={
+                                "client_name": client.get("full_name", "Valued Customer"),
+                                "affected_properties": properties_with_changes,
+                                "portal_link": f"{frontend_url}/app/dashboard",
+                            },
+                            idempotency_key=idempotency_key,
+                            event_type="compliance_status_changed",
+                        )
+                        # Audit log
+                        audit_log = {
+                            "audit_id": str(datetime.now(timezone.utc).timestamp()),
+                            "action": "COMPLIANCE_ALERT_SENT",
+                            "client_id": client["client_id"],
+                            "metadata": {
+                                "properties_affected": len(properties_with_changes),
+                                "changes": properties_with_changes
+                            },
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        }
+                        await self.db.audit_logs.insert_one(audit_log)
+                        alert_count += 1
+                        logger.info("Sent compliance alert to %s for %s properties", client["email"], len(properties_with_changes))
+                    except Exception as send_err:
+                        failed_alerts += 1
+                        logger.warning("Compliance alert send failed for client %s: %s", client["client_id"], send_err)
                 elif not status_alerts_enabled and properties_with_changes:
                     logger.info(f"Skipping email alert for {client['email']} - disabled in preferences (webhooks still fired)")
             
-            logger.info(f"Compliance status check complete. Sent {alert_count} email alerts.")
-            return alert_count
-        
+            logger.info("Compliance status check complete. attempted=%s success=%s failed=%s", attempted_alerts, alert_count, failed_alerts)
+
+            if attempted_alerts == 0:
+                return {"message": "Compliance status check: no alerts due", "count": 0, "outcome_status": "success", "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": 0}}
+            if failed_alerts > 0 and alert_count > 0:
+                return {"message": f"Compliance status check: {alert_count} sent, {failed_alerts} failed", "count": alert_count, "outcome_status": "degraded", "outcome_metrics": {"expected_count": attempted_alerts, "attempted_count": attempted_alerts, "success_count": alert_count, "failed_count": failed_alerts, "skipped_count": 0}}
+            if failed_alerts > 0 and alert_count == 0:
+                return {"message": f"Compliance status check: all {attempted_alerts} send(s) failed", "count": 0, "outcome_status": "failed", "error_message": f"All {attempted_alerts} alert send(s) failed", "outcome_metrics": {"expected_count": attempted_alerts, "attempted_count": attempted_alerts, "success_count": 0, "failed_count": failed_alerts, "skipped_count": 0}}
+            return {"message": f"Compliance status check: {alert_count} alerts sent", "count": alert_count, "outcome_status": "success", "outcome_metrics": {"expected_count": attempted_alerts, "attempted_count": attempted_alerts, "success_count": alert_count, "failed_count": 0, "skipped_count": 0}}
+
         except Exception as e:
-            logger.error(f"Compliance status check error: {e}")
-            return 0
+            logger.exception("Compliance status check error: %s", e)
+            raise
     
     def _is_in_quiet_hours(self, prefs) -> bool:
         """True if quiet hours are enabled and current UTC time is within the window (e.g. 22:00-08:00)."""
@@ -971,8 +1065,8 @@ class JobScheduler:
             return reminder_count
             
         except Exception as e:
-            logger.error(f"Renewal reminder job error: {e}")
-            return 0
+            logger.exception("Renewal reminder job error: %s", e)
+            raise
 
 async def run_daily_job():
     """Run daily reminder job."""
@@ -1030,10 +1124,11 @@ class ScheduledReportJob:
         from services.reporting_service import reporting_service
 
         logger.info("Processing scheduled reports...")
-        
+
         now = datetime.now(timezone.utc)
         reports_sent = 0
-        
+        attempted_reports = 0
+
         try:
             # Find all active schedules that are due
             schedules = await self.db.report_schedules.find(
@@ -1140,6 +1235,7 @@ class ScheduledReportJob:
                     date_key = now.strftime("%Y-%m-%d")
                     schedule_sent = 0
                     for recipient in recipients:
+                        attempted_reports += 1
                         try:
                             idempotency_key = f"{schedule.get('schedule_id', schedule['client_id'])}_SCHEDULED_REPORT_{date_key}_{recipient}"
                             from services.notification_orchestrator import notification_orchestrator
@@ -1216,12 +1312,20 @@ class ScheduledReportJob:
                 except Exception as e:
                     logger.error(f"Error processing schedule {schedule.get('schedule_id')}: {e}")
             
-            logger.info(f"Scheduled reports job complete: {reports_sent} reports sent")
-            return reports_sent
-            
+            failed_reports = max(0, attempted_reports - reports_sent)
+            logger.info("Scheduled reports job complete. attempted=%s success=%s failed=%s", attempted_reports, reports_sent, failed_reports)
+
+            if attempted_reports == 0:
+                return {"message": "Scheduled reports: none due", "count": 0, "outcome_status": "success", "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": 0}}
+            if failed_reports > 0 and reports_sent > 0:
+                return {"message": f"Scheduled reports: {reports_sent} sent, {failed_reports} failed", "count": reports_sent, "outcome_status": "degraded", "outcome_metrics": {"expected_count": attempted_reports, "attempted_count": attempted_reports, "success_count": reports_sent, "failed_count": failed_reports, "skipped_count": 0}}
+            if failed_reports > 0 and reports_sent == 0:
+                return {"message": f"Scheduled reports: all {attempted_reports} send(s) failed", "count": 0, "outcome_status": "failed", "error_message": f"All {attempted_reports} report send(s) failed", "outcome_metrics": {"expected_count": attempted_reports, "attempted_count": attempted_reports, "success_count": 0, "failed_count": failed_reports, "skipped_count": 0}}
+            return {"message": f"Scheduled reports sent: {reports_sent}", "count": reports_sent, "outcome_status": "success", "outcome_metrics": {"expected_count": attempted_reports, "attempted_count": attempted_reports, "success_count": reports_sent, "failed_count": 0, "skipped_count": 0}}
+
         except Exception as e:
-            logger.error(f"Scheduled reports job failed: {e}")
-            return 0
+            logger.exception("Scheduled reports job failed: %s", e)
+            raise
     
     def _calculate_next_schedule(self, frequency, from_time):
         """Calculate the next scheduled time based on frequency."""

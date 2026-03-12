@@ -2325,25 +2325,65 @@ async def get_message_log_by_id(request: Request, message_id: str):
         )
 
 
+def _notification_health_status(sent_total, failed_total, throttled_count, reminder_job_ran_with_attempts, has_any_logs):
+    """Derive a single status so empty state is not ambiguous."""
+    if sent_total > 0 and failed_total == 0 and throttled_count == 0:
+        return "sent_ok"
+    if sent_total > 0 and failed_total > 0:
+        return "partial_failure"
+    if sent_total == 0 and failed_total > 0:
+        return "failed"
+    if throttled_count > 0 and sent_total == 0 and failed_total == 0:
+        return "notifications_queued"
+    if sent_total == 0 and failed_total == 0:
+        if reminder_job_ran_with_attempts and not has_any_logs:
+            return "job_did_not_run"  # reliability concern: job ran but no message_logs
+        if reminder_job_ran_with_attempts and has_any_logs:
+            return "no_notifications_due"  # job ran, logs exist, but 0 in window
+        return "no_notifications_due"
+    return "cannot_verify"
+
+
 @router.get("/notification-health/summary", dependencies=[Depends(require_owner_or_admin)])
 async def get_notification_health_summary(
     request: Request,
     window_minutes: int = Query(60, ge=1, le=10080),
 ):
-    """Admin notification health: aggregate counts and top failures in window."""
+    """Admin notification health: aggregate counts, top failures, and explicit status (no ambiguous empty state)."""
     await admin_route_guard(request)
     db = database.get_db()
     try:
         since = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
         match = {"created_at": {"$gte": since}}
-        sent_email = await db.message_logs.count_documents({**match, "channel": "EMAIL", "status": "SENT"})
-        failed_email = await db.message_logs.count_documents({**match, "channel": "EMAIL", "status": "FAILED"})
-        sent_sms = await db.message_logs.count_documents({**match, "channel": "SMS", "status": "SENT"})
-        failed_sms = await db.message_logs.count_documents({**match, "channel": "SMS", "status": "FAILED"})
+        # Support both "SENT"/"FAILED" and "sent"/"failed" for message_logs
+        sent_email = await db.message_logs.count_documents({**match, "channel": "EMAIL", "status": {"$in": ["SENT", "sent"]}})
+        failed_email = await db.message_logs.count_documents({**match, "channel": "EMAIL", "status": {"$in": ["FAILED", "failed"]}})
+        sent_sms = await db.message_logs.count_documents({**match, "channel": "SMS", "status": {"$in": ["SENT", "sent"]}})
+        failed_sms = await db.message_logs.count_documents({**match, "channel": "SMS", "status": {"$in": ["FAILED", "failed"]}})
         throttled_count = await db.message_logs.count_documents({**match, "status": "DEFERRED_THROTTLED"})
+        sent_total = sent_email + sent_sms
+        failed_total = failed_email + failed_sms
+        has_any_logs = await db.message_logs.count_documents(match) > 0
+
+        # Did a notification job run in this window with attempted sends? (so we can flag job_did_not_run)
+        reminder_run = await db.job_runs.find_one(
+            {"job_name": "daily_reminders", "started_at": {"$gte": since.isoformat()}},
+            {"_id": 0, "outcome_metrics": 1},
+            sort=[("started_at", -1)],
+        )
+        reminder_job_ran_with_attempts = False
+        if reminder_run and reminder_run.get("outcome_metrics"):
+            om = reminder_run["outcome_metrics"]
+            if (om.get("attempted_count") or 0) > 0 or (om.get("expected_count") or 0) > 0:
+                reminder_job_ran_with_attempts = True
+
+        status_value = _notification_health_status(
+            sent_total, failed_total, throttled_count, reminder_job_ran_with_attempts, has_any_logs,
+        )
+
         top_failed = []
         async for doc in db.message_logs.aggregate([
-            {"$match": {**match, "status": "FAILED"}},
+            {"$match": {**match, "status": {"$in": ["FAILED", "failed"]}}},
             {"$group": {"_id": "$template_key", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
             {"$limit": 10},
@@ -2351,7 +2391,7 @@ async def get_notification_health_summary(
             top_failed.append({"template_key": doc["_id"] or "unknown", "count": doc["count"]})
         top_reasons = []
         async for doc in db.message_logs.aggregate([
-            {"$match": {**match, "status": "FAILED", "error_message": {"$exists": True, "$ne": ""}}},
+            {"$match": {**match, "status": {"$in": ["FAILED", "failed"]}, "error_message": {"$exists": True, "$ne": ""}}},
             {"$group": {"_id": {"$substr": ["$error_message", 0, 120]}, "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
             {"$limit": 10},
@@ -2359,6 +2399,7 @@ async def get_notification_health_summary(
             top_reasons.append({"reason": doc["_id"], "count": doc["count"]})
         return {
             "window_minutes": window_minutes,
+            "notification_health_status": status_value,
             "sent_email_count": sent_email,
             "failed_email_count": failed_email,
             "sent_sms_count": sent_sms,
@@ -2368,7 +2409,7 @@ async def get_notification_health_summary(
             "top_failure_reasons": top_reasons,
         }
     except Exception as e:
-        logger.error(f"Notification health summary error: {e}")
+        logger.error("Notification health summary error: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load notification health summary",

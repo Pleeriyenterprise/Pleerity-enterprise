@@ -26,6 +26,10 @@ async def run_instrumented(
         start_job_run,
         finish_job_run_success,
         finish_job_run_failure,
+        finish_job_run_degraded,
+        OUTCOME_SUCCESS,
+        OUTCOME_DEGRADED,
+        OUTCOME_FAILED,
     )
     fn = JOB_RUNNERS.get(job_id)
     if not fn:
@@ -33,8 +37,34 @@ async def run_instrumented(
     job_run_id = await start_job_run(job_id, run_type, triggered_by=triggered_by)
     try:
         result = await fn()
-        count = result.get("count") if isinstance(result, dict) else None
-        await finish_job_run_success(job_run_id, affected_clients_count=count)
+        if not isinstance(result, dict):
+            result = {"message": str(result), "count": result if isinstance(result, (int, float)) else None}
+        count = result.get("count")
+        outcome_status = result.get("outcome_status", OUTCOME_SUCCESS)
+        outcome_metrics = result.get("outcome_metrics") or {}
+
+        if outcome_status == OUTCOME_FAILED:
+            await finish_job_run_failure(
+                job_run_id,
+                error_code=result.get("error_code", "JobReportedFailed"),
+                error_message=result.get("error_message", "Job completed with outcome_status=failed"),
+                stack_trace=result.get("stack_trace"),
+            )
+            return result
+        if outcome_status == OUTCOME_DEGRADED:
+            await finish_job_run_degraded(
+                job_run_id,
+                affected_clients_count=count,
+                outcome_metrics=outcome_metrics,
+                error_message=result.get("error_message"),
+            )
+            return result
+        await finish_job_run_success(
+            job_run_id,
+            affected_clients_count=count,
+            outcome_status=outcome_status,
+            outcome_metrics=outcome_metrics if outcome_metrics else None,
+        )
         return result
     except Exception as e:
         await finish_job_run_failure(
@@ -70,12 +100,14 @@ async def run_daily_reminders():
         from services.jobs import JobScheduler
         job_scheduler = JobScheduler()
         await job_scheduler.connect()
-        count = await job_scheduler.send_daily_reminders()
+        result = await job_scheduler.send_daily_reminders()
         await job_scheduler.close()
-        logger.info(f"Daily reminders job completed: {count} reminders sent")
-        return {"message": f"Daily reminders sent: {count}", "count": count}
+        if isinstance(result, dict):
+            logger.info("Daily reminders job completed: %s", result.get("message", result))
+            return result
+        return {"message": f"Daily reminders sent: {result}", "count": result}
     except Exception as e:
-        logger.error(f"Daily reminders job failed: {e}")
+        logger.error("Daily reminders job failed: %s", e)
         raise
 
 
@@ -84,12 +116,14 @@ async def run_pending_verification_digest():
         from services.jobs import JobScheduler
         job_scheduler = JobScheduler()
         await job_scheduler.connect()
-        sent = await job_scheduler.send_pending_verification_digest()
+        result = await job_scheduler.send_pending_verification_digest()
         await job_scheduler.close()
-        logger.info(f"Pending verification digest job completed: {sent} emails sent")
-        return {"message": f"Pending verification digest sent: {sent} emails", "count": sent}
+        if isinstance(result, dict):
+            logger.info("Pending verification digest job completed: %s", result.get("message", result))
+            return result
+        return {"message": f"Pending verification digest sent: {result} emails", "count": result}
     except Exception as e:
-        logger.error(f"Pending verification digest job failed: {e}")
+        logger.error("Pending verification digest job failed: %s", e)
         raise
 
 
@@ -98,12 +132,14 @@ async def run_monthly_digests():
         from services.jobs import JobScheduler
         job_scheduler = JobScheduler()
         await job_scheduler.connect()
-        count = await job_scheduler.send_monthly_digests()
+        result = await job_scheduler.send_monthly_digests()
         await job_scheduler.close()
-        logger.info(f"Monthly digest job completed: {count} digests sent")
-        return {"message": f"Monthly digests sent: {count}", "count": count}
+        if isinstance(result, dict):
+            logger.info("Monthly digest job completed: %s", result.get("message", result))
+            return result
+        return {"message": f"Monthly digests sent: {result}", "count": result}
     except Exception as e:
-        logger.error(f"Monthly digest job failed: {e}")
+        logger.error("Monthly digest job failed: %s", e)
         raise
 
 
@@ -112,23 +148,27 @@ async def run_compliance_status_check():
         from services.jobs import JobScheduler
         job_scheduler = JobScheduler()
         await job_scheduler.connect()
-        count = await job_scheduler.check_compliance_status_changes()
+        result = await job_scheduler.check_compliance_status_changes()
         await job_scheduler.close()
-        logger.info(f"Compliance status check completed: {count} alerts sent")
-        return {"message": f"Compliance alerts sent: {count}", "count": count}
+        if isinstance(result, dict):
+            logger.info("Compliance status check completed: %s", result.get("message", result))
+            return result
+        return {"message": f"Compliance alerts sent: {result}", "count": result}
     except Exception as e:
-        logger.error(f"Compliance status check failed: {e}")
+        logger.error("Compliance status check failed: %s", e)
         raise
 
 
 async def run_scheduled_reports():
     try:
         from services.jobs import run_scheduled_reports as process_reports
-        count = await process_reports()
-        logger.info(f"Scheduled reports job completed: {count} reports sent")
-        return {"message": f"Scheduled reports sent: {count}", "count": count}
+        result = await process_reports()
+        if isinstance(result, dict):
+            logger.info("Scheduled reports job completed: %s", result.get("message", result))
+            return result
+        return {"message": f"Scheduled reports sent: {result}", "count": result}
     except Exception as e:
-        logger.error(f"Scheduled reports job failed: {e}")
+        logger.error("Scheduled reports job failed: %s", e)
         raise
 
 
@@ -650,24 +690,6 @@ async def run_predictive_insights_job():
             count += 1
         except Exception as e:
             logger.warning("Predictive insights skip client %s: %s", c.get("client_id"), e)
-async def run_predictive_insights_job():
-    """Precompute predictive maintenance insights for all clients with PREDICTIVE_MAINTENANCE. Writes to cache."""
-    from database import database
-    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
-    from services.predictive_service import get_insights_for_client
-
-    db = database.get_db()
-    clients = await db.clients.find({}, {"_id": 0, "client_id": 1, "billing_plan": 1}).to_list(10000)
-    count = 0
-    for c in clients:
-        try:
-            flags = await get_effective_flags(c["client_id"], c.get("billing_plan"))
-            if not flags.get(PREDICTIVE_MAINTENANCE):
-                continue
-            await get_insights_for_client(c["client_id"])
-            count += 1
-        except Exception as e:
-            logger.warning("Predictive insights skip client %s: %s", c.get("client_id"), e)
     return {"message": f"Predictive insights precomputed for {count} client(s)", "count": count}
 
 
@@ -781,6 +803,37 @@ async def run_work_order_sla_breach_job():
     return {"message": msg, "count": at_risk_updated + breached_updated}
 
 
+HEARTBEAT_COLLECTION = "scheduler_heartbeat"
+HEARTBEAT_DOC_ID = "default"
+
+
+async def run_delivery_reconciliation():
+    """Enrich recent reminder/digest job runs with delivery_provider_accepted, delivery_delivered, delivery_bounced from message_logs."""
+    try:
+        from services.delivery_reconciliation import run_delivery_reconciliation as _run
+        return await _run(hours_back=48)
+    except Exception as e:
+        logger.warning("Delivery reconciliation failed: %s", e)
+        raise
+
+
+async def run_scheduler_heartbeat():
+    """Minimal heartbeat: persist current timestamp so health summary can show scheduler is alive."""
+    try:
+        from database import database
+        db = database.get_db()
+        now = datetime.now(timezone.utc)
+        await db[HEARTBEAT_COLLECTION].update_one(
+            {"_id": HEARTBEAT_DOC_ID},
+            {"$set": {"last_heartbeat_at": now.isoformat(), "updated_at": now.isoformat()}},
+            upsert=True,
+        )
+        return {"message": "Heartbeat updated", "count": 1}
+    except Exception as e:
+        logger.warning("Scheduler heartbeat failed: %s", e)
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -809,4 +862,6 @@ JOB_RUNNERS = {
     "predictive_insights_job": run_predictive_insights_job,
     "risk_signals_job": run_risk_signals_job,
     "work_order_sla_breach_job": run_work_order_sla_breach_job,
+    "scheduler_heartbeat": run_scheduler_heartbeat,
+    "delivery_reconciliation": run_delivery_reconciliation,
 }
