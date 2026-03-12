@@ -21,6 +21,8 @@ const JOB_STATE = {
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800', Icon: XCircle },
   missed: { label: 'Missed', className: 'bg-orange-100 text-orange-800', Icon: AlertTriangle },
   never_ran: { label: 'Never ran', className: 'bg-gray-100 text-gray-700', Icon: HelpCircle },
+  never_ran_and_overdue: { label: 'Never ran (overdue)', className: 'bg-red-50 text-red-800', Icon: AlertTriangle },
+  not_yet_due_since_startup: { label: 'Not yet due', className: 'bg-slate-100 text-slate-600', Icon: Clock },
   no_runs: { label: 'No runs', className: 'bg-gray-100 text-gray-600', Icon: HelpCircle },
   not_due: { label: 'Not due', className: 'bg-slate-100 text-slate-700', Icon: Clock },
   conditional_no_output: { label: 'No output (OK)', className: 'bg-slate-100 text-slate-600', Icon: CheckCircle },
@@ -29,14 +31,14 @@ const JOB_STATE = {
 function getJobState(info, jobName, heartbeatStale) {
   if (jobName === 'scheduler_heartbeat' && heartbeatStale) return 'failed';
   const last = info?.lastRun;
-  if (!last) return 'never_ran';
+  if (!last) return 'never_ran_and_overdue';
   const status = last.status || '';
   if (status === 'success') return 'healthy';
   if (status === 'degraded') return 'degraded';
   if (status === 'failed') return 'failed';
   const nextRun = info?.nextRun;
   if (nextRun && new Date(nextRun) < new Date() && !last) return 'missed';
-  return 'never_ran';
+  return 'never_ran_and_overdue';
 }
 
 export default function AdminAutomationCentrePage() {
@@ -68,6 +70,7 @@ export default function AdminAutomationCentrePage() {
   useEffect(() => { load(); }, []);
 
   const [runNowConfirm, setRunNowConfirm] = useState(null);
+  const [cardFilter, setCardFilter] = useState(null);
 
   const handleRunNowClick = (jobId) => {
     setRunNowConfirm(jobId);
@@ -145,8 +148,10 @@ export default function AdminAutomationCentrePage() {
       .catch(() => toast.error('Failed to export CSV'));
   };
   const heartbeatStale = healthSummary?.heartbeat_stale === true;
-  // Show all scheduled jobs even when there are no runs (so table is never empty if scheduler is up)
   const jobIds = [...new Set([...Object.keys(byJob), ...nextRuns.map((j) => j.id)].filter(Boolean))].sort();
+  const filteredJobIds = cardFilter
+    ? jobIds.filter((jid) => healthSummary?.job_states?.[jid]?.state === cardFilter)
+    : jobIds;
   const hasNoRuns = !jobRuns.items?.length && jobIds.length > 0;
 
   return (
@@ -190,19 +195,42 @@ export default function AdminAutomationCentrePage() {
           </div>
         )}
 
+        {healthSummary?.grace_period_explanation && (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+            {healthSummary.grace_period_explanation}
+          </div>
+        )}
         {healthSummary?.summary_counts && (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-4">
             {healthSummary.summary_counts.critical_missed > 0 && (
-              <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm">
+              <button
+                type="button"
+                onClick={() => setCardFilter(cardFilter === 'missed' ? null : 'missed')}
+                className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'missed' ? 'ring-2 ring-orange-400 border-orange-300 bg-orange-100' : 'border-orange-200 bg-orange-50 hover:bg-orange-100'}`}
+              >
                 <span className="font-medium text-orange-800">{healthSummary.summary_counts.critical_missed}</span>
-                <span className="text-orange-700"> critical missed</span>
-              </div>
+                <span className="text-orange-700"> critical job(s) missed</span>
+              </button>
             )}
-            {healthSummary.summary_counts.never_ran > 0 && (
-              <div className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm">
-                <span className="font-medium text-gray-800">{healthSummary.summary_counts.never_ran}</span>
-                <span className="text-gray-600"> never ran</span>
-              </div>
+            {(healthSummary.summary_counts.never_ran > 0 || healthSummary.summary_counts.never_ran_overdue > 0) && (
+              <button
+                type="button"
+                onClick={() => setCardFilter(cardFilter === 'never_ran_and_overdue' ? null : 'never_ran_and_overdue')}
+                className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'never_ran_and_overdue' ? 'ring-2 ring-red-400 border-red-300 bg-red-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}
+              >
+                <span className="font-medium text-gray-800">{healthSummary.summary_counts.never_ran ?? healthSummary.summary_counts.never_ran_overdue ?? 0}</span>
+                <span className="text-gray-600"> critical job(s) never ran</span>
+              </button>
+            )}
+            {healthSummary.summary_counts.not_yet_due_since_startup > 0 && (
+              <button
+                type="button"
+                onClick={() => setCardFilter(cardFilter === 'not_yet_due_since_startup' ? null : 'not_yet_due_since_startup')}
+                className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'not_yet_due_since_startup' ? 'ring-2 ring-slate-400 border-slate-300 bg-slate-100' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}
+              >
+                <span className="font-medium text-slate-700">{healthSummary.summary_counts.not_yet_due_since_startup}</span>
+                <span className="text-slate-600"> not yet due</span>
+              </button>
             )}
             {healthSummary.summary_counts.degraded_24h > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
@@ -236,6 +264,12 @@ export default function AdminAutomationCentrePage() {
             )}
           </div>
         )}
+        {cardFilter && (
+          <p className="mb-2 text-sm text-gray-600">
+            Showing only: <strong>{cardFilter === 'missed' ? 'Critical missed' : cardFilter === 'never_ran_and_overdue' ? 'Never ran (overdue)' : 'Not yet due'}</strong>
+            {' '}<button type="button" onClick={() => setCardFilter(null)} className="text-indigo-600 hover:underline">Clear filter</button>
+          </p>
+        )}
 
         <p className="mb-3 text-sm text-gray-600">
           Routine automation should run automatically. Use manual run only for <strong>recovery or testing</strong>. Degraded = some sends failed or skipped; review outcome counts and Message logs when available.
@@ -258,24 +292,28 @@ export default function AdminAutomationCentrePage() {
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Last degraded</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Failures (24h)</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Next schedule</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Applicability / reason</th>
+                <th className="px-4 py-2 text-left font-medium text-gray-700">Reason</th>
+                <th className="px-4 py-2 text-left font-medium text-gray-700">Recommended action</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {              jobIds.length === 0 ? (
+              {filteredJobIds.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-gray-500">
-                    No scheduled jobs loaded. The background scheduler may not be running—check server startup logs.
+                  <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
+                    {jobIds.length === 0
+                      ? 'No scheduled jobs loaded. The background scheduler may not be running—check server startup logs.'
+                      : `No jobs match the filter "${cardFilter}". Clear filter to see all.`}
                   </td>
                 </tr>
               ) : (
-                jobIds.map((jobName) => {
+                filteredJobIds.map((jobName) => {
                   const info = byJob[jobName] || { lastRun: null, lastSuccess: null, lastDegraded: null, lastFailed: null, failures24h: 0, degraded24h: 0 };
                   const next = nextRuns.find((j) => j.id === jobName);
                   const backendState = healthSummary?.job_states?.[jobName];
                   const state = backendState?.state || getJobState(info, jobName, heartbeatStale);
                   const reason = backendState?.reason || '';
+                  const recommendedAction = backendState?.recommended_action || '';
                   const stateConfig = JOB_STATE[state] || JOB_STATE.no_runs;
                   const StateIcon = stateConfig.Icon;
                   return (
@@ -306,6 +344,7 @@ export default function AdminAutomationCentrePage() {
                       <td className="px-4 py-2">{info.failures24h > 0 ? <span className="text-red-600">{info.failures24h}</span> : '—'}</td>
                       <td className="px-4 py-2 text-gray-600">{next?.next_run ? formatTime(next.next_run) : '—'}</td>
                       <td className="px-4 py-2 text-gray-500 text-xs max-w-[14rem]" title={reason}>{reason || '—'}</td>
+                      <td className="px-4 py-2 text-gray-600 text-xs max-w-[14rem]" title={recommendedAction}>{recommendedAction || '—'}</td>
                       <td className="px-4 py-2">
                         <div className="flex flex-wrap items-center gap-1">
                           <button

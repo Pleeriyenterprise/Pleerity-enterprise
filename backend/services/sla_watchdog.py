@@ -39,6 +39,28 @@ def _build_sla_config() -> List[Tuple[str, int, int, str, str]]:
 
 DEFAULT_SLA_CONFIG: List[Tuple[str, int, int, str, str]] = _build_sla_config()
 
+# If next_run is within this many seconds, treat as "not yet due" (grace period)
+GRACE_PERIOD_NEXT_RUN_FUTURE_SEC = 60
+
+
+def _get_scheduler_next_runs() -> Dict[str, datetime]:
+    """Return dict job_id -> next_run_time (datetime) from in-process scheduler, or {} if unavailable."""
+    try:
+        from server import scheduler
+        jobs = scheduler.get_jobs()
+        out = {}
+        for j in jobs:
+            jid = getattr(j, "id", None)
+            next_run = getattr(j, "next_run_time", None)
+            if jid and next_run:
+                if next_run.tzinfo is None:
+                    from datetime import timezone
+                    next_run = next_run.replace(tzinfo=timezone.utc)
+                out[jid] = next_run
+        return out
+    except Exception:
+        return {}
+
 
 def _get_admin_alert_emails() -> List[str]:
     raw = (os.getenv("ADMIN_ALERT_EMAILS") or os.getenv("OPS_ALERT_EMAIL") or "").strip()
@@ -133,7 +155,8 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             if await _send_incident_alert_email(incident_id, "Delivery unknown unresolved", f"{delivery_stale_count} runs have delivery_unknown unresolved. Check webhooks.", SEVERITY_P2):
                 alerts_sent += 1
 
-    # 3) Per-job SLA
+    # 3) Per-job SLA (grace period: do not create incident if next run is still in the future)
+    next_runs = _get_scheduler_next_runs()
     for job_name, _expected_min, max_delay_minutes, severity, description in DEFAULT_SLA_CONFIG:
         # Consider both success and degraded as "job ran" so we don't incident when only degraded
         last_success = await db[JOB_RUNS_COLLECTION].find_one(
@@ -142,9 +165,10 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             sort=[("finished_at", -1)],
         )
         if not last_success or not last_success.get("finished_at"):
-            # Never completed (success or degraded) - create incident after first delay window
-            cutoff = now - timedelta(minutes=max_delay_minutes)
-            # Only create if we have no open incident for this job
+            # Never completed - apply grace period: if next scheduled run is in the future, skip incident
+            next_run = next_runs.get(job_name)
+            if next_run and (next_run - now).total_seconds() > GRACE_PERIOD_NEXT_RUN_FUTURE_SEC:
+                continue  # Not yet due since startup; no incident
             existing = await db.incidents.find_one(
                 {"status": "open", "related_job_name": job_name, "source": SOURCE_JOB_MONITOR},
                 {"_id": 1},
@@ -153,7 +177,7 @@ async def run_sla_watchdog() -> Dict[str, Any]:
                 incident_id = await create_incident(
                     severity=severity,
                     title=f"Job {job_name} has not succeeded",
-                    description=description + " No successful run found.",
+                    description=description + " No successful run found. Job is overdue.",
                     source=SOURCE_JOB_MONITOR,
                     related_job_name=job_name,
                     metadata={"max_delay_minutes": max_delay_minutes},

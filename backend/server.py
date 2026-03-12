@@ -25,12 +25,16 @@ from clearform.routes.admin import router as clearform_admin_router
 import os
 import logging
 import asyncio
+from datetime import timezone as dt_timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.jobstores.mongodb import MongoDBJobStore
+
+# All cron schedules are intended to be UTC; enforce explicitly so server locale cannot change them
+SCHEDULER_TIMEZONE = dt_timezone.utc
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -70,7 +74,7 @@ except Exception as e:
     logger.warning(f"Failed to configure MongoDB job store, using memory store: {e}")
     jobstores = {}
 
-scheduler = AsyncIOScheduler(jobstores=jobstores)
+scheduler = AsyncIOScheduler(jobstores=jobstores, timezone=SCHEDULER_TIMEZONE)
 
 # Import job runners from shared module (used by scheduler and admin run-now)
 from job_runner import (
@@ -357,7 +361,7 @@ async def lifespan(app: FastAPI):
     # Daily reminders at 9:00 AM UTC
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=9, minute=0),
+        CronTrigger(hour=9, minute=0, timezone=SCHEDULER_TIMEZONE),
         id="daily_reminders",
         name="Daily Compliance Reminders",
         replace_existing=True,
@@ -368,7 +372,7 @@ async def lifespan(app: FastAPI):
     # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=9, minute=30),
+        CronTrigger(hour=9, minute=30, timezone=SCHEDULER_TIMEZONE),
         id="pending_verification_digest",
         name="Pending Verification Digest",
         replace_existing=True,
@@ -379,7 +383,7 @@ async def lifespan(app: FastAPI):
     # Monthly digest on the 1st of each month at 10:00 AM UTC
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(day=1, hour=10, minute=0),
+        CronTrigger(day=1, hour=10, minute=0, timezone=SCHEDULER_TIMEZONE),
         id="monthly_digest",
         name="Monthly Compliance Digest",
         replace_existing=True,
@@ -390,7 +394,7 @@ async def lifespan(app: FastAPI):
     # Compliance status check - runs twice daily at 8:00 AM and 6:00 PM UTC
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=8, minute=0),
+        CronTrigger(hour=8, minute=0, timezone=SCHEDULER_TIMEZONE),
         id="compliance_check_morning",
         name="Compliance Status Check (Morning)",
         replace_existing=True,
@@ -400,7 +404,7 @@ async def lifespan(app: FastAPI):
     
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=18, minute=0),
+        CronTrigger(hour=18, minute=0, timezone=SCHEDULER_TIMEZONE),
         id="compliance_check_evening",
         name="Compliance Status Check (Evening)",
         replace_existing=True,
@@ -411,7 +415,7 @@ async def lifespan(app: FastAPI):
     # Scheduled reports - runs every hour
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute=0),
+        CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
         id="scheduled_reports",
         name="Process Scheduled Reports",
         replace_existing=True,
@@ -422,7 +426,7 @@ async def lifespan(app: FastAPI):
     # Daily compliance score snapshots at 2:00 AM UTC
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=2, minute=0),
+        CronTrigger(hour=2, minute=0, timezone=SCHEDULER_TIMEZONE),
         id="compliance_score_snapshots",
         name="Daily Compliance Score Snapshots",
         replace_existing=True,
@@ -433,7 +437,7 @@ async def lifespan(app: FastAPI):
     # Expiry rollover - daily 00:10 UTC
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=0, minute=10),
+        CronTrigger(hour=0, minute=10, timezone=SCHEDULER_TIMEZONE),
         id="expiry_rollover_recalc",
         name="Expiry Rollover Compliance Recalc",
         replace_existing=True,
@@ -444,7 +448,7 @@ async def lifespan(app: FastAPI):
     # Async compliance recalc worker - every 15 seconds
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        IntervalTrigger(seconds=15),
+        IntervalTrigger(seconds=15, timezone=SCHEDULER_TIMEZONE),
         id="compliance_recalc_worker",
         name="Compliance Recalc Worker",
         replace_existing=True,
@@ -455,7 +459,7 @@ async def lifespan(app: FastAPI):
     # Compliance recalc SLA monitor - every 5 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/5"),
+        CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
         id="compliance_recalc_sla_monitor",
         name="Compliance Recalc SLA Monitor",
         replace_existing=True,
@@ -466,7 +470,7 @@ async def lifespan(app: FastAPI):
     # Notification failure spike monitor - every 5 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/5"),
+        CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
         id="notification_failure_spike_monitor",
         name="Notification Failure Spike Monitor",
         replace_existing=True,
@@ -477,7 +481,7 @@ async def lifespan(app: FastAPI):
     # Scheduler heartbeat - every 2 minutes (for system health "scheduler alive" visibility)
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        IntervalTrigger(minutes=2),
+        IntervalTrigger(minutes=2, timezone=SCHEDULER_TIMEZONE),
         id="scheduler_heartbeat",
         name="Scheduler Heartbeat",
         replace_existing=True,
@@ -487,7 +491,7 @@ async def lifespan(app: FastAPI):
     # Delivery reconciliation - every 15 min (enrich reminder/digest runs with delivered/bounced from message_logs)
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/15"),
+        CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
         id="delivery_reconciliation",
         name="Delivery Reconciliation",
         replace_existing=True,
@@ -497,7 +501,7 @@ async def lifespan(app: FastAPI):
     # SLA watchdog (job run SLA) - every 10 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/10"),
+        CronTrigger(minute="*/10", timezone=SCHEDULER_TIMEZONE),
         id="sla_watchdog",
         name="SLA Watchdog (job run monitoring)",
         replace_existing=True,
@@ -508,7 +512,7 @@ async def lifespan(app: FastAPI):
     # Notification retry worker - every minute
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*"),
+        CronTrigger(minute="*", timezone=SCHEDULER_TIMEZONE),
         id="notification_retry_worker",
         name="Notification Retry Worker",
         replace_existing=True,
@@ -519,7 +523,7 @@ async def lifespan(app: FastAPI):
     # Order delivery processing - every 5 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/5"),
+        CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
         id="order_delivery_processing",
         name="Order Delivery Processing",
         replace_existing=True,
@@ -530,7 +534,7 @@ async def lifespan(app: FastAPI):
     # SLA monitoring - every 15 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/15"),
+        CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
         id="sla_monitoring",
         name="SLA Monitoring",
         replace_existing=True,
@@ -541,7 +545,7 @@ async def lifespan(app: FastAPI):
     # Stuck order detection - every 30 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/30"),
+        CronTrigger(minute="*/30", timezone=SCHEDULER_TIMEZONE),
         id="stuck_order_detection",
         name="Stuck Order Detection",
         replace_existing=True,
@@ -552,7 +556,7 @@ async def lifespan(app: FastAPI):
     # Queued order processing - every 10 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/10"),
+        CronTrigger(minute="*/10", timezone=SCHEDULER_TIMEZONE),
         id="queued_order_processing",
         name="Queued Order Processing",
         replace_existing=True,
@@ -563,7 +567,7 @@ async def lifespan(app: FastAPI):
     # Abandoned intake detection - every 15 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/15"),
+        CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
         id="abandoned_intake_detection",
         name="Abandoned Intake Detection",
         replace_existing=True,
@@ -574,7 +578,7 @@ async def lifespan(app: FastAPI):
     # Lead follow-up processing - every 15 minutes
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/15"),
+        CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
         id="lead_followup_processing",
         name="Lead Follow-up Processing",
         replace_existing=True,
@@ -585,7 +589,7 @@ async def lifespan(app: FastAPI):
     # Pending payment lifecycle - daily 3:00 AM UTC
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=3, minute=0),
+        CronTrigger(hour=3, minute=0, timezone=SCHEDULER_TIMEZONE),
         id="pending_payment_lifecycle",
         name="Pending Payment Lifecycle (abandoned/archived)",
         replace_existing=True,
@@ -596,7 +600,7 @@ async def lifespan(app: FastAPI):
     # Lead SLA breach check - every hour
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute=0),
+        CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
         id="lead_sla_check",
         name="Lead SLA Breach Check",
         replace_existing=True,
@@ -607,7 +611,7 @@ async def lifespan(app: FastAPI):
     # Checklist nurture - daily 9:00 AM UTC
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=9, minute=0),
+        CronTrigger(hour=9, minute=0, timezone=SCHEDULER_TIMEZONE),
         id="checklist_nurture_processing",
         name="Checklist Nurture (compliance checklist leads)",
         replace_existing=True,
@@ -617,7 +621,7 @@ async def lifespan(app: FastAPI):
     # Risk-check lead nurture (steps 2–5 at day 2, 4, 6, 10) - daily at 9:15 AM UTC
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=9, minute=15),
+        CronTrigger(hour=9, minute=15, timezone=SCHEDULER_TIMEZONE),
         id="risk_lead_nurture_processing",
         name="Risk Lead Nurture (risk-check conversion leads)",
         replace_existing=True,
@@ -627,7 +631,7 @@ async def lifespan(app: FastAPI):
     # Predictive maintenance insights - daily 4:00 AM UTC (warms insights for clients with PREDICTIVE_MAINTENANCE)
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=4, minute=0),
+        CronTrigger(hour=4, minute=0, timezone=SCHEDULER_TIMEZONE),
         id="predictive_insights_job",
         name="Predictive Maintenance Insights (precompute)",
         replace_existing=True,
@@ -637,7 +641,7 @@ async def lifespan(app: FastAPI):
     # Risk signals - daily 4:30 AM UTC (generates stored risk signals for clients with PREDICTIVE_MAINTENANCE)
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(hour=4, minute=30),
+        CronTrigger(hour=4, minute=30, timezone=SCHEDULER_TIMEZONE),
         id="risk_signals_job",
         name="Risk Signals (generate)",
         replace_existing=True,
@@ -647,7 +651,7 @@ async def lifespan(app: FastAPI):
     # Work order SLA breach / at-risk - every hour
     scheduler.add_job(
         "job_runner:run_scheduled_job",
-        CronTrigger(minute=0),
+        CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
         id="work_order_sla_breach_job",
         name="Work Order SLA Breach & At-Risk",
         replace_existing=True,
@@ -661,7 +665,23 @@ async def lifespan(app: FastAPI):
         scheduler_started = True
         jobs = scheduler.get_jobs()
         next_runs = [getattr(j, "next_run_time", None) for j in jobs[:5]]
-        logger.info("Background job scheduler started with %s job(s). Next runs: %s", len(jobs), [t.isoformat() if t else None for t in next_runs])
+        job_ids = [getattr(j, "id", None) for j in jobs]
+        next_runs_fmt = [t.isoformat() if t else None for t in next_runs]
+        logger.info(
+            "Background job scheduler started with %s job(s). Job ids: %s. Next runs (first 5): %s",
+            len(jobs),
+            job_ids,
+            next_runs_fmt,
+        )
+        # At DEBUG: log every job's next_run_time to verify cron/interval schedules (e.g. only high-freq jobs appear in short log windows)
+        for j in jobs:
+            nrt = getattr(j, "next_run_time", None)
+            logger.debug(
+                "Scheduler job: id=%s name=%s next_run_time=%s",
+                getattr(j, "id", None),
+                getattr(j, "name", None),
+                nrt.isoformat() if nrt else None,
+            )
     except Exception as e:
         logger.exception("Background job scheduler failed to start: %s. API will run without scheduled jobs.", e)
     

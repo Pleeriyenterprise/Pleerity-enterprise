@@ -158,3 +158,44 @@ These jobs do not produce per-recipient message_logs tied to a single run in the
 - **Fully observable:** daily_reminders, monthly_digest, pending_verification_digest, compliance_check_morning/evening, scheduled_reports — run status, outcome_metrics (attempted/success/failed), delivery_* after reconciliation, and optional message_logs drill-down/export. Automation Centre and System Health show status, heartbeat, and alerting; delivery state definitions endpoint explains each delivery state.
 - **Partially observable:** renewal_reminders, notification_retry_worker, notification_failure_spike_monitor — run and outcome visible; no delivery reconciliation (or no per-run delivery breakdown).
 - **Execution-level only:** compliance_score_snapshots, expiry_rollover_recalc, compliance_recalc_worker, sla_watchdog, scheduler_heartbeat, delivery_reconciliation — run success/failure (and optional count) only; no business-outcome or delivery breakdown.
+
+---
+
+## 9. Truth gap fixes (startup-aware never-ran, clickable cards, recommended action)
+
+**Done:**
+
+- **Split "never ran" into two states:**
+  - **not_yet_due_since_startup** — No run yet; next scheduled run has not passed. Reason: "Wait for next run." No incident created (grace period).
+  - **never_ran_and_overdue** — Critical job has never run and its first due time has passed; incident created; manual recovery recommended.
+- **Startup awareness:** Backend reads `next_run_time` from the in-process scheduler. If a job has no run and `next_run` is in the future (within tolerance), state = `not_yet_due_since_startup`; otherwise = `never_ran_and_overdue`.
+- **SLA watchdog grace period:** When a job has no successful run, the watchdog does **not** create an incident if the scheduler reports `next_run` in the future (not yet due since startup).
+- **Automation Centre summary cards** are clickable: "Critical missed", "Never ran", "Not yet due". Clicking filters the table to those jobs; "Clear filter" shows all.
+- **Per-row reason and recommended action** from backend (`job_states[].reason`, `job_states[].recommended_action`). Examples: "Wait until next scheduled run", "Manual recovery recommended; check scheduler and qualifying data."
+- **Count consistency:** Cards say "X critical job(s) missed" / "X critical job(s) never ran" so the count is explicitly for critical jobs; filtered table shows all jobs in that state (all health-summary jobs are critical in the current registry).
+- **Grace period explanation:** When any critical job is `not_yet_due_since_startup`, the API returns `grace_period_explanation` and the UI shows it (e.g. "No incident created (grace period)").
+- **Admin alerting** (existing): Incidents are created for critical missed, overdue never-ran, failed, repeated degraded; emails sent when `ADMIN_ALERT_EMAILS` is set. Manual Run Now remains recovery-only.
+
+**Files:** `backend/services/job_schedule_registry.py` (new states), `backend/routes/observability.py` (`_get_scheduler_next_runs`, `_compute_job_state_and_reason` with `next_run_iso`, `RECOMMENDED_ACTIONS`, `grace_period_explanation`), `backend/services/sla_watchdog.py` (grace period for no-success), `frontend/src/pages/AdminAutomationCentrePage.js` (clickable cards, filter, recommended action column).
+
+---
+
+## 10. Admin UI examples (what admin sees)
+
+### (a) Fresh deployment before first due run
+
+- **System Health:** May show **Degraded** or **Healthy** depending on whether any critical job is already overdue. If all critical jobs have `next_run` in the future, they are `not_yet_due_since_startup` and do **not** drag overall health to failed.
+- **Automation Centre:** Summary card "X not yet due" (if any). Banner: "X critical job(s) have not had their first scheduled run yet; no incident created (grace period)." Table: those jobs show status **Not yet due**, reason "No run yet; next scheduled run has not passed. Wait for next run.", recommended action "Wait until next scheduled run." No incident is created; admin is not alarmed.
+- **Incidents:** No incident for "job has not succeeded" for those jobs (grace period).
+
+### (b) Genuinely overdue never-ran job
+
+- **System Health:** **Degraded** or **Attention required** (critical job in `never_ran_and_overdue`).
+- **Automation Centre:** Summary card "X critical job(s) never ran" (clickable). Click filters table to those jobs. Each row: status **Never ran (overdue)**, reason "Critical job has never run and its first due time has passed; may need manual recovery.", recommended action "Manual recovery recommended; check scheduler and qualifying data."
+- **Incidents:** Open incident "Job &lt;name&gt; has not succeeded" with description "No successful run found. Job is overdue." Admin alert email sent if configured.
+
+### (c) Missed critical job (had run before, now past SLA)
+
+- **System Health:** **Degraded** (or **Attention required** if incidents open).
+- **Automation Centre:** Summary card "X critical job(s) missed" (clickable). Filter shows only missed jobs. Each row: status **Missed**, reason "Expected run window exceeded; job did not run in time.", recommended action "Manual recovery only if overdue; otherwise wait for next run."
+- **Incidents:** Open incident for that job (over max_delay since last success). Admin alert email sent if configured.

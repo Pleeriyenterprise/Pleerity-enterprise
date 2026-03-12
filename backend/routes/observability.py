@@ -274,6 +274,8 @@ from services.job_schedule_registry import (
     JOB_STATE_FAILED,
     JOB_STATE_MISSED,
     JOB_STATE_NEVER_RAN,
+    JOB_STATE_NOT_YET_DUE_SINCE_STARTUP,
+    JOB_STATE_NEVER_RAN_AND_OVERDUE,
     JOB_STATE_NOT_DUE,
     JOB_STATE_CONDITIONAL_NO_OUTPUT,
     HEARTBEAT_STALE_SECONDS,
@@ -288,9 +290,40 @@ JOB_STATE_REASONS = {
     JOB_STATE_FAILED: "Job raised or completed unsuccessfully.",
     JOB_STATE_MISSED: "Expected run window exceeded; job did not run in time.",
     JOB_STATE_NEVER_RAN: "Registered job has no run history.",
+    JOB_STATE_NOT_YET_DUE_SINCE_STARTUP: "No run yet; next scheduled run has not passed. Wait for next run.",
+    JOB_STATE_NEVER_RAN_AND_OVERDUE: "Critical job has never run and its first due time has passed; may need manual recovery.",
     JOB_STATE_NOT_DUE: "Job not yet due based on schedule.",
     JOB_STATE_CONDITIONAL_NO_OUTPUT: "Ran successfully; no qualifying records (e.g. no reminders due).",
 }
+
+# Recommended next action per state (for UI)
+RECOMMENDED_ACTIONS = {
+    JOB_STATE_HEALTHY: "None.",
+    JOB_STATE_DEGRADED: "Review message logs and outcome_metrics; act if failures repeat.",
+    JOB_STATE_FAILED: "Check error_message and logs; manual recovery only if needed.",
+    JOB_STATE_MISSED: "Manual recovery only if overdue; otherwise wait for next run.",
+    JOB_STATE_NEVER_RAN: "Wait until next scheduled run or manual recovery if overdue.",
+    JOB_STATE_NOT_YET_DUE_SINCE_STARTUP: "Wait until next scheduled run.",
+    JOB_STATE_NEVER_RAN_AND_OVERDUE: "Manual recovery recommended; check scheduler and qualifying data.",
+    JOB_STATE_NOT_DUE: "Wait until next scheduled run.",
+    JOB_STATE_CONDITIONAL_NO_OUTPUT: "None; check qualifying data if output was expected.",
+}
+
+
+def _get_scheduler_next_runs() -> dict:
+    """Return dict job_id -> next_run_iso from in-process scheduler, or {} if unavailable."""
+    try:
+        from server import scheduler
+        jobs = scheduler.get_jobs()
+        out = {}
+        for j in jobs:
+            jid = getattr(j, "id", None)
+            next_run = getattr(j, "next_run_time", None)
+            if jid and next_run:
+                out[jid] = next_run.isoformat() if hasattr(next_run, "isoformat") else str(next_run)
+        return out
+    except Exception:
+        return {}
 
 
 def _parse_iso(ts) -> Optional[datetime]:
@@ -309,14 +342,19 @@ def _parse_iso(ts) -> Optional[datetime]:
         return None
 
 
+# Tolerance: if next_run is within this many seconds of now, treat as "not yet due" (scheduler about to run)
+NEXT_RUN_FUTURE_TOLERANCE_SEC = 60
+
+
 def _compute_job_state_and_reason(
     job_id: str,
     detail: dict,
     now: datetime,
     registry_entry: Optional[object],
     heartbeat_stale: bool = False,
+    next_run_iso: Optional[str] = None,
 ) -> tuple:
-    """Returns (state, reason). Uses job_schedule_registry for critical/max_delay/zero_output_ok."""
+    """Returns (state, reason). Uses job_schedule_registry and optional next_run for startup-aware never-ran."""
     last_completed = _parse_iso(detail.get("last_completed"))
     last_success = _parse_iso(detail.get("last_success"))
     last_failure = _parse_iso(detail.get("last_failure"))
@@ -333,7 +371,11 @@ def _compute_job_state_and_reason(
         return (JOB_STATE_NEVER_RAN, JOB_STATE_REASONS[JOB_STATE_NEVER_RAN])
 
     if not last_completed:
-        return (JOB_STATE_NEVER_RAN, JOB_STATE_REASONS[JOB_STATE_NEVER_RAN])
+        # Startup-aware: if next scheduled run is still in the future, not yet due; else overdue
+        next_run_dt = _parse_iso(next_run_iso) if next_run_iso else None
+        if next_run_dt and (next_run_dt - now).total_seconds() > NEXT_RUN_FUTURE_TOLERANCE_SEC:
+            return (JOB_STATE_NOT_YET_DUE_SINCE_STARTUP, JOB_STATE_REASONS[JOB_STATE_NOT_YET_DUE_SINCE_STARTUP])
+        return (JOB_STATE_NEVER_RAN_AND_OVERDUE, JOB_STATE_REASONS[JOB_STATE_NEVER_RAN_AND_OVERDUE])
 
     last_run_status = (detail.get("last_run_status") or "").strip().lower()
     if last_run_status == "failed":
@@ -373,7 +415,8 @@ def _compute_overall_health(
         job_states.get(jid, {}).get("state") == JOB_STATE_MISSED for jid in critical_job_ids
     )
     any_critical_never_ran = any(
-        job_states.get(jid, {}).get("state") == JOB_STATE_NEVER_RAN for jid in critical_job_ids
+        job_states.get(jid, {}).get("state") in (JOB_STATE_NEVER_RAN, JOB_STATE_NEVER_RAN_AND_OVERDUE)
+        for jid in critical_job_ids
     )
     any_critical_failed = any(
         job_states.get(jid, {}).get("state") == JOB_STATE_FAILED for jid in critical_job_ids
@@ -481,16 +524,22 @@ async def get_health_summary(request: Request):
     except Exception:
         pass
 
-    # Per-job state and reason (pass heartbeat_stale so scheduler_heartbeat can be failed when stale)
+    next_runs = _get_scheduler_next_runs()
+    # Per-job state and reason (pass heartbeat_stale and next_run for startup-aware never-ran)
     job_states = {}
     for jid in HEALTH_SUMMARY_JOBS:
         entry = registry.get(jid)
+        next_run_iso = next_runs.get(jid)
         state, reason = _compute_job_state_and_reason(
-            jid, jobs_detail[jid], now, entry, heartbeat_stale=heartbeat_stale
+            jid, jobs_detail[jid], now, entry,
+            heartbeat_stale=heartbeat_stale,
+            next_run_iso=next_run_iso,
         )
+        recommended_action = RECOMMENDED_ACTIONS.get(state, "Review state and logs.")
         job_states[jid] = {
             "state": state,
             "reason": reason,
+            "recommended_action": recommended_action,
             "last_run": jobs_detail[jid].get("last_completed"),
             "last_success": jobs_detail[jid].get("last_success"),
             "last_degraded": jobs_detail[jid].get("last_degraded"),
@@ -499,13 +548,20 @@ async def get_health_summary(request: Request):
             "critical": entry.critical if entry else False,
         }
 
-    # Counts for summary cards (24h)
+    # Counts for summary cards (24h); never_ran = overdue only (not not_yet_due_since_startup)
     since_24h = now - timedelta(hours=24)
     since_24h_str = since_24h.isoformat()
     failed_24h = await db.job_runs.count_documents({"status": STATUS_FAILED, "finished_at": {"$gte": since_24h_str}})
     degraded_24h = await db.job_runs.count_documents({"status": STATUS_DEGRADED, "finished_at": {"$gte": since_24h_str}})
     critical_missed_count = sum(1 for jid in critical_job_ids if job_states.get(jid, {}).get("state") == JOB_STATE_MISSED)
-    never_ran_count = sum(1 for jid in critical_job_ids if job_states.get(jid, {}).get("state") == JOB_STATE_NEVER_RAN)
+    never_ran_overdue_count = sum(
+        1 for jid in critical_job_ids
+        if job_states.get(jid, {}).get("state") in (JOB_STATE_NEVER_RAN_AND_OVERDUE, JOB_STATE_NEVER_RAN)
+    )
+    not_yet_due_count = sum(
+        1 for jid in critical_job_ids
+        if job_states.get(jid, {}).get("state") == JOB_STATE_NOT_YET_DUE_SINCE_STARTUP
+    )
     open_incidents = await db.incidents.count_documents({"status": "open"})
 
     overall_health = _compute_overall_health(
@@ -533,7 +589,9 @@ async def get_health_summary(request: Request):
         "job_states": job_states,
         "summary_counts": {
             "critical_missed": critical_missed_count,
-            "never_ran": never_ran_count,
+            "never_ran": never_ran_overdue_count,
+            "never_ran_overdue": never_ran_overdue_count,
+            "not_yet_due_since_startup": not_yet_due_count,
             "degraded_24h": degraded_24h,
             "failed_24h": failed_24h,
             "open_incidents": open_incidents,
@@ -546,4 +604,9 @@ async def get_health_summary(request: Request):
         "delivery_unknown_stale_runs": delivery_unknown_stale_runs,
         "delivery_unknown_stale_hours": DELIVERY_UNKNOWN_STALE_HOURS,
         "job_state_reasons": JOB_STATE_REASONS,
+        "recommended_actions": RECOMMENDED_ACTIONS,
+        "grace_period_explanation": (
+            f"{not_yet_due_count} critical job(s) have not had their first scheduled run yet; no incident created (grace period)."
+            if not_yet_due_count > 0 else None
+        ),
     }
