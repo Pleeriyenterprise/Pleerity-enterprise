@@ -1,6 +1,6 @@
 /**
  * Thank-you page after compliance checklist lead capture.
- * Confirmation message, download button (PDF), CTA to Start Free Trial.
+ * Confirmation message, download button (PDF), CTA to get started with Compliance Vault Pro.
  */
 
 import React from 'react';
@@ -49,7 +49,7 @@ export default function ChecklistThankYouPage() {
             </p>
             <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal hover:bg-electric-teal/10" asChild>
               <Link to="/intake/start">
-                Start Free Trial of Compliance Vault Pro
+                Get started with Compliance Vault Pro
                 <ArrowRight className="w-5 h-5 ml-2 inline" />
               </Link>
             </Button>

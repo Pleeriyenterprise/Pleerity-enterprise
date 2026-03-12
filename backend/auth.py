@@ -11,9 +11,20 @@ import secrets
 import hashlib
 from models import UserRole, PasswordStatus
 
-JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
+# Default placeholder; must be overridden in production (enforced at startup in server.py)
+JWT_SECRET_DEFAULT = "your-secret-key-change-in-production"
+JWT_SECRET = os.getenv("JWT_SECRET", JWT_SECRET_DEFAULT)
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
+
+
+def require_non_default_jwt_secret() -> None:
+    """Raise RuntimeError if JWT_SECRET is unset or equals the default (production safety)."""
+    if not JWT_SECRET or JWT_SECRET.strip() == "" or JWT_SECRET == JWT_SECRET_DEFAULT:
+        raise RuntimeError(
+            "JWT_SECRET must be set to a non-default value in production. "
+            "Set the JWT_SECRET environment variable to a secure random string."
+        )
 
 
 def hash_password(password: str) -> str:

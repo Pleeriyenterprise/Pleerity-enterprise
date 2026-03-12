@@ -539,13 +539,7 @@ const ClientDashboard = () => {
                   ))}
                 </ul>
               ) : (
-                <ul className="space-y-2 text-sm text-gray-700">
-                  <li className="flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-electric-teal" /> Confirm your portfolio details</li>
-                  <li className="flex items-center gap-2"><Upload className="w-4 h-4 text-electric-teal" /> Upload or confirm documents</li>
-                  <li className="flex items-center gap-2"><FileText className="w-4 h-4 text-electric-teal" /> Confirm certificate dates</li>
-                  <li className="flex items-center gap-2"><Bell className="w-4 h-4 text-electric-teal" /> Turn on reminders</li>
-                  <li className="flex items-center gap-2"><Shield className="w-4 h-4 text-electric-teal" /> View your compliance report</li>
-                </ul>
+                <p className="text-sm text-gray-600">Setup steps will appear here when needed. You can go to Properties or Documents from the menu to get started.</p>
               )}
               <div className="flex flex-wrap gap-3 pt-4">
                 <Button onClick={() => setSetupView('portfolio')} className="bg-electric-teal hover:bg-electric-teal/90" data-testid="setup-start-btn">

@@ -17,6 +17,7 @@ INTAKE-LEVEL GATING (NON-NEGOTIABLE):
   3. Provisioning safeguards (defense in depth)
 """
 from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form
+from utils.rate_limiter import rate_limiter
 from database import database
 from models import (
     IntakeFormData, IntakePropertyData, Client, Property, ServiceCode, 
@@ -1269,9 +1270,27 @@ async def create_checkout(request: Request, client_id: str):
         )
 
 
+# Rate limit for unauthenticated onboarding-status (prevent enumeration)
+ONBOARDING_STATUS_RATE_LIMIT_ATTEMPTS = 60
+ONBOARDING_STATUS_RATE_LIMIT_WINDOW_MINUTES = 5
+
+
+def _client_ip_intake(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return (request.client and request.client.host) or "unknown"
+
+
 @router.get("/onboarding-status/{client_id}")
-async def get_onboarding_status(client_id: str):
+async def get_onboarding_status(request: Request, client_id: str):
     """Get detailed client onboarding status with step-by-step progress."""
+    ip = _client_ip_intake(request)
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        f"intake_onboarding_status:{ip}", ONBOARDING_STATUS_RATE_LIMIT_ATTEMPTS, ONBOARDING_STATUS_RATE_LIMIT_WINDOW_MINUTES
+    )
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many requests. Try again later.")
     db = database.get_db()
     
     try:

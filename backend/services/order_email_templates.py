@@ -43,7 +43,7 @@ def _build_email_footer(order_reference: Optional[str] = None) -> str:
         <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
             <p style="color: #64748b; font-size: 13px; margin: 0;">
                 {COMPANY_NAME}<br>
-                AI-Driven Solutions & Property Compliance{ref_line}
+                AI-Driven Solutions & Compliance{ref_line}
             </p>
         </div>
         <p style="color: #94a3b8; font-size: 11px; margin: 0;">
@@ -58,7 +58,7 @@ def _build_text_footer(order_reference: Optional[str] = None) -> str:
     return f"""
 --
 {COMPANY_NAME}
-AI-Driven Solutions & Property Compliance{ref_line}
+AI-Driven Solutions & Compliance{ref_line}
 
 Questions? Contact us at {SUPPORT_EMAIL}
 """

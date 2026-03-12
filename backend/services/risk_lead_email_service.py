@@ -51,7 +51,7 @@ def _body_step1(lead: dict, activation_token: Optional[str] = None) -> str:
 <p>Continuous monitoring centralises expiry tracking across your portfolio and reduces missed renewals.</p>
 <p><a href="{url}">Activate Monitoring</a></p>
 <p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Compliance Vault Pro</p>
+<p>Regards,<br/>Pleerity Enterprise Ltd</p>
 """.strip()
 
 
@@ -70,7 +70,7 @@ def _body_step2(lead: dict) -> str:
 <p>You can activate monitoring here:</p>
 <p><a href="{url}">Activate Monitoring</a></p>
 <p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Compliance Vault Pro</p>
+<p>Regards,<br/>Pleerity Enterprise Ltd</p>
 """.strip()
 
 
@@ -89,7 +89,7 @@ def _body_step3(lead: dict) -> str:
 <p>Activate monitoring when ready:</p>
 <p><a href="{url}">Activate Monitoring</a></p>
 <p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Compliance Vault Pro</p>
+<p>Regards,<br/>Pleerity Enterprise Ltd</p>
 """.strip()
 
 
@@ -104,7 +104,7 @@ def _body_step4(lead: dict) -> str:
 <p>Your current structure suggests monitoring could improve consistency.</p>
 <p><a href="{url}">Activate Monitoring</a></p>
 <p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Compliance Vault Pro</p>
+<p>Regards,<br/>Pleerity Enterprise Ltd</p>
 """.strip()
 
 
@@ -117,7 +117,7 @@ def _body_step5(lead: dict) -> str:
 <p><a href="{url}">Activate Continuous Monitoring</a></p>
 <p>Cancel anytime.</p>
 <p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Compliance Vault Pro</p>
+<p>Regards,<br/>Pleerity Enterprise Ltd</p>
 """.strip()
 
 

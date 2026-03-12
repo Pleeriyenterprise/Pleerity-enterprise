@@ -6,11 +6,24 @@ from models import (
 )
 from auth import verify_password, hash_password, create_access_token, hash_token, validate_password_strength
 from utils.audit import create_audit_log
+from utils.rate_limiter import rate_limiter
 from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Login rate limiting: per-IP to mitigate brute-force
+LOGIN_RATE_LIMIT_ATTEMPTS = 15
+LOGIN_RATE_LIMIT_WINDOW_MINUTES = 15
+
+
+def _client_ip(request: Request) -> str:
+    """Prefer X-Forwarded-For when behind a proxy."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return (request.client and request.client.host) or "unknown"
 
 # Portal separation: which roles may use which login endpoint
 CLIENT_PORTAL_ROLES = (UserRole.ROLE_CLIENT.value, UserRole.ROLE_CLIENT_ADMIN.value)
@@ -19,6 +32,12 @@ STAFF_PORTAL_ROLES = (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value, User
 @router.post("/login", response_model=TokenResponse)
 async def login(request: Request, credentials: LoginRequest):
     """Client login endpoint."""
+    ip = _client_ip(request)
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        f"login_client:{ip}", LOGIN_RATE_LIMIT_ATTEMPTS, LOGIN_RATE_LIMIT_WINDOW_MINUTES
+    )
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many login attempts. Try again later.")
     db = database.get_db()
     
     try:
@@ -388,6 +407,12 @@ async def admin_login(request: Request, credentials: LoginRequest):
     - Are NOT blocked by onboarding_status, provisioning, or client guards
     - Can log in as long as they have a valid password and ACTIVE status
     """
+    ip = _client_ip(request)
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        f"login_admin:{ip}", LOGIN_RATE_LIMIT_ATTEMPTS, LOGIN_RATE_LIMIT_WINDOW_MINUTES
+    )
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many login attempts. Try again later.")
     db = database.get_db()
     
     try:

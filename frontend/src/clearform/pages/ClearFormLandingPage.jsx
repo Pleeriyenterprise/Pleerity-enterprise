@@ -80,7 +80,7 @@ const ClearFormLandingPage = () => {
             See How It Works
           </Button>
         </div>
-        <p className="mt-4 text-sm text-slate-500">5 free credits to get started • No credit card required</p>
+        <p className="mt-4 text-sm text-slate-500">5 free credits to get started</p>
       </section>
 
       {/* Features */}
@@ -159,7 +159,7 @@ const ClearFormLandingPage = () => {
       <section className="bg-slate-50 py-20">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center text-slate-900 mb-4">Simple Pricing</h2>
-          <p className="text-center text-slate-600 mb-12">Start free, upgrade when you need more</p>
+          <p className="text-center text-slate-600 mb-12">Get started, upgrade when you need more</p>
           <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {plans.map((plan) => (
               <Card key={plan.plan} className={`relative ${plan.popular ? 'border-emerald-500 border-2' : ''}`}>

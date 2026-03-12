@@ -617,7 +617,7 @@ const PricingPage = () => {
             Ready to Get Started?
           </h2>
           <p className="text-lg text-gray-300 mb-2">
-            Try Compliance Vault Pro free for 14 days. No credit card required.
+            Get started with Compliance Vault Pro. Choose a plan below and sign up—no long-term contract.
           </p>
           <p className="text-base text-gray-400 mb-8">
             No long-term contract. Cancel anytime.

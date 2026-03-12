@@ -485,7 +485,7 @@ class JobScheduler:
                 "expiring_count": len(expiring),
                 "overdue_count": len(overdue),
                 "portal_link": portal_link,
-                "company_name": client.get("company_name") or "Pleerity Enterprise",
+                "company_name": client.get("company_name") or "Pleerity Enterprise Ltd",
             }
             if recipient_email:
                 context["recipient"] = recipient_email
@@ -1128,6 +1128,7 @@ class ScheduledReportJob:
         now = datetime.now(timezone.utc)
         reports_sent = 0
         attempted_reports = 0
+        schedules_failed = 0  # schedule-level exceptions (per-schedule try/except)
 
         try:
             # Find all active schedules that are due
@@ -1310,18 +1311,25 @@ class ScheduledReportJob:
                             )
                     
                 except Exception as e:
-                    logger.error(f"Error processing schedule {schedule.get('schedule_id')}: {e}")
+                    logger.error("Error processing schedule %s: %s", schedule.get("schedule_id"), e)
+                    schedules_failed += 1
             
             failed_reports = max(0, attempted_reports - reports_sent)
             logger.info("Scheduled reports job complete. attempted=%s success=%s failed=%s", attempted_reports, reports_sent, failed_reports)
 
-            if attempted_reports == 0:
-                return {"message": "Scheduled reports: none due", "count": 0, "outcome_status": "success", "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": 0}}
+            base_metrics = {"expected_count": attempted_reports, "attempted_count": attempted_reports, "success_count": reports_sent, "failed_count": failed_reports, "skipped_count": 0, "schedules_failed": schedules_failed}
+            if attempted_reports == 0 and schedules_failed == 0:
+                return {"message": "Scheduled reports: none due", "count": 0, "outcome_status": "success", "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": 0, "schedules_failed": 0}}
+            if attempted_reports == 0 and schedules_failed > 0:
+                return {"message": f"Scheduled reports: {schedules_failed} schedule(s) failed with errors", "count": 0, "outcome_status": "degraded", "outcome_metrics": {**base_metrics, "expected_count": 0}}
+            if schedules_failed > 0 and (failed_reports > 0 or reports_sent > 0):
+                base_metrics["schedules_failed"] = schedules_failed
+                return {"message": f"Scheduled reports: {reports_sent} sent, {failed_reports} failed, {schedules_failed} schedule(s) error(s)", "count": reports_sent, "outcome_status": "degraded", "outcome_metrics": base_metrics}
             if failed_reports > 0 and reports_sent > 0:
-                return {"message": f"Scheduled reports: {reports_sent} sent, {failed_reports} failed", "count": reports_sent, "outcome_status": "degraded", "outcome_metrics": {"expected_count": attempted_reports, "attempted_count": attempted_reports, "success_count": reports_sent, "failed_count": failed_reports, "skipped_count": 0}}
+                return {"message": f"Scheduled reports: {reports_sent} sent, {failed_reports} failed", "count": reports_sent, "outcome_status": "degraded", "outcome_metrics": base_metrics}
             if failed_reports > 0 and reports_sent == 0:
-                return {"message": f"Scheduled reports: all {attempted_reports} send(s) failed", "count": 0, "outcome_status": "failed", "error_message": f"All {attempted_reports} report send(s) failed", "outcome_metrics": {"expected_count": attempted_reports, "attempted_count": attempted_reports, "success_count": 0, "failed_count": failed_reports, "skipped_count": 0}}
-            return {"message": f"Scheduled reports sent: {reports_sent}", "count": reports_sent, "outcome_status": "success", "outcome_metrics": {"expected_count": attempted_reports, "attempted_count": attempted_reports, "success_count": reports_sent, "failed_count": 0, "skipped_count": 0}}
+                return {"message": f"Scheduled reports: all {attempted_reports} send(s) failed", "count": 0, "outcome_status": "failed", "error_message": f"All {attempted_reports} report send(s) failed", "outcome_metrics": base_metrics}
+            return {"message": f"Scheduled reports sent: {reports_sent}", "count": reports_sent, "outcome_status": "success", "outcome_metrics": base_metrics}
 
         except Exception as e:
             logger.exception("Scheduled reports job failed: %s", e)

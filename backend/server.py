@@ -108,6 +108,24 @@ async def lifespan(app: FastAPI):
         return
     await database.connect()
 
+    # Production safety: require non-default JWT_SECRET when ENV is production
+    _env = (os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or "").strip().lower()
+    if _env in ("production", "prod"):
+        try:
+            from auth import require_non_default_jwt_secret
+            require_non_default_jwt_secret()
+        except RuntimeError as e:
+            logger.critical("Startup aborted: %s", e)
+            raise
+
+    # Alerting: warn if admin incident emails are not configured (ops visibility)
+    _alert_emails = (os.environ.get("ADMIN_ALERT_EMAILS") or os.environ.get("OPS_ALERT_EMAIL") or "").strip()
+    if not _alert_emails:
+        logger.warning(
+            "ADMIN_ALERT_EMAILS and OPS_ALERT_EMAIL are not set. Admin incident alerts will not be sent. "
+            "Set one of these environment variables for production."
+        )
+
     # Stripe config: log mode (test/live) from key prefix and which price IDs are in use (no secret keys)
     try:
         stripe_key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()

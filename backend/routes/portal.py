@@ -104,6 +104,18 @@ def _next_action(payment_state: str, provisioning_state: str, password_state: st
     return "go_to_dashboard"
 
 
+def _client_ip_portal(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return (request.client and request.client.host) or "unknown"
+
+
+# Rate limit for unauthenticated setup-status polling (prevent enumeration)
+SETUP_STATUS_RATE_LIMIT_ATTEMPTS = 60
+SETUP_STATUS_RATE_LIMIT_WINDOW_MINUTES = 5
+
+
 @router.get("/setup-status")
 async def get_setup_status(
     request: Request,
@@ -116,6 +128,14 @@ async def get_setup_status(
     the status for the client who just paid (avoids showing a different logged-in user's status).
     """
     user = await get_current_user(request)
+    # Rate limit when using client_id query (unauthenticated polling)
+    if client_id and not user:
+        ip = _client_ip_portal(request)
+        allowed, err_msg = await rate_limiter.check_rate_limit(
+            f"portal_setup_status:{ip}", SETUP_STATUS_RATE_LIMIT_ATTEMPTS, SETUP_STATUS_RATE_LIMIT_WINDOW_MINUTES
+        )
+        if not allowed:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many requests. Try again later.")
     resolved_client_id = None
     if client_id:
         resolved_client_id = client_id.strip() or None

@@ -282,7 +282,7 @@ class LeadService:
         
         if message:
             message_lower = message.lower()
-            high_intent_keywords = ["pricing", "price", "cost", "quote", "demo", "trial", "buy", "purchase", "sign up"]
+            high_intent_keywords = ["pricing", "price", "cost", "quote", "demo", "buy", "purchase", "sign up"]
             if any(kw in message_lower for kw in high_intent_keywords):
                 return LeadIntentScore.HIGH
         

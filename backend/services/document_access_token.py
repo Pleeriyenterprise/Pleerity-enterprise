@@ -3,17 +3,15 @@ Document Access Token Service
 Generates temporary signed tokens for document access in iframes.
 """
 
-import os
 import jwt
 import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 import logging
 
-logger = logging.getLogger(__name__)
+from auth import JWT_SECRET
 
-# Get JWT secret from environment
-JWT_SECRET = os.environ.get("JWT_SECRET", "default-secret-change-in-production")
+logger = logging.getLogger(__name__)
 
 # Token validity duration (in minutes)
 DOCUMENT_TOKEN_VALIDITY_MINUTES = 30

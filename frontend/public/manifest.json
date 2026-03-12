@@ -1,0 +1,16 @@
+{
+  "short_name": "Pleerity",
+  "name": "Compliance Vault Pro by Pleerity Enterprise Ltd",
+  "description": "AI-Driven Solutions & Compliance",
+  "icons": [
+    {
+      "src": "/branding/favicon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0B1D3A",
+  "background_color": "#ffffff"
+}

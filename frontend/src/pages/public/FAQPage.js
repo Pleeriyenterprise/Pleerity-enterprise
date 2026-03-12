@@ -91,7 +91,11 @@ const FAQ_SECTIONS = [
     items: [
       {
         q: 'What plans are available?',
-        a: 'We offer tiered plans (e.g. Solo, Pro) with different features such as reminder options, reports, and tenant portal access. See the pricing or product page for current plan details.',
+        a: 'We offer tiered plans (e.g. Solo, Portfolio, Professional) with different features such as reminder options, reports, and tenant portal access on higher tiers. See the pricing or product page for current plan details.',
+      },
+      {
+        q: 'When are reminders and digests sent?',
+        a: 'Daily expiry reminders are sent once per day (around 9am UK time). The monthly digest is sent at the start of each month. Compliance status change alerts are sent twice daily. You can adjust notification preferences in your account.',
       },
       {
         q: 'Can I change or cancel my plan?',
@@ -187,7 +191,7 @@ const FAQPage = () => {
               asChild
             >
               <Link to="/intake/start">
-                Start Free Trial
+                Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
             </Button>

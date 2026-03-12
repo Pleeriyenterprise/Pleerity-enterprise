@@ -1286,7 +1286,7 @@ async def get_marketing_analytics(
 
 
 # ============================================================================
-# MARKETING FUNNEL (leads → trial → portal_activated → paid)
+# MARKETING FUNNEL (leads → activated → portal_activated → paid)
 # ============================================================================
 
 @router.get("/marketing-funnel", dependencies=[Depends(require_owner_or_admin)])
@@ -1298,7 +1298,7 @@ async def get_marketing_funnel(
     """
     Marketing funnel: KPIs and stages from leads, clients, portal_users.
     Returns: visitors (placeholder), leads_count, trials_count, paid_count, conversion_rate, mrr,
-    funnel (leads, trial_started, portal_activated, paid), source_breakdown (by utm_source),
+    funnel (leads, activated, portal_activated, paid), source_breakdown (by utm_source),
     conversion_timing (avg_days_lead_to_trial, avg_days_trial_to_paid).
     """
     db = database.get_db()
@@ -1344,7 +1344,7 @@ async def get_marketing_funnel(
 
     funnel = [
         {"stage": "Leads", "count": funnel_leads, "conversion_rate": 100.0 if funnel_leads else 0, "drop_off_percent": 0},
-        {"stage": "Trial started", "count": funnel_trial, "conversion_rate": round(100.0 * funnel_trial / funnel_leads, 1) if funnel_leads else 0, "drop_off_percent": round(100.0 * (funnel_leads - funnel_trial) / funnel_leads, 1) if funnel_leads else 0},
+        {"stage": "Activated", "count": funnel_trial, "conversion_rate": round(100.0 * funnel_trial / funnel_leads, 1) if funnel_leads else 0, "drop_off_percent": round(100.0 * (funnel_leads - funnel_trial) / funnel_leads, 1) if funnel_leads else 0},
         {"stage": "Portal activated", "count": funnel_portal, "conversion_rate": round(100.0 * funnel_portal / funnel_leads, 1) if funnel_leads else 0, "drop_off_percent": round(100.0 * (funnel_trial - funnel_portal) / funnel_trial, 1) if funnel_trial else 0},
         {"stage": "Paid", "count": funnel_paid, "conversion_rate": round(100.0 * funnel_paid / funnel_leads, 1) if funnel_leads else 0, "drop_off_percent": round(100.0 * (funnel_portal - funnel_paid) / funnel_portal, 1) if funnel_portal else 0},
     ]
@@ -1446,7 +1446,7 @@ async def export_marketing_funnel_csv(
     writer.writerow(["From", data["from"]])
     writer.writerow(["To", data["to"]])
     writer.writerow(["Leads", data["kpis"]["leads_count"]])
-    writer.writerow(["Trials", data["kpis"]["trials_count"]])
+    writer.writerow(["Activated", data["kpis"]["trials_count"]])
     writer.writerow(["Paid", data["kpis"]["paid_count"]])
     writer.writerow(["Conversion rate %", data["kpis"]["conversion_rate"]])
     writer.writerow([])
@@ -1454,12 +1454,12 @@ async def export_marketing_funnel_csv(
     for row in data["funnel"]:
         writer.writerow([row["stage"], row["count"], row["conversion_rate"], row["drop_off_percent"]])
     writer.writerow([])
-    writer.writerow(["Source", "Leads", "Trials", "Paid", "Conversion %"])
+    writer.writerow(["Source", "Leads", "Activated", "Paid", "Conversion %"])
     for row in data["source_breakdown"]:
         writer.writerow([row["source"], row["leads"], row["trials"], row["paid"], row["conversion_percent"]])
     writer.writerow([])
-    writer.writerow(["Avg days lead to trial", data["conversion_timing"].get("avg_days_lead_to_trial") or ""])
-    writer.writerow(["Avg days trial to paid", data["conversion_timing"].get("avg_days_trial_to_paid") or ""])
+    writer.writerow(["Avg days lead to activated", data["conversion_timing"].get("avg_days_lead_to_trial") or ""])
+    writer.writerow(["Avg days activated to paid", data["conversion_timing"].get("avg_days_trial_to_paid") or ""])
     output.seek(0)
     return StreamingResponse(
         iter([output.getvalue()]),

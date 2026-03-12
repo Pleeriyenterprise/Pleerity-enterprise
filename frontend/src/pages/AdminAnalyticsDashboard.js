@@ -710,7 +710,7 @@ export default function AdminAnalyticsDashboard() {
               </CardContent>
             </Card>
 
-            {/* Marketing Funnel (Leads → Trial → Portal → Paid) */}
+            {/* Marketing Funnel (Leads → Activated → Portal → Paid) */}
             <Card className="mb-8">
               <CardHeader>
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -719,7 +719,7 @@ export default function AdminAnalyticsDashboard() {
                       <Filter className="h-5 w-5 text-teal-600" />
                       Marketing Funnel
                     </CardTitle>
-                    <CardDescription>Leads, trials, portal activation, and paid conversions</CardDescription>
+                    <CardDescription>Leads, activated signups, portal activation, and paid conversions</CardDescription>
                   </div>
                   <Button
                     variant="outline"
@@ -760,7 +760,7 @@ export default function AdminAnalyticsDashboard() {
                         <p className="text-xl font-bold text-blue-700">{marketingFunnel.kpis?.leads_count ?? 0}</p>
                       </div>
                       <div className="rounded-lg border p-3 bg-amber-50">
-                        <p className="text-xs text-gray-600">Trials</p>
+                        <p className="text-xs text-gray-600">Activated</p>
                         <p className="text-xl font-bold text-amber-700">{marketingFunnel.kpis?.trials_count ?? 0}</p>
                       </div>
                       <div className="rounded-lg border p-3 bg-green-50">
@@ -826,10 +826,10 @@ export default function AdminAnalyticsDashboard() {
                     {/* Conversion timing */}
                     <div className="flex flex-wrap gap-4 text-sm">
                       <span className="text-gray-600">
-                        Avg days lead → trial: <strong>{marketingFunnel.conversion_timing?.avg_days_lead_to_trial ?? '—'}</strong>
+                        Avg days lead → activated: <strong>{marketingFunnel.conversion_timing?.avg_days_lead_to_trial ?? '—'}</strong>
                       </span>
                       <span className="text-gray-600">
-                        Avg days trial → paid: <strong>{marketingFunnel.conversion_timing?.avg_days_trial_to_paid ?? '—'}</strong>
+                        Avg days activated → paid: <strong>{marketingFunnel.conversion_timing?.avg_days_trial_to_paid ?? '—'}</strong>
                       </span>
                     </div>
                   </div>

@@ -389,7 +389,7 @@ const InsightsHubPage = () => {
             <div className="mt-12 bg-midnight-blue rounded-xl p-8 text-center">
               <h3 className="text-2xl font-bold text-white mb-4">Track this automatically with Compliance Vault Pro</h3>
               <Button asChild className="bg-electric-teal hover:bg-electric-teal/90">
-                <Link to="/intake/start">Start Free Trial <ArrowRight className="w-4 h-4 ml-2 inline" /></Link>
+                <Link to="/intake/start">Get Started <ArrowRight className="w-4 h-4 ml-2 inline" /></Link>
               </Button>
             </div>
           </div>
@@ -590,7 +590,7 @@ const InsightsHubPage = () => {
           </h2>
           <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
             <Link to="/intake/start">
-              Start Free Trial
+              Get Started
               <ArrowRight className="w-5 h-5 ml-2 inline" />
             </Link>
           </Button>

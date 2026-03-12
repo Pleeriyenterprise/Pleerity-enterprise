@@ -203,7 +203,7 @@ export default function AdminExecutiveOverviewPage() {
                       <tr className="border-b border-gray-200">
                         <th className="text-left py-2 pr-4 font-medium text-gray-700">Plan</th>
                         <th className="text-right py-2 px-4 font-medium text-gray-700">Active</th>
-                        <th className="text-right py-2 px-4 font-medium text-gray-700">Trial</th>
+                        <th className="text-right py-2 px-4 font-medium text-gray-700">Trialing</th>
                         <th className="text-right py-2 px-4 font-medium text-gray-700">Churned</th>
                         <th className="text-right py-2 px-4 font-medium text-gray-700">MRR</th>
                       </tr>
@@ -398,7 +398,7 @@ export default function AdminExecutiveOverviewPage() {
                       <span className="font-medium text-gray-900">{growthEfficiency.leads_30d ?? 0}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Trials</span>
+                      <span className="text-gray-600">Activated</span>
                       <span className="font-medium text-gray-900">{growthEfficiency.trials_30d ?? 0}</span>
                     </div>
                     <div className="flex justify-between">

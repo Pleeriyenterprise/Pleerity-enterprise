@@ -119,7 +119,7 @@ export default function UKLandlordComplianceChecklist2026() {
                   <Link to="/compliance-vault-pro" className="text-electric-teal font-medium hover:underline">Compliance Vault Pro</Link>.
                 </p>
                 <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" asChild>
-                  <Link to="/intake/start">Start Free Trial <ArrowRight className="w-4 h-4 ml-1 inline" /></Link>
+                  <Link to="/intake/start">Get Started <ArrowRight className="w-4 h-4 ml-1 inline" /></Link>
                 </Button>
               </CardContent>
             </Card>
@@ -240,7 +240,7 @@ export default function UKLandlordComplianceChecklist2026() {
                 See how <Link to="/compliance-vault-pro" className="text-electric-teal font-medium hover:underline">Compliance Vault Pro</Link> structures your landlord compliance checklist automatically.
               </p>
               <Button className="bg-electric-teal hover:bg-electric-teal/90" asChild>
-                <Link to="/intake/start">Start Free Trial <ArrowRight className="w-4 h-4 ml-2 inline" /></Link>
+                <Link to="/intake/start">Get Started <ArrowRight className="w-4 h-4 ml-2 inline" /></Link>
               </Button>
             </Card>
           </section>

@@ -3,15 +3,14 @@ Order View Token Service
 Generates and validates short-lived tokens for one-time users to view order and download documents (no login).
 """
 
-import os
 import jwt
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 import logging
 
-logger = logging.getLogger(__name__)
+from auth import JWT_SECRET
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "default-secret-change-in-production")
+logger = logging.getLogger(__name__)
 VIEW_ORDER_TOKEN_VALIDITY_DAYS = 30
 
 

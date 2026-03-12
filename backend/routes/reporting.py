@@ -939,7 +939,7 @@ async def send_report_email(
             </tr>
         </table>
         <p style="color: #666; font-size: 12px;">
-            This is an automated report from Pleerity Enterprise. 
+            This is an automated report from Pleerity Enterprise Ltd. 
             If you no longer wish to receive these reports, please update your schedule settings.
         </p>
     </body>
@@ -957,7 +957,7 @@ Generated: {now_utc().strftime('%d %b %Y %H:%M:%S')} UTC
 
 Please find the report attached to this email.
 
-This is an automated report from Pleerity Enterprise.
+This is an automated report from Pleerity Enterprise Ltd.
     """
     
     results = []

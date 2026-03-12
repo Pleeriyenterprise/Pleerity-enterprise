@@ -117,7 +117,7 @@ If you've been using the checklist manually and it's working for you, that's gre
 
 If you prefer automated reminders and centralised document storage, Compliance Vault Pro is designed for that—without urgency gimmicks.
 
-[Start 14-day trial]({base_url}/intake/start)
+[Get started]({base_url}/intake/start)
 
 {disclaimer}
 

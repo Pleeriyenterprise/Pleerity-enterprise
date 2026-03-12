@@ -97,7 +97,7 @@ KNOWLEDGE_BASE = {
     "faqs": [
         {
             "question": "How do I reset my password?",
-            "answer": "Click 'Forgot Password' on the login page, enter your email, and follow the reset link sent to your inbox. If you don't receive it, check your spam folder or contact support.",
+            "answer": "Password reset links are sent by your account administrator. If you need to reset your password, contact your account admin or support—they can send you a new setup link. If you already have a link from us, use it to set your password; links expire after 24 hours.",
             "category": "login",
         },
         {
@@ -576,13 +576,9 @@ Please share your order reference and I'll look it up for you. Or if you're logg
         "trigger": "reset_password",
         "response": """To reset your password:
 
-1. Go to the **Login page**
-2. Click **"Forgot Password"**
-3. Enter your registered email address
-4. Check your inbox (and spam folder) for the reset link
-5. Click the link and create a new password
-
-The reset link expires in 24 hours. If you don't receive the email within 5 minutes, try again or contact support.
+1. **Contact your account administrator or support**—password reset links are sent by an admin from the Compliance Vault Pro admin portal.
+2. Once you receive the email, click the link and set your new password.
+3. Links expire after 24 hours. If yours has expired, ask your admin to send a new one.
 
 Need more help? I can connect you with a human agent.""",
         "action": "respond",

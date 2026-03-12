@@ -294,7 +294,7 @@ async def get_tenant_property_details(request: Request, property_id: str):
 async def get_tenant_compliance_pack(request: Request, property_id: str):
     """Download compliance pack for a property the tenant is assigned to.
     
-    Tenants get free access to compliance packs for their assigned properties.
+    Tenants have included access to compliance packs for their assigned properties.
     """
     from fastapi.responses import StreamingResponse
     import io
