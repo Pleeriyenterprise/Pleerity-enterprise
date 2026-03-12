@@ -153,17 +153,29 @@ export default function AdminSystemHealthPage() {
             )}
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Last successful run</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Last successful run</h2>
+              <p className="text-sm text-gray-500 mb-3">
+                Daily and hourly jobs show &quot;No run yet&quot; until their first scheduled run after server start (e.g. daily_reminders at 9:00 UTC). See <Link to="/admin/automation" className="text-indigo-600 hover:underline">Automation Control Centre</Link> for next run times.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data.last_success && Object.entries(data.last_success).map(([jobName, finishedAt]) => (
-                  <div key={jobName} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-gray-400" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{jobName}</p>
-                      <p className="text-xs text-gray-500">{formatTime(finishedAt)}</p>
+                {data.last_success && Object.entries(data.last_success).map(([jobName, finishedAt]) => {
+                  const jobState = data.job_states?.[jobName]?.state;
+                  const isNotYetDue = jobState === 'not_yet_due_since_startup';
+                  const label = finishedAt != null
+                    ? formatTime(finishedAt)
+                    : isNotYetDue
+                      ? 'No run yet (next run scheduled)'
+                      : 'No run yet';
+                  return (
+                    <div key={jobName} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{jobName}</p>
+                        <p className={`text-xs ${finishedAt != null ? 'text-gray-500' : 'text-gray-500 italic'}`}>{label}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

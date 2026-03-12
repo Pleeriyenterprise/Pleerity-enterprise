@@ -28,10 +28,18 @@ const JOB_STATE = {
   conditional_no_output: { label: 'No output (OK)', className: 'bg-slate-100 text-slate-600', Icon: CheckCircle },
 };
 
-function getJobState(info, jobName, heartbeatStale) {
+function getJobState(info, jobName, heartbeatStale, nextRunIso) {
   if (jobName === 'scheduler_heartbeat' && heartbeatStale) return 'failed';
   const last = info?.lastRun;
-  if (!last) return 'never_ran_and_overdue';
+  if (!last) {
+    // No runs yet: if next run is in the future, job is "not yet due"; otherwise overdue
+    if (nextRunIso) {
+      const nextRunTime = new Date(nextRunIso).getTime();
+      const now = Date.now();
+      if (nextRunTime > now + 60 * 1000) return 'not_yet_due_since_startup'; // 60s tolerance
+    }
+    return 'never_ran_and_overdue';
+  }
   const status = last.status || '';
   if (status === 'success') return 'healthy';
   if (status === 'degraded') return 'degraded';
@@ -311,7 +319,7 @@ export default function AdminAutomationCentrePage() {
                   const info = byJob[jobName] || { lastRun: null, lastSuccess: null, lastDegraded: null, lastFailed: null, failures24h: 0, degraded24h: 0 };
                   const next = nextRuns.find((j) => j.id === jobName);
                   const backendState = healthSummary?.job_states?.[jobName];
-                  const state = backendState?.state || getJobState(info, jobName, heartbeatStale);
+                  const state = backendState?.state || getJobState(info, jobName, heartbeatStale, next?.next_run);
                   const reason = backendState?.reason || '';
                   const recommendedAction = backendState?.recommended_action || '';
                   const stateConfig = JOB_STATE[state] || JOB_STATE.no_runs;
