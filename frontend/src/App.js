@@ -61,6 +61,7 @@ import ClientLoginPage from './pages/ClientLoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import LoginPage from './pages/LoginPage'; // Legacy - keep for backwards compatibility
 import SetPasswordPage from './pages/SetPasswordPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import IntakePage from './pages/IntakePage';
 import OnboardingStatusPage from './pages/OnboardingStatusPage';
 import AdminBlogPage from './pages/AdminBlogPage';
@@ -274,6 +275,7 @@ function App() {
               <Route path="/login/admin" element={<AdminLoginPage />} />
               <Route path="/admin/signin" element={<AdminLoginPage />} /> {/* Legacy admin route */}
               <Route path="/set-password" element={<SetPasswordPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/intake/start" element={<IntakePage />} />
               <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
               <Route path="/checkout/success" element={<CheckoutSuccessRedirect />} />

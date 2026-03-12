@@ -1,14 +1,18 @@
 from fastapi import APIRouter, HTTPException, Request, status
 from database import database
 from models import (
-    LoginRequest, SetPasswordRequest, TokenResponse,
+    LoginRequest, ForgotPasswordRequest, SetPasswordRequest, TokenResponse,
     UserRole, UserStatus, PasswordStatus, OnboardingStatus, AuditAction
 )
-from auth import verify_password, hash_password, create_access_token, hash_token, validate_password_strength
+from auth import (
+    verify_password, hash_password, create_access_token, hash_token,
+    validate_password_strength, generate_secure_token,
+)
 from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -396,6 +400,175 @@ async def set_password(request: Request, data: SetPasswordRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to set password"
         )
+
+
+# Self-service forgot password: same token + set-password flow as admin resend; no user enumeration
+FORGOT_PASSWORD_RATE_LIMIT_IP = 5
+FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES = 15
+FORGOT_PASSWORD_RATE_LIMIT_PER_EMAIL = 3
+FORGOT_PASSWORD_RATE_LIMIT_EMAIL_WINDOW_MINUTES = 60
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: Request, data: ForgotPasswordRequest):
+    """
+    Self-service password reset for client portal users.
+    If the email matches a provisioned client portal user, sends a password-setup link.
+    Always returns the same success message (no user enumeration).
+    """
+    ip = _client_ip(request)
+    email_raw = (data.email or "").strip().lower()
+    if not email_raw:
+        return {"message": "If an account exists for this email, you will receive a link to set your password. Please check your inbox."}
+
+    # Rate limit by IP
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        f"forgot_password_ip:{ip}",
+        FORGOT_PASSWORD_RATE_LIMIT_IP,
+        FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES,
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=err_msg or "Too many requests. Try again later.",
+        )
+    # Rate limit by email (abuse / spam)
+    allowed_email, _ = await rate_limiter.check_rate_limit(
+        f"forgot_password_email:{email_raw}",
+        FORGOT_PASSWORD_RATE_LIMIT_PER_EMAIL,
+        FORGOT_PASSWORD_RATE_LIMIT_EMAIL_WINDOW_MINUTES,
+    )
+    if not allowed_email:
+        return {"message": "If an account exists for this email, you will receive a link to set your password. Please check your inbox."}
+
+    db = database.get_db()
+    generic_message = "If an account exists for this email, you will receive a link to set your password. Please check your inbox and spam folder."
+
+    try:
+        portal_user = await db.portal_users.find_one(
+            {"auth_email": {"$regex": f"^{re.escape(email_raw)}$", "$options": "i"}},
+            {"_id": 0, "portal_user_id": 1, "auth_email": 1, "role": 1, "client_id": 1},
+        )
+        if not portal_user:
+            await create_audit_log(
+                action=AuditAction.FORGOT_PASSWORD_REQUESTED,
+                metadata={"email_masked": email_raw[:3] + "***" if len(email_raw) > 5 else "***", "sent": False, "reason": "user_not_found"},
+            )
+            return {"message": generic_message}
+
+        # Only client portal users get self-service reset; staff use admin flow
+        if portal_user.get("role") in STAFF_PORTAL_ROLES:
+            await create_audit_log(
+                action=AuditAction.FORGOT_PASSWORD_REQUESTED,
+                actor_id=portal_user.get("portal_user_id"),
+                metadata={"email_masked": email_raw[:3] + "***", "sent": False, "reason": "staff_user"},
+            )
+            return {"message": generic_message}
+
+        client_id = portal_user.get("client_id")
+        if not client_id:
+            await create_audit_log(
+                action=AuditAction.FORGOT_PASSWORD_REQUESTED,
+                actor_id=portal_user.get("portal_user_id"),
+                metadata={"email_masked": email_raw[:3] + "***", "sent": False, "reason": "no_client"},
+            )
+            return {"message": generic_message}
+
+        client = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "client_id": 1, "onboarding_status": 1, "email": 1, "contact_email": 1, "full_name": 1},
+        )
+        if not client or client.get("onboarding_status") != OnboardingStatus.PROVISIONED.value:
+            await create_audit_log(
+                action=AuditAction.FORGOT_PASSWORD_REQUESTED,
+                actor_id=portal_user.get("portal_user_id"),
+                client_id=client_id,
+                metadata={"email_masked": email_raw[:3] + "***", "sent": False, "reason": "not_provisioned"},
+            )
+            return {"message": generic_message}
+
+        # Revoke existing unused tokens for this user
+        await db.password_tokens.update_many(
+            {"portal_user_id": portal_user["portal_user_id"], "used_at": None, "revoked_at": None},
+            {"$set": {"revoked_at": datetime.now(timezone.utc).isoformat()}},
+        )
+
+        from models import PasswordToken
+        from utils.public_app_url import get_frontend_base_url
+
+        raw_token = generate_secure_token()
+        token_hash_value = hash_token(raw_token)
+        password_token = PasswordToken(
+            token_hash=token_hash_value,
+            portal_user_id=portal_user["portal_user_id"],
+            client_id=client_id,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            created_by="SELF_SERVICE",
+            send_count=1,
+        )
+        doc = password_token.model_dump()
+        for key in ["expires_at", "used_at", "revoked_at", "created_at"]:
+            if doc.get(key) and isinstance(doc[key], datetime):
+                doc[key] = doc[key].isoformat()
+        await db.password_tokens.insert_one(doc)
+
+        try:
+            base_url = get_frontend_base_url()
+        except ValueError:
+            await create_audit_log(
+                action=AuditAction.FORGOT_PASSWORD_REQUESTED,
+                actor_id=portal_user["portal_user_id"],
+                client_id=client_id,
+                metadata={"email_masked": email_raw[:3] + "***", "sent": False, "reason": "base_url_missing"},
+            )
+            return {"message": generic_message}
+
+        setup_link = f"{base_url}/set-password?token={raw_token}"
+        recipient = (client.get("contact_email") or client.get("email") or portal_user.get("auth_email") or "").strip()
+        if not recipient:
+            await create_audit_log(
+                action=AuditAction.FORGOT_PASSWORD_REQUESTED,
+                actor_id=portal_user["portal_user_id"],
+                client_id=client_id,
+                metadata={"email_masked": email_raw[:3] + "***", "sent": False, "reason": "no_recipient"},
+            )
+            return {"message": generic_message}
+
+        from services.notification_orchestrator import notification_orchestrator
+
+        result = await notification_orchestrator.send(
+            template_key="PASSWORD_RESET",
+            client_id=client_id,
+            context={
+                "subject": "Reset your password",
+                "recipient": recipient,
+                "setup_link": setup_link,
+                "client_name": client.get("full_name") or "Customer",
+                "company_name": "Pleerity Enterprise Ltd",
+                "tagline": "AI-Driven Solutions & Compliance",
+            },
+            idempotency_key=None,
+            event_type="forgot_password",
+        )
+
+        sent = result.outcome == "sent"
+        await create_audit_log(
+            action=AuditAction.FORGOT_PASSWORD_REQUESTED,
+            actor_id=portal_user["portal_user_id"],
+            client_id=client_id,
+            metadata={
+                "email_masked": email_raw[:3] + "***",
+                "sent": sent,
+                "reason": "email_sent" if sent else (result.block_reason or result.error_message or "send_failed"),
+            },
+        )
+        return {"message": generic_message}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Forgot password error: %s", e)
+        return {"message": generic_message}
+
 
 @router.post("/admin/login", response_model=TokenResponse)
 async def admin_login(request: Request, credentials: LoginRequest):

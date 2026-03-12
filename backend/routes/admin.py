@@ -1873,6 +1873,7 @@ async def get_client_audit_timeline(request: Request, client_id: str, limit: int
             "PASSWORD_TOKEN_GENERATED",
             "PASSWORD_SET_SUCCESS",
             "PASSWORD_SETUP_LINK_RESENT",
+            "FORGOT_PASSWORD_REQUESTED",
             "PORTAL_INVITE_RESENT",
             "PORTAL_INVITE_EMAIL_FAILED",
             "USER_LOGIN_SUCCESS",
@@ -1915,7 +1916,7 @@ async def get_client_audit_timeline(request: Request, client_id: str, limit: int
                 categorized["intake"].append(log)
             elif action.startswith("PROVISIONING_"):
                 categorized["provisioning"].append(log)
-            elif action in ["PASSWORD_TOKEN_GENERATED", "PASSWORD_SET_SUCCESS", "PASSWORD_SETUP_LINK_RESENT", "PORTAL_INVITE_RESENT", "PORTAL_INVITE_EMAIL_FAILED", "USER_LOGIN_SUCCESS", "USER_LOGIN_FAILED"]:
+            elif action in ["PASSWORD_TOKEN_GENERATED", "PASSWORD_SET_SUCCESS", "PASSWORD_SETUP_LINK_RESENT", "FORGOT_PASSWORD_REQUESTED", "PORTAL_INVITE_RESENT", "PORTAL_INVITE_EMAIL_FAILED", "USER_LOGIN_SUCCESS", "USER_LOGIN_FAILED"]:
                 categorized["authentication"].append(log)
             elif action.startswith("DOCUMENT_"):
                 categorized["documents"].append(log)

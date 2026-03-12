@@ -154,6 +154,7 @@ class AuditAction(str, Enum):
     PASSWORD_TOKEN_VALIDATED = "PASSWORD_TOKEN_VALIDATED"
     PASSWORD_SET_SUCCESS = "PASSWORD_SET_SUCCESS"
     PASSWORD_SETUP_LINK_RESENT = "PASSWORD_SETUP_LINK_RESENT"
+    FORGOT_PASSWORD_REQUESTED = "FORGOT_PASSWORD_REQUESTED"
     
     # Auth - General
     USER_LOGIN_SUCCESS = "USER_LOGIN_SUCCESS"
@@ -902,6 +903,11 @@ class IntakeFormData(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
 
 class SetPasswordRequest(BaseModel):
     token: str

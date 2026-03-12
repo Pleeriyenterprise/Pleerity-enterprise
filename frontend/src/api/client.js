@@ -121,6 +121,7 @@ export const authAPI = {
   login: (data) => apiClient.post('/auth/login', data),
   adminLogin: (data) => apiClient.post('/auth/admin/login', data),
   setPassword: (data) => apiClient.post('/auth/set-password', data),
+  forgotPassword: (data) => apiClient.post('/auth/forgot-password', data),
 };
 
 export const intakeAPI = {

@@ -253,6 +253,31 @@ class EmailService:
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.PASSWORD_RESET:
+            return f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: #00B8A9; margin: 0;">Reset your password</h1>
+                </div>
+                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                    <p>Hello {model.get('client_name', 'there')},</p>
+                    <p>You requested a password reset for your Compliance Vault Pro account. Use the link below to set a new password.</p>
+                    <p style="margin: 30px 0;">
+                        <a href="{model.get('setup_link', '#')}"
+                           style="background-color: #00B8A9; color: white; padding: 12px 24px;
+                                  text-decoration: none; border-radius: 6px; display: inline-block;">
+                            Set new password
+                        </a>
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                        This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.
+                    </p>
+                </div>
+                {footer}
+            </body>
+            </html>
+            """
         elif template_alias == EmailTemplateAlias.PORTAL_READY:
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
@@ -723,6 +748,19 @@ Your compliance portal account has been created. Please set your password to get
 Set your password here: {model.get('setup_link', '#')}
 
 This link will expire in 24 hours. If you didn't request this, please ignore this email.
+{footer}
+            """
+        elif template_alias == EmailTemplateAlias.PASSWORD_RESET:
+            return f"""
+Reset your password
+
+Hello {model.get('client_name', 'there')},
+
+You requested a password reset for your Compliance Vault Pro account. Use the link below to set a new password.
+
+Set new password: {model.get('setup_link', '#')}
+
+This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PORTAL_READY:
