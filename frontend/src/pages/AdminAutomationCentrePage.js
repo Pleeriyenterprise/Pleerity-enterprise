@@ -289,8 +289,8 @@ export default function AdminAutomationCentrePage() {
           </div>
         )}
 
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 text-sm" style={{ minWidth: 'max(100%, 56rem)' }}>
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-2 text-left font-medium text-gray-700">Job</th>

@@ -325,6 +325,9 @@ class Database:
             await self.db.assistant_conversations.create_index("conversation_id", unique=True)
             await self.db.assistant_messages.create_index([("conversation_id", 1), ("created_at", 1)])
             await self.db.assistant_messages.create_index([("client_id", 1), ("created_at", -1)])
+            # Help Assistant feedback (doc-grounded assistant)
+            await self.db.assistant_feedback.create_index([("user_id", 1), ("created_at", -1)])
+            await self.db.assistant_feedback.create_index("scope")
             await self._seed_requirements_catalog()
             logger.info("MongoDB indexes created/verified")
         except Exception as e:

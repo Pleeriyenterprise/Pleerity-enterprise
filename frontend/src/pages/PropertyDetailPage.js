@@ -1522,7 +1522,7 @@ export default function PropertyDetailPage() {
               </Button>
             </div>
           </div>
-          <p className="text-sm text-gray-500">Need help? See: <Link to="/help" className="text-electric-teal hover:underline">Uploading Evidence guide</Link> in Help Centre.</p>
+          <p className="text-sm text-gray-500">Need help? See: <Link to="/help?article=uploading-evidence" className="text-electric-teal hover:underline">Uploading Evidence guide</Link> in Help Centre.</p>
 
           {evidenceLoading ? (
             <div className="flex items-center gap-2 text-gray-500 py-8">

@@ -185,10 +185,11 @@ class OrderNotificationService:
         db = database.get_db()
         
         admins = await db.portal_users.find(
-            {"role": "ROLE_ADMIN"},
+            {"role": {"$in": ["ROLE_ADMIN", "admin", "ROLE_OWNER"]}},
             {
                 "_id": 0,
                 "user_id": 1,
+                "portal_user_id": 1,
                 "email": 1,
                 "name": 1,
                 "notification_preferences": 1,
@@ -291,7 +292,7 @@ class OrderNotificationService:
         
         for admin in admins:
             prefs = admin.get("notification_preferences", {})
-            admin_id = admin.get("user_id")
+            admin_id = admin.get("portal_user_id") or admin.get("user_id")
             admin_email = admin.get("email")
             admin_phone = prefs.get("notification_phone")
             

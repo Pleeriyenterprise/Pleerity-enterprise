@@ -115,7 +115,7 @@ const BrandingSettingsPage = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => navigate('/app/settings')}
+                onClick={() => navigate('/settings')}
                 data-testid="back-btn"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

@@ -1,12 +1,13 @@
 /**
  * User Help Centre – In-app documentation for landlords (USER audience articles).
  * Uses authenticated /api/client/help/articles and /api/client/help/categories.
+ * Includes doc-grounded Help Assistant (Ask a question) – answers from published articles only.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import client from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
-import { HelpCircle, Mail, Search, ArrowLeft, ExternalLink } from 'lucide-react';
+import { HelpCircle, Mail, Search, ArrowLeft, ExternalLink, MessageCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -23,6 +24,12 @@ export default function HelpPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [articleLoading, setArticleLoading] = useState(false);
+
+  // Help Assistant (doc-grounded ask)
+  const [askQuery, setAskQuery] = useState('');
+  const [askLoading, setAskLoading] = useState(false);
+  const [askResult, setAskResult] = useState(null);
+  const [feedbackSent, setFeedbackSent] = useState(false);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -85,6 +92,42 @@ export default function HelpPage() {
     setArticle(null);
   };
 
+  const handleAskSubmit = async (e) => {
+    e?.preventDefault();
+    const q = (askQuery || '').trim();
+    if (!q || askLoading) return;
+    setAskLoading(true);
+    setAskResult(null);
+    setFeedbackSent(false);
+    try {
+      const res = await client.post('/client/help/query', { query: q });
+      setAskResult(res.data);
+    } catch (err) {
+      setAskResult({
+        answer: 'Sorry, the help assistant is temporarily unavailable. Try browsing the articles below or email support.',
+        sources: [],
+        grounded: false,
+      });
+    } finally {
+      setAskLoading(false);
+    }
+  };
+
+  const handleFeedback = async (helpful) => {
+    if (!askResult || feedbackSent) return;
+    try {
+      await client.post('/client/help/feedback', {
+        query: askQuery.trim(),
+        answer: askResult.answer,
+        helpful,
+        source_article_ids: (askResult.sources || []).map((s) => s.articleId),
+      });
+      setFeedbackSent(true);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold text-midnight-blue mb-2 flex items-center gap-2">
@@ -135,6 +178,68 @@ export default function HelpPage() {
         </div>
       ) : (
         <>
+          {/* Help Assistant: ask a question (doc-grounded only) */}
+          <Card className="mb-6 border-electric-teal/30 bg-gray-50/50">
+            <CardContent className="pt-6">
+              <h2 className="text-base font-semibold text-midnight-blue mb-2 flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-electric-teal" />
+                Ask a question
+              </h2>
+              <p className="text-sm text-gray-600 mb-3">
+                Answers are based only on published help articles. No account data is used.
+              </p>
+              <form onSubmit={handleAskSubmit} className="flex gap-2">
+                <Input
+                  placeholder="e.g. How do I upload a certificate?"
+                  value={askQuery}
+                  onChange={(e) => setAskQuery(e.target.value)}
+                  maxLength={500}
+                  className="flex-1"
+                  disabled={askLoading}
+                />
+                <Button type="submit" disabled={!askQuery.trim() || askLoading} className="bg-electric-teal hover:bg-teal-600">
+                  {askLoading ? 'Searching...' : 'Search'}
+                </Button>
+              </form>
+              {askResult && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{askResult.answer}</p>
+                  {askResult.sources?.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Related articles</p>
+                      <ul className="space-y-1">
+                        {askResult.sources.map((s) => (
+                          <li key={s.articleId}>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/help?article=${encodeURIComponent(s.slug)}`)}
+                              className="text-sm text-electric-teal hover:underline"
+                            >
+                              {s.title}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {!feedbackSent ? (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
+                      <span>Was this helpful?</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => handleFeedback(true)} className="h-8 gap-1">
+                        <ThumbsUp className="h-3.5 w-3.5" /> Yes
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => handleFeedback(false)} className="h-8 gap-1">
+                        <ThumbsDown className="h-3.5 w-3.5" /> No
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-gray-500">Thanks for your feedback.</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />

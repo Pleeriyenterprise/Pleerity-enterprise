@@ -34,8 +34,60 @@ const QUICK_ACTION_ICONS = {
   speak_to_human: Users,
 };
 
-// Message bubble component
+// Match URLs for linkification (http/https, optional trailing punctuation stripped for display)
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
+
+function linkifyText(text) {
+  if (!text || typeof text !== 'string') return [text];
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  const re = new RegExp(URL_REGEX.source, 'gi');
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+    }
+    let href = match[0];
+    const trailing = /[.,;:!?)]+$/.exec(href);
+    if (trailing) {
+      href = href.slice(0, href.length - trailing[0].length);
+      parts.push({ type: 'link', href, label: href });
+      parts.push({ type: 'text', value: trailing[0] });
+    } else {
+      parts.push({ type: 'link', href, label: href });
+    }
+    lastIndex = re.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', value: text.slice(lastIndex) });
+  }
+  return parts.length ? parts : [{ type: 'text', value: text }];
+}
+
+// Message bubble component – bot messages get linkified URLs as clickable links
 function MessageBubble({ message, isUser }) {
+  const content = isUser ? (
+    <div className="text-sm whitespace-pre-wrap">{message.text}</div>
+  ) : (
+    <div className="text-sm whitespace-pre-wrap">
+      {linkifyText(message.text).map((part, i) =>
+        part.type === 'link' ? (
+          <a
+            key={i}
+            href={part.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-teal-600 underline break-all"
+          >
+            {part.label}
+          </a>
+        ) : (
+          <span key={i}>{part.value}</span>
+        )
+      )}
+    </div>
+  );
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
       <div className={`flex items-start gap-2 max-w-[85%] ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -53,7 +105,7 @@ function MessageBubble({ message, isUser }) {
             ? 'bg-teal-500 text-white rounded-tr-sm' 
             : 'bg-gray-100 text-gray-800 rounded-tl-sm'
         }`}>
-          <div className="text-sm whitespace-pre-wrap">{message.text}</div>
+          {content}
           <div className={`text-xs mt-1 ${isUser ? 'text-teal-100' : 'text-gray-400'}`}>
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </div>

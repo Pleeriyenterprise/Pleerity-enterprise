@@ -720,10 +720,18 @@ async def reopen_for_edit(order_id: str, admin_email: str, reason: str) -> Dict:
 # ============================================================================
 
 async def get_admin_notification_preferences(admin_id: str) -> Dict:
-    """Get admin's notification preferences."""
+    """Get admin's notification preferences. Lookup by portal_user_id or user_id; role admin or ROLE_ADMIN."""
+    if not admin_id:
+        return {
+            "email_enabled": True,
+            "sms_enabled": False,
+            "in_app_enabled": True,
+            "email": None,
+            "phone": None,
+        }
     db = database.get_db()
     admin = await db.portal_users.find_one(
-        {"user_id": admin_id, "role": "admin"},
+        {"$or": [{"portal_user_id": admin_id}, {"user_id": admin_id}], "role": {"$in": ["admin", "ROLE_ADMIN"]}},
         {"notification_preferences": 1, "email": 1, "phone": 1, "name": 1}
     )
     
@@ -771,7 +779,7 @@ async def update_admin_notification_preferences(
         update_fields["notification_preferences.notification_phone"] = notification_phone
     
     await db.portal_users.update_one(
-        {"user_id": admin_id, "role": "admin"},
+        {"$or": [{"portal_user_id": admin_id}, {"user_id": admin_id}], "role": {"$in": ["admin", "ROLE_ADMIN"]}},
         {"$set": update_fields}
     )
     

@@ -35,6 +35,9 @@ import {
   RefreshCw,
   Download,
   Archive,
+  MessageCircle,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 
 export default function AdminKnowledgeBasePage() {
@@ -73,6 +76,11 @@ export default function AdminKnowledgeBasePage() {
     status: 'draft',
     audience: 'USER',
     version: '1.0',
+    article_type: '',
+    release_version: '',
+    release_date: '',
+    changes: '',
+    affected_modules: '',
   });
   const [categoryForm, setCategoryForm] = useState({
     name: '',
@@ -82,6 +90,12 @@ export default function AdminKnowledgeBasePage() {
     audience: 'USER',
   });
   const [saving, setSaving] = useState(false);
+
+  // Help Assistant (doc-grounded, admin: USER + STAFF + ADMIN articles)
+  const [helpQuery, setHelpQuery] = useState('');
+  const [helpLoading, setHelpLoading] = useState(false);
+  const [helpResult, setHelpResult] = useState(null);
+  const [helpFeedbackSent, setHelpFeedbackSent] = useState(false);
 
   // Fetch articles
   const fetchArticles = useCallback(async () => {
@@ -149,6 +163,13 @@ export default function AdminKnowledgeBasePage() {
         tags: articleForm.tags ? articleForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         audience: articleForm.audience || 'USER',
         version: articleForm.version || '1.0',
+        article_type: articleForm.article_type || null,
+        release_version: articleForm.article_type === 'release_notes' ? (articleForm.release_version || null) : null,
+        release_date: articleForm.article_type === 'release_notes' ? (articleForm.release_date || null) : null,
+        changes: articleForm.article_type === 'release_notes' && articleForm.changes
+          ? articleForm.changes.split(/\n/).map(s => s.trim()).filter(Boolean) : [],
+        affected_modules: articleForm.article_type === 'release_notes' && articleForm.affected_modules
+          ? articleForm.affected_modules.split(',').map(s => s.trim()).filter(Boolean) : [],
       };
 
       if (editingArticle) {
@@ -161,7 +182,7 @@ export default function AdminKnowledgeBasePage() {
 
       setArticleDialogOpen(false);
       setEditingArticle(null);
-      setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft', audience: 'USER', version: '1.0' });
+      setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft', audience: 'USER', version: '1.0', article_type: '', release_version: '', release_date: '', changes: '', affected_modules: '' });
       fetchArticles();
     } catch (error) {
       console.error('Failed to save article:', error);
@@ -292,6 +313,11 @@ export default function AdminKnowledgeBasePage() {
         status: fullArticle.status || 'draft',
         audience: fullArticle.audience || 'USER',
         version: fullArticle.version || '1.0',
+        article_type: fullArticle.article_type || '',
+        release_version: fullArticle.release_version || '',
+        release_date: fullArticle.release_date ? fullArticle.release_date.slice(0, 10) : '',
+        changes: (fullArticle.changes || []).join('\n'),
+        affected_modules: (fullArticle.affected_modules || []).join(', '),
       });
       setArticleDialogOpen(true);
     } catch (error) {
@@ -340,7 +366,7 @@ export default function AdminKnowledgeBasePage() {
           <Button
             onClick={() => {
               setEditingArticle(null);
-              setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft', audience: 'USER', version: '1.0' });
+              setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft', audience: 'USER', version: '1.0', article_type: '', release_version: '', release_date: '', changes: '', affected_modules: '' });
               setArticleDialogOpen(true);
             }}
             className="bg-teal-600 hover:bg-teal-700"
@@ -366,6 +392,10 @@ export default function AdminKnowledgeBasePage() {
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="help-assistant" className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            Help Assistant
           </TabsTrigger>
         </TabsList>
 
@@ -717,6 +747,125 @@ export default function AdminKnowledgeBasePage() {
             <div className="text-center py-12 text-gray-500">No analytics data available</div>
           )}
         </TabsContent>
+
+        {/* Help Assistant Tab – doc-grounded (USER + STAFF + ADMIN articles) */}
+        <TabsContent value="help-assistant" className="space-y-4">
+          <Card className="border-teal-200">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-teal-600" />
+                Help Assistant
+              </CardTitle>
+              <CardDescription>
+                Search published Knowledge Centre articles (USER, STAFF, ADMIN). Answers are from documentation only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const q = (helpQuery || '').trim();
+                  if (!q || helpLoading) return;
+                  setHelpLoading(true);
+                  setHelpResult(null);
+                  setHelpFeedbackSent(false);
+                  try {
+                    const res = await client.post('/admin/kb/help-assistant/query', { query: q });
+                    setHelpResult(res.data);
+                  } catch {
+                    setHelpResult({
+                      answer: 'The help assistant is temporarily unavailable.',
+                      sources: [],
+                      grounded: false,
+                    });
+                  } finally {
+                    setHelpLoading(false);
+                  }
+                }}
+                className="flex gap-2"
+              >
+                <Input
+                  placeholder="e.g. How do I monitor reminder jobs?"
+                  value={helpQuery}
+                  onChange={(e) => setHelpQuery(e.target.value)}
+                  maxLength={500}
+                  className="flex-1"
+                  disabled={helpLoading}
+                />
+                <Button type="submit" disabled={!helpQuery.trim() || helpLoading}>
+                  {helpLoading ? 'Searching...' : 'Search'}
+                </Button>
+              </form>
+              {helpResult && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{helpResult.answer}</p>
+                  {helpResult.sources?.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Related articles</p>
+                      <ul className="space-y-1">
+                        {helpResult.sources.map((s) => (
+                          <li key={s.articleId}>
+                            <a
+                              href={`/admin/knowledge-base?article=${encodeURIComponent(s.slug)}`}
+                              className="text-sm text-teal-600 hover:underline"
+                            >
+                              {s.title}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {!helpFeedbackSent ? (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
+                      <span>Was this helpful?</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await client.post('/admin/kb/help-assistant/feedback', {
+                              query: helpQuery.trim(),
+                              answer: helpResult.answer,
+                              helpful: true,
+                              source_article_ids: (helpResult.sources || []).map((x) => x.articleId),
+                            });
+                            setHelpFeedbackSent(true);
+                          } catch {}
+                        }}
+                        className="h-8 gap-1"
+                      >
+                        <ThumbsUp className="h-3.5 w-3.5" /> Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await client.post('/admin/kb/help-assistant/feedback', {
+                              query: helpQuery.trim(),
+                              answer: helpResult.answer,
+                              helpful: false,
+                              source_article_ids: (helpResult.sources || []).map((x) => x.articleId),
+                            });
+                            setHelpFeedbackSent(true);
+                          } catch {}
+                        }}
+                        className="h-8 gap-1"
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" /> No
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-gray-500">Thanks for your feedback.</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Article Dialog */}
@@ -839,6 +988,66 @@ export default function AdminKnowledgeBasePage() {
                 placeholder="password, security, login"
               />
             </div>
+
+            <div>
+              <Label>Article type</Label>
+              <Select
+                value={articleForm.article_type || 'none'}
+                onValueChange={(val) => setArticleForm({ ...articleForm, article_type: val === 'none' ? '' : val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Standard article" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Standard article</SelectItem>
+                  <SelectItem value="release_notes">Release Notes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {articleForm.article_type === 'release_notes' && (
+              <div className="space-y-4 rounded-md border p-4 bg-gray-50/50">
+                <p className="text-sm font-medium text-gray-700">Release notes fields</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="release_version">Release version</Label>
+                    <Input
+                      id="release_version"
+                      value={articleForm.release_version}
+                      onChange={(e) => setArticleForm({ ...articleForm, release_version: e.target.value })}
+                      placeholder="e.g. 1.3"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="release_date">Release date</Label>
+                    <Input
+                      id="release_date"
+                      type="date"
+                      value={articleForm.release_date}
+                      onChange={(e) => setArticleForm({ ...articleForm, release_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="changes">Changes (one per line)</Label>
+                  <Textarea
+                    id="changes"
+                    value={articleForm.changes}
+                    onChange={(e) => setArticleForm({ ...articleForm, changes: e.target.value })}
+                    placeholder={'Added Compliance Score Trend chart\nImproved evidence upload flow\nFixed reminder scheduling bug'}
+                    rows={4}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="affected_modules">Affected modules (comma-separated)</Label>
+                  <Input
+                    id="affected_modules"
+                    value={articleForm.affected_modules}
+                    onChange={(e) => setArticleForm({ ...articleForm, affected_modules: e.target.value })}
+                    placeholder="Compliance, Evidence Upload, Reminders"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

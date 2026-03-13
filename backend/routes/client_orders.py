@@ -169,11 +169,11 @@ async def submit_client_input(
             },
         )
         
-        # Notify admin(s)
+        # Notify admin(s) — use same role/status as rest of app (ROLE_ADMIN, ACTIVE, etc.)
         db = database.get_db()
         admin = await db.portal_users.find_one(
-            {"role": "admin", "status": "active"},
-            {"email": 1, "name": 1, "user_id": 1}
+            {"role": {"$in": ["ROLE_ADMIN", "admin", "ROLE_OWNER"]}, "status": {"$in": ["active", "ACTIVE"]}},
+            {"email": 1, "name": 1, "user_id": 1, "portal_user_id": 1}
         )
         
         if admin:
@@ -209,15 +209,17 @@ async def submit_client_input(
             except Exception as e:
                 logger.error(f"Failed to send admin notification: {e}")
             
-            # Create in-app notification
-            await create_in_app_notification(
-                recipient_id=admin["user_id"],
-                title="Client Info Received",
-                message=f"Client submitted info for order {order_id}",
-                notification_type="order_update",
-                link=f"/admin/orders?order={order_id}",
-                metadata={"order_id": order_id},
-            )
+            # Create in-app notification (recipient_id must match JWT portal_user_id for bell to show)
+            recipient_id = admin.get("portal_user_id") or admin.get("user_id")
+            if recipient_id:
+                await create_in_app_notification(
+                    recipient_id=recipient_id,
+                    title="Client Info Received",
+                    message=f"Client submitted info for order {order_id}",
+                    notification_type="order_update",
+                    link=f"/admin/orders?order={order_id}",
+                    metadata={"order_id": order_id},
+                )
         
         return {
             "success": True,

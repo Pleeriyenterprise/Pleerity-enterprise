@@ -9,6 +9,9 @@ Features:
 - Human handoff triggers
 - CRN-based account lookup
 - Canned responses for common queries
+
+CVP pricing and frontend links are built from plan_registry and FRONTEND_URL so the AI
+always uses current prices and correct sign-in/pricing URLs.
 """
 import os
 import re
@@ -23,36 +26,63 @@ logger = logging.getLogger(__name__)
 # Get configurable values from environment
 SUPPORT_WHATSAPP = os.environ.get("SUPPORT_WHATSAPP_NUMBER", "+447440645017")
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
+FRONTEND_BASE = (os.environ.get("FRONTEND_URL") or os.environ.get("SITE_URL") or "https://pleerityenterprise.co.uk").rstrip("/")
 
 # ============================================================================
-# KNOWLEDGE BASE - Pleerity Services Information
+# KNOWLEDGE BASE - Pleerity Services Information (static parts)
 # ============================================================================
 
-KNOWLEDGE_BASE = {
-    "company": {
-        "name": "Pleerity Enterprise Ltd",
-        "tagline": "Property compliance and business services for landlords and property managers",
-        "support_email": SUPPORT_EMAIL,
-        "support_hours": "24/7 via chatbot, Live agents Mon-Fri 9am-6pm GMT",
-        "whatsapp": SUPPORT_WHATSAPP,
-    },
-    
-    "services": {
-        "cvp": {
-            "name": "Compliance Vault Pro",
-            "description": "Comprehensive property compliance management platform for HMO and residential landlords.",
-            "features": [
-                "Property compliance tracking and monitoring",
-                "Document storage and management",
-                "Certificate expiry alerts",
-                "Compliance scoring and risk assessment",
-                "Multi-property portfolio management",
-                "Council licensing tracking",
-            ],
-            "pricing": "£9.99/month + £49.99 setup fee",
-            "ideal_for": "Landlords with HMO or multiple properties needing compliance oversight",
+def _get_cvp_pricing_from_registry() -> str:
+    """Build CVP pricing string from plan_registry (single source of truth)."""
+    try:
+        from services.plan_registry import PLAN_DEFINITIONS, PlanCode
+        parts = []
+        for code in (PlanCode.PLAN_1_SOLO, PlanCode.PLAN_2_PORTFOLIO, PlanCode.PLAN_3_PRO):
+            plan = PLAN_DEFINITIONS.get(code, {})
+            name = plan.get("name", code.value)
+            monthly = plan.get("monthly_price")
+            onboarding = plan.get("onboarding_fee")
+            if monthly is not None and onboarding is not None:
+                parts.append(f"{name}: £{monthly:.0f}/month + £{onboarding:.0f} onboarding")
+        return " | ".join(parts) if parts else "See our Pricing page for current plans."
+    except Exception as e:
+        logger.warning("support_chatbot: could not load plan_registry for CVP pricing: %s", e)
+        return "See our Pricing page for current plans."
+
+
+def get_chatbot_knowledge_base() -> Dict[str, Any]:
+    """Build knowledge base with current CVP pricing and frontend links (used in AI prompt and canned text)."""
+    cvp_pricing = _get_cvp_pricing_from_registry()
+    return {
+        "company": {
+            "name": "Pleerity Enterprise Ltd",
+            "tagline": "Property compliance and business services for landlords and property managers",
+            "support_email": SUPPORT_EMAIL,
+            "support_hours": "24/7 via chatbot, Live agents Mon-Fri 9am-6pm GMT",
+            "whatsapp": SUPPORT_WHATSAPP,
         },
-        "document_packs": {
+        "frontend_links": {
+            "client_signin": f"{FRONTEND_BASE}/login/client",
+            "pricing": f"{FRONTEND_BASE}/pricing",
+            "compliance_vault_landing": f"{FRONTEND_BASE}/compliance-vault-pro",
+            "dashboard": f"{FRONTEND_BASE}/dashboard",
+        },
+        "services": {
+            "cvp": {
+                "name": "Compliance Vault Pro",
+                "description": "Comprehensive property compliance management platform for HMO and residential landlords.",
+                "features": [
+                    "Property compliance tracking and monitoring",
+                    "Document storage and management",
+                    "Certificate expiry alerts",
+                    "Compliance scoring and risk assessment",
+                    "Multi-property portfolio management",
+                    "Council licensing tracking",
+                ],
+                "pricing": cvp_pricing,
+                "ideal_for": "Landlords with HMO or multiple properties needing compliance oversight",
+            },
+            "document_packs": {
             "name": "Document Packs",
             "description": "Professional, legally-compliant document packs for landlords.",
             "tiers": {
@@ -65,8 +95,8 @@ KNOWLEDGE_BASE = {
                 "printed_copy": {"name": "Printed Copy", "price": "£25", "description": "Physical copy by Royal Mail"},
             },
             "turnaround": "Standard 48 hours, Fast Track 24 hours",
-        },
-        "ai_automation": {
+            },
+            "ai_automation": {
             "name": "AI Workflow Automation",
             "description": "Automate repetitive property management tasks with AI.",
             "services": [
@@ -74,16 +104,16 @@ KNOWLEDGE_BASE = {
                 {"name": "Business Process Mapping", "price": "£129"},
                 {"name": "AI Tool Recommendation Report", "price": "£59"},
             ],
-        },
-        "market_research": {
+            },
+            "market_research": {
             "name": "Market Research",
             "description": "Property market insights and area analysis.",
             "tiers": {
                 "basic": {"name": "Basic Report", "price": "£69"},
                 "advanced": {"name": "Advanced Report", "price": "£149"},
             },
-        },
-        "compliance_audits": {
+            },
+            "compliance_audits": {
             "name": "Compliance Audits",
             "description": "Professional property compliance audits.",
             "services": [
@@ -91,10 +121,9 @@ KNOWLEDGE_BASE = {
                 {"name": "Full Compliance Audit", "price": "£99"},
                 {"name": "Move-In/Out Checklist", "price": "£35"},
             ],
+            },
         },
-    },
-    
-    "faqs": [
+        "faqs": [
         {
             "question": "How do I reset my password?",
             "answer": "You can reset your password yourself: on the client sign-in page, click 'Forgot password?', enter your email, and we'll send you a link to set a new password. Alternatively, contact your account administrator—they can send you a new setup link from the admin portal. Links expire after 1 hour.",
@@ -364,8 +393,8 @@ async def generate_ai_response(
             "3. If you can't help, offer to connect them with a human agent.",
             "4. For account-specific queries, ask for their CRN (Customer Reference Number).",
             "",
-            "KNOWLEDGE BASE:",
-            json.dumps(KNOWLEDGE_BASE, indent=2),
+            "KNOWLEDGE BASE (use frontend_links for sign-in, pricing, CVP landing - never invent URLs):",
+            json.dumps(get_chatbot_knowledge_base(), indent=2),
         ]
         if client_context:
             system_parts.extend([
@@ -414,7 +443,7 @@ async def generate_fallback_response(
     
     # Try to match FAQs
     message_lower = message.lower()
-    for faq in KNOWLEDGE_BASE["faqs"]:
+    for faq in get_chatbot_knowledge_base().get("faqs", []):
         if any(word in message_lower for word in faq["question"].lower().split()[:3]):
             return faq["answer"], {
                 "ai_generated": False,
@@ -634,23 +663,7 @@ Need to discuss something specific? I can connect you with our billing team.""",
     
     "cvp_info": {
         "trigger": "cvp_info",
-        "response": """**🏠 Compliance Vault Pro (CVP):**
-
-Your complete property compliance management platform.
-
-**Features:**
-✅ Property compliance tracking & monitoring
-✅ Certificate expiry alerts
-✅ Document storage & management
-✅ Compliance scoring & risk assessment
-✅ Multi-property portfolio view
-✅ Council licensing tracking
-
-**Pricing:** £9.99/month + £49.99 setup fee
-
-**Ideal for:** HMO landlords and portfolio managers who need to stay compliant.
-
-Would you like to get started or learn more about specific features?""",
+        "response": None,  # Built dynamically in get_canned_response from plan_registry + FRONTEND_BASE
         "action": "respond",
         "metadata": {"canned": True, "category": "compliance", "service_area": "cvp"}
     },
@@ -671,8 +684,42 @@ Which would you prefer?""",
 
 
 def get_canned_response(trigger: str) -> Optional[Dict[str, Any]]:
-    """Get a canned response by trigger name."""
-    return CANNED_RESPONSES.get(trigger)
+    """Get a canned response by trigger name. CVP info uses live pricing and frontend link; reset_password uses live sign-in link."""
+    out = CANNED_RESPONSES.get(trigger)
+    if not out:
+        return None
+    out = dict(out)
+    if trigger == "cvp_info" and out.get("response") is None:
+        cvp_pricing = _get_cvp_pricing_from_registry()
+        out["response"] = f"""**🏠 Compliance Vault Pro (CVP):**
+
+Your complete property compliance management platform.
+
+**Features:**
+✅ Property compliance tracking & monitoring
+✅ Certificate expiry alerts
+✅ Document storage & management
+✅ Compliance scoring & risk assessment
+✅ Multi-property portfolio view
+✅ Council licensing tracking
+
+**Current pricing:** {cvp_pricing}
+
+**Ideal for:** HMO landlords and portfolio managers who need to stay compliant.
+
+View plans and sign up: {FRONTEND_BASE}/pricing
+Learn more: {FRONTEND_BASE}/compliance-vault-pro"""
+    elif trigger == "reset_password":
+        # Inject current client sign-in URL so the widget can show it as a clickable link
+        out["response"] = f"""To reset your password:
+
+1. **Self-service:** On the client sign-in page, click **Forgot password?**, enter your email, and we'll send you a link to set a new password.
+   Sign in page: {FRONTEND_BASE}/login/client
+2. **Or contact your account administrator**—they can send you a new setup link from the Compliance Vault Pro admin portal.
+3. Once you receive the email, click the link and set your new password. Links expire after 1 hour.
+
+Need more help? I can connect you with a human agent."""
+    return out
 
 
 def get_all_quick_actions() -> List[Dict[str, Any]]:

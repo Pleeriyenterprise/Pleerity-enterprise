@@ -31,6 +31,14 @@ client_help_router = APIRouter(prefix="/api/client/help", tags=["client-help-cen
 ARTICLES_COLLECTION = "kb_articles"
 CATEGORIES_COLLECTION = "kb_categories"
 SEARCH_ANALYTICS_COLLECTION = "kb_search_analytics"
+FEEDBACK_COLLECTION = "assistant_feedback"
+
+# Help Assistant: fallback when no published docs match (doc-grounded only)
+HELP_ASSISTANT_FALLBACK = (
+    "I couldn't find a confirmed answer in the current help documentation. "
+    "Try different keywords or browse the categories below. This is based on current help documentation only, not legal advice."
+)
+HELP_ASSISTANT_TOP_N = 5
 
 
 class ArticleStatus(str, Enum):
@@ -140,6 +148,38 @@ class CategoryUpdate(BaseModel):
     audience: Optional[str] = None
 
 
+# Help Assistant (doc-grounded, role-aware)
+class HelpAssistantQueryRequest(BaseModel):
+    """Request for help-assistant query (documentation only)."""
+    query: str = Field(..., min_length=1, max_length=500)
+    context: Optional[str] = Field(None, max_length=200)
+
+
+class HelpAssistantSource(BaseModel):
+    """One cited source for help-assistant response."""
+    articleId: str
+    title: str
+    slug: str
+    updatedAt: Optional[str] = None
+
+
+class HelpAssistantQueryResponse(BaseModel):
+    """Response from help-assistant: answer from published docs only, or fallback."""
+    answer: str
+    steps: List[str] = []
+    sources: List[HelpAssistantSource] = []
+    grounded: bool = False
+
+
+class HelpAssistantFeedbackRequest(BaseModel):
+    """Feedback for a help-assistant answer (Helpful / Not Helpful)."""
+    query: str = Field(..., max_length=500)
+    answer: str = Field(..., max_length=10000)
+    helpful: bool
+    source_article_ids: Optional[List[str]] = None
+    response_id: Optional[str] = None
+
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
@@ -220,6 +260,112 @@ async def log_search_analytics(query: str, results_count: int, ip_address: str =
         "ip_address": ip_address,
         "searched_at": now,
     })
+
+
+def _allowed_audiences_for_role(role: str) -> List[str]:
+    """Return allowed audience values for help-assistant retrieval. USER -> USER only; staff/admin -> USER, STAFF, ADMIN."""
+    role = (role or "").strip().upper()
+    if role in ("USER", "ROLE_CLIENT", "ROLE_CLIENT_ADMIN", "ROLE_TENANT"):
+        return [ArticleAudience.USER.value]
+    return [ArticleAudience.USER.value, ArticleAudience.STAFF.value, ArticleAudience.ADMIN.value]
+
+
+async def search_published_articles_for_assistant(
+    query: str,
+    allowed_audiences: List[str],
+    limit: int = HELP_ASSISTANT_TOP_N,
+    context: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Search published KB articles by text (title, excerpt, content). Role-aware via allowed_audiences.
+    Returns list of dicts with article_id, title, slug, excerpt, content_preview, updated_at.
+    Only published, is_active; no drafts or archived.
+    """
+    db = database.get_db()
+    q = (query or "").strip()
+    if not q:
+        return []
+    # Build filter: published, active; audience in allowed set or missing (treat missing as USER)
+    filter_query = {
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [
+            {"audience": {"$in": allowed_audiences}},
+            {"audience": {"$exists": False}},
+        ],
+    }
+    # Text search: at least one of title, excerpt, content matches (regex, case-insensitive)
+    search_re = re.escape(q) if len(q) < 50 else re.escape(q[:50])
+    filter_query["$or"] = [
+        {"title": {"$regex": search_re, "$options": "i"}},
+        {"excerpt": {"$regex": search_re, "$options": "i"}},
+        {"summary": {"$regex": search_re, "$options": "i"}},
+        {"content": {"$regex": search_re, "$options": "i"}},
+        {"tags": {"$elemMatch": {"$regex": search_re, "$options": "i"}}},
+    ]
+    if context:
+        filter_query["$or"].append({"product_module": {"$regex": re.escape(context[:100]), "$options": "i"}})
+    cursor = db[ARTICLES_COLLECTION].find(
+        filter_query,
+        {"_id": 0, "article_id": 1, "title": 1, "slug": 1, "excerpt": 1, "content": 1, "updated_at": 1},
+    ).sort("published_at", -1).limit(limit * 2)
+    raw = await cursor.to_list(length=limit * 2)
+    # Prefer title/excerpt match order (simple relevance)
+    def score(a):
+        s = 0
+        t, e, c = (a.get("title") or "").lower(), (a.get("excerpt") or "").lower(), (a.get("content") or "").lower()
+        ql = q.lower()
+        if ql in t:
+            s += 3
+        if ql in e:
+            s += 2
+        if ql in c:
+            s += 1
+        return s
+    raw.sort(key=lambda a: -score(a))
+    raw = raw[:limit]
+    out = []
+    for a in raw:
+        content = (a.get("content") or "")[:500]
+        out.append({
+            "article_id": a.get("article_id", ""),
+            "title": a.get("title", ""),
+            "slug": a.get("slug", ""),
+            "excerpt": (a.get("excerpt") or "").strip(),
+            "content_preview": content.strip(),
+            "updated_at": a.get("updated_at"),
+        })
+    return out
+
+
+def _build_help_assistant_response(articles: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Build answer, steps, sources, grounded from retrieved articles. No LLM; doc-only."""
+    if not articles:
+        return {
+            "answer": HELP_ASSISTANT_FALLBACK,
+            "steps": [],
+            "sources": [],
+            "grounded": False,
+        }
+    first = articles[0]
+    answer = (first.get("excerpt") or first.get("content_preview") or first.get("title", "")).strip()
+    if not answer:
+        answer = first.get("title", "See the article below for details.")
+    sources = [
+        {
+            "articleId": a.get("article_id", ""),
+            "title": a.get("title", ""),
+            "slug": a.get("slug", ""),
+            "updatedAt": a.get("updated_at"),
+        }
+        for a in articles
+    ]
+    return {
+        "answer": answer,
+        "steps": [],
+        "sources": sources,
+        "grounded": True,
+    }
 
 
 def _build_article_pdf(article: dict) -> io.BytesIO:
@@ -601,6 +747,50 @@ async def client_help_list_categories(
     return {"categories": categories}
 
 
+@client_help_router.post("/query", response_model=HelpAssistantQueryResponse)
+async def client_help_assistant_query(
+    data: HelpAssistantQueryRequest,
+    current_user: dict = Depends(client_route_guard),
+):
+    """
+    Help Assistant query: answers from published USER-scoped articles only.
+    No LLM; no portal data. If no docs match, returns fallback and grounded=false.
+    """
+    allowed = _allowed_audiences_for_role(current_user.get("role", "USER"))
+    articles = await search_published_articles_for_assistant(
+        query=data.query,
+        allowed_audiences=allowed,
+        limit=HELP_ASSISTANT_TOP_N,
+        context=data.context,
+    )
+    result = _build_help_assistant_response(articles)
+    return HelpAssistantQueryResponse(**result)
+
+
+@client_help_router.post("/feedback")
+async def client_help_assistant_feedback(
+    data: HelpAssistantFeedbackRequest,
+    current_user: dict = Depends(client_route_guard),
+):
+    """Record Helpful / Not Helpful for a help-assistant answer."""
+    db = database.get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    user_id = current_user.get("portal_user_id") or current_user.get("client_id") or "unknown"
+    doc = {
+        "feedback_id": f"fb-{uuid.uuid4().hex[:12]}",
+        "user_id": user_id,
+        "query": data.query[:500],
+        "answer": data.answer[:5000],
+        "helpful": data.helpful,
+        "source_article_ids": data.source_article_ids or [],
+        "response_id": data.response_id,
+        "scope": "client_help",
+        "created_at": now,
+    }
+    await db[FEEDBACK_COLLECTION].insert_one(doc)
+    return {"ok": True, "feedback_id": doc["feedback_id"]}
+
+
 # ============================================================================
 # ADMIN ENDPOINTS - ARTICLES
 # ============================================================================
@@ -632,6 +822,9 @@ async def admin_list_articles(
         filter_query["$or"] = [
             {"title": {"$regex": search, "$options": "i"}},
             {"excerpt": {"$regex": search, "$options": "i"}},
+            {"summary": {"$regex": search, "$options": "i"}},
+            {"content": {"$regex": search, "$options": "i"}},
+            {"tags": {"$elemMatch": {"$regex": search, "$options": "i"}}},
         ]
 
     cursor = db[ARTICLES_COLLECTION].find(
@@ -1149,3 +1342,51 @@ async def admin_get_analytics(
         "top_searches": top_searches,
         "searches_with_no_results": no_results,
     }
+
+
+# ============================================================================
+# ADMIN HELP ASSISTANT (doc-grounded, USER + STAFF + ADMIN articles)
+# ============================================================================
+
+@admin_router.post("/help-assistant/query", response_model=HelpAssistantQueryResponse)
+async def admin_help_assistant_query(
+    data: HelpAssistantQueryRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Help Assistant query for admin: answers from published USER, STAFF, and ADMIN articles.
+    No LLM; documentation only. If no docs match, returns fallback and grounded=false.
+    """
+    allowed = _allowed_audiences_for_role(current_user.get("role", "ADMIN"))
+    articles = await search_published_articles_for_assistant(
+        query=data.query,
+        allowed_audiences=allowed,
+        limit=HELP_ASSISTANT_TOP_N,
+        context=data.context,
+    )
+    result = _build_help_assistant_response(articles)
+    return HelpAssistantQueryResponse(**result)
+
+
+@admin_router.post("/help-assistant/feedback")
+async def admin_help_assistant_feedback(
+    data: HelpAssistantFeedbackRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Record Helpful / Not Helpful for an admin help-assistant answer."""
+    db = database.get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    user_id = current_user.get("portal_user_id") or current_user.get("email") or "unknown"
+    doc = {
+        "feedback_id": f"fb-{uuid.uuid4().hex[:12]}",
+        "user_id": user_id,
+        "query": data.query[:500],
+        "answer": data.answer[:5000],
+        "helpful": data.helpful,
+        "source_article_ids": data.source_article_ids or [],
+        "response_id": data.response_id,
+        "scope": "admin_help",
+        "created_at": now,
+    }
+    await db[FEEDBACK_COLLECTION].insert_one(doc)
+    return {"ok": True, "feedback_id": doc["feedback_id"]}

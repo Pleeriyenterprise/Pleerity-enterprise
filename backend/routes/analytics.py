@@ -1687,19 +1687,10 @@ async def get_executive_overview(request: Request):
                 "total_pence": rec + one,
             })
 
-        # If no payment-derived trend but we have MRR, use current MRR per month so the chart isn't empty
+        # If no payment-derived trend, leave monthly_trend as zeros (no misleading repeat of current MRR)
         trend_total = sum(m.get("total_pence") or 0 for m in monthly_trend)
-        if trend_total == 0 and mrr_pence > 0:
-            monthly_trend = [
-                {
-                    "month": m["month"],
-                    "label": m["label"],
-                    "recurring_pence": mrr_pence,
-                    "one_time_pence": 0,
-                    "total_pence": mrr_pence,
-                }
-                for m in monthly_trend
-            ]
+        monthly_trend_is_mrr_fallback = trend_total == 0 and mrr_pence > 0
+        # Do not fill 12 months with same MRR; chart shows £0 per month and UI can explain MRR above
 
         # Gross profit YTD: revenue_ytd - cost_ytd (cost_pence on payments when set)
         gross_profit_ytd_pence = revenue_ytd - cost_ytd
@@ -1801,6 +1792,7 @@ async def get_executive_overview(request: Request):
             "subscription_performance": subscription_performance,
             "revenue_composition": revenue_composition,
             "monthly_trend_12": monthly_trend,
+            "monthly_trend_is_mrr_fallback": monthly_trend_is_mrr_fallback,
             "financial_stability": {
                 "cash_in_30d_pence": cash_in_30d,
                 "cash_in_30d_formatted": f"£{cash_in_30d / 100:,.2f}",

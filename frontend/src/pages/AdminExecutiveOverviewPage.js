@@ -91,6 +91,7 @@ export default function AdminExecutiveOverviewPage() {
   const r2 = data?.row2_saas || {};
   const composition = data?.revenue_composition || [];
   const trend = data?.monthly_trend_12 || [];
+  const monthlyTrendIsMrrFallback = data?.monthly_trend_is_mrr_fallback === true;
   const subscriptionPerformance = data?.subscription_performance || [];
   const financialStability = data?.financial_stability || {};
   const riskIndicators = data?.risk_indicators || {};
@@ -293,6 +294,11 @@ export default function AdminExecutiveOverviewPage() {
           <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-4">Monthly revenue trend (12 months)</h2>
           <Card className="border-gray-200 bg-white">
             <CardContent className="p-6">
+              {monthlyTrendIsMrrFallback && (
+                <p className="mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                  No payment history by month yet. Chart shows revenue from actual payments per month; MRR above is from current subscriptions.
+                </p>
+              )}
               {trend.length > 0 ? (
                 <div className="space-y-3">
                   {trend.map((m) => (

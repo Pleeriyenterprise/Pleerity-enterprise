@@ -81,6 +81,7 @@ export default function AdminNotificationPreferencesPage() {
   const [profile, setProfile] = useState({ name: '', email: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testSmsLoading, setTestSmsLoading] = useState(false);
   const navigate = useNavigate();
 
   const fetchPreferences = useCallback(async () => {
@@ -275,7 +276,7 @@ export default function AdminNotificationPreferencesPage() {
             </div>
             
             {preferences.sms_enabled && (
-              <div className="ml-14">
+              <div className="ml-14 space-y-2">
                 <Label htmlFor="notification_phone" className="text-sm text-gray-600">
                   Phone Number (UK mobile)
                 </Label>
@@ -288,6 +289,28 @@ export default function AdminNotificationPreferencesPage() {
                   className="mt-1 max-w-sm"
                   data-testid="notification-phone-input"
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={testSmsLoading || !preferences.notification_phone?.trim()}
+                  onClick={async () => {
+                    setTestSmsLoading(true);
+                    try {
+                      await client.post('/admin/notifications/test-sms');
+                      toast.success('Test SMS sent to your notification phone.');
+                    } catch (err) {
+                      const msg = err?.response?.data?.detail || 'Failed to send test SMS';
+                      toast.error(msg);
+                    } finally {
+                      setTestSmsLoading(false);
+                    }
+                  }}
+                  data-testid="admin-test-sms-btn"
+                >
+                  {testSmsLoading ? 'Sending…' : 'Send test SMS'}
+                </Button>
+                <p className="text-xs text-gray-500">Save preferences first if you changed your phone number. Use this to confirm SMS is working without OTP.</p>
               </div>
             )}
 

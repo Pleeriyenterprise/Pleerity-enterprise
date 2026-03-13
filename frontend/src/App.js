@@ -304,6 +304,7 @@ function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="notifications" element={<NotificationPreferencesPage />} />
               <Route path="billing" element={<BillingPage />} />
+              <Route path="branding" element={<EntitlementProtectedRoute requiredFeature="white_label_reports"><BrandingSettingsPage /></EntitlementProtectedRoute>} />
             </Route>
             <Route path="/tenant" element={<ClientPortal><Outlet /></ClientPortal>}>
               <Route index element={<TenantDashboard />} />
@@ -329,6 +330,7 @@ function App() {
             {/* Redirect legacy /app/* to new paths */}
             <Route path="/app/dashboard" element={<Navigate to="/dashboard" replace />} />
             <Route path="/app/assistant" element={<Navigate to="/assistant" replace />} />
+            <Route path="/app/settings" element={<Navigate to="/settings" replace />} />
             <Route path="/app/profile" element={<Navigate to="/settings/profile" replace />} />
             <Route path="/app/notifications" element={<Navigate to="/settings/notifications" replace />} />
             <Route path="/app/calendar" element={<Navigate to="/calendar" replace />} />
@@ -346,6 +348,8 @@ function App() {
             <Route path="/app/properties/import" element={<Navigate to="/properties/import" replace />} />
             <Route path="/app/integrations" element={<Navigate to="/integrations" replace />} />
             <Route path="/app/billing" element={<Navigate to="/settings/billing" replace />} />
+            <Route path="/app/settings/branding" element={<Navigate to="/settings/branding" replace />} />
+            <Route path="/app/branding" element={<Navigate to="/settings/branding" replace />} />
             <Route path="/app/orders/:orderId/provide-info" element={<Navigate to="/orders/:orderId/provide-info" replace />} />
             <Route path="/app/orders" element={<Navigate to="/orders" replace />} />
             <Route path="/app/maintenance" element={<Navigate to="/operations/work-orders" replace />} />

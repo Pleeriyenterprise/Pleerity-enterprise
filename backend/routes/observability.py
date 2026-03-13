@@ -579,7 +579,8 @@ async def get_health_summary(request: Request):
     alerting_configured = bool(alert_emails)
 
     # Expose DB name so operators can verify scheduler and observability use the same DB (runtime truth gap investigation)
-    observability_db_name = getattr(db, "name", None) if db else None
+    # PyMongo Database does not support bool(); use "is not None" to avoid NotImplementedError
+    observability_db_name = getattr(db, "name", None) if db is not None else None
 
     return {
         "observability_db_name": observability_db_name,
