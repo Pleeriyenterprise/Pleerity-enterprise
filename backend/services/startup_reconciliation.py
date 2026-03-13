@@ -34,11 +34,13 @@ STARTUP_RECOVERY_JOB_IDS: List[str] = [
 ]
 
 # Interval between scheduled runs (minutes). Used to compute "last expected run" from next_run_time.
+# For monthly_digest (CronTrigger day=1): calendar gap is 28-31 days; use 31 so last_expected is never
+# after the previous month's 1st, avoiding false "overdue" when the job ran on the 1st.
 INTERVAL_MINUTES: Dict[str, int] = {
     "sla_watchdog": 10,
     "daily_reminders": 24 * 60,
     "scheduled_reports": 60,
-    "monthly_digest": 30 * 24 * 60,  # ~1 month
+    "monthly_digest": 31 * 24 * 60,  # max calendar month gap (28-31 days)
     "compliance_check_morning": 24 * 60,
     "compliance_check_evening": 24 * 60,
 }
