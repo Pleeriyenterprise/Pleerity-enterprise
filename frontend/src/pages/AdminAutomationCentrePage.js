@@ -157,9 +157,16 @@ export default function AdminAutomationCentrePage() {
   };
   const heartbeatStale = healthSummary?.heartbeat_stale === true;
   const jobIds = [...new Set([...Object.keys(byJob), ...nextRuns.map((j) => j.id)].filter(Boolean))].sort();
-  const filteredJobIds = cardFilter
-    ? jobIds.filter((jid) => healthSummary?.job_states?.[jid]?.state === cardFilter)
-    : jobIds;
+  const deliveryUnknownJobNames = new Set(
+    (healthSummary?.delivery_unknown_stale_runs || []).map((r) => r.job_name).filter(Boolean)
+  );
+  const filteredJobIds = (() => {
+    if (!cardFilter) return jobIds;
+    if (cardFilter === 'delivery_unknown_stale') return jobIds.filter((jid) => deliveryUnknownJobNames.has(jid));
+    if (cardFilter === 'heartbeat_stale') return jobIds.filter((jid) => jid === 'scheduler_heartbeat');
+    if (cardFilter === 'open_incidents') return jobIds; // "Open incidents" links away; no table filter
+    return jobIds.filter((jid) => healthSummary?.job_states?.[jid]?.state === cardFilter);
+  })();
   const hasNoRuns = !jobRuns.items?.length && jobIds.length > 0;
 
   return (
@@ -241,40 +248,68 @@ export default function AdminAutomationCentrePage() {
               </button>
             )}
             {healthSummary.summary_counts.degraded_24h > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+              <button
+                type="button"
+                onClick={() => setCardFilter(cardFilter === 'degraded' ? null : 'degraded')}
+                className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'degraded' ? 'ring-2 ring-amber-400 border-amber-300 bg-amber-100' : 'border-amber-200 bg-amber-50 hover:bg-amber-100'}`}
+              >
                 <span className="font-medium text-amber-800">{healthSummary.summary_counts.degraded_24h}</span>
                 <span className="text-amber-700"> degraded (24h)</span>
-              </div>
+              </button>
             )}
             {healthSummary.summary_counts.failed_24h > 0 && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
+              <button
+                type="button"
+                onClick={() => setCardFilter(cardFilter === 'failed' ? null : 'failed')}
+                className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'failed' ? 'ring-2 ring-red-400 border-red-300 bg-red-100' : 'border-red-200 bg-red-50 hover:bg-red-100'}`}
+              >
                 <span className="font-medium text-red-800">{healthSummary.summary_counts.failed_24h}</span>
                 <span className="text-red-700"> failed (24h)</span>
-              </div>
+              </button>
             )}
             {healthSummary.summary_counts.open_incidents > 0 && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
+              <Link
+                to="/admin/incidents"
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-left transition-colors hover:bg-red-100 hover:border-red-300 inline-block"
+              >
                 <span className="font-medium text-red-800">{healthSummary.summary_counts.open_incidents}</span>
                 <span className="text-red-700"> open incidents</span>
-              </div>
+              </Link>
             )}
             {healthSummary.summary_counts.heartbeat_stale > 0 && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
+              <button
+                type="button"
+                onClick={() => setCardFilter(cardFilter === 'heartbeat_stale' ? null : 'heartbeat_stale')}
+                className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'heartbeat_stale' ? 'ring-2 ring-red-400 border-red-300 bg-red-100' : 'border-red-200 bg-red-50 hover:bg-red-100'}`}
+              >
                 <span className="font-medium text-red-800">Stale</span>
                 <span className="text-red-700"> heartbeat</span>
-              </div>
+              </button>
             )}
             {healthSummary.summary_counts.delivery_unknown_stale > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+              <button
+                type="button"
+                onClick={() => setCardFilter(cardFilter === 'delivery_unknown_stale' ? null : 'delivery_unknown_stale')}
+                className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'delivery_unknown_stale' ? 'ring-2 ring-amber-400 border-amber-300 bg-amber-100' : 'border-amber-200 bg-amber-50 hover:bg-amber-100'}`}
+              >
                 <span className="font-medium text-amber-800">{healthSummary.summary_counts.delivery_unknown_stale}</span>
                 <span className="text-amber-700"> delivery unknown stale</span>
-              </div>
+              </button>
             )}
           </div>
         )}
-        {cardFilter && (
+        {cardFilter && cardFilter !== 'open_incidents' && (
           <p className="mb-2 text-sm text-gray-600">
-            Showing only: <strong>{cardFilter === 'missed' ? 'Critical missed' : cardFilter === 'never_ran_and_overdue' ? 'Never ran (overdue)' : 'Not yet due'}</strong>
+            Showing only: <strong>{
+              cardFilter === 'missed' ? 'Critical missed'
+              : cardFilter === 'never_ran_and_overdue' ? 'Never ran (overdue)'
+              : cardFilter === 'not_yet_due_since_startup' ? 'Not yet due'
+              : cardFilter === 'degraded' ? 'Degraded (24h)'
+              : cardFilter === 'failed' ? 'Failed (24h)'
+              : cardFilter === 'heartbeat_stale' ? 'Stale heartbeat'
+              : cardFilter === 'delivery_unknown_stale' ? 'Delivery unknown stale'
+              : cardFilter
+            }</strong>
             {' '}<button type="button" onClick={() => setCardFilter(null)} className="text-indigo-600 hover:underline">Clear filter</button>
           </p>
         )}

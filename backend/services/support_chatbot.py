@@ -211,7 +211,431 @@ def is_legal_advice_request(message: str) -> bool:
 
 
 # ============================================================================
-# SERVICE ROUTING
+# INTENT DETECTION (guided support assistant)
+# ============================================================================
+
+INTENTS = {
+    "compliance_vault_pro": [
+        "cvp", "compliance vault", "vault", "property compliance", "certificate tracking",
+        "compliance tracking", "hmo compliance", "certificate", "expiry", "portfolio",
+    ],
+    "document_packs": [
+        "document pack", "landlord documents", "tenancy agreement", "forms",
+        "essential pack", "tenancy pack", "ultimate pack", "documents", "ast",
+    ],
+    "automation": [
+        "automation", "workflow", "ai workflow", "ai tool", "process mapping", "automate",
+    ],
+    "market_research": [
+        "research", "market research", "analysis", "area analysis", "rental yield", "market report",
+    ],
+    "account_support": [
+        "login", "reset password", "forgot password", "password", "sign in", "access", "account",
+    ],
+    "pricing": [
+        "pricing", "price", "cost", "how much", "plans", "subscription",
+    ],
+    "human_support": [
+        "talk to support", "human", "help", "speak to human", "contact support", "real person",
+    ],
+}
+
+# ============================================================================
+# PROBLEM-BASED ENTRY DETECTION (layer before product recommendation)
+# ============================================================================
+
+PROBLEM_INTENTS = {
+    "compliance_risk": [
+        "forgetting certificates", "certificate expired", "expiry", "compliance", "renewal",
+        "track certificates", "compliance risk", "certificates expir", "renewals", "hmo compliance",
+        "compliance tracking", "stay compliant", "compliance records",
+    ],
+    "missing_documents": [
+        "tenancy agreement", "documents", "forms", "need documents", "missing documents",
+        "ast", "landlord documents", "document pack", "essential pack", "tenancy pack",
+        "ultimate pack", "need a form", "need forms",
+    ],
+    "workflow_overload": [
+        "too much admin", "admin burden", "automation", "workflow", "repetitive",
+        "streamline", "automate", "process mapping", "ai workflow", "reduce admin",
+    ],
+    "account_access_issue": [
+        "login", "reset password", "can't access", "forgot password", "locked out",
+        "sign in", "cant log in", "cannot access", "password reset", "access account",
+    ],
+    "pricing_interest": [
+        "pricing", "how much", "cost", "price", "plans", "subscription", "how much does",
+    ],
+    "exploration": [
+        "exploring", "just looking", "not sure", "what do you offer", "options",
+        "browsing", "find out more", "tell me more", "what services",
+    ],
+    "support_need": [
+        "speak to someone", "human", "support", "talk to", "contact support",
+        "real person", "agent", "get help", "need help",
+    ],
+}
+
+PROBLEM_TO_SOLUTION = {
+    "compliance_risk": "compliance_vault_pro",
+    "missing_documents": "document_packs",
+    "workflow_overload": "automation",
+    "account_access_issue": "account_support",
+    "pricing_interest": "pricing",
+    "exploration": "pricing",
+    "support_need": "account_support",
+}
+
+PROBLEM_DIAGNOSIS = {
+    "compliance_risk": "It sounds like you're concerned about compliance and certificate renewals.",
+    "missing_documents": "It sounds like you need landlord documents or tenancy forms.",
+    "workflow_overload": "It sounds like you're looking to reduce admin and automate workflows.",
+    "account_access_issue": "It sounds like you're having trouble with account access or sign-in.",
+    "pricing_interest": "It sounds like you'd like to see our pricing and plans.",
+    "exploration": "It sounds like you're exploring your options.",
+    "support_need": "It sounds like you'd like to speak with our team.",
+}
+
+
+def detect_problem_intent(message: str) -> Optional[str]:
+    """Detect underlying problem from user message (problem layer before product intent)."""
+    if not message or not message.strip():
+        return None
+    text = message.lower().strip()
+    for problem, keywords in PROBLEM_INTENTS.items():
+        if any(kw in text for kw in keywords):
+            return problem
+    return None
+
+
+def detect_intent(message: str) -> Optional[str]:
+    """Lightweight intent from keywords. Returns intent key or None."""
+    if not message or not message.strip():
+        return None
+    text = message.lower().strip()
+    for intent, keywords in INTENTS.items():
+        if any(kw in text for kw in keywords):
+            return intent
+    return None
+
+
+def get_guided_knowledge() -> Dict[str, Any]:
+    """Structured knowledge for guided responses: description, features, actions."""
+    kb = get_chatbot_knowledge_base()
+    cvp_pricing = _get_cvp_pricing_from_registry()
+    return {
+        "compliance_vault_pro": {
+            "description": "Compliance Vault Pro helps landlords manage property compliance automatically.",
+            "features": [
+                "Certificate tracking and expiry alerts",
+                "Automated reminders",
+                "Compliance score and risk assessment",
+                "Document storage and portfolio view",
+                "Council licensing tracking",
+            ],
+            "actions": [
+                ("See pricing", f"{FRONTEND_BASE}/pricing"),
+                ("Create account", f"{FRONTEND_BASE}/compliance-vault-pro"),
+                ("Check your compliance risk", f"{FRONTEND_BASE}/risk-check"),
+                ("Ask a question", None),
+            ],
+            "pricing": cvp_pricing,
+        },
+        "document_packs": {
+            "description": "Professional, legally-compliant document packs for landlords.",
+            "features": [
+                "Essential (5 docs), Tenancy (10), Ultimate (15)",
+                "Fast Track 24hr or standard 48hr delivery",
+                "Printed copy option",
+            ],
+            "actions": [
+                ("See pricing", f"{FRONTEND_BASE}/pricing"),
+                ("View services", f"{FRONTEND_BASE}/services"),
+                ("Ask a question", None),
+            ],
+        },
+        "automation": {
+            "description": "AI workflow automation for property management tasks.",
+            "features": [
+                "Workflow Automation Blueprint",
+                "Business Process Mapping",
+                "AI Tool Recommendation Report",
+            ],
+            "actions": [
+                ("See options", f"{FRONTEND_BASE}/services"),
+                ("Contact support", None),
+            ],
+        },
+        "market_research": {
+            "description": "Property market insights and area analysis.",
+            "features": [
+                "Basic and Advanced reports",
+                "Rental yield and investment analysis",
+            ],
+            "actions": [
+                ("See reports", f"{FRONTEND_BASE}/services"),
+                ("Contact support", None),
+            ],
+        },
+        "account_support": {
+            "description": "Account and login support.",
+            "features": [
+                "Password reset (self-service or admin)",
+                "Order status and CRN lookup",
+            ],
+            "actions": [
+                ("Sign in", f"{FRONTEND_BASE}/login/client"),
+                ("Talk to support", None),
+            ],
+        },
+        "pricing": {
+            "description": "Current plans and pricing.",
+            "features": [f"CVP: {cvp_pricing}", "Document packs: Essential £29, Tenancy £49, Ultimate £79"],
+            "actions": [
+                ("View pricing", f"{FRONTEND_BASE}/pricing"),
+                ("Create account", f"{FRONTEND_BASE}/compliance-vault-pro"),
+                ("Check your compliance risk", f"{FRONTEND_BASE}/risk-check"),
+                ("Ask a question", None),
+            ],
+        },
+    }
+
+
+def _actions_list_from_tuples(tuples: List[Any]) -> List[Dict[str, Any]]:
+    """Convert (label, url) tuples to [{ label, url }] for API. url None for in-chat actions."""
+    out: List[Dict[str, Any]] = []
+    for t in tuples or []:
+        if isinstance(t, (list, tuple)):
+            label = t[0] if len(t) > 0 else ""
+            url = t[1] if len(t) > 1 else None
+        else:
+            label, url = str(t), None
+        out.append({"label": str(label), "url": url})
+    return out
+
+
+def _get_guided_actions(intent: str) -> List[Dict[str, Any]]:
+    """Return actions list for a guided intent (for clickable links in UI)."""
+    knowledge = get_guided_knowledge()
+    entry = knowledge.get(intent)
+    if not entry:
+        return []
+    return _actions_list_from_tuples(entry.get("actions") or [])
+
+
+def _trim_action_lines(text: str) -> str:
+    """Remove the 'What would you like to do?' and numbered action lines from the end of response text."""
+    if not text or "What would you like to do?" not in text:
+        return text
+    parts = text.split("\n\nWhat would you like to do?")
+    if len(parts) < 2:
+        return text
+    body = parts[0].rstrip()
+    # Also strip trailing "Key features:"-only or single newline
+    return body
+
+
+def build_guided_response(intent: str, context: Optional[Dict[str, Any]] = None) -> str:
+    """Build intro + key points + next actions from knowledge."""
+    knowledge = get_guided_knowledge()
+    entry = knowledge.get(intent)
+    if not entry:
+        return ""
+    lines = [entry["description"], ""]
+    lines.append("Key features:")
+    for f in entry.get("features", []):
+        lines.append(f"• {f}")
+    lines.append("")
+    if entry.get("pricing"):
+        lines.append(f"Pricing: {entry['pricing']}")
+    lines.append("")
+    lines.append("What would you like to do?")
+    for i, action in enumerate(entry.get("actions", []), 1):
+        label, url = action if isinstance(action, (list, tuple)) else (action, None)
+        if url:
+            lines.append(f"{i}. {label}: {url}")
+        else:
+            lines.append(f"{i}. {label}")
+    return "\n".join(lines)
+
+
+# ============================================================================
+# ONBOARDING: QUALIFICATION + RECOMMENDATION + LEAD CAPTURE
+# ============================================================================
+
+QUALIFICATION_INTENTS = ["compliance_vault_pro"]  # Intents that get "Are you a: Landlord / ...?" before recommendation
+USER_TYPE_OPTIONS = [
+    {"id": "landlord", "label": "Landlord"},
+    {"id": "property_manager", "label": "Property manager"},
+    {"id": "letting_agency", "label": "Letting agency"},
+    {"id": "exploring", "label": "Just exploring"},
+]
+QUALIFICATION_QUESTION = """Are you a:
+
+• **Landlord**
+• **Property manager**
+• **Letting agency**
+• **Just exploring**"""
+
+# Portfolio size follow-up (for compliance recommendation)
+PORTFOLIO_SIZE_OPTIONS = [
+    {"id": "1_2", "label": "1–2 properties"},
+    {"id": "3_10", "label": "3–10 properties"},
+    {"id": "10_plus", "label": "10+ properties"},
+]
+PORTFOLIO_SIZE_QUESTION = """How many properties do you manage?
+
+• **1–2 properties**
+• **3–10 properties**
+• **10+ properties**"""
+
+
+def detect_user_type_from_message(message: str) -> Optional[str]:
+    """Map user reply to user_type id for qualification step."""
+    text = (message or "").strip().lower()
+    if not text:
+        return None
+    if "landlord" in text:
+        return "landlord"
+    if any(w in text for w in ["property manager", "manager"]):
+        return "property_manager"
+    if any(w in text for w in ["letting agency", "letting agent", "agency", "agent"]):
+        return "letting_agency"
+    if any(w in text for w in ["exploring", "just looking", "browsing", "not sure"]):
+        return "exploring"
+    return None
+
+
+def detect_portfolio_size_from_message(message: str) -> Optional[str]:
+    """Map user reply to portfolio_size id (1_2, 3_10, 10_plus)."""
+    text = (message or "").strip().lower()
+    if not text:
+        return None
+    if any(w in text for w in ["1", "one", "two", "2", "couple", "few", "1-2", "1–2"]):
+        return "1_2"
+    if any(w in text for w in ["3", "4", "5", "6", "7", "8", "9", "10", "several", "handful", "3-10", "3–10"]):
+        return "3_10"
+    if any(w in text for w in ["10+", "10 plus", "many", "portfolio", "lots", "dozen"]):
+        return "10_plus"
+    return None
+
+
+def get_recommendation(ctx: Dict[str, Any]) -> Tuple[str, str]:
+    """
+    Context-aware recommendation: (service_key, reason).
+    service_key matches get_guided_knowledge() keys; reason is a short 'because' sentence.
+    """
+    intent = ctx.get("intent")
+    user_type = ctx.get("user_type")
+    portfolio_size = ctx.get("portfolio_size")
+    # primary_goal / secondary_need can be used later; for now intent carries goal
+    primary_goal = ctx.get("primary_goal") or intent
+
+    # Exploring or no clear intent -> overview/pricing
+    if user_type == "exploring" or not intent:
+        return "pricing", "you can see our plans and book a demo to find the right fit."
+
+    # Compliance Vault Pro
+    if intent == "compliance_vault_pro":
+        if user_type == "landlord":
+            if portfolio_size == "1_2":
+                return "compliance_vault_pro", "it helps you track certificates, reminders, and compliance records in one place—ideal for 1–2 properties."
+            if portfolio_size == "3_10":
+                return "compliance_vault_pro", "it scales to multiple properties with certificate tracking, expiry alerts, and a single dashboard."
+            if portfolio_size == "10_plus":
+                return "compliance_vault_pro", "it supports large portfolios with compliance scoring, document storage, and council licensing tracking."
+            return "compliance_vault_pro", "it helps you track certificates, reminders, and compliance records in one place."
+        if user_type == "property_manager":
+            return "compliance_vault_pro", "it gives property managers a single view of compliance across all properties with alerts and reporting."
+        if user_type == "letting_agency":
+            return "compliance_vault_pro", "it is ideal for letting agencies managing portfolio compliance and certificate expiry."
+        return "compliance_vault_pro", "it helps landlords and managers track property compliance, certificates, and reminders."
+
+    # Document packs
+    if intent == "document_packs":
+        if user_type == "landlord":
+            return "document_packs", "professional document packs for tenancies and compliance are a good fit for landlords."
+        if user_type in ("property_manager", "letting_agency"):
+            return "document_packs", "professional document packs support your tenancy and compliance workflows."
+        return "document_packs", "we offer Essential, Tenancy, and Ultimate packs with fast delivery options."
+
+    # Automation
+    if intent == "automation":
+        if user_type == "letting_agency":
+            return "automation", "AI workflow automation can streamline agency processes and reporting."
+        if user_type == "property_manager":
+            return "automation", "automation helps property managers map and optimise repetitive workflows."
+        return "automation", "we offer workflow blueprints, process mapping, and AI tool recommendations."
+
+    # Market research
+    if intent == "market_research":
+        return "market_research", "our reports provide area analysis, rental yield, and investment insights."
+
+    # Account support / pricing fallback
+    if intent == "account_support":
+        return "account_support", "we can help with sign-in, password reset, and account access."
+    return "pricing", "you can view our plans and services to find the right option."
+
+
+SERVICE_DISPLAY_NAMES = {
+    "compliance_vault_pro": "Compliance Vault Pro",
+    "document_packs": "Document Packs",
+    "automation": "AI workflow automation",
+    "market_research": "Market research",
+    "account_support": "Account support",
+    "pricing": "our Pricing page",
+}
+
+
+def build_recommendation_response(service_key: str, reason: str, ctx: Dict[str, Any]) -> str:
+    """Build 'For [context], [Service] is likely the best fit because [reason].' + guided content (no action lines)."""
+    knowledge = get_guided_knowledge()
+    entry = knowledge.get(service_key)
+    if not entry:
+        return ""
+    user_type = ctx.get("user_type")
+    user_type_label = {"landlord": "a landlord", "property_manager": "a property manager", "letting_agency": "a letting agency", "exploring": "exploring"}.get(user_type or "", "you")
+    service_name = SERVICE_DISPLAY_NAMES.get(service_key, service_key.replace("_", " ").title())
+    intro = f"For {user_type_label}, **{service_name}** is likely the best fit because {reason}"
+    lines = [intro, ""]
+    lines.append("Key features:")
+    for f in entry.get("features", []):
+        lines.append(f"• {f}")
+    lines.append("")
+    if entry.get("pricing"):
+        lines.append(f"Pricing: {entry['pricing']}")
+    return "\n".join(lines).strip()
+
+
+def recommendation_intro_by_user_type(intent: str, user_type: Optional[str]) -> str:
+    """One-line tailored intro for recommendation (e.g. 'As a landlord, we recommend...')."""
+    if intent == "compliance_vault_pro":
+        if user_type == "landlord":
+            return "As a landlord, we recommend **Compliance Vault Pro**."
+        if user_type == "property_manager":
+            return "As a property manager, we recommend **Compliance Vault Pro**."
+        if user_type == "letting_agency":
+            return "For letting agencies, **Compliance Vault Pro** is ideal for portfolio compliance."
+    return ""
+
+
+LEAD_CAPTURE_OFFER = """Would you like us to send you more information by email?
+
+If yes, enter your email below and we'll send you details and next steps."""
+
+
+# Escalation when assistant cannot answer after N attempts
+ESCALATION_AFTER_UNANSWERED = 2
+ESCALATION_MESSAGE = """I may need a human team member to help with that. Would you like to contact support?
+
+You can:
+• **Live Chat** – Mon–Fri 9am–6pm GMT
+• **Email** – We'll respond within 24 hours
+• **WhatsApp** – Use your conversation reference"""
+
+
+# ============================================================================
+# SERVICE ROUTING (existing, kept for metadata)
 # ============================================================================
 
 SERVICE_KEYWORDS = {
@@ -380,20 +804,14 @@ async def generate_ai_response(
     """
     try:
         from utils.llm_chat import chat, _get_api_key
+        from prompts.support_assistant_system_prompt import SUPPORT_ASSISTANT_SYSTEM_PROMPT
         if not _get_api_key():
             logger.warning("LLM_API_KEY not set, using fallback response")
             return await generate_fallback_response(message, client_context)
         system_parts = [
-            "You are Pleerity Support, a helpful AI assistant for Pleerity Enterprise Ltd.",
-            "You help customers with: Compliance Vault Pro, Document Packs, AI Automation, Market Research, and general account queries.",
+            SUPPORT_ASSISTANT_SYSTEM_PROMPT,
             "",
-            "IMPORTANT RULES:",
-            "1. NEVER provide legal advice, interpret legislation, or predict council enforcement.",
-            "2. Be helpful, professional, and concise.",
-            "3. If you can't help, offer to connect them with a human agent.",
-            "4. For account-specific queries, ask for their CRN (Customer Reference Number).",
-            "",
-            "KNOWLEDGE BASE (use frontend_links for sign-in, pricing, CVP landing - never invent URLs):",
+            "KNOWLEDGE BASE (use only the following; never invent URLs):",
             json.dumps(get_chatbot_knowledge_base(), indent=2),
         ]
         if client_context:
@@ -476,43 +894,167 @@ What would you like help with? Or if you'd prefer, I can connect you with a huma
 # MAIN CHAT HANDLER
 # ============================================================================
 
+def _count_recent_fallback_responses(conversation_history: List[Dict[str, Any]]) -> int:
+    """Count consecutive bot messages that were fallback (unmatched), not guided/intent-based."""
+    count = 0
+    for msg in reversed(conversation_history):
+        if msg.get("sender") != "bot":
+            break
+        meta = msg.get("metadata") or {}
+        if meta.get("guided") or meta.get("matched_faq") or meta.get("legal_refusal") or meta.get("retrieval_matched") or meta.get("clarifying"):
+            break  # Successful or structured answers; don't count toward escalation
+        if meta.get("fallback"):
+            count += 1
+        else:
+            break
+    return count
+
+
 async def handle_chat_message(
     conversation_id: str,
     message: str,
     conversation_history: List[Dict[str, Any]],
     client_context: Optional[Dict[str, Any]] = None,
-    is_authenticated: bool = False
+    is_authenticated: bool = False,
+    conversation_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Main chat handler - processes message and returns response.
-    
-    Returns:
-    {
-        "response": str,
-        "action": "respond" | "handoff" | "lookup_prompt" | "ticket_created",
-        "metadata": {...},
-        "handoff_data": {...} (if action is handoff)
-    }
+    Supports session-level conversation_context (intent, topic, last_action) for guided responses.
+    Returns conversation_context for client to send back next turn.
     """
-    
+    ctx = dict(conversation_context) if conversation_context else {}
+    ctx.setdefault("intent", None)
+    ctx.setdefault("topic", None)
+    ctx.setdefault("last_action", None)
+    ctx.setdefault("user_type", None)
+    ctx.setdefault("onboarding_step", None)
+    ctx.setdefault("lead_capture_offered", False)
+    ctx.setdefault("portfolio_size", None)
+    ctx.setdefault("primary_goal", None)
+    ctx.setdefault("secondary_need", None)
+    ctx.setdefault("problem_intent", None)
+    if ctx.get("intent") and not ctx.get("primary_goal"):
+        ctx["primary_goal"] = ctx["intent"]
+
+    # --- Problem-based entry: detect problem intent and set product intent from map ---
+    problem = detect_problem_intent(message)
+    if problem:
+        ctx["problem_intent"] = problem
+        solution = PROBLEM_TO_SOLUTION.get(problem)
+        if solution:
+            ctx["intent"] = solution
+            ctx["topic"] = solution
+            ctx["last_action"] = "intent_set"
+
+    # --- Portfolio size follow-up (after qualification for compliance) ---
+    if ctx.get("onboarding_step") == "portfolio_size":
+        portfolio_size = detect_portfolio_size_from_message(message)
+        if portfolio_size:
+            ctx["portfolio_size"] = portfolio_size
+            ctx["onboarding_step"] = "recommendation"
+            service_key, reason = get_recommendation(ctx)
+            response = build_recommendation_response(service_key, reason, ctx)
+            if ctx.get("problem_intent"):
+                diagnosis = PROBLEM_DIAGNOSIS.get(ctx["problem_intent"], "")
+                if diagnosis:
+                    response = diagnosis + "\n\n" + response
+            actions = _get_guided_actions(service_key)
+            ctx["last_action"] = "recommendation"
+            return {
+                "response": response,
+                "action": "respond",
+                "metadata": {
+                    "guided": True,
+                    "intent": ctx.get("intent"),
+                    "user_type": ctx.get("user_type"),
+                    "portfolio_size": portfolio_size,
+                    "onboarding_step": "recommendation",
+                    "problem_intent": ctx.get("problem_intent"),
+                },
+                "conversation_context": ctx,
+                "actions": actions,
+            }
+        return {
+            "response": PORTFOLIO_SIZE_QUESTION,
+            "action": "respond",
+            "metadata": {
+                "follow_up": "portfolio_size",
+                "portfolio_size_options": PORTFOLIO_SIZE_OPTIONS,
+                "intent": ctx.get("intent"),
+            },
+            "conversation_context": ctx,
+        }
+
+    # --- Onboarding: user_type selection (qualification step) ---
+    if ctx.get("onboarding_step") == "qualification":
+        user_type = detect_user_type_from_message(message)
+        if user_type:
+            ctx["user_type"] = user_type
+            intent_for_actions = ctx.get("intent")
+            if intent_for_actions == "compliance_vault_pro" and not ctx.get("portfolio_size"):
+                ctx["onboarding_step"] = "portfolio_size"
+                return {
+                    "response": PORTFOLIO_SIZE_QUESTION,
+                    "action": "respond",
+                    "metadata": {
+                        "follow_up": "portfolio_size",
+                        "portfolio_size_options": PORTFOLIO_SIZE_OPTIONS,
+                        "guided": True,
+                        "intent": ctx.get("intent"),
+                        "user_type": user_type,
+                    },
+                    "conversation_context": ctx,
+                }
+            ctx["onboarding_step"] = "recommendation"
+            service_key, reason = get_recommendation(ctx)
+            response = build_recommendation_response(service_key, reason, ctx)
+            if ctx.get("problem_intent"):
+                diagnosis = PROBLEM_DIAGNOSIS.get(ctx["problem_intent"], "")
+                if diagnosis:
+                    response = diagnosis + "\n\n" + response
+            actions = _get_guided_actions(service_key)
+            ctx["last_action"] = "recommendation"
+            return {
+                "response": response,
+                "action": "respond",
+                "metadata": {
+                    "guided": True,
+                    "intent": ctx.get("intent"),
+                    "user_type": user_type,
+                    "onboarding_step": "recommendation",
+                    "problem_intent": ctx.get("problem_intent"),
+                },
+                "conversation_context": ctx,
+                "actions": actions,
+            }
+        # Unclear reply: re-ask qualification with buttons
+        return {
+            "response": QUALIFICATION_QUESTION,
+            "action": "respond",
+            "metadata": {
+                "guided": True,
+                "intent": ctx.get("intent"),
+                "qualification_question": True,
+                "user_type_options": USER_TYPE_OPTIONS,
+            },
+            "conversation_context": ctx,
+        }
+
     # Check for legal advice request
     if is_legal_advice_request(message):
         return {
             "response": LEGAL_REFUSAL_RESPONSE,
             "action": "respond",
-            "metadata": {
-                "legal_refusal": True,
-                "service_area": "other",
-                "category": "other",
-            }
+            "metadata": {"legal_refusal": True, "service_area": "other", "category": "other"},
+            "conversation_context": ctx,
         }
-    
+
     # Check for human handoff request
     if needs_human_handoff(message):
         service_area = detect_service_area(message)
         category = detect_category(message)
         urgency = detect_urgency(message)
-        
         return {
             "response": """I'll connect you with a human agent. You have three options:
 
@@ -522,31 +1064,194 @@ async def handle_chat_message(
 
 Which would you prefer?""",
             "action": "handoff",
-            "metadata": {
-                "service_area": service_area,
-                "category": category,
-                "urgency": urgency,
-            },
+            "metadata": {"service_area": service_area, "category": category, "urgency": urgency},
             "handoff_data": {
                 "conversation_id": conversation_id,
                 "service_area": service_area,
                 "category": category,
                 "urgency": urgency,
                 "message_count": len(conversation_history) + 1,
-            }
+            },
+            "conversation_context": ctx,
         }
-    
-    # Generate AI response
+
+    message_lower = message.lower().strip()
+    pricing_like = any(w in message_lower for w in ["pricing", "price", "how much", "cost", "plans"])
+    knowledge = get_guided_knowledge()
+
+    # Short follow-up "pricing" etc.: use existing intent so e.g. "CVP" then "pricing" → CVP pricing
+    if pricing_like and ctx.get("intent") and ctx["intent"] in knowledge:
+        if ctx.get("user_type"):
+            service_key, reason = get_recommendation(ctx)
+            response_text = build_recommendation_response(service_key, reason, ctx)
+            actions = _get_guided_actions(service_key)
+            if ctx.get("problem_intent"):
+                diagnosis = PROBLEM_DIAGNOSIS.get(ctx["problem_intent"], "")
+                if diagnosis:
+                    response_text = diagnosis + "\n\n" + response_text
+        else:
+            guided = build_guided_response(ctx["intent"], ctx)
+            actions = _get_guided_actions(ctx["intent"])
+            response_text = _trim_action_lines(guided) if actions else guided
+        if response_text:
+            ctx["last_action"] = "guided_pricing"
+            return {
+                "response": response_text,
+                "action": "respond",
+                "metadata": {"guided": True, "intent": ctx["intent"], "service_area": ctx.get("intent"), "problem_intent": ctx.get("problem_intent")},
+                "conversation_context": ctx,
+                "actions": actions,
+            }
+
+    # Intent detection: update context from product keywords only when no problem_intent (problem layer takes precedence)
+    detected = detect_intent(message)
+    if detected and not ctx.get("problem_intent"):
+        ctx["intent"] = detected
+        ctx["topic"] = detected
+        ctx["last_action"] = "intent_set"
+
+    # human_support intent: trigger handoff (keyword-based, in addition to needs_human_handoff regex)
+    if ctx.get("intent") == "human_support":
+        service_area = detect_service_area(message)
+        category = detect_category(message)
+        urgency = detect_urgency(message)
+        return {
+            "response": """I'll connect you with a human agent. You have three options:
+
+1. **Live Chat** - Chat with an agent now (Mon-Fri 9am-6pm GMT)
+2. **Email Ticket** - We'll respond within 24 hours
+3. **WhatsApp** - Continue on WhatsApp with your reference
+
+Which would you prefer?""",
+            "action": "handoff",
+            "metadata": {"service_area": service_area, "category": category, "urgency": urgency},
+            "handoff_data": {
+                "conversation_id": conversation_id,
+                "service_area": service_area,
+                "category": category,
+                "urgency": urgency,
+                "message_count": len(conversation_history) + 1,
+            },
+            "conversation_context": ctx,
+        }
+
+    # Explicit intent match: qualification (for compliance) or guided response (intent may be from problem or product)
+    current_intent = ctx.get("intent")
+    if current_intent and current_intent in knowledge:
+        if current_intent in QUALIFICATION_INTENTS and not ctx.get("user_type"):
+            ctx["onboarding_step"] = "qualification"
+            return {
+                "response": QUALIFICATION_QUESTION,
+                "action": "respond",
+                "metadata": {
+                    "guided": True,
+                    "intent": current_intent,
+                    "qualification_question": True,
+                    "user_type_options": USER_TYPE_OPTIONS,
+                },
+                "conversation_context": ctx,
+            }
+        guided = build_guided_response(current_intent, ctx)
+        if guided:
+            if ctx.get("user_type"):
+                service_key, reason = get_recommendation(ctx)
+                response_text = build_recommendation_response(service_key, reason, ctx)
+                actions = _get_guided_actions(service_key)
+                ctx["last_action"] = "recommendation"
+            else:
+                actions = _get_guided_actions(current_intent)
+                response_text = _trim_action_lines(guided) if actions else guided
+                ctx["last_action"] = "guided"
+            if ctx.get("problem_intent"):
+                diagnosis = PROBLEM_DIAGNOSIS.get(ctx["problem_intent"], "")
+                if diagnosis:
+                    response_text = diagnosis + "\n\n" + response_text
+            return {
+                "response": response_text,
+                "action": "respond",
+                "metadata": {"guided": True, "intent": current_intent, "service_area": current_intent, "problem_intent": ctx.get("problem_intent")},
+                "conversation_context": ctx,
+                "actions": actions,
+            }
+
+    # Lead capture: offer once after recommendation when user sends another message
+    if ctx.get("last_action") == "recommendation" and not ctx.get("lead_capture_offered"):
+        ctx["lead_capture_offered"] = True
+        return {
+            "response": LEAD_CAPTURE_OFFER,
+            "action": "respond",
+            "metadata": {"offer_lead_capture": True, "intent": ctx.get("intent")},
+            "conversation_context": ctx,
+        }
+
+    # Structured KB retrieval: answer from knowledge base when confidence is high (avoid LLM hallucination)
+    try:
+        from services.support_chatbot_retrieval import (
+            retrieve,
+            build_response_from_entry,
+            get_actions_from_entry,
+            get_clarifying_message,
+            RETRIEVAL_CONFIDENCE_THRESHOLD,
+            CLARIFYING_THRESHOLD,
+        )
+        best_entry, best_score, all_scored = retrieve(message, ctx)
+        if best_entry and best_score >= RETRIEVAL_CONFIDENCE_THRESHOLD:
+            response_text = build_response_from_entry(best_entry)
+            actions = get_actions_from_entry(best_entry)
+            if actions:
+                response_text = _trim_action_lines(response_text)
+            ctx["last_action"] = "retrieval"
+            return {
+                "response": response_text,
+                "action": "respond",
+                "metadata": {
+                    "retrieval_matched": True,
+                    "kb_id": best_entry.get("id"),
+                    "category": best_entry.get("category"),
+                },
+                "conversation_context": ctx,
+                "actions": actions,
+            }
+        if best_score >= CLARIFYING_THRESHOLD:
+            clarifying = get_clarifying_message(all_scored)
+            if clarifying:
+                ctx["last_action"] = "clarifying"
+                return {
+                    "response": clarifying,
+                    "action": "respond",
+                    "metadata": {"clarifying": True},
+                    "conversation_context": ctx,
+                }
+    except Exception as e:
+        logger.warning("support_chatbot: retrieval failed, falling back to AI: %s", e)
+
+    # Escalation: after N consecutive fallback/unmatched bot replies, offer human
+    fallback_count = _count_recent_fallback_responses(conversation_history)
+    if fallback_count >= ESCALATION_AFTER_UNANSWERED:
+        ctx["last_action"] = "escalation_offered"
+        return {
+            "response": ESCALATION_MESSAGE,
+            "action": "handoff",
+            "metadata": {"escalation_offered": True, "service_area": "other"},
+            "handoff_data": {
+                "conversation_id": conversation_id,
+                "service_area": "other",
+                "category": "other",
+                "urgency": "medium",
+                "message_count": len(conversation_history) + 1,
+            },
+            "conversation_context": ctx,
+        }
+
+    # Generate AI response (existing behaviour)
     response, metadata = await generate_ai_response(
-        message,
-        conversation_history,
-        client_context
+        message, conversation_history, client_context
     )
-    
     return {
         "response": response,
         "action": "respond",
-        "metadata": metadata
+        "metadata": metadata,
+        "conversation_context": ctx,
     }
 
 
@@ -680,11 +1385,17 @@ Which would you prefer?""",
         "action": "handoff",
         "metadata": {"canned": True, "category": "other"}
     },
+    "pricing": {
+        "trigger": "pricing",
+        "response": None,  # Built in get_canned_response from guided knowledge
+        "action": "respond",
+        "metadata": {"canned": True, "category": "billing", "service_area": "pricing"}
+    },
 }
 
 
 def get_canned_response(trigger: str) -> Optional[Dict[str, Any]]:
-    """Get a canned response by trigger name. CVP info uses live pricing and frontend link; reset_password uses live sign-in link."""
+    """Get a canned response by trigger name. CVP info uses live pricing and frontend link; reset_password uses live sign-in link. Adds 'actions' for clickable links in UI."""
     out = CANNED_RESPONSES.get(trigger)
     if not out:
         return None
@@ -705,60 +1416,35 @@ Your complete property compliance management platform.
 
 **Current pricing:** {cvp_pricing}
 
-**Ideal for:** HMO landlords and portfolio managers who need to stay compliant.
-
-View plans and sign up: {FRONTEND_BASE}/pricing
-Learn more: {FRONTEND_BASE}/compliance-vault-pro"""
+**Ideal for:** HMO landlords and portfolio managers who need to stay compliant."""
+        out["actions"] = _get_guided_actions("compliance_vault_pro")
+    elif trigger == "pricing":
+        guided = build_guided_response("pricing", None)
+        out["response"] = _trim_action_lines(guided) if _get_guided_actions("pricing") else guided
+        out["actions"] = _get_guided_actions("pricing")
     elif trigger == "reset_password":
-        # Inject current client sign-in URL so the widget can show it as a clickable link
-        out["response"] = f"""To reset your password:
+        out["response"] = """To reset your password:
 
 1. **Self-service:** On the client sign-in page, click **Forgot password?**, enter your email, and we'll send you a link to set a new password.
-   Sign in page: {FRONTEND_BASE}/login/client
 2. **Or contact your account administrator**—they can send you a new setup link from the Compliance Vault Pro admin portal.
 3. Once you receive the email, click the link and set your new password. Links expire after 1 hour.
 
 Need more help? I can connect you with a human agent."""
+        out["actions"] = [
+            {"label": "Sign in", "url": f"{FRONTEND_BASE}/login/client"},
+            {"label": "Talk to support", "url": None},
+        ]
     return out
 
 
 def get_all_quick_actions() -> List[Dict[str, Any]]:
-    """Get list of available quick actions for the chat widget."""
+    """Get list of available quick actions for the chat widget. Start New Chat is client-side only."""
     return [
-        {
-            "id": "check_order_status",
-            "label": "Check Order Status",
-            "icon": "📦",
-            "description": "Look up your order"
-        },
-        {
-            "id": "reset_password",
-            "label": "Reset Password",
-            "icon": "🔑",
-            "description": "Password help"
-        },
-        {
-            "id": "document_packs_info",
-            "label": "Document Packs",
-            "icon": "📄",
-            "description": "Pricing & info"
-        },
-        {
-            "id": "billing_help",
-            "label": "Billing Help",
-            "icon": "💳",
-            "description": "Payment questions"
-        },
-        {
-            "id": "cvp_info",
-            "label": "Compliance Vault Pro",
-            "icon": "🏠",
-            "description": "CVP features"
-        },
-        {
-            "id": "speak_to_human",
-            "label": "Speak to Human",
-            "icon": "👤",
-            "description": "Get human help"
-        },
+        {"id": "cvp_info", "label": "Compliance Vault Pro", "icon": "🏠", "description": "CVP features"},
+        {"id": "document_packs_info", "label": "Document Packs", "icon": "📄", "description": "Pricing & info"},
+        {"id": "pricing", "label": "Pricing", "icon": "💳", "description": "Plans and pricing"},
+        {"id": "reset_password", "label": "Reset Password", "icon": "🔑", "description": "Password help"},
+        {"id": "speak_to_human", "label": "Talk to Support", "icon": "👤", "description": "Get human help"},
+        {"id": "check_order_status", "label": "Check Order Status", "icon": "📦", "description": "Look up your order"},
+        {"id": "billing_help", "label": "Billing Help", "icon": "💳", "description": "Payment questions"},
     ]

@@ -9,7 +9,7 @@
  * - CTA to chat if no answer found
  */
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import client from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -56,8 +56,12 @@ export default function PublicKnowledgeBasePage() {
 
 function KnowledgeBaseIndex() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const categoryIdFromUrl = searchParams.get('category');
   const [categories, setCategories] = useState([]);
   const [featured, setFeatured] = useState({ popular: [], recent: [] });
+  const [categoryArticles, setCategoryArticles] = useState([]);
+  const [categoryArticlesLoading, setCategoryArticlesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -82,6 +86,19 @@ function KnowledgeBaseIndex() {
     };
     fetchData();
   }, []);
+
+  // When viewing a category, fetch its articles
+  useEffect(() => {
+    if (!categoryIdFromUrl) {
+      setCategoryArticles([]);
+      return;
+    }
+    setCategoryArticlesLoading(true);
+    client.get(`/kb/articles?category=${encodeURIComponent(categoryIdFromUrl)}&limit=50`)
+      .then((res) => setCategoryArticles(res.data.articles || []))
+      .catch(() => setCategoryArticles([]))
+      .finally(() => setCategoryArticlesLoading(false));
+  }, [categoryIdFromUrl]);
 
   // Handle search
   const handleSearch = async (query) => {
@@ -178,39 +195,76 @@ function KnowledgeBaseIndex() {
             </div>
           )}
 
-          {/* Categories Grid */}
-          {!searchQuery && (
+          {/* Category detail view (when ?category= is set) */}
+          {!searchQuery && categoryIdFromUrl && (
+            <div className="mb-12">
+              <Link
+                to="/support/knowledge-base"
+                className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-electric-teal mb-4"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to all categories
+              </Link>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                {categories.find((c) => c.category_id === categoryIdFromUrl)?.name || categoryIdFromUrl}
+              </h2>
+              {categoryArticlesLoading ? (
+                <div className="text-center py-12 text-gray-500">Loading articles...</div>
+              ) : categoryArticles.length === 0 ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-6 py-8 text-center text-gray-600">
+                  <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                  <p className="font-medium">No articles in this category yet</p>
+                  <p className="text-sm mt-1">Content may still be in draft. Try searching or browse other categories.</p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {categoryArticles.map((article) => (
+                    <ArticleCard key={article.article_id} article={article} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Categories Grid (when not viewing a single category) */}
+          {!searchQuery && !categoryIdFromUrl && (
             <>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Browse by Category</h2>
-              
+              {categories.length > 0 && categories.every((c) => (c.article_count || 0) === 0) && (
+                <p className="text-sm text-gray-500 mb-4">
+                  No articles published yet. Categories are ready—publish articles in Admin → Knowledge Centre to see them here.
+                </p>
+              )}
               {loading ? (
                 <div className="text-center py-12 text-gray-500">Loading...</div>
               ) : (
                 <div className="grid md:grid-cols-3 gap-4 mb-12">
                   {categories.map(category => (
-                    <Card 
+                    <Link
                       key={category.category_id}
-                      className="hover:shadow-lg transition-all cursor-pointer group"
-                      onClick={() => navigate(`/support/knowledge-base?category=${category.category_id}`)}
+                      to={`/support/knowledge-base?category=${category.category_id}`}
+                      className="block"
                       data-testid={`category-${category.category_id}`}
                     >
-                      <CardContent className="py-6">
-                        <div className="flex items-center gap-4">
-                          <span className="text-4xl">
-                            {category.icon || categoryIcons[category.category_id] || '📁'}
-                          </span>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 group-hover:text-electric-teal transition-colors">
-                              {category.name}
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                              {category.article_count || 0} articles
-                            </p>
+                      <Card className="hover:shadow-lg transition-all cursor-pointer group h-full">
+                        <CardContent className="py-6">
+                          <div className="flex items-center gap-4">
+                            <span className="text-4xl">
+                              {category.icon || categoryIcons[category.category_id] || '📁'}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 group-hover:text-electric-teal transition-colors">
+                                {category.name}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                {category.article_count || 0} articles
+                              </p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-electric-teal transition-colors shrink-0" />
                           </div>
-                          <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-electric-teal transition-colors" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   ))}
                 </div>
               )}

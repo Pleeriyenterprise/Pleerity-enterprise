@@ -64,28 +64,60 @@ function linkifyText(text) {
   return parts.length ? parts : [{ type: 'text', value: text }];
 }
 
-// Message bubble component – bot messages get linkified URLs as clickable links
+// Message bubble component – bot messages get linkified URLs + optional action buttons/links
 function MessageBubble({ message, isUser }) {
   const content = isUser ? (
     <div className="text-sm whitespace-pre-wrap">{message.text}</div>
   ) : (
-    <div className="text-sm whitespace-pre-wrap">
-      {linkifyText(message.text).map((part, i) =>
-        part.type === 'link' ? (
-          <a
-            key={i}
-            href={part.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-teal-600 underline break-all"
-          >
-            {part.label}
-          </a>
-        ) : (
-          <span key={i}>{part.value}</span>
-        )
+    <>
+      <div className="text-sm whitespace-pre-wrap">
+        {linkifyText(message.text).map((part, i) =>
+          part.type === 'link' ? (
+            <a
+              key={i}
+              href={part.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-teal-600 underline break-all"
+            >
+              {part.label}
+            </a>
+          ) : (
+            <span key={i}>{part.value}</span>
+          )
+        )}
+      </div>
+      {!isUser && message.actions && message.actions.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3" data-testid="message-actions">
+          {message.actions.map((action, i) => {
+            const label = action.label ?? '';
+            const url = action.url;
+            if (url) {
+              return (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-sm font-medium hover:bg-teal-100 transition-colors"
+                  data-testid={`message-action-${i}`}
+                >
+                  {label}
+                </a>
+              );
+            }
+            return (
+              <span
+                key={i}
+                className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-600 text-sm"
+              >
+                {label}
+              </span>
+            );
+          })}
+        </div>
       )}
-    </div>
+    </>
   );
 
   return (
@@ -115,15 +147,150 @@ function MessageBubble({ message, isUser }) {
   );
 }
 
-// Quick Actions Panel
-function QuickActionsPanel({ onAction, loading }) {
+// Onboarding: 5 options when chat is empty (task: welcome + 5 options)
+function OnboardingOptionsPanel({ options, onSelect, loading }) {
+  return (
+    <div className="p-3 bg-gray-50 border-b">
+      <div className="grid grid-cols-1 gap-2">
+        {options.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onSelect(opt)}
+            disabled={loading}
+            className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 bg-white hover:bg-teal-50 hover:border-teal-200 text-left text-sm font-medium text-gray-800 disabled:opacity-50 transition-colors"
+            data-testid={`onboarding-option-${opt.id}`}
+          >
+            <span className="text-teal-600">{opt.id === 'compliance' ? '🏠' : opt.id === 'documents' ? '📄' : opt.id === 'automation' ? '⚙️' : opt.id === 'research' ? '📊' : '👤'}</span>
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Qualification: 4 user-type buttons (when backend asks "Are you a: Landlord / ...?")
+function QualificationButtons({ options, onSelect, loading }) {
+  if (!options || !Array.isArray(options) || options.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onSelect(opt.label)}
+          disabled={loading}
+          className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-sm text-gray-800 disabled:opacity-50"
+          data-testid={`qualification-${opt.id}`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Portfolio size follow-up (when backend asks "How many properties do you manage?")
+function PortfolioSizeButtons({ options, onSelect, loading }) {
+  if (!options || !Array.isArray(options) || options.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onSelect(opt.label)}
+          disabled={loading}
+          className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-sm text-gray-800 disabled:opacity-50"
+          data-testid={`portfolio-size-${opt.id}`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Lead capture: offer email and submit to /api/leads/capture/chatbot
+function LeadCaptureBlock({ onSubmitted, onDismiss, conversationId, serviceInterest, loading }) {
+  const [step, setStep] = useState('offer'); // 'offer' | 'input'
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const intentToServiceInterest = {
+    compliance_vault_pro: 'cvp',
+    document_packs: 'document packs',
+    automation: 'automation',
+    market_research: 'market research',
+  };
+  const serviceInterestValue = intentToServiceInterest[serviceInterest] || serviceInterest;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubmitting(true);
+    try {
+      await client.post('/leads/capture/chatbot', {
+        email: email.trim(),
+        service_interest: serviceInterestValue || undefined,
+        conversation_id: conversationId || undefined,
+        marketing_consent: false,
+      });
+      onSubmitted();
+    } catch (err) {
+      console.error('Lead capture error:', err);
+      toast.error('Failed to submit. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (step === 'offer') {
+    return (
+      <div className="flex gap-2 mt-2">
+        <Button size="sm" variant="outline" onClick={() => setStep('input')} disabled={loading}>
+          Yes
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => onDismiss()} disabled={loading}>
+          No
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={handleSubmit} className="mt-2 space-y-2">
+      <Input
+        type="email"
+        placeholder="Your email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        className="text-sm"
+        disabled={submitting}
+      />
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" className="bg-teal-600 hover:bg-teal-700" disabled={submitting}>
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send me information'}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => onDismiss()} disabled={submitting}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// Quick Actions Panel (order per task: CVP, Document Packs, Pricing, Reset Password, Talk to Support, Start New Chat)
+function QuickActionsPanel({ onAction, onReset, loading }) {
   const actions = [
-    { id: 'check_order_status', label: 'Check Order Status', icon: '📦', color: 'bg-blue-50 hover:bg-blue-100 border-blue-200' },
-    { id: 'reset_password', label: 'Reset Password', icon: '🔑', color: 'bg-amber-50 hover:bg-amber-100 border-amber-200' },
+    { id: 'cvp_info', label: 'Compliance Vault Pro', icon: '🏠', color: 'bg-cyan-50 hover:bg-cyan-100 border-cyan-200' },
     { id: 'document_packs_info', label: 'Document Packs', icon: '📄', color: 'bg-green-50 hover:bg-green-100 border-green-200' },
-    { id: 'billing_help', label: 'Billing Help', icon: '💳', color: 'bg-purple-50 hover:bg-purple-100 border-purple-200' },
-    { id: 'cvp_info', label: 'CVP Info', icon: '🏠', color: 'bg-cyan-50 hover:bg-cyan-100 border-cyan-200' },
-    { id: 'speak_to_human', label: 'Speak to Human', icon: '👤', color: 'bg-rose-50 hover:bg-rose-100 border-rose-200' },
+    { id: 'pricing', label: 'Pricing', icon: '💳', color: 'bg-purple-50 hover:bg-purple-100 border-purple-200' },
+    { id: 'reset_password', label: 'Reset Password', icon: '🔑', color: 'bg-amber-50 hover:bg-amber-100 border-amber-200' },
+    { id: 'speak_to_human', label: 'Talk to Support', icon: '👤', color: 'bg-rose-50 hover:bg-rose-100 border-rose-200' },
+    { id: 'check_order_status', label: 'Check Order Status', icon: '📦', color: 'bg-blue-50 hover:bg-blue-100 border-blue-200' },
+    { id: 'billing_help', label: 'Billing Help', icon: '💳', color: 'bg-slate-50 hover:bg-slate-100 border-slate-200' },
   ];
 
   return (
@@ -133,6 +300,7 @@ function QuickActionsPanel({ onAction, loading }) {
         {actions.map((action) => (
           <button
             key={action.id}
+            type="button"
             onClick={() => onAction(action.id)}
             disabled={loading}
             className={`flex flex-col items-center p-2 rounded-lg border transition-colors text-center ${action.color} disabled:opacity-50`}
@@ -142,6 +310,18 @@ function QuickActionsPanel({ onAction, loading }) {
             <span className="text-xs text-gray-700 leading-tight">{action.label}</span>
           </button>
         ))}
+        {onReset && (
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={loading}
+            className="flex flex-col items-center p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-center disabled:opacity-50"
+            data-testid="quick-action-start_new_chat"
+          >
+            <span className="text-lg mb-1">🔄</span>
+            <span className="text-xs text-gray-700 leading-tight">Start New Chat</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -418,7 +598,41 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   const [showHandoff, setShowHandoff] = useState(false);
   const [handoffOptions, setHandoffOptions] = useState(null);
   const [showTicketForm, setShowTicketForm] = useState(false);
+  const [conversationContext, setConversationContext] = useState({
+    intent: null,
+    topic: null,
+    last_action: null,
+    user_type: null,
+    onboarding_step: null,
+    lead_capture_offered: null,
+    portfolio_size: null,
+    primary_goal: null,
+    secondary_need: null,
+    problem_intent: null,
+  });
+  const [leadCaptureSubmitted, setLeadCaptureSubmitted] = useState(false);
   const messagesEndRef = useRef(null);
+
+  const resetConversation = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+    setConversationContext({
+      intent: null,
+      topic: null,
+      last_action: null,
+      user_type: null,
+      onboarding_step: null,
+      lead_capture_offered: null,
+      portfolio_size: null,
+      primary_goal: null,
+      secondary_need: null,
+      problem_intent: null,
+    });
+    setLeadCaptureSubmitted(false);
+    setShowHandoff(false);
+    setShowQuickActions(true);
+    setShowTicketForm(false);
+  }, []);
 
   // Expose open function globally for external triggers
   useEffect(() => {
@@ -440,21 +654,29 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Add initial greeting when chat tab opens
+  // Onboarding welcome (task: exact wording)
+  const WELCOME_MESSAGE = `Hello, welcome to Pleerity. What are you trying to do today?`;
+
+  // Add initial greeting when chat tab opens or after reset
   useEffect(() => {
     if (isOpen && activeTab === 'chat' && messages.length === 0) {
-      const greeting = isAuthenticated
-        ? `Hello! 👋 I'm Pleerity Support. I can see you're logged in - I can help with your account, orders, or any questions about our services.\n\nUse the quick actions below or type your question!`
-        : `Hello! 👋 I'm Pleerity Support, your AI assistant.\n\nUse the **quick actions** below for instant help, or type your question!`;
-
       setMessages([{
         id: 'greeting',
-        text: greeting,
+        text: WELCOME_MESSAGE,
         sender: 'bot',
         timestamp: new Date().toISOString(),
       }]);
     }
-  }, [isOpen, activeTab, messages.length, isAuthenticated]);
+  }, [isOpen, activeTab, messages.length]);
+
+  // Onboarding options (task: 5 options that set intent)
+  const ONBOARDING_OPTIONS = [
+    { id: 'compliance', label: 'Manage property compliance', message: 'Manage property compliance' },
+    { id: 'documents', label: 'Get landlord documents', message: 'Get landlord documents' },
+    { id: 'automation', label: 'Automate workflows', message: 'Automate workflows' },
+    { id: 'research', label: 'Get market research', message: 'Get market research' },
+    { id: 'support', label: 'Contact support', quickAction: 'speak_to_human' },
+  ];
 
   // Handle WhatsApp click with proper window.open and audit logging
   const handleWhatsAppClick = async (whatsappLink) => {
@@ -496,15 +718,19 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       });
 
       setConversationId(response.data.conversation_id);
+      if (response.data.conversation_context) {
+        setConversationContext(response.data.conversation_context);
+      }
 
       // Add user action as message
       const actionLabels = {
         check_order_status: '📦 Check Order Status',
         reset_password: '🔑 Reset Password',
-        document_packs_info: '📄 Document Packs Info',
+        document_packs_info: '📄 Document Packs',
         billing_help: '💳 Billing Help',
-        cvp_info: '🏠 CVP Info',
-        speak_to_human: '👤 Speak to Human',
+        cvp_info: '🏠 Compliance Vault Pro',
+        pricing: '💳 Pricing',
+        speak_to_human: '👤 Talk to Support',
       };
 
       setMessages(prev => [...prev, {
@@ -514,12 +740,14 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         timestamp: new Date().toISOString(),
       }]);
 
-      // Add bot response
+      // Add bot response (with metadata and actions for clickable links)
       setMessages(prev => [...prev, {
         id: Date.now().toString() + '-bot',
         text: response.data.response,
         sender: 'bot',
         timestamp: new Date().toISOString(),
+        metadata: response.data.metadata || null,
+        actions: response.data.actions ?? null,
       }]);
 
       // Handle handoff if needed
@@ -539,9 +767,16 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
+    const trimmed = input.trim();
+    if (/^(reset|start over|new chat)$/i.test(trimmed)) {
+      resetConversation();
+      setInput('');
+      return;
+    }
+
     const userMessage = {
       id: Date.now().toString(),
-      text: input.trim(),
+      text: trimmed,
       sender: 'user',
       timestamp: new Date().toISOString(),
     };
@@ -557,15 +792,21 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         message: userMessage.text,
         conversation_id: conversationId,
         channel: isAuthenticated ? 'portal' : 'web',
+        conversation_context: conversationContext,
       });
 
       setConversationId(response.data.conversation_id);
+      if (response.data.conversation_context) {
+        setConversationContext(response.data.conversation_context);
+      }
 
       const botMessage = {
         id: Date.now().toString() + '-bot',
         text: response.data.response,
         sender: 'bot',
         timestamp: new Date().toISOString(),
+        metadata: response.data.metadata || null,
+        actions: response.data.actions ?? null,
       };
 
       setMessages(prev => [...prev, botMessage]);
@@ -581,6 +822,60 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     } finally {
       setLoading(false);
     }
+  };
+
+  // Send a message as the user (for onboarding/qualification button clicks)
+  const sendMessageAs = async (text) => {
+    if (!text.trim() || loading) return;
+    const userMessage = {
+      id: Date.now().toString(),
+      text: text.trim(),
+      sender: 'user',
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setLoading(true);
+    setShowHandoff(false);
+    setShowQuickActions(false);
+    try {
+      const response = await client.post('/support/chat', {
+        message: userMessage.text,
+        conversation_id: conversationId,
+        channel: isAuthenticated ? 'portal' : 'web',
+        conversation_context: conversationContext,
+      });
+      setConversationId(response.data.conversation_id);
+      if (response.data.conversation_context) {
+        setConversationContext(response.data.conversation_context);
+      }
+      setMessages(prev => [...prev, {
+        id: Date.now().toString() + '-bot',
+        text: response.data.response,
+        sender: 'bot',
+        timestamp: new Date().toISOString(),
+        metadata: response.data.metadata || null,
+        actions: response.data.actions ?? null,
+      }]);
+      if (response.data.action === 'handoff') {
+        setShowHandoff(true);
+        setHandoffOptions(response.data.handoff_options);
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
+      toast.error('Failed to send message. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Onboarding: user picked one of the 5 options
+  const handleOnboardingSelect = async (option) => {
+    if (option.quickAction) {
+      await handleQuickAction(option.quickAction);
+      return;
+    }
+    await sendMessageAs(option.message);
   };
 
   // Handle handoff selection
@@ -644,7 +939,19 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {!isMinimized && (
+            <button
+              type="button"
+              onClick={resetConversation}
+              className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-xs font-medium"
+              title="Start new chat"
+              data-testid="support-chat-reset"
+            >
+              Start new chat
+            </button>
+          )}
           <button
+            type="button"
             onClick={() => setIsMinimized(!isMinimized)}
             className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
           >
@@ -655,6 +962,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
             )}
           </button>
           <button
+            type="button"
             onClick={() => setIsOpen(false)}
             className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
           >
@@ -707,9 +1015,17 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
           {/* Chat Tab Content */}
           {activeTab === 'chat' && (
             <>
-              {/* Quick Actions Panel - Collapsible */}
-              {showQuickActions && messages.length <= 1 && (
-                <QuickActionsPanel onAction={handleQuickAction} loading={loading} />
+              {/* Onboarding: 5 options when only welcome is shown (task: exact 5 options) */}
+              {messages.length === 1 && messages[0].sender === 'bot' && (
+                <OnboardingOptionsPanel
+                  options={ONBOARDING_OPTIONS}
+                  onSelect={handleOnboardingSelect}
+                  loading={loading}
+                />
+              )}
+              {/* Quick Actions Panel - after first exchange (support options + Start New Chat) */}
+              {showQuickActions && messages.length > 1 && (
+                <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
               )}
               
               {/* Toggle Quick Actions button */}
@@ -725,7 +1041,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
               
               {showQuickActions && messages.length > 1 && (
                 <>
-                  <QuickActionsPanel onAction={handleQuickAction} loading={loading} />
+                  <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
                   <button
                     onClick={() => setShowQuickActions(false)}
                     className="w-full px-3 py-1 bg-gray-100 text-xs text-gray-500 hover:bg-gray-200"
@@ -737,13 +1053,51 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
           {/* Messages */}
           <div className={`overflow-y-auto p-4 ${showQuickActions && messages.length <= 1 ? 'h-[280px]' : 'h-[360px]'}`}>
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isUser={msg.sender === 'user'}
-              />
+            {messages.map((msg, idx) => (
+              <div key={msg.id}>
+                <MessageBubble
+                  message={msg}
+                  isUser={msg.sender === 'user'}
+                />
+                {msg.sender === 'bot' && msg.metadata?.qualification_question && idx === messages.length - 1 && (
+                  <QualificationButtons
+                    options={msg.metadata.user_type_options}
+                    onSelect={sendMessageAs}
+                    loading={loading}
+                  />
+                )}
+                {msg.sender === 'bot' && msg.metadata?.follow_up === 'portfolio_size' && idx === messages.length - 1 && (
+                  <PortfolioSizeButtons
+                    options={msg.metadata.portfolio_size_options}
+                    onSelect={sendMessageAs}
+                    loading={loading}
+                  />
+                )}
+              </div>
             ))}
+            {/* Lead capture: show when last bot message offers it and not yet submitted */}
+            {messages.length > 0 && (() => {
+              const last = messages[messages.length - 1];
+              return last.sender === 'bot' && last.metadata?.offer_lead_capture && !leadCaptureSubmitted;
+            })() && (
+              <div className="mt-2 pl-9">
+                <LeadCaptureBlock
+                  onSubmitted={() => {
+                    setLeadCaptureSubmitted(true);
+                    setMessages(prev => [...prev, {
+                      id: Date.now().toString() + '-lead-confirm',
+                      text: "We've sent the information to your email. Check your inbox for next steps.",
+                      sender: 'bot',
+                      timestamp: new Date().toISOString(),
+                    }]);
+                  }}
+                  onDismiss={() => setLeadCaptureSubmitted(true)}
+                  conversationId={conversationId}
+                  serviceInterest={conversationContext?.intent}
+                  loading={loading}
+                />
+              </div>
+            )}
             
             {/* Handoff options */}
             {showHandoff && handoffOptions && (

@@ -57,6 +57,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     conversation_id: Optional[str] = None
     channel: str = "web"
+    conversation_context: Optional[Dict[str, Any]] = None  # { intent, topic, last_action } for guided assistant
 
 
 class ChatResponse(BaseModel):
@@ -65,6 +66,8 @@ class ChatResponse(BaseModel):
     action: str  # respond, handoff, lookup_prompt
     metadata: Dict[str, Any] = {}
     handoff_options: Optional[Dict[str, Any]] = None
+    conversation_context: Optional[Dict[str, Any]] = None  # updated context for next turn
+    actions: Optional[List[Dict[str, Any]]] = None  # [{ label, url }] for clickable links in UI
 
 
 class LookupRequest(BaseModel):
@@ -141,20 +144,24 @@ async def chat_endpoint(
         # Get conversation history
         history = await MessageService.get_messages(conversation_id, limit=20)
         
-        # Process message through chatbot
+        # Process message through chatbot (with optional conversation context for guided assistant)
         result = await handle_chat_message(
             conversation_id=conversation_id,
             message=body.message,
             conversation_history=history,
             client_context=None,
-            is_authenticated=False
+            is_authenticated=False,
+            conversation_context=body.conversation_context,
         )
         
-        # Save bot response
+        # Save bot response (include actions in metadata for history to show clickable links)
+        bot_metadata = dict(result.get("metadata", {}))
+        if result.get("actions"):
+            bot_metadata["actions"] = result["actions"]
         bot_msg = MessageCreate(
             message_text=result["response"],
             sender=MessageSender.BOT,
-            metadata=result.get("metadata", {})
+            metadata=bot_metadata
         )
         await MessageService.add_message(conversation_id, bot_msg)
         
@@ -184,7 +191,9 @@ async def chat_endpoint(
             conversation_id=conversation_id,
             response=result["response"],
             action=result["action"],
-            metadata=result.get("metadata", {})
+            metadata=result.get("metadata", {}),
+            conversation_context=result.get("conversation_context"),
+            actions=result.get("actions"),
         )
         
         # Add handoff options if needed
@@ -266,20 +275,41 @@ async def trigger_quick_action(
     )
     await MessageService.add_message(conversation_id, user_msg)
     
-    # Save the canned response as bot message
+    # Save the canned response as bot message (include actions in metadata for clickable links)
+    bot_meta = dict(canned.get("metadata", {}))
+    if canned.get("actions"):
+        bot_meta["actions"] = canned["actions"]
     bot_msg = MessageCreate(
         message_text=canned["response"],
         sender=MessageSender.BOT,
-        metadata=canned.get("metadata", {})
+        metadata=bot_meta
     )
     await MessageService.add_message(conversation_id, bot_msg)
     
+    # Update conversation context when quick action sets a topic (for guided follow-ups)
+    intent_from_action = {
+        "cvp_info": "compliance_vault_pro",
+        "document_packs_info": "document_packs",
+        "pricing": "pricing",
+        "billing_help": "pricing",
+        "reset_password": "account_support",
+        "speak_to_human": None,
+        "check_order_status": "account_support",
+    }.get(action_id)
+    conversation_context = {
+        "intent": intent_from_action,
+        "topic": intent_from_action,
+        "last_action": f"quick_action_{action_id}",
+    } if intent_from_action else {"intent": None, "topic": None, "last_action": f"quick_action_{action_id}"}
+
     # Build response
     response_data = {
         "conversation_id": conversation_id,
         "response": canned["response"],
         "action": canned.get("action", "respond"),
-        "metadata": canned.get("metadata", {})
+        "metadata": canned.get("metadata", {}),
+        "conversation_context": conversation_context,
+        "actions": canned.get("actions"),
     }
     
     # Add handoff options if this is a handoff action

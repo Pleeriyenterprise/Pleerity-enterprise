@@ -10,8 +10,9 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-KIT_API_KEY = os.getenv("KIT_API_KEY", "1nG0QycdXFwymTr1oLiuUA")
-KIT_API_BASE = "https://api.kit.com/v4"
+# Set in environment; get from Kit.com → Settings → API (API Key / Access token).
+KIT_API_KEY = os.getenv("KIT_API_KEY", "").strip()
+KIT_API_BASE = os.getenv("KIT_API_BASE", "https://api.kit.com/v4").rstrip("/")
 
 
 class KitIntegration:
@@ -34,32 +35,34 @@ class KitIntegration:
         """
         try:
             async with httpx.AsyncClient() as client:
-                # Kit API v4 endpoint for adding subscribers
+                # Kit API v4: POST /v4/subscribers (see developers.kit.com)
+                # Uses email_address, state, and optional fields (e.g. Source).
+                if not self.api_key:
+                    logger.warning("KIT_API_KEY not set; skipping Kit sync")
+                    return False, "KIT_API_KEY not set"
                 url = f"{self.base_url}/subscribers"
-                
                 payload = {
-                    "email": email,
+                    "email_address": email,
                     "state": "active",
-                    "tags": [source]  # Tag by source
+                    "fields": {"Source": source},  # Custom field in Kit; create "Source" in Kit if needed
                 }
-                
                 if first_name:
                     payload["first_name"] = first_name
-                
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 }
-                
                 response = await client.post(url, json=payload, headers=headers, timeout=10.0)
-                
-                if response.status_code in [200, 201]:
+                if response.status_code in (200, 201, 202):
                     logger.info(f"Kit: Subscriber added - {email} (source: {source})")
                     return True, None
                 elif response.status_code == 409:
-                    # Already exists - update tags
                     logger.info(f"Kit: Subscriber already exists - {email}")
-                    return True, None  # Not an error
+                    return True, None
+                elif response.status_code == 401:
+                    error_msg = "Kit API key invalid or expired. Check KIT_API_KEY in Settings → API."
+                    logger.error(error_msg)
+                    return False, error_msg
                 else:
                     error_msg = f"Kit API error {response.status_code}: {response.text}"
                     logger.error(error_msg)

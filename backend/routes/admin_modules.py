@@ -162,6 +162,14 @@ async def list_newsletter_subscribers(current_user: dict = Depends(admin_route_g
     db = database.get_db()
     return await db.newsletter_subscribers.find({}, {"_id": 0}).sort("subscribed_at", -1).to_list(10000)
 
+
+@router_admin.get("/newsletter/subscribers", dependencies=[Depends(admin_route_guard)])
+async def admin_list_newsletter_subscribers(current_user: dict = Depends(admin_route_guard)):
+    """Same as list_newsletter_subscribers; allows Admin UI to call /api/admin/newsletter/subscribers."""
+    db = database.get_db()
+    return await db.newsletter_subscribers.find({}, {"_id": 0}).sort("subscribed_at", -1).to_list(10000)
+
+
 # Insights Feedback - PUBLIC endpoint
 @router.post("/api/feedback/submit")
 async def submit_feedback(article_slug: str, article_title: str, was_helpful: bool, comment: Optional[str] = None):
