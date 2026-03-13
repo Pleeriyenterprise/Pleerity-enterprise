@@ -34,6 +34,9 @@ const QUICK_ACTION_ICONS = {
   speak_to_human: Users,
 };
 
+// Onboarding welcome (task: exact wording; module-level for stable useEffect dependency)
+const WELCOME_MESSAGE = 'Hello, welcome to Pleerity. What are you trying to do today?';
+
 // Match URLs for linkification (http/https, optional trailing punctuation stripped for display)
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
 
@@ -654,9 +657,6 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Onboarding welcome (task: exact wording)
-  const WELCOME_MESSAGE = `Hello, welcome to Pleerity. What are you trying to do today?`;
-
   // Add initial greeting when chat tab opens or after reset
   useEffect(() => {
     if (isOpen && activeTab === 'chat' && messages.length === 0) {
@@ -667,7 +667,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         timestamp: new Date().toISOString(),
       }]);
     }
-  }, [isOpen, activeTab, messages.length]);
+  }, [isOpen, activeTab, messages.length, WELCOME_MESSAGE]);
 
   // Onboarding options (task: 5 options that set intent)
   const ONBOARDING_OPTIONS = [
