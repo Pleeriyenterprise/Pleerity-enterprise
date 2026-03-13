@@ -285,10 +285,8 @@ async def search_published_articles_for_assistant(
     q = (query or "").strip()
     if not q:
         return []
-    # Build filter: published, active; audience in allowed set or missing (treat missing as USER)
-    filter_query = {
-        "status": ArticleStatus.PUBLISHED.value,
-        "is_active": True,
+    # Build filter: published, active; audience in allowed set (role-aware); AND text match
+    audience_condition = {
         "$or": [
             {"audience": {"$in": allowed_audiences}},
             {"audience": {"$exists": False}},
@@ -296,7 +294,7 @@ async def search_published_articles_for_assistant(
     }
     # Text search: at least one of title, excerpt, content matches (regex, case-insensitive)
     search_re = re.escape(q) if len(q) < 50 else re.escape(q[:50])
-    filter_query["$or"] = [
+    text_conditions = [
         {"title": {"$regex": search_re, "$options": "i"}},
         {"excerpt": {"$regex": search_re, "$options": "i"}},
         {"summary": {"$regex": search_re, "$options": "i"}},
@@ -304,7 +302,15 @@ async def search_published_articles_for_assistant(
         {"tags": {"$elemMatch": {"$regex": search_re, "$options": "i"}}},
     ]
     if context:
-        filter_query["$or"].append({"product_module": {"$regex": re.escape(context[:100]), "$options": "i"}})
+        text_conditions.append({"product_module": {"$regex": re.escape(context[:100]), "$options": "i"}})
+    filter_query = {
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$and": [
+            audience_condition,
+            {"$or": text_conditions},
+        ],
+    }
     cursor = db[ARTICLES_COLLECTION].find(
         filter_query,
         {"_id": 0, "article_id": 1, "title": 1, "slug": 1, "excerpt": 1, "content": 1, "updated_at": 1},
