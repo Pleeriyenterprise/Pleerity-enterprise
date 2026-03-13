@@ -1,7 +1,7 @@
 """
 Admin Notifications Routes - Manage admin notification preferences and in-app notifications.
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
@@ -194,12 +194,17 @@ async def get_admin_profile(
 
 @router.post("/test-sms")
 async def send_test_sms(
+    body: Optional[Dict[str, Any]] = Body(None),
     current_user: dict = Depends(admin_route_guard),
 ):
-    """Send a test SMS to the current admin's notification phone. Use to verify SMS config without OTP."""
-    import os
-    prefs = await get_admin_notification_preferences(_admin_id(current_user))
-    phone = prefs.get("notification_phone") or (current_user.get("phone") if isinstance(current_user.get("phone"), str) else None)
+    """Send a test SMS to the current admin's notification phone. Use to verify SMS config without OTP.
+    Optional body: { \"phone\": \"+44...\" }. If provided, uses that number so you can test before saving preferences."""
+    phone = None
+    if body and isinstance(body.get("phone"), str) and body["phone"].strip():
+        phone = body["phone"].strip()
+    if not phone:
+        prefs = await get_admin_notification_preferences(_admin_id(current_user))
+        phone = prefs.get("notification_phone") or (current_user.get("phone") if isinstance(current_user.get("phone"), str) else None)
     if not phone or not str(phone).strip():
         raise HTTPException(status_code=400, detail="No notification phone set. Set a phone number in Notification Preferences first.")
     from services.notification_orchestrator import notification_orchestrator

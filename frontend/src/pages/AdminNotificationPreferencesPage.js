@@ -297,7 +297,9 @@ export default function AdminNotificationPreferencesPage() {
                   onClick={async () => {
                     setTestSmsLoading(true);
                     try {
-                      await client.post('/admin/notifications/test-sms');
+                      await client.post('/admin/notifications/test-sms', {
+                        phone: preferences.notification_phone?.trim() || undefined,
+                      });
                       toast.success('Test SMS sent to your notification phone.');
                     } catch (err) {
                       const msg = err?.response?.data?.detail || 'Failed to send test SMS';
@@ -310,7 +312,7 @@ export default function AdminNotificationPreferencesPage() {
                 >
                   {testSmsLoading ? 'Sending…' : 'Send test SMS'}
                 </Button>
-                <p className="text-xs text-gray-500">Save preferences first if you changed your phone number. Use this to confirm SMS is working without OTP.</p>
+                <p className="text-xs text-gray-500">Uses the number above (save preferences to store it). Confirms SMS is working without OTP.</p>
               </div>
             )}
 
