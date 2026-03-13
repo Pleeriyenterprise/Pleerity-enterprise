@@ -578,7 +578,11 @@ async def get_health_summary(request: Request):
     alert_emails = (os.getenv("ADMIN_ALERT_EMAILS") or os.getenv("OPS_ALERT_EMAIL") or "").strip()
     alerting_configured = bool(alert_emails)
 
+    # Expose DB name so operators can verify scheduler and observability use the same DB (runtime truth gap investigation)
+    observability_db_name = getattr(db, "name", None) if db else None
+
     return {
+        "observability_db_name": observability_db_name,
         "status": status_badge,
         "overall_health": overall_health,
         "open_incidents_count": open_incidents,

@@ -74,7 +74,17 @@ except Exception as e:
     logger.warning(f"Failed to configure MongoDB job store, using memory store: {e}")
     jobstores = {}
 
-scheduler = AsyncIOScheduler(jobstores=jobstores, timezone=SCHEDULER_TIMEZONE)
+# Safe defaults for cloud reliability: avoid startup misfires and overlapping runs
+JOB_DEFAULTS = {
+    "coalesce": True,
+    "max_instances": 1,
+    "misfire_grace_time": 300,
+}
+scheduler = AsyncIOScheduler(
+    jobstores=jobstores,
+    timezone=SCHEDULER_TIMEZONE,
+    job_defaults=JOB_DEFAULTS,
+)
 
 # Import job runners from shared module (used by scheduler and admin run-now)
 from job_runner import (
@@ -367,6 +377,9 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         args=["daily_reminders"],
         kwargs={"run_type": "schedule"},
+        misfire_grace_time=300,
+        coalesce=True,
+        max_instances=1,
     )
     
     # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
@@ -389,6 +402,9 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         args=["monthly_digest"],
         kwargs={"run_type": "schedule"},
+        misfire_grace_time=300,
+        coalesce=True,
+        max_instances=1,
     )
     
     # Compliance status check - runs twice daily at 8:00 AM and 6:00 PM UTC
@@ -400,6 +416,9 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         args=["compliance_check_morning"],
         kwargs={"run_type": "schedule"},
+        misfire_grace_time=300,
+        coalesce=True,
+        max_instances=1,
     )
     
     scheduler.add_job(
@@ -410,6 +429,9 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         args=["compliance_check_evening"],
         kwargs={"run_type": "schedule"},
+        misfire_grace_time=300,
+        coalesce=True,
+        max_instances=1,
     )
     
     # Scheduled reports - runs every hour
@@ -421,6 +443,9 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         args=["scheduled_reports"],
         kwargs={"run_type": "schedule"},
+        misfire_grace_time=300,
+        coalesce=True,
+        max_instances=1,
     )
     
     # Daily compliance score snapshots at 2:00 AM UTC
@@ -507,6 +532,9 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         args=["sla_watchdog"],
         kwargs={"run_type": "schedule"},
+        misfire_grace_time=300,
+        coalesce=True,
+        max_instances=1,
     )
     
     # Notification retry worker - every minute
@@ -661,19 +689,19 @@ async def lifespan(app: FastAPI):
 
     scheduler_started = False
     try:
-        scheduler.start()
+        scheduler.start(paused=True)
         scheduler_started = True
         jobs = scheduler.get_jobs()
-        next_runs = [getattr(j, "next_run_time", None) for j in jobs[:5]]
         job_ids = [getattr(j, "id", None) for j in jobs]
-        next_runs_fmt = [t.isoformat() if t else None for t in next_runs]
         logger.info(
-            "Background job scheduler started with %s job(s). Job ids: %s. Next runs (first 5): %s",
+            "Scheduler started (paused). All jobs registered: %s job(s). Job ids: %s",
             len(jobs),
             job_ids,
-            next_runs_fmt,
         )
-        # At DEBUG: log every job's next_run_time to verify cron/interval schedules (e.g. only high-freq jobs appear in short log windows)
+        next_runs = [getattr(j, "next_run_time", None) for j in jobs[:5]]
+        next_runs_fmt = [t.isoformat() if t else None for t in next_runs]
+        logger.info("Scheduler next runs (first 5): %s", next_runs_fmt)
+        # At DEBUG: log every job's next_run_time to verify cron/interval schedules
         for j in jobs:
             nrt = getattr(j, "next_run_time", None)
             logger.debug(
@@ -682,6 +710,14 @@ async def lifespan(app: FastAPI):
                 getattr(j, "name", None),
                 nrt.isoformat() if nrt else None,
             )
+        # Startup reconciliation: catch-up missed critical jobs within recovery window, or create incident if overdue
+        try:
+            from services.startup_reconciliation import run_startup_reconciliation
+            await run_startup_reconciliation()
+        except Exception as recon_err:
+            logger.exception("Startup reconciliation failed (scheduler still paused): %s", recon_err)
+        scheduler.resume()
+        logger.info("Scheduler resumed; jobs will execute at scheduled times.")
     except Exception as e:
         logger.exception("Background job scheduler failed to start: %s. API will run without scheduled jobs.", e)
     

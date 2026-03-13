@@ -33,8 +33,11 @@ async def run_instrumented(
     )
     fn = JOB_RUNNERS.get(job_id)
     if not fn:
+        logger.error("run_instrumented: unknown job_id=%s (not in JOB_RUNNERS); no job_runs row will be created", job_id)
         raise ValueError(f"Unknown job_id: {job_id}")
+    logger.info("run_instrumented: starting job_id=%s run_type=%s (will call start_job_run)", job_id, run_type)
     job_run_id = await start_job_run(job_id, run_type, triggered_by=triggered_by)
+    logger.info("run_instrumented: start_job_run returned job_run_id=%s for job_id=%s", job_run_id, job_id)
     try:
         result = await fn()
         if not isinstance(result, dict):

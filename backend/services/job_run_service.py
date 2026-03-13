@@ -28,6 +28,7 @@ OUTCOME_FAILED = "failed"
 RUN_TYPE_SCHEDULE = "schedule"
 RUN_TYPE_MANUAL = "manual"
 RUN_TYPE_WEBHOOK = "webhook"
+RUN_TYPE_STARTUP_RECOVERY = "startup_recovery"
 
 
 async def start_job_run(
@@ -42,6 +43,11 @@ async def start_job_run(
     Record job start. Returns job_run_id (str) for finish calls.
     """
     db = database.get_db()
+    if db is None:
+        raise RuntimeError(
+            "Database not connected; cannot record job run. "
+            "Ensure database.connect() was called in this process (e.g. FastAPI lifespan)."
+        )
     now = datetime.now(timezone.utc)
     doc = {
         "job_name": job_name,
@@ -61,7 +67,11 @@ async def start_job_run(
     }
     result = await db[COLLECTION].insert_one(doc)
     job_run_id = str(result.inserted_id)
-    logger.debug("job_run started job_name=%s job_run_id=%s", job_name, job_run_id)
+    # INFO so "job ran but no row in UI" can be traced: we did insert into job_runs in this process
+    logger.info(
+        "job_run started job_name=%s job_run_id=%s run_type=%s db=%s",
+        job_name, job_run_id, run_type, getattr(db, "name", "?"),
+    )
     return job_run_id
 
 
