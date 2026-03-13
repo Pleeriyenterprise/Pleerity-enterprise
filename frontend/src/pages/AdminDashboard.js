@@ -199,6 +199,7 @@ const ClientDetailModal = ({ clientId, onClose }) => {
   const [triggeringProvision, setTriggeringProvision] = useState(false);
   const [resendingPassword, setResendingPassword] = useState(false);
   const [lastResendActivationLink, setLastResendActivationLink] = useState(null);
+  const [lastResendMessageId, setLastResendMessageId] = useState(null);
   const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState(null);
   const [scoreHistoryData, setScoreHistoryData] = useState(null);
@@ -330,11 +331,19 @@ const ClientDetailModal = ({ clientId, onClose }) => {
     
     setResendingPassword(true);
     setLastResendActivationLink(null);
+    setLastResendMessageId(null);
     try {
       const res = await api.post(`/admin/clients/${clientId}/resend-password-setup`);
-      toast.success('Password setup link resent');
+      toast.success(res?.data?.message || 'Password setup link resent');
       if (res?.data?.activation_link) {
         setLastResendActivationLink(res.data.activation_link);
+      } else {
+        setLastResendActivationLink(null);
+      }
+      if (res?.data?.message_id) {
+        setLastResendMessageId(res.data.message_id);
+      } else {
+        setLastResendMessageId(null);
       }
       fetchClientData();
     } catch (error) {
@@ -822,6 +831,11 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                         <Copy className="w-4 h-4" />
                         Copy link (fallback if email did not arrive)
                       </button>
+                    )}
+                    {lastResendMessageId && (
+                      <p className="text-xs text-gray-500">
+                        Recorded in Notification Health (message_id: <code className="font-mono">{lastResendMessageId}</code>)
+                      </p>
                     )}
                   </div>
                   {showPaymentLinkActions && (

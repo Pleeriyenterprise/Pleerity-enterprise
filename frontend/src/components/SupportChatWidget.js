@@ -667,7 +667,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         timestamp: new Date().toISOString(),
       }]);
     }
-  }, [isOpen, activeTab, messages.length, WELCOME_MESSAGE]);
+  }, [isOpen, activeTab, messages.length]);
 
   // Onboarding options (task: 5 options that set intent)
   const ONBOARDING_OPTIONS = [

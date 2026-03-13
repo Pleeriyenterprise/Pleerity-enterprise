@@ -1595,18 +1595,19 @@ async def resend_password_setup(request: Request, client_id: str):
                 detail={"error_code": "EMAIL_SEND_FAILED", "message": err_msg},
             )
 
-        # Success (sent or duplicate_ignored)
-        await db.clients.update_one(
-            {"client_id": client_id},
-            {
-                "$set": {
-                    "activation_email_status": "SENT",
-                    "activation_email_sent_at": now_iso,
-                    "activation_link_last_url": setup_link,
+        # Success: only update client and set SENT when we actually sent (not duplicate_ignored)
+        if result.outcome == "sent":
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {
+                    "$set": {
+                        "activation_email_status": "SENT",
+                        "activation_email_sent_at": now_iso,
+                        "activation_link_last_url": setup_link,
+                    },
+                    "$unset": {"activation_email_error": ""},
                 },
-                "$unset": {"activation_email_error": ""},
-            },
-        )
+            )
         provider_message_id = (result.details or {}).get("provider_message_id") or result.message_id
         await create_audit_log(
             action=AuditAction.ACTIVATION_EMAIL_RESEND,
@@ -1614,14 +1615,16 @@ async def resend_password_setup(request: Request, client_id: str):
             client_id=client_id,
             metadata={
                 **audit_meta_base,
-                "status": "SUCCESS",
+                "status": "SUCCESS" if result.outcome == "sent" else "DUPLICATE_IGNORED",
                 "provider_message_id": provider_message_id,
+                "message_id": result.message_id,
             },
         )
         return {
-            "message": "Password setup link resent",
-            "activation_link": setup_link,
+            "message": "Password setup link resent" if result.outcome == "sent" else "A password link was already sent recently (request deduplicated).",
+            "activation_link": setup_link if result.outcome == "sent" else None,
             "provider_message_id": provider_message_id,
+            "message_id": result.message_id,
         }
     
     except HTTPException:

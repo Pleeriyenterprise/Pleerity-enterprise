@@ -154,6 +154,24 @@ class NotificationOrchestrator:
         )
         if not template:
             logger.warning(f"Notification template not found or inactive: {template_key}")
+            # Record attempt in message_logs so it appears in notification health
+            try:
+                msg_id = str(uuid.uuid4())
+                recipient = (context or {}).get("recipient") or (context or {}).get("to_email") or (context or {}).get("email") or ""
+                await db.message_logs.insert_one({
+                    "message_id": msg_id,
+                    "client_id": client_id,
+                    "recipient": str(recipient).strip() if recipient else None,
+                    "template_key": template_key,
+                    "channel": "EMAIL",
+                    "status": "FAILED",
+                    "error_message": f"Template {template_key} not found or inactive",
+                    "attempt_count": 1,
+                    "metadata": {"event_type": event_type or "send"},
+                    "created_at": datetime.now(timezone.utc),
+                })
+            except Exception as e:
+                logger.warning(f"Failed to write message_log for missing template: {e}")
             return NotificationResult(
                 outcome="failed",
                 error_message=f"Template {template_key} not found or inactive",
