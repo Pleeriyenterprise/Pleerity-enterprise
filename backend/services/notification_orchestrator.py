@@ -244,7 +244,14 @@ class NotificationOrchestrator:
             )
         prefs = await db.notification_preferences.find_one(
             {"client_id": client_id},
-            {"_id": 0, "sms_enabled": 1, "sms_phone_number": 1},
+            {
+                "_id": 0,
+                "sms_enabled": 1,
+                "sms_phone_number": 1,
+                "compliance_notifications_enabled": 1,
+                "reporting_notifications_enabled": 1,
+                "marketing_notifications_enabled": 1,
+            },
         )
         client["notification_preferences"] = prefs or {}
 
@@ -268,6 +275,33 @@ class NotificationOrchestrator:
         block_result = await self._apply_gating(template, client, client_id, template_key, context, channel)
         if block_result:
             return block_result
+
+        # Category-based preference check (email only; system_critical and internal always sent)
+        if channel == "EMAIL" and client_id:
+            category = template.get("email_category")
+            if category and category not in ("system_critical", "internal"):
+                prefs = client.get("notification_preferences") or {}
+                allowed = True
+                if category == "compliance_notifications":
+                    allowed = prefs.get("compliance_notifications_enabled", True)
+                elif category == "reporting_notifications":
+                    allowed = prefs.get("reporting_notifications_enabled", True)
+                elif category == "marketing_notifications":
+                    allowed = prefs.get("marketing_notifications_enabled", True)
+                if not allowed:
+                    await self._write_blocked_log(
+                        db, client_id, template_key, channel, "BLOCKED_PREFERENCE_DISABLED", None, idempotency_key, context, event_type,
+                    )
+                    await create_audit_log(
+                        action=AuditAction.NOTIFICATION_BLOCKED_PREFERENCE_DISABLED,
+                        client_id=client_id,
+                        metadata={"template_key": template_key, "email_category": category},
+                    )
+                    return NotificationResult(
+                        outcome="blocked",
+                        block_reason="BLOCKED_PREFERENCE_DISABLED",
+                        details={"email_category": category},
+                    )
 
         # Resolve recipient (context may override for e.g. scheduled report recipients)
         recipient = (context or {}).get("recipient")
@@ -297,6 +331,9 @@ class NotificationOrchestrator:
 
         # Insert PENDING message log (with idempotency_key for duplicate detection)
         now = datetime.now(timezone.utc)
+        meta = {"event_type": event_type, **({k: str(v) for k, v in (context or {}).items()})}
+        if template.get("email_category"):
+            meta["email_category"] = template["email_category"]
         log_doc = {
             "message_id": message_id,
             "client_id": client_id,
@@ -306,7 +343,7 @@ class NotificationOrchestrator:
             "status": "PENDING",
             "attempt_count": 1,
             "idempotency_key": idempotency_key,
-            "metadata": {"event_type": event_type, **({k: str(v) for k, v in (context or {}).items()})},
+            "metadata": meta,
             "created_at": now,
         }
         try:

@@ -8,11 +8,106 @@ import os
 import logging
 from typing import Optional, Dict, Any, List
 
+from email_templates.email_layout import build_customer_email_layout
+
 logger = logging.getLogger(__name__)
 
 # Email sender configuration
 # Verified sender in Postmark
 DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
+
+# Base URL for client portal (notification preferences link). Use FRONTEND_URL or PORTAL_BASE_URL.
+def _notification_preferences_url(model: Dict[str, Any]) -> str:
+    base = (model.get("portal_base_url") or os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+    if base:
+        return base + "/settings/notifications"
+    return ""
+
+# Aliases that must not show "Manage notification preferences" (system_critical).
+SYSTEM_CRITICAL_ALIASES = {
+    EmailTemplateAlias.PASSWORD_SETUP,
+    EmailTemplateAlias.PASSWORD_RESET,
+    EmailTemplateAlias.PASSWORD_CHANGED_CONFIRMATION,
+    EmailTemplateAlias.PORTAL_READY,
+    EmailTemplateAlias.ADMIN_INVITE,
+    EmailTemplateAlias.TENANT_INVITE,
+    EmailTemplateAlias.ORDER_DELIVERED,
+    EmailTemplateAlias.PAYMENT_RECEIVED,
+    EmailTemplateAlias.PAYMENT_FAILED,
+    EmailTemplateAlias.SUBSCRIPTION_CANCELED,
+    EmailTemplateAlias.CLEARFORM_WELCOME,
+    EmailTemplateAlias.INTERNAL_ALERT,
+}
+
+# Landlord onboarding sequence: aliases and content for 7-day emails (customer layout, reporting_notifications).
+ONBOARDING_ALIASES = {
+    EmailTemplateAlias.ONBOARDING_DAY0_WELCOME,
+    EmailTemplateAlias.ONBOARDING_DAY1_SETUP_REMINDER,
+    EmailTemplateAlias.ONBOARDING_DAY2_COMPLIANCE_EDUCATION,
+    EmailTemplateAlias.ONBOARDING_DAY3_PRODUCT_VALUE,
+    EmailTemplateAlias.ONBOARDING_DAY4_DOCUMENT_PACK_INTRO,
+    EmailTemplateAlias.ONBOARDING_DAY5_RISK_AWARENESS,
+    EmailTemplateAlias.ONBOARDING_DAY6_CASE_EXAMPLE,
+    EmailTemplateAlias.ONBOARDING_DAY7_ACTIVATION_PUSH,
+}
+
+# Content per onboarding template: body (HTML), cta_label, cta_url_suffix (appended to portal base), why_received, header_title.
+def _get_onboarding_content(template_alias: EmailTemplateAlias) -> Dict[str, Any]:
+    base = {
+        "header_title": "Compliance Vault Pro",
+        "why_received": "you have signed up for Compliance Vault Pro and we send occasional onboarding tips to help you get the most from your account.",
+    }
+    content = {
+        EmailTemplateAlias.ONBOARDING_DAY0_WELCOME: {
+            **base,
+            "body": "<p>Welcome to Compliance Vault Pro. Your portal is ready—the next step is to add your first property so we can help you track certificates and stay compliant.</p>",
+            "cta_label": "Add your first property",
+            "cta_url_suffix": "/properties",
+        },
+        EmailTemplateAlias.ONBOARDING_DAY1_SETUP_REMINDER: {
+            **base,
+            "body": "<p>Just a quick reminder to complete your setup. Pleerity can monitor key compliance items for your properties, including:</p><ul><li>Gas Safety (CP12)</li><li>EICR</li><li>EPC</li><li>Fire alarm inspections</li><li>Legionella assessments</li></ul><p>You can mark any requirement as not applicable if it doesn't apply to your property.</p>",
+            "cta_label": "Continue setup",
+            "cta_url_suffix": "/properties",
+        },
+        EmailTemplateAlias.ONBOARDING_DAY2_COMPLIANCE_EDUCATION: {
+            **base,
+            "body": "<p>We track the core compliance requirements that landlords typically need—certificates, renewals, and expiry dates. If something isn't relevant to a property, you can mark it as not applicable.</p>",
+            "cta_label": "Track these automatically in Pleerity",
+            "cta_url_suffix": "/properties",
+        },
+        EmailTemplateAlias.ONBOARDING_DAY3_PRODUCT_VALUE: {
+            **base,
+            "body": "<p>Pleerity's automation helps you stay on top of compliance: certificate monitoring, automated reminders, a compliance score per property, and secure document storage—all in one place.</p>",
+            "cta_label": "View your compliance dashboard",
+            "cta_url_suffix": "/dashboard",
+        },
+        EmailTemplateAlias.ONBOARDING_DAY4_DOCUMENT_PACK_INTRO: {
+            **base,
+            "body": "<p>Landlord document packs can help you with tenancy agreements, inventory forms, compliance declarations, and other common paperwork—all drafted to save you time.</p>",
+            "cta_label": "View landlord document packs",
+            "cta_url_suffix": "/services",
+        },
+        EmailTemplateAlias.ONBOARDING_DAY5_RISK_AWARENESS: {
+            **base,
+            "body": "<p>Missing or expired compliance certificates can lead to legal penalties, insurance issues, and tenant disputes. Enabling compliance alerts helps you renew in good time.</p>",
+            "cta_label": "Enable compliance alerts",
+            "cta_url_suffix": "/settings/notifications",
+        },
+        EmailTemplateAlias.ONBOARDING_DAY6_CASE_EXAMPLE: {
+            **base,
+            "body": "<p>One landlord nearly missed a Gas Safety renewal. Pleerity detected the upcoming expiry and sent a reminder 10 days early—so they renewed in time with no stress.</p>",
+            "cta_label": "Start monitoring your property",
+            "cta_url_suffix": "/properties",
+        },
+        EmailTemplateAlias.ONBOARDING_DAY7_ACTIVATION_PUSH: {
+            **base,
+            "body": "<p>Quick recap: certificate tracking, automated reminders, compliance score, and secure document storage are all ready when you activate monitoring for your properties.</p>",
+            "cta_label": "Activate monitoring",
+            "cta_url_suffix": "/properties",
+        },
+    }
+    return content.get(template_alias, base)
 
 # Quarantine: all outbound sends must go through NotificationOrchestrator (STEP 6).
 # This module is only used for template rendering (_build_html_body, _build_text_body) by the orchestrator.
@@ -227,90 +322,66 @@ class EmailService:
         if template_alias == EmailTemplateAlias.PASSWORD_SETUP:
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
-            
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0;">Welcome to Compliance Vault Pro</h1>
-                    {ref_badge}
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
-                    <p>Your compliance portal account has been created. Please set your password to get started.</p>
-                    <p style="margin: 30px 0;">
-                        <a href="{model.get('setup_link', '#')}" 
-                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
-                                  text-decoration: none; border-radius: 6px; display: inline-block;">
-                            Set Your Password
-                        </a>
-                    </p>
-                    <p style="color: #666; font-size: 14px;">
-                        This link will expire in 24 hours. If you didn't request this, please ignore this email.
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            body = "<p>Your compliance portal account has been created. Please set your password to get started.</p><p style=\"color: #666; font-size: 14px;\">This link will expire in 24 hours. If you didn't request this, please ignore this email.</p>"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Welcome to Compliance Vault Pro",
+                ref_badge=ref_badge,
+                cta_label="Set Your Password",
+                cta_url=model.get('setup_link', '#'),
+                why_received="you have a new compliance portal account and need to set your password.",
+                show_preferences_link=False,
+                customer_reference=customer_ref or None,
+            )
         elif template_alias == EmailTemplateAlias.PASSWORD_RESET:
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0;">Reset your password</h1>
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
-                    <p>You requested a password reset for your Compliance Vault Pro account. Use the link below to set a new password.</p>
-                    <p style="margin: 30px 0;">
-                        <a href="{model.get('setup_link', '#')}"
-                           style="background-color: #00B8A9; color: white; padding: 12px 24px;
-                                  text-decoration: none; border-radius: 6px; display: inline-block;">
-                            Set new password
-                        </a>
-                    </p>
-                    <p style="color: #666; font-size: 14px;">
-                        This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            body = "<p>You requested a password reset for your Compliance Vault Pro account. Use the link below to set a new password.</p><p style=\"color: #666; font-size: 14px;\">This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.</p>"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Reset your password",
+                cta_label="Set new password",
+                cta_url=model.get('setup_link', '#'),
+                why_received="you requested a password reset.",
+                show_preferences_link=False,
+                customer_reference=model.get('customer_reference'),
+            )
+        elif template_alias == EmailTemplateAlias.PASSWORD_CHANGED_CONFIRMATION:
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            body = "<p>Your password was changed successfully. If you did not make this change, please contact support immediately.</p>"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Password changed",
+                cta_label="View your dashboard",
+                cta_url=model.get('portal_link', '#'),
+                why_received="you recently updated your account password.",
+                show_preferences_link=False,
+                customer_reference=model.get('customer_reference'),
+                preferences_url=_notification_preferences_url(model) or None,
+            )
         elif template_alias == EmailTemplateAlias.PORTAL_READY:
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
-            
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0;">Your Portal is Ready!</h1>
-                    {ref_badge}
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
-                    <p>Great news! Your Compliance Vault Pro portal is now ready to use.</p>
-                    <p style="margin: 30px 0;">
-                        <a href="{model.get('portal_link', '#')}" 
-                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
-                                  text-decoration: none; border-radius: 6px; display: inline-block;">
-                            Access Your Portal
-                        </a>
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            body = "<p>Great news! Your Compliance Vault Pro portal is now ready to use.</p>"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Your Portal is Ready!",
+                ref_badge=ref_badge,
+                cta_label="Access Your Portal",
+                cta_url=model.get('portal_link', '#'),
+                why_received="your compliance portal has been provisioned and is ready to use.",
+                show_preferences_link=False,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=customer_ref or None,
+            )
         elif template_alias == EmailTemplateAlias.COMPLIANCE_ALERT:
-            # Compliance status change alert
-            footer = self._build_email_footer(model)
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
-            
-            status_color = model.get('status_color', '#dc2626')
             properties_html = ""
             for prop in model.get('affected_properties', []):
                 properties_html += f"""
@@ -325,19 +396,8 @@ class EmailService:
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{prop.get('reason', 'Status changed')}</td>
                 </tr>
                 """
-            
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: {status_color}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="margin: 0; display: inline-block;">⚠️ Compliance Alert</h1>{ref_badge}
-                    <p style="margin: 10px 0 0 0; opacity: 0.9;">Action may be required for your properties</p>
-                </div>
-                
-                <div style="background-color: #f8fafc; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; border-top: none;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
+            body = f"""
                     <p>The compliance status of one or more of your properties has changed and may require your attention.</p>
-                    
                     <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: white; border-radius: 8px; overflow: hidden;">
                         <thead>
                             <tr style="background-color: #0B1D3A; color: white;">
@@ -351,28 +411,26 @@ class EmailService:
                             {properties_html}
                         </tbody>
                     </table>
-                    
-                    <p style="margin: 20px 0;">
-                        <a href="{model.get('portal_link', '#')}" 
-                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
-                                  text-decoration: none; border-radius: 6px; display: inline-block;">
-                            View Dashboard
-                        </a>
-                    </p>
-                    
                     <p style="color: #64748b; font-size: 14px;">
                         <strong>What this means:</strong><br>
                         • <span style="color: #22c55e;">GREEN</span> = All requirements are compliant<br>
                         • <span style="color: #f59e0b;">AMBER</span> = Some requirements are expiring soon<br>
                         • <span style="color: #dc2626;">RED</span> = Immediate action required
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+                    </p>"""
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="⚠️ Compliance Alert",
+                ref_badge=ref_badge,
+                cta_label="View Dashboard",
+                cta_url=model.get('portal_link', '#'),
+                why_received="compliance monitoring is enabled for your account and a property status changed.",
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=customer_ref or None,
+            )
         elif template_alias == EmailTemplateAlias.REMINDER:
-            footer = self._build_email_footer(model)
             req_name = model.get("requirement_name", "Certificate")
             prop_addr = model.get("property_address", "Your property")
             due_date = model.get("due_date", "")
@@ -382,63 +440,35 @@ class EmailService:
                 urgency_line = f"<p><strong>This requirement is {'overdue' if days_overdue == 0 else f'{days_overdue} days overdue'}.</strong></p>"
             else:
                 urgency_line = f"<p><strong>{days_remaining}</strong> days remaining to complete this requirement.</p>"
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #f59e0b; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
-                    <h2 style="margin: 0; font-size: 18px;">Compliance Action Required</h2>
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('client_name', 'Valued Customer')},</p>
-                    <p>This is a reminder that <strong>{req_name}</strong> for your property at <strong>{prop_addr}</strong> is due on <strong>{due_date}</strong>.</p>
-                    {urgency_line}
-                    <p style="margin: 24px 0;">
-                        <a href="{model.get('portal_link', '#')}"
-                           style="background-color: #00B8A9; color: white; padding: 12px 24px;
-                                  text-decoration: none; border-radius: 6px; display: inline-block;">
-                            View in Portal
-                        </a>
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            body = f"<p>This is a reminder that <strong>{req_name}</strong> for your property at <strong>{prop_addr}</strong> is due on <strong>{due_date}</strong>.</p>{urgency_line}"
+            greeting = f"Hello {model.get('client_name', 'Valued Customer')},"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Compliance Action Required",
+                cta_label="View in Portal",
+                cta_url=model.get('portal_link', '#'),
+                why_received="compliance monitoring and expiry reminders are enabled for your account.",
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=model.get('customer_reference'),
+            )
         elif template_alias == EmailTemplateAlias.TENANT_INVITE:
-            footer = self._build_email_footer(model)
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0;">Tenant Portal Invitation</h1>
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('tenant_name', 'there')},</p>
-                    <p>Your landlord has invited you to view the compliance status of your rental property.</p>
-                    <p>The tenant portal allows you to:</p>
-                    <ul style="color: #64748b;">
-                        <li>View property compliance status (GREEN/AMBER/RED)</li>
-                        <li>See certificate expiry dates</li>
-                        <li>Track overall compliance health</li>
-                    </ul>
-                    <p style="margin: 30px 0;">
-                        <a href="{model.get('setup_link', '#')}" 
-                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
-                                  text-decoration: none; border-radius: 6px; display: inline-block;">
-                            Set Up Your Access
-                        </a>
-                    </p>
-                    <p style="color: #666; font-size: 14px;">
-                        This link expires in 7 days. If you have questions, please contact your landlord.
-                    </p>
-                    {f'<p style="color: #666; font-size: 14px; margin-top: 16px;">After you\'ve set your password, you can log in anytime at: <a href="{model.get("login_url", "#")}" style="color: #00B8A9;">{model.get("login_url", "")}</a></p>' if model.get('login_url') else ''}
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            body = "<p>Your landlord has invited you to view the compliance status of your rental property.</p><p>The tenant portal allows you to:</p><ul style=\"color: #64748b;\"><li>View property compliance status (GREEN/AMBER/RED)</li><li>See certificate expiry dates</li><li>Track overall compliance health</li></ul><p style=\"color: #666; font-size: 14px;\">This link expires in 7 days. If you have questions, please contact your landlord.</p>"
+            if model.get('login_url'):
+                body += f'<p style="color: #666; font-size: 14px; margin-top: 16px;">After you\'ve set your password, you can log in anytime at: <a href="{model.get("login_url", "#")}" style="color: #00B8A9;">{model.get("login_url", "")}</a></p>'
+            greeting = f"Hello {model.get('tenant_name', 'there')},"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Tenant Portal Invitation",
+                cta_label="Set Up Your Access",
+                cta_url=model.get('setup_link', '#'),
+                why_received="your landlord invited you to access the tenant portal.",
+                show_preferences_link=False,
+                customer_reference=model.get('customer_reference'),
+            )
         elif template_alias == EmailTemplateAlias.SCHEDULED_REPORT:
-            footer = self._build_email_footer(model)
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
             report_rows: List[Dict[str, Any]] = model.get('report_rows') or []
@@ -455,142 +485,65 @@ class EmailService:
                 raw_content = (model.get('report_content') or 'Report data will appear here.')[:1500]
                 report_body = f"""
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; overflow-x: auto;">{html_module.escape(raw_content)}</div>"""
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #0B1D3A 0%, #1a3a5c 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="margin: 0; font-size: 24px; display: inline-block;">📊 Your {model.get('frequency', 'Weekly').title()} Compliance Report</h1>{ref_badge}
-                    <p style="margin: 10px 0 0; opacity: 0.9;">Generated on {model.get('generated_date', 'today')}</p>
-                </div>
-                <div style="border: 1px solid #eee; border-top: 0; padding: 20px; background: white;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
-                    <p>Please find your scheduled <strong>{model.get('report_type', 'compliance')}</strong> report below.</p>
-                    {report_body}
-                    <p style="color: #666; font-size: 14px; margin-top: 20px;">
-                        For the full report with all details, please log in to your dashboard
-                        and download the complete report from the Reports section.
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            body = f"<p>Please find your scheduled <strong>{model.get('report_type', 'compliance')}</strong> report below.</p>{report_body}<p style=\"color: #666; font-size: 14px; margin-top: 20px;\">For the full report with all details, please log in to your dashboard and download the complete report from the Reports section.</p>"
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title=f"Your {model.get('frequency', 'Weekly').title()} Compliance Report",
+                ref_badge=ref_badge,
+                cta_label="View your dashboard",
+                cta_url=model.get('portal_link', '#'),
+                why_received="you have scheduled compliance reports enabled for your account.",
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=customer_ref or None,
+            )
         elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
-            footer = self._build_email_footer(model)
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #0B1D3A 0%, #00B8A9 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="margin: 0; font-size: 24px;">🛡️ Admin Invitation</h1>
-                    <p style="margin: 10px 0 0; opacity: 0.9;">You've been invited to join as an administrator</p>
-                </div>
-                <div style="border: 1px solid #eee; border-top: 0; padding: 20px; background: white; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('admin_name', 'there')},</p>
-                    <p>You have been invited by <strong>{model.get('inviter_name', 'an administrator')}</strong> to join Compliance Vault Pro as an <strong>Administrator</strong>.</p>
-                    
-                    <p>As an admin, you will have access to:</p>
-                    <ul style="color: #64748b;">
-                        <li>Full system management dashboard</li>
-                        <li>All client accounts and properties</li>
-                        <li>Audit logs and compliance reports</li>
-                        <li>System configuration and settings</li>
-                    </ul>
-                    
-                    <p style="margin: 30px 0;">
-                        <a href="{model.get('setup_link', '#')}" 
-                           style="background-color: #00B8A9; color: white; padding: 14px 28px; 
-                                  text-decoration: none; border-radius: 6px; display: inline-block;
-                                  font-weight: bold;">
-                            Set Up Your Admin Account
-                        </a>
-                    </p>
-                    
-                    <p style="color: #dc2626; font-size: 14px; font-weight: bold;">
-                        ⏰ This invitation expires in 24 hours.
-                    </p>
-                    
-                    <p style="color: #666; font-size: 14px;">
-                        If you did not expect this invitation or have questions, please contact the system administrator.
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            body = "<p>You have been invited by <strong>" + (model.get('inviter_name') or 'an administrator') + "</strong> to join Compliance Vault Pro as an <strong>Administrator</strong>.</p><p>As an admin, you will have access to:</p><ul style=\"color: #64748b;\"><li>Full system management dashboard</li><li>All client accounts and properties</li><li>Audit logs and compliance reports</li><li>System configuration and settings</li></ul><p style=\"color: #dc2626; font-size: 14px; font-weight: bold;\">⏰ This invitation expires in 24 hours.</p><p style=\"color: #666; font-size: 14px;\">If you did not expect this invitation or have questions, please contact the system administrator.</p>"
+            greeting = f"Hello {model.get('admin_name', 'there')},"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Admin Invitation",
+                cta_label="Set Up Your Admin Account",
+                cta_url=model.get('setup_link', '#'),
+                why_received="you were invited by an administrator to join as an admin.",
+                show_preferences_link=False,
+                customer_reference=model.get('customer_reference'),
+            )
         elif template_alias == EmailTemplateAlias.AI_EXTRACTION_APPLIED:
-            # AI extraction applied notification
-            footer = self._build_email_footer(model)
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
-            
             status_color = model.get('status_color', '#22c55e')
             status_icon = "✅" if model.get('requirement_status') == 'COMPLIANT' else "⚠️" if model.get('requirement_status') == 'EXPIRING_SOON' else "❌"
-            
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0; display: inline-block;">🤖 AI Document Analysis Complete</h1>
-                    {ref_badge}
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
+            body = f"""
                     <p>Good news! Our AI has successfully extracted and saved certificate details from your uploaded document.</p>
-                    
                     <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
                         <h3 style="margin: 0 0 15px 0; color: #166534;">📋 Certificate Details Saved</h3>
                         <table style="width: 100%; border-collapse: collapse;">
-                            <tr>
-                                <td style="padding: 8px 0; color: #64748b; width: 140px;">Property:</td>
-                                <td style="padding: 8px 0; font-weight: bold;">{model.get('property_address', 'N/A')}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; color: #64748b;">Document Type:</td>
-                                <td style="padding: 8px 0; font-weight: bold;">{model.get('document_type', 'Certificate')}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; color: #64748b;">Certificate No:</td>
-                                <td style="padding: 8px 0; font-weight: bold; font-family: monospace;">{model.get('certificate_number', 'N/A')}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; color: #64748b;">Expiry Date:</td>
-                                <td style="padding: 8px 0; font-weight: bold;">{model.get('expiry_date', 'N/A')}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; color: #64748b;">Compliance Status:</td>
-                                <td style="padding: 8px 0;">
-                                    <span style="background-color: {status_color}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;">
-                                        {status_icon} {model.get('requirement_status', 'UPDATED')}
-                                    </span>
-                                </td>
-                            </tr>
+                            <tr><td style="padding: 8px 0; color: #64748b; width: 140px;">Property:</td><td style="padding: 8px 0; font-weight: bold;">{model.get('property_address', 'N/A')}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Document Type:</td><td style="padding: 8px 0; font-weight: bold;">{model.get('document_type', 'Certificate')}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Certificate No:</td><td style="padding: 8px 0; font-weight: bold; font-family: monospace;">{model.get('certificate_number', 'N/A')}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Expiry Date:</td><td style="padding: 8px 0; font-weight: bold;">{model.get('expiry_date', 'N/A')}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Compliance Status:</td><td style="padding: 8px 0;"><span style="background-color: {status_color}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;">{status_icon} {model.get('requirement_status', 'UPDATED')}</span></td></tr>
                         </table>
                     </div>
-                    
-                    <p style="color: #64748b; font-size: 14px;">
-                        <strong>What happens next?</strong><br>
-                        • Your compliance dashboard has been updated automatically<br>
-                        • You'll receive reminders before this certificate expires<br>
-                        • You can review or edit these details in your portal
-                    </p>
-                    
-                    <p style="margin: 25px 0;">
-                        <a href="{model.get('portal_link', '#')}" 
-                           style="background-color: #00B8A9; color: white; padding: 12px 24px; 
-                                  text-decoration: none; border-radius: 6px; display: inline-block;">
-                            View in Dashboard
-                        </a>
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+                    <p style="color: #64748b; font-size: 14px;"><strong>What happens next?</strong><br>• Your compliance dashboard has been updated automatically<br>• You'll receive reminders before this certificate expires<br>• You can review or edit these details in your portal</p>"""
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="AI Document Analysis Complete",
+                ref_badge=ref_badge,
+                cta_label="View in Dashboard",
+                cta_url=model.get('portal_link', '#'),
+                why_received="compliance monitoring is enabled and our AI processed your uploaded document.",
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=customer_ref or None,
+            )
         elif template_alias == EmailTemplateAlias.ORDER_DELIVERED:
-            # Order documents delivered notification
-            footer = self._build_email_footer(model)
-            
-            # Build documents list
             documents = model.get('documents', [])
             docs_html = ""
             if documents:
@@ -599,41 +552,21 @@ class EmailService:
                     doc_name = doc if isinstance(doc, str) else doc.get('name', 'Document')
                     docs_html += f"<li style='margin: 5px 0;'>{doc_name}</li>"
                 docs_html += "</ul>"
-            
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0;">📦 Your Documents Are Ready</h1>
-                    <p style="color: #94a3b8; margin: 10px 0 0 0;">Order {model.get('order_reference', '')}</p>
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
-                    <p>Your <strong>{model.get('service_name', 'order')}</strong> is complete and your documents are ready for download!</p>
-                    
-                    <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 20px; margin: 20px 0;">
-                        <p style="margin: 0 0 10px 0; font-weight: bold; color: #166534;">Included Documents:</p>
-                        {docs_html}
-                    </div>
-                    
-                    <p style="margin: 25px 0; text-align: center;">
-                        <a href="{model.get('download_link', '#')}" 
-                           style="background-color: #00B8A9; color: white; padding: 14px 28px; 
-                                  text-decoration: none; border-radius: 6px; display: inline-block;
-                                  font-weight: bold; font-size: 16px;">
-                            Download Documents
-                        </a>
-                    </p>
-                    
-                    <p style="color: #64748b; font-size: 14px; text-align: center;">
-                        Your documents are also available in your <a href="{model.get('portal_link', '#')}" style="color: #00B8A9;">portal dashboard</a>.
-                    </p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            body = f"<p>Your <strong>{model.get('service_name', 'order')}</strong> is complete and your documents are ready for download!</p><div style=\"background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 20px; margin: 20px 0;\"><p style=\"margin: 0 0 10px 0; font-weight: bold; color: #166534;\">Included Documents:</p>{docs_html}</div><p style=\"color: #64748b; font-size: 14px;\">Your documents are also available in your <a href=\"{model.get('portal_link', '#')}\" style=\"color: #00B8A9;\">portal dashboard</a>.</p>"
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Your Documents Are Ready",
+                cta_label="Download Documents",
+                cta_url=model.get('download_link', '#'),
+                why_received="you purchased a document pack and your order is ready.",
+                show_preferences_link=False,
+                customer_reference=model.get('customer_reference'),
+            )
         elif template_alias == EmailTemplateAlias.PENDING_VERIFICATION_DIGEST:
+            # Internal staff digest – do not use customer layout
+            footer = self._build_email_footer(model)
             count_pending = model.get("count_pending", 0)
             count_older_24h = model.get("count_older_24h", 0)
             return f"""
@@ -676,33 +609,28 @@ class EmailService:
                 items = ["<li>No sections enabled in your digest preferences.</li>"]
             list_html = "\n                        ".join(items)
             data_as_of = (model.get("data_as_of") or model.get("period_end") or "").replace("T", " ")[:19]
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0;">Monthly compliance digest</h1>
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Summary for the period (counts only):</p>
-                    <ul>
-                        {list_html}
-                    </ul>
-                    <p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p>
-                    <p style="color: #64748b; font-size: 12px; margin-top: 16px;">Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.</p>
-                </div>
-                {self._build_email_footer(model)}
-            </body>
-            </html>
-            """
+            body = f"<p>Summary for the period (counts only):</p><ul>{list_html}</ul><p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p><p style=\"color: #64748b; font-size: 12px; margin-top: 16px;\">Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.</p>"
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Monthly compliance digest",
+                cta_label="View your dashboard",
+                cta_url=model.get('portal_link', '#'),
+                why_received="you have reporting notifications enabled for your account.",
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=model.get('customer_reference'),
+            )
         elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
-            # Use the dedicated ClearForm method
+            # Use the dedicated ClearForm method (customer-facing but custom layout)
             return self._build_clearform_welcome_html(model)
-        else:
-            # Generic template
+        elif template_alias == EmailTemplateAlias.ADMIN_MANUAL:
+            # Internal/staff template – do not use customer layout. Accept "message" or "body" for content.
+            body_content = model.get("message") or model.get("body") or "You have a new notification from Compliance Vault Pro."
             footer = self._build_email_footer(model)
             customer_ref = model.get('customer_reference', '')
             ref_line = f"<p>Your Reference: <strong>{customer_ref}</strong></p>" if customer_ref else ""
-            
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -712,12 +640,53 @@ class EmailService:
                 <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
                     <p>Hello {model.get('client_name', 'there')},</p>
                     {ref_line}
-                    <p>{model.get('message', 'You have a new notification from Compliance Vault Pro.')}</p>
+                    <p>{body_content}</p>
                 </div>
                 {footer}
             </body>
             </html>
             """
+        elif template_alias == EmailTemplateAlias.INTERNAL_ALERT:
+            from email_templates.internal_alert_layout import build_internal_alert_html
+            return build_internal_alert_html(model)
+        elif template_alias in ONBOARDING_ALIASES:
+            portal_base = (model.get("portal_base_url") or model.get("portal_link") or os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+            c = _get_onboarding_content(template_alias)
+            cta_url = (portal_base + c.get("cta_url_suffix", "/dashboard")) if portal_base else "#"
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            ref_badge = ""
+            if model.get("customer_reference"):
+                ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{model["customer_reference"]}</span></p>'
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=c.get("body", ""),
+                header_title=c.get("header_title", "Compliance Vault Pro"),
+                ref_badge=ref_badge,
+                cta_label=c.get("cta_label"),
+                cta_url=cta_url,
+                why_received=c.get("why_received", "you have an account with Pleerity."),
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=model.get("customer_reference"),
+            )
+        else:
+            # Generic customer-facing (e.g. payment-receipt, payment-failed, renewal-reminder, subscription-canceled)
+            customer_ref = model.get('customer_reference', '')
+            ref_line = f"<p>Your Reference: <strong>{customer_ref}</strong></p>" if customer_ref else ""
+            body = f"{ref_line}<p>{model.get('message', 'You have a new notification from Pleerity.')}</p>"
+            greeting = f"Hello {model.get('client_name', 'there')},"
+            show_prefs = template_alias not in SYSTEM_CRITICAL_ALIASES
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title=model.get('subject', 'Pleerity'),
+                cta_label=model.get('cta_label'),
+                cta_url=model.get('cta_url'),
+                why_received=model.get('why_received', "you have an active account with Pleerity."),
+                show_preferences_link=show_prefs,
+                preferences_url=_notification_preferences_url(model) if show_prefs else None,
+                customer_reference=customer_ref or None,
+            )
     
     def _build_text_footer(self, model: Dict[str, Any]) -> str:
         """Build consistent plain text footer with CRN."""
@@ -761,6 +730,17 @@ You requested a password reset for your Compliance Vault Pro account. Use the li
 Set new password: {model.get('setup_link', '#')}
 
 This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.
+{footer}
+            """
+        elif template_alias == EmailTemplateAlias.PASSWORD_CHANGED_CONFIRMATION:
+            return f"""
+Password changed
+
+Hello {model.get('client_name', 'there')},
+
+Your password was changed successfully. If you did not make this change, please contact support immediately.
+
+View your dashboard: {model.get('portal_link', '#')}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PORTAL_READY:
@@ -997,6 +977,44 @@ Always review the output and seek professional advice for legal matters.
 {model.get('company_name', 'Pleerity Enterprise Ltd')}
 {model.get('tagline', 'AI-Driven Solutions & Compliance')}
             """
+        elif template_alias == EmailTemplateAlias.INTERNAL_ALERT:
+            severity = model.get("severity", "P2")
+            title = model.get("title", "Internal alert")
+            desc = model.get("description", "")
+            action = model.get("suggested_action", "")
+            link = model.get("dashboard_link", "")
+            ts = model.get("timestamp", "")
+            lines = [f"[{severity}] {title}", ""]
+            if desc:
+                lines.append(desc)
+            if action:
+                lines.extend(["", "Suggested action: " + action])
+            if link:
+                lines.extend(["", "View: " + link])
+            if ts:
+                lines.extend(["", str(ts)])
+            return "\n".join(lines) + "\n" + footer
+        elif template_alias in ONBOARDING_ALIASES:
+            c = _get_onboarding_content(template_alias)
+            body_html = c.get("body", "")
+            body_text = body_html.replace("</p>", "\n").replace("<p>", "").replace("<ul>", "\n").replace("</ul>", "").replace("<li>", "• ").replace("</li>", "\n")
+            body_text = html_module.unescape(body_text.strip())
+            portal_base = (model.get("portal_base_url") or model.get("portal_link") or os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+            cta_suffix = c.get("cta_url_suffix", "/dashboard")
+            cta_url = (portal_base + cta_suffix) if portal_base else "#"
+            lines = [
+                c.get("header_title", "Compliance Vault Pro"),
+                ref_line,
+                "",
+                f"Hello {model.get('client_name', 'there')},",
+                "",
+                body_text,
+                "",
+                f"{c.get('cta_label', 'Continue')}: {cta_url}",
+                "",
+                "Why you received this: " + c.get("why_received", "you have an account with Pleerity."),
+            ]
+            return "\n".join(lines) + "\n" + footer
         else:
             return f"""
 Compliance Vault Pro

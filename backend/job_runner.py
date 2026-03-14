@@ -30,6 +30,8 @@ async def run_instrumented(
         OUTCOME_SUCCESS,
         OUTCOME_DEGRADED,
         OUTCOME_FAILED,
+        STATUS_SUCCESS,
+        STATUS_DEGRADED,
     )
     fn = JOB_RUNNERS.get(job_id)
     if not fn:
@@ -61,6 +63,14 @@ async def run_instrumented(
                 outcome_metrics=outcome_metrics,
                 error_message=result.get("error_message"),
             )
+            now_iso = datetime.now(timezone.utc).isoformat()
+            try:
+                from services.incident_recovery import resolve_recovered_incidents_for_job
+                n = await resolve_recovered_incidents_for_job(job_id, now_iso, STATUS_DEGRADED, job_run_id)
+                if n:
+                    logger.info("Incident recovery: resolved %s incident(s) for job %s after degraded run", n, job_id)
+            except Exception as rec_err:
+                logger.warning("Incident recovery after degraded run failed: %s", rec_err)
             return result
         await finish_job_run_success(
             job_run_id,
@@ -68,6 +78,14 @@ async def run_instrumented(
             outcome_status=outcome_status,
             outcome_metrics=outcome_metrics if outcome_metrics else None,
         )
+        now_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            from services.incident_recovery import resolve_recovered_incidents_for_job
+            n = await resolve_recovered_incidents_for_job(job_id, now_iso, STATUS_SUCCESS, job_run_id)
+            if n:
+                logger.info("Incident recovery: resolved %s incident(s) for job %s after success", n, job_id)
+        except Exception as rec_err:
+            logger.warning("Incident recovery after success failed: %s", rec_err)
         return result
     except Exception as e:
         await finish_job_run_failure(
@@ -514,6 +532,25 @@ async def run_checklist_nurture_processing():
         raise
 
 
+async def run_onboarding_sequence_processing():
+    """Process due landlord onboarding sequence emails (queue-based, behaviour-aware)."""
+    try:
+        from services.onboarding_sequence_service import process_onboarding_email_queue
+        result = await process_onboarding_email_queue()
+        sent = result.get("sent", 0)
+        cancelled = result.get("cancelled", 0)
+        skipped = result.get("skipped", 0)
+        return {
+            "message": f"Onboarding sequence: {sent} sent, {cancelled} cancelled, {skipped} skipped",
+            "sent": sent,
+            "cancelled": cancelled,
+            "skipped": skipped,
+        }
+    except Exception as e:
+        logger.error("Onboarding sequence processing failed: %s", e)
+        raise
+
+
 async def run_compliance_recalc_sla_monitor():
     """Compliance recalc SLA: detect stuck PENDING/RUNNING, repeated failures, property pending too long; dedupe alerts, audit, optional email."""
     try:
@@ -856,6 +893,7 @@ JOB_RUNNERS = {
     "lead_followup_processing": run_lead_followup_processing,
     "lead_sla_check": run_lead_sla_check,
     "checklist_nurture_processing": run_checklist_nurture_processing,
+    "onboarding_sequence_processing": run_onboarding_sequence_processing,
     "risk_lead_nurture_processing": run_risk_lead_nurture_processing,
     "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
     "sla_watchdog": run_sla_watchdog,

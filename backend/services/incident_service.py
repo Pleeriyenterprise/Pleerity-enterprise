@@ -142,6 +142,8 @@ async def acknowledge_incident(incident_id: str, acknowledged_by: str, note: Opt
     return result.modified_count > 0
 
 
+RECOVERY_SOURCE_AUTOMATIC = "automatic_job_recovery"
+
 async def resolve_incident(incident_id: str, resolved_by: str, note: Optional[str] = None) -> bool:
     """Mark incident as resolved. Returns True if updated."""
     from bson import ObjectId
@@ -158,6 +160,41 @@ async def resolve_incident(incident_id: str, resolved_by: str, note: Optional[st
         {"_id": oid, "status": {"$in": [STATUS_OPEN, STATUS_ACKNOWLEDGED]}},
         {"$set": update},
     )
+    return result.modified_count > 0
+
+
+async def resolve_incident_auto_recovery(
+    incident_id: str,
+    resolution_note: str,
+    *,
+    recovery_source: str = RECOVERY_SOURCE_AUTOMATIC,
+) -> bool:
+    """
+    Mark incident as resolved by automatic recovery (system).
+    Sets resolved_by to 'system', resolved_at, and metadata.recovery_source + metadata.resolution_notes.
+    Returns True if updated.
+    """
+    from bson import ObjectId
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    try:
+        oid = ObjectId(incident_id)
+    except Exception:
+        return False
+    update = {
+        "status": STATUS_RESOLVED,
+        "resolved_by": "system",
+        "resolved_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+        "metadata.recovery_source": recovery_source,
+        "metadata.resolution_notes": resolution_note,
+    }
+    result = await db[COLLECTION].update_one(
+        {"_id": oid, "status": {"$in": [STATUS_OPEN, STATUS_ACKNOWLEDGED]}},
+        {"$set": update},
+    )
+    if result.modified_count > 0:
+        logger.info("Incident auto-resolved incident_id=%s recovery_source=%s", incident_id, recovery_source)
     return result.modified_count > 0
 
 

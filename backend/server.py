@@ -105,6 +105,7 @@ from job_runner import (
     run_lead_followup_processing,
     run_lead_sla_check,
     run_checklist_nurture_processing,
+    run_onboarding_sequence_processing,
     run_risk_lead_nurture_processing,
     run_notification_failure_spike_monitor,
     run_notification_retry_worker,
@@ -654,6 +655,16 @@ async def lifespan(app: FastAPI):
         name="Risk Lead Nurture (risk-check conversion leads)",
         replace_existing=True,
         args=["risk_lead_nurture_processing"],
+        kwargs={"run_type": "schedule"},
+    )
+    # Landlord onboarding sequence (7-day emails) - every hour
+    scheduler.add_job(
+        "job_runner:run_scheduled_job",
+        CronTrigger(minute=30, timezone=SCHEDULER_TIMEZONE),
+        id="onboarding_sequence_processing",
+        name="Onboarding Sequence (landlord 7-day emails)",
+        replace_existing=True,
+        args=["onboarding_sequence_processing"],
         kwargs={"run_type": "schedule"},
     )
     # Predictive maintenance insights - daily 4:00 AM UTC (warms insights for clients with PREDICTIVE_MAINTENANCE)

@@ -5,7 +5,7 @@ Runs every 10 minutes. Uses job_schedule_registry for single source of truth on 
 import os
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 from database import database
 from services.incident_service import (
@@ -20,8 +20,30 @@ from services.incident_service import (
 from services.job_run_service import COLLECTION as JOB_RUNS_COLLECTION, STATUS_SUCCESS, STATUS_DEGRADED
 from services.job_schedule_registry import CRITICAL_JOB_REGISTRY, HEARTBEAT_STALE_SECONDS
 from services.delivery_reconciliation import RECONCILIATION_JOBS, DELIVERY_UNKNOWN_STALE_HOURS
+from services.internal_alert_registry import (
+    get_alert_config,
+    SCHEDULER_HEARTBEAT_STALE,
+    JOB_MISSED_SLA,
+    JOB_DEGRADED,
+    DELIVERY_UNKNOWN_STALE,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _dashboard_link() -> str:
+    base = (os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+    return f"{base}/admin/observability" if base else ""
+
+
+def _alert_type_from_incident(source: str, title: str) -> str:
+    if source == SOURCE_HEARTBEAT:
+        return SCHEDULER_HEARTBEAT_STALE
+    if source == SOURCE_DELIVERY_UNKNOWN:
+        return DELIVERY_UNKNOWN_STALE
+    if source == SOURCE_JOB_MONITOR:
+        return JOB_DEGRADED if "degraded" in (title or "").lower() else JOB_MISSED_SLA
+    return JOB_MISSED_SLA
 
 # Build from registry: (job_id, expected_min, max_delay_minutes, severity, description)
 def _build_sla_config() -> List[Tuple[str, int, int, str, str]]:
@@ -69,23 +91,57 @@ def _get_admin_alert_emails() -> List[str]:
     return [e.strip() for e in raw.split(",") if e.strip()]
 
 
-async def _send_incident_alert_email(incident_id: str, title: str, description: str, severity: str) -> bool:
-    """Send admin alert email for new incident. Returns True if sent."""
+async def _send_incident_alert_email(
+    incident_id: str,
+    title: str,
+    description: str,
+    severity: str,
+    *,
+    source: str = "",
+    metadata: Optional[Dict[str, Any]] = None,
+    related_job_name: Optional[str] = None,
+) -> bool:
+    """Send structured internal alert email for new incident. Returns True if sent."""
     emails = _get_admin_alert_emails()
     if not emails:
         logger.warning("ADMIN_ALERT_EMAILS / OPS_ALERT_EMAIL not set; SLA incident alert not sent")
         return False
     try:
         from services.notification_orchestrator import notification_orchestrator
-        # Use admin-manual template with subject/body; recipient from env
-        body = f"Incident: {title}\n\n{description}\n\nSeverity: {severity}. View in admin Observability."
-        subject = f"[{severity}] {title}"
+
+        alert_type = _alert_type_from_incident(source, title)
+        config = get_alert_config(alert_type) or {}
+        meta = metadata or {}
+        last_run = meta.get("last_finished_at") or meta.get("last_heartbeat_at")
+        expected_interval = None
+        if meta.get("max_delay_minutes") is not None:
+            expected_interval = f"every {int(meta['max_delay_minutes'])} min"
+        component = config.get("component") or related_job_name or "Monitoring"
+        suggested_action = config.get("suggested_action", "")
+
+        now = datetime.now(timezone.utc)
+        context = {
+            "recipient": "",  # set per recipient below
+            "subject": f"[{severity}] {title}",
+            "severity": severity,
+            "title": title,
+            "description": description,
+            "component": component,
+            "last_successful_run": last_run,
+            "expected_interval": expected_interval,
+            "current_status": description,
+            "possible_impact": config.get("description", description),
+            "suggested_action": suggested_action or "View Observability and resolve the incident.",
+            "dashboard_link": _dashboard_link(),
+            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        }
         idempotency_key = f"SLA_INCIDENT_{incident_id}"
-        for addr in emails[:3]:  # cap at 3 recipients
+        for addr in emails[:3]:
+            context["recipient"] = addr
             result = await notification_orchestrator.send(
-                template_key="ADMIN_MANUAL",
+                template_key="INTERNAL_ALERT",
                 client_id=None,
-                context={"recipient": addr, "subject": subject, "body": body},
+                context=dict(context),
                 idempotency_key=f"{idempotency_key}_{addr}",
                 event_type="sla_incident_alert",
             )
@@ -101,11 +157,23 @@ async def run_sla_watchdog() -> Dict[str, Any]:
     """
     Check: (1) scheduler heartbeat stale -> P1 incident; (2) delivery_unknown stale -> P2 incident;
     (3) each critical job last success; create incident if over max_delay. Dedupe by source/related_job_name.
+    Recovery pass: resolve heartbeat/delivery_unknown incidents when condition is cleared.
     """
     db = database.get_db()
     now = datetime.now(timezone.utc)
     incidents_created = 0
     alerts_sent = 0
+    recovered = 0
+
+    # Recovery pass: resolve incidents whose condition is now cleared (heartbeat fresh, no delivery_unknown stale)
+    try:
+        from services.incident_recovery import check_and_resolve_heartbeat_incidents, check_and_resolve_delivery_unknown_incidents
+        recovered += await check_and_resolve_heartbeat_incidents()
+        recovered += await check_and_resolve_delivery_unknown_incidents()
+        if recovered:
+            logger.info("SLA watchdog recovery pass: resolved %s incident(s)", recovered)
+    except Exception as e:
+        logger.warning("SLA watchdog recovery pass failed: %s", e)
 
     # 1) Heartbeat stale -> P1 incident (scheduler may be down)
     heartbeat_doc = await db.scheduler_heartbeat.find_one({"_id": "default"}, {"_id": 0, "last_heartbeat_at": 1})
@@ -127,10 +195,13 @@ async def run_sla_watchdog() -> Dict[str, Any]:
                 title="Scheduler heartbeat stale",
                 description="The background scheduler has not updated the heartbeat within the expected window. Jobs may not be running. Check server process and logs.",
                 source=SOURCE_HEARTBEAT,
-                metadata={"last_heartbeat_at": str(last_hb)},
+                metadata={"last_heartbeat_at": str(last_hb), "triggering_reason": "heartbeat_stale"},
             )
             incidents_created += 1
-            if await _send_incident_alert_email(incident_id, "Scheduler heartbeat stale", "Scheduler heartbeat is stale; jobs may not be running.", SEVERITY_P1):
+            if await _send_incident_alert_email(
+                incident_id, "Scheduler heartbeat stale", "Scheduler heartbeat is stale; jobs may not be running.", SEVERITY_P1,
+                source=SOURCE_HEARTBEAT, metadata={"last_heartbeat_at": str(last_hb)},
+            ):
                 alerts_sent += 1
 
     # 2) Delivery unknown stale -> P2 incident
@@ -149,10 +220,13 @@ async def run_sla_watchdog() -> Dict[str, Any]:
                 title="Delivery unknown unresolved",
                 description=f"{delivery_stale_count} run(s) still have delivery_unknown beyond {DELIVERY_UNKNOWN_STALE_HOURS}h. Check provider webhooks and Message logs.",
                 source=SOURCE_DELIVERY_UNKNOWN,
-                metadata={"stale_run_count": delivery_stale_count, "stale_hours": DELIVERY_UNKNOWN_STALE_HOURS},
+                metadata={"stale_run_count": delivery_stale_count, "stale_hours": DELIVERY_UNKNOWN_STALE_HOURS, "triggering_reason": "delivery_unknown_stale"},
             )
             incidents_created += 1
-            if await _send_incident_alert_email(incident_id, "Delivery unknown unresolved", f"{delivery_stale_count} runs have delivery_unknown unresolved. Check webhooks.", SEVERITY_P2):
+            if await _send_incident_alert_email(
+                incident_id, "Delivery unknown unresolved", f"{delivery_stale_count} runs have delivery_unknown unresolved. Check webhooks.", SEVERITY_P2,
+                source=SOURCE_DELIVERY_UNKNOWN, metadata={"stale_run_count": delivery_stale_count, "stale_hours": DELIVERY_UNKNOWN_STALE_HOURS},
+            ):
                 alerts_sent += 1
 
     # 3) Per-job SLA (grace period: do not create incident if next run is still in the future)
@@ -180,10 +254,13 @@ async def run_sla_watchdog() -> Dict[str, Any]:
                     description=description + " No successful run found. Job is overdue.",
                     source=SOURCE_JOB_MONITOR,
                     related_job_name=job_name,
-                    metadata={"max_delay_minutes": max_delay_minutes},
+                    metadata={"max_delay_minutes": max_delay_minutes, "triggering_reason": "job_never_succeeded"},
                 )
                 incidents_created += 1
-                if await _send_incident_alert_email(incident_id, f"Job {job_name} has not succeeded", description, severity):
+                if await _send_incident_alert_email(
+                    incident_id, f"Job {job_name} has not succeeded", description, severity,
+                    source=SOURCE_JOB_MONITOR, metadata={"max_delay_minutes": max_delay_minutes}, related_job_name=job_name,
+                ):
                     alerts_sent += 1
             continue
 
@@ -212,10 +289,13 @@ async def run_sla_watchdog() -> Dict[str, Any]:
                         description=f"Job completed but some outputs failed or were skipped. {description} Last run: {finished_str}. Check Automation Centre outcome_metrics.",
                         source=SOURCE_JOB_MONITOR,
                         related_job_name=job_name,
-                        metadata={"last_finished_at": finished_str, "degraded_run": True},
+                        metadata={"last_finished_at": finished_str, "degraded_run": True, "triggering_reason": "degraded_run"},
                     )
                     incidents_created += 1
-                    if await _send_incident_alert_email(incident_id, f"Job {job_name} last run was degraded", f"Job completed with degraded outcome. Last run: {finished_str}. Check outcome_metrics in Automation Centre.", SEVERITY_P2):
+                    if await _send_incident_alert_email(
+                        incident_id, f"Job {job_name} last run was degraded", f"Job completed with degraded outcome. Last run: {finished_str}. Check outcome_metrics in Automation Centre.", SEVERITY_P2,
+                        source=SOURCE_JOB_MONITOR, metadata={"last_finished_at": finished_str, "degraded_run": True}, related_job_name=job_name,
+                    ):
                         alerts_sent += 1
             continue
 
@@ -232,10 +312,18 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             description=description + f" Last success: {finished_str}. Delay: {delay_minutes:.0f} min.",
             source=SOURCE_JOB_MONITOR,
             related_job_name=job_name,
-            metadata={"last_finished_at": finished_str, "delay_minutes": delay_minutes, "max_delay_minutes": max_delay_minutes},
+            metadata={"last_finished_at": finished_str, "delay_minutes": delay_minutes, "max_delay_minutes": max_delay_minutes, "triggering_reason": "missed_sla"},
         )
         incidents_created += 1
-        if await _send_incident_alert_email(incident_id, f"Job {job_name} missed SLA", description, severity):
+        if await _send_incident_alert_email(
+            incident_id, f"Job {job_name} missed SLA", description, severity,
+            source=SOURCE_JOB_MONITOR, metadata={"last_finished_at": finished_str, "delay_minutes": delay_minutes, "max_delay_minutes": max_delay_minutes}, related_job_name=job_name,
+        ):
             alerts_sent += 1
 
-    return {"message": f"SLA watchdog: {incidents_created} incident(s) created, {alerts_sent} alert(s) sent", "incidents_created": incidents_created, "alerts_sent": alerts_sent}
+    return {
+        "message": f"SLA watchdog: {incidents_created} incident(s) created, {alerts_sent} alert(s) sent, {recovered} recovered",
+        "incidents_created": incidents_created,
+        "alerts_sent": alerts_sent,
+        "incidents_recovered": recovered,
+    }

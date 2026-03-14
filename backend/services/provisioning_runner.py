@@ -309,6 +309,13 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
             }
         )
         logger.info("PROVISIONING_COMPLETED job_id=%s client_id=%s", job_id, client_id)
+        try:
+            from services.onboarding_sequence_service import schedule_onboarding_sequence
+            enqueued = await schedule_onboarding_sequence(client_id)
+            if enqueued:
+                logger.info("Onboarding sequence enqueued for client_id=%s (%s emails)", client_id, enqueued)
+        except Exception as onb_err:
+            logger.warning("Onboarding sequence schedule failed for client_id=%s: %s", client_id, onb_err)
     else:
         if act_err:
             set_fields["activation_email_error"] = act_err[:1000]

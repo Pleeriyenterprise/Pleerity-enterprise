@@ -192,6 +192,7 @@ class AuditAction(str, Enum):
     NOTIFICATION_BLOCKED_PROVISIONING_INCOMPLETE = "NOTIFICATION_BLOCKED_PROVISIONING_INCOMPLETE"
     NOTIFICATION_BLOCKED_SUBSCRIPTION_INACTIVE = "NOTIFICATION_BLOCKED_SUBSCRIPTION_INACTIVE"
     NOTIFICATION_BLOCKED_PLAN_GATE = "NOTIFICATION_BLOCKED_PLAN_GATE"
+    NOTIFICATION_BLOCKED_PREFERENCE_DISABLED = "NOTIFICATION_BLOCKED_PREFERENCE_DISABLED"
     NOTIFICATION_PROVIDER_NOT_CONFIGURED = "NOTIFICATION_PROVIDER_NOT_CONFIGURED"
     NOTIFICATION_FAILED_PERMANENT = "NOTIFICATION_FAILED_PERMANENT"
     NOTIFICATION_THROTTLED = "NOTIFICATION_THROTTLED"
@@ -293,6 +294,7 @@ class AuditAction(str, Enum):
 class EmailTemplateAlias(str, Enum):
     PASSWORD_SETUP = "password-setup"
     PASSWORD_RESET = "password-reset"
+    PASSWORD_CHANGED_CONFIRMATION = "password-changed-confirmation"
     PORTAL_READY = "portal-ready"
     MONTHLY_DIGEST = "monthly-digest"
     ADMIN_MANUAL = "admin-manual"
@@ -314,6 +316,16 @@ class EmailTemplateAlias(str, Enum):
     ORDER_CLIENT_INFO_REQUEST = "order-client-info-request"  # Request for client input
     # Admin operational
     PENDING_VERIFICATION_DIGEST = "pending-verification-digest"  # Daily digest of docs awaiting verification (counts only)
+    INTERNAL_ALERT = "internal-alert"  # Structured operational alerts (SLA watchdog, etc.)
+    # Landlord onboarding sequence (7-day behaviour-aware)
+    ONBOARDING_DAY0_WELCOME = "onboarding-day0-welcome"
+    ONBOARDING_DAY1_SETUP_REMINDER = "onboarding-day1-setup-reminder"
+    ONBOARDING_DAY2_COMPLIANCE_EDUCATION = "onboarding-day2-compliance-education"
+    ONBOARDING_DAY3_PRODUCT_VALUE = "onboarding-day3-product-value"
+    ONBOARDING_DAY4_DOCUMENT_PACK_INTRO = "onboarding-day4-document-pack-intro"
+    ONBOARDING_DAY5_RISK_AWARENESS = "onboarding-day5-risk-awareness"
+    ONBOARDING_DAY6_CASE_EXAMPLE = "onboarding-day6-case-example"
+    ONBOARDING_DAY7_ACTIVATION_PUSH = "onboarding-day7-activation-push"
     # ClearForm emails
     CLEARFORM_WELCOME = "clearform-welcome"  # ClearForm account creation
 

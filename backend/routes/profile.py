@@ -34,6 +34,11 @@ class NotificationPreferencesRequest(BaseModel):
     monthly_digest: Optional[bool] = None  # Monthly compliance summary
     document_updates: Optional[bool] = None  # Document notifications
     system_announcements: Optional[bool] = None  # Platform updates
+
+    # Category-based email preferences (unified template system)
+    compliance_notifications_enabled: Optional[bool] = None  # Certificate expiry, compliance alerts
+    reporting_notifications_enabled: Optional[bool] = None  # Scheduled reports, digests, renewal reminders
+    marketing_notifications_enabled: Optional[bool] = None  # Product announcements, promotions
     
     # Timing preferences
     reminder_days_before: Optional[int] = None  # Days before expiry (7, 14, 30, 60)
@@ -103,6 +108,9 @@ async def get_profile(request: Request):
                 "monthly_digest": True,
                 "document_updates": True,
                 "system_announcements": True,
+                "compliance_notifications_enabled": True,
+                "reporting_notifications_enabled": True,
+                "marketing_notifications_enabled": True,
                 "reminder_days_before": 30,
                 "quiet_hours_enabled": False,
                 "quiet_hours_start": "22:00",
@@ -151,6 +159,9 @@ async def get_notification_preferences(request: Request):
             "monthly_digest": True,
             "document_updates": True,
             "system_announcements": True,
+            "compliance_notifications_enabled": True,
+            "reporting_notifications_enabled": True,
+            "marketing_notifications_enabled": True,
             "reminder_days_before": 30,
             "quiet_hours_enabled": False,
             "quiet_hours_start": "22:00",
@@ -255,6 +266,14 @@ async def update_notification_preferences(request: Request, data: NotificationPr
             update_fields["digest_audit_summary"] = data.digest_audit_summary
         if data.daily_reminder_enabled is not None:
             update_fields["daily_reminder_enabled"] = data.daily_reminder_enabled
+
+        # Category-based email preferences
+        if data.compliance_notifications_enabled is not None:
+            update_fields["compliance_notifications_enabled"] = data.compliance_notifications_enabled
+        if data.reporting_notifications_enabled is not None:
+            update_fields["reporting_notifications_enabled"] = data.reporting_notifications_enabled
+        if data.marketing_notifications_enabled is not None:
+            update_fields["marketing_notifications_enabled"] = data.marketing_notifications_enabled
         
         update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
         
@@ -278,6 +297,14 @@ async def update_notification_preferences(request: Request, data: NotificationPr
         )
         
         logger.info(f"Notification preferences updated for client {user['client_id']}")
+
+        # When user enables compliance monitoring, stop any remaining onboarding sequence emails
+        if data.compliance_notifications_enabled is True:
+            try:
+                from services.onboarding_sequence_service import cancel_remaining_onboarding_emails
+                await cancel_remaining_onboarding_emails(user["client_id"])
+            except Exception as cancel_err:
+                logger.warning("Cancel onboarding emails on preference update: %s", cancel_err)
         
         return {"message": "Notification preferences updated successfully", "preferences": update_fields}
     

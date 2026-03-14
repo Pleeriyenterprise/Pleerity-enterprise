@@ -142,12 +142,31 @@ async def get_incidents_list(
 
 
 @router.get("/incidents/{incident_id}")
-async def get_incident_by_id(request: Request, incident_id: str):
-    """Get a single incident. Admin only."""
+async def get_incident_by_id(
+    request: Request,
+    incident_id: str,
+    enrich: bool = Query(True, description="Include recovery_detected and job state (last_success, expected_interval)"),
+):
+    """Get a single incident. Admin only. With enrich=True adds recovery_detected, recovery_hint, last_success, last_failure, expected_interval where applicable."""
     await admin_route_guard(request)
     incident = await get_incident(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
+    if enrich:
+        try:
+            from services.incident_recovery import compute_recovery_state_for_incident
+            state = await compute_recovery_state_for_incident(incident)
+            incident["recovery_detected"] = state.get("recovery_detected", False)
+            incident["recovery_hint"] = state.get("recovery_hint")
+            if state.get("last_success") is not None:
+                incident["last_success"] = state["last_success"]
+            if state.get("last_failure") is not None:
+                incident["last_failure"] = state["last_failure"]
+            if state.get("expected_interval") is not None:
+                incident["expected_interval"] = state["expected_interval"]
+        except Exception:
+            incident["recovery_detected"] = False
+            incident["recovery_hint"] = None
     return incident
 
 
@@ -179,6 +198,40 @@ async def resolve_incident_route(request: Request, incident_id: str, body: Resol
     if not ok:
         raise HTTPException(status_code=404, detail="Incident not found or already resolved")
     return {"success": True, "incident_id": incident_id}
+
+
+@router.post("/incidents/{incident_id}/run-job")
+async def run_job_for_incident(request: Request, incident_id: str):
+    """
+    Run the related background job for a job_monitor incident (recovery/testing).
+    Only for incidents with source=job_monitor and related_job_name in JOB_RUNNERS.
+    Routine jobs normally run on schedule; this is for manual recovery or verification.
+    """
+    user = await admin_route_guard(request)
+    incident = await get_incident(incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    if incident.get("source") != "job_monitor":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Run job is only available for job-related incidents (source=job_monitor)",
+        )
+    job_name = (incident.get("related_job_name") or "").strip()
+    if not job_name:
+        raise HTTPException(status_code=400, detail="Incident has no related_job_name")
+    from job_runner import JOB_RUNNERS, run_instrumented
+    if job_name not in JOB_RUNNERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Job '{job_name}' is not runnable. Use one of: {', '.join(sorted(JOB_RUNNERS.keys())[:10])}...",
+        )
+    try:
+        result = await run_instrumented(job_name, "manual", triggered_by=user.get("portal_user_id"))
+        message = (result.get("message") if result else None) or f"Job {job_name} completed"
+        return {"success": True, "incident_id": incident_id, "job": job_name, "message": message}
+    except Exception as e:
+        logger.exception("Run job for incident %s failed: %s", incident_id, e)
+        raise HTTPException(status_code=500, detail=f"Failed to run job: {job_name}")
 
 
 @router.get("/score-events")
