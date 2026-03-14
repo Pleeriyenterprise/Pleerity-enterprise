@@ -48,8 +48,9 @@ class KitIntegration:
                 }
                 if first_name:
                     payload["first_name"] = first_name
+                # Kit API v4 uses X-Kit-Api-Key header (not Authorization Bearer)
                 headers = {
-                    "Authorization": f"Bearer {self.api_key}",
+                    "X-Kit-Api-Key": self.api_key,
                     "Content-Type": "application/json",
                 }
                 response = await client.post(url, json=payload, headers=headers, timeout=10.0)
@@ -60,7 +61,7 @@ class KitIntegration:
                     logger.info(f"Kit: Subscriber already exists - {email}")
                     return True, None
                 elif response.status_code == 401:
-                    error_msg = "Kit API key invalid or expired. Check KIT_API_KEY in Settings → API."
+                    error_msg = "Kit API key invalid or expired. Create a V4 key in Kit → Account Settings → Developer, set KIT_API_KEY."
                     logger.error(error_msg)
                     return False, error_msg
                 else:
@@ -82,7 +83,7 @@ class KitIntegration:
         try:
             async with httpx.AsyncClient() as client:
                 url = f"{self.base_url}/subscribers"
-                headers = {"Authorization": f"Bearer {self.api_key}"}
+                headers = {"X-Kit-Api-Key": self.api_key}
                 params = {"email_address": email}
                 
                 response = await client.get(url, headers=headers, params=params, timeout=10.0)

@@ -141,10 +141,10 @@ async def subscribe_newsletter(email: str, source: str = "website"):
     
     await db.newsletter_subscribers.insert_one(doc)
     
-    # Audit log
+    # Audit log (unauthenticated public action: actor_role None)
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
-        actor_role="PUBLIC",
+        actor_role=None,
         metadata={
             "action_type": "NEWSLETTER_SUBSCRIBED",
             "email": email,
