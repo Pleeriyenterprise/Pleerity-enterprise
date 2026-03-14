@@ -920,8 +920,8 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
   return (
     <div
-      className={`fixed bottom-24 right-6 bg-white rounded-2xl shadow-2xl z-50 transition-all overflow-hidden ${
-        isMinimized ? 'w-72 h-14' : 'w-96 h-[550px]'
+      className={`fixed bottom-24 right-6 bg-white rounded-2xl shadow-2xl z-50 transition-all overflow-hidden flex flex-col ${
+        isMinimized ? 'w-72 h-14' : 'w-96 h-[550px] max-h-[calc(100vh-6rem)]'
       }`}
       data-testid="support-chat-widget"
     >
@@ -972,9 +972,9 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       </div>
 
       {!isMinimized && (
-        <>
+        <div className="flex flex-col flex-1 min-h-0">
           {/* Tabs */}
-          <div className="flex border-b">
+          <div className="flex border-b shrink-0">
             <button
               onClick={() => setActiveTab('faq')}
               className={`flex-1 py-2 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
@@ -1014,45 +1014,44 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
           {/* Chat Tab Content */}
           {activeTab === 'chat' && (
-            <>
-              {/* Onboarding: 5 options when only welcome is shown (task: exact 5 options) */}
-              {messages.length === 1 && messages[0].sender === 'bot' && (
-                <OnboardingOptionsPanel
-                  options={ONBOARDING_OPTIONS}
-                  onSelect={handleOnboardingSelect}
-                  loading={loading}
-                />
-              )}
-              {/* Quick Actions Panel - after first exchange (support options + Start New Chat) */}
-              {showQuickActions && messages.length > 1 && (
-                <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
-              )}
-              
-              {/* Toggle Quick Actions button */}
-              {messages.length > 1 && !showQuickActions && (
-                <button
-                  onClick={() => setShowQuickActions(true)}
-                  className="w-full px-3 py-2 bg-gray-50 text-xs text-gray-600 hover:bg-gray-100 flex items-center justify-center gap-1 border-b"
-                >
-                  <ChevronDown className="w-3 h-3" />
-                  Show Quick Actions
-                </button>
-              )}
-              
-              {showQuickActions && messages.length > 1 && (
-                <>
+            <div className="flex flex-col flex-1 min-h-0">
+              {/* Scrollable area: onboarding options + messages so nothing is cut off on short viewports */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {/* Onboarding: 5 options when only welcome is shown (task: exact 5 options) */}
+                {messages.length === 1 && messages[0].sender === 'bot' && (
+                  <OnboardingOptionsPanel
+                    options={ONBOARDING_OPTIONS}
+                    onSelect={handleOnboardingSelect}
+                    loading={loading}
+                  />
+                )}
+                {/* Quick Actions Panel - after first exchange (support options + Start New Chat) */}
+                {showQuickActions && messages.length > 1 && (
                   <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
+                )}
+                {messages.length > 1 && !showQuickActions && (
                   <button
-                    onClick={() => setShowQuickActions(false)}
-                    className="w-full px-3 py-1 bg-gray-100 text-xs text-gray-500 hover:bg-gray-200"
+                    onClick={() => setShowQuickActions(true)}
+                    className="w-full px-3 py-2 bg-gray-50 text-xs text-gray-600 hover:bg-gray-100 flex items-center justify-center gap-1 border-b"
                   >
-                    Hide Quick Actions
+                    <ChevronDown className="w-3 h-3" />
+                    Show Quick Actions
                   </button>
-                </>
-              )}
+                )}
+                {showQuickActions && messages.length > 1 && (
+                  <>
+                    <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
+                    <button
+                      onClick={() => setShowQuickActions(false)}
+                      className="w-full px-3 py-1 bg-gray-100 text-xs text-gray-500 hover:bg-gray-200"
+                    >
+                      Hide Quick Actions
+                    </button>
+                  </>
+                )}
 
-          {/* Messages */}
-          <div className={`overflow-y-auto p-4 ${showQuickActions && messages.length <= 1 ? 'h-[280px]' : 'h-[360px]'}`}>
+                {/* Messages */}
+                <div className="p-4 min-h-[280px]">
             {messages.map((msg, idx) => (
               <div key={msg.id}>
                 <MessageBubble
@@ -1139,10 +1138,11 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
             )}
             
             <div ref={messagesEndRef} />
-          </div>
+                </div>
+              </div>
 
-          {/* Input */}
-          <div className="p-3 border-t">
+              {/* Input */}
+              <div className="p-3 border-t shrink-0">
             <div className="flex gap-2">
               <Input
                 value={input}
@@ -1166,10 +1166,10 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
             <p className="text-xs text-gray-400 mt-2 text-center">
               Powered by Pleerity AI • No legal advice
             </p>
-          </div>
-            </>
+              </div>
+            </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
