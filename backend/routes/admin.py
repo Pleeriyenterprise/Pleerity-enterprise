@@ -1489,6 +1489,8 @@ async def resend_password_setup(request: Request, client_id: str):
                 detail={"error_code": "EMAIL_INPUT_INVALID", "message": "Missing setup link"},
             )
         from services.notification_orchestrator import notification_orchestrator
+        # Unique idempotency key per attempt so each resend creates a new message_log (avoid duplicate_ignored from null key collision)
+        idempotency_key = f"admin_resend_welcome_{client_id}_{uuid.uuid4()}"
         try:
             result = await notification_orchestrator.send(
                 template_key="WELCOME_EMAIL",
@@ -1500,7 +1502,7 @@ async def resend_password_setup(request: Request, client_id: str):
                     "company_name": "Pleerity Enterprise Ltd",
                     "tagline": "AI-Driven Solutions & Compliance",
                 },
-                idempotency_key=None,
+                idempotency_key=idempotency_key,
                 event_type="admin_resend",
             )
         except Exception as e:

@@ -118,28 +118,24 @@ async def subscribe_newsletter(email: str, source: str = "website"):
     if existing:
         return {"success": True, "message": "Already subscribed"}
     
-    # Create subscriber
+    # Create subscriber and save to DB first so they always appear in admin dashboard
     sub = NewsletterSubscriber(email=email, source=source)
-    
-    # Sync to Kit
-    from services.kit_integration import kit_integration
-    kit_success, kit_error = await kit_integration.add_subscriber(email, source)
-    
-    # Update sync status
-    if kit_success:
-        sub.kit_sync_status = "SYNCED"
-        sub.kit_synced_at = datetime.now(timezone.utc)
-    else:
-        sub.kit_sync_status = "FAILED"
-        sub.kit_sync_error = kit_error
-    
-    # Save to database regardless of Kit status
     doc = sub.dict()
     for k in ['subscribed_at', 'unsubscribed_at', 'kit_synced_at']:
         if doc.get(k):
             doc[k] = doc[k].isoformat() if hasattr(doc[k], 'isoformat') else doc[k]
-    
     await db.newsletter_subscribers.insert_one(doc)
+
+    # Sync to Kit and update status in DB
+    from services.kit_integration import kit_integration
+    kit_success, kit_error = await kit_integration.add_subscriber(email, source)
+    kit_sync_status = "SYNCED" if kit_success else "FAILED"
+    update = {
+        "kit_sync_status": kit_sync_status,
+        "kit_sync_error": None if kit_success else kit_error,
+        "kit_synced_at": datetime.now(timezone.utc).isoformat() if kit_success else None,
+    }
+    await db.newsletter_subscribers.update_one({"email": email}, {"$set": update})
     
     # Audit log (unauthenticated public action: actor_role None)
     await create_audit_log(
@@ -149,11 +145,11 @@ async def subscribe_newsletter(email: str, source: str = "website"):
             "action_type": "NEWSLETTER_SUBSCRIBED",
             "email": email,
             "source": source,
-            "kit_sync_status": sub.kit_sync_status,
+            "kit_sync_status": kit_sync_status,
         }
     )
     
-    logger.info(f"Newsletter subscription: {email} (source: {source}, Kit: {sub.kit_sync_status})")
+    logger.info(f"Newsletter subscription: {email} (source: {source}, Kit: {kit_sync_status})")
     
     return {"success": True, "message": "Subscribed successfully"}
 
