@@ -905,10 +905,13 @@ async def send_report_email(
     data: List[dict],
     start: datetime,
     end: datetime,
-    schedule_name: str = None
+    schedule_name: str = None,
 ) -> dict:
-    """Generate report and send via NotificationOrchestrator with attachment."""
+    """Generate report and send via NotificationOrchestrator with attachment.
+    Uses canonical customer email layout (build_customer_email_layout) so manual runs
+    match the scheduled-report job layout."""
     from services.notification_orchestrator import notification_orchestrator
+    from email_templates.email_layout import build_customer_email_layout
     import base64
     # Generate file attachment
     if format == "xlsx":
@@ -929,14 +932,11 @@ async def send_report_email(
     
     filename = f"{report_type}_report_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.{extension}"
     
-    # Build email body
     period_str = f"{start.strftime('%d %b %Y')} - {end.strftime('%d %b %Y')}"
     subject = f"{'[' + schedule_name + '] ' if schedule_name else ''}{report_type.title()} Report - {period_str}"
-    
-    html_body = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; color: #333;">
-        <h2 style="color: #1E3A5F;">Your Report is Ready</h2>
+    generated_utc = now_utc().strftime('%d %b %Y %H:%M:%S') + " UTC"
+
+    inner_html = f"""
         <p>Please find attached your <strong>{report_type.title()} Report</strong>.</p>
         <table style="border-collapse: collapse; margin: 20px 0;">
             <tr>
@@ -957,30 +957,35 @@ async def send_report_email(
             </tr>
             <tr>
                 <td style="padding: 8px 16px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Generated</strong></td>
-                <td style="padding: 8px 16px; border: 1px solid #ddd;">{now_utc().strftime('%d %b %Y %H:%M:%S')} UTC</td>
+                <td style="padding: 8px 16px; border: 1px solid #ddd;">{generated_utc}</td>
             </tr>
         </table>
         <p style="color: #666; font-size: 12px;">
-            This is an automated report from Pleerity Enterprise Ltd. 
+            This is an automated report from Pleerity Enterprise Ltd.
             If you no longer wish to receive these reports, please update your schedule settings.
-        </p>
-    </body>
-    </html>
-    """
-    
-    text_body = f"""
-Your Report is Ready
+        </p>"""
+    portal_url = (os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/") or "#"
+    html_body = build_customer_email_layout(
+        greeting="Hello,",
+        body_html=inner_html,
+        header_title="Your Report is Ready",
+        cta_label="View your dashboard",
+        cta_url=portal_url,
+        why_received="you have scheduled reports enabled for your account.",
+        show_preferences_link=True,
+        preferences_url=None,
+    )
+    text_body = f"""Your Report is Ready
 
 Report Type: {report_type.title()}
 Period: {period_str}
 Total Records: {len(data):,}
 Format: {format.upper()}
-Generated: {now_utc().strftime('%d %b %Y %H:%M:%S')} UTC
+Generated: {generated_utc}
 
 Please find the report attached to this email.
 
-This is an automated report from Pleerity Enterprise Ltd.
-    """
+This is an automated report from Pleerity Enterprise Ltd."""
     
     results = []
     attachments = [{"Name": filename, "Content": base64.b64encode(file_content).decode("utf-8"), "ContentType": content_type}]
@@ -994,6 +999,7 @@ This is an automated report from Pleerity Enterprise Ltd.
                     "recipient": recipient,
                     "subject": subject,
                     "message": html_body,
+                    "text_message": text_body,
                     "attachments": attachments,
                 },
                 idempotency_key=idempotency_key,

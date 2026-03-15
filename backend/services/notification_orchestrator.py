@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import random
 import uuid
 from dataclasses import dataclass, field
@@ -18,6 +19,16 @@ from models import AuditAction
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_html_to_text(html: str) -> str:
+    """Crude HTML strip for plain-text fallback (e.g. scheduled-report message)."""
+    if not html:
+        return ""
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:5000] if len(text) > 5000 else text
+
 
 DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
 POSTMARK_MESSAGE_STREAM = os.getenv("POSTMARK_MESSAGE_STREAM", "outbound").strip() or "outbound"
@@ -277,6 +288,7 @@ class NotificationOrchestrator:
             return block_result
 
         # Category-based preference check (email only; system_critical and internal always sent)
+        # When client_id is None (e.g. lead emails), we do not block on preferences; lead consent is enforced at sequence level.
         if channel == "EMAIL" and client_id:
             category = template.get("email_category")
             if category and category not in ("system_critical", "internal"):
@@ -288,6 +300,8 @@ class NotificationOrchestrator:
                     allowed = prefs.get("reporting_notifications_enabled", True)
                 elif category == "marketing_notifications":
                     allowed = prefs.get("marketing_notifications_enabled", True)
+                elif category == "lead_nurture":
+                    allowed = prefs.get("lead_nurture_enabled", True)
                 if not allowed:
                     await self._write_blocked_log(
                         db, client_id, template_key, channel, "BLOCKED_PREFERENCE_DISABLED", None, idempotency_key, context, event_type,
@@ -628,6 +642,22 @@ class NotificationOrchestrator:
         from models import EmailTemplateAlias
         alias_map = {a.value: a for a in EmailTemplateAlias}
         alias = alias_map.get(alias_str)
+        # scheduled-report: always use code-built layout (job path has report_rows; manual path passes pre-built message).
+        # This avoids stale DB email_templates overriding the canonical layout.
+        if alias_str == "scheduled-report":
+            if context.get("report_rows") is not None:
+                from services.email_service import EmailService
+                svc = EmailService()
+                model = context or {}
+                html = svc._build_html_body(EmailTemplateAlias.SCHEDULED_REPORT, model)
+                text = svc._build_text_body(EmailTemplateAlias.SCHEDULED_REPORT, model)
+                subj = (context.get("subject") or default_subject)
+                return html, text, subj
+            if context.get("message"):
+                html = str(context["message"])
+                text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
+                subj = (context.get("subject") or default_subject)
+                return html, text, subj
         db_template = await db.email_templates.find_one({"alias": alias_str, "is_active": True}, {"_id": 0})
         if db_template:
             html = db_template.get("html_body", "")
