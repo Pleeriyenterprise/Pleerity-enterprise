@@ -389,7 +389,7 @@ export function UpgradeRequired({
         <div className="flex justify-center">
           <Button
             variant="outline"
-            onClick={() => navigate('/app/dashboard')}
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
             data-testid="upgrade-required-back"
           >
             Back to Dashboard

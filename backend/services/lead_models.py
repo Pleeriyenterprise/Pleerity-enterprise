@@ -34,6 +34,12 @@ class LeadSourcePlatform(str, Enum):
     IMPORT = "IMPORT"
     REFERRAL = "REFERRAL"
     COMPLIANCE_CHECKLIST = "COMPLIANCE_CHECKLIST"  # Lead magnet: UK Landlord Compliance Master Checklist
+    # Unified lead engine sources
+    COMPLIANCE_RISK_CHECK = "COMPLIANCE_RISK_CHECK"  # Full risk check report (risk_leads sync)
+    PRICING_PAGE = "PRICING_PAGE"
+    AUTOMATION_ENQUIRY = "AUTOMATION_ENQUIRY"
+    MARKET_RESEARCH_ENQUIRY = "MARKET_RESEARCH_ENQUIRY"
+    SUPPORT_FORM = "SUPPORT_FORM"
 
 
 class LeadServiceInterest(str, Enum):
@@ -59,10 +65,13 @@ class LeadStage(str, Enum):
     NEW = "NEW"
     CONTACTED = "CONTACTED"
     QUALIFIED = "QUALIFIED"
+    NURTURING = "NURTURING"   # In nurture sequence
+    SALES_READY = "SALES_READY"
     PROPOSAL_SENT = "PROPOSAL_SENT"
     NEGOTIATING = "NEGOTIATING"
     WON = "WON"  # Converted to Client
     LOST = "LOST"
+    INACTIVE = "INACTIVE"
 
 
 class LeadStatus(str, Enum):
@@ -94,16 +103,27 @@ class LeadCreateRequest(BaseModel):
     
     # Contact info
     name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     company_name: Optional[str] = None
+    
+    # Qualification (unified lead engine)
+    user_type: Optional[str] = None  # e.g. landlord, agent
+    portfolio_size: Optional[int] = None
+    primary_interest: Optional[str] = None
+    secondary_interest: Optional[str] = None
+    risk_score: Optional[int] = None
+    risk_level: Optional[str] = None  # HIGH, MODERATE, LOW
     
     # Context
     message_summary: Optional[str] = None
     conversation_id: Optional[str] = None  # Link to support conversation
     intake_draft_id: Optional[str] = None  # Link to abandoned intake
     
-    # Source metadata (for social integrations)
+    # Source metadata (for social integrations and risk_check)
     source_metadata: Optional[Dict[str, Any]] = None
     
     # UTM tracking
@@ -119,6 +139,7 @@ class LeadCreateRequest(BaseModel):
     
     # Manual scoring override
     intent_score: Optional[LeadIntentScore] = None
+    lead_score: Optional[int] = None  # 0-100 numeric score
     
     # Admin notes
     admin_notes: Optional[str] = None
@@ -127,12 +148,22 @@ class LeadCreateRequest(BaseModel):
 class LeadUpdateRequest(BaseModel):
     """Request to update a lead."""
     name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     company_name: Optional[str] = None
+    user_type: Optional[str] = None
+    portfolio_size: Optional[int] = None
+    primary_interest: Optional[str] = None
+    secondary_interest: Optional[str] = None
+    risk_score: Optional[int] = None
+    risk_level: Optional[str] = None
     service_interest: Optional[LeadServiceInterest] = None
     message_summary: Optional[str] = None
     intent_score: Optional[LeadIntentScore] = None
+    lead_score: Optional[int] = None
     stage: Optional[LeadStage] = None
     assigned_to: Optional[str] = None
     admin_notes: Optional[str] = None
@@ -164,6 +195,17 @@ FOLLOWUP_SEQUENCE = [
     },
 ]
 
+# Default day-based nurture (task example: day0 welcome → day15 conversion CTA). Used for leads without type-specific sequence.
+DEFAULT_DAY_NURTURE_SEQUENCE = [
+    {"step": 1, "delay_days": 0, "template_id": "nurture_day0_welcome", "subject": "Welcome to Pleerity"},
+    {"step": 2, "delay_days": 2, "template_id": "nurture_day2_compliance_education", "subject": "Quick guide to landlord compliance"},
+    {"step": 3, "delay_days": 4, "template_id": "nurture_day4_compliance_mistakes", "subject": "The most commonly missed landlord deadline"},
+    {"step": 4, "delay_days": 6, "template_id": "nurture_day6_automation_benefits", "subject": "How portfolio landlords reduce compliance stress"},
+    {"step": 5, "delay_days": 8, "template_id": "nurture_day8_document_pack", "subject": "Introducing our document packs"},
+    {"step": 6, "delay_days": 12, "template_id": "nurture_day12_case_example", "subject": "How other landlords stay on top of compliance"},
+    {"step": 7, "delay_days": 15, "template_id": "nurture_day15_conversion_cta", "subject": "Ready to centralise your compliance?"},
+]
+
 # Specific sequence for abandoned intake
 ABANDONED_INTAKE_SEQUENCE = [
     {
@@ -192,7 +234,7 @@ ABANDONED_INTAKE_SEQUENCE = [
 # ============================================================================
 
 class LeadAuditEvent(str, Enum):
-    """Lead-related audit event types."""
+    """Lead-related audit event types (also used as activity_type for timeline)."""
     LEAD_CREATED = "LEAD_CREATED"
     LEAD_UPDATED = "LEAD_UPDATED"
     LEAD_ASSIGNED = "LEAD_ASSIGNED"
@@ -207,3 +249,10 @@ class LeadAuditEvent(str, Enum):
     FOLLOWUP_STOPPED = "FOLLOWUP_STOPPED"
     MARKETING_CONSENT_UPDATED = "MARKETING_CONSENT_UPDATED"
     SLA_BREACH = "SLA_BREACH"
+    # Unified lead engine activity types
+    RISK_CHECK_COMPLETED = "RISK_CHECK_COMPLETED"
+    CHATBOT_CAPTURE = "CHATBOT_CAPTURE"
+    PRICING_REQUESTED = "PRICING_REQUESTED"
+    NURTURE_STARTED = "NURTURE_STARTED"
+    CTA_CLICKED = "CTA_CLICKED"
+    LEAD_SCORE_UPDATED = "LEAD_SCORE_UPDATED"

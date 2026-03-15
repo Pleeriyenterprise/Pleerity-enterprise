@@ -60,9 +60,9 @@ const TenantPropertyDetailPage = () => {
   if (error || !data) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <Button variant="outline" onClick={() => navigate('/tenant/properties')} className="mb-4">
+        <Button variant="outline" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/tenant/properties'))} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to properties
+          Back
         </Button>
         <p className="text-red-600" data-testid="tenant-property-detail-error">{error || 'Not found'}</p>
       </div>
@@ -73,9 +73,9 @@ const TenantPropertyDetailPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="tenant-property-detail-page">
-      <Button variant="ghost" onClick={() => navigate('/tenant/properties')} className="mb-6 -ml-2">
+      <Button variant="ghost" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/tenant/properties'))} className="mb-6 -ml-2">
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to properties
+        Back
       </Button>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-xl font-bold text-midnight-blue flex items-center gap-2">

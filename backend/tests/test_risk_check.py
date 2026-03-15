@@ -63,12 +63,28 @@ def test_preview_missing_required_returns_422(client):
     assert response.status_code == 422
 
 
+def _central_lead_from_report():
+    """Minimal central lead dict as returned by create_lead for risk-check sync."""
+    return {
+        "lead_id": "LEAD-riskcheck123",
+        "email": "test-risk@example.com",
+        "name": "Test",
+        "first_name": "Test",
+        "risk_score": 45,
+        "risk_band": "MODERATE",
+        "source_platform": "COMPLIANCE_RISK_CHECK",
+    }
+
+
 @patch("routes.risk_check.database.get_db")
-@patch("routes.risk_check._send_risk_report_email", new_callable=AsyncMock, return_value=True)
-def test_report_returns_200_and_lead_id(mock_send, mock_get_db, client):
-    """Report returns 200 and includes lead_id; email send is invoked. Mock DB when None."""
+@patch("services.lead_followup_service.LeadFollowUpService.send_risk_check_completed_transactional", new_callable=AsyncMock, return_value=True)
+@patch("services.lead_service.LeadService.create_lead", new_callable=AsyncMock, return_value=None)
+def test_report_returns_200_and_lead_id(mock_create_lead, mock_send_transactional, mock_get_db, client):
+    """Report returns 200 and includes lead_id; when sync succeeds, transactional is sent from lead engine."""
+    mock_create_lead.return_value = _central_lead_from_report()
     mock_get_db.return_value = _mock_db()
-    response = client.post("/api/risk-check/report", json=VALID_REPORT_BODY)
+    with patch("utils.public_app_url.get_public_app_url", return_value="https://app.example.com"):
+        response = client.post("/api/risk-check/report", json=VALID_REPORT_BODY)
     assert response.status_code == 200
     data = response.json()
     assert "lead_id" in data
@@ -76,10 +92,44 @@ def test_report_returns_200_and_lead_id(mock_send, mock_get_db, client):
     assert data.get("recommended_plan_code") in ("PLAN_1_SOLO", "PLAN_2_PORTFOLIO", "PLAN_3_PRO")
     assert "score" in data
     assert "risk_band" in data
-    mock_send.assert_called_once()
-    call_args = mock_send.call_args[0][0]
-    assert call_args.get("email") == "test-risk@example.com"
-    assert call_args.get("first_name") == "Test"
+    mock_create_lead.assert_called_once()
+    mock_send_transactional.assert_called_once()
+    call_lead, call_url = mock_send_transactional.call_args[0]
+    assert call_lead.get("email") == "test-risk@example.com"
+    assert "lead_token=" in call_url
+
+
+@patch("services.lead_followup_service.LeadFollowUpService.send_risk_check_completed_transactional", new_callable=AsyncMock, return_value=True)
+@patch("services.lead_service.LeadService.create_lead", new_callable=AsyncMock, return_value={"lead_id": "LEAD-sync", "email": "test-risk@example.com", "name": "Test", "risk_score": 50, "risk_band": "MODERATE"})
+@patch("routes.risk_check.database.get_db")
+def test_report_syncs_to_central_leads(mock_get_db, mock_create_lead, mock_send_transactional, client):
+    """Report syncs to central leads with COMPLIANCE_RISK_CHECK; then sends one transactional from lead engine."""
+    mock_get_db.return_value = _mock_db()
+    with patch("utils.public_app_url.get_public_app_url", return_value="https://app.example.com"):
+        response = client.post("/api/risk-check/report", json=VALID_REPORT_BODY)
+    assert response.status_code == 200
+    mock_create_lead.assert_called_once()
+    call_kw = mock_create_lead.call_args.kwargs
+    assert call_kw.get("upsert_by_email") is True
+    req = call_kw["request"]
+    assert req.source_platform.value == "COMPLIANCE_RISK_CHECK"
+    assert req.email == "test-risk@example.com"
+    assert req.first_name == "Test"
+    assert req.portfolio_size == 2
+    mock_send_transactional.assert_called_once()
+    assert mock_send_transactional.call_args[0][0].get("email") == "test-risk@example.com"
+
+
+@patch("services.lead_followup_service.LeadFollowUpService.send_risk_check_completed_transactional", new_callable=AsyncMock)
+@patch("services.lead_service.LeadService.create_lead", new_callable=AsyncMock, return_value=None)
+@patch("routes.risk_check.database.get_db")
+def test_report_when_sync_fails_no_transactional_sent(mock_get_db, mock_create_lead, mock_send_transactional, client):
+    """When create_lead returns None (sync fails), send_risk_check_completed_transactional is not called."""
+    mock_get_db.return_value = _mock_db()
+    response = client.post("/api/risk-check/report", json=VALID_REPORT_BODY)
+    assert response.status_code == 200
+    mock_create_lead.assert_called_once()
+    mock_send_transactional.assert_not_called()
 
 
 def test_report_missing_required_returns_422(client):
@@ -91,24 +141,33 @@ def test_report_missing_required_returns_422(client):
     assert r2.status_code == 422
 
 
+@patch("services.lead_followup_service.LeadFollowUpService.send_risk_check_completed_transactional", new_callable=AsyncMock, return_value=True)
+@patch("services.lead_service.LeadService.create_lead", new_callable=AsyncMock, return_value=None)
 @patch("routes.risk_check.database.get_db")
-def test_score_in_valid_range(mock_get_db, client):
-    """Report score is in 0–100. Mock DB for report."""
+def test_score_in_valid_range(mock_get_db, mock_create_lead, mock_send_transactional, client):
+    """Report score is in 0–100. Mock DB and lead sync for report."""
+    mock_create_lead.return_value = _central_lead_from_report()
     mock_get_db.return_value = _mock_db()
-    with patch("routes.risk_check._send_risk_report_email", new_callable=AsyncMock, return_value=True):
+    with patch("utils.public_app_url.get_public_app_url", return_value="https://app.example.com"):
         r2 = client.post("/api/risk-check/report", json=VALID_REPORT_BODY)
     assert r2.status_code == 200
     assert 0 <= r2.json()["score"] <= 100
 
 
+@patch("services.lead_followup_service.LeadFollowUpService.send_risk_check_completed_transactional", new_callable=AsyncMock, return_value=True)
+@patch("services.lead_service.LeadService.create_lead", new_callable=AsyncMock, return_value=None)
 @patch("routes.risk_check.database.get_db")
-@patch("routes.risk_check._send_risk_report_email", new_callable=AsyncMock, return_value=True)
-def test_report_does_not_create_client(mock_send, mock_get_db, client):
-    """Report creates/updates lead only; no Client creation (writes go to risk_leads only)."""
+def test_report_does_not_create_client(mock_get_db, mock_create_lead, mock_send_transactional, client):
+    """Report creates risk_lead and central lead; sends one transactional; no Client creation."""
+    mock_create_lead.return_value = _central_lead_from_report()
     mock_get_db.return_value = _mock_db()
-    # find_one returns None => new lead => insert_one called
-    client.post("/api/risk-check/report", json=VALID_REPORT_BODY)
-    mock_get_db.return_value.insert_one.assert_called_once()
+    with patch("utils.public_app_url.get_public_app_url", return_value="https://app.example.com"):
+        client.post("/api/risk-check/report", json=VALID_REPORT_BODY)
+    calls = mock_get_db.return_value.insert_one.call_args_list
+    assert len(calls) >= 1
+    first_doc = calls[0][0][0]
+    assert first_doc.get("lead_id", "").startswith("RISK-")
+    mock_send_transactional.assert_called_once()
 
 
 @patch("routes.risk_check.database.get_db")

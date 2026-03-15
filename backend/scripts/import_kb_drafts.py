@@ -109,7 +109,7 @@ async def main():
 
     await __import__("database").database.connect()
     db = __import__("database").database.get_db()
-    if not db:
+    if db is None:
         print("Database not connected.")
         return
 

@@ -4,7 +4,7 @@ slug: getting-started
 audience: USER
 category_id: getting-started
 module: Dashboard
-excerpt: First steps after you log in: where to go, what to do first, and how to stay on top of compliance.
+excerpt: "First steps after you log in: where to go, what to do first, and how to stay on top of compliance."
 tags: getting started, onboarding, first steps, dashboard
 status: draft
 ---

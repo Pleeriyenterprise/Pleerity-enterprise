@@ -252,6 +252,16 @@ class Database:
             await self.db.risk_leads.create_index("email")
             await self.db.risk_leads.create_index("risk_band")
             await self.db.risk_leads.create_index("status")
+            # Central leads (unified lead engine)
+            await self.db.leads.create_index("lead_id", unique=True)
+            await self.db.leads.create_index("email")
+            await self.db.leads.create_index("created_at")
+            await self.db.leads.create_index("last_activity_at")
+            await self.db.leads.create_index([("status", 1), ("stage", 1)])
+            await self.db.leads.create_index("source_platform")
+            await self.db.leads.create_index("lead_score")
+            await self.db.lead_audit_logs.create_index("lead_id")
+            await self.db.lead_audit_logs.create_index("created_at")
             # Tenant portal: messages and certificate requests (landlord notification flow)
             await self.db.tenant_messages.create_index([("client_id", 1), ("created_at", -1)])
             await self.db.tenant_messages.create_index("message_id", unique=True)
@@ -260,9 +270,15 @@ class Database:
             await self.db.tenant_requests.create_index([("client_id", 1), ("status", 1)])
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored.
-            # If the collection has a legacy unique index on (phone_e164, purpose), drop it:
-            #   db.otp_codes.dropIndex("phone_e164_1_purpose_1")
-            # Otherwise upserts can raise DuplicateKeyError when phone_e164 is absent (null).
+            # Drop legacy unique index (phone_e164, purpose) if present; it causes DuplicateKeyError
+            # when upserting by phone_hash only (doc has no phone_e164, so multiple docs look like duplicate null).
+            try:
+                async for idx in self.db.otp_codes.list_indexes():
+                    if idx.get("name") == "phone_e164_1_purpose_1":
+                        await self.db.otp_codes.drop_index("phone_e164_1_purpose_1")
+                        break
+            except Exception:
+                pass
             try:
                 await self.db.otp_codes.create_index(
                     [("phone_hash", 1), ("purpose", 1)],
@@ -463,7 +479,8 @@ class Database:
             {"template_key": "SUPPORT_TICKET_CONFIRMATION", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
             {"template_key": "SUPPORT_INTERNAL_NOTIFICATION", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
             {"template_key": "LEAD_MANUAL_MESSAGE", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
-            {"template_key": "LEAD_FOLLOWUP", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
+            {"template_key": "LEAD_FOLLOWUP", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "lead_nurture", "is_active": True, "updated_at": now},
+            {"template_key": "LEAD_TRANSACTIONAL_RISK_CHECK_COMPLETED", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "lead_nurture", "is_active": True, "updated_at": now},
             {"template_key": "LEAD_SLA_BREACH_ADMIN", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
             {"template_key": "LEAD_HIGH_INTENT_ADMIN", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
             {"template_key": "COMPLIANCE_SLA_ALERT", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},

@@ -179,6 +179,33 @@ async def submit_contact_form(submission: ContactSubmission, request: Request):
             from utils.submission_utils import notify_admin_new_submission
             summary = f"{submission.full_name} &lt;{submission.email}&gt; – {submission.subject}"
             await notify_admin_new_submission("contact", submission_id, summary)
+            # Sync to unified leads collection (CONTACT_FORM or SUPPORT_FORM by reason)
+            try:
+                from services.lead_service import LeadService
+                from services.lead_models import LeadCreateRequest, LeadSourcePlatform, LeadServiceInterest
+                is_support = (submission.contact_reason or "").strip().lower() == "support"
+                lead_request = LeadCreateRequest(
+                    source_platform=LeadSourcePlatform.SUPPORT_FORM if is_support else LeadSourcePlatform.CONTACT_FORM,
+                    service_interest=LeadServiceInterest.UNKNOWN,
+                    name=submission.full_name[:MAX_NAME_LENGTH],
+                    email=submission.email,
+                    phone=submission.phone,
+                    company_name=submission.company_name,
+                    message_summary=f"{submission.subject}: {submission.message[:500]}",
+                    marketing_consent=submission.marketing_opt_in,
+                    utm_source=submission.utm_source,
+                    utm_medium=submission.utm_medium,
+                    utm_campaign=submission.utm_campaign,
+                    source_metadata={"contact_submission_id": submission_id, "contact_reason": submission.contact_reason},
+                )
+                await LeadService.create_lead(
+                    request=lead_request,
+                    actor_id="public_contact",
+                    actor_type="system",
+                    upsert_by_email=True,
+                )
+            except Exception as lead_err:
+                logger.warning("Contact sync to leads failed: %s", lead_err)
         return {
             "ok": True,
             "submission_id": submission_id,

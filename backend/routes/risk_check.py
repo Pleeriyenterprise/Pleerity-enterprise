@@ -175,19 +175,56 @@ async def risk_check_report(body: RiskCheckReportRequest, request: Request):
         await db[COLLECTION].insert_one(doc)
 
     activation_token = create_lead_token(lead_id)
-    sent = await _send_risk_report_email(doc, activation_token)
-    if sent:
-        await db[COLLECTION].update_one(
-            {"lead_id": lead_id},
-            {
-                "$set": {
-                    "email_sequence_step": 1,
-                    "last_email_sent_at": now_iso,
-                    "last_activation_link_sent_at": now_iso,
-                    "status": "nurture_started",
-                }
-            },
+
+    # Sync to central leads first; send single transactional from lead engine (no duplicate with risk_lead_email_service)
+    central_lead = None
+    try:
+        from services.lead_service import LeadService
+        from services.lead_followup_service import LeadFollowUpService
+        from services.lead_models import LeadCreateRequest, LeadSourcePlatform, LeadServiceInterest
+        from utils.public_app_url import get_public_app_url
+        risk_level = result.get("risk_band", "").upper()
+        lead_request = LeadCreateRequest(
+            source_platform=LeadSourcePlatform.COMPLIANCE_RISK_CHECK,
+            service_interest=LeadServiceInterest.CVP,
+            first_name=(body.first_name or "").strip() or None,
+            email=body.email,
+            portfolio_size=body.property_count,
+            risk_score=result.get("score"),
+            risk_level=risk_level if risk_level in ("HIGH", "MODERATE", "LOW") else None,
+            source_metadata={"risk_lead_id": lead_id, "risk_band": result.get("risk_band"), "flags_count": len(result.get("flags", []))},
+            marketing_consent=False,
+            utm_source=body.utm_source,
+            utm_medium=body.utm_medium,
+            utm_campaign=body.utm_campaign,
         )
+        central_lead = await LeadService.create_lead(
+            request=lead_request,
+            actor_id="risk_check",
+            actor_type="system",
+            upsert_by_email=True,
+        )
+        if central_lead:
+            try:
+                base = get_public_app_url(for_email_links=True).rstrip("/")
+            except ValueError:
+                base = (os.environ.get("FRONTEND_URL") or os.environ.get("FRONTEND_PUBLIC_URL") or "").strip().rstrip("/") or "http://localhost:3000"
+            activation_url = f"{base}/intake/start?lead_token={(activation_token or '').strip()}"
+            sent = await LeadFollowUpService.send_risk_check_completed_transactional(central_lead, activation_url)
+            if sent:
+                await db[COLLECTION].update_one(
+                    {"lead_id": lead_id},
+                    {
+                        "$set": {
+                            "email_sequence_step": 1,
+                            "last_email_sent_at": now_iso,
+                            "last_activation_link_sent_at": now_iso,
+                            "status": "nurture_started",
+                        }
+                    },
+                )
+    except Exception as e:
+        logger.warning("Sync risk_check to leads or send transactional failed: %s", e)
 
     # Simulated property breakdown for frontend
     property_breakdown = simulated_property_breakdown(

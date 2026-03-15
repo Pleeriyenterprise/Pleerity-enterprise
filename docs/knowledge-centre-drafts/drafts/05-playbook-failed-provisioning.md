@@ -4,7 +4,7 @@ slug: playbook-failed-provisioning
 audience: ADMIN
 category_id: operations-playbooks
 module: Provisioning
-excerpt: What to do when a client's provisioning has failed or is stuck: how to check status, when to resend activation, and when to escalate.
+excerpt: "What to do when a client's provisioning has failed or is stuck: how to check status, when to resend activation, and when to escalate."
 tags: playbook, provisioning, onboarding, recovery, failure
 status: draft
 ---

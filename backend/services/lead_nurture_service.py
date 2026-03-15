@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 LEADS_COLLECTION = "leads"
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+BACKEND_BASE_URL = (os.environ.get("BACKEND_URL") or os.environ.get("API_URL") or "http://localhost:8000").rstrip("/")
 UNSUBSCRIBE_URL = os.environ.get("UNSUBSCRIBE_URL", "http://localhost:3000/unsubscribe")
 COMPANY_FOOTER = os.environ.get(
     "COMPANY_ADDRESS_FOOTER",
@@ -168,6 +169,8 @@ async def send_nurture_email(
         return False, "Invalid template index"
     subject = NURTURE_TEMPLATES[template_index]["subject"]
     body_html = _markdown_to_html(_render_nurture_body(lead, template_index))
+    track_open_url = f"{BACKEND_BASE_URL}/api/leads/track-open?lead_id={lead['lead_id']}"
+    body_html += f'<img src="{track_open_url}" width="1" height="1" alt="" style="display:block" />'
     try:
         from services.notification_orchestrator import notification_orchestrator
         now = datetime.now(timezone.utc)

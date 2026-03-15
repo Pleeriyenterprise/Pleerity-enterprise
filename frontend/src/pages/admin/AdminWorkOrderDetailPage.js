@@ -107,7 +107,7 @@ export default function AdminWorkOrderDetailPage() {
     return (
       <UnifiedAdminLayout>
         <div className="p-6">
-          <Button variant="outline" onClick={() => navigate('/admin/ops/maintenance')}>
+          <Button variant="outline" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/ops/maintenance'))}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Maintenance
           </Button>
@@ -122,7 +122,7 @@ export default function AdminWorkOrderDetailPage() {
       <div className="p-6 max-w-4xl">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" onClick={() => navigate('/admin/ops/maintenance')}>
+            <Button variant="outline" size="sm" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/ops/maintenance'))}>
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back
             </Button>

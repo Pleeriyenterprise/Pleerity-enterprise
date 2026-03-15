@@ -158,7 +158,7 @@ const BrandingSettingsPage = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => navigate('/settings')}
+                onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/settings'))}
                 data-testid="back-btn"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

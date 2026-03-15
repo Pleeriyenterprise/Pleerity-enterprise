@@ -662,7 +662,7 @@ class StripeWebhookService:
                 if res.modified_count:
                     lead_doc = await db.risk_leads.find_one(
                         {"lead_id": (lead_id_meta or "").strip()},
-                        {"_id": 0, "snapshot": 1, "computed_score": 1, "exposure_range_label": 1, "flags": 1, "created_at": 1},
+                        {"_id": 0, "snapshot": 1, "computed_score": 1, "exposure_range_label": 1, "flags": 1, "created_at": 1, "email": 1},
                     )
                     # Optional: import risk snapshot into client (once; does not affect compliance scoring)
                     if lead_doc and not (await db.clients.find_one({"client_id": client_id}, {"_id": 0, "initial_risk_snapshot": 1}) or {}).get("initial_risk_snapshot"):
@@ -679,6 +679,27 @@ class StripeWebhookService:
                                 "disclaimer": "Informational estimate from the pre-intake risk check. Not legal advice.",
                             }}},
                         )
+                    # Sync conversion to central leads: convert matching lead (by risk_lead_id in source_metadata or email)
+                    if lead_doc and lead_doc.get("email"):
+                        try:
+                            from services.lead_service import LeadService
+                            from services.lead_models import LeadStatus
+                            central = await db.leads.find_one(
+                                {"$or": [
+                                    {"source_metadata.risk_lead_id": (lead_id_meta or "").strip()},
+                                    {"email": lead_doc["email"].lower(), "source_platform": "COMPLIANCE_RISK_CHECK"},
+                                ], "status": LeadStatus.ACTIVE.value},
+                                {"_id": 0, "lead_id": 1},
+                            )
+                            if central:
+                                await LeadService.convert_lead(
+                                    central["lead_id"],
+                                    client_id,
+                                    actor_id="system",
+                                    conversion_notes="Stripe checkout; risk-check lead converted",
+                                )
+                        except Exception as e:
+                            logger.warning("Central lead conversion sync failed: %s", e)
             except Exception as e:
                 logger.warning("Risk lead conversion mark failed lead_id=%s: %s", lead_id_meta, e)
         else:
@@ -701,7 +722,7 @@ class StripeWebhookService:
                     if res.modified_count:
                         lead_doc = await db.risk_leads.find_one(
                             {"email": email_lower},
-                            {"_id": 0, "lead_id": 1, "computed_score": 1, "exposure_range_label": 1, "flags": 1, "created_at": 1},
+                            {"_id": 0, "lead_id": 1, "computed_score": 1, "exposure_range_label": 1, "flags": 1, "created_at": 1, "email": 1},
                         )
                         if lead_doc and not (await db.clients.find_one({"client_id": client_id}, {"_id": 0, "initial_risk_snapshot": 1}) or {}).get("initial_risk_snapshot"):
                             await db.clients.update_one(
@@ -716,6 +737,24 @@ class StripeWebhookService:
                                     "disclaimer": "Informational estimate from the pre-intake risk check. Not legal advice.",
                                 }}},
                             )
+                        # Sync conversion to central leads by email
+                        if lead_doc:
+                            try:
+                                from services.lead_service import LeadService
+                                from services.lead_models import LeadStatus
+                                central = await db.leads.find_one(
+                                    {"email": email_lower, "source_platform": "COMPLIANCE_RISK_CHECK", "status": LeadStatus.ACTIVE.value},
+                                    {"_id": 0, "lead_id": 1},
+                                )
+                                if central:
+                                    await LeadService.convert_lead(
+                                        central["lead_id"],
+                                        client_id,
+                                        actor_id="system",
+                                        conversion_notes="Stripe checkout; risk-check lead converted (matched by email)",
+                                    )
+                            except Exception as e:
+                                logger.warning("Central lead conversion sync (by email) failed: %s", e)
                 except Exception as e:
                     logger.warning("Risk lead conversion by email failed email=%s: %s", customer_email[:20] if customer_email else "", e)
 

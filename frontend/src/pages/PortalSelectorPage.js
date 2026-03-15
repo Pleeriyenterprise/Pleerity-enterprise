@@ -106,7 +106,7 @@ const PortalSelectorPage = () => {
         {/* Back to Website */}
         <div className="text-center">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/'))}
             className="text-gray-600 hover:text-electric-teal text-sm font-medium"
           >
             ← Back to Website

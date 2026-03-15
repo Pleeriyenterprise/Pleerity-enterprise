@@ -380,7 +380,7 @@ const BillingPage = () => {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate('/app/dashboard')}
+              onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               data-testid="back-btn"
             >

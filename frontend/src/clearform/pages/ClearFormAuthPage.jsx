@@ -79,9 +79,13 @@ const ClearFormAuthPage = () => {
               <span className="text-xs text-slate-500">by Pleerity</span>
             </div>
           </Link>
-          <Link to="/clearform" className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1">
-            <ArrowLeft className="w-4 h-4" /> Back to Home
-          </Link>
+          <button
+            type="button"
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/clearform'))}
+            className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
         </div>
       </header>
 

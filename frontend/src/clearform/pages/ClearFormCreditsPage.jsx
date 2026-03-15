@@ -163,7 +163,7 @@ const ClearFormCreditsPage = () => {
         <Button 
           variant="ghost" 
           className="mb-6"
-          onClick={() => navigate('/clearform/dashboard')}
+          onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/clearform/dashboard'))}
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Dashboard

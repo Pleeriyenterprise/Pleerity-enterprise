@@ -46,8 +46,8 @@ export const BRAND_FAVICON_URL = branding.faviconUrl;
 /** OG/social image; use fallback if og-default.png not in /branding. */
 export const BRAND_OG_IMAGE_URL = branding.ogImageUrlFallback;
 
-/** Site URL for canonical/og (no trailing slash). */
-export const SITE_URL = 'https://pleerity.com';
+/** Site URL for canonical/og (no trailing slash). Use custom domain. */
+export const SITE_URL = 'https://pleerityenterprise.co.uk';
 
 /** Support email – prefer config.js REACT_APP for overrides. */
 export const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || 'info@pleerityenterprise.co.uk';

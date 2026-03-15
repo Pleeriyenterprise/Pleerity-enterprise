@@ -54,6 +54,7 @@ import NewsletterPage from './pages/public/NewsletterPage';
 import ChecklistThankYouPage from './pages/public/ChecklistThankYouPage';
 import UnsubscribePage from './pages/public/UnsubscribePage';
 import RiskCheckPage from './pages/public/RiskCheckPage';
+import LeadActivityTrackPage from './pages/public/LeadActivityTrackPage';
 
 // Auth & Onboarding pages
 import PortalSelectorPage from './pages/PortalSelectorPage';
@@ -255,6 +256,7 @@ function App() {
               <Route path="/newsletter" element={<NewsletterPage />} />
               <Route path="/checklist-thank-you" element={<ChecklistThankYouPage />} />
               <Route path="/unsubscribe" element={<UnsubscribePage />} />
+              <Route path="/track/lead-activity" element={<LeadActivityTrackPage />} />
               <Route path="/risk-check" element={<RiskCheckPage />} />
               
               {/* Knowledge Base (Public) */}

@@ -273,7 +273,7 @@ const ClearFormDocumentPage = () => {
 
       {/* Main */}
       <main className="container mx-auto px-4 py-8 max-w-5xl">
-        <Button variant="ghost" className="mb-6" onClick={() => navigate('/clearform/dashboard')}>
+        <Button variant="ghost" className="mb-6" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/clearform/dashboard'))}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
         </Button>
 

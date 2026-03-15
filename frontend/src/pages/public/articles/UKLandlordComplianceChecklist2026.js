@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PublicLayout from '../../../components/public/PublicLayout';
 import { SEOHead, createArticleSchema, createFAQSchema } from '../../../components/public/SEOHead';
 import { Button } from '../../../components/ui/button';
@@ -48,6 +48,7 @@ const FAQ_ITEMS = [
 ];
 
 export default function UKLandlordComplianceChecklist2026() {
+  const navigate = useNavigate();
   const [showChecklistModal, setShowChecklistModal] = useState(false);
 
   const articleSchema = createArticleSchema(
@@ -69,13 +70,14 @@ export default function UKLandlordComplianceChecklist2026() {
 
       <article className="py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link
-            to="/insights"
+          <button
+            type="button"
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/insights'))}
             className="inline-flex items-center text-electric-teal hover:underline mb-8"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Back to Insights
-          </Link>
+            Back
+          </button>
 
           <header className="mb-10">
             <h1 className="text-4xl sm:text-5xl font-bold text-midnight-blue mb-6">

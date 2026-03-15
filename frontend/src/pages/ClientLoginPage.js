@@ -134,10 +134,10 @@ const ClientLoginPage = () => {
               <p>
                 <button
                   type="button"
-                  onClick={() => navigate('/login')}
+                  onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/'))}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  ← Back to Home
+                  ← Back
                 </button>
               </p>
             </div>

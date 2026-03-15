@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -52,8 +52,8 @@ const AdminRiskReportPage = () => {
       <UnifiedAdminLayout>
         <div className="max-w-4xl mx-auto px-4 py-8">
           <p className="text-gray-500">Report not found.</p>
-          <Button variant="outline" asChild className="mt-4">
-            <Link to="/admin/risk-leads"><ArrowLeft className="w-4 h-4 mr-2" /> Back to Risk Check Leads</Link>
+          <Button variant="outline" className="mt-4" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/risk-leads'))}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
         </div>
       </UnifiedAdminLayout>
@@ -64,8 +64,8 @@ const AdminRiskReportPage = () => {
     <UnifiedAdminLayout>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/admin/risk-leads"><ArrowLeft className="w-4 h-4 mr-1" /> Back to Risk Check Leads</Link>
+          <Button variant="ghost" size="sm" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/risk-leads'))}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
         </div>
         <h1 className="text-2xl font-bold text-midnight-blue mb-2">Risk Report</h1>

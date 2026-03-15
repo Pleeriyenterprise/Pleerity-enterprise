@@ -599,7 +599,7 @@ const DocumentsPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => navigate('/dashboard')} 
+                onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))} 
                 className="text-gray-300 hover:text-white"
                 data-testid="back-to-dashboard-btn"
               >

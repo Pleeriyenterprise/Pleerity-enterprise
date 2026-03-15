@@ -22,8 +22,11 @@ import {
   Zap,
   Package,
   Loader2,
+  Send,
 } from 'lucide-react';
 import client from '../../api/client';
+import { capturePricing, captureAutomationEnquiry, captureMarketResearchEnquiry } from '../../api/leadsApi';
+import { toast } from 'sonner';
 
 // Map service codes to icons
 const SERVICE_ICONS = {
@@ -152,6 +155,9 @@ const ServiceDetailPage = () => {
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [enquiryForm, setEnquiryForm] = useState({ name: '', email: '', message: '', marketing_consent: false });
+  const [enquirySubmitting, setEnquirySubmitting] = useState(false);
+  const [enquirySubmitted, setEnquirySubmitted] = useState(false);
 
   useEffect(() => {
     const fetchService = async () => {
@@ -383,6 +389,79 @@ const ServiceDetailPage = () => {
                 >
                   <Link to={`/order/intake?service=${service.code}`}>Order Now</Link>
                 </Button>
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="font-semibold text-midnight-blue mb-2">Enquire about this service</h4>
+                  {enquirySubmitted ? (
+                    <p className="text-electric-teal text-sm font-medium">Thank you. We&apos;ll be in touch shortly.</p>
+                  ) : (
+                    <form
+                      className="space-y-2"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!enquiryForm.email?.trim()) {
+                          toast.error('Please enter your email.');
+                          return;
+                        }
+                        setEnquirySubmitting(true);
+                        try {
+                          const payload = {
+                            name: enquiryForm.name.trim() || null,
+                            email: enquiryForm.email.trim(),
+                            message: (enquiryForm.message.trim() || `Enquiry about ${service.title}`),
+                            marketing_consent: enquiryForm.marketing_consent,
+                          };
+                          if (service.category === 'ai_automation') {
+                            await captureAutomationEnquiry(payload);
+                          } else if (service.category === 'market_research') {
+                            await captureMarketResearchEnquiry(payload);
+                          } else {
+                            await capturePricing({ ...payload, message: payload.message });
+                          }
+                          setEnquirySubmitted(true);
+                          toast.success('Request sent. We\'ll be in touch shortly.');
+                        } catch (err) {
+                          toast.error(err.message || 'Failed to send enquiry.');
+                        } finally {
+                          setEnquirySubmitting(false);
+                        }
+                      }}
+                    >
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={enquiryForm.name}
+                        onChange={(e) => setEnquiryForm((p) => ({ ...p, name: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      />
+                      <input
+                        type="email"
+                        required
+                        placeholder="Email *"
+                        value={enquiryForm.email}
+                        onChange={(e) => setEnquiryForm((p) => ({ ...p, email: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      />
+                      <textarea
+                        rows={2}
+                        placeholder="Message (optional)"
+                        value={enquiryForm.message}
+                        onChange={(e) => setEnquiryForm((p) => ({ ...p, message: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      />
+                      <label className="flex items-center gap-2 text-sm text-gray-600">
+                        <input
+                          type="checkbox"
+                          checked={enquiryForm.marketing_consent}
+                          onChange={(e) => setEnquiryForm((p) => ({ ...p, marketing_consent: e.target.checked }))}
+                        />
+                        Send me updates and offers
+                      </label>
+                      <Button type="submit" disabled={enquirySubmitting} size="sm" className="w-full bg-electric-teal hover:bg-electric-teal/90">
+                        {enquirySubmitting ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : <>Send enquiry <Send className="w-4 h-4 ml-1 inline" /></>}
+                      </Button>
+                    </form>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

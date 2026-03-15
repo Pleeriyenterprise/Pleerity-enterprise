@@ -5,7 +5,7 @@ Single source for company name, website, support email. Logo path optional for P
 COMPANY_NAME = "Pleerity Enterprise Ltd"
 PRODUCT_NAME = "Compliance Vault Pro"
 TAGLINE = "AI-Driven Solutions & Compliance"
-WEBSITE_URL = "https://pleerity.com"
+WEBSITE_URL = "https://pleerityenterprise.co.uk"
 SUPPORT_EMAIL = "info@pleerityenterprise.co.uk"
 
 # Brand colors (hex) for PDFs and emails

@@ -576,9 +576,9 @@ export default function PropertyDetailPage() {
   return (
     <div>
       <div className="flex items-center justify-between gap-4 mb-4">
-        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate('/properties')}>
+        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/properties'))}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to properties
+          Back
         </Button>
         <Button
           variant="outline"

@@ -172,10 +172,10 @@ export default function AdminNotificationPreferencesPage() {
           <Button 
             variant="ghost" 
             className="mb-4"
-            onClick={() => navigate('/admin/dashboard')}
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/dashboard'))}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            Back
           </Button>
           
           <div className="flex items-center gap-3">
@@ -378,7 +378,7 @@ export default function AdminNotificationPreferencesPage() {
         <div className="flex justify-end gap-3">
           <Button
             variant="outline"
-            onClick={() => navigate('/admin/dashboard')}
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/dashboard'))}
           >
             Cancel
           </Button>

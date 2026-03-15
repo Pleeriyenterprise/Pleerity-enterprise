@@ -31,6 +31,11 @@ from services.lead_models import (
     FOLLOWUP_SEQUENCE,
     ABANDONED_INTAKE_SEQUENCE,
 )
+from services.lead_scoring import (
+    recalculate_lead_score as recalc_lead_score,
+    should_update_stage,
+    HOT_LEAD_SCORE_THRESHOLD,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +59,18 @@ def _initial_lead_tags(source_platform) -> List[str]:
     return []
 
 
+def _lead_display_name(request: LeadCreateRequest) -> Optional[str]:
+    """Derive name from first_name/last_name, full_name, or name."""
+    if request.name and str(request.name).strip():
+        return request.name.strip()
+    if request.full_name and str(request.full_name).strip():
+        return request.full_name.strip()
+    parts = [request.first_name, request.last_name]
+    if any(p and str(p).strip() for p in parts):
+        return " ".join((p or "").strip() for p in parts).strip() or None
+    return None
+
+
 class LeadService:
     """Service for lead management operations."""
     
@@ -63,32 +80,89 @@ class LeadService:
         actor_id: Optional[str] = None,
         actor_type: str = "system",
         ip_address: Optional[str] = None,
+        upsert_by_email: bool = False,
     ) -> Dict[str, Any]:
         """
         Create a new lead with deduplication check.
-        Returns existing lead if duplicate found.
+        If upsert_by_email=True and duplicate found by email, update existing lead (tags, last_activity_at, new fields) and return it.
+        Otherwise returns existing lead as is_duplicate without updating.
         """
         db = database.get_db()
         now = datetime.now(timezone.utc).isoformat()
-        
+        display_name = _lead_display_name(request) or request.name
+
         # Check for duplicates before creating
         existing = await LeadService.find_duplicate(
             email=request.email,
             phone=request.phone,
             source_metadata=request.source_metadata,
         )
-        
+
         if existing:
-            # Return existing lead instead of creating duplicate
+            if upsert_by_email and request.email:
+                # Update existing: append tags, set last_activity_at, merge source_metadata and optional fields
+                lead_id = existing["lead_id"]
+                tags = list(set((existing.get("tags") or []) + _initial_lead_tags(request.source_platform)))
+                if request.source_metadata:
+                    sm = dict(existing.get("source_metadata") or {})
+                    sm.update(request.source_metadata)
+                    source_metadata = sm
+                else:
+                    source_metadata = existing.get("source_metadata") or {}
+                update_set = {
+                    "last_activity_at": now,
+                    "updated_at": now,
+                    "tags": tags,
+                    "source_metadata": source_metadata,
+                }
+                if request.risk_score is not None:
+                    update_set["risk_score"] = request.risk_score
+                if request.risk_level is not None:
+                    update_set["risk_level"] = request.risk_level
+                if request.portfolio_size is not None:
+                    update_set["portfolio_size"] = request.portfolio_size
+                if request.primary_interest is not None:
+                    update_set["primary_interest"] = request.primary_interest
+                if request.secondary_interest is not None:
+                    update_set["secondary_interest"] = request.secondary_interest
+                if request.user_type is not None:
+                    update_set["user_type"] = request.user_type
+                if display_name and not existing.get("name"):
+                    update_set["name"] = display_name
+                if request.phone and not existing.get("phone"):
+                    update_set["phone"] = request.phone
+                if request.company_name and not existing.get("company_name"):
+                    update_set["company_name"] = request.company_name
+                if request.service_interest != LeadServiceInterest.UNKNOWN and existing.get("service_interest") == LeadServiceInterest.UNKNOWN.value:
+                    update_set["service_interest"] = request.service_interest.value
+                await db[LEADS_COLLECTION].update_one(
+                    {"lead_id": lead_id},
+                    {"$set": update_set},
+                )
+                updated_lead = await LeadService.get_lead(lead_id)
+                if updated_lead:
+                    try:
+                        await LeadService.recalculate_and_persist_lead_score(lead_id, "upsert_by_email")
+                        updated_lead = await LeadService.get_lead(lead_id)
+                    except Exception as e:
+                        logger.warning("Lead score recalc after upsert failed: %s", e)
+                    await LeadService.log_audit(
+                        event=LeadAuditEvent.LEAD_UPDATED,
+                        lead_id=lead_id,
+                        actor_id=actor_id,
+                        actor_type=actor_type,
+                        details={"source": "upsert_by_email", "source_platform": request.source_platform.value},
+                        ip_address=ip_address,
+                    )
+                    return {**(updated_lead or existing), "is_duplicate": True, "original_lead_id": lead_id}
             logger.info(f"Duplicate lead found: {existing['lead_id']} for email={request.email}")
             return {
                 **existing,
                 "is_duplicate": True,
                 "original_lead_id": existing["lead_id"],
             }
-        
         lead_id = generate_lead_id()
-        
+
         # Calculate intent score if not provided
         intent_score = request.intent_score or await LeadService.calculate_intent_score(
             source_platform=request.source_platform,
@@ -96,35 +170,55 @@ class LeadService:
             has_phone=bool(request.phone),
             message=request.message_summary,
         )
-        
-        # Determine follow-up sequence
-        followup_sequence = "abandoned_intake" if request.source_platform == LeadSourcePlatform.INTAKE_ABANDONED else "default"
-        
+
+        # Determine follow-up sequence (nurture by type; checklist uses lead_nurture_service)
+        if request.source_platform == LeadSourcePlatform.INTAKE_ABANDONED:
+            followup_sequence = "abandoned_intake"
+        elif request.service_interest == LeadServiceInterest.DOCUMENT_PACKS:
+            followup_sequence = "document_pack"
+        elif request.service_interest == LeadServiceInterest.AUTOMATION:
+            followup_sequence = "automation"
+        elif request.service_interest == LeadServiceInterest.MARKET_RESEARCH:
+            followup_sequence = "market_research"
+        elif request.service_interest == LeadServiceInterest.CVP or request.source_platform == LeadSourcePlatform.COMPLIANCE_RISK_CHECK:
+            followup_sequence = "compliance"
+        else:
+            followup_sequence = "default"
+
         lead_doc = {
             "lead_id": lead_id,
             "source_platform": request.source_platform.value,
             "service_interest": request.service_interest.value,
-            
+
             # Contact info
-            "name": request.name,
+            "name": display_name,
+            "first_name": getattr(request, "first_name", None),
+            "last_name": getattr(request, "last_name", None),
+            "full_name": getattr(request, "full_name", None),
             "email": request.email,
             "phone": request.phone,
             "company_name": request.company_name,
-            
-            # Qualification
+
+            # Qualification (unified lead engine)
+            "user_type": getattr(request, "user_type", None),
+            "portfolio_size": getattr(request, "portfolio_size", None),
+            "primary_interest": getattr(request, "primary_interest", None),
+            "secondary_interest": getattr(request, "secondary_interest", None),
+            "risk_score": getattr(request, "risk_score", None),
+            "risk_level": getattr(request, "risk_level", None),
             "intent_score": intent_score.value,
             "stage": LeadStage.NEW.value,
             "status": LeadStatus.ACTIVE.value,
-            
+
             # Context
             "message_summary": request.message_summary,
             "conversation_id": request.conversation_id,
             "intake_draft_id": request.intake_draft_id,
             "ai_summary": None,
-            
+
             # Source metadata (social-ready)
             "source_metadata": request.source_metadata or {},
-            
+
             # UTM tracking
             "utm_source": request.utm_source,
             "utm_medium": request.utm_medium,
@@ -132,7 +226,7 @@ class LeadService:
             "utm_content": request.utm_content,
             "utm_term": request.utm_term,
             "referrer_url": request.referrer_url,
-            
+
             # Consent & follow-up
             "marketing_consent": request.marketing_consent,
             "followup_status": FollowUpStatus.PENDING.value if request.marketing_consent else FollowUpStatus.OPTED_OUT.value,
@@ -140,55 +234,65 @@ class LeadService:
             "followup_step": 0,
             "last_followup_at": None,
             "next_followup_at": None,
-            
+
             # Checklist nurture (source_platform COMPLIANCE_CHECKLIST)
             "nurture_stage": 0,
             "last_nurture_sent_at": None,
             "tags": _initial_lead_tags(request.source_platform),
-            
+
             # Assignment
             "assigned_to": None,
             "assigned_at": None,
-            
+
             # Timestamps
             "created_at": now,
             "updated_at": now,
+            "last_activity_at": now,
             "last_contacted_at": None,
             "converted_at": None,
-            
+
             # Conversion tracking
             "client_id": None,
             "conversion_notes": None,
-            
+
             # Lost tracking
             "lost_reason": None,
             "lost_competitor": None,
             "lost_at": None,
-            
+
             # Merge tracking
             "merged_into_lead_id": None,
             "merged_from_lead_ids": [],
-            
+
             # Admin
             "admin_notes": request.admin_notes,
-            
+
             # SLA tracking
             "sla_breach": False,
             "sla_breach_at": None,
-            "sla_hours": 24,  # Default 24 hours, can be changed to business hours later
+            "sla_hours": 24,
         }
-        
+        # lead_score set after recalc below
+        lead_doc["lead_score"] = getattr(request, "lead_score", None)
+
         # Calculate next follow-up time if consent given
         if request.marketing_consent:
             lead_doc["next_followup_at"] = (
                 datetime.now(timezone.utc) + timedelta(hours=1)
             ).isoformat()
-        
+
         await db[LEADS_COLLECTION].insert_one(lead_doc)
-        
+
         # Remove MongoDB _id for response
         lead_doc.pop("_id", None)
-        
+
+        # Recalculate lead_score, persist, log, and trigger hot lead alert if score >= 80
+        try:
+            await LeadService.recalculate_and_persist_lead_score(lead_id, "lead_created")
+        except Exception as e:
+            logger.warning("Lead score recalc after create failed: %s", e)
+        lead_doc = (await LeadService.get_lead(lead_id)) or lead_doc
+
         # Audit log
         await LeadService.log_audit(
             event=LeadAuditEvent.LEAD_CREATED,
@@ -204,13 +308,13 @@ class LeadService:
             },
             ip_address=ip_address,
         )
-        
+
         logger.info(f"Lead created: {lead_id} from {request.source_platform.value}")
-        
-        # Send HIGH intent notification to admins
-        if intent_score == LeadIntentScore.HIGH:
+
+        # Hot lead alert (score >= 80) is sent from recalculate_and_persist_lead_score. Otherwise HIGH intent at create.
+        if (lead_doc.get("lead_score") or 0) < HOT_LEAD_SCORE_THRESHOLD and intent_score == LeadIntentScore.HIGH:
             await LeadService.notify_high_intent_lead(lead_doc)
-        
+
         return {**lead_doc, "is_duplicate": False}
     
     @staticmethod
@@ -329,15 +433,19 @@ class LeadService:
         sla_breach_only: bool = False,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
+        last_activity_from: Optional[str] = None,
+        last_activity_to: Optional[str] = None,
+        lead_score_min: Optional[int] = None,
+        lead_score_max: Optional[int] = None,
         page: int = 1,
         limit: int = 50,
     ) -> Tuple[List[Dict[str, Any]], int]:
         """List leads with filters and pagination."""
         db = database.get_db()
-        
+
         # Build filter
         filter_query = {"status": {"$ne": LeadStatus.MERGED.value}}  # Exclude merged leads
-        
+
         if source_platform:
             filter_query["source_platform"] = source_platform
         if service_interest:
@@ -360,7 +468,23 @@ class LeadService:
                 created_q["$lte"] = date_to if isinstance(date_to, str) and "T" in date_to else f"{date_to}T23:59:59.999Z"
             if created_q:
                 filter_query["created_at"] = created_q
-        
+        if last_activity_from or last_activity_to:
+            act_q = {}
+            if last_activity_from:
+                act_q["$gte"] = last_activity_from if isinstance(last_activity_from, str) and "T" in last_activity_from else f"{last_activity_from}T00:00:00.000Z"
+            if last_activity_to:
+                act_q["$lte"] = last_activity_to if isinstance(last_activity_to, str) and "T" in last_activity_to else f"{last_activity_to}T23:59:59.999Z"
+            if act_q:
+                filter_query["last_activity_at"] = act_q
+        if lead_score_min is not None or lead_score_max is not None:
+            score_q = {}
+            if lead_score_min is not None:
+                score_q["$gte"] = lead_score_min
+            if lead_score_max is not None:
+                score_q["$lte"] = lead_score_max
+            if score_q:
+                filter_query["lead_score"] = score_q
+
         if search:
             filter_query["$or"] = [
                 {"name": {"$regex": search, "$options": "i"}},
@@ -399,22 +523,42 @@ class LeadService:
             return None
         
         # Build update
-        update_data = {"updated_at": now}
+        update_data = {"updated_at": now, "last_activity_at": now}
         
         if request.name is not None:
             update_data["name"] = request.name
+        if getattr(request, "first_name", None) is not None:
+            update_data["first_name"] = request.first_name
+        if getattr(request, "last_name", None) is not None:
+            update_data["last_name"] = request.last_name
+        if getattr(request, "full_name", None) is not None:
+            update_data["full_name"] = request.full_name
         if request.email is not None:
             update_data["email"] = request.email.lower()
         if request.phone is not None:
             update_data["phone"] = request.phone
         if request.company_name is not None:
             update_data["company_name"] = request.company_name
+        if getattr(request, "user_type", None) is not None:
+            update_data["user_type"] = request.user_type
+        if getattr(request, "portfolio_size", None) is not None:
+            update_data["portfolio_size"] = request.portfolio_size
+        if getattr(request, "primary_interest", None) is not None:
+            update_data["primary_interest"] = request.primary_interest
+        if getattr(request, "secondary_interest", None) is not None:
+            update_data["secondary_interest"] = request.secondary_interest
+        if getattr(request, "risk_score", None) is not None:
+            update_data["risk_score"] = request.risk_score
+        if getattr(request, "risk_level", None) is not None:
+            update_data["risk_level"] = request.risk_level
         if request.service_interest is not None:
             update_data["service_interest"] = request.service_interest.value
         if request.message_summary is not None:
             update_data["message_summary"] = request.message_summary
         if request.intent_score is not None:
             update_data["intent_score"] = request.intent_score.value
+        if getattr(request, "lead_score", None) is not None:
+            update_data["lead_score"] = request.lead_score
         if request.stage is not None:
             update_data["stage"] = request.stage.value
         if request.assigned_to is not None:
@@ -432,6 +576,14 @@ class LeadService:
             {"lead_id": lead_id},
             {"$set": update_data}
         )
+
+        # Recalc lead_score when scoring-relevant fields change
+        scoring_keys = {"portfolio_size", "risk_level", "user_type", "service_interest", "intent_score", "followup_status", "marketing_consent"}
+        if any(k in update_data for k in scoring_keys):
+            try:
+                await LeadService.recalculate_and_persist_lead_score(lead_id, "admin_update")
+            except Exception as e:
+                logger.warning("Lead score recalc after update failed: %s", e)
         
         # Audit log
         await LeadService.log_audit(
@@ -511,6 +663,7 @@ class LeadService:
             {
                 "$set": {
                     "last_contacted_at": now,
+                    "last_activity_at": now,
                     "updated_at": now,
                     "sla_breach": False,  # Reset SLA breach on contact
                 }
@@ -830,6 +983,95 @@ class LeadService:
         
         return await cursor.to_list(length=limit)
     
+    @staticmethod
+    async def recalculate_and_persist_lead_score(lead_id: str, reason: str) -> Optional[Dict[str, Any]]:
+        """
+        Recalculate lead_score from current lead document, persist to DB, log LEAD_SCORE_UPDATED,
+        optionally advance stage (never overwrite WON/CONVERTED), and trigger hot lead alert if score >= 80.
+        Returns updated lead or None if lead not found.
+        """
+        db = database.get_db()
+        lead = await LeadService.get_lead(lead_id)
+        if not lead:
+            return None
+        previous_score = lead.get("lead_score")
+        recalc = await recalc_lead_score(lead)
+        new_score = recalc["lead_score"]
+        suggested_stage = recalc.get("suggested_stage")
+        now = datetime.now(timezone.utc).isoformat()
+        update_set = {"lead_score": new_score, "updated_at": now}
+        if suggested_stage and should_update_stage(lead, suggested_stage):
+            update_set["stage"] = suggested_stage
+        await db[LEADS_COLLECTION].update_one(
+            {"lead_id": lead_id},
+            {"$set": update_set},
+        )
+        await LeadService.log_audit(
+            event=LeadAuditEvent.LEAD_SCORE_UPDATED,
+            lead_id=lead_id,
+            actor_id="system",
+            actor_type="automation",
+            details={
+                "previous_score": previous_score,
+                "new_score": new_score,
+                "reason": reason,
+            },
+        )
+        if new_score >= HOT_LEAD_SCORE_THRESHOLD:
+            updated_lead = await LeadService.get_lead(lead_id)
+            if updated_lead:
+                await LeadService.notify_hot_lead_alert(updated_lead)
+        return await LeadService.get_lead(lead_id)
+
+    @staticmethod
+    async def notify_hot_lead_alert(lead: Dict[str, Any]):
+        """
+        Send internal admin alert when lead_score >= 80 (hot lead).
+        Includes lead name, email, lead type, portfolio size, risk level, lead score, CRM link.
+        Idempotent per lead per day.
+        """
+        import os
+        ADMIN_NOTIFICATION_EMAILS = os.environ.get("ADMIN_NOTIFICATION_EMAILS", "admin@pleerity.com").split(",")
+        _base = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        ADMIN_DASHBOARD_URL = os.environ.get("ADMIN_DASHBOARD_URL", f"{_base}/admin/leads")
+        try:
+            from services.notification_orchestrator import notification_orchestrator
+            lead_id = lead.get("lead_id")
+            name = lead.get("name") or "Unknown"
+            email = lead.get("email") or "No email"
+            lead_type = (lead.get("service_interest") or "UNKNOWN").replace("_", " ")
+            portfolio_size = lead.get("portfolio_size")
+            portfolio_str = str(portfolio_size) if portfolio_size is not None else "—"
+            risk_level = lead.get("risk_level") or "—"
+            score = lead.get("lead_score", 0)
+            subject = f"🔥 Hot Lead (score {score}): {name}"
+            message = (
+                f"<p><strong>Lead ID:</strong> {lead_id}<br><strong>Name:</strong> {name}<br>"
+                f"<strong>Email:</strong> {email}<br><strong>Lead type:</strong> {lead_type}<br>"
+                f"<strong>Portfolio size:</strong> {portfolio_str}<br><strong>Risk level:</strong> {risk_level}<br>"
+                f"<strong>Lead score:</strong> {score}</p>"
+                f"<p><a href=\"{ADMIN_DASHBOARD_URL}\">View in CRM →</a></p>"
+            )
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            for admin_email in ADMIN_NOTIFICATION_EMAILS:
+                admin_email = admin_email.strip()
+                if admin_email:
+                    try:
+                        idempotency_key = f"{lead_id}_LEAD_HOT_ALERT_{date_key}_{admin_email}"
+                        result = await notification_orchestrator.send(
+                            template_key="LEAD_HIGH_INTENT_ADMIN",
+                            client_id=None,
+                            context={"recipient": admin_email, "subject": subject, "message": message},
+                            idempotency_key=idempotency_key,
+                            event_type="lead_hot_alert",
+                        )
+                        if result.outcome in ("sent", "duplicate_ignored"):
+                            logger.info(f"Hot lead alert sent to {admin_email} for lead {lead_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to send hot lead alert to {admin_email}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to send hot lead alert: {e}")
+
     @staticmethod
     async def notify_high_intent_lead(lead: Dict[str, Any]):
         """

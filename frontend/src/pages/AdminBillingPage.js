@@ -325,7 +325,7 @@ const AdminBillingPage = () => {
           <div className="flex items-center gap-4">
             <button 
               type="button"
-              onClick={() => navigate('/admin/dashboard')}
+              onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/dashboard'))}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-electric-teal focus:ring-offset-1"
               data-testid="back-btn"
               title="Back to Dashboard"

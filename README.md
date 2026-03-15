@@ -188,7 +188,7 @@ All sends logged to `MessageLog` collection.
 ### Environment Variables
 
 **How to configure env vars (activation links and API):**
-- **FRONTEND_PUBLIC_URL** (preferred) or **PUBLIC_APP_URL** — Public frontend base URL used for ALL activation/set-password links in emails (e.g. `https://pleerity-enterprise-9jjg.vercel.app` or `https://portal.pleerityenterprise.co.uk`). Must be https in production; no trailing slash. Backend fallback order: FRONTEND_PUBLIC_URL → PUBLIC_APP_URL → FRONTEND_URL → VERCEL_URL/RENDER_EXTERNAL_URL. *Required for production activation emails.*
+- **FRONTEND_PUBLIC_URL** (preferred) or **PUBLIC_APP_URL** or **FRONTEND_URL** — Public frontend base URL used for ALL activation/set-password links in emails (e.g. `https://pleerityenterprise.co.uk`). Must be https in production; no trailing slash. If unset, backend uses canonical `https://pleerityenterprise.co.uk` so links never point at the default Vercel deployment URL.
 - **REACT_APP_BACKEND_URL** — Frontend build-time: backend API base URL (e.g. `https://your-backend.onrender.com`). Set on Vercel so the app calls the correct API.
 - **BACKEND_URL** — Backend base URL for scripts and health checks. Keep Stripe vars (`STRIPE_API_KEY`, webhook secret) unchanged.
 
@@ -209,16 +209,16 @@ All sends logged to `MessageLog` collection.
 ```bash
 MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net/DB_NAME
 DB_NAME=compliance_vault_pro
-CORS_ORIGINS=https://your-app.vercel.app,http://localhost:3000
+CORS_ORIGINS=https://pleerityenterprise.co.uk,http://localhost:3000
 JWT_SECRET=your-production-secret-key-change-this
 JWT_ALGORITHM=HS256
 JWT_EXPIRATION_HOURS=24
 STRIPE_API_KEY=sk_live_xxx
 POSTMARK_SERVER_TOKEN=
-FRONTEND_PUBLIC_URL=https://your-app.vercel.app
-PUBLIC_APP_URL=https://your-app.vercel.app
-FRONTEND_URL=https://your-app.vercel.app
-UNSUBSCRIBE_URL=https://your-app.vercel.app/unsubscribe
+FRONTEND_PUBLIC_URL=https://pleerityenterprise.co.uk
+PUBLIC_APP_URL=https://pleerityenterprise.co.uk
+FRONTEND_URL=https://pleerityenterprise.co.uk
+UNSUBSCRIBE_URL=https://pleerityenterprise.co.uk/unsubscribe
 LLM_API_KEY=
 ENVIRONMENT=production
 ```
@@ -390,10 +390,10 @@ Set these for a clean deploy with **no Emergent dependencies**:
 |-------|----------|----------|--------|
 | **Render** (backend) | `MONGO_URL` | Yes | MongoDB Atlas connection string |
 | | `DB_NAME` | Yes | e.g. `compliance_vault_pro` |
-| | `CORS_ORIGINS` | Yes | Include your Vercel frontend origin (e.g. `https://app.vercel.app`) |
+| | `CORS_ORIGINS` | Yes | Include your frontend origin (e.g. `https://pleerityenterprise.co.uk`) |
 | | `JWT_SECRET` | Yes | Strong secret for tokens |
 | | `STRIPE_API_KEY` | Yes | Stripe secret key (test or live) |
-| | `FRONTEND_URL` | Yes | Full frontend URL (e.g. `https://your-app.vercel.app`) |
+| | `FRONTEND_URL` | Recommended | Full frontend URL (e.g. `https://pleerityenterprise.co.uk`); if unset, email links use canonical domain |
 | | `POSTMARK_SERVER_TOKEN` | If using email | Postmark API token |
 | | `UNSUBSCRIBE_URL` | If using email | e.g. `{FRONTEND_URL}/unsubscribe` |
 | | `LLM_API_KEY` | If using AI features | Google AI Studio / Gemini API key. When unset, AI endpoints return 503 or graceful fallback (no crash). |

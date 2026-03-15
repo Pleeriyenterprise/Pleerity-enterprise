@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 
 export default function AdminOpsPlaceholderPage({ title, icon: Icon, description }) {
+  const navigate = useNavigate();
   return (
     <UnifiedAdminLayout>
       <div className="p-6 max-w-2xl">
@@ -13,7 +14,13 @@ export default function AdminOpsPlaceholderPage({ title, icon: Icon, description
         <p className="text-gray-600 mb-6">
           {description || 'This section is wired to the data model and will show content when the module is implemented.'}
         </p>
-        <Link to="/admin/ops" className="text-electric-teal hover:underline text-sm">← Back to Operations overview</Link>
+        <button
+          type="button"
+          onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/ops'))}
+          className="text-electric-teal hover:underline text-sm"
+        >
+          ← Back
+        </button>
       </div>
     </UnifiedAdminLayout>
   );

@@ -375,12 +375,12 @@ const ComplianceScorePage = () => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/dashboard')}
+          onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
           className="text-gray-600 hover:text-midnight-blue mb-6"
           data-testid="back-to-dashboard"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
+          Back
         </Button>
 
         {/* Main Score Card */}

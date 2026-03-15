@@ -588,10 +588,26 @@ export default function AdminKnowledgeBasePage() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {categories.map(category => (
-                <Card key={category.category_id} className="hover:shadow-md transition-shadow">
+                <Card
+                  key={category.category_id}
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    setActiveTab('articles');
+                    setCategoryFilter(category.category_id);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setActiveTab('articles');
+                      setCategoryFilter(category.category_id);
+                    }
+                  }}
+                >
                   <CardContent className="py-4">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{category.icon}</span>
                           <h3 className="font-semibold text-gray-900">{category.name}</h3>
@@ -603,18 +619,18 @@ export default function AdminKnowledgeBasePage() {
                           {category.article_count || 0} articles • Order: {category.order}
                         </p>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => openEditCategory(category)}
+                          onClick={(e) => { e.stopPropagation(); openEditCategory(category); }}
                         >
                           <Edit2 className="h-4 w-4 text-blue-500" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteCategory(category.category_id)}
+                          onClick={(e) => { e.stopPropagation(); deleteCategory(category.category_id); }}
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>

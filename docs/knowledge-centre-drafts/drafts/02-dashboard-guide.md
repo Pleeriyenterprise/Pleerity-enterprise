@@ -4,7 +4,7 @@ slug: dashboard-guide
 audience: USER
 category_id: dashboard-guide
 module: Dashboard
-excerpt: What you see on the main Dashboard after login: compliance score, score trend, properties at a glance, and what to do next.
+excerpt: "What you see on the main Dashboard after login: compliance score, score trend, properties at a glance, and what to do next."
 tags: dashboard, score, trend, properties, checklist
 status: draft
 ---

@@ -198,13 +198,14 @@ function KnowledgeBaseIndex() {
           {/* Category detail view (when ?category= is set) */}
           {!searchQuery && categoryIdFromUrl && (
             <div className="mb-12">
-              <Link
-                to="/support/knowledge-base"
+              <button
+                type="button"
+                onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/support/knowledge-base'))}
                 className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-electric-teal mb-4"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to all categories
-              </Link>
+                Back
+              </button>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 {categories.find((c) => c.category_id === categoryIdFromUrl)?.name || categoryIdFromUrl}
               </h2>
@@ -398,9 +399,9 @@ function ArticleView({ slug }) {
           <FileText className="h-16 w-16 mx-auto text-gray-300 mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Article Not Found</h1>
           <p className="text-gray-500 mb-6">The article you are looking for does not exist or has been moved.</p>
-          <Button onClick={() => navigate('/support/knowledge-base')}>
+          <Button onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/support/knowledge-base'))}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Knowledge Base
+            Back
           </Button>
         </div>
       </PublicLayout>
@@ -481,10 +482,10 @@ function ArticleView({ slug }) {
               <div className="mt-6">
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/support/knowledge-base')}
+                  onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/support/knowledge-base'))}
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Knowledge Base
+                  Back
                 </Button>
               </div>
             </article>

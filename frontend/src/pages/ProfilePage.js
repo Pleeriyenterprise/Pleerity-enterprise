@@ -119,7 +119,7 @@ const ProfilePage = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/app/dashboard')}
+                onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
                 className="text-white hover:text-electric-teal"
                 data-testid="back-to-dashboard-btn"
               >

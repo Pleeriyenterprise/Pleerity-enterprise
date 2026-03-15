@@ -6,6 +6,10 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { Label } from '../../components/ui/label';
+import { Checkbox } from '../../components/ui/checkbox';
 import {
   CheckCircle2,
   X,
@@ -18,6 +22,8 @@ import {
   Zap,
   Crown,
   Star,
+  Send,
+  Loader2,
 } from 'lucide-react';
 import {
   Accordion,
@@ -25,10 +31,25 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../../components/ui/accordion';
+import { capturePricing } from '../../api/leadsApi';
+import { toast } from 'sonner';
+
+function getUtmParams() {
+  if (typeof window === 'undefined') return {};
+  const p = new URLSearchParams(window.location.search);
+  return {
+    utm_source: p.get('utm_source') || null,
+    utm_medium: p.get('utm_medium') || null,
+    utm_campaign: p.get('utm_campaign') || null,
+  };
+}
 
 const PricingPage = () => {
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [activeProduct, setActiveProduct] = useState('cvp');
+  const [quoteForm, setQuoteForm] = useState({ name: '', email: '', phone: '', message: '', marketing_consent: false });
+  const [quoteSubmitting, setQuoteSubmitting] = useState(false);
+  const [quoteSubmitted, setQuoteSubmitted] = useState(false);
 
   // ClearForm Credit Packages
   const clearformCredits = [
@@ -622,7 +643,7 @@ const PricingPage = () => {
           <p className="text-base text-gray-400 mb-8">
             No long-term contract. Cancel anytime.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button
               size="lg"
               className="bg-electric-teal hover:bg-electric-teal/90 text-white"
@@ -639,6 +660,107 @@ const PricingPage = () => {
               <Link to="/booking">Talk to Sales</Link>
             </Button>
           </div>
+          {/* Request a quote form */}
+          <Card className="max-w-md mx-auto bg-white/10 border-white/20">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-2">Get a custom quote</h3>
+              <p className="text-sm text-gray-300 mb-4">Tell us your needs and we&apos;ll get back with tailored pricing.</p>
+              {quoteSubmitted ? (
+                <div className="text-electric-teal font-medium">Thank you. We&apos;ll be in touch shortly.</div>
+              ) : (
+                <form
+                  className="space-y-3 text-left"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!quoteForm.email?.trim()) {
+                      toast.error('Please enter your email.');
+                      return;
+                    }
+                    setQuoteSubmitting(true);
+                    try {
+                      await capturePricing({
+                        name: quoteForm.name.trim() || null,
+                        email: quoteForm.email.trim(),
+                        phone: quoteForm.phone.trim() || null,
+                        message: quoteForm.message.trim() || null,
+                        marketing_consent: quoteForm.marketing_consent,
+                        ...getUtmParams(),
+                      });
+                      setQuoteSubmitted(true);
+                      toast.success('Request sent. We\'ll be in touch shortly.');
+                    } catch (err) {
+                      toast.error(err.message || 'Failed to send request.');
+                    } finally {
+                      setQuoteSubmitting(false);
+                    }
+                  }}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="quote-name" className="text-gray-200">Name</Label>
+                      <Input
+                        id="quote-name"
+                        value={quoteForm.name}
+                        onChange={(e) => setQuoteForm((p) => ({ ...p, name: e.target.value }))}
+                        className="bg-white/10 border-white/30 text-white placeholder:text-gray-400"
+                        placeholder="Your name"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="quote-email" className="text-gray-200">Email *</Label>
+                      <Input
+                        id="quote-email"
+                        type="email"
+                        required
+                        value={quoteForm.email}
+                        onChange={(e) => setQuoteForm((p) => ({ ...p, email: e.target.value }))}
+                        className="bg-white/10 border-white/30 text-white placeholder:text-gray-400"
+                        placeholder="you@example.com"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="quote-phone" className="text-gray-200">Phone</Label>
+                    <Input
+                      id="quote-phone"
+                      type="tel"
+                      value={quoteForm.phone}
+                      onChange={(e) => setQuoteForm((p) => ({ ...p, phone: e.target.value }))}
+                      className="bg-white/10 border-white/30 text-white placeholder:text-gray-400"
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="quote-message" className="text-gray-200">Message</Label>
+                    <Textarea
+                      id="quote-message"
+                      rows={2}
+                      value={quoteForm.message}
+                      onChange={(e) => setQuoteForm((p) => ({ ...p, message: e.target.value }))}
+                      className="bg-white/10 border-white/30 text-white placeholder:text-gray-400"
+                      placeholder="Portfolio size, requirements..."
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="quote-marketing"
+                      checked={quoteForm.marketing_consent}
+                      onCheckedChange={(c) => setQuoteForm((p) => ({ ...p, marketing_consent: !!c }))}
+                      className="border-white/50 data-[state=checked]:bg-electric-teal"
+                    />
+                    <Label htmlFor="quote-marketing" className="text-sm text-gray-300">Send me occasional updates and offers</Label>
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={quoteSubmitting}
+                    className="w-full bg-electric-teal hover:bg-electric-teal/90 text-white"
+                  >
+                    {quoteSubmitting ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : <>Send request <Send className="w-4 h-4 ml-2 inline" /></>}
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </section>
     </PublicLayout>

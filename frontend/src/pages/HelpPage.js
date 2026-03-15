@@ -88,8 +88,12 @@ export default function HelpPage() {
   };
 
   const backToList = () => {
-    navigate('/help');
-    setArticle(null);
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/help');
+      setArticle(null);
+    }
   };
 
   const handleAskSubmit = async (e) => {

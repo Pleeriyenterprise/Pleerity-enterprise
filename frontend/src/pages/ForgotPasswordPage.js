@@ -63,9 +63,9 @@ const ForgotPasswordPage = () => {
               <Button
                 type="button"
                 className="w-full bg-electric-teal hover:bg-electric-teal/90"
-                onClick={() => navigate('/login/client')}
+                onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/login/client'))}
               >
-                Back to sign in
+                Back
               </Button>
               <p className="text-center text-sm text-gray-600">
                 Didn&apos;t receive an email? You can{' '}
@@ -117,9 +117,13 @@ const ForgotPasswordPage = () => {
               {loading ? 'Sending...' : 'Send reset link'}
             </Button>
             <p className="text-center text-sm text-gray-600">
-              <Link to="/login/client" className="text-electric-teal hover:underline font-medium">
-                Back to sign in
-              </Link>
+              <button
+              type="button"
+              onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/login/client'))}
+              className="text-electric-teal hover:underline font-medium"
+            >
+              Back
+            </button>
             </p>
             <p className="text-xs text-gray-500 text-center">
               You can also contact your account administrator to request a new password setup link.

@@ -4,7 +4,7 @@ slug: admin-console-overview
 audience: ADMIN
 category_id: admin-console
 module: Admin Console
-excerpt: Where to find everything in the admin application: main sections, key pages, and how to reach clients, billing, automation, and content.
+excerpt: "Where to find everything in the admin application: main sections, key pages, and how to reach clients, billing, automation, and content."
 tags: admin, console, navigation, dashboard, sections
 status: draft
 ---

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PublicLayout from '../../components/public/PublicLayout';
 import { SEOHead } from '../../components/public/SEOHead';
 import UKLandlordComplianceChecklist2026 from './articles/UKLandlordComplianceChecklist2026';
@@ -76,6 +76,7 @@ const getStaticArticle = (slug) => {
 };
 
 const InsightsHubPage = () => {
+  const navigate = useNavigate();
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
@@ -251,13 +252,14 @@ const InsightsHubPage = () => {
         <article className="py-12">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Back link */}
-            <Link 
-              to="/insights" 
+            <button
+              type="button"
+              onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/insights'))}
               className="inline-flex items-center text-electric-teal hover:underline mb-8"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Insights
-            </Link>
+              Back
+            </button>
             
             {/* Header */}
             <header className="mb-8">
@@ -373,10 +375,14 @@ const InsightsHubPage = () => {
         />
         <article className="py-12">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <Link to="/insights" className="inline-flex items-center text-electric-teal hover:underline mb-8">
+            <button
+              type="button"
+              onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/insights'))}
+              className="inline-flex items-center text-electric-teal hover:underline mb-8"
+            >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Insights
-            </Link>
+              Back
+            </button>
             <header className="mb-8">
               <h1 className="text-4xl sm:text-5xl font-bold text-midnight-blue mb-4">{staticArticle.title}</h1>
               <p className="text-xl text-gray-600">{staticArticle.excerpt}</p>

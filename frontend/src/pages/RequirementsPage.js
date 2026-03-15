@@ -278,7 +278,7 @@ const RequirementsPage = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
             className="text-gray-600 hover:text-midnight-blue mb-4"
             data-testid="back-to-dashboard"
           >

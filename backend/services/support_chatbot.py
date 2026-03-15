@@ -54,35 +54,35 @@ def get_chatbot_knowledge_base() -> Dict[str, Any]:
     """Build knowledge base with current CVP pricing and frontend links (used in AI prompt and canned text)."""
     cvp_pricing = _get_cvp_pricing_from_registry()
     return {
-        "company": {
-            "name": "Pleerity Enterprise Ltd",
-            "tagline": "Property compliance and business services for landlords and property managers",
-            "support_email": SUPPORT_EMAIL,
-            "support_hours": "24/7 via chatbot, Live agents Mon-Fri 9am-6pm GMT",
-            "whatsapp": SUPPORT_WHATSAPP,
-        },
+    "company": {
+        "name": "Pleerity Enterprise Ltd",
+        "tagline": "Property compliance and business services for landlords and property managers",
+        "support_email": SUPPORT_EMAIL,
+        "support_hours": "24/7 via chatbot, Live agents Mon-Fri 9am-6pm GMT",
+        "whatsapp": SUPPORT_WHATSAPP,
+    },
         "frontend_links": {
             "client_signin": f"{FRONTEND_BASE}/login/client",
             "pricing": f"{FRONTEND_BASE}/pricing",
             "compliance_vault_landing": f"{FRONTEND_BASE}/compliance-vault-pro",
             "dashboard": f"{FRONTEND_BASE}/dashboard",
         },
-        "services": {
-            "cvp": {
-                "name": "Compliance Vault Pro",
-                "description": "Comprehensive property compliance management platform for HMO and residential landlords.",
-                "features": [
-                    "Property compliance tracking and monitoring",
-                    "Document storage and management",
-                    "Certificate expiry alerts",
-                    "Compliance scoring and risk assessment",
-                    "Multi-property portfolio management",
-                    "Council licensing tracking",
-                ],
+    "services": {
+        "cvp": {
+            "name": "Compliance Vault Pro",
+            "description": "Comprehensive property compliance management platform for HMO and residential landlords.",
+            "features": [
+                "Property compliance tracking and monitoring",
+                "Document storage and management",
+                "Certificate expiry alerts",
+                "Compliance scoring and risk assessment",
+                "Multi-property portfolio management",
+                "Council licensing tracking",
+            ],
                 "pricing": cvp_pricing,
-                "ideal_for": "Landlords with HMO or multiple properties needing compliance oversight",
-            },
-            "document_packs": {
+            "ideal_for": "Landlords with HMO or multiple properties needing compliance oversight",
+        },
+        "document_packs": {
             "name": "Document Packs",
             "description": "Professional, legally-compliant document packs for landlords.",
             "tiers": {
@@ -95,8 +95,8 @@ def get_chatbot_knowledge_base() -> Dict[str, Any]:
                 "printed_copy": {"name": "Printed Copy", "price": "£25", "description": "Physical copy by Royal Mail"},
             },
             "turnaround": "Standard 48 hours, Fast Track 24 hours",
-            },
-            "ai_automation": {
+        },
+        "ai_automation": {
             "name": "AI Workflow Automation",
             "description": "Automate repetitive property management tasks with AI.",
             "services": [
@@ -104,16 +104,16 @@ def get_chatbot_knowledge_base() -> Dict[str, Any]:
                 {"name": "Business Process Mapping", "price": "£129"},
                 {"name": "AI Tool Recommendation Report", "price": "£59"},
             ],
-            },
-            "market_research": {
+        },
+        "market_research": {
             "name": "Market Research",
             "description": "Property market insights and area analysis.",
             "tiers": {
                 "basic": {"name": "Basic Report", "price": "£69"},
                 "advanced": {"name": "Advanced Report", "price": "£149"},
             },
-            },
-            "compliance_audits": {
+        },
+        "compliance_audits": {
             "name": "Compliance Audits",
             "description": "Professional property compliance audits.",
             "services": [
@@ -121,9 +121,9 @@ def get_chatbot_knowledge_base() -> Dict[str, Any]:
                 {"name": "Full Compliance Audit", "price": "£99"},
                 {"name": "Move-In/Out Checklist", "price": "£35"},
             ],
-            },
         },
-        "faqs": [
+    },
+    "faqs": [
         {
             "question": "How do I reset my password?",
             "answer": "You can reset your password yourself: on the client sign-in page, click 'Forgot password?', enter your email, and we'll send you a link to set a new password. Alternatively, contact your account administrator—they can send you a new setup link from the admin portal. Links expire after 1 hour.",
@@ -1040,7 +1040,7 @@ async def handle_chat_message(
             },
             "conversation_context": ctx,
         }
-
+    
     # Check for legal advice request
     if is_legal_advice_request(message):
         return {
@@ -1049,7 +1049,7 @@ async def handle_chat_message(
             "metadata": {"legal_refusal": True, "service_area": "other", "category": "other"},
             "conversation_context": ctx,
         }
-
+    
     # Check for human handoff request
     if needs_human_handoff(message):
         service_area = detect_service_area(message)

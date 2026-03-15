@@ -58,9 +58,13 @@ const stageColors = {
   NEW: 'bg-blue-100 text-blue-800',
   CONTACTED: 'bg-purple-100 text-purple-800',
   QUALIFIED: 'bg-indigo-100 text-indigo-800',
+  NURTURING: 'bg-amber-100 text-amber-800',
+  SALES_READY: 'bg-emerald-100 text-emerald-800',
   PROPOSAL_SENT: 'bg-cyan-100 text-cyan-800',
+  NEGOTIATING: 'bg-slate-100 text-slate-800',
   WON: 'bg-green-100 text-green-800',
   LOST: 'bg-red-100 text-red-800',
+  INACTIVE: 'bg-gray-100 text-gray-600',
 };
 
 // Source icons
@@ -95,8 +99,13 @@ export default function AdminLeadsPage() {
   const [intentFilter, setIntentFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [slaBreachOnly, setSlaBreachOnly] = useState(false);
+  const [lastActivityFrom, setLastActivityFrom] = useState('');
+  const [lastActivityTo, setLastActivityTo] = useState('');
+  const [leadScoreMin, setLeadScoreMin] = useState('');
+  const [leadScoreMax, setLeadScoreMax] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [notifications, setNotifications] = useState(null);
   
   // Dialog state
   const [selectedLead, setSelectedLead] = useState(null);
@@ -157,6 +166,10 @@ export default function AdminLeadsPage() {
       if (intentFilter !== 'all') params.append('intent_score', intentFilter);
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (slaBreachOnly) params.append('sla_breach_only', 'true');
+      if (lastActivityFrom) params.append('last_activity_from', lastActivityFrom);
+      if (lastActivityTo) params.append('last_activity_to', lastActivityTo);
+      if (leadScoreMin !== '') params.append('lead_score_min', String(leadScoreMin));
+      if (leadScoreMax !== '') params.append('lead_score_max', String(leadScoreMax));
       params.append('page', page.toString());
       params.append('limit', '50');
       
@@ -171,7 +184,22 @@ export default function AdminLeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, sourceFilter, stageFilter, intentFilter, statusFilter, slaBreachOnly, page]);
+  }, [search, sourceFilter, stageFilter, intentFilter, statusFilter, slaBreachOnly, lastActivityFrom, lastActivityTo, leadScoreMin, leadScoreMax, page]);
+
+  // Fetch lead notifications (high intent, sales ready, SLA)
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await client.get('/admin/leads/notifications');
+        setNotifications(response?.data || null);
+      } catch {
+        setNotifications(null);
+      }
+    };
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetchLeads();
@@ -348,6 +376,93 @@ export default function AdminLeadsPage() {
         </div>
       </div>
 
+      {/* Lead alerts: high intent, sales ready, SLA breach */}
+      {notifications && (notifications.high_intent_alerts?.length > 0 || notifications.sales_ready_alerts?.length > 0 || notifications.sla_breach_alerts?.length > 0) && (
+        <div className="grid md:grid-cols-3 gap-4">
+          {Array.isArray(notifications.high_intent_alerts) && notifications.high_intent_alerts.length > 0 && (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm font-medium text-amber-800 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  High intent ({notifications.high_intent_alerts.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="py-2">
+                <ul className="space-y-1 text-sm">
+                  {notifications.high_intent_alerts.slice(0, 5).map((a) => (
+                    <li key={a.lead_id}>
+                      <button
+                        type="button"
+                        className="text-amber-800 hover:underline font-medium"
+                        onClick={() => openLeadDetail(a.lead_id)}
+                      >
+                        {a.name || a.lead_id}
+                      </button>
+                      {a.service && <span className="text-amber-600 ml-1">· {a.service}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+          {Array.isArray(notifications.sales_ready_alerts) && notifications.sales_ready_alerts.length > 0 && (
+            <Card className="border-green-200 bg-green-50">
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm font-medium text-green-800 flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Sales ready ({notifications.sales_ready_alerts.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="py-2">
+                <ul className="space-y-1 text-sm">
+                  {notifications.sales_ready_alerts.slice(0, 5).map((a) => (
+                    <li key={a.lead_id}>
+                      <button
+                        type="button"
+                        className="text-green-800 hover:underline font-medium"
+                        onClick={() => openLeadDetail(a.lead_id)}
+                      >
+                        {a.name || a.lead_id}
+                      </button>
+                      {(a.lead_score != null || a.service) && (
+                        <span className="text-green-600 ml-1">
+                          · {[a.lead_score != null ? `Score ${a.lead_score}` : null, a.service].filter(Boolean).join(' ')}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+          {Array.isArray(notifications.sla_breach_alerts) && notifications.sla_breach_alerts.length > 0 && (
+            <Card className="border-red-200 bg-red-50">
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm font-medium text-red-800 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  SLA breach ({notifications.sla_breach_alerts.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="py-2">
+                <ul className="space-y-1 text-sm">
+                  {notifications.sla_breach_alerts.slice(0, 5).map((a) => (
+                    <li key={a.lead_id}>
+                      <button
+                        type="button"
+                        className="text-red-800 hover:underline font-medium"
+                        onClick={() => openLeadDetail(a.lead_id)}
+                      >
+                        {a.name || a.lead_id}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
       {/* Stats Cards */}
       {stats != null && (
         <div className="grid md:grid-cols-6 gap-4">
@@ -450,6 +565,44 @@ export default function AdminLeadsPage() {
           />
           SLA Breaches
         </label>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-gray-500 whitespace-nowrap">Last activity</Label>
+          <Input
+            type="date"
+            value={lastActivityFrom}
+            onChange={(e) => setLastActivityFrom(e.target.value)}
+            className="w-36 h-9"
+          />
+          <span className="text-gray-400">–</span>
+          <Input
+            type="date"
+            value={lastActivityTo}
+            onChange={(e) => setLastActivityTo(e.target.value)}
+            className="w-36 h-9"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-gray-500 whitespace-nowrap">Score</Label>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            placeholder="Min"
+            value={leadScoreMin}
+            onChange={(e) => setLeadScoreMin(e.target.value)}
+            className="w-16 h-9"
+          />
+          <span className="text-gray-400">–</span>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            placeholder="Max"
+            value={leadScoreMax}
+            onChange={(e) => setLeadScoreMax(e.target.value)}
+            className="w-16 h-9"
+          />
+        </div>
         <Button variant="outline" size="sm" onClick={fetchLeads}>
           Apply
         </Button>

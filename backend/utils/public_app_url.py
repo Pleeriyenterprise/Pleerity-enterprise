@@ -1,18 +1,24 @@
 """
 Canonical public frontend base URL for activation/reset links and redirects.
 Use get_frontend_base_url() for ALL email links (set-password, activation). No other code should build frontend links directly.
+
+Preferred source of truth: FRONTEND_URL=https://pleerityenterprise.co.uk (or FRONTEND_PUBLIC_URL for email links).
+We do NOT use VERCEL_URL or RENDER_EXTERNAL_URL for customer-facing links (they are deployment hostnames, not the custom domain).
 """
 import os
 import logging
 
 logger = logging.getLogger(__name__)
 
+# Canonical production frontend URL when no env is set (avoids sending users to Vercel default domain).
+_CANONICAL_FRONTEND_URL = "https://pleerityenterprise.co.uk"
+
 
 def get_frontend_base_url() -> str:
     """
     Single helper for frontend base URL used in email links (set-password, activation).
-    Reads FRONTEND_PUBLIC_URL (then PUBLIC_APP_URL, FRONTEND_URL, VERCEL_URL, RENDER_EXTERNAL_URL).
-    Strips trailing slash. Raises clear error if missing when building email links (except local dev).
+    Reads FRONTEND_PUBLIC_URL, then PUBLIC_APP_URL, then FRONTEND_URL. Never uses VERCEL_URL.
+    If none set, returns _CANONICAL_FRONTEND_URL so password reset and activation links use the custom domain.
     """
     return get_public_app_url(for_email_links=True)
 
@@ -20,17 +26,13 @@ def get_frontend_base_url() -> str:
 def get_public_app_url(for_email_links: bool = False) -> str:
     """
     Return normalized public frontend base URL (no trailing slash).
-    Single source of truth for ALL email links (activation, set-password); never backend host or localhost in production.
-    Fallback order: FRONTEND_PUBLIC_URL, PUBLIC_APP_URL, FRONTEND_URL, VERCEL_URL (as https), RENDER_EXTERNAL_URL.
+    Single source of truth for ALL email links (activation, set-password).
+    Fallback order: FRONTEND_PUBLIC_URL, PUBLIC_APP_URL, FRONTEND_URL. Then for_email_links -> _CANONICAL_FRONTEND_URL, else localhost.
 
-    Rules:
-    - Result is stripped and trailing slash removed.
-    - In production (non-localhost), https is enforced for the returned value when possible.
-    - If for_email_links=True and no valid public URL is available (missing or localhost in prod),
-      raises ValueError so callers do not send broken links.
+    We do NOT use VERCEL_URL or RENDER_EXTERNAL_URL so customer-facing links never point at the default Vercel deployment URL.
 
     Returns:
-        Base URL, e.g. https://app.example.com
+        Base URL, e.g. https://pleerityenterprise.co.uk
     """
     raw = (
         (os.getenv("FRONTEND_PUBLIC_URL") or "").strip()
@@ -38,27 +40,25 @@ def get_public_app_url(for_email_links: bool = False) -> str:
         or (os.getenv("FRONTEND_URL") or "").strip()
         or ""
     )
-    if not raw and os.getenv("VERCEL_URL"):
-        raw = f"https://{os.getenv('VERCEL_URL', '').strip()}"
-    if not raw and os.getenv("RENDER_EXTERNAL_URL"):
-        raw = (os.getenv("RENDER_EXTERNAL_URL") or "").strip()
     raw = (raw or "").strip().rstrip("/")
     if not raw:
         if for_email_links:
-            raise ValueError(
-                "FRONTEND_PUBLIC_URL or PUBLIC_APP_URL or FRONTEND_URL must be set for activation email links. "
-                "Set FRONTEND_PUBLIC_URL=https://<your-frontend-domain> (no trailing slash)."
+            logger.info(
+                "get_public_app_url: no FRONTEND_URL/FRONTEND_PUBLIC_URL set; using canonical %s for email links",
+                _CANONICAL_FRONTEND_URL,
             )
+            return _CANONICAL_FRONTEND_URL
         return "http://localhost:3000"
     if raw.startswith("http://") and "localhost" not in raw:
         raw = "https://" + raw.split("://", 1)[1]
     if for_email_links and "localhost" in raw.lower():
         env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or "").strip().lower()
         if env in ("production", "prod"):
-            raise ValueError(
-                "FRONTEND_PUBLIC_URL (or PUBLIC_APP_URL) must be your public frontend URL in production (no localhost). "
-                "Set FRONTEND_PUBLIC_URL=https://<your-frontend-domain>"
+            logger.warning(
+                "get_public_app_url(for_email_links=True): localhost in production; using canonical %s",
+                _CANONICAL_FRONTEND_URL,
             )
+            return _CANONICAL_FRONTEND_URL
         logger.warning(
             "get_public_app_url(for_email_links=True): using localhost; set FRONTEND_PUBLIC_URL for production emails."
         )

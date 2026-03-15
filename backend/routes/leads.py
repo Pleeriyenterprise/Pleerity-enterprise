@@ -7,7 +7,7 @@ Admin endpoints for lead management.
 All actions are audit-logged.
 """
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
@@ -91,6 +91,55 @@ class ComplianceChecklistLeadRequest(BaseModel):
     marketing_consent: bool = False
 
 
+class PricingConsultationLeadRequest(BaseModel):
+    """Request from pricing or consultation request (e.g. pricing page, book consultation)."""
+    name: Optional[str] = None
+    email: EmailStr
+    phone: Optional[str] = None
+    company_name: Optional[str] = None
+    message: Optional[str] = None
+    marketing_consent: bool = False
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+
+
+class AutomationEnquiryLeadRequest(BaseModel):
+    """Request from AI automation / workflow enquiry."""
+    name: Optional[str] = None
+    email: EmailStr
+    phone: Optional[str] = None
+    company_name: Optional[str] = None
+    message: Optional[str] = None
+    marketing_consent: bool = False
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+
+
+class MarketResearchEnquiryLeadRequest(BaseModel):
+    """Request from market research enquiry."""
+    name: Optional[str] = None
+    email: EmailStr
+    phone: Optional[str] = None
+    company_name: Optional[str] = None
+    message: Optional[str] = None
+    marketing_consent: bool = False
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+
+
+class SupportFormLeadRequest(BaseModel):
+    """Request from support-specific form (distinct from general contact)."""
+    name: str = Field(..., min_length=2)
+    email: EmailStr
+    phone: Optional[str] = None
+    subject: Optional[str] = None
+    message: str = Field(..., min_length=10)
+    marketing_consent: bool = False
+
+
 @public_router.post("/capture/chatbot")
 async def capture_chatbot_lead(
     request: ChatbotLeadCaptureRequest,
@@ -141,6 +190,7 @@ async def capture_chatbot_lead(
         actor_id="chatbot",
         actor_type="system",
         ip_address=req.client.host if req.client else None,
+        upsert_by_email=True,
     )
     
     try:
@@ -190,6 +240,7 @@ async def capture_contact_form_lead(
         actor_id="contact_form",
         actor_type="system",
         ip_address=req.client.host if req.client else None,
+        upsert_by_email=True,
     )
     
     try:
@@ -240,6 +291,7 @@ async def capture_compliance_checklist_lead(
         actor_id="compliance_checklist",
         actor_type="system",
         ip_address=req.client.host if req.client else None,
+        upsert_by_email=True,
     )
 
     try:
@@ -294,6 +346,7 @@ async def capture_document_service_lead(
         actor_id="document_service",
         actor_type="system",
         ip_address=req.client.host if req.client else None,
+        upsert_by_email=True,
     )
     
     try:
@@ -311,6 +364,158 @@ async def capture_document_service_lead(
         "lead_id": lead["lead_id"],
         "message": "Thank you! We'll process your document request shortly.",
     }
+
+
+@public_router.post("/capture/pricing")
+async def capture_pricing_lead(
+    request: PricingConsultationLeadRequest,
+    req: Request,
+):
+    """Capture a lead from pricing page or consultation request. Uses upsert by email."""
+    lead_request = LeadCreateRequest(
+        source_platform=LeadSourcePlatform.PRICING_PAGE,
+        service_interest=LeadServiceInterest.UNKNOWN,
+        name=request.name,
+        email=request.email,
+        phone=request.phone,
+        company_name=request.company_name,
+        message_summary=request.message,
+        marketing_consent=request.marketing_consent,
+        utm_source=request.utm_source,
+        utm_medium=request.utm_medium,
+        utm_campaign=request.utm_campaign,
+        source_metadata={"intent": "pricing_or_consultation"},
+    )
+    lead = await LeadService.create_lead(
+        request=lead_request,
+        actor_id="pricing_page",
+        actor_type="system",
+        ip_address=req.client.host if req.client else None,
+        upsert_by_email=True,
+    )
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "pricing_page"})
+    except Exception:
+        pass
+    if lead.get("email") and not lead.get("is_duplicate"):
+        await LeadFollowUpService.send_acknowledgement(lead)
+    if request.marketing_consent and not lead.get("is_duplicate"):
+        await LeadFollowUpService.start_followup_sequence(lead["lead_id"])
+    return {"success": True, "lead_id": lead["lead_id"], "is_duplicate": lead.get("is_duplicate", False), "message": "Thank you. We'll be in touch shortly."}
+
+
+@public_router.post("/capture/automation-enquiry")
+async def capture_automation_enquiry_lead(
+    request: AutomationEnquiryLeadRequest,
+    req: Request,
+):
+    """Capture a lead from AI automation / workflow enquiry. Uses upsert by email."""
+    lead_request = LeadCreateRequest(
+        source_platform=LeadSourcePlatform.AUTOMATION_ENQUIRY,
+        service_interest=LeadServiceInterest.AUTOMATION,
+        name=request.name,
+        email=request.email,
+        phone=request.phone,
+        company_name=request.company_name,
+        message_summary=request.message,
+        marketing_consent=request.marketing_consent,
+        utm_source=request.utm_source,
+        utm_medium=request.utm_medium,
+        utm_campaign=request.utm_campaign,
+        source_metadata={"intent": "automation_enquiry"},
+    )
+    lead = await LeadService.create_lead(
+        request=lead_request,
+        actor_id="automation_enquiry",
+        actor_type="system",
+        ip_address=req.client.host if req.client else None,
+        upsert_by_email=True,
+    )
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "automation_enquiry"})
+    except Exception:
+        pass
+    if lead.get("email") and not lead.get("is_duplicate"):
+        await LeadFollowUpService.send_acknowledgement(lead)
+    if request.marketing_consent and not lead.get("is_duplicate"):
+        await LeadFollowUpService.start_followup_sequence(lead["lead_id"])
+    return {"success": True, "lead_id": lead["lead_id"], "is_duplicate": lead.get("is_duplicate", False), "message": "Thank you. We'll be in touch shortly."}
+
+
+@public_router.post("/capture/market-research-enquiry")
+async def capture_market_research_lead(
+    request: MarketResearchEnquiryLeadRequest,
+    req: Request,
+):
+    """Capture a lead from market research enquiry. Uses upsert by email."""
+    lead_request = LeadCreateRequest(
+        source_platform=LeadSourcePlatform.MARKET_RESEARCH_ENQUIRY,
+        service_interest=LeadServiceInterest.MARKET_RESEARCH,
+        name=request.name,
+        email=request.email,
+        phone=request.phone,
+        company_name=request.company_name,
+        message_summary=request.message,
+        marketing_consent=request.marketing_consent,
+        utm_source=request.utm_source,
+        utm_medium=request.utm_medium,
+        utm_campaign=request.utm_campaign,
+        source_metadata={"intent": "market_research_enquiry"},
+    )
+    lead = await LeadService.create_lead(
+        request=lead_request,
+        actor_id="market_research_enquiry",
+        actor_type="system",
+        ip_address=req.client.host if req.client else None,
+        upsert_by_email=True,
+    )
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "market_research_enquiry"})
+    except Exception:
+        pass
+    if lead.get("email") and not lead.get("is_duplicate"):
+        await LeadFollowUpService.send_acknowledgement(lead)
+    if request.marketing_consent and not lead.get("is_duplicate"):
+        await LeadFollowUpService.start_followup_sequence(lead["lead_id"])
+    return {"success": True, "lead_id": lead["lead_id"], "is_duplicate": lead.get("is_duplicate", False), "message": "Thank you. We'll be in touch shortly."}
+
+
+@public_router.post("/capture/support-form")
+async def capture_support_form_lead(
+    request: SupportFormLeadRequest,
+    req: Request,
+):
+    """Capture a lead from support-specific form. Uses upsert by email."""
+    lead_request = LeadCreateRequest(
+        source_platform=LeadSourcePlatform.SUPPORT_FORM,
+        service_interest=LeadServiceInterest.UNKNOWN,
+        name=request.name,
+        email=request.email,
+        phone=request.phone,
+        message_summary=f"Support: {request.subject or 'No subject'}. {request.message}",
+        marketing_consent=request.marketing_consent,
+        source_metadata={"subject": request.subject},
+    )
+    lead = await LeadService.create_lead(
+        request=lead_request,
+        actor_id="support_form",
+        actor_type="system",
+        ip_address=req.client.host if req.client else None,
+        upsert_by_email=True,
+    )
+    try:
+        from services.analytics_service import log_event
+        await log_event("lead_captured", {"lead_id": lead["lead_id"], "email": lead.get("email"), "source": "support_form"})
+    except Exception:
+        pass
+    if lead.get("email") and not lead.get("is_duplicate"):
+        await LeadFollowUpService.send_acknowledgement(lead)
+    if request.marketing_consent and not lead.get("is_duplicate"):
+        await LeadFollowUpService.start_followup_sequence(lead["lead_id"])
+    return {"success": True, "lead_id": lead["lead_id"], "is_duplicate": lead.get("is_duplicate", False), "message": "Thank you. We've received your support request."}
 
 
 @public_router.post("/capture/whatsapp")
@@ -357,6 +562,108 @@ async def capture_whatsapp_lead(
         "lead_id": lead["lead_id"],
         "is_duplicate": lead.get("is_duplicate", False),
     }
+
+
+ALLOWED_ACTIVITY_TAGS = frozenset({
+    "nurture_cta_clicked",
+    "nurture_email_opened",
+    "pricing_requested",
+    "consultation_request",
+})
+
+
+class LeadActivityRequest(BaseModel):
+    """Record an activity on a lead (e.g. CTA click, email open). Used by email links and frontend."""
+    lead_id: str
+    activity_type: str  # Must be in ALLOWED_ACTIVITY_TAGS
+
+
+@public_router.post("/activity")
+async def record_lead_activity(
+    body: LeadActivityRequest,
+    req: Request,
+):
+    """
+    Record an activity (e.g. nurture CTA clicked, email opened) for a lead.
+    Adds the activity_type as a tag, updates last_activity_at, and logs audit.
+    Rate-limited per lead_id to prevent abuse.
+    """
+    if body.activity_type not in ALLOWED_ACTIVITY_TAGS:
+        raise HTTPException(status_code=400, detail=f"activity_type must be one of: {sorted(ALLOWED_ACTIVITY_TAGS)}")
+    db = database.get_db()
+    lead = await db["leads"].find_one(
+        {"lead_id": body.lead_id, "status": {"$nin": [LeadStatus.CONVERTED.value, LeadStatus.LOST.value, LeadStatus.MERGED.value]}},
+        {"_id": 0, "lead_id": 1, "tags": 1},
+    )
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    now = datetime.now(timezone.utc).isoformat()
+    tags = list(set(lead.get("tags") or []) | {body.activity_type})
+    await db["leads"].update_one(
+        {"lead_id": body.lead_id},
+        {"$set": {"tags": tags, "last_activity_at": now, "updated_at": now}},
+    )
+    await LeadService.log_audit(
+        event=LeadAuditEvent.LEAD_UPDATED,
+        lead_id=body.lead_id,
+        actor_id="system",
+        actor_type="activity",
+        details={"activity_type": body.activity_type, "source": "lead_activity_api"},
+        ip_address=req.client.host if req.client else None,
+    )
+    try:
+        await LeadService.recalculate_and_persist_lead_score(body.lead_id, f"activity_{body.activity_type}")
+    except Exception as e:
+        logger.warning("Lead score recalc after activity failed: %s", e)
+    return {"success": True, "lead_id": body.lead_id, "activity_type": body.activity_type}
+
+
+# 1x1 transparent GIF for email open tracking (RFC 2045)
+_TRACKING_PIXEL_GIF = (
+    b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!"
+    b"\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+)
+
+
+@public_router.get("/track-open")
+async def track_lead_email_open(
+    lead_id: str = Query(..., description="Lead ID to record email open for"),
+    req: Request = None,
+):
+    """
+    Email open tracking: GET with lead_id (e.g. in a 1x1 img src in nurture emails).
+    Records activity_type=nurture_email_opened and returns a 1x1 transparent GIF.
+    Always returns 200 with image/gif so the email client does not show a broken image.
+    """
+    db = database.get_db()
+    lead = await db["leads"].find_one(
+        {"lead_id": lead_id, "status": {"$nin": [LeadStatus.CONVERTED.value, LeadStatus.LOST.value, LeadStatus.MERGED.value]}},
+        {"_id": 0, "lead_id": 1, "tags": 1},
+    )
+    if lead:
+        now = datetime.now(timezone.utc).isoformat()
+        tags = list(set(lead.get("tags") or []) | {"nurture_email_opened"})
+        await db["leads"].update_one(
+            {"lead_id": lead_id},
+            {"$set": {"tags": tags, "last_activity_at": now, "updated_at": now}},
+        )
+        await LeadService.log_audit(
+            event=LeadAuditEvent.LEAD_UPDATED,
+            lead_id=lead_id,
+            actor_id="system",
+            actor_type="activity",
+            details={"activity_type": "nurture_email_opened", "source": "track_open_pixel"},
+            ip_address=req.client.host if req and req.client else None,
+        )
+        try:
+            await LeadService.recalculate_and_persist_lead_score(lead_id, "nurture_email_opened")
+        except Exception as e:
+            logger.warning("Lead score recalc after track-open failed: %s", e)
+    return Response(
+        content=_TRACKING_PIXEL_GIF,
+        media_type="image/gif",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+    )
 
 
 @public_router.post("/unsubscribe/{lead_id}")
@@ -440,6 +747,10 @@ async def list_leads(
     sla_breach_only: bool = False,
     date_from: Optional[str] = Query(None, description="Filter from date (YYYY-MM-DD or ISO)"),
     date_to: Optional[str] = Query(None, description="Filter to date (YYYY-MM-DD or ISO)"),
+    last_activity_from: Optional[str] = Query(None, description="Last activity from (YYYY-MM-DD or ISO)"),
+    last_activity_to: Optional[str] = Query(None, description="Last activity to (YYYY-MM-DD or ISO)"),
+    lead_score_min: Optional[int] = Query(None, ge=0, le=100),
+    lead_score_max: Optional[int] = Query(None, ge=0, le=100),
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=200),
     current_user: dict = Depends(admin_route_guard),
@@ -456,16 +767,22 @@ async def list_leads(
         sla_breach_only=sla_breach_only,
         date_from=date_from,
         date_to=date_to,
+        last_activity_from=last_activity_from,
+        last_activity_to=last_activity_to,
+        lead_score_min=lead_score_min,
+        lead_score_max=lead_score_max,
         page=page,
         limit=limit,
     )
-    # Enrich with lead_score (0-100), score_band (High/Medium/Low), and tags for display
+    # Use persisted lead_score when present; else derive from intent_score for display
     intent_to_score = {"HIGH": 75, "MEDIUM": 50, "LOW": 25}
     for lead in leads:
-        raw = lead.get("intent_score") or "LOW"
-        lead["lead_score"] = intent_to_score.get(str(raw).upper(), 25)
-        s = lead["lead_score"]
-        lead["score_band"] = "High" if s >= 70 else "Medium" if s >= 40 else "Low"
+        s = lead.get("lead_score")
+        if s is None:
+            raw = lead.get("intent_score") or "LOW"
+            s = intent_to_score.get(str(raw).upper(), 25)
+            lead["lead_score"] = s
+        lead["score_band"] = "High" if s >= 60 else "Medium" if s >= 20 else "Low"
         lead["tags"] = lead.get("tags") or []
     # Get stats
     stats = await LeadService.get_stats()
@@ -557,36 +874,46 @@ async def get_lead_notifications(
 ):
     """
     Get pending lead notifications for the admin.
-    Used for browser notifications/real-time alerts.
-    Returns uncontacted HIGH intent leads and SLA breaches.
+    Returns HIGH intent, sales_ready (lead_score >= 60), consultation/pricing requests, SLA breaches, recent leads.
     """
     db = database.get_db()
-    
-    # Get HIGH intent leads created in last 24 hours that haven't been contacted
+
     cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-    
+    cutoff_1h = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+
     high_intent_leads = await db["leads"].find({
         "intent_score": "HIGH",
-        "stage": "NEW",
+        "stage": {"$nin": ["WON", "LOST"]},
         "status": "ACTIVE",
         "created_at": {"$gte": cutoff_24h},
         "last_contacted_at": None,
     }, {"_id": 0}).to_list(length=10)
-    
-    # Get SLA breaches
+
+    # Hot leads: lead_score >= 60 (sales_ready) or tags indicate consultation/pricing request
+    sales_ready_leads = await db["leads"].find({
+        "status": "ACTIVE",
+        "stage": {"$nin": ["WON", "LOST"]},
+        "$or": [
+            {"lead_score": {"$gte": 60}},
+            {"tags": "consultation_request"},
+            {"tags": "pricing_requested"},
+            {"source_metadata.intent": "pricing_or_consultation"},
+        ],
+        "last_contacted_at": None,
+        "created_at": {"$gte": cutoff_24h},
+    }, {"_id": 0}).to_list(length=10)
+
     sla_breaches = await db["leads"].find({
         "sla_breach": True,
         "status": "ACTIVE",
         "stage": {"$ne": "WON"},
     }, {"_id": 0}).to_list(length=10)
-    
-    # Get recent leads (last hour) for real-time alerts
-    cutoff_1h = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+
     recent_leads = await db["leads"].find({
         "created_at": {"$gte": cutoff_1h},
         "status": "ACTIVE",
     }, {"_id": 0}).sort("created_at", -1).to_list(length=5)
-    
+
     return {
         "high_intent_alerts": [{
             "lead_id": lead["lead_id"],
@@ -595,6 +922,14 @@ async def get_lead_notifications(
             "created_at": lead["created_at"],
             "type": "high_intent",
         } for lead in high_intent_leads],
+        "sales_ready_alerts": [{
+            "lead_id": lead["lead_id"],
+            "name": lead.get("name") or lead.get("email"),
+            "service": lead.get("service_interest"),
+            "lead_score": lead.get("lead_score"),
+            "created_at": lead["created_at"],
+            "type": "sales_ready",
+        } for lead in sales_ready_leads],
         "sla_breach_alerts": [{
             "lead_id": lead["lead_id"],
             "name": lead.get("name") or lead.get("email"),
@@ -606,10 +941,11 @@ async def get_lead_notifications(
             "lead_id": lead["lead_id"],
             "name": lead.get("name") or lead.get("email"),
             "intent_score": lead.get("intent_score"),
+            "lead_score": lead.get("lead_score"),
             "created_at": lead["created_at"],
             "type": "new_lead",
         } for lead in recent_leads],
-        "total_alerts": len(high_intent_leads) + len(sla_breaches),
+        "total_alerts": len(high_intent_leads) + len(sales_ready_leads) + len(sla_breaches),
     }
 
 

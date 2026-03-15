@@ -64,7 +64,7 @@ function ClientIssueDetailPageInner() {
   if (error || !issue) {
     return (
       <div className="p-6 max-w-2xl">
-        <Button variant="outline" onClick={() => navigate('/operations/issues')} className="mb-4">
+        <Button variant="outline" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/operations/issues'))} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Issues
         </Button>
@@ -82,7 +82,7 @@ function ClientIssueDetailPageInner() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <Button variant="outline" onClick={() => navigate('/operations/issues')} className="mb-4">
+      <Button variant="outline" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/operations/issues'))} className="mb-4">
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Issues
       </Button>

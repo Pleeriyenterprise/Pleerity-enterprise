@@ -296,7 +296,7 @@ const ClearFormCreatePage = () => {
         <Button 
           variant="ghost" 
           className="mb-6" 
-          onClick={() => step === 1 ? navigate('/clearform/dashboard') : setStep(step - 1)}
+          onClick={() => step === 1 ? (window.history.length > 2 ? navigate(-1) : navigate('/clearform/dashboard')) : setStep(step - 1)}
         >
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
