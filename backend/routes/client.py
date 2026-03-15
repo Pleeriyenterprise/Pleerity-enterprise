@@ -1210,9 +1210,10 @@ async def invite_tenant(request: Request):
             "client_id": user["client_id"],
             "expires_at": expires_at.isoformat(),
         }
-        invite_url = f"{body.get('base_url', '')}/set-password?token={raw_token}"
-        base = (body.get("base_url") or "").rstrip("/")
-        login_url = f"{base}/login/client" if base else ""
+        from utils.public_app_url import get_frontend_base_url
+        base = get_frontend_base_url().rstrip("/")
+        invite_url = f"{base}/set-password?token={raw_token}"
+        login_url = f"{base}/login/client"
         
         from services.notification_orchestrator import notification_orchestrator
         idempotency_key = f"{tenant_id}_TENANT_INVITE"
@@ -1693,10 +1694,11 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
         }
         await db.password_tokens.insert_one(token_doc)
         
+        from utils.public_app_url import get_frontend_base_url
         from services.notification_orchestrator import notification_orchestrator
-        invite_url = f"{body.get('base_url', '')}/set-password?token={raw_token}"
-        base = (body.get("base_url") or "").rstrip("/")
-        login_url = f"{base}/login/client" if base else ""
+        base = get_frontend_base_url().rstrip("/")
+        invite_url = f"{base}/set-password?token={raw_token}"
+        login_url = f"{base}/login/client"
         idempotency_key = f"{tenant_id}_TENANT_INVITE_resend"
         await notification_orchestrator.send(
             template_key="TENANT_INVITE",
