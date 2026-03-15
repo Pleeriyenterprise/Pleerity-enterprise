@@ -171,7 +171,9 @@ export default function AdminReportingPage() {
     setLoading(true);
     try {
       const { data } = await client.post('/admin/reports/share', shareForm);
-      setCreatedShareUrl(data.share_url || `${window.location.origin}/shared/report/${data.share_id}`);
+      // Always use absolute URL so the link works when copied and opened elsewhere
+      const absoluteUrl = data.share_url?.startsWith('http') ? data.share_url : `${window.location.origin}/shared/report/${data.share_id}`;
+      setCreatedShareUrl(absoluteUrl);
       toast.success('Share link created');
       fetchShares();
     } catch (error) {
@@ -305,6 +307,20 @@ export default function AdminReportingPage() {
     } catch (error) {
       console.error('Failed to toggle schedule:', error);
       toast.error('Failed to update schedule');
+    }
+  };
+
+  const handleResumeAllPaused = async () => {
+    const pausedCount = schedules.filter(s => !s.enabled).length;
+    if (pausedCount === 0) return;
+    if (!window.confirm(`Resume all ${pausedCount} paused schedule(s)?`)) return;
+    try {
+      const { data } = await client.post('/admin/reports/schedules/resume-all');
+      toast.success(data?.message || `${data?.resumed ?? 0} schedule(s) resumed`);
+      fetchSchedules();
+    } catch (error) {
+      console.error('Failed to resume schedules:', error);
+      toast.error(error.response?.data?.detail || 'Failed to resume schedules');
     }
   };
   
@@ -575,8 +591,23 @@ export default function AdminReportingPage() {
           <TabsContent value="schedules" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Scheduled Reports</CardTitle>
-                <CardDescription>Automated report delivery via email</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Scheduled Reports</CardTitle>
+                    <CardDescription>Automated report delivery via email</CardDescription>
+                  </div>
+                  {schedules.some(s => !s.enabled) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResumeAllPaused}
+                      data-testid="resume-all-paused-btn"
+                    >
+                      <Play className="h-4 w-4 mr-1" />
+                      Resume all paused
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {schedules.length > 0 ? (

@@ -535,6 +535,94 @@ class ProfessionalReportGenerator:
         buffer.seek(0)
         return buffer
 
+    async def generate_branding_preview_pdf(
+        self,
+        client_id: str,
+        logo_path: Optional[str] = None,
+    ) -> io.BytesIO:
+        """Generate a one-page sample PDF with current branding for preview.
+        logo_path: optional path to uploaded logo file (used when logo is hosted by us).
+        """
+        branding = await self.get_branding(client_id)
+        styles = self.create_styles(branding)
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=50,
+            leftMargin=50,
+            topMargin=50,
+            bottomMargin=50,
+        )
+        elements = []
+        now = datetime.now(timezone.utc)
+
+        # Optional logo
+        if logo_path:
+            try:
+                from pathlib import Path
+                p = Path(logo_path)
+                if p.is_file():
+                    img = Image(str(p), width=120, height=60)
+                    elements.append(img)
+                    elements.append(Spacer(1, 12))
+            except Exception:
+                pass
+        elif branding.get("logo_url"):
+            try:
+                from urllib.request import urlopen
+                img = Image(io.BytesIO(urlopen(branding["logo_url"]).read()), width=120, height=60)
+                elements.append(img)
+                elements.append(Spacer(1, 12))
+            except Exception:
+                pass
+
+        elements.append(Paragraph("Branding Preview", styles["title"]))
+        elements.append(Paragraph(
+            f"{branding['company_name']}<br/>Sample report generated: {now.strftime('%d %B %Y at %H:%M')}",
+            styles["subtitle"],
+        ))
+        elements.append(HRFlowable(
+            width="100%",
+            thickness=2,
+            color=colors.Color(*hex_to_rgb(branding["secondary_color"])),
+            spaceAfter=20,
+        ))
+        elements.append(Paragraph(
+            "This is how your reports and compliance packs will look with the current branding settings.",
+            styles["body"],
+        ))
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph("Primary colour", styles["heading"]))
+        elements.append(HRFlowable(
+            width="100%",
+            thickness=24,
+            color=colors.Color(*hex_to_rgb(branding["primary_color"])),
+            spaceAfter=12,
+        ))
+        if branding.get("report_header_text"):
+            elements.append(Paragraph("Header text:", styles["small"]))
+            elements.append(Paragraph(branding["report_header_text"], styles["body"]))
+            elements.append(Spacer(1, 12))
+        if branding.get("report_footer_text"):
+            elements.append(Paragraph("Footer text:", styles["small"]))
+            elements.append(Paragraph(branding["report_footer_text"], styles["body"]))
+            elements.append(Spacer(1, 20))
+        if branding.get("include_pleerity_branding", True):
+            elements.append(Paragraph(
+                "Powered by Pleerity",
+                styles["footer"],
+            ))
+        else:
+            elements.append(Paragraph(
+                "Pleerity branding hidden (as configured).",
+                styles["footer"],
+            ))
+
+        doc.build(elements)
+        buffer.seek(0)
+        return buffer
+
 
 # Singleton instance
 professional_report_generator = ProfessionalReportGenerator()

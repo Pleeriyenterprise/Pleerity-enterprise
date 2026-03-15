@@ -825,6 +825,28 @@ async def toggle_scheduled_report(
     return {"schedule_id": schedule_id, "enabled": new_status}
 
 
+@router.post("/schedules/resume-all")
+async def resume_all_paused_schedules(
+    admin: dict = Depends(admin_route_guard)
+):
+    """Set enabled=true for all schedules that are currently paused (enabled=false)."""
+    db = database.get_db()
+    result = await db.report_schedules.update_many(
+        {"enabled": False},
+        {"$set": {"enabled": True}}
+    )
+    resumed = result.modified_count
+    if resumed > 0:
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=admin.get("portal_user_id"),
+            resource_type="report_schedule",
+            metadata={"action": "resume_all", "count": resumed}
+        )
+    return {"resumed": resumed, "message": f"Resumed {resumed} schedule(s)"}
+
+
 @router.delete("/schedules/{schedule_id}")
 async def delete_scheduled_report(
     schedule_id: str,

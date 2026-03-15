@@ -4451,7 +4451,7 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Support URL query param for tab (used by UnifiedAdminLayout sidebar links)
   const tabFromUrl = searchParams.get('tab');
@@ -4459,8 +4459,19 @@ const AdminDashboard = () => {
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [drilldownType, setDrilldownType] = useState(null);
 
-  // Update activeTab when URL changes (e.g., user clicks sidebar link)
-  const effectiveTab = tabFromUrl || activeTab;
+  // Effective tab: URL takes precedence when present, so sidebar links work. When user clicks a tab we update the URL too.
+  const effectiveTab = (tabFromUrl && tabFromUrl !== 'overview') ? tabFromUrl : (activeTab || 'overview');
+
+  /** Switch tab and keep URL in sync so that tab clicks work even when we landed on Clients (or any tab) via sidebar. */
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tabId === 'overview') next.delete('tab');
+      else next.set('tab', tabId);
+      return next;
+    });
+  };
 
   const handleLogout = () => {
     logout();
@@ -4478,7 +4489,7 @@ const AdminDashboard = () => {
   /** Navigate to another tab from Statistics (and optionally open a drilldown modal on Overview). */
   const handleNavigateToTab = (tabId, options = {}) => {
     if (options.drilldown) setDrilldownType(options.drilldown);
-    setActiveTab(tabId);
+    handleTabChange(tabId);
   };
 
   const tabs = [
@@ -4539,7 +4550,7 @@ const AdminDashboard = () => {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               data-testid={`admin-tab-${tab.id}`}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
                 effectiveTab === tab.id 

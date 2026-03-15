@@ -10,7 +10,10 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+// Same base as api/client.js: relative /api when REACT_APP_BACKEND_URL not set
+const _backend = process.env.REACT_APP_BACKEND_URL;
+const API_BASE = typeof _backend === 'string' && _backend.trim() ? _backend.trim().replace(/\/$/, '') : '';
+const API_PREFIX = API_BASE ? `${API_BASE}/api` : '/api';
 
 export default function SharedReportPage() {
   const { shareId } = useParams();
@@ -22,7 +25,7 @@ export default function SharedReportPage() {
   useEffect(() => {
     const fetchReportInfo = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/public/reports/shared/${shareId}`);
+        const response = await fetch(`${API_PREFIX}/public/reports/shared/${shareId}`);
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.detail || 'Failed to load report');
@@ -42,7 +45,7 @@ export default function SharedReportPage() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const response = await fetch(`${API_URL}/api/public/reports/shared/${shareId}/download`);
+      const response = await fetch(`${API_PREFIX}/public/reports/shared/${shareId}/download`);
       
       if (!response.ok) {
         const data = await response.json();

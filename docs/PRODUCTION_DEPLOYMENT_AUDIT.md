@@ -143,12 +143,29 @@ No trailing slash. Build-time only (React env).
 
 ---
 
+## 8. Report share links (PUBLIC_URL)
+
+**Backend:** `backend/routes/reporting.py` — when creating a shareable report link, the API builds `share_url` as `{base_url}/shared/report/{share_id}` where `base_url = os.environ.get("PUBLIC_URL", "")`.
+
+**Behaviour:**
+- If `PUBLIC_URL` is **not set**, the API returns a **relative** path (e.g. `/shared/report/SHR-xxx`). The frontend then builds an absolute URL using `window.location.origin` when displaying/copying, so the link works when the user is on the app. For consistency and for any consumers that use the API response directly, set `PUBLIC_URL` in production.
+- If `PUBLIC_URL` is set to the frontend origin (e.g. `https://pleerityenterprise.co.uk`), the API returns a full URL and the link works when copied and opened elsewhere.
+
+**Recommendation:** On **Render** (backend), set:
+
+`PUBLIC_URL=https://pleerityenterprise.co.uk`
+
+No trailing slash. This ensures share link URLs returned by the API are absolute and work when pasted in email or another browser.
+
+---
+
 ## Checklist for production
 
 **Render (backend):**
 
 - [ ] `FRONTEND_URL=https://pleerityenterprise.co.uk`
 - [ ] `FRONTEND_PUBLIC_URL=https://pleerityenterprise.co.uk` (for activation/set-password emails)
+- [ ] `PUBLIC_URL=https://pleerityenterprise.co.uk` (for report share links; optional but recommended)
 - [ ] `CORS_ORIGINS` optional; if set, use comma-separated list (required origins are merged in code)
 - [ ] Stripe webhook URL: `https://api.pleerityenterprise.co.uk/api/webhook/stripe` (or `/api/webhooks/stripe`)
 - [ ] Postmark webhook: `https://api.pleerityenterprise.co.uk/api/webhooks/postmark`

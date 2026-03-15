@@ -1,13 +1,15 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, status
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException, Request, Depends, status, File, UploadFile
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 import logging
 import io
+import os
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -1727,6 +1729,15 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
 # BRANDING SETTINGS (White-Label)
 # ============================================================================
 
+DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+BRANDING_LOGOS_PATH = Path(DATA_DIR) / "data" / "branding_logos"
+BRANDING_LOGOS_PATH.mkdir(parents=True, exist_ok=True)
+BRANDING_LOGO_MAX_BYTES = 2 * 1024 * 1024  # 2MB
+BRANDING_LOGO_ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+def _branding_logo_path(client_id: str, ext: str) -> Path:
+    return BRANDING_LOGOS_PATH / f"{client_id}{ext}"
+
 @router.get("/branding")
 async def get_branding_settings(request: Request):
     """Get the client's branding settings.
@@ -1925,6 +1936,15 @@ async def reset_branding_settings(request: Request):
             detail["feature"] = "white_label"  # preserve response shape
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
+        # Remove uploaded logo file if any
+        for ext in [".png", ".jpg", ".webp"]:
+            path = _branding_logo_path(client_id, ext)
+            if path.is_file():
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
+
         # Delete branding settings
         result = await db.branding_settings.delete_one({"client_id": client_id})
         
@@ -1948,4 +1968,134 @@ async def reset_branding_settings(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reset branding settings"
         )
+
+
+@router.get("/branding/logo")
+async def get_branding_logo(request: Request):
+    """Serve the client's uploaded branding logo (for use in reports and preview)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    client_id = user["client_id"]
+    branding = await db.branding_settings.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "logo_upload_ext": 1}
+    )
+    exts = [branding.get("logo_upload_ext")] if branding and branding.get("logo_upload_ext") else [".png", ".jpg", ".webp"]
+    for ext in exts:
+        if not ext or not ext.startswith("."):
+            continue
+        path = _branding_logo_path(client_id, ext)
+        if path.is_file():
+            media = "image/jpeg" if ext == ".jpg" else ("image/png" if ext == ".png" else "image/webp")
+            return FileResponse(path=str(path), media_type=media)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No logo uploaded")
+
+
+@router.post("/branding/logo")
+async def upload_branding_logo(request: Request, file: UploadFile = File(...)):
+    """Upload a logo file for branding. Replaces existing. Returns logo_url to use in settings."""
+    from services.plan_registry import plan_registry
+
+    user = await client_route_guard(request)
+    db = database.get_db()
+    client_id = user["client_id"]
+
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(
+        client_id,
+        "white_label_reports"
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_msg or "Upgrade required for white-label branding"
+        )
+
+    if not file.content_type or file.content_type.lower() not in BRANDING_LOGO_ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Allowed types: JPEG, PNG, WebP"
+        )
+    content = await file.read()
+    if len(content) > BRANDING_LOGO_MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large (max 2MB)"
+        )
+    ext = ".jpg" if "jpeg" in (file.content_type or "").lower() else (".png" if "png" in (file.content_type or "").lower() else ".webp")
+    # Remove any previous logo file(s)
+    for e in [".png", ".jpg", ".webp"]:
+        p = _branding_logo_path(client_id, e)
+        if p.is_file():
+            try:
+                p.unlink()
+            except OSError:
+                pass
+    path = _branding_logo_path(client_id, ext)
+    path.write_bytes(content)
+
+    base_url = str(request.base_url).rstrip("/")
+    logo_url = f"{base_url}/api/client/branding/logo"
+    now = datetime.now(timezone.utc).isoformat()
+    await db.branding_settings.update_one(
+        {"client_id": client_id},
+        {
+            "$set": {
+                "logo_url": logo_url,
+                "logo_upload_ext": ext,
+                "updated_at": now,
+            },
+            "$setOnInsert": {"client_id": client_id, "created_at": now},
+        },
+        upsert=True,
+    )
+    logger.info(f"Branding logo uploaded for client {client_id}")
+    return {"logo_url": logo_url}
+
+
+@router.get("/branding/preview")
+async def get_branding_preview(request: Request):
+    """Generate a sample PDF using current branding (for preview before saving)."""
+    from services.plan_registry import plan_registry
+    from services.professional_reports import professional_report_generator
+
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+
+    allowed, error_msg, _ = await plan_registry.enforce_feature(
+        client_id,
+        "white_label_reports"
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_msg or "Upgrade required for white-label branding"
+        )
+
+    db = database.get_db()
+    branding_row = await db.branding_settings.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "logo_upload_ext": 1}
+    )
+    logo_path = None
+    if branding_row and branding_row.get("logo_upload_ext"):
+        path = _branding_logo_path(client_id, branding_row["logo_upload_ext"])
+        if path.is_file():
+            logo_path = str(path)
+
+    try:
+        pdf_buffer = await professional_report_generator.generate_branding_preview_pdf(
+            client_id, logo_path=logo_path
+        )
+    except Exception as e:
+        logger.error(f"Branding preview error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate preview"
+        )
+    pdf_buffer.seek(0)
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline; filename=branding_preview.pdf"},
+    )
 

@@ -19,9 +19,11 @@ const BrandingSettingsPage = () => {
   const [branding, setBranding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const logoInputRef = React.useRef(null);
 
   useEffect(() => {
     fetchBranding();
@@ -88,6 +90,47 @@ const BrandingSettingsPage = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e?.target?.files?.[0];
+    if (!file || !branding?.feature_enabled) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setError('Please choose a JPEG, PNG, or WebP image (max 2MB).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo must be 2MB or smaller.');
+      return;
+    }
+    setUploadingLogo(true);
+    setError('');
+    setSuccess('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await api.post('/client/branding/logo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const logoUrl = response.data?.logo_url;
+      if (logoUrl) {
+        setBranding(prev => ({ ...prev, logo_url: logoUrl }));
+        setSuccess('Logo uploaded and saved. Save the form to persist any other changes.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  const handlePreviewReport = () => {
+    if (!branding?.feature_enabled) return;
+    const base = api.defaults.baseURL || '/api';
+    const url = `${base}/client/branding/preview`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   if (loading) {
@@ -383,17 +426,38 @@ const BrandingSettingsPage = () => {
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="logo_url">Logo URL</Label>
-                <Input
-                  id="logo_url"
-                  type="url"
-                  value={branding?.logo_url || ''}
-                  onChange={(e) => handleChange('logo_url', e.target.value)}
-                  disabled={isLocked}
-                  placeholder="https://yoursite.com/logo.png"
-                  data-testid="logo-url-input"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="logo_url"
+                    type="url"
+                    value={branding?.logo_url || ''}
+                    onChange={(e) => handleChange('logo_url', e.target.value)}
+                    disabled={isLocked}
+                    placeholder="https://yoursite.com/logo.png"
+                    data-testid="logo-url-input"
+                    className="flex-1"
+                  />
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                    data-testid="logo-file-input"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isLocked || uploadingLogo}
+                    onClick={() => logoInputRef.current?.click()}
+                    data-testid="logo-upload-btn"
+                  >
+                    {uploadingLogo ? 'Uploading…' : 'Upload'}
+                  </Button>
+                </div>
                 <p className="text-xs text-gray-500">
-                  Recommended: PNG or SVG, at least 200x200px
+                  Enter a URL or upload a file (PNG/JPEG/WebP, max 2MB). Recommended: at least 200×200px.
                 </p>
               </div>
               <div className="space-y-2">
@@ -427,6 +491,21 @@ const BrandingSettingsPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-gray-600">
+                Preview how your report will look with the current branding (company name, logo, colours, header/footer).
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isLocked}
+                onClick={handlePreviewReport}
+                data-testid="preview-report-btn"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Preview report
+              </Button>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="report_header_text">Report Header Text</Label>
               <Input

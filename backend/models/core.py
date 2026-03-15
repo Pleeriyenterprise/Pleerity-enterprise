@@ -232,6 +232,7 @@ class AuditAction(str, Enum):
     # Client profile (self-service)
     PROFILE_UPDATED_BY_CLIENT = "PROFILE_UPDATED_BY_CLIENT"
     PROFILE_AVATAR_UPLOADED = "PROFILE_AVATAR_UPLOADED"
+    SETTINGS_UPDATED = "SETTINGS_UPDATED"
 
     # Assistant (Compliance Vault Assistant) chat audit
     ASSISTANT_CHAT_REQUESTED = "ASSISTANT_CHAT_REQUESTED"
