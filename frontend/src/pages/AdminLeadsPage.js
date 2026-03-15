@@ -1055,14 +1055,22 @@ export default function AdminLeadsPage() {
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {selectedLead.audit_log.map((log, idx) => (
                         <div key={idx} className="flex items-start gap-3 text-sm py-2 border-b">
-                          <div className="w-32 text-xs text-gray-400">
+                          <div className="w-32 text-xs text-gray-400 shrink-0">
                             {new Date(log.created_at).toLocaleString()}
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <Badge variant="outline" className="text-xs mb-1">
                               {log.event.replace(/_/g, ' ')}
                             </Badge>
                             <div className="text-gray-600">{log.actor_id} ({log.actor_type})</div>
+                            {log.details && (log.event === 'FOLLOWUP_EMAIL_SENT' || log.event === 'FOLLOWUP_EMAIL_FAILED') && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {log.details.template_id && <>Template: {log.details.template_id}</>}
+                                {log.details.step != null && <> · Step {log.details.step}</>}
+                                {log.details.nurture_stage != null && <> · Nurture stage {log.details.nurture_stage}</>}
+                                {log.details.error && <> · Error: {log.details.error}</>}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
