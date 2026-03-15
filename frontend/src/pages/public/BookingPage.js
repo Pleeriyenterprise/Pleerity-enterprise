@@ -183,6 +183,7 @@ const BookingPage = () => {
                       click here to book directly
                     </a>
                   </p>
+                  </div>
                 </div>
               </div>
             </div>
