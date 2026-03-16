@@ -55,6 +55,19 @@ class ContractorNetworkCreate(BaseModel):
     notes: Optional[str] = None
 
 
+@router.get("/contractors/analytics")
+async def contractor_analytics(
+    request: Request,
+    view: str = Query("top_performers", description="top_performers | sla_issues | high_rejection"),
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """Contractor intelligence analytics: top performers, SLA issues, high rejection rates. Admin only."""
+    await admin_route_guard(request)
+    from services.contractor_intelligence_service import list_contractor_analytics
+    return await list_contractor_analytics(view=view, client_id=client_id, limit=limit)
+
+
 @router.get("/contractors")
 async def list_contractors(
     request: Request,
@@ -86,6 +99,17 @@ async def get_contractor(request: Request, contractor_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Contractor not found")
     return doc
+
+
+@router.get("/contractors/{contractor_id}/explanation")
+async def get_contractor_explanation(request: Request, contractor_id: str):
+    """Get explanation for contractor reliability/performance score (why it matters, usage guidance). Admin only."""
+    await admin_route_guard(request)
+    doc = await contractor_service.get_contractor(contractor_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    from services.explanation_engine import explain_contractor_score
+    return explain_contractor_score(doc)
 
 
 @router.post("/contractors", dependencies=[Depends(require_owner_or_admin)])
@@ -241,3 +265,65 @@ async def delete_contractor(request: Request, contractor_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail="Contractor not found")
     return {"ok": True, "contractor_id": contractor_id}
+
+
+@router.post("/contractors/{contractor_id}/invite-portal", dependencies=[Depends(require_owner_or_admin)])
+async def invite_contractor_to_portal(request: Request, contractor_id: str):
+    """Send contractor portal invite email with set-password link. Creates token with purpose=contractor_invite."""
+    from datetime import datetime, timezone, timedelta
+    from auth import generate_secure_token, hash_token
+    from database import database
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    from utils.public_app_url import get_frontend_base_url
+    user = await admin_route_guard(request)
+    doc = await contractor_service.get_contractor(contractor_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    email = (doc.get("email") or "").strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Contractor has no email; add one before inviting to portal")
+    from services.contractor_portal_auth_service import get_account_by_contractor_id
+    existing = await get_account_by_contractor_id(contractor_id)
+    if existing:
+        raise HTTPException(status_code=400, detail="Contractor already has a portal account; they can use forgot-password if needed")
+    raw_token = generate_secure_token()
+    token_hash = hash_token(raw_token)
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=7)
+    await db.password_tokens.insert_one({
+        "token_hash": token_hash,
+        "purpose": "contractor_invite",
+        "metadata": {"contractor_id": contractor_id, "email": email},
+        "expires_at": expires_at,
+        "used": False,
+        "created_at": now.isoformat(),
+    })
+    base_url = get_frontend_base_url().rstrip("/")
+    setup_url = f"{base_url}/contractor-set-password?token={raw_token}"
+    try:
+        from services.notification_orchestrator import notification_orchestrator
+        await notification_orchestrator.send(
+            template_key="ADMIN_MANUAL",
+            client_id=None,
+            context={
+                "recipient": email,
+                "subject": "You're invited to the Pleerity Contractor Portal",
+                "message": f"Use the link below to set your password and access your assigned work orders.<br><br><a href=\"{setup_url}\">Set password</a><br><br>Link valid for 7 days.",
+                "company_name": "Pleerity Enterprise Ltd",
+            },
+            idempotency_key=f"contractor_invite_{contractor_id}_{now.timestamp()}",
+            event_type="contractor_portal_invite",
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Contractor invite email send failed: %s", e)
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        resource_type="contractor",
+        resource_id=contractor_id,
+        metadata={"action": "contractor_portal_invite", "email": email},
+    )
+    return {"ok": True, "message": "Invite created. Contractor can set password via the link.", "setup_url": setup_url}

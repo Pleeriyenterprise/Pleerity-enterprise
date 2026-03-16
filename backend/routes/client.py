@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, status, File, UploadFile
+from fastapi import APIRouter, HTTPException, Request, Depends, status, File, UploadFile, Query
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from database import database
@@ -488,6 +488,30 @@ async def get_dashboard(request: Request):
         )
 
 
+@router.get("/priority-actions")
+async def get_client_priority_actions(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Filter by property"),
+    limit: int = Query(20, ge=1, le=50),
+):
+    """Get ranked priority actions for the authenticated client (orchestration/copilot layer)."""
+    user = await client_route_guard(request)
+    try:
+        from services.priority_actions import get_priority_actions_for_client
+        result = await get_priority_actions_for_client(
+            client_id=user["client_id"],
+            property_id_filter=property_id,
+            limit=limit,
+        )
+        return result
+    except Exception as e:
+        logger.error("Priority actions error for client %s: %s", user.get("client_id"), e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load priority actions",
+        )
+
+
 @router.get("/onboarding/checklist")
 async def get_onboarding_checklist(request: Request):
     """Get server-driven onboarding checklist (items + completion)."""
@@ -628,6 +652,41 @@ async def get_property_requirements(request: Request, property_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load requirements"
         )
+
+
+@router.get("/properties/{property_id}/requirements/explanation")
+async def get_requirement_explanation(
+    request: Request,
+    property_id: str,
+    requirement_code: Optional[str] = Query(None, description="Requirement code (e.g. gas_safety, eicr)"),
+    requirement_id: Optional[str] = Query(None, description="Requirement row id if used by client"),
+):
+    """Get contextual explanation for a compliance requirement (why it matters, legal context, recommended action)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+    query = {"property_id": property_id, "client_id": user["client_id"]}
+    if requirement_code:
+        query["$or"] = [
+            {"requirement_code": requirement_code},
+            {"requirement_type": requirement_code},
+        ]
+    elif requirement_id:
+        query["requirement_id"] = requirement_id
+    else:
+        raise HTTPException(status_code=400, detail="Provide requirement_code or requirement_id")
+    req = await db.requirements.find_one(query, {"_id": 0})
+    if not req:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    code = req.get("requirement_code") or req.get("requirement_type")
+    catalog = await db.requirements_catalog.find_one({"code": code}, {"_id": 0}) if code else None
+    from services.explanation_engine import explain_compliance_alert
+    return explain_compliance_alert(req, catalog)
 
 
 @router.post("/properties/{property_id}/requirements/mark-not-applicable")
@@ -903,6 +962,29 @@ class CreateContractorBody(BaseModel):
     insurance_details: Optional[str] = None
     areas_served: Optional[List[str]] = None
     notes: Optional[str] = None
+
+
+@router.get("/contractors/{contractor_id}/explanation")
+async def get_contractor_explanation(request: Request, contractor_id: str):
+    """Get explanation for contractor reliability/performance score (why it matters, usage guidance). Requires CONTRACTOR_NETWORK."""
+    user = await client_route_guard(request)
+    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
+    from services import contractor_service
+    from services.explanation_engine import explain_contractor_score
+
+    flags = await get_effective_flags(user["client_id"])
+    if not flags.get(CONTRACTOR_NETWORK):
+        raise HTTPException(status_code=403, detail="Contractor network not enabled")
+    result = await contractor_service.list_contractors_for_client(
+        client_id=user["client_id"], skip=0, limit=500,
+    )
+    contractors = result.get("contractors") or []
+    if not any(c.get("contractor_id") == contractor_id for c in contractors):
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    doc = await contractor_service.get_contractor(contractor_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    return explain_contractor_score(doc)
 
 
 @router.post("/contractors/{contractor_id}/submit-to-network")

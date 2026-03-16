@@ -10,8 +10,22 @@ from typing import Optional
 from middleware import client_route_guard
 from services.ops_compliance_feature_flags import get_effective_flags, INVOICING
 from services import approval_service
+from services import invoice_service
 
 router = APIRouter(prefix="/api/client", tags=["client-approvals"], dependencies=[Depends(client_route_guard)])
+
+
+class CreateInvoiceBody(BaseModel):
+    property_id: str
+    contractor_id: str
+    work_order_id: str
+    reference: Optional[str] = None
+    description: Optional[str] = None
+    submitted_amount: Optional[float] = None
+    currency: Optional[str] = "GBP"
+    benchmark_min: Optional[float] = None
+    benchmark_max: Optional[float] = None
+    attachment_storage_key: Optional[str] = None
 
 
 async def _require_invoicing_enabled(request: Request):
@@ -27,6 +41,32 @@ async def _require_invoicing_enabled(request: Request):
             detail="Invoicing is not enabled for your account. Contact your administrator.",
         )
     return user
+
+
+@router.post("/invoices")
+async def create_invoice(request: Request, body: CreateInvoiceBody):
+    """Create an invoice linked to a work order (record contractor invoice for approval). Requires INVOICING. Invoice appears in Approvals."""
+    user = await _require_invoicing_enabled(request)
+    client_id = user["client_id"]
+    try:
+        doc = await invoice_service.create_invoice(
+            client_id=client_id,
+            property_id=body.property_id,
+            contractor_id=body.contractor_id,
+            work_order_id=body.work_order_id,
+            reference=body.reference or "",
+            description=body.description,
+            submitted_amount=body.submitted_amount,
+            currency=body.currency or "GBP",
+            benchmark_min=body.benchmark_min,
+            benchmark_max=body.benchmark_max,
+            attachment_storage_key=body.attachment_storage_key,
+            source=invoice_service.SOURCE_CLIENT,
+            created_by_id=user.get("portal_user_id") or user.get("email"),
+        )
+        return doc
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/approvals")
@@ -104,23 +144,38 @@ async def get_approval(request: Request, invoice_id: str):
 
 
 class ApprovalActionBody(BaseModel):
-    action: str  # approved | rejected | needs_info
+    action: str  # approved | rejected | needs_info | mark_paid
     notes: Optional[str] = None
+    payment_method: Optional[str] = None  # required when action=mark_paid: bank_transfer | cash | card | cheque | other
+    payment_reference: Optional[str] = None
+    payment_notes: Optional[str] = None
 
 
 @router.patch("/approvals/{invoice_id}")
 async def update_approval(request: Request, invoice_id: str, body: ApprovalActionBody):
-    """Approve, reject, or request more info. Requires INVOICING."""
+    """Approve, reject, request more info, or mark as paid. Requires INVOICING."""
     user = await _require_invoicing_enabled(request)
-    if body.action not in ("approved", "rejected", "needs_info"):
-        raise HTTPException(status_code=400, detail="action must be approved, rejected, or needs_info")
-    doc = await approval_service.update_approval(
-        client_id=user["client_id"],
-        invoice_id=invoice_id,
-        action=body.action,
-        notes=body.notes,
-        reviewer_id=user.get("portal_user_id"),
-    )
+    if body.action == "mark_paid":
+        if not body.payment_method or body.payment_method not in approval_service.PAYMENT_METHODS:
+            raise HTTPException(status_code=400, detail="payment_method required and must be one of: bank_transfer, cash, card, cheque, other")
+        doc = await approval_service.mark_invoice_paid(
+            client_id=user["client_id"],
+            invoice_id=invoice_id,
+            payment_method=body.payment_method,
+            payment_reference=body.payment_reference,
+            payment_notes=body.payment_notes,
+            reviewer_id=user.get("portal_user_id"),
+        )
+    elif body.action in ("approved", "rejected", "needs_info"):
+        doc = await approval_service.update_approval(
+            client_id=user["client_id"],
+            invoice_id=invoice_id,
+            action=body.action,
+            notes=body.notes,
+            reviewer_id=user.get("portal_user_id"),
+        )
+    else:
+        raise HTTPException(status_code=400, detail="action must be approved, rejected, needs_info, or mark_paid")
     if not doc:
         raise HTTPException(status_code=404, detail="Approval not found or already decided")
     return doc

@@ -73,6 +73,8 @@ const ClientDashboard = () => {
   const [workOrdersList, setWorkOrdersList] = useState([]);
   const [predictiveInsightsData, setPredictiveInsightsData] = useState(null);
   const [riskSignalsData, setRiskSignalsData] = useState(null);
+  // Priority actions (orchestration/copilot layer)
+  const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -113,6 +115,14 @@ const ClientDashboard = () => {
         .catch(() => setRiskSignalsData(null));
     }
   }, [isClientUser, hasFeature]);
+
+  // Priority actions (orchestration layer) — always fetch when client user
+  useEffect(() => {
+    if (!isClientUser) return;
+    clientAPI.getPriorityActions({ limit: 10 })
+      .then((res) => setPriorityActions({ actions: res.data?.actions || [], total: res.data?.total ?? 0 }))
+      .catch(() => setPriorityActions({ actions: [], total: 0 }));
+  }, [isClientUser]);
 
   // Refetch score trend card when user switches Portfolio vs Property or selects another property
   useEffect(() => {
@@ -1238,6 +1248,40 @@ const ClientDashboard = () => {
               </Card>
             )}
           </div>
+        )}
+
+        {/* Priority Actions: ranked next steps from compliance, operations, risk, approvals */}
+        {!setupView && priorityActions.actions?.length > 0 && (
+          <Card className="mb-8 border-electric-teal/30 bg-white" data-testid="priority-actions-panel">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-midnight-blue">
+                <Zap className="w-4 h-4 text-electric-teal" />
+                Priority actions
+              </CardTitle>
+              <p className="text-sm text-gray-600">Most important next steps</p>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {priorityActions.actions.map((action, idx) => (
+                  <li key={idx} className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
+                      {action.description && (
+                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{action.description}</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0 bg-electric-teal hover:bg-electric-teal/90"
+                      onClick={() => navigate(action.recommended_url || '#')}
+                    >
+                      {action.recommended_action_label || 'View'}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
         )}
 
         {/* Action Required: operations items (deep links to Issues, Risk Signals) */}

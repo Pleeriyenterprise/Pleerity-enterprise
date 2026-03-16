@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 import uuid
 from database import database
 import logging
+from auth import generate_secure_token, hash_token
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ async def create_work_order(
     severity: Optional[str] = None,
     asset_id: Optional[str] = None,
     issue_id: Optional[str] = None,
+    risk_signal_id: Optional[str] = None,
     cost_estimate_min: Optional[float] = None,
     cost_estimate_max: Optional[float] = None,
     initial_status: Optional[str] = None,
@@ -133,6 +135,7 @@ async def create_work_order(
         "completed_at": None,
         "asset_id": asset_id,
         "issue_id": issue_id,
+        "risk_signal_id": risk_signal_id,
         "cost_estimate_min": cost_estimate_min,
         "cost_estimate_max": cost_estimate_max,
         "resolution_outcome": None,
@@ -140,6 +143,9 @@ async def create_work_order(
         "sla_breached_at": None,
         "triage_reasoning": triage_reasoning,
         "recommended_contractor_type": recommended_contractor_type,
+        "contractor_notes": None,
+        "completion_notes": None,
+        "evidence_keys": [],
     }
     await db.work_orders.insert_one(doc)
     doc.pop("_id", None)
@@ -227,33 +233,46 @@ async def update_work_order(
     cost_estimate_min: Optional[float] = None,
     cost_estimate_max: Optional[float] = None,
     assigned_by: Optional[str] = None,
+    contractor_notes: Optional[str] = None,
+    completion_notes: Optional[str] = None,
+    evidence_keys_append: Optional[List[str]] = None,
+    accepted_at: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Update work order status, contractor, resolution outcome, and/or cost estimates. When contractor_id is set, records assignment and sets assigned_at."""
+    """Update work order status, contractor, resolution outcome, notes, evidence. When contractor_id is set, records assignment and sets assigned_at. accepted_at set when contractor accepts (for response/completion metrics)."""
     db = database.get_db()
     now = datetime.now(timezone.utc).isoformat()
-    update = {"updated_at": now}
+    set_fields = {"updated_at": now}
+    if contractor_notes is not None:
+        set_fields["contractor_notes"] = contractor_notes
+    if completion_notes is not None:
+        set_fields["completion_notes"] = completion_notes
     if status is not None:
         status = status.strip().upper()
         if status in ALL_STATUSES:
-            update["status"] = status
+            set_fields["status"] = status
             if status == STATUS_COMPLETED:
-                update["completed_at"] = now
+                set_fields["completed_at"] = now
+    if accepted_at is not None:
+        set_fields["accepted_at"] = accepted_at
     if contractor_id is not None:
-        update["contractor_id"] = contractor_id
-        update["assigned_at"] = now
+        set_fields["contractor_id"] = contractor_id
+        set_fields["assigned_at"] = now
         if status is None:
             existing = await db.work_orders.find_one({"work_order_id": work_order_id}, {"status": 1})
             if existing and existing.get("status") == STATUS_OPEN:
-                update["status"] = STATUS_ASSIGNED
+                set_fields["status"] = STATUS_ASSIGNED
     if resolution_outcome is not None:
-        update["resolution_outcome"] = resolution_outcome
+        set_fields["resolution_outcome"] = resolution_outcome
     if cost_estimate_min is not None:
-        update["cost_estimate_min"] = cost_estimate_min
+        set_fields["cost_estimate_min"] = cost_estimate_min
     if cost_estimate_max is not None:
-        update["cost_estimate_max"] = cost_estimate_max
+        set_fields["cost_estimate_max"] = cost_estimate_max
+    update_doc = {"$set": set_fields}
+    if evidence_keys_append:
+        update_doc["$push"] = {"evidence_keys": {"$each": evidence_keys_append}}
     result = await db.work_orders.find_one_and_update(
         {"work_order_id": work_order_id},
-        {"$set": update},
+        update_doc,
         return_document=True,
     )
     if result:
@@ -268,6 +287,41 @@ async def update_work_order(
                 })
             except Exception as e:
                 logger.warning("Failed to record contractor assignment: %s", e)
+            job_link = ""
+            due_date = ""
+            try:
+                from utils.public_app_url import get_frontend_base_url
+                from models import AuditAction
+                from utils.audit import create_audit_log
+                raw_token = generate_secure_token()
+                token_hash = hash_token(raw_token)
+                expires_at = (datetime.now(timezone.utc) + timedelta(days=90)).isoformat()
+                await db.contractor_job_tokens.insert_one({
+                    "token_hash": token_hash,
+                    "work_order_id": work_order_id,
+                    "contractor_id": contractor_id,
+                    "created_at": now,
+                    "expires_at": expires_at,
+                })
+                base_url = get_frontend_base_url().rstrip("/")
+                job_link = f"{base_url}/job?token={raw_token}"
+                due_date_raw = result.get("sla_complete_by")
+                if due_date_raw:
+                    try:
+                        dt = due_date_raw if isinstance(due_date_raw, datetime) else datetime.fromisoformat(str(due_date_raw).replace("Z", "+00:00"))
+                        due_date = dt.strftime("%d %b %Y") if hasattr(dt, "strftime") else str(due_date_raw)
+                    except Exception:
+                        due_date = str(due_date_raw)
+                await create_audit_log(
+                    action=AuditAction.CONTRACTOR_ASSIGNED_TO_WORK_ORDER,
+                    actor_id=assigned_by,
+                    client_id=result.get("client_id"),
+                    resource_type="work_order",
+                    resource_id=work_order_id,
+                    metadata={"contractor_id": contractor_id, "job_token_created": True},
+                )
+            except Exception as e:
+                logger.warning("Failed to create job token or audit for assignment: %s", e)
             try:
                 contractor = await db.contractors.find_one(
                     {"contractor_id": contractor_id},
@@ -285,6 +339,8 @@ async def update_work_order(
                             parts = [prop.get("address_line_1"), prop.get("city"), prop.get("postcode")]
                             property_address = ", ".join(p for p in parts if p) or "Property"
                     desc = (result.get("description") or "Work order")[:200]
+                    due_date_str = due_date if due_date else "See job link"
+                    job_link_final = job_link if job_link else "See portal"
                     from services.notification_orchestrator import notification_orchestrator
                     await notification_orchestrator.send(
                         template_key="CONTRACTOR_ASSIGNED",
@@ -292,7 +348,9 @@ async def update_work_order(
                         context={
                             "recipient": str(to_email).strip(),
                             "subject": "Work order assignment",
-                            "body": f"You have been assigned to work order: {work_order_id}. Description: {desc}. Property: {property_address or 'See portal'}.",
+                            "body": f"You have been assigned to work order: {work_order_id}. Description: {desc}. Property: {property_address or 'See portal'}. Due: {due_date_str}. View and respond (no login required): {job_link_final}. Payment responsibility: Pleerity coordinates work orders and invoice approval but does not process contractor payments. Payment responsibility lies with the client; please follow up with the client for payment.",
+                            "job_link": job_link_final,
+                            "due_date": due_date_str,
                         },
                         idempotency_key=f"contractor_assign_{work_order_id}_{contractor_id}",
                         event_type="CONTRACTOR_ASSIGNED",
@@ -398,6 +456,11 @@ async def _update_contractor_performance_on_completion(db, work_order: Dict[str,
         await compute_rework_rate(contractor_id, client_id or "")
     except Exception as e:
         logger.warning("Failed to compute rework rate for contractor %s: %s", contractor_id, e)
+    try:
+        from services.contractor_intelligence_service import update_contractor_performance_score
+        await update_contractor_performance_score(contractor_id, audit=True)
+    except Exception as e:
+        logger.warning("Failed to update contractor performance score for %s: %s", contractor_id, e)
 
 
 def _categorise_severity(description: str) -> str:

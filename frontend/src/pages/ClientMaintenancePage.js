@@ -19,6 +19,10 @@ import {
   X,
   AlertTriangle,
   Building2,
+  FileText,
+  Info,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -111,6 +115,12 @@ function ClientMaintenancePageInner() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ property_id: '', description: '', category: 'general', severity: 'medium' });
   const [createSaving, setCreateSaving] = useState(false);
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({ reference: '', description: '', submitted_amount: '' });
+  const [invoiceSaving, setInvoiceSaving] = useState(false);
+  const [contractorExplainId, setContractorExplainId] = useState(null);
+  const [contractorExplainData, setContractorExplainData] = useState(null);
+  const [contractorExplainLoading, setContractorExplainLoading] = useState(false);
   const [insights, setInsights] = useState(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
 
@@ -182,7 +192,7 @@ function ClientMaintenancePageInner() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!woDetailDrawer) { setWoDetailData(null); setWoRecommendList(null); return; }
+    if (!woDetailDrawer) { setWoDetailData(null); setWoRecommendList(null); setContractorExplainId(null); setContractorExplainData(null); return; }
     setWoDetailLoading(true);
     setWoRecommendList(null);
     clientAPI.getMaintenanceWorkOrder(woDetailDrawer)
@@ -682,6 +692,10 @@ function ClientMaintenancePageInner() {
                   {(woDetailData.cost_estimate_min != null || woDetailData.cost_estimate_max != null) && (
                     <p className="text-sm text-gray-600 mb-4">Cost estimate: £{woDetailData.cost_estimate_min ?? '—'} – £{woDetailData.cost_estimate_max ?? '—'}</p>
                   )}
+                  <div className="rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-900 mb-4">
+                    <p className="font-medium mb-1">Payment responsibility</p>
+                    <p>Contractors are independent service providers engaged by you. You are responsible for paying the contractor. Pleerity does not process contractor payments.</p>
+                  </div>
                   <div className="space-y-2 mb-4">
                     <label className="block text-sm font-medium text-gray-700">Update status</label>
                     <select
@@ -697,13 +711,63 @@ function ClientMaintenancePageInner() {
                     <div className="mt-4">
                       <h4 className="font-medium text-gray-700 mb-2">Recommended contractors</h4>
                       {woRecommendLoading ? <p className="text-sm text-gray-500">Loading…</p> : woRecommendList?.length > 0 ? (
-                        <ul className="space-y-1">
-                          {woRecommendList.slice(0, 5).map((c) => (
-                            <li key={c.contractor_id || c.id} className="flex items-center justify-between gap-2 text-sm">
-                              <span>{c.name || c.contractor_name || c.contractor_id}</span>
-                              <Button size="sm" variant="outline" onClick={() => handleAssignContractor(woDetailData.work_order_id, c.contractor_id || c.id)} disabled={woUpdateSaving}>Assign</Button>
-                            </li>
-                          ))}
+                        <ul className="space-y-2">
+                          {woRecommendList.slice(0, 5).map((c) => {
+                            const cid = c.contractor_id || c.id;
+                            const showExplain = contractorExplainId === cid;
+                            return (
+                              <li key={cid} className="border border-gray-100 rounded overflow-hidden bg-gray-50/80">
+                                <div className="flex items-center justify-between gap-2 text-sm p-2">
+                                  <div>
+                                    <span className="font-medium text-gray-900">{c.name || c.contractor_name || cid}</span>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-0 mt-0.5 text-xs text-gray-600">
+                                      {c.performance_score != null && <span>Score: {Math.round(c.performance_score)}</span>}
+                                      {c.reliability_score != null && <span>Reliability: {Math.round((c.reliability_score || 0) * 100)}%</span>}
+                                      {(c.completed_jobs != null || c.assigned_jobs != null) && <span>Jobs completed: {c.completed_jobs ?? 0}</span>}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      className="text-xs text-electric-teal hover:underline flex items-center gap-0.5"
+                                      onClick={async () => {
+                                        if (showExplain) {
+                                          setContractorExplainId(null);
+                                          setContractorExplainData(null);
+                                          return;
+                                        }
+                                        setContractorExplainId(cid);
+                                        if (contractorExplainData && contractorExplainId === cid) return;
+                                        setContractorExplainData(null);
+                                        setContractorExplainLoading(true);
+                                        try {
+                                          const res = await clientAPI.getContractorExplanation(cid);
+                                          setContractorExplainData(res.data);
+                                        } catch {
+                                          setContractorExplainData(null);
+                                        } finally {
+                                          setContractorExplainLoading(false);
+                                        }
+                                      }}
+                                    >
+                                      <Info className="w-3 h-3" /> Why this matters {showExplain ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                    </button>
+                                    <Button size="sm" variant="outline" onClick={() => handleAssignContractor(woDetailData.work_order_id, cid)} disabled={woUpdateSaving}>Assign</Button>
+                                  </div>
+                                </div>
+                                {showExplain && (
+                                  <div className="px-2 pb-2 pt-0 border-t border-gray-100 text-xs text-gray-700">
+                                    {contractorExplainLoading ? <p className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p> : contractorExplainData ? (
+                                      <>
+                                        <p className="mt-1">{contractorExplainData.why_it_matters}</p>
+                                        <p className="font-medium text-midnight-blue mt-1">{contractorExplainData.recommended_action_text}</p>
+                                      </>
+                                    ) : <p>Could not load explanation.</p>}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : <p className="text-sm text-gray-500">No recommendations.</p>}
                     </div>
@@ -714,11 +778,107 @@ function ClientMaintenancePageInner() {
                         <Building2 className="w-3 h-3 mr-1" /> View property
                       </Button>
                     )}
+                    {hasFeature('invoicing') && woDetailData.contractor_id && woDetailData.property_id && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-electric-teal hover:bg-electric-teal/90"
+                        onClick={() => {
+                          setInvoiceForm({
+                            reference: '',
+                            description: woDetailData.description?.slice(0, 200) || '',
+                            submitted_amount: '',
+                          });
+                          setInvoiceModalOpen(woDetailData);
+                        }}
+                      >
+                        <FileText className="w-3 h-3 mr-1" /> Record invoice
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(null)}>Close</Button>
                   </div>
                 </>
               ) : <p className="text-gray-500 py-4">Could not load work order.</p>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Record invoice modal (from work order) */}
+      {invoiceModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setInvoiceModalOpen(null)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-electric-teal" />
+              Record invoice
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Create an invoice linked to this work order. It will appear in Approvals for review.
+            </p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setInvoiceSaving(true);
+                try {
+                  await clientAPI.createInvoice({
+                    property_id: invoiceModalOpen.property_id,
+                    contractor_id: invoiceModalOpen.contractor_id,
+                    work_order_id: invoiceModalOpen.work_order_id,
+                    reference: invoiceForm.reference?.trim() || undefined,
+                    description: invoiceForm.description?.trim() || undefined,
+                    submitted_amount: invoiceForm.submitted_amount ? parseFloat(invoiceForm.submitted_amount) : undefined,
+                  });
+                  toast.success('Invoice created. You can review it in Operations → Approvals.');
+                  setInvoiceModalOpen(null);
+                  setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
+                  navigate('/operations/approvals');
+                } catch (err) {
+                  toast.error(err?.response?.data?.detail || 'Failed to create invoice');
+                } finally {
+                  setInvoiceSaving(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reference (optional)</label>
+                <input
+                  type="text"
+                  value={invoiceForm.reference}
+                  onChange={(e) => setInvoiceForm((f) => ({ ...f, reference: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  placeholder="e.g. INV-001"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <textarea
+                  value={invoiceForm.description}
+                  onChange={(e) => setInvoiceForm((f) => ({ ...f, description: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  rows={2}
+                  placeholder="Work description"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Amount £ (optional)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={invoiceForm.submitted_amount}
+                  onChange={(e) => setInvoiceForm((f) => ({ ...f, submitted_amount: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button type="submit" disabled={invoiceSaving} className="bg-electric-teal hover:bg-electric-teal/90">
+                  {invoiceSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create invoice'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setInvoiceModalOpen(null)}>Cancel</Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

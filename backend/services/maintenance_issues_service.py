@@ -13,14 +13,33 @@ from services import maintenance_service
 
 logger = __import__("logging").getLogger(__name__)
 
-# Issue status lifecycle
+# Issue status lifecycle (extended for enterprise)
+STATUS_OPEN = "open"
 STATUS_NEW = "new"
 STATUS_TRIAGED = "triaged"
 STATUS_MONITORING = "monitoring"
+STATUS_INVESTIGATING = "investigating"
 STATUS_READY_FOR_WORK_ORDER = "ready_for_work_order"
+STATUS_IN_PROGRESS = "in_progress"
+STATUS_RESOLVED = "resolved"
 STATUS_CLOSED = "closed"
+STATUS_CANCELLED = "cancelled"
+
+ALL_ISSUE_STATUSES = (
+    STATUS_OPEN,
+    STATUS_NEW,
+    STATUS_TRIAGED,
+    STATUS_MONITORING,
+    STATUS_INVESTIGATING,
+    STATUS_READY_FOR_WORK_ORDER,
+    STATUS_IN_PROGRESS,
+    STATUS_RESOLVED,
+    STATUS_CLOSED,
+    STATUS_CANCELLED,
+)
 
 SOURCE_TENANT = "tenant"
+SOURCE_TENANT_REQUEST = "tenant_request"
 SOURCE_CLIENT = "client"
 SOURCE_ADMIN = "admin"
 
@@ -36,6 +55,7 @@ async def create_issue(
     reporter_contact: Optional[str] = None,
     reported_urgency: Optional[str] = None,
     photos: Optional[List[str]] = None,
+    risk_signal_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a maintenance issue and run triage. Returns issue doc with triage result embedded."""
     db = database.get_db()
@@ -84,6 +104,7 @@ async def create_issue(
         "priority_score": triage.get("priority_score"),
         "status": STATUS_TRIAGED,
         "recurrence_flag": triage.get("recurrence_flag", False),
+        "risk_signal_id": risk_signal_id,
         "created_at": now,
         "updated_at": now,
         "triage": {
@@ -167,6 +188,60 @@ async def get_issue(issue_id: str, client_id: Optional[str] = None) -> Optional[
     return doc
 
 
+async def update_issue(
+    issue_id: str,
+    client_id: str,
+    status: Optional[str] = None,
+    description: Optional[str] = None,
+    category: Optional[str] = None,
+    updated_by_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Update issue status and/or editable fields. Audit ISSUE_STATUS_UPDATED or ISSUE_CLOSED on status change."""
+    db = database.get_db()
+    issue = await get_issue(issue_id, client_id=client_id)
+    if not issue:
+        return None
+    if issue.get("status") in (STATUS_CLOSED, STATUS_CANCELLED) and (status is None or status.strip().lower() not in (STATUS_CLOSED, STATUS_CANCELLED)):
+        # Do not reopen closed/cancelled
+        if status is not None and status.strip():
+            updates.pop("updated_at", None)
+            if "status" in updates:
+                updates.pop("status")
+    updates = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    old_status = issue.get("status")
+    if status is not None and status.strip():
+        s = status.strip().lower()
+        if s in {st.lower() for st in ALL_ISSUE_STATUSES}:
+            if old_status in (STATUS_CLOSED, STATUS_CANCELLED) and s not in (STATUS_CLOSED, STATUS_CANCELLED):
+                pass  # do not reopen
+            else:
+                updates["status"] = s
+    if description is not None:
+        updates["description"] = (description or "").strip() or issue.get("description", "")
+    if category is not None:
+        updates["category"] = (category or "").strip() or "general"
+
+    if len(updates) <= 1:
+        return issue  # only updated_at, no real change
+    await db.maintenance_issues.update_one(
+        {"issue_id": issue_id, "client_id": client_id},
+        {"$set": updates},
+    )
+    if updates.get("status") and updates["status"] != old_status:
+        from models import AuditAction
+        from utils.audit import create_audit_log
+        action = AuditAction.ISSUE_CLOSED if updates["status"] in (STATUS_CLOSED, STATUS_CANCELLED, STATUS_RESOLVED) else AuditAction.ISSUE_STATUS_UPDATED
+        await create_audit_log(
+            action=action,
+            actor_id=updated_by_id or "system",
+            client_id=client_id,
+            resource_type="maintenance_issue",
+            resource_id=issue_id,
+            metadata={"old_status": old_status, "new_status": updates["status"]},
+        )
+    return await get_issue(issue_id, client_id=client_id)
+
+
 async def create_work_order_from_issue(
     issue_id: str,
     client_id: str,
@@ -177,8 +252,8 @@ async def create_work_order_from_issue(
     issue = await get_issue(issue_id, client_id=client_id)
     if not issue:
         raise ValueError("Issue not found")
-    if issue.get("status") == STATUS_CLOSED:
-        raise ValueError("Cannot create work order from closed issue")
+    if issue.get("status") in (STATUS_CLOSED, STATUS_CANCELLED):
+        raise ValueError("Cannot create work order from closed or cancelled issue")
 
     triage = issue.get("triage") or {}
     sla_hours = triage.get("sla_hours") or 72

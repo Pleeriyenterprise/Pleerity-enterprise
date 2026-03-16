@@ -40,6 +40,14 @@ const STATUS_OPTIONS = [
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'needs_info', label: 'Needs Info' },
+  { value: 'paid', label: 'Paid' },
+];
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'bank_transfer', label: 'Bank transfer' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+  { value: 'cheque', label: 'Cheque' },
+  { value: 'other', label: 'Other' },
 ];
 const BENCHMARK_OPTIONS = [
   { value: '', label: 'All' },
@@ -70,6 +78,7 @@ function StatusBadge({ status }) {
     approved: 'bg-green-100 text-green-800',
     rejected: 'bg-red-100 text-red-800',
     needs_info: 'bg-blue-100 text-blue-800',
+    paid: 'bg-emerald-100 text-emerald-800',
   };
   const label = status ? status.replace(/_/g, ' ') : '—';
   return (
@@ -117,6 +126,7 @@ function ClientApprovalsPageInner() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [markPaidForm, setMarkPaidForm] = useState({ payment_method: '', payment_reference: '', payment_notes: '' });
 
   const loadApprovals = useCallback(() => {
     setLoading(true);
@@ -179,9 +189,20 @@ function ClientApprovalsPageInner() {
     const id = invoiceIdParam ?? selectedId;
     if (!id) return;
     setActionLoading(true);
-    clientAPI.updateApproval(id, { action, notes })
+    const payload = { action, notes };
+    if (action === 'mark_paid') {
+      payload.payment_method = markPaidForm.payment_method;
+      payload.payment_reference = markPaidForm.payment_reference || undefined;
+      payload.payment_notes = markPaidForm.payment_notes || undefined;
+    }
+    clientAPI.updateApproval(id, payload)
       .then(() => {
-        toast.success(action === 'approved' ? 'Approved' : action === 'rejected' ? 'Rejected' : 'More info requested');
+        if (action === 'mark_paid') {
+          toast.success('Invoice marked as paid');
+          setMarkPaidForm({ payment_method: '', payment_reference: '', payment_notes: '' });
+        } else {
+          toast.success(action === 'approved' ? 'Approved' : action === 'rejected' ? 'Rejected' : 'More info requested');
+        }
         loadApprovals();
         setDrawerOpen(false);
         setSelectedId(null);
@@ -253,6 +274,10 @@ function ClientApprovalsPageInner() {
             Approvals
           </h1>
           <p className="text-gray-600 mt-1">Review invoices and cost submissions linked to work orders. Compare to benchmarks and approve, reject, or request more information.</p>
+          <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-900 max-w-2xl">
+            <p className="font-medium mb-1">Payment responsibility</p>
+            <p>Contractors are independent service providers engaged by you. You are responsible for paying the contractor. Pleerity does not process contractor payments.</p>
+          </div>
         </div>
         <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
@@ -261,12 +286,13 @@ function ClientApprovalsPageInner() {
       </div>
 
       {/* Summary KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
         {[
           { key: 'pending', label: 'Pending Approval', value: summary.pending ?? 0, onClick: () => applyFilter('status', 'pending') },
           { key: 'approvedThisMonth', label: 'Approved This Month', value: summary.approvedThisMonth ?? 0 },
           { key: 'rejected', label: 'Rejected', value: summary.rejected ?? 0, onClick: () => applyFilter('status', 'rejected') },
           { key: 'needsInfo', label: 'Needs Info', value: summary.needsInfo ?? 0, onClick: () => applyFilter('status', 'needs_info') },
+          { key: 'paid', label: 'Paid', value: summary.paid ?? 0, onClick: () => applyFilter('status', 'paid') },
           { key: 'outOfRange', label: 'Out of Range', value: summary.outOfRange ?? 0, onClick: () => applyFilter('benchmarkFit', 'above') },
           { key: 'totalPendingValue', label: 'Pending Value', value: summary.totalPendingValue != null ? formatAmount(summary.totalPendingValue) : '—' },
         ].map(({ key, label, value, onClick }) => (
@@ -462,6 +488,9 @@ function ClientApprovalsPageInner() {
                           <Button variant="ghost" size="sm" className="text-blue-700" onClick={() => handleAction('needs_info', undefined, row.invoice_id)}><MessageCircle className="w-4 h-4" /></Button>
                         </>
                       )}
+                      {row.status === 'approved' && (
+                        <Button variant="ghost" size="sm" className="text-emerald-700" onClick={() => openDrawer(row.invoice_id)} title="Mark as paid">Mark paid</Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -488,6 +517,10 @@ function ClientApprovalsPageInner() {
             <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
           ) : detail ? (
             <div className="mt-6 space-y-6">
+              <div className="rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-900">
+                <p className="font-medium mb-1">Payment responsibility</p>
+                <p>Contractors are independent service providers engaged by you. You are responsible for paying the contractor. Pleerity does not process contractor payments.</p>
+              </div>
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Linked context</h4>
                 <ul className="text-sm space-y-1">
@@ -508,6 +541,47 @@ function ClientApprovalsPageInner() {
                   <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleAction('approved', null, detail.invoice_id)} disabled={actionLoading}>Approve</Button>
                   <Button size="sm" variant="destructive" onClick={() => handleAction('rejected', null, detail.invoice_id)} disabled={actionLoading}>Reject</Button>
                   <Button size="sm" variant="outline" onClick={() => handleAction('needs_info', null, detail.invoice_id)} disabled={actionLoading}>Request more info</Button>
+                </div>
+              )}
+              {detail.status === 'approved' && (
+                <div className="space-y-3 border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700">Mark as paid</h4>
+                  <Select value={markPaidForm.payment_method} onValueChange={(v) => setMarkPaidForm((f) => ({ ...f, payment_method: v }))}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHOD_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Payment reference (optional)"
+                    value={markPaidForm.payment_reference}
+                    onChange={(e) => setMarkPaidForm((f) => ({ ...f, payment_reference: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Notes (optional)"
+                    value={markPaidForm.payment_notes}
+                    onChange={(e) => setMarkPaidForm((f) => ({ ...f, payment_notes: e.target.value }))}
+                  />
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    disabled={actionLoading || !markPaidForm.payment_method}
+                    onClick={() => handleAction('mark_paid', null, detail.invoice_id)}
+                  >
+                    Mark as paid
+                  </Button>
+                </div>
+              )}
+              {detail.status === 'paid' && (detail.paid_at || detail.payment_method) && (
+                <div className="text-sm text-gray-600 space-y-1 border-t pt-4">
+                  <p><strong>Paid at:</strong> {formatDate(detail.paid_at)}</p>
+                  {detail.payment_method && <p><strong>Payment method:</strong> {PAYMENT_METHOD_OPTIONS.find((o) => o.value === detail.payment_method)?.label || detail.payment_method}</p>}
+                  {detail.payment_reference && <p><strong>Payment reference:</strong> {detail.payment_reference}</p>}
+                  {detail.payment_notes && <p><strong>Notes:</strong> {detail.payment_notes}</p>}
                 </div>
               )}
               {detail.history && detail.history.length > 0 && (

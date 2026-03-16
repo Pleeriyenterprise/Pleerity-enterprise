@@ -402,6 +402,118 @@ async def set_password(request: Request, data: SetPasswordRequest):
         )
 
 
+@router.post("/contractor-login", response_model=TokenResponse)
+async def contractor_login(request: Request, credentials: LoginRequest):
+    """Contractor portal login. Returns JWT with role=ROLE_CONTRACTOR and contractor_id."""
+    ip = _client_ip(request)
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        f"login_contractor:{ip}", LOGIN_RATE_LIMIT_ATTEMPTS, LOGIN_RATE_LIMIT_WINDOW_MINUTES
+    )
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many attempts.")
+    try:
+        from services.contractor_portal_auth_service import verify_contractor_password
+        from services import contractor_service
+        acc = await verify_contractor_password(credentials.email, credentials.password)
+        if not acc:
+            await create_audit_log(
+                action=AuditAction.USER_LOGIN_FAILED,
+                metadata={"email": credentials.email, "reason": "contractor_invalid_credentials"}
+            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        contractor_id = acc["contractor_id"]
+        contractor = await contractor_service.get_contractor(contractor_id)
+        if not contractor or (contractor.get("status") or "").lower() != contractor_service.STATUS_ACTIVE:
+            await create_audit_log(
+                action=AuditAction.USER_LOGIN_FAILED,
+                metadata={"email": credentials.email, "contractor_id": contractor_id, "reason": "contractor_inactive"}
+            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is not active")
+        token_data = {
+            "portal_user_id": f"contractor_{contractor_id}",
+            "contractor_id": contractor_id,
+            "email": acc["email"],
+            "role": UserRole.ROLE_CONTRACTOR.value,
+        }
+        access_token = create_access_token(token_data)
+        await create_audit_log(
+            action=AuditAction.USER_LOGIN_SUCCESS,
+            actor_id=contractor_id,
+            metadata={"email": acc["email"], "contractor_id": contractor_id}
+        )
+        return TokenResponse(
+            access_token=access_token,
+            user={
+                "portal_user_id": token_data["portal_user_id"],
+                "email": acc["email"],
+                "role": UserRole.ROLE_CONTRACTOR.value,
+                "contractor_id": contractor_id,
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Contractor login error: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Login failed")
+
+
+@router.post("/contractor-set-password")
+async def contractor_set_password(request: Request, data: SetPasswordRequest):
+    """Set password for contractor portal using invite token. Token must have purpose=contractor_invite and metadata.contractor_id, metadata.email."""
+    if not data.token or not data.password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token and password required")
+    token_hash_value = hash_token(data.token)
+    db = database.get_db()
+    password_token = await db.password_tokens.find_one({"token_hash": token_hash_value}, {"_id": 0})
+    if not password_token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+    if password_token.get("used"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link has already been used")
+    expires_at = password_token.get("expires_at")
+    if expires_at:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        exp = expires_at if isinstance(expires_at, datetime) else datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+        if now > exp:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link has expired")
+    if password_token.get("purpose") != "contractor_invite":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid link type")
+    metadata = password_token.get("metadata") or {}
+    contractor_id = metadata.get("contractor_id")
+    email = (metadata.get("email") or "").strip().lower()
+    if not contractor_id or not email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite data")
+    is_valid, message = validate_password_strength(data.password)
+    if not is_valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    from services.contractor_portal_auth_service import create_account, set_password, get_account_by_contractor_id
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        existing = await get_account_by_contractor_id(contractor_id)
+        if existing:
+            await set_password(contractor_id, data.password)
+        else:
+            await create_account(contractor_id, email, data.password)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    await db.password_tokens.update_one(
+        {"token_hash": token_hash_value},
+        {"$set": {"used": True, "used_at": now}}
+    )
+    token_data = {
+        "portal_user_id": f"contractor_{contractor_id}",
+        "contractor_id": contractor_id,
+        "email": email,
+        "role": UserRole.ROLE_CONTRACTOR.value,
+    }
+    access_token = create_access_token(token_data)
+    return {
+        "message": "Password set successfully",
+        "access_token": access_token,
+        "user": {"portal_user_id": token_data["portal_user_id"], "email": email, "role": UserRole.ROLE_CONTRACTOR.value, "contractor_id": contractor_id},
+    }
+
+
 # Self-service forgot password: same token + set-password flow as admin resend; no user enumeration
 FORGOT_PASSWORD_RATE_LIMIT_IP = 5
 FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES = 15

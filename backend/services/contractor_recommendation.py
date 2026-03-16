@@ -79,6 +79,23 @@ def _credential_match(wo: Dict[str, Any], c: Dict[str, Any], weights: Dict[str, 
     return 0, []
 
 
+def _performance_score(c: Dict[str, Any], weights: Dict[str, int]) -> Tuple[int, List[str]]:
+    """Overall contractor intelligence score (0-100) from contractor doc. Higher = more points."""
+    score = c.get("performance_score")
+    if score is None:
+        return 0, []
+    try:
+        val = float(score)
+        if val <= 0:
+            return 0, []
+        pct = min(1.0, max(0.0, val / 100.0))
+        w = weights.get("performance_score", 25) or 0
+        points = int(w * pct)
+        return points, [f"Performance score {val:.0f}/100"] if points else (0, [])
+    except (TypeError, ValueError):
+        return 0, []
+
+
 def _sla_score(perf: Tuple[int, int], c: Dict[str, Any], weights: Dict[str, int]) -> Tuple[int, List[str]]:
     """SLA: from contractor_performance (jobs_on_time, jobs_completed) or contractor.sla_compliance_rate."""
     jobs, on_time = perf
@@ -201,6 +218,8 @@ def recommend_contractors(
         reasons.extend(r_reasons)
         cr_score, cr_reasons = _credential_match(work_order, c, w)
         reasons.extend(cr_reasons)
+        ps_score, ps_reasons = _performance_score(c, w)
+        reasons.extend(ps_reasons)
         s_score, s_reasons = _sla_score(perf.get(cid, (0, 0)), c, w)
         reasons.extend(s_reasons)
         rt_score, rt_reasons = _rating_score(c, w)
@@ -209,7 +228,7 @@ def recommend_contractors(
         reasons.extend(rw_reasons)
         p_score, p_reasons, benchmark_fit = _price_fit(work_order, c, price_books, w)
         reasons.extend(p_reasons)
-        total = t_score + r_score + cr_score + s_score + rt_score + rw_score + p_score
+        total = t_score + r_score + cr_score + ps_score + s_score + rt_score + rw_score + p_score
         out.append({
             "contractor_id": cid,
             "score": total,
@@ -223,6 +242,10 @@ def recommend_contractors(
             "sla_compliance_rate": c.get("sla_compliance_rate"),
             "region": c.get("region"),
             "credentials": c.get("credentials"),
+            "performance_score": c.get("performance_score"),
+            "reliability_score": c.get("reliability_score"),
+            "completed_jobs": c.get("completed_jobs"),
+            "assigned_jobs": c.get("assigned_jobs"),
         })
     out.sort(key=lambda x: -x["score"])
     for i, item in enumerate(out, 1):

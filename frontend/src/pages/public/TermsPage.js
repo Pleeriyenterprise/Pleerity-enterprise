@@ -56,6 +56,13 @@ const TermsPage = () => {
                 proven service error or as outlined in specific service agreements. Once a digital document, 
                 report, or automation has been delivered, it is considered a completed service.
               </p>
+              <h3 className="text-lg font-semibold text-midnight-blue mt-4 mb-2">Contractor and work order coordination</h3>
+              <p className="mb-3">
+                Where the platform is used to coordinate work orders and contractor engagements, Pleerity facilitates 
+                coordination and invoice approval workflows only. Contractors are independent service providers 
+                engaged by the client. Payment responsibility for contractor work lies with the client. Pleerity does 
+                not process contractor payments unless explicitly agreed otherwise in writing.
+              </p>
             </div>
 
             <div>

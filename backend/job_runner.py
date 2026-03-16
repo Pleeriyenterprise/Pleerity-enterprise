@@ -874,6 +874,21 @@ async def run_scheduler_heartbeat():
         raise
 
 
+async def run_contractor_performance_recalc():
+    """Recalculate contractor performance metrics and overall score for all contractors. Runs daily and on-demand."""
+    try:
+        from services.contractor_intelligence_service import recalculate_all_contractors
+        processed, errors = await recalculate_all_contractors(audit=True)
+        msg = f"Contractor performance recalc: {processed} updated"
+        if errors:
+            msg += f", {errors} errors"
+        logger.info("contractor_performance_recalc: %s", msg)
+        return {"message": msg, "count": processed}
+    except Exception as e:
+        logger.error("Contractor performance recalc job failed: %s", e)
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -905,4 +920,5 @@ JOB_RUNNERS = {
     "work_order_sla_breach_job": run_work_order_sla_breach_job,
     "scheduler_heartbeat": run_scheduler_heartbeat,
     "delivery_reconciliation": run_delivery_reconciliation,
+    "contractor_performance_recalc": run_contractor_performance_recalc,
 }

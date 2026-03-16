@@ -186,6 +186,10 @@ class Database:
             await self.db.contractor_assignments.create_index([("work_order_id", 1), ("assigned_at", -1)])
             await self.db.contractor_assignments.create_index("work_order_id")
             await self.db.contractor_assignments.create_index("contractor_id")
+            # Contractor job access tokens (secure link per work order assignment; no login required)
+            await self.db.contractor_job_tokens.create_index("token_hash", unique=True)
+            await self.db.contractor_job_tokens.create_index([("work_order_id", 1), ("contractor_id", 1)])
+            await self.db.contractor_job_tokens.create_index("expires_at")
             # Maintenance issues (issue → triage → work order flow)
             await self.db.maintenance_issues.create_index("issue_id", unique=True)
             await self.db.maintenance_issues.create_index([("client_id", 1), ("created_at", -1)])
@@ -268,6 +272,10 @@ class Database:
             await self.db.tenant_requests.create_index([("client_id", 1), ("created_at", -1)])
             await self.db.tenant_requests.create_index("request_id", unique=True)
             await self.db.tenant_requests.create_index([("client_id", 1), ("status", 1)])
+            # Contractor portal accounts (contractor_id + email login)
+            await self.db.contractor_portal_accounts.create_index("email", unique=True)
+            await self.db.contractor_portal_accounts.create_index("contractor_id", unique=True)
+            await self.db.contractor_portal_accounts.create_index("status")
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored.
             # Drop legacy unique index (phone_e164, purpose) if present; it causes DuplicateKeyError

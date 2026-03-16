@@ -44,6 +44,9 @@ import {
   Eye,
   CheckCircle,
   XCircle,
+  ChevronDown,
+  ChevronUp,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
@@ -83,7 +86,11 @@ function ClientRiskSignalsPageInner() {
   const [error, setError] = useState(null);
   const [drawerSignalId, setDrawerSignalId] = useState(null);
   const [drawerSignal, setDrawerSignal] = useState(null);
+  const [drawerExplanation, setDrawerExplanation] = useState(null);
+  const [drawerExplanationLoading, setDrawerExplanationLoading] = useState(false);
+  const [drawerExplanationOpen, setDrawerExplanationOpen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
+  const [actionFromSignal, setActionFromSignal] = useState(null); // 'issue' | 'work_order'
   const [filters, setFilters] = useState({
     risk_level: '',
     risk_type: '',
@@ -138,6 +145,8 @@ function ClientRiskSignalsPageInner() {
 
   useEffect(() => {
     if (!drawerSignalId) {
+      setDrawerExplanation(null);
+      setDrawerExplanationOpen(false);
       setDrawerSignal(null);
       return;
     }
@@ -615,8 +624,133 @@ function ClientRiskSignalsPageInner() {
                   <p className="text-sm">{drawerSignal.recommended_action}</p>
                 </div>
               )}
+              {/* Expandable "Why this matters" from explanation engine */}
+              <div className="border rounded-lg overflow-hidden bg-gray-50/80">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-900 hover:bg-gray-100"
+                  onClick={async () => {
+                    const next = !drawerExplanationOpen;
+                    setDrawerExplanationOpen(next);
+                    if (next && !drawerExplanation && !drawerExplanationLoading) {
+                      setDrawerExplanationLoading(true);
+                      try {
+                        const res = await clientAPI.getRiskSignalExplanation(drawerSignalId);
+                        setDrawerExplanation(res.data);
+                      } catch {
+                        setDrawerExplanation(null);
+                      } finally {
+                        setDrawerExplanationLoading(false);
+                      }
+                    }
+                  }}
+                >
+                  <span className="flex items-center gap-2">
+                    <Info className="w-4 h-4 text-electric-teal" />
+                    Why this matters
+                  </span>
+                  {drawerExplanationOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {drawerExplanationOpen && (
+                  <div className="px-3 pb-3 pt-0 border-t border-gray-200 space-y-2">
+                    {drawerExplanationLoading ? (
+                      <p className="text-sm text-gray-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</p>
+                    ) : drawerExplanation ? (
+                      <>
+                        <p className="text-sm text-gray-700">{drawerExplanation.why_it_matters}</p>
+                        <p className="text-xs text-muted-foreground uppercase pt-1">Recommended action</p>
+                        <p className="text-sm font-medium text-midnight-blue">{drawerExplanation.recommended_action_text}</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-500">Could not load explanation.</p>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="pt-4 border-t space-y-2">
-                <p className="text-xs text-muted-foreground uppercase">Related</p>
+                <p className="text-xs text-muted-foreground uppercase">Suggested actions</p>
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    const actions = Array.isArray(drawerSignal.suggested_actions) ? drawerSignal.suggested_actions : ['create_issue', 'create_work_order'];
+                    return (
+                      <>
+                        {actions.includes('create_issue') && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            disabled={!!actionFromSignal}
+                            onClick={async () => {
+                              setActionFromSignal('issue');
+                              try {
+                                const res = await clientAPI.createIssueFromRiskSignal(drawerSignalId, {});
+                                toast.success('Issue created. You can view it in Operations → Issues.');
+                                if (res?.data?.issue_id) navigate(`/operations/issues?highlight=${res.data.issue_id}`);
+                                setDrawerSignalId(null);
+                                load();
+                              } catch (e) {
+                                toast.error(e?.response?.data?.detail || 'Failed to create issue');
+                              } finally {
+                                setActionFromSignal(null);
+                              }
+                            }}
+                          >
+                            {actionFromSignal === 'issue' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ClipboardCheck className="w-4 h-4 mr-1" />}
+                            Create issue
+                          </Button>
+                        )}
+                        {actions.includes('create_work_order') && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            disabled={!!actionFromSignal}
+                            onClick={async () => {
+                              setActionFromSignal('work_order');
+                              try {
+                                const res = await clientAPI.createWorkOrderFromRiskSignal(drawerSignalId, {});
+                                toast.success('Work order created. You can view it in Operations → Work orders.');
+                                if (res?.data?.work_order_id) navigate(`/operations/work-orders?highlight=${res.data.work_order_id}`);
+                                setDrawerSignalId(null);
+                                load();
+                              } catch (e) {
+                                toast.error(e?.response?.data?.detail || 'Failed to create work order');
+                              } finally {
+                                setActionFromSignal(null);
+                              }
+                            }}
+                          >
+                            {actionFromSignal === 'work_order' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Wrench className="w-4 h-4 mr-1" />}
+                            Create work order
+                          </Button>
+                        )}
+                        {actions.includes('schedule_inspection') && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            disabled={!!actionFromSignal}
+                            onClick={async () => {
+                              setActionFromSignal('schedule_inspection');
+                              try {
+                                const res = await clientAPI.scheduleInspectionFromRiskSignal(drawerSignalId, {});
+                                toast.success('Inspection issue created.');
+                                if (res?.data?.issue_id) navigate(`/operations/issues?highlight=${res.data.issue_id}`);
+                                setDrawerSignalId(null);
+                                load();
+                              } catch (e) {
+                                toast.error(e?.response?.data?.detail || 'Failed to create inspection');
+                              } finally {
+                                setActionFromSignal(null);
+                              }
+                            }}
+                          >
+                            {actionFromSignal === 'schedule_inspection' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ClipboardCheck className="w-4 h-4 mr-1" />}
+                            Schedule inspection
+                          </Button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Related</p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={() => navigate(`/properties/${drawerSignal.property_id}`)}>
                     <Building2 className="w-4 h-4 mr-1" /> View property
@@ -635,7 +769,7 @@ function ClientRiskSignalsPageInner() {
                     variant="outline"
                     onClick={() => openCreateWorkOrder(drawerSignal.property_id, drawerSignal.recommended_action)}
                   >
-                    <Wrench className="w-4 h-4 mr-1" /> Create work order
+                    <Wrench className="w-4 h-4 mr-1" /> Create work order (manual)
                   </Button>
                 </div>
               </div>

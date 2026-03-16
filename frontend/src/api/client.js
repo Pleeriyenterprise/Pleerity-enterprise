@@ -120,6 +120,8 @@ export default apiClient;
 export const authAPI = {
   login: (data) => apiClient.post('/auth/login', data),
   adminLogin: (data) => apiClient.post('/auth/admin/login', data),
+  contractorLogin: (data) => apiClient.post('/auth/contractor-login', data),
+  contractorSetPassword: (data) => apiClient.post('/auth/contractor-set-password', data),
   setPassword: (data) => apiClient.post('/auth/set-password', data),
   forgotPassword: (data) => apiClient.post('/auth/forgot-password', data),
 };
@@ -151,9 +153,12 @@ export const intakeAPI = {
 
 export const clientAPI = {
   getDashboard: () => apiClient.get('/client/dashboard'),
+  /** Ranked priority actions (orchestration/copilot layer). */
+  getPriorityActions: (params = {}) => apiClient.get('/client/priority-actions', { params }),
   getEntitlements: () => apiClient.get('/client/entitlements'),
   getProperties: () => apiClient.get('/client/properties'),
   getPropertyRequirements: (propertyId) => apiClient.get(`/client/properties/${propertyId}/requirements`),
+  getRequirementExplanation: (propertyId, params) => apiClient.get(`/client/properties/${propertyId}/requirements/explanation`, { params: params || {} }),
   /** Mark a catalog requirement as not applicable for this property (creates/updates requirement row). */
   markRequirementNotApplicable: (propertyId, body) =>
     apiClient.post(`/client/properties/${propertyId}/requirements/mark-not-applicable`, body),
@@ -226,10 +231,15 @@ export const clientAPI = {
   getPropertyRiskSignals: (propertyId, params = {}) => apiClient.get(`/client/maintenance/properties/${propertyId}/risk-signals`, { params }),
   getRiskSignals: (params = {}) => apiClient.get('/client/maintenance/risk-signals', { params }),
   getRiskSignal: (signalId) => apiClient.get(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}`),
+  getRiskSignalExplanation: (signalId) => apiClient.get(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/explanation`),
+  createIssueFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/create-issue`, body),
+  createWorkOrderFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/create-work-order`, body),
+  scheduleInspectionFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/schedule-inspection`, body),
   recalculatePropertyRiskSignals: (propertyId) => apiClient.post(`/client/maintenance/risk-signals/recalculate/${propertyId}`),
   updateRiskSignalStatus: (signalId, status) => apiClient.patch(`/client/maintenance/risk-signals/${signalId}`, { status }),
   /** Contractors available to client (requires CONTRACTOR_NETWORK). */
   getContractors: (params = {}) => apiClient.get('/client/contractors', { params }),
+  getContractorExplanation: (contractorId) => apiClient.get(`/client/contractors/${encodeURIComponent(contractorId)}/explanation`),
   /** Submit private contractor for network review (requires CONTRACTOR_NETWORK). */
   submitContractorToNetwork: (contractorId) => apiClient.post(`/client/contractors/${contractorId}/submit-to-network`),
   /** Landlord-add contractor (requires CONTRACTOR_NETWORK). */
@@ -240,6 +250,7 @@ export const clientAPI = {
   getApprovals: (params = {}) => apiClient.get('/client/approvals', { params }),
   getApproval: (invoiceId) => apiClient.get(`/client/approvals/${encodeURIComponent(invoiceId)}`),
   updateApproval: (invoiceId, body) => apiClient.patch(`/client/approvals/${encodeURIComponent(invoiceId)}`, body),
+  createInvoice: (body) => apiClient.post('/client/invoices', body),
   exportApprovals: (params = {}) => apiClient.get('/client/approvals/export', { params, responseType: 'blob' }),
 };
 
@@ -284,13 +295,17 @@ export const adminAPI = {
   getJobsStatus: () => apiClient.get('/admin/jobs/status'),
   // Operations & Compliance
   getOpsOverview: () => apiClient.get('/admin/ops/overview'),
+  /** Admin priority actions (action queue / operational priorities). */
+  getPriorityActions: (params = {}) => apiClient.get('/admin/ops/priority-actions', { params }),
   getClientFeatureFlags: (clientId) => apiClient.get(`/admin/ops/clients/${clientId}/feature-flags`),
   updateClientFeatureFlags: (clientId, updates) =>
     apiClient.patch(`/admin/ops/clients/${clientId}/feature-flags`, { updates }),
   getClientPlanUsage: (clientId) => apiClient.get(`/admin/ops/clients/${clientId}/plan-usage`),
   // Contractors (Ops Contractor Network)
   getContractors: (params = {}) => apiClient.get('/admin/ops/contractors', { params }),
+  getContractorAnalytics: (params = {}) => apiClient.get('/admin/ops/contractors/analytics', { params }),
   getContractor: (contractorId) => apiClient.get(`/admin/ops/contractors/${contractorId}`),
+  getContractorExplanation: (contractorId) => apiClient.get(`/admin/ops/contractors/${encodeURIComponent(contractorId)}/explanation`),
   createContractor: (body) => apiClient.post('/admin/ops/contractors', body),
   createNetworkContractor: (body) => apiClient.post('/admin/ops/contractors/network', body),
   approveContractor: (contractorId) => apiClient.patch(`/admin/ops/contractors/${contractorId}/approve`),
@@ -304,4 +319,38 @@ export const adminAPI = {
   updateWorkOrder: (workOrderId, body) => apiClient.patch(`/admin/ops/work-orders/${workOrderId}`, body),
   // Predictive insights (admin: per client; client: own)
   getClientPredictiveInsights: (clientId, params = {}) => apiClient.get(`/admin/ops/clients/${clientId}/predictive-insights`, { params }),
+  // Risk signals (admin dashboard)
+  getRiskSignalsSummary: (params = {}) => apiClient.get('/admin/ops/risk-signals/summary', { params }),
+  // Invoices (admin create)
+  createInvoice: (body) => apiClient.post('/admin/ops/invoices', body),
+  // Contractor portal invite (admin)
+  inviteContractorToPortal: (contractorId) => apiClient.post(`/admin/ops/contractors/${contractorId}/invite-portal`),
 };
+
+// Contractor portal API (use with contractor token from contractor login/set-password)
+export function createContractorAPI(accessToken) {
+  const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+  return {
+    getWorkOrders: (params = {}) => apiClient.get('/contractor/work-orders', { params, headers }),
+    getWorkOrder: (id) => apiClient.get(`/contractor/work-orders/${id}`, { headers }),
+    updateWorkOrder: (id, body) => apiClient.patch(`/contractor/work-orders/${id}`, body, { headers }),
+    acceptAssignment: (id) => apiClient.post(`/contractor/work-orders/${id}/accept`, {}, { headers }),
+    declineAssignment: (id) => apiClient.post(`/contractor/work-orders/${id}/decline`, {}, { headers }),
+    submitInvoice: (body) => apiClient.post('/contractor/invoices', body, { headers }),
+    getProfile: () => apiClient.get('/contractor/profile', { headers }),
+    getInvoices: (params = {}) => apiClient.get('/contractor/invoices', { params, headers }),
+  };
+}
+
+// Job link API (no login: use token from secure link in assignment email)
+export function createJobLinkAPI(jobToken) {
+  const params = jobToken ? { token: jobToken } : {};
+  const config = (opts = {}) => ({ ...opts, params: { ...params, ...(opts.params || {}) } });
+  return {
+    getWorkOrder: () => apiClient.get('/job/work-order', config()),
+    updateWorkOrder: (body) => apiClient.patch('/job/work-order', body, config()),
+    acceptAssignment: () => apiClient.post('/job/work-order/accept', {}, config()),
+    declineAssignment: () => apiClient.post('/job/work-order/decline', {}, config()),
+    submitInvoice: (body) => apiClient.post('/job/invoices', body, config()),
+  };
+}

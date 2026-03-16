@@ -20,6 +20,8 @@ STATUS_PENDING = "pending"
 STATUS_APPROVED = "approved"
 STATUS_REJECTED = "rejected"
 STATUS_NEEDS_INFO = "needs_info"
+STATUS_PAID = "paid"
+STATUS_OVERDUE = "overdue"
 BENCHMARK_BELOW = "below"
 BENCHMARK_WITHIN = "within"
 BENCHMARK_ABOVE = "above"
@@ -199,6 +201,7 @@ async def list_approvals(
     })
     rejected_count = await db.invoices.count_documents({**summary_query, "status": STATUS_REJECTED})
     needs_info_count = await db.invoices.count_documents({**summary_query, "status": STATUS_NEEDS_INFO})
+    paid_count = await db.invoices.count_documents({**summary_query, "status": STATUS_PAID})
     out_of_range_count = await db.invoices.count_documents({
         **summary_query,
         "benchmark_fit": BENCHMARK_ABOVE,
@@ -216,6 +219,7 @@ async def list_approvals(
         "approvedThisMonth": approved_this_month,
         "rejected": rejected_count,
         "needsInfo": needs_info_count,
+        "paid": paid_count,
         "outOfRange": out_of_range_count,
         "totalPendingValue": total_pending_value,
     }
@@ -330,6 +334,60 @@ async def update_approval(
     return await get_approval(client_id, invoice_id)
 
 
+# Payment method enum for mark-paid (Part 6)
+PAYMENT_METHOD_BANK_TRANSFER = "bank_transfer"
+PAYMENT_METHOD_CASH = "cash"
+PAYMENT_METHOD_CARD = "card"
+PAYMENT_METHOD_CHEQUE = "cheque"
+PAYMENT_METHOD_OTHER = "other"
+PAYMENT_METHODS = (PAYMENT_METHOD_BANK_TRANSFER, PAYMENT_METHOD_CASH, PAYMENT_METHOD_CARD, PAYMENT_METHOD_CHEQUE, PAYMENT_METHOD_OTHER)
+
+
+async def mark_invoice_paid(
+    client_id: str,
+    invoice_id: str,
+    payment_method: str,
+    payment_reference: Optional[str] = None,
+    payment_notes: Optional[str] = None,
+    reviewer_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Mark an approved invoice as paid. Sets status=paid, paid_at=now, payment_method, payment_reference, payment_notes. Audit INVOICE_MARKED_PAID."""
+    if payment_method not in PAYMENT_METHODS:
+        return None
+    db = database.get_db()
+    inv = await db.invoices.find_one({"client_id": client_id, "invoice_id": invoice_id})
+    if not inv:
+        return None
+    if inv.get("status") != STATUS_APPROVED:
+        return None  # only approved invoices can be marked paid
+
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    await db.invoices.update_one(
+        {"client_id": client_id, "invoice_id": invoice_id},
+        {"$set": {
+            "status": STATUS_PAID,
+            "paid_at": now,
+            "payment_method": payment_method,
+            "payment_reference": (payment_reference or "").strip() or None,
+            "payment_notes": (payment_notes or "").strip() or None,
+        }},
+    )
+    await create_audit_log(
+        action=AuditAction.INVOICE_MARKED_PAID,
+        actor_id=reviewer_id,
+        client_id=client_id,
+        resource_type="invoice",
+        resource_id=invoice_id,
+        metadata={
+            "payment_method": payment_method,
+            "payment_reference": payment_reference,
+            "submitted_amount": inv.get("submitted_amount"),
+        },
+    )
+    return await get_approval(client_id, invoice_id)
+
+
 async def export_approvals_csv(
     client_id: str,
     status: Optional[str] = None,
@@ -366,6 +424,9 @@ async def export_approvals_csv(
             benchmark_range = f"{min_b}–{max_b} {currency}"
         else:
             benchmark_range = "No benchmark"
+        paid_at = a.get("paid_at")
+        if hasattr(paid_at, "isoformat"):
+            paid_at = paid_at.isoformat()
         rows.append({
             "Invoice Ref": a.get("reference") or "",
             "Property": a.get("property_label") or "",
@@ -378,6 +439,9 @@ async def export_approvals_csv(
             "Submitted At": a.get("submitted_at") or "",
             "Reviewed At": a.get("reviewed_at") or "",
             "Reviewer": a.get("reviewer_id") or "",
+            "Paid At": paid_at or "",
+            "Payment Method": a.get("payment_method") or "",
+            "Payment Reference": a.get("payment_reference") or "",
         })
     buf = io.StringIO()
     if rows:

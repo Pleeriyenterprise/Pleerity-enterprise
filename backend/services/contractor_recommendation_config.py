@@ -5,12 +5,14 @@ Adjust these to tune ranking without refactoring business logic.
 from typing import Dict
 
 # Scoring weights (must sum to 100). Used by contractor_recommendation.recommend_contractors().
+# performance_score uses contractor intelligence (reliability, SLA, response time, invoice approval).
 DEFAULT_WEIGHTS: Dict[str, int] = {
-    "trade_match": 30,
-    "region_match": 20,
-    "credential_match": 20,
-    "sla_performance": 10,
-    "rating": 10,
+    "trade_match": 25,
+    "region_match": 15,
+    "credential_match": 15,
+    "performance_score": 25,
+    "sla_performance": 5,
+    "rating": 5,
     "rework_rate": 5,
     "price_fit": 5,
 }

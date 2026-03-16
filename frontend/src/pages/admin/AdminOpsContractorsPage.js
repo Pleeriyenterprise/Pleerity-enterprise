@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
-import { Users, Plus, Pencil, Trash2, Loader2, CheckCircle, Clock } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Loader2, CheckCircle, Clock, Mail, BarChart3, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 
@@ -15,10 +15,19 @@ export default function AdminOpsContractorsPage() {
   const [sourceTypeFilter, setSourceTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [analyticsView, setAnalyticsView] = useState('top_performers');
+  const [analyticsClientId, setAnalyticsClientId] = useState('');
+  const [analyticsLimit, setAnalyticsLimit] = useState(50);
+  const [analyticsData, setAnalyticsData] = useState({ contractors: [], total: 0, view: '' });
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [contractorExplainId, setContractorExplainId] = useState(null);
+  const [contractorExplainData, setContractorExplainData] = useState(null);
+  const [contractorExplainLoading, setContractorExplainLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [networkFormOpen, setNetworkFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [invitingId, setInvitingId] = useState(null);
   const [form, setForm] = useState({
     name: '',
     trade_types: [],
@@ -79,8 +88,30 @@ export default function AdminOpsContractorsPage() {
       .finally(() => setLoading(false));
   }, [clientIdFilter, vettedOnly, sourceTypeFilter, statusFilter, activeTab]);
 
+  const loadAnalytics = useCallback(() => {
+    setAnalyticsLoading(true);
+    const params = { view: analyticsView, limit: analyticsLimit };
+    if (analyticsClientId) params.client_id = analyticsClientId;
+    adminAPI.getContractorAnalytics(params)
+      .then((res) => {
+        setAnalyticsData({
+          contractors: res.data?.contractors || [],
+          total: res.data?.total ?? 0,
+          view: res.data?.view || analyticsView,
+        });
+      })
+      .catch(() => {
+        setAnalyticsData({ contractors: [], total: 0, view: analyticsView });
+        toast.error('Failed to load contractor analytics');
+      })
+      .finally(() => setAnalyticsLoading(false));
+  }, [analyticsView, analyticsClientId, analyticsLimit]);
+
   useEffect(() => { loadClients(); }, [loadClients]);
   useEffect(() => { loadContractors(); }, [loadContractors]);
+  useEffect(() => {
+    if (activeTab === 'analytics') loadAnalytics();
+  }, [activeTab, loadAnalytics]);
 
   const openCreate = () => {
     setEditing(null);
@@ -270,6 +301,14 @@ export default function AdminOpsContractorsPage() {
               <Clock className="w-4 h-4" />
               Pending Approvals
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('analytics')}
+              className={`px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1 ${activeTab === 'analytics' ? 'bg-electric-teal text-white' : 'bg-gray-100 text-gray-700'}`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </button>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Client filter</label>
@@ -326,7 +365,148 @@ export default function AdminOpsContractorsPage() {
           </div>
         </div>
 
-        {loading ? (
+        {activeTab === 'analytics' ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-4 items-end p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">View</label>
+                <select
+                  value={analyticsView}
+                  onChange={(e) => setAnalyticsView(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[180px]"
+                >
+                  <option value="top_performers">Top performing</option>
+                  <option value="sla_issues">SLA issues (&lt;80% on-time)</option>
+                  <option value="high_rejection">High rejection (invoice approval &lt;80%)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client filter</label>
+                <select
+                  value={analyticsClientId}
+                  onChange={(e) => setAnalyticsClientId(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[200px]"
+                >
+                  <option value="">All contractors</option>
+                  {clients.map((c) => (
+                    <option key={c.client_id} value={c.client_id}>{clientLabel(c.client_id)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Limit</label>
+                <select
+                  value={analyticsLimit}
+                  onChange={(e) => setAnalyticsLimit(Number(e.target.value))}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                </select>
+              </div>
+              <Button variant="outline" onClick={loadAnalytics} disabled={analyticsLoading}>
+                {analyticsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Refresh
+              </Button>
+            </div>
+            {analyticsLoading ? (
+              <div className="flex items-center gap-2 text-gray-500 py-8">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Loading analytics…
+              </div>
+            ) : analyticsData.contractors.length === 0 ? (
+              <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center text-gray-600">
+                No contractors match this view. Run score recalculation or assign jobs to see metrics.
+              </div>
+            ) : (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Name</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Trades</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Client</th>
+                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Score</th>
+                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Reliability</th>
+                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">SLA %</th>
+                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Invoice %</th>
+                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Jobs</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 w-32">Explanation</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {analyticsData.contractors.map((c) => {
+                      const showExplain = contractorExplainId === c.contractor_id;
+                      return (
+                        <React.Fragment key={c.contractor_id}>
+                          <tr>
+                            <td className="px-4 py-2 text-sm text-gray-900">{c.name || c.company_name}</td>
+                            <td className="px-4 py-2 text-sm text-gray-600">{(c.trade_types || []).join(', ') || '—'}</td>
+                            <td className="px-4 py-2 text-sm text-gray-600">{clientLabel(c.client_id)}</td>
+                            <td className="px-4 py-2 text-sm text-right">{c.performance_score != null ? Math.round(c.performance_score) : '—'}</td>
+                            <td className="px-4 py-2 text-sm text-right">{c.reliability_score != null ? `${Math.round((c.reliability_score || 0) * 100)}%` : '—'}</td>
+                            <td className="px-4 py-2 text-sm text-right">{c.sla_success_rate != null ? `${Math.round((c.sla_success_rate || 0) * 100)}%` : '—'}</td>
+                            <td className="px-4 py-2 text-sm text-right">{c.invoice_approval_rate != null ? `${Math.round((c.invoice_approval_rate || 0) * 100)}%` : '—'}</td>
+                            <td className="px-4 py-2 text-sm text-right">{c.assigned_jobs ?? 0} / {c.completed_jobs ?? 0}</td>
+                            <td className="px-4 py-2">
+                              <button
+                                type="button"
+                                className="text-xs text-electric-teal hover:underline flex items-center gap-0.5"
+                                onClick={async () => {
+                                  if (showExplain) {
+                                    setContractorExplainId(null);
+                                    setContractorExplainData(null);
+                                    return;
+                                  }
+                                  setContractorExplainId(c.contractor_id);
+                                  if (contractorExplainData && contractorExplainId === c.contractor_id) return;
+                                  setContractorExplainData(null);
+                                  setContractorExplainLoading(true);
+                                  try {
+                                    const res = await adminAPI.getContractorExplanation(c.contractor_id);
+                                    setContractorExplainData(res.data);
+                                  } catch {
+                                    setContractorExplainData(null);
+                                  } finally {
+                                    setContractorExplainLoading(false);
+                                  }
+                                }}
+                              >
+                                <Info className="w-3 h-3" /> Why this matters {showExplain ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              </button>
+                            </td>
+                          </tr>
+                          {showExplain && (
+                            <tr className="bg-gray-50">
+                              <td colSpan={9} className="px-4 py-3 text-sm text-gray-700 border-t border-gray-100">
+                                {contractorExplainLoading ? (
+                                  <p className="flex items-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</p>
+                                ) : contractorExplainData ? (
+                                  <>
+                                    <p className="font-medium text-gray-800 mb-1">Why this matters</p>
+                                    <p>{contractorExplainData.why_it_matters}</p>
+                                    <p className="font-medium text-midnight-blue mt-1">{contractorExplainData.recommended_action_text}</p>
+                                  </>
+                                ) : (
+                                  <p>Could not load explanation.</p>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <div className="px-4 py-2 bg-gray-50 text-sm text-gray-600 border-t border-gray-200">
+                  Showing {analyticsData.contractors.length} of {analyticsData.total}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : loading ? (
           <div className="flex items-center gap-2 text-gray-500 py-8">
             <Loader2 className="w-5 h-5 animate-spin" />
             Loading…
@@ -369,6 +549,26 @@ export default function AdminOpsContractorsPage() {
                           Approve
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Invite to contractor portal"
+                        disabled={!c.email || !!invitingId}
+                        onClick={async () => {
+                          setInvitingId(c.contractor_id);
+                          try {
+                            const res = await adminAPI.inviteContractorToPortal(c.contractor_id);
+                            const url = res.data?.setup_url;
+                            toast.success(url ? 'Invite sent. Link: ' + url : 'Invite created. Contractor can set password via the link.');
+                          } catch (e) {
+                            toast.error(e.response?.data?.detail || 'Invite failed');
+                          } finally {
+                            setInvitingId(null);
+                          }
+                        }}
+                      >
+                        {invitingId === c.contractor_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEdit(c)}><Pencil className="w-4 h-4" /></Button>
                       <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDelete(c.contractor_id, c.name || c.company_name)}><Trash2 className="w-4 h-4" /></Button>
                     </td>

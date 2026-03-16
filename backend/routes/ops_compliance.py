@@ -2,7 +2,7 @@
 Operations & Compliance admin API: feature flags, plan usage, provisioning status.
 All endpoints require admin auth; feature-flag changes require Owner or Admin and are audited.
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from database import database
@@ -151,3 +151,48 @@ async def get_client_predictive_insights(request: Request, client_id: str):
     from services.predictive_service import get_insights_for_client
     result = await get_insights_for_client(client_id)
     return result
+
+
+@router.get("/risk-signals/summary")
+async def get_risk_signals_admin_summary_route(
+    request: Request,
+    client_id: Optional[str] = Query(None, description="Filter by client"),
+    risk_level: Optional[str] = Query(None, description="low | medium | high | critical"),
+    risk_type: Optional[str] = Query(None, description="e.g. Boiler Failure Risk"),
+    status: Optional[str] = Query(None, description="active | acknowledged | resolved"),
+    limit: int = Query(200, ge=1, le=500),
+):
+    """Admin risk dashboard: aggregate risk signals across clients. Top properties, top clients, counts by level/type, recent signals."""
+    await admin_route_guard(request)
+    from services import risk_signal_service
+    result = await risk_signal_service.get_risk_signals_admin_summary(
+        client_id_filter=client_id,
+        risk_level=risk_level,
+        risk_type=risk_type,
+        status_filter=status,
+        limit_signals=limit,
+    )
+    return result
+
+
+@router.get("/priority-actions")
+async def get_admin_priority_actions(
+    request: Request,
+    client_id: Optional[str] = Query(None, description="Filter by client"),
+    limit: int = Query(30, ge=1, le=100),
+):
+    """Get ranked priority actions for admin (action queue / operational priorities)."""
+    await admin_route_guard(request)
+    try:
+        from services.priority_actions import get_priority_actions_for_admin
+        result = await get_priority_actions_for_admin(
+            client_id_filter=client_id,
+            limit=limit,
+        )
+        return result
+    except Exception as e:
+        logger.error("Admin priority actions error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load priority actions",
+        )

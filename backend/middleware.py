@@ -197,6 +197,22 @@ async def admin_route_guard(request: Request) -> dict:
     user = await require_admin(request)
     return user
 
+
+async def contractor_route_guard(request: Request) -> dict:
+    """Guard for contractor portal routes. Requires JWT with role=ROLE_CONTRACTOR and contractor_id."""
+    user = await require_auth(request)
+    if user.get("role") != UserRole.ROLE_CONTRACTOR.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contractor access required",
+        )
+    if not user.get("contractor_id"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contractor context required",
+        )
+    return user
+
 async def require_step_up_token(request: Request) -> dict:
     """
     For sensitive endpoints: require auth and valid X-Step-Up-Token header.

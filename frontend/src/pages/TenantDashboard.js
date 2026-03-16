@@ -66,7 +66,8 @@ const TenantDashboard = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [contactForm, setContactForm] = useState({ subject: '', message: '' });
   const [requestForm, setRequestForm] = useState({ certificate_type: '', message: '' });
-  const [reportForm, setReportForm] = useState({ description: '' });
+  const [reportForm, setReportForm] = useState({ description: '', category: 'general' });
+  const [reportType, setReportType] = useState('issue'); // 'issue' = report-issue (triage), 'work_order' = report-maintenance
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -224,27 +225,39 @@ const TenantDashboard = () => {
 
   const openReportModal = (property) => {
     setSelectedProperty(property);
-    setReportForm({ description: '' });
+    setReportForm({ description: '', category: 'general' });
+    setReportType('issue');
     setShowReportModal(true);
   };
 
-  const handleReportMaintenance = async (e) => {
+  const handleReportSubmit = async (e) => {
     e.preventDefault();
     if (!reportForm.description?.trim()) {
       toast.error('Please describe the issue');
       return;
     }
+    if (!selectedProperty?.property_id) return;
     setSubmitting(true);
     try {
-      await api.post('/tenant/report-maintenance', {
-        property_id: selectedProperty.property_id,
-        description: reportForm.description.trim(),
-      });
-      toast.success('Repair reported. Your landlord will be notified.');
+      if (reportType === 'issue') {
+        await api.post('/tenant/report-issue', {
+          property_id: selectedProperty.property_id,
+          description: reportForm.description.trim(),
+          category: reportForm.category || undefined,
+        });
+        toast.success('Issue reported. Your landlord will triage and follow up.');
+      } else {
+        await api.post('/tenant/report-maintenance', {
+          property_id: selectedProperty.property_id,
+          description: reportForm.description.trim(),
+          category: reportForm.category || undefined,
+        });
+        toast.success('Repair reported. Your landlord will be notified.');
+      }
       setShowReportModal(false);
-      setReportForm({ description: '' });
+      setReportForm({ description: '', category: 'general' });
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Failed to report issue');
+      toast.error(err?.response?.data?.detail || 'Failed to report');
     } finally {
       setSubmitting(false);
     }
@@ -668,14 +681,14 @@ const TenantDashboard = () => {
         </div>
       )}
 
-      {/* Report a repair modal */}
+      {/* Report a repair / issue modal */}
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" data-testid="report-repair-modal">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="p-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold text-midnight-blue flex items-center gap-2">
                 <Wrench className="w-5 h-5 text-amber-600" />
-                Report a repair
+                Report maintenance
               </h3>
               <button
                 onClick={() => setShowReportModal(false)}
@@ -684,13 +697,56 @@ const TenantDashboard = () => {
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            <form onSubmit={handleReportMaintenance} className="p-4 space-y-4">
+            <form onSubmit={handleReportSubmit} className="p-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
                 <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
                   {selectedProperty?.address}
                 </p>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Report as</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="reportType"
+                      checked={reportType === 'issue'}
+                      onChange={() => setReportType('issue')}
+                      className="text-amber-600"
+                    />
+                    <span className="text-sm">Issue (recommended)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="reportType"
+                      checked={reportType === 'work_order'}
+                      onChange={() => setReportType('work_order')}
+                      className="text-amber-600"
+                    />
+                    <span className="text-sm">Work order</span>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {reportType === 'issue' ? 'Creates an issue for your landlord to triage and assign.' : 'Creates a work order directly.'}
+                </p>
+              </div>
+              {reportType === 'issue' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={reportForm.category}
+                    onChange={(e) => setReportForm((prev) => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+                  >
+                    <option value="general">General</option>
+                    <option value="plumbing">Plumbing</option>
+                    <option value="electrical">Electrical</option>
+                    <option value="heating">Heating</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Describe the issue *</label>
                 <textarea
@@ -729,7 +785,9 @@ const TenantDashboard = () => {
                 </Button>
               </div>
               <p className="text-xs text-gray-500 text-center">
-                A work order will be created. Your landlord can assign a contractor and track the repair.
+                {reportType === 'issue'
+                  ? 'Your landlord will see this in Operations → Issues and can triage and create a work order.'
+                  : 'A work order will be created. Your landlord can assign a contractor and track the repair.'}
               </p>
             </form>
           </div>

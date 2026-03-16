@@ -6,7 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_approvals, predictive_data, admin_document_templates, public_orders
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job
 
 # ClearForm - Separate Product Routes
 from clearform.routes import auth as clearform_auth
@@ -471,6 +471,20 @@ async def lifespan(app: FastAPI):
         kwargs={"run_type": "schedule"},
     )
     
+    # Contractor performance score recalc - daily 03:00 UTC
+    scheduler.add_job(
+        "job_runner:run_scheduled_job",
+        CronTrigger(hour=3, minute=0, timezone=SCHEDULER_TIMEZONE),
+        id="contractor_performance_recalc",
+        name="Contractor Performance Score Recalc",
+        replace_existing=True,
+        args=["contractor_performance_recalc"],
+        kwargs={"run_type": "schedule"},
+        misfire_grace_time=600,
+        coalesce=True,
+        max_instances=1,
+    )
+    
     # Async compliance recalc worker - every 15 seconds
     scheduler.add_job(
         "job_runner:run_scheduled_job",
@@ -853,6 +867,9 @@ app.include_router(contractors.router)  # Admin: Contractors (Ops Contractor Net
 app.include_router(maintenance.router)  # Admin: Work orders (Ops Maintenance)
 app.include_router(client_maintenance.router)  # Client: Maintenance work orders (gated by MAINTENANCE_WORKFLOWS)
 app.include_router(client_approvals.router)  # Client: Invoice approvals (gated by INVOICING)
+app.include_router(admin_invoices.router)  # Admin: Create invoice (ops)
+app.include_router(contractor_portal.router)  # Contractor portal: my work orders, status, invoice submit
+app.include_router(contractor_job.router)  # Contractor job link: single work order via token (no login)
 app.include_router(predictive_data.router)  # Admin: Property assets & maintenance events (data for predictive)
 
 # ============================================================================

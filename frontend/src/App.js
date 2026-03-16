@@ -63,6 +63,10 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import LoginPage from './pages/LoginPage'; // Legacy - keep for backwards compatibility
 import SetPasswordPage from './pages/SetPasswordPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ContractorLoginPage from './pages/contractor/ContractorLoginPage';
+import ContractorSetPasswordPage from './pages/contractor/ContractorSetPasswordPage';
+import ContractorDashboardPage from './pages/contractor/ContractorDashboardPage';
+import JobPage from './pages/contractor/JobPage';
 import IntakePage from './pages/IntakePage';
 import OnboardingStatusPage from './pages/OnboardingStatusPage';
 import AdminBlogPage from './pages/AdminBlogPage';
@@ -168,6 +172,7 @@ import AdminOpsPlaceholderPage from './pages/admin/AdminOpsPlaceholderPage';
 import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
 import AdminOpsContractorsPage from './pages/admin/AdminOpsContractorsPage';
 import AdminOpsMaintenancePage from './pages/admin/AdminOpsMaintenancePage';
+import AdminRiskDashboardPage from './pages/admin/AdminRiskDashboardPage';
 import AdminWorkOrderDetailPage from './pages/admin/AdminWorkOrderDetailPage';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminExtractionQueuePage from './pages/AdminExtractionQueuePage';
@@ -277,7 +282,13 @@ function App() {
               <Route path="/login/admin" element={<AdminLoginPage />} />
               <Route path="/admin/signin" element={<AdminLoginPage />} /> {/* Legacy admin route */}
               <Route path="/set-password" element={<SetPasswordPage />} />
+              <Route path="/contractor-set-password" element={<ContractorSetPasswordPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              {/* Secure job link: single work order via token (no login) */}
+              <Route path="/job" element={<JobPage />} />
+              {/* Contractor portal (separate auth via contractor_token) */}
+              <Route path="/contractor/login" element={<ContractorLoginPage />} />
+              <Route path="/contractor" element={<ContractorDashboardPage />} />
               <Route path="/intake/start" element={<IntakePage />} />
               <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
               <Route path="/checkout/success" element={<CheckoutSuccessRedirect />} />
@@ -586,7 +597,7 @@ function App() {
             <Route path="/admin/ops/maintenance" element={<ProtectedRoute requireAdmin><AdminOpsMaintenancePage /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance/work-orders/:workOrderId" element={<ProtectedRoute requireAdmin><AdminWorkOrderDetailPage /></ProtectedRoute>} />
             <Route path="/admin/ops/contractors" element={<ProtectedRoute requireAdmin><AdminOpsContractorsPage /></ProtectedRoute>} />
-            <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Risk & Insights" /></ProtectedRoute>} />
+            <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminRiskDashboardPage /></ProtectedRoute>} />
             <Route path="/admin/ops/audit" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Audit & Logs" /></ProtectedRoute>} />
             <Route path="/admin/ops/feature-controls" element={<ProtectedRoute requireAdmin><AdminOpsFeatureControlsPage /></ProtectedRoute>} />
 

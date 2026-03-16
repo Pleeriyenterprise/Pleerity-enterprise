@@ -28,6 +28,7 @@ RISK_TYPE_RECURRING_REPAIRS = "Recurring Repairs Risk"
 RISK_TYPE_SLA_BREACH = "SLA Breach Risk"
 RISK_TYPE_COMPLIANCE_CHURN = "Compliance Churn Risk"
 RISK_TYPE_MAINTENANCE_FREQUENCY = "Maintenance Frequency Risk"
+RISK_TYPE_CERTIFICATE_EXPIRY_SOON = "Certificate Expiry Soon"
 
 # Risk levels and trend
 RISK_LEVEL_LOW = "low"
@@ -64,7 +65,35 @@ RECOMMENDED_ACTIONS = {
     RISK_TYPE_SLA_BREACH: "Review contractor performance and prioritise unresolved jobs",
     RISK_TYPE_COMPLIANCE_CHURN: "Review compliance workflow, upload evidence, or adjust reminders",
     RISK_TYPE_MAINTENANCE_FREQUENCY: "Review property health and inspect assets",
+    RISK_TYPE_CERTIFICATE_EXPIRY_SOON: "Renew or schedule renewal before expiry; upload evidence when complete",
 }
+
+# Suggested actions (task §2): actionable codes for UI buttons
+SUGGESTED_ACTION_CREATE_ISSUE = "create_issue"
+SUGGESTED_ACTION_CREATE_WORK_ORDER = "create_work_order"
+SUGGESTED_ACTION_SCHEDULE_INSPECTION = "schedule_inspection"
+SUGGESTED_ACTION_SEND_CONTRACTOR_REMINDER = "send_contractor_reminder"
+SUGGESTED_ACTION_REASSIGN_CONTRACTOR = "reassign_contractor"
+
+
+def _suggested_actions_for_signal(signal_category: str, risk_type: str) -> List[str]:
+    """Return list of suggested action codes for this signal. Used when persisting and by API."""
+    actions: List[str] = []
+    if signal_category == SIGNAL_CATEGORY_COMPLIANCE:
+        actions.append(SUGGESTED_ACTION_SCHEDULE_INSPECTION)
+        if risk_type == RISK_TYPE_CERTIFICATE_EXPIRY_SOON:
+            actions.append(SUGGESTED_ACTION_CREATE_WORK_ORDER)  # e.g. book gas safety
+        else:
+            actions.append(SUGGESTED_ACTION_CREATE_ISSUE)
+    elif signal_category == SIGNAL_CATEGORY_OPERATIONAL:
+        actions.append(SUGGESTED_ACTION_CREATE_WORK_ORDER)
+        actions.append(SUGGESTED_ACTION_CREATE_ISSUE)
+    else:
+        # asset
+        actions.append(SUGGESTED_ACTION_CREATE_WORK_ORDER)
+        actions.append(SUGGESTED_ACTION_CREATE_ISSUE)
+        actions.append(SUGGESTED_ACTION_SCHEDULE_INSPECTION)
+    return actions
 
 
 def _parse_dt(value: Any) -> Optional[datetime]:
@@ -139,6 +168,15 @@ async def _fetch_requirements_overdue(db, property_id: str, client_id: str) -> L
     cursor = db.requirements.find(
         {"property_id": property_id, "client_id": client_id, "status": {"$in": ["OVERDUE", "EXPIRED", "PENDING", "MISSING"]}},
         {"_id": 0, "requirement_id": 1, "requirement_code": 1, "requirement_type": 1, "status": 1},
+    )
+    return await cursor.to_list(100)
+
+
+async def _fetch_requirements_expiring_soon(db, property_id: str, client_id: str) -> List[Dict[str, Any]]:
+    """Requirements with status EXPIRING_SOON (certificate expiring within configured window)."""
+    cursor = db.requirements.find(
+        {"property_id": property_id, "client_id": client_id, "status": "EXPIRING_SOON"},
+        {"_id": 0, "requirement_id": 1, "requirement_code": 1, "requirement_type": 1, "title": 1, "status": 1},
     )
     return await cursor.to_list(100)
 
@@ -362,6 +400,29 @@ async def _rule_compliance_churn(
     }]
 
 
+# ---------- Rule: Certificate Expiry Soon ----------
+async def _rule_certificate_expiry_soon(
+    db, property_id: str, client_id: str,
+    requirements_expiring: List[Dict],
+) -> List[Dict[str, Any]]:
+    """One signal per property when any certificate is expiring soon (status EXPIRING_SOON)."""
+    if not requirements_expiring:
+        return []
+    reasons = []
+    for r in requirements_expiring[:10]:
+        title = r.get("title") or r.get("requirement_code") or r.get("requirement_type") or "Certificate"
+        reasons.append(f"{title} expiring soon")
+    level = RISK_LEVEL_HIGH if len(requirements_expiring) >= 3 else RISK_LEVEL_MEDIUM
+    return [{
+        "signal_category": SIGNAL_CATEGORY_COMPLIANCE,
+        "risk_type": RISK_TYPE_CERTIFICATE_EXPIRY_SOON,
+        "risk_level": level,
+        "reasons": reasons,
+        "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_CERTIFICATE_EXPIRY_SOON],
+        "asset_id": None,
+    }]
+
+
 # ---------- Rule: Maintenance Frequency Risk ----------
 async def _rule_maintenance_frequency(
     db, property_id: str, client_id: str,
@@ -406,6 +467,7 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     work_orders_breached_60 = await _fetch_work_orders_with_breach_in_window(db, property_id, client_id, ROLLING_60_DAYS)
     issues_12 = await _fetch_issues(db, property_id, client_id, ROLLING_12_MONTHS_DAYS)
     requirements = await _fetch_requirements_overdue(db, property_id, client_id)
+    requirements_expiring = await _fetch_requirements_expiring_soon(db, property_id, client_id)
 
     all_signals: List[Dict[str, Any]] = []
 
@@ -428,6 +490,8 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     # Compliance
     comp_signals = await _rule_compliance_churn(db, property_id, client_id, requirements)
     all_signals.extend(comp_signals)
+    cert_expiry_signals = await _rule_certificate_expiry_soon(db, property_id, client_id, requirements_expiring)
+    all_signals.extend(cert_expiry_signals)
 
     # Remove duplicates by (risk_type, asset_id): keep first
     seen = set()
@@ -450,6 +514,9 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     inserted = []
     for s in unique_signals:
         signal_id = f"rs_{uuid.uuid4().hex[:12]}"
+        first_reason = (s["reasons"][0] if s.get("reasons") else "").strip()
+        description = f"{s['risk_type']}: {first_reason}" if first_reason else s.get("recommended_action") or s["risk_type"]
+        suggested_actions = _suggested_actions_for_signal(s["signal_category"], s["risk_type"])
         doc = {
             "signal_id": signal_id,
             "client_id": client_id,
@@ -458,6 +525,8 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
             "signal_category": s["signal_category"],
             "risk_type": s["risk_type"],
             "risk_level": s["risk_level"],
+            "description": description,
+            "suggested_actions": suggested_actions,
             "trend": TREND_STABLE,
             "score": None,
             "reasons": s["reasons"],
@@ -617,6 +686,128 @@ async def get_risk_signals_for_client(
     }
 
 
+async def get_risk_signals_admin_summary(
+    client_id_filter: Optional[str] = None,
+    risk_level: Optional[str] = None,
+    risk_type: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    limit_signals: int = 200,
+) -> Dict[str, Any]:
+    """
+    Admin: aggregate risk signals across clients (or for one client).
+    Returns total active, counts by level, by type, top properties, top clients, recent signals.
+    """
+    db = database.get_db()
+    q = {}
+    if client_id_filter:
+        q["client_id"] = client_id_filter
+    if risk_level:
+        q["risk_level"] = risk_level.lower()
+    if risk_type:
+        q["risk_type"] = risk_type
+    if status_filter:
+        q["status"] = status_filter
+
+    cursor = db.risk_signals.find(q).sort("generated_at", -1).limit(limit_signals * 2)  # fetch extra for aggregates
+    signals = await cursor.to_list(limit_signals * 2)
+    for s in signals:
+        s.pop("_id", None)
+
+    active = [s for s in signals if (s.get("status") or "").lower() == STATUS_ACTIVE]
+    by_level: Dict[str, int] = {}
+    for s in signals:
+        lev = (s.get("risk_level") or "unknown").lower()
+        by_level[lev] = by_level.get(lev, 0) + 1
+    by_type: Dict[str, int] = {}
+    for s in signals:
+        rt = s.get("risk_type") or "Unknown"
+        by_type[rt] = by_type.get(rt, 0) + 1
+
+    # Top affected properties (by signal count)
+    prop_counts: Dict[str, int] = {}
+    for s in signals:
+        pid = s.get("property_id")
+        if pid:
+            prop_counts[pid] = prop_counts.get(pid, 0) + 1
+    top_properties = sorted(prop_counts.items(), key=lambda x: -x[1])[:20]
+
+    # Top affected clients
+    client_counts: Dict[str, int] = {}
+    for s in signals:
+        cid = s.get("client_id")
+        if cid:
+            client_counts[cid] = client_counts.get(cid, 0) + 1
+    top_clients = sorted(client_counts.items(), key=lambda x: -x[1])[:20]
+
+    recent = signals[:50]
+
+    # Top compliance risks (signal_category compliance)
+    top_compliance = [s for s in signals if (s.get("signal_category") or "").lower() == SIGNAL_CATEGORY_COMPLIANCE][:15]
+
+    # Top maintenance risks (asset + operational)
+    top_maintenance = [
+        s for s in signals
+        if (s.get("signal_category") or "").lower() in (SIGNAL_CATEGORY_ASSET, SIGNAL_CATEGORY_OPERATIONAL)
+    ][:15]
+
+    # Properties with repeated issues (risk_type Recurring Repairs)
+    repeated_prop_counts: Dict[str, int] = {}
+    for s in signals:
+        if s.get("risk_type") == RISK_TYPE_RECURRING_REPAIRS:
+            pid = s.get("property_id")
+            if pid:
+                repeated_prop_counts[pid] = repeated_prop_counts.get(pid, 0) + 1
+    repeated_issues_properties = sorted(repeated_prop_counts.items(), key=lambda x: -x[1])[:15]
+
+    # SLA breach risks (risk_type SLA Breach)
+    sla_breach_signals = [s for s in signals if s.get("risk_type") == RISK_TYPE_SLA_BREACH][:15]
+
+    # Portfolio heatmap: per-property level counts (top 30 properties by total signals)
+    prop_levels: Dict[str, Dict[str, int]] = {}
+    for s in signals:
+        pid = s.get("property_id")
+        if not pid:
+            continue
+        if pid not in prop_levels:
+            prop_levels[pid] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        lev = (s.get("risk_level") or "medium").lower()
+        if lev in prop_levels[pid]:
+            prop_levels[pid][lev] += 1
+        else:
+            prop_levels[pid]["medium"] += 1
+    # Sort by total signals, take top 30
+    heatmap_properties = sorted(
+        prop_levels.items(),
+        key=lambda x: sum(x[1].values()),
+        reverse=True,
+    )[:30]
+    pid_to_client: Dict[str, str] = {}
+    for s in signals:
+        pid = s.get("property_id")
+        cid = s.get("client_id")
+        if pid and cid and pid not in pid_to_client:
+            pid_to_client[pid] = cid
+    portfolio_heatmap = [
+        {"property_id": pid, "client_id": pid_to_client.get(pid), **counts}
+        for pid, counts in heatmap_properties
+    ]
+
+    return {
+        "totalActive": len(active),
+        "totalSignals": len(signals),
+        "byLevel": by_level,
+        "byType": by_type,
+        "topProperties": [{"property_id": p, "count": c} for p, c in top_properties],
+        "topClients": [{"client_id": c, "count": n} for c, n in top_clients],
+        "recentSignals": recent,
+        "topComplianceRisks": top_compliance,
+        "topMaintenanceRisks": top_maintenance,
+        "repeatedIssuesProperties": [{"property_id": p, "count": c} for p, c in repeated_issues_properties],
+        "slaBreachRisks": sla_breach_signals,
+        "portfolioHeatmap": portfolio_heatmap,
+    }
+
+
 async def get_risk_signal_by_id(signal_id: str, client_id: str) -> Optional[Dict[str, Any]]:
     """Return a single risk signal by id for the detail drawer. Returns None if not found or wrong client."""
     db = database.get_db()
@@ -625,6 +816,127 @@ async def get_risk_signal_by_id(signal_id: str, client_id: str) -> Optional[Dict
         return None
     doc.pop("_id", None)
     return doc
+
+
+async def create_issue_from_risk_signal(
+    signal_id: str,
+    client_id: str,
+    description_override: Optional[str] = None,
+    reporter_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Create a maintenance issue from a risk signal (user-confirmed action).
+    Links issue to risk_signal_id. Audits ISSUE_CREATED_FROM_RISK_SIGNAL.
+    """
+    doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
+    if not doc:
+        raise ValueError("Risk signal not found or does not belong to this client")
+    property_id = doc.get("property_id")
+    if not property_id:
+        raise ValueError("Risk signal has no property_id")
+    description = (description_override or "").strip() or (
+        f"{doc.get('risk_type', 'Risk')}: {doc.get('recommended_action', 'Follow up')}"
+    )
+    from services import maintenance_issues_service
+    issue = await maintenance_issues_service.create_issue(
+        client_id=client_id,
+        property_id=property_id,
+        description=description,
+        source=maintenance_issues_service.SOURCE_CLIENT,
+        category=None,
+        asset_id=doc.get("asset_id"),
+        risk_signal_id=signal_id,
+    )
+    await create_audit_log(
+        action=AuditAction.ISSUE_CREATED_FROM_RISK_SIGNAL,
+        client_id=client_id,
+        actor_id=reporter_id or "system",
+        resource_type="maintenance_issue",
+        resource_id=issue.get("issue_id"),
+        metadata={"signal_id": signal_id, "property_id": property_id, "risk_type": doc.get("risk_type")},
+    )
+    return issue
+
+
+async def create_inspection_issue_from_risk_signal(
+    signal_id: str,
+    client_id: str,
+    description_override: Optional[str] = None,
+    reporter_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Create an inspection-type maintenance issue from a risk signal (schedule_inspection action).
+    Description is prefixed with "Inspection: ". Audits INSPECTION_CREATED_FROM_RISK_SIGNAL.
+    """
+    doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
+    if not doc:
+        raise ValueError("Risk signal not found or does not belong to this client")
+    property_id = doc.get("property_id")
+    if not property_id:
+        raise ValueError("Risk signal has no property_id")
+    base_desc = (description_override or "").strip() or (
+        f"{doc.get('risk_type', 'Risk')}: {doc.get('recommended_action', 'Schedule inspection')}"
+    )
+    description = f"Inspection: {base_desc}"
+    from services import maintenance_issues_service
+    issue = await maintenance_issues_service.create_issue(
+        client_id=client_id,
+        property_id=property_id,
+        description=description,
+        source=maintenance_issues_service.SOURCE_CLIENT,
+        category=None,
+        asset_id=doc.get("asset_id"),
+        risk_signal_id=signal_id,
+    )
+    await create_audit_log(
+        action=AuditAction.INSPECTION_CREATED_FROM_RISK_SIGNAL,
+        client_id=client_id,
+        actor_id=reporter_id or "system",
+        resource_type="maintenance_issue",
+        resource_id=issue.get("issue_id"),
+        metadata={"signal_id": signal_id, "property_id": property_id, "risk_type": doc.get("risk_type")},
+    )
+    return issue
+
+
+async def create_work_order_from_risk_signal(
+    signal_id: str,
+    client_id: str,
+    description_override: Optional[str] = None,
+    reporter_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Create a work order from a risk signal (user-confirmed action).
+    Links work order to risk_signal_id. Audits WORK_ORDER_CREATED_FROM_RISK_SIGNAL.
+    """
+    doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
+    if not doc:
+        raise ValueError("Risk signal not found or does not belong to this client")
+    property_id = doc.get("property_id")
+    if not property_id:
+        raise ValueError("Risk signal has no property_id")
+    description = (description_override or "").strip() or (
+        f"{doc.get('risk_type', 'Risk')}: {doc.get('recommended_action', 'Follow up')}"
+    )
+    from services import maintenance_service
+    wo = await maintenance_service.create_work_order(
+        client_id=client_id,
+        property_id=property_id,
+        description=description,
+        source=maintenance_service.SOURCE_CLIENT,
+        reporter_id=reporter_id,
+        asset_id=doc.get("asset_id"),
+        risk_signal_id=signal_id,
+    )
+    await create_audit_log(
+        action=AuditAction.WORK_ORDER_CREATED_FROM_RISK_SIGNAL,
+        client_id=client_id,
+        actor_id=reporter_id or "system",
+        resource_type="work_order",
+        resource_id=wo.get("work_order_id"),
+        metadata={"signal_id": signal_id, "property_id": property_id, "risk_type": doc.get("risk_type")},
+    )
+    return wo
 
 
 async def update_signal_status(

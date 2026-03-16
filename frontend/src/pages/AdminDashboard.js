@@ -3962,6 +3962,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
 const EMPTY_STATS = { stats: {}, compliance_overview: {}, recent_activity: [] };
 
 const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState(null);
@@ -3973,6 +3974,9 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const [rejectModalDoc, setRejectModalDoc] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
+  const [priorityActionsClientId, setPriorityActionsClientId] = useState('');
+  const [clientsForFilter, setClientsForFilter] = useState([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -3980,6 +3984,22 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
     }
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    if (loading || dashboardError) return;
+    adminAPI.getClients(0, 500)
+      .then((res) => setClientsForFilter(res.data?.clients || []))
+      .catch(() => setClientsForFilter([]));
+  }, [loading, dashboardError]);
+
+  useEffect(() => {
+    if (loading || dashboardError) return;
+    const params = { limit: 20 };
+    if (priorityActionsClientId && priorityActionsClientId.trim()) params.client_id = priorityActionsClientId.trim();
+    adminAPI.getPriorityActions(params)
+      .then((res) => setPriorityActions({ actions: res.data?.actions || [], total: res.data?.total ?? 0 }))
+      .catch(() => setPriorityActions({ actions: [], total: 0 }));
+  }, [loading, dashboardError, priorityActionsClientId]);
 
   const fetchPendingVerification = useCallback(async () => {
     setPendingLoading(true);
@@ -4170,7 +4190,57 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-midnight-blue">Dashboard Overview</h2>
-      
+
+      {/* Operational Priorities / Action Queue */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="admin-priority-actions-panel">
+        <h3 className="text-lg font-semibold text-midnight-blue mb-2">Operational Priorities</h3>
+        <p className="text-sm text-gray-500 mb-4">Urgent items across compliance, work orders, incidents, approvals, and risk</p>
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <label className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Filter by client</span>
+            <select
+              value={priorityActionsClientId}
+              onChange={(e) => setPriorityActionsClientId(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm min-w-[180px]"
+              data-testid="admin-priority-actions-client-filter"
+            >
+              <option value="">All clients</option>
+              {(clientsForFilter || []).map((c) => (
+                <option key={c.client_id} value={c.client_id}>
+                  {c.client_id}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {priorityActions.actions?.length > 0 ? (
+          <ul className="space-y-3">
+            {priorityActions.actions.map((action, idx) => (
+              <li key={idx} className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
+                  {action.description && (
+                    <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{action.description}</p>
+                  )}
+                  {action.client_id && (
+                    <p className="text-xs text-gray-500 mt-1">Client: {action.client_id}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => action.recommended_url && navigate(action.recommended_url)}
+                  className="shrink-0 px-3 py-1.5 bg-electric-teal text-white rounded-lg text-sm font-medium hover:opacity-90"
+                >
+                  {action.recommended_action_label || 'View'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500 py-4">No priority actions for the selected filter.</p>
+        )}
+      </div>
+
       {/* Stats Grid - Clickable tiles */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {statCards.map((stat, idx) => {

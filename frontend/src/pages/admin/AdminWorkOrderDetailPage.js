@@ -8,7 +8,7 @@ import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Wrench, Loader2, ArrowLeft, UserPlus } from 'lucide-react';
+import { Wrench, Loader2, ArrowLeft, UserPlus, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
@@ -35,6 +35,9 @@ export default function AdminWorkOrderDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [contractors, setContractors] = useState([]);
   const [clients, setClients] = useState([]);
+  const [contractorExplainId, setContractorExplainId] = useState(null);
+  const [contractorExplainData, setContractorExplainData] = useState(null);
+  const [contractorExplainLoading, setContractorExplainLoading] = useState(false);
 
   const loadWo = useCallback(() => {
     if (!workOrderId) return;
@@ -191,35 +194,82 @@ export default function AdminWorkOrderDetailPage() {
               </p>
             ) : (
               <ul className="space-y-3">
-                {recommendations.map((c) => (
-                  <li key={c.contractor_id} className="p-3 bg-gray-50 rounded border border-gray-100">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-gray-900">{c.name || c.company_name}</span>
-                          {c.recommendation_label && (
-                            <span className="text-xs font-medium text-electric-teal bg-electric-teal/10 px-1.5 py-0.5 rounded">{c.recommendation_label}</span>
+                {recommendations.map((c) => {
+                  const showExplain = contractorExplainId === c.contractor_id;
+                  return (
+                    <li key={c.contractor_id} className="p-3 bg-gray-50 rounded border border-gray-100 overflow-hidden">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-gray-900">{c.name || c.company_name}</span>
+                            {c.recommendation_label && (
+                              <span className="text-xs font-medium text-electric-teal bg-electric-teal/10 px-1.5 py-0.5 rounded">{c.recommendation_label}</span>
+                            )}
+                            {c.score != null && <span className="text-xs text-gray-500">Score: {c.score}</span>}
+                          </div>
+                          {c.trade_types?.length > 0 && <p className="text-xs text-gray-600 mt-0.5">{c.trade_types.join(', ')}</p>}
+                          {c.reasons?.length > 0 && (
+                            <ul className="text-xs text-gray-500 mt-1 space-y-0.5 list-disc list-inside">
+                              {c.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                            </ul>
                           )}
-                          {c.score != null && <span className="text-xs text-gray-500">Score: {c.score}</span>}
+                          <div className="flex gap-3 mt-2 text-xs text-gray-600 flex-wrap">
+                            {c.performance_score != null && <span>Score: {Math.round(c.performance_score)}</span>}
+                            {c.reliability_score != null && <span>Reliability: {Math.round((c.reliability_score || 0) * 100)}%</span>}
+                            {(c.completed_jobs != null || c.assigned_jobs != null) && <span>Jobs completed: {c.completed_jobs ?? 0}</span>}
+                            {c.rating_average != null && <span>Rating: {Number(c.rating_average).toFixed(1)}/5</span>}
+                            {c.sla_compliance_rate != null && <span>SLA: {Math.round(Number(c.sla_compliance_rate) * 100)}%</span>}
+                            {c.benchmark_fit && <span>Price: {c.benchmark_fit}</span>}
+                          </div>
                         </div>
-                        {c.trade_types?.length > 0 && <p className="text-xs text-gray-600 mt-0.5">{c.trade_types.join(', ')}</p>}
-                        {c.reasons?.length > 0 && (
-                          <ul className="text-xs text-gray-500 mt-1 space-y-0.5 list-disc list-inside">
-                            {c.reasons.map((r, i) => <li key={i}>{r}</li>)}
-                          </ul>
-                        )}
-                        <div className="flex gap-3 mt-2 text-xs text-gray-600">
-                          {c.rating_average != null && <span>Rating: {Number(c.rating_average).toFixed(1)}/5</span>}
-                          {c.sla_compliance_rate != null && <span>SLA: {Math.round(Number(c.sla_compliance_rate) * 100)}%</span>}
-                          {c.benchmark_fit && <span>Price: {c.benchmark_fit}</span>}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="text-xs text-electric-teal hover:underline flex items-center gap-0.5"
+                            onClick={async () => {
+                              if (showExplain) {
+                                setContractorExplainId(null);
+                                setContractorExplainData(null);
+                                return;
+                              }
+                              setContractorExplainId(c.contractor_id);
+                              if (contractorExplainData && contractorExplainId === c.contractor_id) return;
+                              setContractorExplainData(null);
+                              setContractorExplainLoading(true);
+                              try {
+                                const res = await adminAPI.getContractorExplanation(c.contractor_id);
+                                setContractorExplainData(res.data);
+                              } catch {
+                                setContractorExplainData(null);
+                              } finally {
+                                setContractorExplainLoading(false);
+                              }
+                            }}
+                          >
+                            <Info className="w-3 h-3" /> Why this matters {showExplain ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                          {wo.contractor_id !== c.contractor_id && (
+                            <Button size="sm" variant="outline" onClick={() => handleAssign(c.contractor_id)} disabled={updating}>Assign</Button>
+                          )}
                         </div>
                       </div>
-                      {wo.contractor_id !== c.contractor_id && (
-                        <Button size="sm" variant="outline" onClick={() => handleAssign(c.contractor_id)} disabled={updating}>Assign</Button>
+                      {showExplain && (
+                        <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-700">
+                          {contractorExplainLoading ? (
+                            <p className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
+                          ) : contractorExplainData ? (
+                            <>
+                              <p>{contractorExplainData.why_it_matters}</p>
+                              <p className="font-medium text-midnight-blue mt-1">{contractorExplainData.recommended_action_text}</p>
+                            </>
+                          ) : (
+                            <p>Could not load explanation.</p>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>

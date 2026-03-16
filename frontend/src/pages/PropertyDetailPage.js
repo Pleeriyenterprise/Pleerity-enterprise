@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import apiClient, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import ErrorBanner from '../components/ErrorBanner';
 import {
   ArrowLeft,
@@ -30,6 +30,10 @@ import {
   Eye,
   Download,
   Link2,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Info,
 } from 'lucide-react';
 import UpgradePrompt, { getFeatureDisplayInfo } from '../components/UpgradePrompt';
 import { SUPPORT_EMAIL } from '../config';
@@ -120,6 +124,10 @@ export default function PropertyDetailPage() {
   const [complianceStatusFilter, setComplianceStatusFilter] = useState('');
   const [complianceSearchQuery, setComplianceSearchQuery] = useState('');
   const [complianceExpandedReqId, setComplianceExpandedReqId] = useState(null);
+  const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
+  const [urgentExplainKey, setUrgentExplainKey] = useState(null);
+  const [urgentExplainData, setUrgentExplainData] = useState(null);
+  const [urgentExplainLoading, setUrgentExplainLoading] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -214,6 +222,13 @@ export default function PropertyDetailPage() {
       .catch(() => setRiskSignalsData(null))
       .finally(() => setRiskSignalsLoading(false));
   }, [propertyId, hasFeature]);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    clientAPI.getPriorityActions({ property_id: propertyId, limit: 10 })
+      .then((res) => setPriorityActions({ actions: res.data?.actions || [], total: res.data?.total ?? 0 }))
+      .catch(() => setPriorityActions({ actions: [], total: 0 }));
+  }, [propertyId]);
 
   const loadAssets = useCallback(() => {
     if (!propertyId || (!hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance'))) return;
@@ -807,6 +822,40 @@ export default function PropertyDetailPage() {
             );
           })()}
 
+          {/* Priority actions for this property (orchestration layer) */}
+          {priorityActions.actions?.length > 0 && (
+            <Card className="border border-electric-teal/30 bg-white" data-testid="property-priority-actions-panel">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-midnight-blue">
+                  <Zap className="w-4 h-4 text-electric-teal" />
+                  Priority actions
+                </CardTitle>
+                <CardDescription>Next steps for this property</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {priorityActions.actions.map((action, idx) => (
+                    <li key={idx} className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
+                        {action.description && (
+                          <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{action.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        className="shrink-0 bg-electric-teal hover:bg-electric-teal/90"
+                        onClick={() => navigate(action.recommended_url || '#')}
+                      >
+                        {action.recommended_action_label || 'View'}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Recommended Next Actions */}
           {(() => {
             const actions = [];
@@ -837,6 +886,50 @@ export default function PropertyDetailPage() {
               </Card>
             );
           })()}
+
+          {/* Suggested Actions — active risk signals with action buttons */}
+          {hasFeature('predictive_maintenance') && (riskSignalsData?.signals || []).filter((s) => (s.status || 'active') === 'active').length > 0 && (
+            <Card className="border border-electric-teal/30 bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">Suggested actions</CardTitle>
+                <CardDescription>Active risk signals — trigger an action or resolve</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {(riskSignalsData.signals || []).filter((s) => (s.status || 'active') === 'active').slice(0, 5).map((s) => {
+                    const actions = Array.isArray(s.suggested_actions) ? s.suggested_actions : ['create_issue', 'create_work_order'];
+                    return (
+                      <li key={s.signal_id} className="p-3 rounded-lg border border-gray-100 bg-gray-50/80">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium text-gray-900">{s.risk_type}</p>
+                            <p className="text-sm text-gray-600 mt-0.5">{s.recommended_action}</p>
+                            <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${['high', 'critical'].includes((s.risk_level || '').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
+                              {s.risk_level || 'medium'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 shrink-0">
+                            {actions.includes('create_work_order') && (
+                              <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); setCreateWoForm((f) => ({ ...f, description: s.recommended_action })); }}><Wrench className="w-3 h-3 mr-1" /> Work order</Button>
+                            )}
+                            {actions.includes('create_issue') && (
+                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Issue</Button>
+                            )}
+                            {actions.includes('schedule_inspection') && (
+                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.scheduleInspectionFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Inspection</Button>
+                            )}
+                            <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged'); loadRiskSignals(); } catch (_) {} }}>Acknowledge</Button>
+                            <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'resolved'); loadRiskSignals(); } catch (_) {} }}>Resolve</Button>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })})}
+                </ul>
+                <Button variant="outline" size="sm" className="mt-3 border-electric-teal text-electric-teal" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>View all risk signals</Button>
+              </CardContent>
+            </Card>
+          )}
 
           {requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).length > 0 && (
             <Card className="border border-amber-200 bg-amber-50/50">
@@ -1153,15 +1246,62 @@ export default function PropertyDetailPage() {
                   else if (isExpiring && days != null) explanation = `Expires in ${days} days`;
                   else if (isMissing) explanation = 'Missing evidence';
                   else explanation = status.text;
+                  const reqCode = r.requirement_code || r.requirement_type || `req-${i}`;
+                  const isExplainOpen = urgentExplainKey === reqCode;
                   return (
-                    <div key={rowReqId(r) || i} className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-200 bg-white p-3">
-                      <div>
-                        <span className="font-medium text-midnight-blue">{rowTitle(r)}</span>
-                        <span className="text-sm text-gray-600 ml-2">— {explanation}</span>
+                    <div key={rowReqId(r) || i} className="rounded border border-amber-200 bg-white overflow-hidden">
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+                        <div>
+                          <span className="font-medium text-midnight-blue">{rowTitle(r)}</span>
+                          <span className="text-sm text-gray-600 ml-2">— {explanation}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-xs text-electric-teal hover:underline"
+                            onClick={async () => {
+                              const next = !isExplainOpen;
+                              if (!next) {
+                                setUrgentExplainKey(null);
+                                setUrgentExplainData(null);
+                                return;
+                              }
+                              setUrgentExplainKey(reqCode);
+                              if (urgentExplainKey === reqCode && urgentExplainData) return;
+                              setUrgentExplainData(null);
+                              setUrgentExplainLoading(true);
+                              try {
+                                const res = await clientAPI.getRequirementExplanation(propertyId, { requirement_code: reqCode });
+                                setUrgentExplainData(res.data);
+                              } catch {
+                                setUrgentExplainData(null);
+                              } finally {
+                                setUrgentExplainLoading(false);
+                              }
+                            }}
+                          >
+                            <Info className="w-3.5 h-3.5" /> Why this matters {isExplainOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                          <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>
+                            {isMissing ? 'Upload evidence' : 'View / replace'}
+                          </Button>
+                        </div>
                       </div>
-                      <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>
-                        {isMissing ? 'Upload evidence' : 'View / replace'}
-                      </Button>
+                      {isExplainOpen && (
+                        <div className="px-3 pb-3 pt-0 border-t border-amber-100 bg-amber-50/30">
+                          {urgentExplainLoading ? (
+                            <p className="text-sm text-gray-600 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</p>
+                          ) : urgentExplainData ? (
+                            <>
+                              <p className="text-sm text-gray-700 mt-2">{urgentExplainData.why_it_matters}</p>
+                              <p className="text-xs text-muted-foreground uppercase mt-2">Recommended action</p>
+                              <p className="text-sm font-medium text-midnight-blue">{urgentExplainData.recommended_action_text}</p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-gray-500 mt-2">Could not load explanation.</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1903,7 +2043,22 @@ export default function PropertyDetailPage() {
                       {s.status && s.status !== 'active' && <span className="ml-2 text-xs text-gray-500">{s.status}</span>}
                     </div>
                     <div className="flex flex-wrap gap-2 shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); setCreateWoForm((f) => ({ ...f, description: s.recommended_action })); }}><Wrench className="w-4 h-4 mr-1" /> Create work order</Button>
+                      {(() => {
+                        const actions = Array.isArray(s.suggested_actions) ? s.suggested_actions : ['create_issue', 'create_work_order'];
+                        return (
+                          <>
+                            {actions.includes('create_work_order') && (
+                              <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); setCreateWoForm((f) => ({ ...f, description: s.recommended_action })); }}><Wrench className="w-4 h-4 mr-1" /> Create work order</Button>
+                            )}
+                            {actions.includes('create_issue') && (
+                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Create issue</Button>
+                            )}
+                            {actions.includes('schedule_inspection') && (
+                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.scheduleInspectionFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Schedule inspection</Button>
+                            )}
+                          </>
+                        );
+                      })()}
                       {s.status === 'active' && (
                         <>
                           <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged'); loadRiskSignals(); } catch (_) {} }}>Acknowledge</Button>

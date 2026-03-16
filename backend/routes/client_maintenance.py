@@ -190,6 +190,29 @@ async def get_issue(request: Request, issue_id: str):
     return doc
 
 
+class UpdateIssueBody(BaseModel):
+    status: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+
+
+@router.patch("/maintenance/issues/{issue_id}")
+async def update_issue(request: Request, issue_id: str, body: UpdateIssueBody):
+    """Update issue status and/or description, category. Requires MAINTENANCE_WORKFLOWS. Audits status changes."""
+    user = await _require_maintenance_enabled(request)
+    doc = await maintenance_issues_service.update_issue(
+        issue_id=issue_id,
+        client_id=user["client_id"],
+        status=body.status,
+        description=body.description,
+        category=body.category,
+        updated_by_id=user.get("portal_user_id"),
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    return doc
+
+
 @router.post("/maintenance/issues/{issue_id}/create-work-order")
 async def create_work_order_from_issue(request: Request, issue_id: str):
     """Create a work order from an issue; links issue_id to the work order. Requires MAINTENANCE_WORKFLOWS."""
@@ -249,16 +272,6 @@ async def update_my_work_order(request: Request, work_order_id: str, body: Updat
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
-    if body.contractor_id:
-        from utils.audit import create_audit_log
-        from models import AuditAction
-        await create_audit_log(
-            action=AuditAction.CONTRACTOR_ASSIGNED_TO_WORK_ORDER,
-            client_id=existing["client_id"],
-            resource_type="work_order",
-            resource_id=work_order_id,
-            metadata={"contractor_id": body.contractor_id},
-        )
     return doc
 
 
@@ -554,6 +567,17 @@ async def get_risk_signal_by_id_route(request: Request, signal_id: str):
     return doc
 
 
+@router.get("/maintenance/risk-signals/{signal_id}/explanation")
+async def get_risk_signal_explanation_route(request: Request, signal_id: str):
+    """Get contextual explanation for a risk signal (why it matters, recommended action). Requires PREDICTIVE_MAINTENANCE."""
+    user = await _require_predictive_enabled(request)
+    doc = await risk_signal_service.get_risk_signal_by_id(signal_id=signal_id, client_id=user["client_id"])
+    if not doc:
+        raise HTTPException(status_code=404, detail="Risk signal not found")
+    from services.explanation_engine import explain_risk_signal
+    return explain_risk_signal(doc)
+
+
 @router.post("/maintenance/risk-signals/recalculate/{property_id}")
 async def recalculate_property_risk_signals(request: Request, property_id: str):
     """Regenerate risk signals for a property. Requires PREDICTIVE_MAINTENANCE."""
@@ -581,3 +605,58 @@ async def update_risk_signal_status(request: Request, signal_id: str, body: Upda
     if not updated:
         raise HTTPException(status_code=404, detail="Risk signal not found or invalid status")
     return updated
+
+
+class CreateFromRiskSignalBody(BaseModel):
+    description_override: Optional[str] = None
+
+
+@router.post("/maintenance/risk-signals/{signal_id}/create-issue")
+async def create_issue_from_risk_signal_route(request: Request, signal_id: str, body: Optional[CreateFromRiskSignalBody] = None):
+    """Create a maintenance issue from this risk signal (user-confirmed). Requires PREDICTIVE_MAINTENANCE and MAINTENANCE_WORKFLOWS."""
+    user = await _require_predictive_enabled(request)
+    await _require_maintenance_enabled(request)
+    try:
+        issue = await risk_signal_service.create_issue_from_risk_signal(
+            signal_id=signal_id,
+            client_id=user["client_id"],
+            description_override=body.description_override if body else None,
+            reporter_id=user.get("portal_user_id"),
+        )
+        return issue
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/risk-signals/{signal_id}/create-work-order")
+async def create_work_order_from_risk_signal_route(request: Request, signal_id: str, body: Optional[CreateFromRiskSignalBody] = None):
+    """Create a work order from this risk signal (user-confirmed). Requires PREDICTIVE_MAINTENANCE and MAINTENANCE_WORKFLOWS."""
+    user = await _require_predictive_enabled(request)
+    await _require_maintenance_enabled(request)
+    try:
+        wo = await risk_signal_service.create_work_order_from_risk_signal(
+            signal_id=signal_id,
+            client_id=user["client_id"],
+            description_override=body.description_override if body else None,
+            reporter_id=user.get("portal_user_id"),
+        )
+        return wo
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/risk-signals/{signal_id}/schedule-inspection")
+async def schedule_inspection_from_risk_signal_route(request: Request, signal_id: str, body: Optional[CreateFromRiskSignalBody] = None):
+    """Create an inspection issue from this risk signal (schedule_inspection action). Requires PREDICTIVE_MAINTENANCE and MAINTENANCE_WORKFLOWS."""
+    user = await _require_predictive_enabled(request)
+    await _require_maintenance_enabled(request)
+    try:
+        issue = await risk_signal_service.create_inspection_issue_from_risk_signal(
+            signal_id=signal_id,
+            client_id=user["client_id"],
+            description_override=body.description_override if body else None,
+            reporter_id=user.get("portal_user_id"),
+        )
+        return issue
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
