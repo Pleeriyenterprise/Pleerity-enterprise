@@ -74,7 +74,7 @@ export default function JobPage() {
         completion_notes: workOrder.completion_notes || '',
       });
     }
-  }, [workOrder?.work_order_id]);
+  }, [workOrder]);
 
   const handleAccept = () => {
     setActionLoading(true);
