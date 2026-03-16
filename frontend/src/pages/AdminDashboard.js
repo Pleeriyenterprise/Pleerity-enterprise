@@ -4205,17 +4205,31 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
               data-testid="admin-priority-actions-client-filter"
             >
               <option value="">All clients</option>
-              {(clientsForFilter || []).map((c) => (
-                <option key={c.client_id} value={c.client_id}>
-                  {c.client_id}
-                </option>
-              ))}
+              {(clientsForFilter || []).map((c) => {
+                const crn = c.customer_reference || c.crn || '';
+                const name = c.full_name || c.company_name || '';
+                const label = crn && name ? `${crn} — ${name}` : name || crn || c.client_id;
+                return (
+                  <option key={c.client_id} value={c.client_id}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </label>
         </div>
         {priorityActions.actions?.length > 0 ? (
           <ul className="space-y-3">
-            {priorityActions.actions.map((action, idx) => (
+            {priorityActions.actions.map((action, idx) => {
+              const clientForAction = action.client_id && (clientsForFilter || []).find((x) => x.client_id === action.client_id);
+              const clientDisplay = clientForAction
+                ? (() => {
+                    const crn = clientForAction.customer_reference || clientForAction.crn || '';
+                    const name = clientForAction.full_name || clientForAction.company_name || '';
+                    return crn && name ? `${crn} — ${name}` : name || crn || action.client_id;
+                  })()
+                : action.client_id;
+              return (
               <li key={idx} className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
@@ -4223,18 +4237,22 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                     <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{action.description}</p>
                   )}
                   {action.client_id && (
-                    <p className="text-xs text-gray-500 mt-1">Client: {action.client_id}</p>
+                    <p className="text-xs text-gray-500 mt-1">Client: {clientDisplay}</p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => action.recommended_url && navigate(action.recommended_url)}
-                  className="shrink-0 px-3 py-1.5 bg-electric-teal text-white rounded-lg text-sm font-medium hover:opacity-90"
-                >
-                  {action.recommended_action_label || 'View'}
-                </button>
+                {action.recommended_url ? (
+                  <Link
+                    to={action.recommended_url}
+                    className="shrink-0 inline-flex px-3 py-1.5 bg-electric-teal text-white rounded-lg text-sm font-medium hover:opacity-90 no-underline"
+                  >
+                    {action.recommended_action_label || 'View'}
+                  </Link>
+                ) : (
+                  <span className="shrink-0 px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-sm">—</span>
+                )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         ) : (
           <p className="text-sm text-gray-500 py-4">No priority actions for the selected filter.</p>
