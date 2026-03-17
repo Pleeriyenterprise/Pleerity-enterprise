@@ -842,13 +842,17 @@ export default function PropertyDetailPage() {
                           <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{action.description}</p>
                         )}
                       </div>
-                      <Button
-                        size="sm"
-                        className="shrink-0 bg-electric-teal hover:bg-electric-teal/90"
-                        onClick={() => navigate(action.recommended_url || '#')}
-                      >
-                        {action.recommended_action_label || 'View'}
-                      </Button>
+                      {action.recommended_url ? (
+                        <Link
+                          to={action.recommended_url}
+                          className="shrink-0 inline-flex items-center justify-center px-3 py-1.5 bg-electric-teal hover:bg-electric-teal/90 text-white rounded-md text-sm font-medium no-underline cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {action.recommended_action_label || 'View'}
+                        </Link>
+                      ) : (
+                        <span className="shrink-0 px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md text-sm">—</span>
+                      )}
                     </li>
                   ))}
                 </ul>

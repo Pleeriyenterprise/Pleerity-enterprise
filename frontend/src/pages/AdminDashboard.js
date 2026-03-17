@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import api, { adminAPI } from '../api/client';
 import { toast } from 'sonner';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
@@ -4241,12 +4241,28 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                   )}
                 </div>
                 {action.recommended_url ? (
-                  <Link
-                    to={action.recommended_url}
-                    className="shrink-0 inline-flex px-3 py-1.5 bg-electric-teal text-white rounded-lg text-sm font-medium hover:opacity-90 no-underline"
-                  >
-                    {action.recommended_action_label || 'View'}
-                  </Link>
+                  action.recommended_url.startsWith('/admin/clients/') && action.client_id ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (onSelectClient) onSelectClient(action.client_id);
+                        else navigate('/admin/dashboard', { state: { selectedClientId: action.client_id } });
+                      }}
+                      className="shrink-0 inline-flex px-3 py-1.5 bg-electric-teal text-white rounded-lg text-sm font-medium hover:opacity-90 cursor-pointer border-0"
+                    >
+                      {action.recommended_action_label || 'View client'}
+                    </button>
+                  ) : (
+                    <Link
+                      to={action.recommended_url}
+                      className="shrink-0 inline-flex px-3 py-1.5 bg-electric-teal text-white rounded-lg text-sm font-medium hover:opacity-90 no-underline cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {action.recommended_action_label || 'View'}
+                    </Link>
+                  )
                 ) : (
                   <span className="shrink-0 px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-sm">—</span>
                 )}
@@ -4539,6 +4555,7 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Support URL query param for tab (used by UnifiedAdminLayout sidebar links)
@@ -4546,6 +4563,15 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState(() => tabFromUrl || 'overview');
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [drilldownType, setDrilldownType] = useState(null);
+
+  // Open client panel when navigated with state (e.g. from priority action "View client" from another tab)
+  useEffect(() => {
+    const stateClientId = location.state?.selectedClientId;
+    if (stateClientId) {
+      setSelectedClientId(stateClientId);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state?.selectedClientId, location.pathname, navigate]);
 
   // Effective tab: URL takes precedence when present, so sidebar links work. When user clicks a tab we update the URL too.
   const effectiveTab = (tabFromUrl && tabFromUrl !== 'overview') ? tabFromUrl : (activeTab || 'overview');
@@ -4603,7 +4629,7 @@ const AdminDashboard = () => {
       case 'templates': return <EmailTemplates />;
       case 'emailDelivery': return <EmailDelivery />;
       case 'audit': return <AuditLogs />;
-      default: return <DashboardOverview onShowDrilldown={handleShowDrilldown} />;
+      default: return <DashboardOverview onShowDrilldown={handleShowDrilldown} onSelectClient={(id) => setSelectedClientId(id)} />;
     }
   };
 

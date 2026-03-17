@@ -491,10 +491,16 @@ async def get_priority_actions_for_admin(
 ) -> Dict[str, Any]:
     """
     Get ranked priority actions for an admin (action queue / operational priorities).
+    When client_id_filter is set, only actions for that client (or without client_id) are returned.
     Returns { "actions": [...], "total": N }.
     """
     actions = await _fetch_admin_actions(client_id_filter, limit * 2)
     ranked = _dedupe_and_rank(actions, limit)
+    if client_id_filter:
+        cid = client_id_filter.strip()
+        if cid:
+            # When a client is selected, show only that client's actions (exclude global/no-client items)
+            ranked = [a for a in ranked if a.get("client_id") == cid]
     if ranked:
         logger.info("Priority actions for admin (client_filter=%s): %d actions", client_id_filter, len(ranked))
     return {"actions": ranked, "total": len(ranked)}
