@@ -4,7 +4,7 @@
  * Loads draft by draft_ref, shows order summary, and "Pay now" redirects to Stripe.
  * Enables "save and resume": user can return via link with draft_ref to complete payment.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Loader2, AlertCircle, CreditCard, ArrowLeft } from 'lucide-react';
 import PublicLayout from '../components/public/PublicLayout';
@@ -25,7 +25,8 @@ export default function OrderCheckoutPage() {
   const [validation, setValidation] = useState(null);
   const [rechecking, setRechecking] = useState(false);
 
-  const loadDraft = async () => {
+  const loadDraft = useCallback(async () => {
+    if (!draftRef) return;
     const res = await client.get(`/intake/draft/by-ref/${encodeURIComponent(draftRef)}`);
     const data = res.data;
     if (data.status === 'CONVERTED') {
@@ -36,7 +37,7 @@ export default function OrderCheckoutPage() {
     }
     setDraft(data);
     setValidation(data.validation || null);
-  };
+  }, [draftRef]);
 
   useEffect(() => {
     if (!draftRef) {
@@ -45,23 +46,27 @@ export default function OrderCheckoutPage() {
       return;
     }
 
-    const fetchDraft = async () => {
+    let cancelled = false;
+    (async () => {
       try {
         setLoading(true);
         setError(null);
         await loadDraft();
       } catch (err) {
+        if (cancelled) return;
         const msg = err.response?.data?.detail || err.message || 'Draft not found';
         setError(typeof msg === 'string' ? msg : 'Draft not found or expired.');
         setDraft(null);
         setValidation(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
+    })();
 
-    fetchDraft();
-  }, [draftRef]);
+    return () => {
+      cancelled = true;
+    };
+  }, [draftRef, loadDraft]);
 
   const handleRecheckReady = async () => {
     if (!draftRef) return;
