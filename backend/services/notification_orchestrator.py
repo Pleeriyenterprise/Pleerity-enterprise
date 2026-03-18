@@ -658,6 +658,11 @@ class NotificationOrchestrator:
                 text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
                 subj = (context.get("subject") or default_subject)
                 return html, text, subj
+        if alias_str == "order-intake-confirmation" and context.get("message"):
+            html = str(context["message"])
+            text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
+            subj = (context.get("subject") or default_subject)
+            return html, text, subj
         db_template = await db.email_templates.find_one({"alias": alias_str, "is_active": True}, {"_id": 0})
         if db_template:
             html = db_template.get("html_body", "")

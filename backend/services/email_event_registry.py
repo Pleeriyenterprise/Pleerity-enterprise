@@ -156,6 +156,11 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
         "template_key": "ORDER_NOTIFICATION",
         "trigger": "customer_purchases_document_pack; order_service / order_notification_service",
     },
+    "INTAKE_ORDER_CONFIRMATION": {
+        "category": "system_critical",
+        "template_key": "ORDER_CONFIRMATION",
+        "trigger": "intake_draft_service._send_order_confirmation_email after draft→order payment",
+    },
     "DOCUMENT_PACK_DELIVERY": {
         "category": "system_critical",
         "template_key": "ORDER_DELIVERED",

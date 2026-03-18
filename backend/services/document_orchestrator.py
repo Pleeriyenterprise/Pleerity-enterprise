@@ -139,6 +139,43 @@ class OrchestrationResult:
         }
 
 
+def _normalize_mr_intake_for_prompt(service_code: str, intake_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Map intake schema field keys to prompt template variable names for MR services.
+    Intake form uses business_product_description, target_geography, target_customer_profile,
+    key_questions; prompts expect business_description, target_region, target_industry,
+    target_audience_description, main_research_question.
+    """
+    if service_code not in ("MR_BASIC", "MR_ADV"):
+        return intake_data
+    out = dict(intake_data)
+    # Geography -> region and industry (intake has no separate industry field)
+    tg = out.get("target_geography") or ""
+    if tg == "Other":
+        tg = out.get("target_geography_other") or tg
+    out["target_region"] = tg
+    out.setdefault("target_industry", tg or "Not specified")
+    out["business_description"] = out.get("business_product_description") or out.get("business_description") or ""
+    out["target_audience_description"] = out.get("target_customer_profile") or out.get("target_audience_description") or ""
+    kq = out.get("key_questions")
+    if isinstance(kq, list):
+        out["main_research_question"] = "\n".join(str(x) for x in kq) if kq else (out.get("main_research_question") or "")
+    else:
+        out["main_research_question"] = (kq or out.get("main_research_question") or "")
+    out.setdefault("additional_notes", out.get("additional_notes") or "")
+    # known_competitors can be list (MULTI_TEXT) in intake
+    kc = out.get("known_competitors")
+    if isinstance(kc, list):
+        out["known_competitors"] = ", ".join(str(x) for x in kc) if kc else (out.get("known_competitors") or "")
+    else:
+        out.setdefault("known_competitors", kc or "")
+    out.setdefault("offer_description", out.get("price_point_offer") or out.get("offer_description") or "")
+    if service_code == "MR_ADV":
+        out.setdefault("time_horizon", out.get("time_horizon") or "")
+        out.setdefault("pricing_intent", out.get("price_point_offer") or out.get("pricing_assumptions") or out.get("pricing_intent") or "")
+    return out
+
+
 def create_intake_snapshot(intake_data: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
     """
     Create immutable snapshot of intake data with hash.
@@ -493,6 +530,12 @@ class DocumentOrchestrator:
                     error_message="Previous run failed. Use force=true to retry.",
                     execution_id=existing.get("execution_id"),
                 )
+        
+        # ================================================================
+        # STEP 2c: Normalize MR intake keys for prompt/validation
+        # Intake schema uses different field_key names than prompt templates.
+        # ================================================================
+        intake_data = _normalize_mr_intake_for_prompt(service_code, intake_data)
         
         # ================================================================
         # STEP 3: Validate intake data

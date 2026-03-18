@@ -419,10 +419,17 @@ class WorkflowAutomationService:
         
         try:
             # Run single-document orchestration (non-pack)
+            # Intake: orders from draft have intake_snapshot.intake_payload; legacy may have parameters
+            intake_data = order.get("parameters") or {}
+            if not intake_data and order.get("intake_snapshot"):
+                snap = order["intake_snapshot"]
+                intake_data = snap.get("intake_payload") if isinstance(snap, dict) else {}
+            if not isinstance(intake_data, dict):
+                intake_data = {}
             orchestrator = self._get_orchestrator()
             result = await orchestrator.execute_generation(
                 order_id=order_id,
-                intake_data=order.get("parameters", {}),
+                intake_data=intake_data,
             )
             
             # Handle OrchestrationResult dataclass (has .success attribute, not .get())

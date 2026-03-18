@@ -523,9 +523,11 @@ async def request_client_info(
             },
         )
         
-        # Build and send client email
+        # Build and send client email (token link works without portal login)
         frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
-        provide_info_link = f"{frontend_url}/app/orders/{order_id}/provide-info"
+        from services.order_view_token import generate_order_provide_info_token
+        client_email = (order.get("customer") or {}).get("email")
+        provide_info_link = f"{frontend_url}/order/provide-info?token={generate_order_provide_info_token(order_id, client_email or '')}"
         
         deadline_str = None
         if request.deadline_days:
@@ -543,25 +545,27 @@ async def request_client_info(
             provide_info_link=provide_info_link,
         )
         
-        client_id = order.get("client_id")
-        client_email = order.get("customer", {}).get("email")
-        if client_email and client_id:
+        if client_email:
             try:
                 from services.notification_orchestrator import notification_orchestrator
-                idempotency_key = f"{order_id}_ORDER_NOTIFICATION_info_request"
+                idempotency_key = f"{order_id}_ORDER_INFO_REQUEST"
                 await notification_orchestrator.send(
-                    template_key="ORDER_NOTIFICATION",
-                    client_id=client_id,
+                    template_key="ORDER_INFO_REQUEST",
+                    client_id=None,
                     context={
-                        "message": email_data["text"],
+                        "recipient": client_email.strip(),
                         "subject": email_data["subject"],
+                        "message": email_data.get("html") or email_data.get("text", ""),
+                        "text_message": email_data.get("text") or "",
                     },
                     idempotency_key=idempotency_key,
                     event_type="order_info_request",
                 )
-                logger.info(f"Client input required email sent for order {order_id}")
+                logger.info(f"Client input required email sent for order {order_id} to {client_email}")
             except Exception as email_error:
                 logger.error(f"Failed to send client email: {email_error}")
+        else:
+            logger.warning(f"No customer email for order {order_id}; cannot send info request email")
         
         return {
             "success": True,

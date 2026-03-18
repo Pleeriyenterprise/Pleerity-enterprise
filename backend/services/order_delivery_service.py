@@ -209,19 +209,17 @@ class OrderDeliveryService:
         delivery_success = False
         delivery_error = None
         postmark_message_id = None
-        client_id = order.get("client_id")
-        idempotency_key = f"{order_id}_ORDER_DELIVERED"
+        idempotency_key = f"{order_id}_ORDER_DOCUMENTS_READY"
         try:
+            # Ungated transactional template + payer email — works for intake guests and CVP
             result = await notification_orchestrator.send(
-                template_key="ORDER_DELIVERED",
-                client_id=client_id,
+                template_key="ORDER_DOCUMENTS_READY",
+                client_id=None,
                 context={
-                    "client_name": customer_name,
-                    "order_reference": order_id,
-                    "service_name": order.get("service_name", "Document Service"),
-                    "download_link": download_link,
-                    "portal_link": portal_link,
+                    "recipient": customer_email,
                     "subject": email_content["subject"],
+                    "message": email_content.get("html") or email_content.get("text", ""),
+                    "text_message": email_content.get("text") or "",
                 },
                 idempotency_key=idempotency_key,
                 event_type="order_delivered",

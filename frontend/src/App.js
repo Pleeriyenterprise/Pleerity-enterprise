@@ -131,6 +131,7 @@ import ClientApprovalsPage from './pages/ClientApprovalsPage';
 import ViewOrderPage from './pages/ViewOrderPage';
 import UnifiedIntakeWizard from './pages/UnifiedIntakeWizard';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
+import OrderProvideInfoPublicPage from './pages/OrderProvideInfoPublicPage';
 import OrderCheckoutPage from './pages/OrderCheckoutPage';
 import ClientAuditLogPage from './pages/ClientAuditLogPage';
 
@@ -387,6 +388,7 @@ function App() {
               path="/order/confirmation" 
               element={<OrderConfirmationPage />} 
             />
+            <Route path="/order/provide-info" element={<OrderProvideInfoPublicPage />} />
 
             {/* ========================================
                   ADMIN PORTAL ROUTES (Protected)

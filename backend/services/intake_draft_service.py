@@ -906,14 +906,16 @@ async def _send_order_confirmation_email(order: Dict[str, Any]) -> bool:
     from services.notification_orchestrator import notification_orchestrator
     client_id = order.get("client_id")
     order_ref = order.get("order_ref", order.get("order_id", ""))
-    idempotency_key = f"{order_ref}_ORDER_NOTIFICATION_confirmation"
+    idempotency_key = f"{order_ref}_ORDER_CONFIRMATION"
     result = await notification_orchestrator.send(
-        template_key="ORDER_NOTIFICATION",
+        template_key="ORDER_CONFIRMATION",
         client_id=client_id,
         context={
             "subject": email_content["subject"],
             "message": email_content.get("html") or email_content.get("text", ""),
+            "text_message": email_content.get("text") or "",
             "client_name": customer_name,
+            "recipient": customer_email,
         },
         idempotency_key=idempotency_key,
         event_type="order_confirmation",

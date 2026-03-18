@@ -5,7 +5,7 @@ NO CVP COLLECTIONS TOUCHED - Writes only to new collections
 """
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 from database import database
 from utils.submission_utils import (
@@ -529,3 +529,158 @@ async def register_contractor_public(body: ContractorRegisterBody, request: Requ
 
 
 router.include_router(contractor_public_router)
+
+
+# ============================================
+# ORDER PROVIDE INFO (token — no portal login)
+# ============================================
+
+
+def _rate_limit_provide_info(ip: str) -> bool:
+    return check_rate_limit(ip, "order_provide_info")
+
+
+@router.get("/orders/provide-info-context")
+async def get_order_provide_info_context(token: str, request: Request):
+    """Return admin's info request for an order when token is valid (awaiting client)."""
+    if not token or len(token) > 8000:
+        raise HTTPException(status_code=400, detail="Invalid token")
+    client_ip = request.client.host if request.client else "unknown"
+    if not _rate_limit_provide_info(client_ip):
+        raise HTTPException(status_code=429, detail="Too many requests")
+    from services.order_view_token import validate_order_provide_info_token
+    from services.order_service import get_order
+    from services.order_workflow import OrderStatus
+
+    payload = validate_order_provide_info_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired link")
+    order_id = payload["order_id"]
+    email_claim = (payload.get("email") or "").strip().lower()
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    cust_email = (order.get("customer") or {}).get("email") or ""
+    if cust_email.strip().lower() != email_claim:
+        raise HTTPException(status_code=403, detail="Invalid link")
+    if order.get("status") != OrderStatus.CLIENT_INPUT_REQUIRED.value:
+        return {
+            "requires_input": False,
+            "message": "This order is not awaiting information, or your response was already received.",
+        }
+    ir = order.get("client_input_request") or {}
+    return {
+        "requires_input": True,
+        "order_id": order_id,
+        "order_ref": order.get("order_ref") or order_id,
+        "service_name": order.get("service_name", "Service"),
+        "request_notes": ir.get("request_notes", ""),
+        "requested_fields": ir.get("requested_fields") or [],
+        "deadline": ir.get("deadline"),
+        "request_attachments": ir.get("request_attachments", False),
+    }
+
+
+class OrderProvideInfoSubmitBody(BaseModel):
+    token: str = Field(..., max_length=8000)
+    fields: Dict[str, Any] = Field(default_factory=dict)
+    confirmation: bool = False
+
+
+@router.post("/orders/submit-provide-info")
+async def submit_order_provide_info(body: OrderProvideInfoSubmitBody, request: Request):
+    """Submit requested information using magic link (intake / guest customers)."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not _rate_limit_provide_info(client_ip):
+        raise HTTPException(status_code=429, detail="Too many requests")
+    from services.order_view_token import validate_order_provide_info_token
+    from services.order_service import get_order, submit_client_input_response, transition_order_state, create_in_app_notification
+    from services.order_workflow import OrderStatus
+    from services.order_email_templates import build_client_response_received_email
+    import os
+
+    payload = validate_order_provide_info_token(body.token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired link")
+    order_id = payload["order_id"]
+    email_claim = (payload.get("email") or "").strip().lower()
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    cust = order.get("customer") or {}
+    client_email = (cust.get("email") or "").strip()
+    if client_email.lower() != email_claim:
+        raise HTTPException(status_code=403, detail="Invalid link")
+    if order.get("status") != OrderStatus.CLIENT_INPUT_REQUIRED.value:
+        raise HTTPException(status_code=400, detail="This order is not awaiting your information")
+    if not body.confirmation:
+        raise HTTPException(status_code=400, detail="Please confirm the information is accurate")
+
+    try:
+        await submit_client_input_response(
+            order_id=order_id,
+            client_id=None,
+            client_email=client_email,
+            payload=body.fields,
+            file_references=None,
+        )
+        await transition_order_state(
+            order_id=order_id,
+            new_status=OrderStatus.INTERNAL_REVIEW,
+            triggered_by_type="customer",
+            triggered_by_user_id=None,
+            triggered_by_email=client_email,
+            reason="Client submitted requested information (provide-info link)",
+            metadata={"fields_submitted": list(body.fields.keys()), "via": "token"},
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    db = database.get_db()
+    admin = await db.portal_users.find_one(
+        {"role": {"$in": ["ROLE_ADMIN", "admin", "ROLE_OWNER"]}, "status": {"$in": ["active", "ACTIVE"]}},
+        {"email": 1, "name": 1, "user_id": 1, "portal_user_id": 1},
+    )
+    if admin:
+        frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+        order_link = f"{frontend_url}/admin/orders?order={order_id}"
+        email_data = build_client_response_received_email(
+            admin_name=admin.get("name", "Admin"),
+            order_reference=order_id,
+            service_name=order.get("service_name", "Service"),
+            client_name=cust.get("full_name", "Client"),
+            client_email=client_email,
+            submitted_fields=body.fields,
+            files_uploaded=[],
+            order_link=order_link,
+        )
+        try:
+            from services.notification_orchestrator import notification_orchestrator
+            await notification_orchestrator.send(
+                template_key="INTERNAL_ALERT",
+                client_id=None,
+                context={
+                    "recipient": admin["email"],
+                    "message": email_data.get("text", ""),
+                    "subject": email_data["subject"],
+                },
+                idempotency_key=f"{order_id}_provide_info_token_{admin.get('email', '')}",
+                event_type="order_client_info_received",
+            )
+        except Exception as e:
+            logger.warning("Admin notify after token provide-info failed: %s", e)
+        recipient_id = admin.get("portal_user_id") or admin.get("user_id")
+        if recipient_id:
+            try:
+                await create_in_app_notification(
+                    recipient_id=recipient_id,
+                    title="Client Info Received",
+                    message=f"Client submitted info for order {order_id}",
+                    notification_type="order_update",
+                    link=f"/admin/orders?order={order_id}",
+                    metadata={"order_id": order_id},
+                )
+            except Exception as e:
+                logger.warning("In-app notify after provide-info failed: %s", e)
+
+    return {"success": True, "message": "Thank you. Your information has been submitted."}

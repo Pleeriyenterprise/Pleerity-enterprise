@@ -22,6 +22,9 @@ Source: `database._seed_notification_templates` (notification_templates collecti
 | ADMIN_INVITE | EMAIL | false | false | false | null | — |
 | ORDER_DELIVERED | EMAIL | true | true | true | null | — |
 | ORDER_NOTIFICATION | EMAIL | true | true | true | null | — |
+| ORDER_CONFIRMATION | EMAIL | false | false | false | null | — |
+| ORDER_INFO_REQUEST | EMAIL | false | false | false | null | — |
+| ORDER_DOCUMENTS_READY | EMAIL | false | false | false | null | — |
 | AI_EXTRACTION_APPLIED | EMAIL | true | true | true | null | — |
 | TENANT_INVITE | EMAIL | true | true | true | tenant_portal | — |
 | CUSTOM_NOTIFICATION | EMAIL | true | false | false | null | — |
