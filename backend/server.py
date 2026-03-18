@@ -141,626 +141,656 @@ async def lifespan(app: FastAPI):
             logger.critical("Startup aborted (URL configuration): %s", e)
             raise
 
-    await database.connect()
+    _render_defer = os.environ.get("RENDER", "").strip().lower() in ("true", "1")
+    _sched_flag = [False]
 
-    # Alerting: warn if admin incident emails are not configured (ops visibility)
-    _alert_emails = (os.environ.get("ADMIN_ALERT_EMAILS") or os.environ.get("OPS_ALERT_EMAIL") or "").strip()
-    if not _alert_emails:
-        logger.warning(
-            "ADMIN_ALERT_EMAILS and OPS_ALERT_EMAIL are not set. Admin incident alerts will not be sent. "
-            "Set one of these environment variables for production."
-        )
-
-    # Stripe config: log mode (test/live) from key prefix and which price IDs are in use (no secret keys)
-    try:
-        stripe_key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
-        if not stripe_key:
-            logger.error("STRIPE_API_KEY / STRIPE_SECRET_KEY is not set. Intake checkout and billing will fail.")
-            stripe_mode = "unknown"
-        else:
-            stripe_mode = "test" if stripe_key.startswith("sk_test_") else "live"
-            logger.info("STRIPE_MODE = %s (from Stripe key prefix)", stripe_mode)
-            if stripe_mode == "test" and "CVP_PROD" in os.environ.get("ENV", "").upper():
-                logger.warning("STRIPE_API_KEY looks like test key but ENV suggests production. Verify key.")
-        from services.plan_registry import plan_registry, PlanCode, get_stripe_price_mappings, StripeModeMismatchError
-        try:
-            config = get_stripe_price_mappings()
-            for plan in PlanCode:
-                prices = config["mappings"].get(plan.value, {})
-                sub_id = prices.get("subscription_price_id")
-                onb_id = prices.get("onboarding_price_id")
-                logger.info(
-                    "Stripe price IDs plan=%s subscription_price_id=%s onboarding_price_id=%s",
-                    plan.value, sub_id or "(missing)", onb_id or "(none)"
-                )
-        except StripeModeMismatchError as e:
-            logger.error("Stripe mode mismatch: %s. Set STRIPE_TEST_PRICE_* or STRIPE_LIVE_PRICE_* env vars for current key mode.", e)
-    except Exception as e:
-        logger.warning("Stripe config check failed: %s", e)
-
-    try:
-        from utils.app_urls import get_app_base_url, get_api_base_url
-
-        logger.info("APP_BASE_URL (resolved): %s", get_app_base_url(for_email_links=False))
-        logger.info("API_BASE_URL (resolved): %s", get_api_base_url())
-    except Exception as e:
-        logger.warning("URL resolution log failed: %s", e)
-
-    # Idempotent OWNER bootstrap: when BOOTSTRAP_ENABLED=true OR when email+password env are set (Render)
-    bootstrap_enabled = os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true"
-    bootstrap_email = (os.environ.get("BOOTSTRAP_OWNER_EMAIL") or "").strip()
-    bootstrap_password = (os.environ.get("BOOTSTRAP_OWNER_PASSWORD") or "").strip()
-    if bootstrap_enabled or (bootstrap_email and bootstrap_password):
-        try:
-            from services.owner_bootstrap import run_bootstrap_owner
-            result = await run_bootstrap_owner()
-            logger.info("Bootstrap owner: %s - %s", result.get("action"), result.get("message"))
-        except Exception as e:
-            logger.warning("Bootstrap owner failed: %s", e)
-    
-    # Create consent indexes
-    try:
-        from services.consent_service import ensure_consent_indexes
-        await ensure_consent_indexes()
-        logger.info("Consent indexes created")
-    except Exception as e:
-        logger.error(f"Failed to create consent indexes: {e}")
-    
-    # Create CMS indexes
-    try:
-        db = database.get_db()
-        await db.cms_pages.create_index("page_id", unique=True)
-        await db.cms_pages.create_index("slug", unique=True)
-        await db.cms_pages.create_index("status")
-        await db.cms_revisions.create_index("revision_id", unique=True)
-        await db.cms_revisions.create_index([("page_id", 1), ("version", -1)])
-        await db.cms_media.create_index("media_id", unique=True)
-        await db.cms_media.create_index("media_type")
-        await db.cms_media.create_index([("file_name", "text"), ("alt_text", "text")])
-        logger.info("CMS indexes created")
-    except Exception as e:
-        logger.error(f"Failed to create CMS indexes: {e}")
-    
-    # Create Enablement Engine indexes and seed templates
-    try:
-        from services.enablement_templates import ensure_enablement_indexes, seed_enablement_templates
-        await ensure_enablement_indexes()
-        await seed_enablement_templates()
-        logger.info("Enablement engine initialized")
-    except Exception as e:
-        logger.error(f"Failed to initialize enablement engine: {e}")
-    
-    # Seed service catalogue
-    try:
-        from services.service_catalogue import seed_service_catalogue
-        await seed_service_catalogue()
-        logger.info("Service catalogue seeded successfully")
-    except Exception as e:
-        logger.error(f"Failed to seed service catalogue: {e}")
-    
-    # Seed service catalogue V2 (authoritative)
-    try:
-        from services.service_definitions_v2 import seed_service_catalogue_v2
-        result = await seed_service_catalogue_v2()
-        logger.info(f"Service catalogue V2 seeded: {result['created']} created, {result['skipped']} skipped")
-    except Exception as e:
-        logger.error(f"Failed to seed service catalogue V2: {e}")
-    
-    # Seed CMS pages (hub, category, service pages) so /services/* category pages show services. Idempotent.
-    try:
-        from scripts.seed_cms_pages import seed_cms_pages
-        await seed_cms_pages()
-        logger.info("CMS pages (services hub, categories, service pages) seeded")
-    except Exception as e:
-        logger.warning("CMS pages seed failed (category pages may show 'No services available'): %s", e)
-    
-    # Create Prompt Manager indexes
-    try:
-        db = database.get_db()
-        await db.prompt_templates.create_index("template_id", unique=True)
-        await db.prompt_templates.create_index([("service_code", 1), ("doc_type", 1), ("status", 1)])
-        await db.prompt_templates.create_index([("service_code", 1), ("doc_type", 1), ("version", -1)])
-        await db.prompt_templates.create_index("status")
-        await db.prompt_templates.create_index("tags")
-        await db.prompt_test_results.create_index("test_id", unique=True)
-        await db.prompt_test_results.create_index([("template_id", 1), ("executed_at", -1)])
-        await db.prompt_audit_log.create_index("audit_id", unique=True)
-        await db.prompt_audit_log.create_index([("template_id", 1), ("performed_at", -1)])
-        await db.prompt_audit_log.create_index("performed_at")
-        # Prompt execution metrics indexes for analytics
-        await db.prompt_execution_metrics.create_index([("template_id", 1), ("executed_at", -1)])
-        await db.prompt_execution_metrics.create_index([("service_code", 1), ("executed_at", -1)])
-        await db.prompt_execution_metrics.create_index("executed_at")
-        logger.info("Prompt Manager indexes created")
-    except Exception as e:
-        logger.error(f"Failed to create Prompt Manager indexes: {e}")
-    
-    # Create Document Pack Orchestrator indexes
-    try:
-        db = database.get_db()
-        await db.document_pack_items.create_index("item_id", unique=True)
-        await db.document_pack_items.create_index([("order_id", 1), ("canonical_index", 1)])
-        await db.document_pack_items.create_index("order_id")
-        await db.document_pack_items.create_index("status")
-        await db.document_pack_items.create_index("doc_type")
-        await db.document_pack_items.create_index("doc_key")
-        logger.info("Document Pack Orchestrator indexes created")
-    except Exception as e:
-        logger.error(f"Failed to create Document Pack Orchestrator indexes: {e}")
-    
-    # Document templates (server-side .docx per service_code/doc_type)
-    try:
-        db = database.get_db()
-        await db.document_templates.create_index("template_id", unique=True)
-        await db.document_templates.create_index([("service_code", 1), ("doc_type", 1)], unique=True)
-        await db.document_templates.create_index("service_code")
-        logger.info("Document templates indexes created")
-    except Exception as e:
-        logger.error("Document templates indexes: %s", e)
-    
-    # Create ClearForm indexes
-    try:
-        db = database.get_db()
-        # Users
-        await db.clearform_users.create_index("user_id", unique=True)
-        await db.clearform_users.create_index("email", unique=True)
-        await db.clearform_users.create_index("stripe_customer_id", sparse=True)
-        # Documents
-        await db.clearform_documents.create_index("document_id", unique=True)
-        await db.clearform_documents.create_index([("user_id", 1), ("created_at", -1)])
-        await db.clearform_documents.create_index("status")
-        await db.clearform_documents.create_index("document_type")
-        # Credit transactions
-        await db.clearform_credit_transactions.create_index("transaction_id", unique=True)
-        await db.clearform_credit_transactions.create_index([("user_id", 1), ("created_at", -1)])
-        await db.clearform_credit_transactions.create_index("transaction_type")
-        # Credit expiry
-        await db.clearform_credit_expiry.create_index("expiry_id", unique=True)
-        await db.clearform_credit_expiry.create_index([("user_id", 1), ("expires_at", 1)])
-        await db.clearform_credit_expiry.create_index("expired")
-        # Subscriptions
-        await db.clearform_subscriptions.create_index("subscription_id", unique=True)
-        await db.clearform_subscriptions.create_index("user_id")
-        await db.clearform_subscriptions.create_index("stripe_subscription_id", sparse=True)
-        # Top-ups
-        await db.clearform_credit_topups.create_index("topup_id", unique=True)
-        await db.clearform_credit_topups.create_index("stripe_checkout_session_id", sparse=True)
-        # Document types (admin-configurable)
-        await db.clearform_document_types.create_index("type_id", unique=True)
-        await db.clearform_document_types.create_index("code", unique=True)
-        await db.clearform_document_types.create_index("category")
-        await db.clearform_document_types.create_index("is_active")
-        # Document categories
-        await db.clearform_document_categories.create_index("category_id", unique=True)
-        await db.clearform_document_categories.create_index("code", unique=True)
-        # User templates
-        await db.clearform_templates.create_index("template_id", unique=True)
-        await db.clearform_templates.create_index([("user_id", 1), ("document_type_code", 1)])
-        await db.clearform_templates.create_index("workspace_id", sparse=True)
-        # Workspaces
-        await db.clearform_workspaces.create_index("workspace_id", unique=True)
-        await db.clearform_workspaces.create_index("owner_id")
-        # Smart profiles
-        await db.clearform_profiles.create_index("profile_id", unique=True)
-        await db.clearform_profiles.create_index([("user_id", 1), ("profile_type", 1)])
-        # Organizations
-        await db.clearform_organizations.create_index("org_id", unique=True)
-        await db.clearform_organizations.create_index("slug", unique=True)
-        await db.clearform_organizations.create_index("owner_id")
-        # Organization members
-        await db.clearform_org_members.create_index("member_id", unique=True)
-        await db.clearform_org_members.create_index([("org_id", 1), ("user_id", 1)], unique=True)
-        await db.clearform_org_members.create_index("user_id")
-        # Organization invitations
-        await db.clearform_org_invitations.create_index("invitation_id", unique=True)
-        await db.clearform_org_invitations.create_index([("org_id", 1), ("email", 1), ("status", 1)])
-        # Audit logs
-        await db.clearform_audit_logs.create_index("log_id", unique=True)
-        await db.clearform_audit_logs.create_index([("user_id", 1), ("created_at", -1)])
-        await db.clearform_audit_logs.create_index([("org_id", 1), ("created_at", -1)])
-        await db.clearform_audit_logs.create_index("action")
-        await db.clearform_audit_logs.create_index("created_at")
-        # Compliance packs
-        await db.clearform_compliance_packs.create_index("pack_id", unique=True)
-        await db.clearform_compliance_packs.create_index("code", unique=True)
-        logger.info("ClearForm indexes created")
+    async def _heavy_startup():
+        await database.connect()
         
-        # Initialize default document types
-        from clearform.services.document_type_service import document_type_service
-        await document_type_service.initialize_defaults()
-        logger.info("ClearForm document types initialized")
-    except Exception as e:
-        logger.error(f"Failed to create ClearForm indexes: {e}")
-    
-    # Configure scheduled jobs – bind scheduler to running event loop so async jobs execute
-    try:
-        _loop = asyncio.get_running_loop()
-        scheduler._eventloop = _loop
-        logger.info("Scheduler bound to running event loop (jobs will run automatically)")
-    except RuntimeError as e:
-        logger.warning("No running event loop for scheduler: %s. Jobs may not run automatically.", e)
-    # Daily reminders at 9:00 AM UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=9, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="daily_reminders",
-        name="Daily Compliance Reminders",
-        replace_existing=True,
-        args=["daily_reminders"],
-        kwargs={"run_type": "schedule"},
-        misfire_grace_time=300,
-        coalesce=True,
-        max_instances=1,
-    )
-    
-    # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=9, minute=30, timezone=SCHEDULER_TIMEZONE),
-        id="pending_verification_digest",
-        name="Pending Verification Digest",
-        replace_existing=True,
-        args=["pending_verification_digest"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Monthly digest on the 1st of each month at 10:00 AM UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(day=1, hour=10, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="monthly_digest",
-        name="Monthly Compliance Digest",
-        replace_existing=True,
-        args=["monthly_digest"],
-        kwargs={"run_type": "schedule"},
-        misfire_grace_time=300,
-        coalesce=True,
-        max_instances=1,
-    )
-    
-    # Compliance status check - runs twice daily at 8:00 AM and 6:00 PM UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=8, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="compliance_check_morning",
-        name="Compliance Status Check (Morning)",
-        replace_existing=True,
-        args=["compliance_check_morning"],
-        kwargs={"run_type": "schedule"},
-        misfire_grace_time=300,
-        coalesce=True,
-        max_instances=1,
-    )
-    
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=18, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="compliance_check_evening",
-        name="Compliance Status Check (Evening)",
-        replace_existing=True,
-        args=["compliance_check_evening"],
-        kwargs={"run_type": "schedule"},
-        misfire_grace_time=300,
-        coalesce=True,
-        max_instances=1,
-    )
-    
-    # Scheduled reports - runs every hour
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="scheduled_reports",
-        name="Process Scheduled Reports",
-        replace_existing=True,
-        args=["scheduled_reports"],
-        kwargs={"run_type": "schedule"},
-        misfire_grace_time=300,
-        coalesce=True,
-        max_instances=1,
-    )
-    
-    # Daily compliance score snapshots at 2:00 AM UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=2, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="compliance_score_snapshots",
-        name="Daily Compliance Score Snapshots",
-        replace_existing=True,
-        args=["compliance_score_snapshots"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Expiry rollover - daily 00:10 UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=0, minute=10, timezone=SCHEDULER_TIMEZONE),
-        id="expiry_rollover_recalc",
-        name="Expiry Rollover Compliance Recalc",
-        replace_existing=True,
-        args=["expiry_rollover_recalc"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Contractor performance score recalc - daily 03:00 UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=3, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="contractor_performance_recalc",
-        name="Contractor Performance Score Recalc",
-        replace_existing=True,
-        args=["contractor_performance_recalc"],
-        kwargs={"run_type": "schedule"},
-        misfire_grace_time=600,
-        coalesce=True,
-        max_instances=1,
-    )
-    
-    # Async compliance recalc worker - every 15 seconds
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        IntervalTrigger(seconds=15, timezone=SCHEDULER_TIMEZONE),
-        id="compliance_recalc_worker",
-        name="Compliance Recalc Worker",
-        replace_existing=True,
-        args=["compliance_recalc_worker"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Compliance recalc SLA monitor - every 5 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
-        id="compliance_recalc_sla_monitor",
-        name="Compliance Recalc SLA Monitor",
-        replace_existing=True,
-        args=["compliance_recalc_sla_monitor"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Notification failure spike monitor - every 5 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
-        id="notification_failure_spike_monitor",
-        name="Notification Failure Spike Monitor",
-        replace_existing=True,
-        args=["notification_failure_spike_monitor"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Scheduler heartbeat - every 2 minutes (for system health "scheduler alive" visibility)
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        IntervalTrigger(minutes=2, timezone=SCHEDULER_TIMEZONE),
-        id="scheduler_heartbeat",
-        name="Scheduler Heartbeat",
-        replace_existing=True,
-        args=["scheduler_heartbeat"],
-        kwargs={"run_type": "schedule"},
-    )
-    # Delivery reconciliation - every 15 min (enrich reminder/digest runs with delivered/bounced from message_logs)
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
-        id="delivery_reconciliation",
-        name="Delivery Reconciliation",
-        replace_existing=True,
-        args=["delivery_reconciliation"],
-        kwargs={"run_type": "schedule"},
-    )
-    # SLA watchdog (job run SLA) - every 10 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/10", timezone=SCHEDULER_TIMEZONE),
-        id="sla_watchdog",
-        name="SLA Watchdog (job run monitoring)",
-        replace_existing=True,
-        args=["sla_watchdog"],
-        kwargs={"run_type": "schedule"},
-        misfire_grace_time=300,
-        coalesce=True,
-        max_instances=1,
-    )
-    
-    # Notification retry worker - every minute
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*", timezone=SCHEDULER_TIMEZONE),
-        id="notification_retry_worker",
-        name="Notification Retry Worker",
-        replace_existing=True,
-        args=["notification_retry_worker"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Order delivery processing - every 5 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
-        id="order_delivery_processing",
-        name="Order Delivery Processing",
-        replace_existing=True,
-        args=["order_delivery_processing"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # SLA monitoring - every 15 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
-        id="sla_monitoring",
-        name="SLA Monitoring",
-        replace_existing=True,
-        args=["sla_monitoring"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Stuck order detection - every 30 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/30", timezone=SCHEDULER_TIMEZONE),
-        id="stuck_order_detection",
-        name="Stuck Order Detection",
-        replace_existing=True,
-        args=["stuck_order_detection"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Queued order processing - every 10 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/10", timezone=SCHEDULER_TIMEZONE),
-        id="queued_order_processing",
-        name="Queued Order Processing",
-        replace_existing=True,
-        args=["queued_order_processing"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Abandoned intake detection - every 15 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
-        id="abandoned_intake_detection",
-        name="Abandoned Intake Detection",
-        replace_existing=True,
-        args=["abandoned_intake_detection"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Lead follow-up processing - every 15 minutes
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
-        id="lead_followup_processing",
-        name="Lead Follow-up Processing",
-        replace_existing=True,
-        args=["lead_followup_processing"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Pending payment lifecycle - daily 3:00 AM UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=3, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="pending_payment_lifecycle",
-        name="Pending Payment Lifecycle (abandoned/archived)",
-        replace_existing=True,
-        args=["pending_payment_lifecycle"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Lead SLA breach check - every hour
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="lead_sla_check",
-        name="Lead SLA Breach Check",
-        replace_existing=True,
-        args=["lead_sla_check"],
-        kwargs={"run_type": "schedule"},
-    )
-    
-    # Checklist nurture - daily 9:00 AM UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=9, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="checklist_nurture_processing",
-        name="Checklist Nurture (compliance checklist leads)",
-        replace_existing=True,
-        args=["checklist_nurture_processing"],
-        kwargs={"run_type": "schedule"},
-    )
-    # Risk-check lead nurture (steps 2–5 at day 2, 4, 6, 10) - daily at 9:15 AM UTC
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=9, minute=15, timezone=SCHEDULER_TIMEZONE),
-        id="risk_lead_nurture_processing",
-        name="Risk Lead Nurture (risk-check conversion leads)",
-        replace_existing=True,
-        args=["risk_lead_nurture_processing"],
-        kwargs={"run_type": "schedule"},
-    )
-    # Landlord onboarding sequence (7-day emails) - every hour
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute=30, timezone=SCHEDULER_TIMEZONE),
-        id="onboarding_sequence_processing",
-        name="Onboarding Sequence (landlord 7-day emails)",
-        replace_existing=True,
-        args=["onboarding_sequence_processing"],
-        kwargs={"run_type": "schedule"},
-    )
-    # Predictive maintenance insights - daily 4:00 AM UTC (warms insights for clients with PREDICTIVE_MAINTENANCE)
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=4, minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="predictive_insights_job",
-        name="Predictive Maintenance Insights (precompute)",
-        replace_existing=True,
-        args=["predictive_insights_job"],
-        kwargs={"run_type": "schedule"},
-    )
-    # Risk signals - daily 4:30 AM UTC (generates stored risk signals for clients with PREDICTIVE_MAINTENANCE)
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(hour=4, minute=30, timezone=SCHEDULER_TIMEZONE),
-        id="risk_signals_job",
-        name="Risk Signals (generate)",
-        replace_existing=True,
-        args=["risk_signals_job"],
-        kwargs={"run_type": "schedule"},
-    )
-    # Work order SLA breach / at-risk - every hour
-    scheduler.add_job(
-        "job_runner:run_scheduled_job",
-        CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
-        id="work_order_sla_breach_job",
-        name="Work Order SLA Breach & At-Risk",
-        replace_existing=True,
-        args=["work_order_sla_breach_job"],
-        kwargs={"run_type": "schedule"},
-    )
-
-    scheduler_started = False
-    try:
-        scheduler.start(paused=True)
-        scheduler_started = True
-        jobs = scheduler.get_jobs()
-        job_ids = [getattr(j, "id", None) for j in jobs]
-        logger.info(
-            "Scheduler started (paused). All jobs registered: %s job(s). Job ids: %s",
-            len(jobs),
-            job_ids,
-        )
-        next_runs = [getattr(j, "next_run_time", None) for j in jobs[:5]]
-        next_runs_fmt = [t.isoformat() if t else None for t in next_runs]
-        logger.info("Scheduler next runs (first 5): %s", next_runs_fmt)
-        # At DEBUG: log every job's next_run_time to verify cron/interval schedules
-        for j in jobs:
-            nrt = getattr(j, "next_run_time", None)
-            logger.debug(
-                "Scheduler job: id=%s name=%s next_run_time=%s",
-                getattr(j, "id", None),
-                getattr(j, "name", None),
-                nrt.isoformat() if nrt else None,
+        # Alerting: warn if admin incident emails are not configured (ops visibility)
+        _alert_emails = (os.environ.get("ADMIN_ALERT_EMAILS") or os.environ.get("OPS_ALERT_EMAIL") or "").strip()
+        if not _alert_emails:
+            logger.warning(
+                "ADMIN_ALERT_EMAILS and OPS_ALERT_EMAIL are not set. Admin incident alerts will not be sent. "
+                "Set one of these environment variables for production."
             )
-        # Startup reconciliation: catch-up missed critical jobs within recovery window, or create incident if overdue
+        
+        # Stripe config: log mode (test/live) from key prefix and which price IDs are in use (no secret keys)
         try:
-            from services.startup_reconciliation import run_startup_reconciliation
-            await run_startup_reconciliation()
-        except Exception as recon_err:
-            logger.exception("Startup reconciliation failed (scheduler still paused): %s", recon_err)
-        scheduler.resume()
-        logger.info("Scheduler resumed; jobs will execute at scheduled times.")
-    except Exception as e:
-        logger.exception("Background job scheduler failed to start: %s. API will run without scheduled jobs.", e)
-    
+            stripe_key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
+            if not stripe_key:
+                logger.error("STRIPE_API_KEY / STRIPE_SECRET_KEY is not set. Intake checkout and billing will fail.")
+                stripe_mode = "unknown"
+            else:
+                stripe_mode = "test" if stripe_key.startswith("sk_test_") else "live"
+                logger.info("STRIPE_MODE = %s (from Stripe key prefix)", stripe_mode)
+                if stripe_mode == "test" and "CVP_PROD" in os.environ.get("ENV", "").upper():
+                    logger.warning("STRIPE_API_KEY looks like test key but ENV suggests production. Verify key.")
+            from services.plan_registry import plan_registry, PlanCode, get_stripe_price_mappings, StripeModeMismatchError
+            try:
+                config = get_stripe_price_mappings()
+                for plan in PlanCode:
+                    prices = config["mappings"].get(plan.value, {})
+                    sub_id = prices.get("subscription_price_id")
+                    onb_id = prices.get("onboarding_price_id")
+                    logger.info(
+                        "Stripe price IDs plan=%s subscription_price_id=%s onboarding_price_id=%s",
+                        plan.value, sub_id or "(missing)", onb_id or "(none)"
+                    )
+            except StripeModeMismatchError as e:
+                logger.error("Stripe mode mismatch: %s. Set STRIPE_TEST_PRICE_* or STRIPE_LIVE_PRICE_* env vars for current key mode.", e)
+        except Exception as e:
+            logger.warning("Stripe config check failed: %s", e)
+        
+        try:
+            from utils.app_urls import get_app_base_url, get_api_base_url
+        
+            logger.info("APP_BASE_URL (resolved): %s", get_app_base_url(for_email_links=False))
+            logger.info("API_BASE_URL (resolved): %s", get_api_base_url())
+        except Exception as e:
+            logger.warning("URL resolution log failed: %s", e)
+        
+        # Idempotent OWNER bootstrap: when BOOTSTRAP_ENABLED=true OR when email+password env are set (Render)
+        bootstrap_enabled = os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true"
+        bootstrap_email = (os.environ.get("BOOTSTRAP_OWNER_EMAIL") or "").strip()
+        bootstrap_password = (os.environ.get("BOOTSTRAP_OWNER_PASSWORD") or "").strip()
+        if bootstrap_enabled or (bootstrap_email and bootstrap_password):
+            try:
+                from services.owner_bootstrap import run_bootstrap_owner
+                result = await run_bootstrap_owner()
+                logger.info("Bootstrap owner: %s - %s", result.get("action"), result.get("message"))
+            except Exception as e:
+                logger.warning("Bootstrap owner failed: %s", e)
+        
+        # Create consent indexes
+        try:
+            from services.consent_service import ensure_consent_indexes
+            await ensure_consent_indexes()
+            logger.info("Consent indexes created")
+        except Exception as e:
+            logger.error(f"Failed to create consent indexes: {e}")
+        
+        # Create CMS indexes
+        try:
+            db = database.get_db()
+            await db.cms_pages.create_index("page_id", unique=True)
+            await db.cms_pages.create_index("slug", unique=True)
+            await db.cms_pages.create_index("status")
+            await db.cms_revisions.create_index("revision_id", unique=True)
+            await db.cms_revisions.create_index([("page_id", 1), ("version", -1)])
+            await db.cms_media.create_index("media_id", unique=True)
+            await db.cms_media.create_index("media_type")
+            await db.cms_media.create_index([("file_name", "text"), ("alt_text", "text")])
+            logger.info("CMS indexes created")
+        except Exception as e:
+            logger.error(f"Failed to create CMS indexes: {e}")
+        
+        # Create Enablement Engine indexes and seed templates
+        try:
+            from services.enablement_templates import ensure_enablement_indexes, seed_enablement_templates
+            await ensure_enablement_indexes()
+            await seed_enablement_templates()
+            logger.info("Enablement engine initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize enablement engine: {e}")
+        
+        # Seed service catalogue
+        try:
+            from services.service_catalogue import seed_service_catalogue
+            await seed_service_catalogue()
+            logger.info("Service catalogue seeded successfully")
+        except Exception as e:
+            logger.error(f"Failed to seed service catalogue: {e}")
+        
+        # Seed service catalogue V2 (authoritative)
+        try:
+            from services.service_definitions_v2 import seed_service_catalogue_v2
+            result = await seed_service_catalogue_v2()
+            logger.info(f"Service catalogue V2 seeded: {result['created']} created, {result['skipped']} skipped")
+        except Exception as e:
+            logger.error(f"Failed to seed service catalogue V2: {e}")
+        
+        # Seed CMS pages (hub, category, service pages) so /services/* category pages show services. Idempotent.
+        try:
+            from scripts.seed_cms_pages import seed_cms_pages
+            await seed_cms_pages()
+            logger.info("CMS pages (services hub, categories, service pages) seeded")
+        except Exception as e:
+            logger.warning("CMS pages seed failed (category pages may show 'No services available'): %s", e)
+        
+        # Create Prompt Manager indexes
+        try:
+            db = database.get_db()
+            await db.prompt_templates.create_index("template_id", unique=True)
+            await db.prompt_templates.create_index([("service_code", 1), ("doc_type", 1), ("status", 1)])
+            await db.prompt_templates.create_index([("service_code", 1), ("doc_type", 1), ("version", -1)])
+            await db.prompt_templates.create_index("status")
+            await db.prompt_templates.create_index("tags")
+            await db.prompt_test_results.create_index("test_id", unique=True)
+            await db.prompt_test_results.create_index([("template_id", 1), ("executed_at", -1)])
+            await db.prompt_audit_log.create_index("audit_id", unique=True)
+            await db.prompt_audit_log.create_index([("template_id", 1), ("performed_at", -1)])
+            await db.prompt_audit_log.create_index("performed_at")
+            # Prompt execution metrics indexes for analytics
+            await db.prompt_execution_metrics.create_index([("template_id", 1), ("executed_at", -1)])
+            await db.prompt_execution_metrics.create_index([("service_code", 1), ("executed_at", -1)])
+            await db.prompt_execution_metrics.create_index("executed_at")
+            logger.info("Prompt Manager indexes created")
+        except Exception as e:
+            logger.error(f"Failed to create Prompt Manager indexes: {e}")
+        
+        # Create Document Pack Orchestrator indexes
+        try:
+            db = database.get_db()
+            await db.document_pack_items.create_index("item_id", unique=True)
+            await db.document_pack_items.create_index([("order_id", 1), ("canonical_index", 1)])
+            await db.document_pack_items.create_index("order_id")
+            await db.document_pack_items.create_index("status")
+            await db.document_pack_items.create_index("doc_type")
+            await db.document_pack_items.create_index("doc_key")
+            logger.info("Document Pack Orchestrator indexes created")
+        except Exception as e:
+            logger.error(f"Failed to create Document Pack Orchestrator indexes: {e}")
+        
+        # Document templates (server-side .docx per service_code/doc_type)
+        try:
+            db = database.get_db()
+            await db.document_templates.create_index("template_id", unique=True)
+            await db.document_templates.create_index([("service_code", 1), ("doc_type", 1)], unique=True)
+            await db.document_templates.create_index("service_code")
+            logger.info("Document templates indexes created")
+        except Exception as e:
+            logger.error("Document templates indexes: %s", e)
+        
+        # Create ClearForm indexes
+        try:
+            db = database.get_db()
+            # Users
+            await db.clearform_users.create_index("user_id", unique=True)
+            await db.clearform_users.create_index("email", unique=True)
+            await db.clearform_users.create_index("stripe_customer_id", sparse=True)
+            # Documents
+            await db.clearform_documents.create_index("document_id", unique=True)
+            await db.clearform_documents.create_index([("user_id", 1), ("created_at", -1)])
+            await db.clearform_documents.create_index("status")
+            await db.clearform_documents.create_index("document_type")
+            # Credit transactions
+            await db.clearform_credit_transactions.create_index("transaction_id", unique=True)
+            await db.clearform_credit_transactions.create_index([("user_id", 1), ("created_at", -1)])
+            await db.clearform_credit_transactions.create_index("transaction_type")
+            # Credit expiry
+            await db.clearform_credit_expiry.create_index("expiry_id", unique=True)
+            await db.clearform_credit_expiry.create_index([("user_id", 1), ("expires_at", 1)])
+            await db.clearform_credit_expiry.create_index("expired")
+            # Subscriptions
+            await db.clearform_subscriptions.create_index("subscription_id", unique=True)
+            await db.clearform_subscriptions.create_index("user_id")
+            await db.clearform_subscriptions.create_index("stripe_subscription_id", sparse=True)
+            # Top-ups
+            await db.clearform_credit_topups.create_index("topup_id", unique=True)
+            await db.clearform_credit_topups.create_index("stripe_checkout_session_id", sparse=True)
+            # Document types (admin-configurable)
+            await db.clearform_document_types.create_index("type_id", unique=True)
+            await db.clearform_document_types.create_index("code", unique=True)
+            await db.clearform_document_types.create_index("category")
+            await db.clearform_document_types.create_index("is_active")
+            # Document categories
+            await db.clearform_document_categories.create_index("category_id", unique=True)
+            await db.clearform_document_categories.create_index("code", unique=True)
+            # User templates
+            await db.clearform_templates.create_index("template_id", unique=True)
+            await db.clearform_templates.create_index([("user_id", 1), ("document_type_code", 1)])
+            await db.clearform_templates.create_index("workspace_id", sparse=True)
+            # Workspaces
+            await db.clearform_workspaces.create_index("workspace_id", unique=True)
+            await db.clearform_workspaces.create_index("owner_id")
+            # Smart profiles
+            await db.clearform_profiles.create_index("profile_id", unique=True)
+            await db.clearform_profiles.create_index([("user_id", 1), ("profile_type", 1)])
+            # Organizations
+            await db.clearform_organizations.create_index("org_id", unique=True)
+            await db.clearform_organizations.create_index("slug", unique=True)
+            await db.clearform_organizations.create_index("owner_id")
+            # Organization members
+            await db.clearform_org_members.create_index("member_id", unique=True)
+            await db.clearform_org_members.create_index([("org_id", 1), ("user_id", 1)], unique=True)
+            await db.clearform_org_members.create_index("user_id")
+            # Organization invitations
+            await db.clearform_org_invitations.create_index("invitation_id", unique=True)
+            await db.clearform_org_invitations.create_index([("org_id", 1), ("email", 1), ("status", 1)])
+            # Audit logs
+            await db.clearform_audit_logs.create_index("log_id", unique=True)
+            await db.clearform_audit_logs.create_index([("user_id", 1), ("created_at", -1)])
+            await db.clearform_audit_logs.create_index([("org_id", 1), ("created_at", -1)])
+            await db.clearform_audit_logs.create_index("action")
+            await db.clearform_audit_logs.create_index("created_at")
+            # Compliance packs
+            await db.clearform_compliance_packs.create_index("pack_id", unique=True)
+            await db.clearform_compliance_packs.create_index("code", unique=True)
+            logger.info("ClearForm indexes created")
+        
+            # Initialize default document types
+            from clearform.services.document_type_service import document_type_service
+            await document_type_service.initialize_defaults()
+            logger.info("ClearForm document types initialized")
+        except Exception as e:
+            logger.error(f"Failed to create ClearForm indexes: {e}")
+        
+        # Configure scheduled jobs – bind scheduler to running event loop so async jobs execute
+        try:
+            _loop = asyncio.get_running_loop()
+            scheduler._eventloop = _loop
+            logger.info("Scheduler bound to running event loop (jobs will run automatically)")
+        except RuntimeError as e:
+            logger.warning("No running event loop for scheduler: %s. Jobs may not run automatically.", e)
+        # Daily reminders at 9:00 AM UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=9, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="daily_reminders",
+            name="Daily Compliance Reminders",
+            replace_existing=True,
+            args=["daily_reminders"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        
+        # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=9, minute=30, timezone=SCHEDULER_TIMEZONE),
+            id="pending_verification_digest",
+            name="Pending Verification Digest",
+            replace_existing=True,
+            args=["pending_verification_digest"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Monthly digest on the 1st of each month at 10:00 AM UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(day=1, hour=10, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="monthly_digest",
+            name="Monthly Compliance Digest",
+            replace_existing=True,
+            args=["monthly_digest"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        
+        # Compliance status check - runs twice daily at 8:00 AM and 6:00 PM UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=8, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="compliance_check_morning",
+            name="Compliance Status Check (Morning)",
+            replace_existing=True,
+            args=["compliance_check_morning"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=18, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="compliance_check_evening",
+            name="Compliance Status Check (Evening)",
+            replace_existing=True,
+            args=["compliance_check_evening"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        
+        # Scheduled reports - runs every hour
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="scheduled_reports",
+            name="Process Scheduled Reports",
+            replace_existing=True,
+            args=["scheduled_reports"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        
+        # Daily compliance score snapshots at 2:00 AM UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=2, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="compliance_score_snapshots",
+            name="Daily Compliance Score Snapshots",
+            replace_existing=True,
+            args=["compliance_score_snapshots"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Expiry rollover - daily 00:10 UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=0, minute=10, timezone=SCHEDULER_TIMEZONE),
+            id="expiry_rollover_recalc",
+            name="Expiry Rollover Compliance Recalc",
+            replace_existing=True,
+            args=["expiry_rollover_recalc"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Contractor performance score recalc - daily 03:00 UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=3, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="contractor_performance_recalc",
+            name="Contractor Performance Score Recalc",
+            replace_existing=True,
+            args=["contractor_performance_recalc"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=600,
+            coalesce=True,
+            max_instances=1,
+        )
+        
+        # Async compliance recalc worker - every 15 seconds
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            IntervalTrigger(seconds=15, timezone=SCHEDULER_TIMEZONE),
+            id="compliance_recalc_worker",
+            name="Compliance Recalc Worker",
+            replace_existing=True,
+            args=["compliance_recalc_worker"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Compliance recalc SLA monitor - every 5 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
+            id="compliance_recalc_sla_monitor",
+            name="Compliance Recalc SLA Monitor",
+            replace_existing=True,
+            args=["compliance_recalc_sla_monitor"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Notification failure spike monitor - every 5 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
+            id="notification_failure_spike_monitor",
+            name="Notification Failure Spike Monitor",
+            replace_existing=True,
+            args=["notification_failure_spike_monitor"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Scheduler heartbeat - every 2 minutes (for system health "scheduler alive" visibility)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            IntervalTrigger(minutes=2, timezone=SCHEDULER_TIMEZONE),
+            id="scheduler_heartbeat",
+            name="Scheduler Heartbeat",
+            replace_existing=True,
+            args=["scheduler_heartbeat"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Delivery reconciliation - every 15 min (enrich reminder/digest runs with delivered/bounced from message_logs)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
+            id="delivery_reconciliation",
+            name="Delivery Reconciliation",
+            replace_existing=True,
+            args=["delivery_reconciliation"],
+            kwargs={"run_type": "schedule"},
+        )
+        # SLA watchdog (job run SLA) - every 10 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/10", timezone=SCHEDULER_TIMEZONE),
+            id="sla_watchdog",
+            name="SLA Watchdog (job run monitoring)",
+            replace_existing=True,
+            args=["sla_watchdog"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        
+        # Notification retry worker - every minute
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*", timezone=SCHEDULER_TIMEZONE),
+            id="notification_retry_worker",
+            name="Notification Retry Worker",
+            replace_existing=True,
+            args=["notification_retry_worker"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Order delivery processing - every 5 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
+            id="order_delivery_processing",
+            name="Order Delivery Processing",
+            replace_existing=True,
+            args=["order_delivery_processing"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # SLA monitoring - every 15 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
+            id="sla_monitoring",
+            name="SLA Monitoring",
+            replace_existing=True,
+            args=["sla_monitoring"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Stuck order detection - every 30 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/30", timezone=SCHEDULER_TIMEZONE),
+            id="stuck_order_detection",
+            name="Stuck Order Detection",
+            replace_existing=True,
+            args=["stuck_order_detection"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Queued order processing - every 10 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/10", timezone=SCHEDULER_TIMEZONE),
+            id="queued_order_processing",
+            name="Queued Order Processing",
+            replace_existing=True,
+            args=["queued_order_processing"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Abandoned intake detection - every 15 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
+            id="abandoned_intake_detection",
+            name="Abandoned Intake Detection",
+            replace_existing=True,
+            args=["abandoned_intake_detection"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Lead follow-up processing - every 15 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
+            id="lead_followup_processing",
+            name="Lead Follow-up Processing",
+            replace_existing=True,
+            args=["lead_followup_processing"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Pending payment lifecycle - daily 3:00 AM UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=3, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="pending_payment_lifecycle",
+            name="Pending Payment Lifecycle (abandoned/archived)",
+            replace_existing=True,
+            args=["pending_payment_lifecycle"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Lead SLA breach check - every hour
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="lead_sla_check",
+            name="Lead SLA Breach Check",
+            replace_existing=True,
+            args=["lead_sla_check"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        # Checklist nurture - daily 9:00 AM UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=9, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="checklist_nurture_processing",
+            name="Checklist Nurture (compliance checklist leads)",
+            replace_existing=True,
+            args=["checklist_nurture_processing"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Risk-check lead nurture (steps 2–5 at day 2, 4, 6, 10) - daily at 9:15 AM UTC
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=9, minute=15, timezone=SCHEDULER_TIMEZONE),
+            id="risk_lead_nurture_processing",
+            name="Risk Lead Nurture (risk-check conversion leads)",
+            replace_existing=True,
+            args=["risk_lead_nurture_processing"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Landlord onboarding sequence (7-day emails) - every hour
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=30, timezone=SCHEDULER_TIMEZONE),
+            id="onboarding_sequence_processing",
+            name="Onboarding Sequence (landlord 7-day emails)",
+            replace_existing=True,
+            args=["onboarding_sequence_processing"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Predictive maintenance insights - daily 4:00 AM UTC (warms insights for clients with PREDICTIVE_MAINTENANCE)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=4, minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="predictive_insights_job",
+            name="Predictive Maintenance Insights (precompute)",
+            replace_existing=True,
+            args=["predictive_insights_job"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Risk signals - daily 4:30 AM UTC (generates stored risk signals for clients with PREDICTIVE_MAINTENANCE)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=4, minute=30, timezone=SCHEDULER_TIMEZONE),
+            id="risk_signals_job",
+            name="Risk Signals (generate)",
+            replace_existing=True,
+            args=["risk_signals_job"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Work order SLA breach / at-risk - every hour
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=0, timezone=SCHEDULER_TIMEZONE),
+            id="work_order_sla_breach_job",
+            name="Work Order SLA Breach & At-Risk",
+            replace_existing=True,
+            args=["work_order_sla_breach_job"],
+            kwargs={"run_type": "schedule"},
+        )
+        
+        _sched_flag[0] = False
+        try:
+            scheduler.start(paused=True)
+            _sched_flag[0] = True
+            jobs = scheduler.get_jobs()
+            job_ids = [getattr(j, "id", None) for j in jobs]
+            logger.info(
+                "Scheduler started (paused). All jobs registered: %s job(s). Job ids: %s",
+                len(jobs),
+                job_ids,
+            )
+            next_runs = [getattr(j, "next_run_time", None) for j in jobs[:5]]
+            next_runs_fmt = [t.isoformat() if t else None for t in next_runs]
+            logger.info("Scheduler next runs (first 5): %s", next_runs_fmt)
+            # At DEBUG: log every job's next_run_time to verify cron/interval schedules
+            for j in jobs:
+                nrt = getattr(j, "next_run_time", None)
+                logger.debug(
+                    "Scheduler job: id=%s name=%s next_run_time=%s",
+                    getattr(j, "id", None),
+                    getattr(j, "name", None),
+                    nrt.isoformat() if nrt else None,
+                )
+            # Startup reconciliation: catch-up missed critical jobs within recovery window, or create incident if overdue
+            try:
+                from services.startup_reconciliation import run_startup_reconciliation
+                await run_startup_reconciliation()
+            except Exception as recon_err:
+                logger.exception("Startup reconciliation failed (scheduler still paused): %s", recon_err)
+            scheduler.resume()
+            logger.info("Scheduler resumed; jobs will execute at scheduled times.")
+        except Exception as e:
+            logger.exception("Background job scheduler failed to start: %s. API will run without scheduled jobs.", e)
+    if _render_defer:
+        logger.info("RENDER=true: deferring Mongo/indexes/seeds/scheduler until after PORT bind")
+        app.state.db_ready = False
+        app.state.startup_failed = False
+
+        async def _render_heavy_bg():
+            try:
+                await _heavy_startup()
+                app.state.db_ready = True
+                logger.info("RENDER: heavy startup complete")
+            except Exception:
+                app.state.startup_failed = True
+                app.state.db_ready = False
+                logger.exception("RENDER: heavy startup failed")
+
+        app.state._render_startup_task = asyncio.create_task(_render_heavy_bg())
+    else:
+        await _heavy_startup()
+        app.state.db_ready = True
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Compliance Vault Pro API")
-    if scheduler_started:
+    _t = getattr(app.state, "_render_startup_task", None)
+    if _t is not None and not _t.done():
+        _t.cancel()
+        try:
+            await _t
+        except asyncio.CancelledError:
+            pass
+    if _sched_flag[0]:
         scheduler.shutdown(wait=False)
         logger.info("Background job scheduler stopped")
     await database.close()
@@ -798,6 +828,31 @@ app.add_middleware(
 # Correlation ID for tracing (set or forward X-Correlation-Id on every request/response)
 from middleware import CorrelationIdMiddleware
 app.add_middleware(CorrelationIdMiddleware)
+
+
+@app.middleware("http")
+async def _startup_readiness_gate(request: Request, call_next):
+    """On Render, PORT must open before heavy startup finishes; return 503 until DB/scheduler ready."""
+    if getattr(request.app.state, "db_ready", True):
+        return await call_next(request)
+    path = request.url.path
+    allowed = (
+        "/",
+        "/api/health",
+        "/api/version",
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+        "/favicon.ico",
+    )
+    if path in allowed or path.startswith("/docs/"):
+        return await call_next(request)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Service is starting; retry shortly."},
+        headers={"Retry-After": "5"},
+    )
+
 
 # Include routers
 app.include_router(auth.router)
@@ -923,10 +978,26 @@ async def root():
 
 # Health check
 @app.get("/api/health")
-async def health_check():
+async def health_check(request: Request):
+    if not getattr(request.app.state, "db_ready", True):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "starting",
+                "environment": os.getenv("ENVIRONMENT", "development"),
+            },
+        )
+    if getattr(request.app.state, "startup_failed", False):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "environment": os.getenv("ENVIRONMENT", "development"),
+            },
+        )
     return {
         "status": "healthy",
-        "environment": os.getenv("ENVIRONMENT", "development")
+        "environment": os.getenv("ENVIRONMENT", "development"),
     }
 
 
