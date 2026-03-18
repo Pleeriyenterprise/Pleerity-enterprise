@@ -205,10 +205,7 @@ async def risk_check_report(body: RiskCheckReportRequest, request: Request):
             upsert_by_email=True,
         )
         if central_lead:
-            try:
-                base = get_public_app_url(for_email_links=True).rstrip("/")
-            except ValueError:
-                base = (os.environ.get("FRONTEND_URL") or os.environ.get("FRONTEND_PUBLIC_URL") or "").strip().rstrip("/") or "http://localhost:3000"
+            base = get_public_app_url(for_email_links=True).rstrip("/")
             activation_url = f"{base}/intake/start?lead_token={(activation_token or '').strip()}"
             sent = await LeadFollowUpService.send_risk_check_completed_transactional(central_lead, activation_url)
             if sent:

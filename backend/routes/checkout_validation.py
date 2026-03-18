@@ -173,7 +173,9 @@ async def create_checkout_session(request: CreateCheckoutSessionRequest):
                 "missing_sections": validation.get("missing_sections", []),
             },
         )
-    frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+    from utils.app_urls import get_app_base_url
+
+    frontend_url = get_app_base_url(for_email_links=True)
     success_url = request.success_url or f"{frontend_url}/order/confirmation?draft_id={draft_id}"
     cancel_url = request.cancel_url or f"{frontend_url}/order/intake?cancelled=true"
     try:

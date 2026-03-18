@@ -49,7 +49,9 @@ async def view_order_public(token: str = Query(..., description="Order view toke
     approved_version = order.get("approved_document_version")
     versions = await get_document_versions(order_id)
     documents = []
-    api_base = (os.getenv("BACKEND_URL") or os.getenv("API_URL") or "").rstrip("/")
+    from utils.app_urls import get_api_base_url
+
+    api_base = get_api_base_url()
     for v in versions:
         if getattr(v, "version", None) == approved_version:
             if getattr(v, "filename_pdf", None):

@@ -2178,6 +2178,9 @@ async def apply_ai_extraction(
                             expiry_display = update_fields.get("due_date", "N/A")
                     
                     from services.notification_orchestrator import notification_orchestrator
+                    from utils.app_urls import get_app_base_url
+
+                    _portal = f"{get_app_base_url(for_email_links=True)}/app/dashboard"
                     result = await notification_orchestrator.send(
                         template_key="AI_EXTRACTION_APPLIED",
                         client_id=document["client_id"],
@@ -2189,7 +2192,7 @@ async def apply_ai_extraction(
                             "certificate_number": cert_number or "N/A",
                             "expiry_date": expiry_display,
                             "requirement_status": after_state.get("status", "UPDATED"),
-                            "portal_link": os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk") + "/app/dashboard",
+                            "portal_link": _portal,
                         },
                         idempotency_key=f"{document_id}_AI_EXTRACTION_APPLIED",
                         event_type="ai_extraction_applied",

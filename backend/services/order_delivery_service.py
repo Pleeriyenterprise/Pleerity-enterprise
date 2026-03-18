@@ -12,7 +12,6 @@ Features:
 - Resolves document list from document_versions_v2 when order.document_versions is empty
 """
 
-import os
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Any
@@ -23,9 +22,10 @@ from services.order_email_templates import build_order_delivered_email
 
 logger = logging.getLogger(__name__)
 
-# Frontend URL for portal links
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-BACKEND_URL = os.getenv("REACT_APP_BACKEND_URL", "http://localhost:8001")
+def _app_base() -> str:
+    from utils.app_urls import get_app_base_url
+
+    return get_app_base_url(for_email_links=True)
 
 
 class OrderDeliveryService:
@@ -192,8 +192,9 @@ class OrderDeliveryService:
         # Build email: use token-based view-order URL so one-time users can access without login
         from services.order_view_token import generate_order_view_token
         view_token = generate_order_view_token(order_id, customer_email)
-        download_link = f"{FRONTEND_URL}/view-order?token={view_token}"
-        portal_link = f"{FRONTEND_URL}/dashboard"
+        base = _app_base()
+        download_link = f"{base}/view-order?token={view_token}"
+        portal_link = f"{base}/dashboard"
         
         email_content = build_order_delivered_email(
             client_name=customer_name,

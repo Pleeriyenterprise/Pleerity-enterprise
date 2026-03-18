@@ -137,7 +137,9 @@ async def create_purchase_checkout(
             raise HTTPException(status_code=400, detail=f"Invalid package: {request.package_id}")
         
         stripe.api_key = os.getenv("STRIPE_API_KEY")
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        from utils.app_urls import get_app_base_url
+
+        frontend_url = get_app_base_url(for_email_links=False)
         
         # Create or get Stripe customer
         from database import database

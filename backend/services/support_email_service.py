@@ -12,7 +12,10 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+def _support_app_base() -> str:
+    from utils.app_urls import get_app_base_url
+
+    return get_app_base_url(for_email_links=True)
 
 
 async def send_ticket_confirmation_email(
@@ -78,7 +81,7 @@ async def send_internal_ticket_notification(
         )
         if transcript:
             message += f"<p><strong>Transcript:</strong></p><pre>{transcript[:2000]}</pre>"
-        message += f"<p><a href=\"{FRONTEND_URL}/admin/support\">View in Admin Dashboard</a></p>"
+        message += f"<p><a href=\"{_support_app_base()}/admin/support\">View in Admin Dashboard</a></p>"
         result = await notification_orchestrator.send(
             template_key="SUPPORT_INTERNAL_NOTIFICATION",
             client_id=None,

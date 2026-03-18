@@ -964,7 +964,9 @@ async def send_report_email(
             This is an automated report from Pleerity Enterprise Ltd.
             If you no longer wish to receive these reports, please update your schedule settings.
         </p>"""
-    portal_url = (os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/") or "#"
+    from utils.app_urls import get_app_base_url
+
+    portal_url = get_app_base_url(for_email_links=True).strip().rstrip("/") or "#"
     html_body = build_customer_email_layout(
         greeting="Hello,",
         body_html=inner_html,
@@ -1188,7 +1190,9 @@ async def create_share_link(
     await db.report_shares.insert_one(share_record)
     
     # Build public URL (using frontend route)
-    base_url = os.environ.get("PUBLIC_URL", "")
+    from utils.app_urls import get_app_base_url
+
+    base_url = get_app_base_url(for_email_links=True).rstrip("/")
     share_url = f"{base_url}/shared/report/{share_id}"
     
     await create_audit_log(

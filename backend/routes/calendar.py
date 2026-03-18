@@ -479,7 +479,10 @@ async def get_calendar_subscription_url(request: Request):
             )
         
         # Get base URL from environment
-        base_url = os.environ.get("BASE_URL", request.base_url.scheme + "://" + request.base_url.netloc)
+        from utils.app_urls import get_api_base_url
+
+        _fallback = request.base_url.scheme + "://" + request.base_url.netloc
+        base_url = get_api_base_url() or _fallback
         
         # For now, return the authenticated endpoint
         # In production, you'd generate a long-lived token for calendar subscriptions

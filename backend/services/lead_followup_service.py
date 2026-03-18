@@ -29,8 +29,18 @@ logger = logging.getLogger(__name__)
 POSTMARK_SERVER_TOKEN = os.environ.get("POSTMARK_SERVER_TOKEN")
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
 UNSUBSCRIBE_URL = os.environ.get("UNSUBSCRIBE_URL", "http://localhost:3000/unsubscribe")
-FRONTEND_BASE_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
-BACKEND_BASE_URL = (os.environ.get("BACKEND_URL") or os.environ.get("API_URL") or "http://localhost:8000").rstrip("/")
+
+
+def _lead_app_base() -> str:
+    from utils.app_urls import get_app_base_url
+
+    return get_app_base_url(for_email_links=True).rstrip("/")
+
+
+def _lead_api_base() -> str:
+    from utils.app_urls import get_api_base_url
+
+    return get_api_base_url().rstrip("/")
 
 LEADS_COLLECTION = "leads"
 
@@ -471,15 +481,17 @@ Reference: {lead_id}
         
         # CTA tracking URLs (record nurture_cta_clicked then redirect)
         from urllib.parse import quote
-        _intake = quote(f"{FRONTEND_BASE_URL}/intake/start", safe="")
-        _booking = quote(f"{FRONTEND_BASE_URL}/booking", safe="")
-        track_cta_url = f"{FRONTEND_BASE_URL}/track/lead-activity?lead_id={lead['lead_id']}&activity_type=nurture_cta_clicked&redirect_url={_intake}"
-        track_booking_url = f"{FRONTEND_BASE_URL}/track/lead-activity?lead_id={lead['lead_id']}&activity_type=consultation_request&redirect_url={_booking}"
+
+        _ab = _lead_app_base()
+        _intake = quote(f"{_ab}/intake/start", safe="")
+        _booking = quote(f"{_ab}/booking", safe="")
+        track_cta_url = f"{_ab}/track/lead-activity?lead_id={lead['lead_id']}&activity_type=nurture_cta_clicked&redirect_url={_intake}"
+        track_booking_url = f"{_ab}/track/lead-activity?lead_id={lead['lead_id']}&activity_type=consultation_request&redirect_url={_booking}"
         
         # Risk check transactional context (optional)
         risk_score = lead.get("risk_score")
         risk_band = lead.get("risk_band") or "—"
-        activation_url = lead.get("activation_url") or f"{FRONTEND_BASE_URL}/intake/start"
+        activation_url = lead.get("activation_url") or f"{_ab}/intake/start"
         if risk_score is not None:
             risk_score = int(risk_score)
         else:
@@ -495,7 +507,7 @@ Reference: {lead_id}
             "draft_id": draft_id,
             "lead_id": lead["lead_id"],
             "unsubscribe_link": unsubscribe_link,
-            "base_url": FRONTEND_BASE_URL,
+            "base_url": _ab,
             "track_cta_url": track_cta_url,
             "track_booking_url": track_booking_url,
             "risk_score": risk_score,
@@ -537,7 +549,7 @@ Reference: {lead_id}
             )
             html_body = LeadFollowUpService.markdown_to_html(body)
             # Email open tracking: 1x1 pixel loads GET /api/leads/track-open?lead_id=...
-            track_open_url = f"{BACKEND_BASE_URL}/api/leads/track-open?lead_id={lead['lead_id']}"
+            track_open_url = f"{_lead_api_base()}/api/leads/track-open?lead_id={lead['lead_id']}"
             html_body += f'<img src="{track_open_url}" width="1" height="1" alt="" style="display:block" />'
             from datetime import datetime, timezone
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -966,7 +978,7 @@ class LeadSLAService:
             "admin@pleerity.com"
         ).split(",")
         SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
-        _base = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        _base = _lead_app_base()
         ADMIN_DASHBOARD_URL = os.environ.get("ADMIN_DASHBOARD_URL", f"{_base}/admin/leads")
         
         try:

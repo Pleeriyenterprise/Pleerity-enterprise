@@ -67,7 +67,11 @@ def test_get_public_app_url_uses_canonical_when_missing():
     """When for_email_links=True and no URL set, returns canonical domain (no Vercel default)."""
     from utils.public_app_url import get_public_app_url
 
-    with patch.dict(os.environ, {"PUBLIC_APP_URL": "", "FRONTEND_PUBLIC_URL": "", "FRONTEND_URL": ""}, clear=False):
+    with patch.dict(
+        os.environ,
+        {"APP_BASE_URL": "", "PUBLIC_APP_URL": "", "FRONTEND_PUBLIC_URL": "", "FRONTEND_URL": ""},
+        clear=False,
+    ):
         url = get_public_app_url(for_email_links=True)
     assert url == "https://pleerityenterprise.co.uk"
     assert "vercel.app" not in url

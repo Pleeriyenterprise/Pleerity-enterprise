@@ -14,7 +14,9 @@ import requests
 import json
 import time
 
-API_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/") + "/api"
+API_URL = (
+    os.environ.get("API_BASE_URL") or os.environ.get("BACKEND_URL") or os.environ.get("REACT_APP_BACKEND_URL") or "http://localhost:8001"
+).rstrip("/") + "/api"
 
 class AssistantTester:
     def __init__(self):
@@ -147,7 +149,12 @@ class AssistantTester:
         # Test frontend is accessible
         try:
             response = requests.get(
-                os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/") + "/app/assistant",
+                (
+                    os.environ.get("APP_BASE_URL")
+                    or os.environ.get("FRONTEND_URL")
+                    or "http://localhost:3000"
+                ).rstrip("/")
+                + "/app/assistant",
                 timeout=5
             )
             # Will redirect to login if not authenticated, but route exists

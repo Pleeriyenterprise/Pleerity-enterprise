@@ -24,11 +24,9 @@ def _activate_url(lead: dict, activation_token: Optional[str] = None) -> str:
     Build absolute URL for 'Activate Monitoring' CTA.
     Uses app origin (get_public_app_url) so /intake/start is on the portal app; optional lead_token for prefill.
     """
-    try:
-        from utils.public_app_url import get_public_app_url
-        base = get_public_app_url(for_email_links=True).rstrip("/")
-    except ValueError:
-        base = (os.environ.get("FRONTEND_URL") or os.environ.get("FRONTEND_PUBLIC_URL") or "").strip().rstrip("/") or "http://localhost:3000"
+    from utils.app_urls import get_app_base_url
+
+    base = get_app_base_url(for_email_links=True).rstrip("/")
     url = f"{base}/intake/start"
     if activation_token and (activation_token or "").strip():
         url = f"{url}?lead_token={(activation_token or "").strip()}"

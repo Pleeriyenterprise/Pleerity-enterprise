@@ -122,7 +122,9 @@ async def process_onboarding_email_queue() -> dict:
         if not recipient:
             skipped += 1
             continue
-        portal_base = (os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+        from utils.app_urls import get_app_base_url
+
+        portal_base = get_app_base_url(for_email_links=True).strip().rstrip("/")
         context = {
             "client_name": client.get("full_name") or "there",
             "portal_base_url": portal_base,

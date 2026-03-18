@@ -1032,7 +1032,9 @@ class LeadService:
         """
         import os
         ADMIN_NOTIFICATION_EMAILS = os.environ.get("ADMIN_NOTIFICATION_EMAILS", "admin@pleerity.com").split(",")
-        _base = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        from utils.app_urls import get_app_base_url
+
+        _base = get_app_base_url(for_email_links=True).rstrip("/")
         ADMIN_DASHBOARD_URL = os.environ.get("ADMIN_DASHBOARD_URL", f"{_base}/admin/leads")
         try:
             from services.notification_orchestrator import notification_orchestrator
@@ -1086,7 +1088,9 @@ class LeadService:
             "admin@pleerity.com"
         ).split(",")
         SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
-        _base = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        from utils.app_urls import get_app_base_url
+
+        _base = get_app_base_url(for_email_links=True).rstrip("/")
         ADMIN_DASHBOARD_URL = os.environ.get("ADMIN_DASHBOARD_URL", f"{_base}/admin/leads")
         
         try:

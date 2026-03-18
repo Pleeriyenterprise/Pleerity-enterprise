@@ -28,7 +28,11 @@ async def notify_admin_new_submission(
         return
     try:
         from services.notification_orchestrator import notification_orchestrator
-        base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("ADMIN_DASHBOARD_URL") or "http://localhost:3000").rstrip("/")
+        from utils.app_urls import get_app_base_url
+
+        base_url = (os.environ.get("ADMIN_DASHBOARD_URL") or "").strip().rstrip("/") or get_app_base_url(
+            for_email_links=True
+        ).rstrip("/")
         link = f"{base_url}/admin/submissions/{submission_type}/{submission_id}" if detail_url_path is None else f"{base_url}{detail_url_path}"
         subject = f"New {submission_type.title()} submission: {submission_id}"
         message = f"<p>{summary}</p><p><a href=\"{link}\">View in admin →</a></p>"

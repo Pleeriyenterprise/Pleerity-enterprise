@@ -642,7 +642,9 @@ async def submit_order_provide_info(body: OrderProvideInfoSubmitBody, request: R
         {"email": 1, "name": 1, "user_id": 1, "portal_user_id": 1},
     )
     if admin:
-        frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+        from utils.app_urls import get_app_base_url
+
+        frontend_url = get_app_base_url(for_email_links=True)
         order_link = f"{frontend_url}/admin/orders?order={order_id}"
         email_data = build_client_response_received_email(
             admin_name=admin.get("name", "Admin"),

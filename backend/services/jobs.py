@@ -478,7 +478,9 @@ class JobScheduler:
                 return False
             key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}"
-            base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://pleerityenterprise.co.uk").strip().rstrip("/")
+            from utils.app_urls import get_app_base_url
+
+            base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
             portal_link = f"{base_url}/dashboard"
             context = {
                 "client_name": client.get("full_name", "Valued Customer"),
@@ -540,7 +542,9 @@ class JobScheduler:
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             key_suffix = (recipient_phone or "").replace("+", "").replace(" ", "")[:20] if recipient_phone else "client"
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}_{key_suffix}"
-            base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("PORTAL_BASE_URL") or "https://pleerityenterprise.co.uk").strip().rstrip("/")
+            from utils.app_urls import get_app_base_url
+
+            base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
             portal_link = f"{base_url}/dashboard"
             total = len(expiring) + len(overdue)
             context = {"count": total, "portal_link": portal_link}
@@ -825,8 +829,10 @@ class JobScheduler:
                 if properties_with_changes and status_alerts_enabled:
                     attempted_alerts += 1
                     try:
-                        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+                        from utils.app_urls import get_app_base_url
                         from services.notification_orchestrator import notification_orchestrator
+
+                        frontend_url = get_app_base_url(for_email_links=True)
                         date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                         ids_hash = "_".join(sorted(p.get("property_id", "") for p in properties_with_changes))[:32]
                         idempotency_key = f"{client['client_id']}_COMPLIANCE_ALERT_{date_key}_{ids_hash}"
@@ -1029,7 +1035,9 @@ class JobScheduler:
                         renewal_date_str = str(renewal_date)[:10] if renewal_date else "soon"
                     
                     amount = f"£{plan_def.get('monthly_price', 0):.2f}"
-                    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+                    from utils.app_urls import get_app_base_url
+
+                    frontend_url = get_app_base_url(for_email_links=False)
                     
                     # Send renewal reminder via orchestrator
                     period_end = billing.get("current_period_end")

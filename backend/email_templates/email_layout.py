@@ -9,7 +9,6 @@ from typing import Optional
 COMPANY_NAME = "Pleerity Enterprise Ltd"
 TAGLINE = "AI-Driven Solutions & Compliance"
 SUPPORT_EMAIL = "info@pleerityenterprise.co.uk"
-WEBSITE_URL = "https://pleerityenterprise.co.uk"
 SECURITY_NOTE = "For security, Pleerity will never ask for your password by email."
 PREFERENCES_LINK_TEXT = "Manage notification preferences"
 
@@ -32,7 +31,7 @@ def build_customer_email_layout(
     company_name: str = COMPANY_NAME,
     tagline: str = TAGLINE,
     support_email: str = SUPPORT_EMAIL,
-    website_url: str = WEBSITE_URL,
+    website_url: Optional[str] = None,
     security_note: str = SECURITY_NOTE,
     customer_reference: Optional[str] = None,
 ) -> str:
@@ -40,6 +39,10 @@ def build_customer_email_layout(
     Build full HTML for a customer-facing email with standard header, body, CTA,
     transparency block, notification preferences link, and footer.
     """
+    if website_url is None:
+        from utils.branding import get_branding_website_url
+
+        website_url = get_branding_website_url()
     header_text = header_title or "Pleerity"
     header_block = f"""
                 <div style="background-color: {HEADER_BG}; padding: 20px; border-radius: 8px 8px 0 0;">

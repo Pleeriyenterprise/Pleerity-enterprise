@@ -16,8 +16,18 @@ from services.lead_service import LeadService
 logger = logging.getLogger(__name__)
 
 LEADS_COLLECTION = "leads"
-FRONTEND_BASE_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
-BACKEND_BASE_URL = (os.environ.get("BACKEND_URL") or os.environ.get("API_URL") or "http://localhost:8000").rstrip("/")
+
+
+def _app_base() -> str:
+    from utils.app_urls import get_app_base_url
+
+    return get_app_base_url(for_email_links=True).rstrip("/")
+
+
+def _api_base() -> str:
+    from utils.app_urls import get_api_base_url
+
+    return get_api_base_url().rstrip("/")
 UNSUBSCRIBE_URL = os.environ.get("UNSUBSCRIBE_URL", "http://localhost:3000/unsubscribe")
 COMPANY_FOOTER = os.environ.get(
     "COMPANY_ADDRESS_FOOTER",
@@ -150,7 +160,7 @@ def _render_nurture_body(lead: Dict[str, Any], template_index: int) -> str:
     unsubscribe_link = f'<a href="{UNSUBSCRIBE_URL}?lead={lead[\"lead_id\"]}">Unsubscribe from marketing emails</a>'
     return template["body"].format(
         name=name,
-        base_url=FRONTEND_BASE_URL,
+        base_url=_app_base(),
         disclaimer=DISCLAIMER,
         unsubscribe_link=unsubscribe_link,
         company_footer=COMPANY_FOOTER,
@@ -169,7 +179,7 @@ async def send_nurture_email(
         return False, "Invalid template index"
     subject = NURTURE_TEMPLATES[template_index]["subject"]
     body_html = _markdown_to_html(_render_nurture_body(lead, template_index))
-    track_open_url = f"{BACKEND_BASE_URL}/api/leads/track-open?lead_id={lead['lead_id']}"
+    track_open_url = f"{_api_base()}/api/leads/track-open?lead_id={lead['lead_id']}"
     body_html += f'<img src="{track_open_url}" width="1" height="1" alt="" style="display:block" />'
     try:
         from services.notification_orchestrator import notification_orchestrator

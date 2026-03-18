@@ -10,7 +10,7 @@ def test_activate_url_contains_intake_start():
     """Lead email CTA must contain /intake/start; uses get_public_app_url (app origin)."""
     from services.risk_lead_email_service import _activate_url
 
-    with patch("utils.public_app_url.get_public_app_url", return_value="https://app.example.com"):
+    with patch("utils.app_urls.get_app_base_url", return_value="https://app.example.com"):
         url = _activate_url({})
         assert url == "https://app.example.com/intake/start"
 
@@ -19,19 +19,28 @@ def test_activate_url_with_token_appends_lead_token():
     """When activation_token is provided, URL includes ?lead_token= for intake prefill."""
     from services.risk_lead_email_service import _activate_url
 
-    with patch("utils.public_app_url.get_public_app_url", return_value="https://app.example.com"):
+    with patch("utils.app_urls.get_app_base_url", return_value="https://app.example.com"):
         url = _activate_url({}, "signed-token-xyz")
         assert url == "https://app.example.com/intake/start?lead_token=signed-token-xyz"
 
 
-def test_activate_url_fallback_contains_intake_start():
-    """When get_public_app_url raises (e.g. missing env), fallback yields URL containing /intake/start."""
+def test_activate_url_uses_env_when_no_patch():
+    """_activate_url resolves app base from env chain."""
     from services.risk_lead_email_service import _activate_url
 
-    with patch("utils.public_app_url.get_public_app_url", side_effect=ValueError("missing")):
-        with patch.dict(os.environ, {"FRONTEND_URL": "https://app.example.com"}, clear=False):
-            url = _activate_url({})
-            assert "/intake/start" in url
+    with patch.dict(
+        os.environ,
+        {
+            "APP_BASE_URL": "",
+            "FRONTEND_PUBLIC_URL": "",
+            "PUBLIC_APP_URL": "",
+            "FRONTEND_URL": "https://app.example.com",
+            "PORTAL_BASE_URL": "",
+        },
+        clear=False,
+    ):
+        url = _activate_url({})
+        assert url == "https://app.example.com/intake/start"
 
 
 def test_step1_email_body_contains_intake_start_link():

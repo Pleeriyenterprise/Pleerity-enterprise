@@ -524,7 +524,9 @@ async def request_client_info(
         )
         
         # Build and send client email (token link works without portal login)
-        frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+        from utils.app_urls import get_app_base_url
+
+        frontend_url = get_app_base_url(for_email_links=True)
         from services.order_view_token import generate_order_provide_info_token
         client_email = (order.get("customer") or {}).get("email")
         provide_info_link = f"{frontend_url}/order/provide-info?token={generate_order_provide_info_token(order_id, client_email or '')}"
@@ -707,7 +709,9 @@ async def get_document_access_token(
     )
     
     # Build full URL
-    base_url = os.environ.get("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+    from utils.app_urls import get_app_base_url
+
+    base_url = get_app_base_url(for_email_links=True)
     preview_url = f"{base_url}/api/admin/orders/{order_id}/documents/{version}/view?format={format}&token={token}"
     
     return {

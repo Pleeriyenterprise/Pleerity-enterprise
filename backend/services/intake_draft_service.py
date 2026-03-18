@@ -889,7 +889,9 @@ async def _send_order_confirmation_email(order: Dict[str, Any]) -> bool:
         estimated_delivery = f"{sla_hours} hours"
     
     # Build view order link
-    frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+    from utils.app_urls import get_app_base_url
+
+    frontend_url = get_app_base_url(for_email_links=True)
     view_order_link = f"{frontend_url}/app/orders"
     
     # Build email content

@@ -178,7 +178,9 @@ async def submit_client_input(
         
         if admin:
             # Send email notification
-            frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
+            from utils.app_urls import get_app_base_url
+
+            frontend_url = get_app_base_url(for_email_links=True)
             order_link = f"{frontend_url}/admin/orders?order={order_id}"
             
             email_data = build_client_response_received_email(

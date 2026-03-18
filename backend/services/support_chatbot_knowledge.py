@@ -9,7 +9,9 @@ from typing import Any, Dict, List, Optional
 import os
 
 def _frontend_base() -> str:
-    return (os.environ.get("FRONTEND_URL") or os.environ.get("SITE_URL") or "https://pleerityenterprise.co.uk").rstrip("/")
+    from utils.app_urls import get_app_base_url
+
+    return get_app_base_url(for_email_links=True).rstrip("/")
 
 
 def _cvp_pricing() -> str:

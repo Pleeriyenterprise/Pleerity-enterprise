@@ -11,7 +11,9 @@ import json
 from datetime import datetime
 import sys
 
-API_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/") + "/api"
+API_URL = (
+    os.environ.get("API_BASE_URL") or os.environ.get("BACKEND_URL") or os.environ.get("REACT_APP_BACKEND_URL") or "http://localhost:8001"
+).rstrip("/") + "/api"
 
 class E2ETestSuite:
     def __init__(self):

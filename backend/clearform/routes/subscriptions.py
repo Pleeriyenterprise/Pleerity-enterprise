@@ -109,7 +109,9 @@ async def create_subscription_checkout(
         plan_details = CLEARFORM_PLANS[plan]
         
         stripe.api_key = os.getenv("STRIPE_API_KEY")
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        from utils.app_urls import get_app_base_url
+
+        frontend_url = get_app_base_url(for_email_links=False)
         
         # Get or create Stripe customer
         from database import database
@@ -249,7 +251,9 @@ async def get_billing_portal(user = Depends(get_current_clearform_user)):
             raise HTTPException(status_code=400, detail="No billing account found")
         
         stripe.api_key = os.getenv("STRIPE_API_KEY")
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        from utils.app_urls import get_app_base_url
+
+        frontend_url = get_app_base_url(for_email_links=False)
         
         portal_session = stripe.billing_portal.Session.create(
             customer=user_data["stripe_customer_id"],

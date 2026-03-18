@@ -10,7 +10,7 @@ Features:
 - CRN-based account lookup
 - Canned responses for common queries
 
-CVP pricing and frontend links are built from plan_registry and FRONTEND_URL so the AI
+CVP pricing and frontend links are built from plan_registry and get_app_base_url() so the AI
 always uses current prices and correct sign-in/pricing URLs.
 """
 import os
@@ -26,7 +26,10 @@ logger = logging.getLogger(__name__)
 # Get configurable values from environment
 SUPPORT_WHATSAPP = os.environ.get("SUPPORT_WHATSAPP_NUMBER", "+447440645017")
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
-FRONTEND_BASE = (os.environ.get("FRONTEND_URL") or os.environ.get("SITE_URL") or "https://pleerityenterprise.co.uk").rstrip("/")
+def _chatbot_app_base() -> str:
+    from utils.app_urls import get_app_base_url
+
+    return get_app_base_url(for_email_links=True).rstrip("/")
 
 # ============================================================================
 # KNOWLEDGE BASE - Pleerity Services Information (static parts)
@@ -62,10 +65,10 @@ def get_chatbot_knowledge_base() -> Dict[str, Any]:
         "whatsapp": SUPPORT_WHATSAPP,
     },
         "frontend_links": {
-            "client_signin": f"{FRONTEND_BASE}/login/client",
-            "pricing": f"{FRONTEND_BASE}/pricing",
-            "compliance_vault_landing": f"{FRONTEND_BASE}/compliance-vault-pro",
-            "dashboard": f"{FRONTEND_BASE}/dashboard",
+            "client_signin": f"{_chatbot_app_base()}/login/client",
+            "pricing": f"{_chatbot_app_base()}/pricing",
+            "compliance_vault_landing": f"{_chatbot_app_base()}/compliance-vault-pro",
+            "dashboard": f"{_chatbot_app_base()}/dashboard",
         },
     "services": {
         "cvp": {
@@ -334,9 +337,9 @@ def get_guided_knowledge() -> Dict[str, Any]:
                 "Council licensing tracking",
             ],
             "actions": [
-                ("See pricing", f"{FRONTEND_BASE}/pricing"),
-                ("Create account", f"{FRONTEND_BASE}/compliance-vault-pro"),
-                ("Check your compliance risk", f"{FRONTEND_BASE}/risk-check"),
+                ("See pricing", f"{_chatbot_app_base()}/pricing"),
+                ("Create account", f"{_chatbot_app_base()}/compliance-vault-pro"),
+                ("Check your compliance risk", f"{_chatbot_app_base()}/risk-check"),
                 ("Ask a question", None),
             ],
             "pricing": cvp_pricing,
@@ -349,8 +352,8 @@ def get_guided_knowledge() -> Dict[str, Any]:
                 "Printed copy option",
             ],
             "actions": [
-                ("See pricing", f"{FRONTEND_BASE}/pricing"),
-                ("View services", f"{FRONTEND_BASE}/services"),
+                ("See pricing", f"{_chatbot_app_base()}/pricing"),
+                ("View services", f"{_chatbot_app_base()}/services"),
                 ("Ask a question", None),
             ],
         },
@@ -362,7 +365,7 @@ def get_guided_knowledge() -> Dict[str, Any]:
                 "AI Tool Recommendation Report",
             ],
             "actions": [
-                ("See options", f"{FRONTEND_BASE}/services"),
+                ("See options", f"{_chatbot_app_base()}/services"),
                 ("Contact support", None),
             ],
         },
@@ -373,7 +376,7 @@ def get_guided_knowledge() -> Dict[str, Any]:
                 "Rental yield and investment analysis",
             ],
             "actions": [
-                ("See reports", f"{FRONTEND_BASE}/services"),
+                ("See reports", f"{_chatbot_app_base()}/services"),
                 ("Contact support", None),
             ],
         },
@@ -384,7 +387,7 @@ def get_guided_knowledge() -> Dict[str, Any]:
                 "Order status and CRN lookup",
             ],
             "actions": [
-                ("Sign in", f"{FRONTEND_BASE}/login/client"),
+                ("Sign in", f"{_chatbot_app_base()}/login/client"),
                 ("Talk to support", None),
             ],
         },
@@ -392,9 +395,9 @@ def get_guided_knowledge() -> Dict[str, Any]:
             "description": "Current plans and pricing.",
             "features": [f"CVP: {cvp_pricing}", "Document packs: Essential £29, Tenancy £49, Ultimate £79"],
             "actions": [
-                ("View pricing", f"{FRONTEND_BASE}/pricing"),
-                ("Create account", f"{FRONTEND_BASE}/compliance-vault-pro"),
-                ("Check your compliance risk", f"{FRONTEND_BASE}/risk-check"),
+                ("View pricing", f"{_chatbot_app_base()}/pricing"),
+                ("Create account", f"{_chatbot_app_base()}/compliance-vault-pro"),
+                ("Check your compliance risk", f"{_chatbot_app_base()}/risk-check"),
                 ("Ask a question", None),
             ],
         },
@@ -1368,7 +1371,7 @@ Need to discuss something specific? I can connect you with our billing team.""",
     
     "cvp_info": {
         "trigger": "cvp_info",
-        "response": None,  # Built dynamically in get_canned_response from plan_registry + FRONTEND_BASE
+        "response": None,  # Built dynamically in get_canned_response from plan_registry + _chatbot_app_base()
         "action": "respond",
         "metadata": {"canned": True, "category": "compliance", "service_area": "cvp"}
     },
@@ -1431,7 +1434,7 @@ Your complete property compliance management platform.
 
 Need more help? I can connect you with a human agent."""
         out["actions"] = [
-            {"label": "Sign in", "url": f"{FRONTEND_BASE}/login/client"},
+            {"label": "Sign in", "url": f"{_chatbot_app_base()}/login/client"},
             {"label": "Talk to support", "url": None},
         ]
     return out

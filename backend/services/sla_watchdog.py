@@ -32,7 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 def _dashboard_link() -> str:
-    base = (os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+    from utils.app_urls import get_app_base_url
+
+    base = get_app_base_url(for_email_links=True).strip().rstrip("/")
     return f"{base}/admin/observability" if base else ""
 
 

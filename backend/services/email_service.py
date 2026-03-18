@@ -12,13 +12,20 @@ from email_templates.email_layout import build_customer_email_layout
 
 logger = logging.getLogger(__name__)
 
+
+def _email_app_base() -> str:
+    from utils.app_urls import get_app_base_url
+
+    return get_app_base_url(for_email_links=True).rstrip("/")
+
+
 # Email sender configuration
 # Verified sender in Postmark
 DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
 
-# Base URL for client portal (notification preferences link). Use FRONTEND_URL or PORTAL_BASE_URL.
+
 def _notification_preferences_url(model: Dict[str, Any]) -> str:
-    base = (model.get("portal_base_url") or os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+    base = (model.get("portal_base_url") or _email_app_base()).strip().rstrip("/")
     if base:
         return base + "/settings/notifications"
     return ""
@@ -650,7 +657,7 @@ class EmailService:
             from email_templates.internal_alert_layout import build_internal_alert_html
             return build_internal_alert_html(model)
         elif template_alias in ONBOARDING_ALIASES:
-            portal_base = (model.get("portal_base_url") or model.get("portal_link") or os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+            portal_base = (model.get("portal_base_url") or model.get("portal_link") or _email_app_base()).strip().rstrip("/")
             c = _get_onboarding_content(template_alias)
             cta_url = (portal_base + c.get("cta_url_suffix", "/dashboard")) if portal_base else "#"
             greeting = f"Hello {model.get('client_name', 'there')},"
@@ -999,7 +1006,7 @@ Always review the output and seek professional advice for legal matters.
             body_html = c.get("body", "")
             body_text = body_html.replace("</p>", "\n").replace("<p>", "").replace("<ul>", "\n").replace("</ul>", "").replace("<li>", "• ").replace("</li>", "\n")
             body_text = html_module.unescape(body_text.strip())
-            portal_base = (model.get("portal_base_url") or model.get("portal_link") or os.getenv("FRONTEND_URL") or os.getenv("PORTAL_BASE_URL") or "").strip().rstrip("/")
+            portal_base = (model.get("portal_base_url") or model.get("portal_link") or _email_app_base()).strip().rstrip("/")
             cta_suffix = c.get("cta_url_suffix", "/dashboard")
             cta_url = (portal_base + cta_suffix) if portal_base else "#"
             lines = [
@@ -1312,8 +1319,7 @@ Hello {model.get('client_name', 'there')},
         """DEPRECATED: Use notification_orchestrator.send(template_key='CLEARFORM_WELCOME')."""
         _raise_send_deprecated()
         if dashboard_link is None:
-            frontend_url = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
-            dashboard_link = f"{frontend_url}/clearform/dashboard"
+            dashboard_link = f"{_email_app_base()}/clearform/dashboard"
         
         await self.send_email(
             recipient=recipient,

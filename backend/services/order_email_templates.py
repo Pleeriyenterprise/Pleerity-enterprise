@@ -10,8 +10,6 @@ COMPANY_NAME = "Pleerity Enterprise Ltd"
 BRAND_COLOR_PRIMARY = "#0B1D3A"  # Midnight blue
 BRAND_COLOR_ACCENT = "#00B8A9"  # Electric teal
 SUPPORT_EMAIL = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://pleerityenterprise.co.uk")
-
 
 def _build_email_header(title: str, subtitle: Optional[str] = None, badge_text: Optional[str] = None) -> str:
     """Build consistent branded header."""

@@ -319,6 +319,8 @@ class OrderNotificationService:
                 if notification_email:
                     try:
                         from services.notification_orchestrator import notification_orchestrator
+                        from utils.app_urls import get_app_base_url
+
                         idempotency_key = f"{order_id}_ORDER_NOTIFICATION_{event_type}_{notification_email}"
                         result = await notification_orchestrator.send(
                             template_key="ORDER_NOTIFICATION",
@@ -328,7 +330,7 @@ class OrderNotificationService:
                                 "client_name": admin.get("name", "Admin"),
                                 "title": f"{config.get('icon', '')} {title}",
                                 "message": f"Order: {order_id}\n\n{message}",
-                                "portal_link": f"{os.environ.get('FRONTEND_URL', 'https://pleerityenterprise.co.uk')}/admin/orders",
+                                "portal_link": f"{get_app_base_url(for_email_links=True)}/admin/orders",
                                 "subject": f"[Pleerity] {title}: {order_id}",
                             },
                             idempotency_key=idempotency_key,

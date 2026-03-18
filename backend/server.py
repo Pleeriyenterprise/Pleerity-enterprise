@@ -132,6 +132,13 @@ async def lifespan(app: FastAPI):
         except RuntimeError as e:
             logger.critical("Startup aborted: %s", e)
             raise
+        try:
+            from utils.app_urls import validate_url_configuration
+
+            validate_url_configuration()
+        except RuntimeError as e:
+            logger.critical("Startup aborted (URL configuration): %s", e)
+            raise
 
     # Alerting: warn if admin incident emails are not configured (ops visibility)
     _alert_emails = (os.environ.get("ADMIN_ALERT_EMAILS") or os.environ.get("OPS_ALERT_EMAIL") or "").strip()
@@ -168,13 +175,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Stripe config check failed: %s", e)
 
-    # Public frontend URL for activation/email links (safe log, no secrets)
     try:
-        from utils.public_app_url import get_public_app_url
-        _app_url = get_public_app_url(for_email_links=False)
-        logger.info("PUBLIC_APP_URL configured: %s", _app_url)
+        from utils.app_urls import get_app_base_url, get_api_base_url
+
+        logger.info("APP_BASE_URL (resolved): %s", get_app_base_url(for_email_links=False))
+        logger.info("API_BASE_URL (resolved): %s", get_api_base_url())
     except Exception as e:
-        logger.warning("PUBLIC_APP_URL not configured: %s", e)
+        logger.warning("URL resolution log failed: %s", e)
 
     # Idempotent OWNER bootstrap: when BOOTSTRAP_ENABLED=true OR when email+password env are set (Render)
     bootstrap_enabled = os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true"

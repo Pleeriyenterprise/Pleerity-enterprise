@@ -1467,14 +1467,9 @@ async def resend_password_setup(request: Request, client_id: str):
                 doc[key] = doc[key].isoformat()
         
         await db.password_tokens.insert_one(doc)
-        from utils.public_app_url import get_frontend_base_url
-        try:
-            base_url = get_frontend_base_url()
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"error_code": "FRONTEND_PUBLIC_URL_MISSING", "message": str(e)},
-            )
+        from utils.app_urls import get_app_base_url
+
+        base_url = get_app_base_url(for_email_links=True)
         setup_link = f"{base_url}/set-password?token={raw_token}"
         activation_link_domain = urlparse(setup_link).netloc or ""
         client_email = (client.get("email") or client.get("contact_email") or portal_user.get("auth_email") or "").strip()
