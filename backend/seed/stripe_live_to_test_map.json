@@ -1,0 +1,8 @@
+{
+  "_comment": "Run: python scripts/clone_stripe_live_to_test.py (use --dry-run first). Maps live Stripe IDs to test IDs for non-CVP services.",
+  "generated_at": null,
+  "dry_run": null,
+  "product_id_map": {},
+  "price_id_map": {},
+  "skipped_live_products": []
+}

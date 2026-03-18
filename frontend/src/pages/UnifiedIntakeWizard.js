@@ -1220,10 +1220,29 @@ export default function UnifiedIntakeWizard() {
       } else if (draft) {
         await saveStepData();
       }
+
+      // Block empty/incomplete service intake before review (fixes checkout "Draft not ready for payment")
+      if (currentStep === 3 && draft) {
+        const vRes = await client.post(`/intake/draft/${draft.draft_id}/validate-service-intake`);
+        const v = vRes.data;
+        if (!v.valid) {
+          const errs = v.errors || [];
+          const fieldErrs = {};
+          errs.forEach((e) => {
+            if (e.field_key) fieldErrs[e.field_key] = e.message;
+          });
+          setValidationErrors(fieldErrs);
+          toast.error(errs[0]?.message || 'Please complete all required service fields.');
+          return;
+        }
+        setValidationErrors({});
+      }
       
       setCurrentStep(prev => Math.min(prev + 1, 5));
     } catch (err) {
       console.error('Navigation error:', err);
+      const msg = err.response?.data?.detail || err.message || 'Validation failed';
+      toast.error(typeof msg === 'string' ? msg : 'Could not validate intake');
     }
   };
 
@@ -1238,9 +1257,24 @@ export default function UnifiedIntakeWizard() {
     
     try {
       setLoading(true);
-      
-      // Save consent
+
+      // Persist full draft so checkout page and Stripe session see latest data (resume / back-button safe)
+      await client.put(`/intake/draft/${draft.draft_id}/intake`, {
+        intake_data: intakeData,
+        merge: true,
+      });
+      await client.put(`/intake/draft/${draft.draft_id}/client-identity`, clientData);
       await client.put(`/intake/draft/${draft.draft_id}/delivery-consent`, consent);
+
+      const fullVal = await client.post(`/intake/draft/${draft.draft_id}/validate`);
+      if (!fullVal.data.ready_for_payment) {
+        const errs = fullVal.data.errors || [];
+        const miss = fullVal.data.missing_sections || [];
+        toast.error(errs[0]?.message || (miss.length ? `Missing: ${miss.join(', ')}` : 'Complete all steps before payment.'));
+        errs.slice(1, 5).forEach((e) => toast.error(e.message));
+        setLoading(false);
+        return;
+      }
       
       // Pre-checkout validation for document packs
       if (isDocumentPack(selectedService?.service_code)) {

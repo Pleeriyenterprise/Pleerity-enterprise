@@ -40,6 +40,7 @@ from services.intake_schema_registry import (
     get_postal_address_schema,
     SERVICE_INTAKE_SCHEMAS,
     SERVICES_WITH_UPLOADS,
+    validate_intake_payload,
 )
 from services.pack_registry import (
     get_pack_contents,
@@ -445,6 +446,20 @@ async def validate_intake_draft(draft_id: str):
         "status": draft["status"],
         **validation,
     }
+
+
+@router.post("/draft/{draft_id}/validate-service-intake")
+async def validate_service_intake_only(draft_id: str):
+    """
+    Validate only service-specific intake fields (step 3). Use before leaving step 3 so users
+    cannot reach checkout with an empty or incomplete intake_payload.
+    """
+    draft = await get_draft(draft_id)
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    service_code = draft.get("service_code") or ""
+    intake = draft.get("intake_payload") or {}
+    return validate_intake_payload(service_code, intake)
 
 
 # ============================================================================

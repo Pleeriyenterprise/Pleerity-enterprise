@@ -66,8 +66,15 @@ export default function OrderCheckoutPage() {
         setPaying(false);
       }
     } catch (err) {
-      const msg = err.response?.data?.detail?.message || err.response?.data?.detail || 'Payment failed';
-      toast.error(typeof msg === 'string' ? msg : 'Payment failed');
+      const d = err.response?.data?.detail;
+      const msg =
+        (typeof d === 'object' && d?.message) ||
+        (typeof d === 'string' ? d : null) ||
+        'Payment failed';
+      toast.error(msg);
+      if (typeof d === 'object' && Array.isArray(d?.errors) && d.errors.length > 1) {
+        d.errors.slice(1, 6).forEach((e) => toast.error(e?.message || String(e)));
+      }
       setPaying(false);
     }
   };
