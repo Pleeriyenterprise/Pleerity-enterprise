@@ -29,6 +29,7 @@ from services.intake_draft_service import (
     update_draft_delivery_consent,
     update_draft_addons,
     validate_draft,
+    ensure_draft_pricing_snapshot,
     mark_ready_for_payment,
     create_checkout_session,
     mark_draft_abandoned,
@@ -294,10 +295,20 @@ async def get_draft_by_reference(draft_ref: str):
     draft = await get_draft_by_ref(draft_ref)
     if not draft:
         raise HTTPException(status_code=404, detail="Draft not found")
-    
+
+    try:
+        await ensure_draft_pricing_snapshot(draft["draft_id"])
+        draft = await get_draft_by_ref(draft_ref)
+    except ValueError as e:
+        logger.warning(
+            "get_draft_by_ref pricing repair skipped draft_ref=%s: %s",
+            draft_ref,
+            e,
+        )
+
     validation = await validate_draft(draft["draft_id"])
     draft["validation"] = validation
-    
+
     return draft
 
 

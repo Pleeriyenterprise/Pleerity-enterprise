@@ -28,10 +28,12 @@ from services.document_pack_orchestrator import (
     CANONICAL_ORDER,
 )
 from services.document_pack_webhook_handler import document_pack_webhook_handler
+from services.intake_schema_registry import SERVICE_INTAKE_SCHEMAS
 from services.intake_draft_service import (
     get_draft_by_ref,
     get_draft,
     validate_draft,
+    ensure_draft_pricing_snapshot,
     create_checkout_session as create_checkout_session_impl,
     DraftStatus,
 )
@@ -96,24 +98,73 @@ async def create_checkout_session(request: CreateCheckoutSessionRequest):
     Flow: validate draft exists, service is active, price + add-ons; then create
     Stripe session with metadata (draft_ref, service_code, environment). Redirect URL returned.
     """
-    draft = await get_draft_by_ref(request.draft_ref)
+    draft_ref = request.draft_ref
+    draft = await get_draft_by_ref(draft_ref)
     if not draft:
+        logger.warning("CHECKOUT_REJECT reason=draft_not_found draft_ref=%s", draft_ref)
         raise HTTPException(status_code=404, detail="Draft not found")
     if draft["status"] == DraftStatus.CONVERTED:
+        logger.warning(
+            "CHECKOUT_REJECT reason=already_converted draft_ref=%s draft_id=%s",
+            draft_ref,
+            draft.get("draft_id"),
+        )
         raise HTTPException(status_code=400, detail="Draft already converted to order")
     draft_id = draft["draft_id"]
     service_code = draft.get("service_code")
     if not service_code:
+        logger.warning("CHECKOUT_REJECT reason=missing_service_code draft_ref=%s", draft_ref)
         raise HTTPException(status_code=400, detail="Draft missing service_code")
+
     db = database.get_db()
-    service = await db.service_catalogue_v2.find_one(
-        {"service_code": service_code, "active": True},
-        {"_id": 1}
-    )
-    if not service:
-        raise HTTPException(status_code=400, detail=f"Service not active: {service_code}")
+    cat = await db.service_catalogue_v2.find_one({"service_code": service_code})
+    catalogue_active = bool(cat and cat.get("active") is True)
+    if not catalogue_active:
+        if service_code not in SERVICE_INTAKE_SCHEMAS:
+            logger.warning(
+                "CHECKOUT_REJECT reason=catalogue_inactive_or_missing_not_intake_service "
+                "draft_ref=%s service_code=%s catalogue_exists=%s",
+                draft_ref,
+                service_code,
+                cat is not None,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Service not available for checkout: {service_code}. "
+                    "Ensure service_catalogue_v2 has an active row or use a supported intake service."
+                ),
+            )
+        logger.warning(
+            "CHECKOUT_SESSION intake_fallback draft_ref=%s service_code=%s "
+            "catalogue_active=%s catalogue_row=%s",
+            draft_ref,
+            service_code,
+            catalogue_active,
+            cat is not None,
+        )
+
+    try:
+        await ensure_draft_pricing_snapshot(draft_id)
+    except ValueError as e:
+        logger.warning(
+            "CHECKOUT_REJECT reason=pricing_repair_failed draft_ref=%s service_code=%s detail=%s",
+            draft_ref,
+            service_code,
+            e,
+        )
+        raise HTTPException(status_code=400, detail=str(e))
+
     validation = await validate_draft(draft_id)
     if not validation.get("ready_for_payment"):
+        logger.warning(
+            "CHECKOUT_REJECT reason=draft_not_ready draft_ref=%s service_code=%s "
+            "errors=%s missing_sections=%s",
+            draft_ref,
+            service_code,
+            validation.get("errors"),
+            validation.get("missing_sections"),
+        )
         raise HTTPException(
             status_code=400,
             detail={
@@ -131,17 +182,38 @@ async def create_checkout_session(request: CreateCheckoutSessionRequest):
             success_url=success_url,
             cancel_url=cancel_url,
         )
+        logger.info(
+            "CHECKOUT_SESSION_OK draft_ref=%s service_code=%s session_id=%s",
+            draft_ref,
+            service_code,
+            result.get("session_id"),
+        )
         return result
     except ValueError as e:
+        logger.warning(
+            "CHECKOUT_REJECT reason=session_impl_valueerror draft_ref=%s service_code=%s detail=%s",
+            draft_ref,
+            service_code,
+            e,
+        )
         raise HTTPException(status_code=400, detail=str(e))
     except stripe.error.StripeError as e:
-        logger.exception("Stripe API error creating checkout session: %s", e)
+        logger.exception(
+            "CHECKOUT_REJECT reason=stripe_error draft_ref=%s service_code=%s stripe=%s",
+            draft_ref,
+            service_code,
+            e,
+        )
         raise HTTPException(
             status_code=502,
             detail="Payment provider temporarily unavailable. Please try again or contact support.",
         )
     except Exception as e:
-        logger.exception("Failed to create checkout session: %s", e)
+        logger.exception(
+            "CHECKOUT_REJECT reason=unexpected draft_ref=%s service_code=%s",
+            draft_ref,
+            service_code,
+        )
         raise HTTPException(status_code=500, detail="Failed to create checkout session")
 
 

@@ -444,6 +444,78 @@ async def update_draft_addons(
     return await get_draft(draft_id)
 
 
+async def ensure_draft_pricing_snapshot(draft_id: str) -> Dict[str, Any]:
+    """
+    If pricing_snapshot is missing or totals to £0, rebuild from canonical
+    SERVICE_BASE_PRICES / pack_registry (same source as draft creation).
+
+    Staging or legacy drafts sometimes lack a persisted snapshot; checkout and
+    review would show £0.00 and Stripe would reject zero-amount sessions.
+    """
+    db = database.get_db()
+    draft = await get_draft(draft_id)
+    if not draft:
+        raise ValueError("Draft not found")
+    sc = draft.get("service_code") or ""
+    raw = draft.get("pricing_snapshot")
+    snap = raw if isinstance(raw, dict) else {}
+    try:
+        total = int(snap.get("total_price_pence") or snap.get("base_price_pence") or 0)
+    except (TypeError, ValueError):
+        total = 0
+    if total > 0:
+        return draft
+
+    now = datetime.now(timezone.utc)
+    if sc.startswith("DOC_PACK"):
+        pack_type = SERVICE_CODE_TO_PACK_TYPE.get(sc)
+        if not pack_type:
+            raise ValueError(f"Unknown document pack service_code: {sc}")
+        pricing = calculate_pack_price(pack_type, draft.get("selected_addons") or [])
+        pricing_snapshot = {
+            "base_price_pence": pricing["base_price_pence"],
+            "addon_total_pence": pricing["addon_total_pence"],
+            "total_price_pence": pricing["total_price_pence"],
+            "currency": "gbp",
+            "addons": pricing["addons"],
+        }
+    else:
+        base = SERVICE_BASE_PRICES.get(sc, 0)
+        if base <= 0:
+            raise ValueError(
+                f"No canonical base price for service_code={sc}. "
+                "Add it to SERVICE_BASE_PRICES or fix the draft service_code."
+            )
+        pricing_snapshot = {
+            "base_price_pence": base,
+            "addon_total_pence": 0,
+            "total_price_pence": base,
+            "currency": "gbp",
+            "addons": [],
+        }
+
+    await db.intake_drafts.update_one(
+        {"draft_id": draft_id},
+        {
+            "$set": {"pricing_snapshot": pricing_snapshot, "updated_at": now},
+            "$push": {
+                "audit_log": {
+                    "action": "PRICING_SNAPSHOT_REPAIRED",
+                    "timestamp": now,
+                    "details": {"total_price_pence": pricing_snapshot["total_price_pence"]},
+                }
+            },
+        },
+    )
+    logger.info(
+        "Repaired pricing_snapshot draft_id=%s service_code=%s total_pence=%s",
+        draft_id,
+        sc,
+        pricing_snapshot["total_price_pence"],
+    )
+    return await get_draft(draft_id)
+
+
 # ============================================================================
 # VALIDATION
 # ============================================================================
@@ -883,6 +955,8 @@ async def create_checkout_session(
     draft = await get_draft(draft_id)
     if not draft:
         raise ValueError(f"Draft not found: {draft_id}")
+
+    draft = await ensure_draft_pricing_snapshot(draft_id)
     
     validation = await validate_draft(draft_id)
     if not validation["ready_for_payment"]:
@@ -891,6 +965,7 @@ async def create_checkout_session(
     # Mark as ready for payment
     await mark_ready_for_payment(draft_id)
     
+    draft = await get_draft(draft_id)
     pricing = draft["pricing_snapshot"]
     client = draft["client_identity"]
     
