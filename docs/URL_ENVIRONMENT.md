@@ -15,7 +15,8 @@ If `APP_BASE_URL` is unset, resolution falls back in order:
 
 If `API_BASE_URL` is unset: `BACKEND_URL` → `API_URL` → `BASE_URL` → `http://localhost:8000`.
 
-**Do not** set multiple legacy app variables to **different** origins in production — startup will fail.
+**Do not** set multiple legacy app variables to **different** hosts in production — startup will fail.  
+The same host with mixed `http://` and `https://` is treated as one origin (common with legacy env).
 
 ## Escape hatch
 

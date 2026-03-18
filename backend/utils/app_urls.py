@@ -104,6 +104,25 @@ def _origin_key(url: str) -> Optional[str]:
     return f"{scheme}://{p.netloc.lower()}"
 
 
+def _app_origin_for_conflict_check(url: str) -> Optional[str]:
+    """
+    Same logical public app host must not count as multiple origins (e.g. http vs https
+    on pleerityenterprise.co.uk), or production deploy fails when legacy vars mix schemes.
+    """
+    url = _strip_base(url)
+    if not url:
+        return None
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    p = urlparse(url)
+    if not p.netloc:
+        return None
+    host = p.netloc.lower()
+    if _is_localhost(url):
+        return f"{(p.scheme or 'http')}://{host}"
+    return f"https://{host}"
+
+
 def _legacy_app_pairs() -> List[Tuple[str, str]]:
     out: List[Tuple[str, str]] = []
     for key in (
@@ -137,7 +156,7 @@ def validate_url_configuration() -> None:
     pairs = _legacy_app_pairs()
     origins: Set[str] = set()
     for _key, val in pairs:
-        ok = _origin_key(val)
+        ok = _app_origin_for_conflict_check(val)
         if ok:
             origins.add(ok)
     if len(origins) > 1:

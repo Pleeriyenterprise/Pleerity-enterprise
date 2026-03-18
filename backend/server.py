@@ -121,9 +121,10 @@ async def lifespan(app: FastAPI):
         logger.info("PYTEST_RUNNING=1: skipping database, scheduler, and heavy startup")
         yield
         return
-    await database.connect()
 
-    # Production safety: require non-default JWT_SECRET when ENV is production
+    # Production: JWT + URL checks before DB so misconfig fails fast and Render sees a clear
+    # error (not a port timeout if Mongo is slow). Mixed http/https on same app host no longer
+    # counts as conflicting origins (see utils.app_urls._app_origin_for_conflict_check).
     _env = (os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or "").strip().lower()
     if _env in ("production", "prod"):
         try:
@@ -139,6 +140,8 @@ async def lifespan(app: FastAPI):
         except RuntimeError as e:
             logger.critical("Startup aborted (URL configuration): %s", e)
             raise
+
+    await database.connect()
 
     # Alerting: warn if admin incident emails are not configured (ops visibility)
     _alert_emails = (os.environ.get("ADMIN_ALERT_EMAILS") or os.environ.get("OPS_ALERT_EMAIL") or "").strip()

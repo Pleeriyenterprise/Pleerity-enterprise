@@ -49,3 +49,22 @@ def test_validate_fails_on_conflicting_app_origins():
     ):
         with pytest.raises(RuntimeError, match="multiple distinct app origins"):
             validate_url_configuration()
+
+
+def test_validate_allows_http_and_https_same_host():
+    """Legacy vars often mix schemes; same host must not abort startup."""
+    from utils.app_urls import validate_url_configuration
+
+    with patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "APP_BASE_URL": "https://pleerityenterprise.co.uk",
+            "FRONTEND_URL": "http://pleerityenterprise.co.uk",
+            "FRONTEND_PUBLIC_URL": "https://pleerityenterprise.co.uk",
+            "PYTEST_RUNNING": "",
+            "SKIP_URL_VALIDATION": "",
+        },
+        clear=False,
+    ):
+        validate_url_configuration()
