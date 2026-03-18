@@ -1,8 +1,49 @@
 {
-  "_comment": "Run: python scripts/clone_stripe_live_to_test.py (use --dry-run first). Maps live Stripe IDs to test IDs for non-CVP services.",
-  "generated_at": null,
-  "dry_run": null,
-  "product_id_map": {},
-  "price_id_map": {},
-  "skipped_live_products": []
+  "generated_at": "2026-03-18T14:55:54.121607+00:00",
+  "dry_run": false,
+  "product_id_map": {
+    "prod_Tqne4w5qCH23KG": "prod_UAgtDkfXGhjj9a",
+    "prod_TqnZSwYgZPe2DB": "prod_UAgtoNiH6Ry0TZ",
+    "prod_TqnBeywK4rdwbj": "prod_UAgtjj0qveOiYE",
+    "prod_Tqn4RCCcOiGB5w": "prod_UAgt7mRR7mkE1L",
+    "prod_TqmsQkF15F9CBZ": "prod_UAgt1FOzWWC03h",
+    "prod_TqmlesQSjyUizM": "prod_UAgtzQzVRPGZQp",
+    "prod_TqlwwgHsUvNO2A": "prod_UAgtodj6W40NYi"
+  },
+  "price_id_map": {
+    "price_1St63JCF0O5oqdUzQLdm0Y0F": "price_1TCLVcCF0O5oqdUzt9u8F3Fa",
+    "price_1St63JCF0O5oqdUzbmoiyMZa": "price_1TCLVdCF0O5oqdUzb5chY8LS",
+    "price_1St63JCF0O5oqdUzEDgjAsCk": "price_1TCLVdCF0O5oqdUzdKDMwh06",
+    "price_1St5y7CF0O5oqdUzaLXoexLI": "price_1TCLVeCF0O5oqdUzbQbNcH0Q",
+    "price_1St5y7CF0O5oqdUzKjouFEDf": "price_1TCLVeCF0O5oqdUzOAYVX8aY",
+    "price_1St5y7CF0O5oqdUzoBYeADcu": "price_1TCLVeCF0O5oqdUzh8ISUqgK",
+    "price_1St5eiCF0O5oqdUzIMk9yBFy": "price_1TCLVfCF0O5oqdUz1kYlUGlj",
+    "price_1St5ehCF0O5oqdUz6SFrUUrW": "price_1TCLVgCF0O5oqdUzxQJGgQpl",
+    "price_1St5agCF0O5oqdUznPCKQ93X": "price_1TCLVgCF0O5oqdUzUd2M92ZP",
+    "price_1St5UhCF0O5oqdUzTzSIxzSt": "price_1TCLVhCF0O5oqdUzEXtRvVs5",
+    "price_1St5UhCF0O5oqdUzZ6ozq8cH": "price_1TCLVhCF0O5oqdUz2pYTa6vQ",
+    "price_1St5UhCF0O5oqdUzyF40iIF8": "price_1TCLVhCF0O5oqdUzROuXvTx8",
+    "price_1St5IkCF0O5oqdUzYPLKNNLc": "price_1TCLVjCF0O5oqdUzTr1fweaz",
+    "price_1St5IkCF0O5oqdUzTjCRUJFX": "price_1TCLVjCF0O5oqdUz6LGDoamG",
+    "price_1St5IkCF0O5oqdUzY0cKHQag": "price_1TCLVjCF0O5oqdUzZY1li85n",
+    "price_1St5BVCF0O5oqdUz8jytsk2i": "price_1TCLVkCF0O5oqdUzCp4jwlsz",
+    "price_1St5BVCF0O5oqdUzfM8dSpU7": "price_1TCLVkCF0O5oqdUzABcAD556",
+    "price_1St5BVCF0O5oqdUznOu2vyCa": "price_1TCLVlCF0O5oqdUzAH1T60nm",
+    "price_1St4ONCF0O5oqdUz6PF85IZB": "price_1TCLVlCF0O5oqdUzGsjEaTL9",
+    "price_1St4ONCF0O5oqdUz9vaRpRs6": "price_1TCLVmCF0O5oqdUzWl9qI20C",
+    "price_1St4ONCF0O5oqdUzWRhDlSqh": "price_1TCLVmCF0O5oqdUz2FTZJU0O"
+  },
+  "skipped_live_products": [
+    "prod_U3kxLT2Lk1Dkvf (Compliance Vault Pro): skipped (CVP-related heuristics)",
+    "prod_TqnsProrKuWTlp (Move-In / Move-Out Checklist): not on service/addon allowlist (set metadata service_code or addon_code)",
+    "prod_TqnoDIrK28y13h (HMO Compliance Audit Report): not on service/addon allowlist (set metadata service_code or addon_code)",
+    "prod_TqnkTrb8lqbcPg (Full Property Compliance Audit Report): not on service/addon allowlist (set metadata service_code or addon_code)",
+    "prod_TqnRYHA3eFkfkE (AI Tool Recommendation Report): not on service/addon allowlist (set metadata service_code or addon_code)",
+    "prod_TpnfM87JyAca9o (Compliance Vault Pro \u2013 Onboarding (Pro)): skipped (CVP-related heuristics)",
+    "prod_TpncmAtktF9hBf (Compliance Vault Pro \u2013 Onboarding (Portfolio)): skipped (CVP-related heuristics)",
+    "prod_TpnYdTO4cvBHWl (Compliance Vault Pro \u2013 Onboarding (Solo)): skipped (CVP-related heuristics)",
+    "prod_TpnRE32XK04s7t (Compliance Vault Pro \u2013 Solo Landlord): skipped (CVP-related heuristics)",
+    "prod_TpmThTSiEAZK35 (Compliance Vault Pro \u2013 Professional): skipped (CVP-related heuristics)",
+    "prod_TplrfBmr2gl8y7 (Compliance Vault Pro \u2013 Portfolio): skipped (CVP-related heuristics)"
+  ]
 }

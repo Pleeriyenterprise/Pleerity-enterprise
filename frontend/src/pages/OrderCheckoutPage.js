@@ -11,7 +11,7 @@ import PublicLayout from '../components/public/PublicLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import client from '../api/client';
-import { createCheckoutSession, isDocumentPack, validateCheckout } from '../api/checkoutApi';
+import { createCheckoutSession } from '../api/checkoutApi';
 import { toast } from 'sonner';
 
 export default function OrderCheckoutPage() {
@@ -22,6 +22,21 @@ export default function OrderCheckoutPage() {
   const [draft, setDraft] = useState(null);
   const [error, setError] = useState(null);
   const [paying, setPaying] = useState(false);
+  const [validation, setValidation] = useState(null);
+  const [rechecking, setRechecking] = useState(false);
+
+  const loadDraft = async () => {
+    const res = await client.get(`/intake/draft/by-ref/${encodeURIComponent(draftRef)}`);
+    const data = res.data;
+    if (data.status === 'CONVERTED') {
+      setError('This order has already been paid. Check your confirmation email.');
+      setDraft(null);
+      setValidation(null);
+      return;
+    }
+    setDraft(data);
+    setValidation(data.validation || null);
+  };
 
   useEffect(() => {
     if (!draftRef) {
@@ -34,18 +49,12 @@ export default function OrderCheckoutPage() {
       try {
         setLoading(true);
         setError(null);
-        const res = await client.get(`/intake/draft/by-ref/${encodeURIComponent(draftRef)}`);
-        const data = res.data;
-        if (data.status === 'CONVERTED') {
-          setError('This order has already been paid. Check your confirmation email.');
-          setDraft(null);
-        } else {
-          setDraft(data);
-        }
+        await loadDraft();
       } catch (err) {
         const msg = err.response?.data?.detail || err.message || 'Draft not found';
         setError(typeof msg === 'string' ? msg : 'Draft not found or expired.');
         setDraft(null);
+        setValidation(null);
       } finally {
         setLoading(false);
       }
@@ -54,10 +63,47 @@ export default function OrderCheckoutPage() {
     fetchDraft();
   }, [draftRef]);
 
+  const handleRecheckReady = async () => {
+    if (!draftRef) return;
+    try {
+      setRechecking(true);
+      await loadDraft();
+      toast.success('Status refreshed');
+    } catch {
+      toast.error('Could not refresh draft');
+    } finally {
+      setRechecking(false);
+    }
+  };
+
+  const payReady = Boolean(validation?.ready_for_payment);
+
   const handlePayNow = async () => {
-    if (!draft?.draft_ref) return;
+    if (!draft?.draft_ref || !draft?.draft_id) return;
     try {
       setPaying(true);
+      const vRes = await client.post(`/intake/draft/${draft.draft_id}/validate`);
+      setValidation({
+        ready_for_payment: vRes.data.ready_for_payment,
+        errors: vRes.data.errors || [],
+        missing_sections: vRes.data.missing_sections || [],
+        warnings: vRes.data.warnings || [],
+      });
+      if (!vRes.data.ready_for_payment) {
+        const errs = vRes.data.errors || [];
+        const miss = vRes.data.missing_sections || [];
+        toast.error(
+          errs[0]?.message ||
+            (miss.includes('service_intake')
+              ? 'Complete all service questions in Edit order, then return here.'
+              : miss.length
+                ? `Missing: ${miss.join(', ')}`
+                : 'Draft not ready for payment'),
+        );
+        errs.slice(1, 4).forEach((e) => toast.error(e.message));
+        setPaying(false);
+        return;
+      }
       const res = await createCheckoutSession(draft.draft_ref);
       if (res?.checkout_url) {
         window.location.href = res.checkout_url;
@@ -145,11 +191,49 @@ export default function OrderCheckoutPage() {
               <span className="text-gray-600">Total</span>
               <span className="font-medium">{formatPrice(totalPence)}</span>
             </div>
+
+            {!payReady && validation && (
+              <div
+                className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                role="alert"
+              >
+                <p className="font-medium mb-2">Complete your order before paying</p>
+                <p className="text-amber-800 mb-2">
+                  Use <strong>Edit order</strong> to finish all steps (details, service questions, and tick both
+                  consent boxes on the review screen), then come back or tap &quot;Refresh status&quot;.
+                </p>
+                {(validation.errors || []).length > 0 && (
+                  <ul className="list-disc pl-5 space-y-1 text-amber-900">
+                    {validation.errors.slice(0, 8).map((e, i) => (
+                      <li key={i}>{e.message || e.field_key}</li>
+                    ))}
+                  </ul>
+                )}
+                {(validation.missing_sections || []).length > 0 &&
+                  !(validation.errors || []).length && (
+                    <p className="text-amber-800">
+                      Missing: {validation.missing_sections.join(', ')}
+                    </p>
+                  )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 border-amber-300"
+                  disabled={rechecking}
+                  onClick={handleRecheckReady}
+                >
+                  {rechecking ? 'Checking…' : 'Refresh status'}
+                </Button>
+              </div>
+            )}
+
             <div className="pt-4 border-t flex flex-col sm:flex-row gap-3">
               <Button
                 className="flex-1"
-                disabled={paying}
+                disabled={paying || !payReady}
                 onClick={handlePayNow}
+                title={!payReady ? 'Finish intake first (see message above)' : undefined}
               >
                 {paying ? (
                   <>

@@ -469,9 +469,18 @@ async def validate_draft(draft_id: str) -> Dict[str, Any]:
     errors = []
     warnings = []
     missing_sections = []
-    
-    # Validate client identity
-    client = draft.get("client_identity", {})
+
+    def _truthy_consent(v: Any) -> bool:
+        if v is True or v == 1:
+            return True
+        if v is False or v == 0 or v is None:
+            return False
+        if isinstance(v, str):
+            return v.strip().lower() in ("true", "1", "yes", "on")
+        return bool(v)
+
+    # Validate client identity (treat null document fields as empty)
+    client = draft.get("client_identity") or {}
     if not client.get("full_name"):
         errors.append({"field_key": "full_name", "message": "Full name is required"})
     if not client.get("email"):
@@ -487,17 +496,17 @@ async def validate_draft(draft_id: str) -> Dict[str, Any]:
         missing_sections.append("client_identity")
     
     # Validate delivery consent
-    consent = draft.get("delivery_consent", {})
-    if not consent.get("consent_terms_privacy"):
+    consent = draft.get("delivery_consent") or {}
+    if not _truthy_consent(consent.get("consent_terms_privacy")):
         errors.append({"field_key": "consent_terms_privacy", "message": "You must agree to Terms and Privacy Policy"})
-    if not consent.get("accuracy_confirmation"):
+    if not _truthy_consent(consent.get("accuracy_confirmation")):
         errors.append({"field_key": "accuracy_confirmation", "message": "You must confirm accuracy of information"})
     
     if not consent:
         missing_sections.append("delivery_consent")
     
-    # Validate service-specific intake
-    intake = draft.get("intake_payload", {})
+    # Validate service-specific intake (null in DB must not bypass checks)
+    intake = draft.get("intake_payload") or {}
     if not intake:
         missing_sections.append("service_intake")
     else:
