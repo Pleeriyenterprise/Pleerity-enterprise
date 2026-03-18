@@ -20,7 +20,7 @@ The same host with mixed `http://` and `https://` is treated as one origin (comm
 
 ## Render (backend web service)
 
-Render sets **`RENDER=true`**. The API defers Mongo connect, index creation, seeds, and the job scheduler until **after** the process binds to **`PORT`** (avoids “port scan timeout” while startup runs for minutes). Until then, most routes return **503**; **`/`** and **`/api/health`** still respond so the instance is reachable.
+Render sets **`RENDER=true`**. The API defers Mongo connect, index creation, seeds, and the job scheduler until **after** the process binds to **`PORT`** (avoids “port scan timeout” while startup runs for minutes). Until then, most routes return **503**; **`/`** and **`/api/health`** still respond so the instance is reachable. **Start command on Render must use `$PORT`**, e.g. `uvicorn server:app --host 0.0.0.0 --port $PORT`. URL validation on Render logs CRITICAL and continues instead of raising so the service can bind; fix env from logs.
 
 ## Escape hatch
 

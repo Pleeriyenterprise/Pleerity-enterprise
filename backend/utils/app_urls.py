@@ -142,6 +142,7 @@ def validate_url_configuration() -> None:
     """
     Production: fail if multiple legacy app URL vars disagree; fail if resolved app URL is not HTTPS
     (unless localhost). Call after env is loaded. Skipped for PYTEST_RUNNING or SKIP_URL_VALIDATION=1.
+    On RENDER=true we log CRITICAL and continue instead of raising so the process can bind to PORT.
     """
     if os.getenv("PYTEST_RUNNING") == "1" or os.getenv("SKIP_URL_VALIDATION", "").strip().lower() in (
         "1",
@@ -153,6 +154,8 @@ def validate_url_configuration() -> None:
     if env not in ("production", "prod"):
         return
 
+    _on_render = os.getenv("RENDER", "").strip().lower() in ("true", "1")
+
     pairs = _legacy_app_pairs()
     origins: Set[str] = set()
     for _key, val in pairs:
@@ -160,17 +163,23 @@ def validate_url_configuration() -> None:
         if ok:
             origins.add(ok)
     if len(origins) > 1:
-        raise RuntimeError(
+        msg = (
             "URL configuration error: multiple distinct app origins in env. "
             "Set APP_BASE_URL to a single canonical HTTPS origin and remove or align "
             "FRONTEND_URL, FRONTEND_PUBLIC_URL, PUBLIC_APP_URL, PORTAL_BASE_URL. "
             f"Conflicting origins: {sorted(origins)}"
         )
+        if _on_render:
+            logger.critical("%s (RENDER: continuing so service can bind to PORT)", msg)
+            return
+        raise RuntimeError(msg)
 
     app = get_app_base_url(for_email_links=True)
     if not _is_localhost(app) and not app.lower().startswith("https://"):
-        raise RuntimeError(
-            f"Production app URL must use HTTPS (got {app!r}). Set APP_BASE_URL=https://..."
-        )
+        msg = f"Production app URL must use HTTPS (got {app!r}). Set APP_BASE_URL=https://..."
+        if _on_render:
+            logger.critical("%s (RENDER: continuing so service can bind to PORT)", msg)
+            return
+        raise RuntimeError(msg)
 
     logger.info("URL validation OK: app_base=%s api_base=%s", app, get_api_base_url())

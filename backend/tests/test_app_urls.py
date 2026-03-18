@@ -68,3 +68,23 @@ def test_validate_allows_http_and_https_same_host():
         clear=False,
     ):
         validate_url_configuration()
+
+
+def test_validate_on_render_logs_and_continues_on_conflict():
+    """On RENDER=true, conflicting origins must not raise so the service can bind to PORT."""
+    from utils.app_urls import validate_url_configuration
+
+    with patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "RENDER": "true",
+            "FRONTEND_URL": "https://a.example.com",
+            "FRONTEND_PUBLIC_URL": "https://b.example.com",
+            "PYTEST_RUNNING": "",
+            "SKIP_URL_VALIDATION": "",
+        },
+        clear=False,
+    ):
+        validate_url_configuration()
+        # Must not raise; on Render we log CRITICAL and continue
