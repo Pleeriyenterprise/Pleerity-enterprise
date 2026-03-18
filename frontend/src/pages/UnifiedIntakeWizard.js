@@ -106,6 +106,7 @@ function ServiceSelectionStep({
 
   const selectedCategory = selectedService?.category;
   const isDocPack = selectedService?.service_code?.startsWith('DOC_PACK');
+  const showNonPackFastTrack = Boolean(selectedService?.service_code && !isDocPack);
   const hasPrintedCopy = selectedAddons.includes('PRINTED_COPY');
 
   return (
@@ -228,6 +229,35 @@ function ServiceSelectionStep({
                 ? 'You\'ll receive all documents in this pack.'
                 : `You\'ll receive ${selectedDocuments.length} selected document${selectedDocuments.length > 1 ? 's' : ''}.`}
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Fast Track for AI / MR / compliance (non–document-pack) */}
+      {showNonPackFastTrack && (
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+          <h3 className="font-medium text-gray-900 mb-3">Optional add-on</h3>
+          <div
+            className={`p-3 rounded-lg border cursor-pointer transition-all ${
+              selectedAddons.includes('FAST_TRACK')
+                ? 'bg-teal-50 border-teal-300'
+                : 'bg-white hover:border-teal-300'
+            }`}
+            onClick={() => onToggleAddon('FAST_TRACK')}
+          >
+            <div className="flex items-center gap-3">
+              <Checkbox checked={selectedAddons.includes('FAST_TRACK')} />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-yellow-500" />
+                  <span className="font-medium">Fast Track Delivery</span>
+                  <Badge variant="secondary" className="text-xs">+£20.00</Badge>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Priority processing (24h target where stated for this service).
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1097,31 +1127,39 @@ export default function UnifiedIntakeWizard() {
 
   // Create draft when moving to step 2
   const createDraft = async () => {
-    try {
-      setLoading(true);
-      const res = await client.post('/intake/draft', {
-        service_code: selectedService.service_code,
-        category: selectedService.category,
-        // Include selected documents for document packs
-        selected_documents: selectedDocuments.length > 0 ? selectedDocuments : null,
-      });
-      setDraft(res.data);
-      
-      // Calculate initial pricing
-      const priceRes = await client.post('/intake/calculate-price', {
-        service_code: selectedService.service_code,
+    const res = await client.post('/intake/draft', {
+      service_code: selectedService.service_code,
+      category: selectedService.category,
+      selected_documents: selectedDocuments.length > 0 ? selectedDocuments : null,
+    });
+    setDraft(res.data);
+    return res.data;
+  };
+
+  const persistStep1Addons = async (d) => {
+    if (!d?.draft_id || !selectedService) return;
+    const sc = selectedService.service_code;
+    if (sc.startsWith('DOC_PACK')) {
+      await client.put(`/intake/draft/${d.draft_id}/addons`, {
         addons: selectedAddons,
+        postal_address: selectedAddons.includes('PRINTED_COPY') ? postalAddress : null,
       });
-      setPricing(priceRes.data);
-      
-      return res.data;
-    } catch (err) {
-      console.error('Failed to create draft:', err);
-      toast.error('Failed to start order');
-      throw err;
-    } finally {
-      setLoading(false);
+    } else {
+      await client.put(`/intake/draft/${d.draft_id}/addons`, {
+        addons: selectedAddons.includes('FAST_TRACK') ? ['FAST_TRACK'] : [],
+        postal_address: null,
+      });
     }
+    const addonsForPrice = sc.startsWith('DOC_PACK')
+      ? selectedAddons
+      : selectedAddons.includes('FAST_TRACK')
+        ? ['FAST_TRACK']
+        : [];
+    const priceRes = await client.post('/intake/calculate-price', {
+      service_code: sc,
+      addons: addonsForPrice,
+    });
+    setPricing(priceRes.data);
   };
 
   // Validate current step
@@ -1177,11 +1215,15 @@ export default function UnifiedIntakeWizard() {
       setLoading(true);
       
       if (currentStep === 1) {
-        // Save addons if doc pack
         if (selectedService?.service_code.startsWith('DOC_PACK')) {
           await client.put(`/intake/draft/${draft.draft_id}/addons`, {
             addons: selectedAddons,
             postal_address: selectedAddons.includes('PRINTED_COPY') ? postalAddress : null,
+          });
+        } else {
+          await client.put(`/intake/draft/${draft.draft_id}/addons`, {
+            addons: selectedAddons.includes('FAST_TRACK') ? ['FAST_TRACK'] : [],
+            postal_address: null,
           });
         }
       } else if (currentStep === 2) {
@@ -1195,10 +1237,14 @@ export default function UnifiedIntakeWizard() {
         await client.put(`/intake/draft/${draft.draft_id}/delivery-consent`, consent);
       }
       
-      // Refresh pricing
+      const addonsForPrice = selectedService.service_code.startsWith('DOC_PACK')
+        ? selectedAddons
+        : selectedAddons.includes('FAST_TRACK')
+          ? ['FAST_TRACK']
+          : [];
       const priceRes = await client.post('/intake/calculate-price', {
         service_code: selectedService.service_code,
-        addons: selectedAddons,
+        addons: addonsForPrice,
       });
       setPricing(priceRes.data);
       
@@ -1216,7 +1262,18 @@ export default function UnifiedIntakeWizard() {
     
     try {
       if (currentStep === 1 && !draft) {
-        await createDraft();
+        setLoading(true);
+        try {
+          const d = await createDraft();
+          await persistStep1Addons(d);
+        } catch (err) {
+          console.error('Failed to create draft:', err);
+          toast.error(err.response?.data?.detail || 'Failed to start order');
+          setLoading(false);
+          return;
+        } finally {
+          setLoading(false);
+        }
       } else if (draft) {
         await saveStepData();
       }

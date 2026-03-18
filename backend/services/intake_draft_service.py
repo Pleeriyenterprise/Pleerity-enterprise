@@ -69,6 +69,41 @@ SERVICE_CODE_TO_PACK_TYPE = {
     "DOC_PACK_PRO": "ULTIMATE",
 }
 
+# Non–document-pack intake services may add Fast Track (+£20), aligned with pack_registry FAST_TRACK.
+FAST_TRACK_NON_PACK_PENCE = 2000
+NON_PACK_FAST_TRACK_SERVICES = frozenset(
+    sc for sc in SERVICE_BASE_PRICES if not sc.startswith("DOC_PACK")
+)
+
+
+def _non_pack_pricing_snapshot(service_code: str, addons: Optional[List[str]]) -> Dict[str, Any]:
+    """Build pricing_snapshot for AI / MR / compliance services with optional FAST_TRACK."""
+    base = SERVICE_BASE_PRICES.get(service_code, 0)
+    codes = [a.upper() for a in (addons or []) if a]
+    if "PRINTED_COPY" in codes:
+        raise ValueError("Printed copy is only available for document packs")
+    extra = [a for a in codes if a != "FAST_TRACK"]
+    if extra:
+        raise ValueError(f"Unknown add-ons for this service: {extra}")
+    if service_code not in NON_PACK_FAST_TRACK_SERVICES and codes:
+        raise ValueError("This service does not support add-ons")
+    addon_lines: List[Dict[str, Any]] = []
+    addon_total = 0
+    if service_code in NON_PACK_FAST_TRACK_SERVICES and "FAST_TRACK" in codes:
+        addon_lines.append({
+            "code": "FAST_TRACK",
+            "name": "Fast Track Delivery",
+            "price_pence": FAST_TRACK_NON_PACK_PENCE,
+        })
+        addon_total = FAST_TRACK_NON_PACK_PENCE
+    return {
+        "base_price_pence": base,
+        "addon_total_pence": addon_total,
+        "total_price_pence": base + addon_total,
+        "currency": "gbp",
+        "addons": addon_lines,
+    }
+
 
 # ============================================================================
 # DRAFT REFERENCE GENERATOR
@@ -399,15 +434,7 @@ async def update_draft_addons(
             "addons": pricing["addons"],
         }
     else:
-        # Non-document pack services don't have addons
-        base_price = SERVICE_BASE_PRICES.get(service_code, 0)
-        pricing_snapshot = {
-            "base_price_pence": base_price,
-            "addon_total_pence": 0,
-            "total_price_pence": base_price,
-            "currency": "gbp",
-            "addons": [],
-        }
+        pricing_snapshot = _non_pack_pricing_snapshot(service_code, addons)
     
     # Validate postal address if PRINTED_COPY selected
     if "PRINTED_COPY" in [a.upper() for a in addons]:
@@ -486,13 +513,7 @@ async def ensure_draft_pricing_snapshot(draft_id: str) -> Dict[str, Any]:
                 f"No canonical base price for service_code={sc}. "
                 "Add it to SERVICE_BASE_PRICES or fix the draft service_code."
             )
-        pricing_snapshot = {
-            "base_price_pence": base,
-            "addon_total_pence": 0,
-            "total_price_pence": base,
-            "currency": "gbp",
-            "addons": [],
-        }
+        pricing_snapshot = _non_pack_pricing_snapshot(sc, draft.get("selected_addons") or [])
 
     await db.intake_drafts.update_one(
         {"draft_id": draft_id},

@@ -35,6 +35,8 @@ from services.intake_draft_service import (
     mark_draft_abandoned,
     DraftStatus,
     SERVICE_BASE_PRICES,
+    NON_PACK_FAST_TRACK_SERVICES,
+    FAST_TRACK_NON_PACK_PENCE,
 )
 from services.intake_schema_registry import (
     get_service_schema,
@@ -419,15 +421,24 @@ async def update_addons(draft_id: str, request: UpdateAddonsRequest):
     if draft["status"] == DraftStatus.CONVERTED:
         raise HTTPException(status_code=400, detail="Cannot update converted draft")
     
-    # Only document packs support addons
-    if not draft["service_code"].startswith("DOC_PACK"):
-        raise HTTPException(status_code=400, detail="Add-ons only available for document packs")
-    
+    service_code = draft["service_code"]
+    if service_code.startswith("DOC_PACK"):
+        pass
+    elif service_code in NON_PACK_FAST_TRACK_SERVICES:
+        bad = [a for a in (request.addons or []) if str(a).upper() not in ("FAST_TRACK",)]
+        if bad:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only Fast Track add-on is available for {service_code}; invalid: {bad}",
+            )
+    elif request.addons:
+        raise HTTPException(status_code=400, detail="Add-ons only available for document packs or fast-track services")
+
     try:
         updated = await update_draft_addons(
             draft_id,
-            request.addons,
-            request.postal_address
+            request.addons or [],
+            request.postal_address,
         )
         return updated
     except ValueError as e:
@@ -591,9 +602,9 @@ async def calculate_service_price(request: CalculatePriceRequest):
     
     if service_code not in SERVICE_BASE_PRICES:
         raise HTTPException(status_code=400, detail=f"Unknown service: {service_code}")
-    
+
     base_price = SERVICE_BASE_PRICES[service_code]
-    
+
     if service_code.startswith("DOC_PACK"):
         # Use pack registry for document packs
         # Map service code to pack registry type
@@ -606,17 +617,26 @@ async def calculate_service_price(request: CalculatePriceRequest):
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
     else:
-        # Non-pack services don't have addons
+        want_ft = "FAST_TRACK" in [str(a).upper() for a in (request.addons or [])]
+        addon_total = FAST_TRACK_NON_PACK_PENCE if (want_ft and service_code in NON_PACK_FAST_TRACK_SERVICES) else 0
+        addon_lines = []
+        if addon_total:
+            addon_lines.append({
+                "code": "FAST_TRACK",
+                "name": "Fast Track Delivery",
+                "price_pence": FAST_TRACK_NON_PACK_PENCE,
+            })
+        total = base_price + addon_total
         return {
             "service_code": service_code,
             "base_price_pence": base_price,
-            "addon_total_pence": 0,
-            "total_price_pence": base_price,
+            "addon_total_pence": addon_total,
+            "total_price_pence": total,
             "currency": "gbp",
-            "addons": [],
+            "addons": addon_lines,
             "base_price_display": f"£{base_price / 100:.2f}",
-            "addon_total_display": "£0.00",
-            "total_price_display": f"£{base_price / 100:.2f}",
+            "addon_total_display": f"£{addon_total / 100:.2f}",
+            "total_price_display": f"£{total / 100:.2f}",
         }
 
 
