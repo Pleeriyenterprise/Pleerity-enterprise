@@ -99,7 +99,7 @@ async def admin_retry_order_generation(
     from services.workflow_automation_service import workflow_automation_service
 
     try:
-        gen = await workflow_automation_service.wf2_queue_to_generation(order_id)
+        gen = await workflow_automation_service.wf2_queue_to_generation(order_id, force_retry=True)
         review = None
         if gen.get("success"):
             review = await workflow_automation_service.wf3_draft_to_review(order_id)

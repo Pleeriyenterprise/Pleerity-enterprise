@@ -258,6 +258,36 @@ const DocumentPreviewModal = ({
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
+  const getTokenizedPreviewUrl = async (format = 'pdf') => {
+    const token = localStorage.getItem('auth_token');
+    if (!token || !selectedVersion || !orderId) {
+      throw new Error('Missing auth/session context');
+    }
+    const response = await fetch(
+      `${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/token?format=${format}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    if (!response.ok) {
+      let detail = 'Failed to get document access token';
+      try {
+        const data = await response.json();
+        detail = data?.detail || detail;
+      } catch (_) {
+        // ignore json parse failure
+      }
+      throw new Error(detail);
+    }
+    const data = await response.json();
+    if (!data?.preview_url) {
+      throw new Error('Invalid token response');
+    }
+    return data.preview_url;
+  };
+
   // Fetch token-based preview URL when version changes
   React.useEffect(() => {
     setHasReviewed(false);
@@ -270,28 +300,13 @@ const DocumentPreviewModal = ({
     const fetchPreviewToken = async () => {
       setIsLoadingPreview(true);
       try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(
-          `${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/token?format=pdf`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        );
-        
-        if (response.ok && mounted) {
-          const data = await response.json();
-          setPreviewUrl(data.preview_url);
-        } else if (mounted) {
-          console.error('Failed to get preview token');
-          // Fallback to direct URL (won't work in iframe but downloads will work)
-          setPreviewUrl(`${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`);
-        }
+        const url = await getTokenizedPreviewUrl('pdf');
+        if (mounted) setPreviewUrl(url);
       } catch (error) {
         console.error('Error fetching preview token:', error);
         if (mounted) {
-          setPreviewUrl(`${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`);
+          setPreviewUrl(null);
+          toast.error(error?.message || 'Unable to load document preview');
         }
       } finally {
         if (mounted) {
@@ -421,11 +436,13 @@ const DocumentPreviewModal = ({
                   <TooltipTrigger asChild>
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        window.open(
-                          `${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=docx`,
-                          '_blank'
-                        );
+                      onClick={async () => {
+                        try {
+                          const url = await getTokenizedPreviewUrl('docx');
+                          window.open(url, '_blank', 'noopener,noreferrer');
+                        } catch (e) {
+                          toast.error(e?.message || 'Failed to generate DOCX download link');
+                        }
                       }}
                       data-testid="download-docx-btn"
                     >
@@ -443,11 +460,13 @@ const DocumentPreviewModal = ({
                   <TooltipTrigger asChild>
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        window.open(
-                          `${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/preview?format=pdf`,
-                          '_blank'
-                        );
+                      onClick={async () => {
+                        try {
+                          const url = await getTokenizedPreviewUrl('pdf');
+                          window.open(url, '_blank', 'noopener,noreferrer');
+                        } catch (e) {
+                          toast.error(e?.message || 'Failed to generate PDF download link');
+                        }
                       }}
                       data-testid="download-pdf-btn"
                     >

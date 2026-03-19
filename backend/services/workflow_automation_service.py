@@ -346,7 +346,7 @@ class WorkflowAutomationService:
     # WF2: Queue → Document Generation (GPT + Render)
     # =========================================================================
     
-    async def wf2_queue_to_generation(self, order_id: str) -> Dict[str, Any]:
+    async def wf2_queue_to_generation(self, order_id: str, force_retry: bool = False) -> Dict[str, Any]:
         """
         WF2: Process queued order through document generation pipeline.
         
@@ -463,6 +463,7 @@ class WorkflowAutomationService:
             result = await orchestrator.execute_generation(
                 order_id=order_id,
                 intake_data=intake_data,
+                force=bool(force_retry),
             )
             
             # Handle OrchestrationResult dataclass (has .success attribute, not .get())

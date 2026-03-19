@@ -1243,7 +1243,8 @@ class TemplateRenderer:
         footer_run.font.color.rgb = RGBColor(128, 128, 128)
         footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         contact_para = doc.add_paragraph()
-        contact_run = contact_para.add_run(f"{WEBSITE_URL} | {SUPPORT_EMAIL}")
+        website = get_branding_website_url()
+        contact_run = contact_para.add_run(f"{website} | {SUPPORT_EMAIL}")
         contact_run.font.size = Pt(8)
         contact_run.font.color.rgb = RGBColor(128, 128, 128)
         contact_para.alignment = WD_ALIGN_PARAGRAPH.CENTER

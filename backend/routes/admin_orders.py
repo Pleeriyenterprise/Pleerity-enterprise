@@ -638,11 +638,45 @@ async def get_order_documents(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
+    # Document packs store rendered files in document_pack_items (not document_versions_v2).
+    if (order.get("service_code") or "").startswith("DOC_PACK_"):
+        db = database.get_db()
+        items = await db.document_pack_items.find(
+            {"order_id": order_id, "status": {"$in": ["COMPLETED", "APPROVED"]}},
+            {"_id": 0},
+        ).sort("canonical_index", 1).to_list(length=200)
+        versions = []
+        for idx, it in enumerate(items, start=1):
+            has_docx = bool(it.get("docx_gridfs_id"))
+            has_pdf = bool(it.get("pdf_gridfs_id"))
+            versions.append(
+                {
+                    "version": idx,
+                    "status": "DRAFT",
+                    "generated_at": it.get("rendered_at") or it.get("generated_at") or it.get("updated_at"),
+                    "filename_docx": it.get("filename_docx") if has_docx else None,
+                    "filename_pdf": it.get("filename_pdf") if has_pdf else None,
+                    "doc_type": it.get("doc_type"),
+                    "item_id": it.get("item_id"),
+                    "is_pack_item": True,
+                    "is_approved": bool(it.get("approved_at")),
+                }
+            )
+        return {
+            "order_id": order_id,
+            "source": "pack_items",
+            "versions": versions,
+            "current_version": versions[-1] if versions else None,
+            "total_versions": len(versions),
+            "approved_version": order.get("approved_document_version"),
+            "is_locked": order.get("version_locked", False),
+        }
+
     versions = await get_document_versions(order_id)
     current = await get_current_document_version(order_id)
-    
     return {
         "order_id": order_id,
+        "source": "document_versions_v2",
         "versions": [v.to_dict() for v in versions],
         "current_version": current.to_dict() if current else None,
         "total_versions": len(versions),
@@ -670,19 +704,39 @@ async def get_document_preview(
     
     db = database.get_db()
     
-    # Get the version record from document_versions_v2
+    # First try standard document_versions_v2 records.
     version_record = await db.document_versions_v2.find_one(
         {"order_id": order_id, "version": version},
-        {"_id": 0, "docx": 1, "pdf": 1}
+        {"_id": 0, "docx": 1, "pdf": 1},
     )
-    
-    if not version_record:
-        raise HTTPException(status_code=404, detail=f"Document version {version} not found")
-    
-    # Get the file info based on format
-    file_info = version_record.get("pdf" if format == "pdf" else "docx", {})
-    gridfs_id = file_info.get("gridfs_id")
-    filename = file_info.get("filename", f"{order_id}_v{version}.{format}")
+    file_info = {}
+    gridfs_id = None
+    filename = f"{order_id}_v{version}.{format}"
+    if version_record:
+        file_info = version_record.get("pdf" if format == "pdf" else "docx", {})
+        gridfs_id = file_info.get("gridfs_id")
+        filename = file_info.get("filename", filename)
+    else:
+        # Fallback for document packs: map requested version index to canonical pack item.
+        order = await get_order(order_id)
+        if order and (order.get("service_code") or "").startswith("DOC_PACK_"):
+            items = await db.document_pack_items.find(
+                {"order_id": order_id, "status": {"$in": ["COMPLETED", "APPROVED"]}},
+                {"_id": 0},
+            ).sort("canonical_index", 1).to_list(length=200)
+            if version <= 0 or version > len(items):
+                raise HTTPException(status_code=404, detail=f"Document version {version} not found")
+            item = items[version - 1]
+            if format == "pdf":
+                gridfs_id = item.get("pdf_gridfs_id")
+                filename = item.get("filename_pdf", filename)
+                file_info = {"sha256_hash": item.get("pdf_sha256_hash")}
+            else:
+                gridfs_id = item.get("docx_gridfs_id")
+                filename = item.get("filename_docx", filename)
+                file_info = {"sha256_hash": item.get("docx_sha256_hash")}
+        else:
+            raise HTTPException(status_code=404, detail=f"Document version {version} not found")
     
     if not gridfs_id:
         raise HTTPException(status_code=404, detail=f"No {format} file stored for version {version}")
@@ -727,17 +781,33 @@ async def get_document_access_token(
     from services.document_access_token import generate_document_access_token, get_document_preview_url
     import os
     
-    # Verify document exists
-    from services.document_generator import get_document_versions
-    versions = await get_document_versions(order_id)
-    target_version = None
-    for v in versions:
-        if v.version == version:
-            target_version = v
-            break
-    
-    if not target_version:
-        raise HTTPException(status_code=404, detail=f"Document version {version} not found")
+    # Verify document exists (supports both standard versions and pack items indexing).
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    db = database.get_db()
+    if (order.get("service_code") or "").startswith("DOC_PACK_"):
+        items = await db.document_pack_items.find(
+            {"order_id": order_id, "status": {"$in": ["COMPLETED", "APPROVED"]}},
+            {"_id": 0, "item_id": 1, "docx_gridfs_id": 1, "pdf_gridfs_id": 1},
+        ).sort("canonical_index", 1).to_list(length=200)
+        if version <= 0 or version > len(items):
+            raise HTTPException(status_code=404, detail=f"Document version {version} not found")
+        item = items[version - 1]
+        if format == "pdf" and not item.get("pdf_gridfs_id"):
+            raise HTTPException(status_code=404, detail=f"No {format} file stored for version {version}")
+        if format == "docx" and not item.get("docx_gridfs_id"):
+            raise HTTPException(status_code=404, detail=f"No {format} file stored for version {version}")
+    else:
+        from services.document_generator import get_document_versions
+        versions = await get_document_versions(order_id)
+        target_version = None
+        for v in versions:
+            if v.version == version:
+                target_version = v
+                break
+        if not target_version:
+            raise HTTPException(status_code=404, detail=f"Document version {version} not found")
     
     # Generate token
     token = generate_document_access_token(
@@ -797,19 +867,38 @@ async def view_document_with_token(
     
     db = database.get_db()
     
-    # Get the version record from document_versions_v2
+    # Resolve file from standard version record or pack item fallback
     version_record = await db.document_versions_v2.find_one(
         {"order_id": order_id, "version": version},
-        {"_id": 0, "docx": 1, "pdf": 1}
+        {"_id": 0, "docx": 1, "pdf": 1},
     )
-    
-    if not version_record:
-        raise HTTPException(status_code=404, detail=f"Document version {version} not found")
-    
-    # Get the file info based on format
-    file_info = version_record.get("pdf" if format == "pdf" else "docx", {})
-    gridfs_id = file_info.get("gridfs_id")
-    filename = file_info.get("filename", f"{order_id}_v{version}.{format}")
+    file_info = {}
+    gridfs_id = None
+    filename = f"{order_id}_v{version}.{format}"
+    if version_record:
+        file_info = version_record.get("pdf" if format == "pdf" else "docx", {})
+        gridfs_id = file_info.get("gridfs_id")
+        filename = file_info.get("filename", filename)
+    else:
+        order = await get_order(order_id)
+        if order and (order.get("service_code") or "").startswith("DOC_PACK_"):
+            items = await db.document_pack_items.find(
+                {"order_id": order_id, "status": {"$in": ["COMPLETED", "APPROVED"]}},
+                {"_id": 0},
+            ).sort("canonical_index", 1).to_list(length=200)
+            if version <= 0 or version > len(items):
+                raise HTTPException(status_code=404, detail=f"Document version {version} not found")
+            item = items[version - 1]
+            if format == "pdf":
+                gridfs_id = item.get("pdf_gridfs_id")
+                filename = item.get("filename_pdf", filename)
+                file_info = {"sha256_hash": item.get("pdf_sha256_hash")}
+            else:
+                gridfs_id = item.get("docx_gridfs_id")
+                filename = item.get("filename_docx", filename)
+                file_info = {"sha256_hash": item.get("docx_sha256_hash")}
+        else:
+            raise HTTPException(status_code=404, detail=f"Document version {version} not found")
     
     if not gridfs_id:
         raise HTTPException(status_code=404, detail=f"No {format} file stored for version {version}")

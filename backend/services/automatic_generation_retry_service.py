@@ -138,7 +138,7 @@ async def process_due_automatic_generation_retries() -> Dict[str, Any]:
                     "workflow_event_code": "AUTOMATIC_RETRY_TRIGGERED",
                 },
             )
-            gen = await workflow_automation_service.wf2_queue_to_generation(oid)
+            gen = await workflow_automation_service.wf2_queue_to_generation(oid, force_retry=True)
             if gen.get("success"):
                 await workflow_automation_service.wf3_draft_to_review(oid)
             processed += 1
