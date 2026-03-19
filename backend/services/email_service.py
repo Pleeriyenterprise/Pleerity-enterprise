@@ -13,6 +13,15 @@ from email_templates.email_layout import build_customer_email_layout
 logger = logging.getLogger(__name__)
 
 
+def _format_greeting(client_name: Optional[str]) -> str:
+    """Avoid empty 'Hi ,' — use first name or neutral 'Hello,'."""
+    name = (client_name or "").strip()
+    if not name or name.lower() in ("valued customer", "there", "customer"):
+        return "Hello,"
+    first = name.split()[0]
+    return f"Hello {first},"
+
+
 def _email_app_base() -> str:
     from utils.app_urls import get_app_base_url
 
@@ -36,6 +45,7 @@ SYSTEM_CRITICAL_ALIASES = {
     EmailTemplateAlias.PASSWORD_RESET,
     EmailTemplateAlias.PASSWORD_CHANGED_CONFIRMATION,
     EmailTemplateAlias.PORTAL_READY,
+    EmailTemplateAlias.ACTIVATION_REMINDER,
     EmailTemplateAlias.ADMIN_INVITE,
     EmailTemplateAlias.TENANT_INVITE,
     EmailTemplateAlias.ORDER_DELIVERED,
@@ -67,7 +77,7 @@ def _get_onboarding_content(template_alias: EmailTemplateAlias) -> Dict[str, Any
     content = {
         EmailTemplateAlias.ONBOARDING_DAY0_WELCOME: {
             **base,
-            "body": "<p>Welcome to Compliance Vault Pro. Your portal is ready—the next step is to add your first property so we can help you track certificates and stay compliant.</p>",
+            "body": "<p>Now that you’re signed in, add your first property so Compliance Vault Pro can track certificates, renewals, and your compliance score.</p>",
             "cta_label": "Add your first property",
             "cta_url_suffix": "/properties",
         },
@@ -329,12 +339,12 @@ class EmailService:
         if template_alias == EmailTemplateAlias.PASSWORD_SETUP:
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
-            greeting = f"Hello {model.get('client_name', 'there')},"
-            body = "<p>Your compliance portal account has been created. Please set your password to get started.</p><p style=\"color: #666; font-size: 14px;\">This link will expire in 24 hours. If you didn't request this, please ignore this email.</p>"
+            greeting = _format_greeting(model.get("client_name"))
+            body = "<p>Your Compliance Vault Pro account is ready for activation. Set your password to secure your portal — you’ll need this before you can sign in.</p><p style=\"color: #666; font-size: 14px;\">This link will expire in 24 hours. If you didn’t expect this email, you can ignore it.</p>"
             return build_customer_email_layout(
                 greeting=greeting,
                 body_html=body,
-                header_title="Welcome to Compliance Vault Pro",
+                header_title="Welcome — set your password",
                 ref_badge=ref_badge,
                 cta_label="Set Your Password",
                 cta_url=model.get('setup_link', '#'),
@@ -342,8 +352,28 @@ class EmailService:
                 show_preferences_link=False,
                 customer_reference=customer_ref or None,
             )
+        elif template_alias == EmailTemplateAlias.ACTIVATION_REMINDER:
+            customer_ref = model.get("customer_reference", "") or ""
+            ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
+            greeting = _format_greeting(model.get("client_name"))
+            body = (
+                "<p>We noticed you haven’t finished activating your Compliance Vault Pro account yet.</p>"
+                "<p>Setting your password takes a minute and unlocks your compliance dashboard, property tracking, and document vault.</p>"
+                "<p style=\"color: #666; font-size: 14px;\">This link will expire in 24 hours.</p>"
+            )
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Complete your setup",
+                ref_badge=ref_badge,
+                cta_label="Set your password",
+                cta_url=model.get("setup_link", "#"),
+                why_received="you started a Compliance Vault Pro subscription but haven’t activated your account yet.",
+                show_preferences_link=False,
+                customer_reference=customer_ref or None,
+            )
         elif template_alias == EmailTemplateAlias.PASSWORD_RESET:
-            greeting = f"Hello {model.get('client_name', 'there')},"
+            greeting = _format_greeting(model.get("client_name"))
             body = "<p>You requested a password reset for your Compliance Vault Pro account. Use the link below to set a new password.</p><p style=\"color: #666; font-size: 14px;\">This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.</p>"
             return build_customer_email_layout(
                 greeting=greeting,
@@ -355,8 +385,42 @@ class EmailService:
                 show_preferences_link=False,
                 customer_reference=model.get('customer_reference'),
             )
+        elif template_alias == EmailTemplateAlias.PAYMENT_RECEIPT:
+            greeting = _format_greeting(model.get("client_name"))
+            plan = html_module.escape(str(model.get("plan_name") or "Compliance Vault Pro"))
+            amount = html_module.escape(str(model.get("amount_display") or ""))
+            pdate = html_module.escape(str(model.get("payment_date_display") or ""))
+            ref = html_module.escape(str(model.get("reference_display") or ""))
+            support = html_module.escape(str(model.get("support_email") or "info@pleerityenterprise.co.uk"))
+            next_steps = model.get("next_steps_html") or (
+                "<ol style=\"margin: 16px 0; padding-left: 20px; color: #334155;\">"
+                "<li>We’ll email you shortly with a link to <strong>set your password</strong>.</li>"
+                "<li>After activation, sign in to your dashboard to add properties and track compliance.</li>"
+                "<li>Need help? Reply to this email or contact our team.</li></ol>"
+            )
+            body = f"""
+            <p>Thank you — your payment for <strong>{plan}</strong> was received successfully.</p>
+            <table style="width: 100%; max-width: 480px; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
+              <tr><td style="padding: 8px 0; color: #64748b;">Amount</td><td style="padding: 8px 0; text-align: right;"><strong>{amount}</strong></td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b;">Date</td><td style="padding: 8px 0; text-align: right;">{pdate}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b;">Reference</td><td style="padding: 8px 0; text-align: right; font-family: monospace; font-size: 12px;">{ref}</td></tr>
+            </table>
+            <p style="color: #0B1D3A; font-weight: 600;">What happens next</p>
+            {next_steps}
+            <p style="color: #64748b; font-size: 14px;">Support: <a href="mailto:{support}" style="color: #00B8A9;">{support}</a></p>
+            """
+            return build_customer_email_layout(
+                greeting=greeting,
+                body_html=body,
+                header_title="Payment received",
+                cta_label=model.get("receipt_cta_label"),
+                cta_url=model.get("receipt_cta_url"),
+                why_received="you completed checkout for Compliance Vault Pro.",
+                show_preferences_link=False,
+                customer_reference=model.get("customer_reference") or None,
+            )
         elif template_alias == EmailTemplateAlias.PASSWORD_CHANGED_CONFIRMATION:
-            greeting = f"Hello {model.get('client_name', 'there')},"
+            greeting = _format_greeting(model.get("client_name"))
             body = "<p>Your password was changed successfully. If you did not make this change, please contact support immediately.</p>"
             return build_customer_email_layout(
                 greeting=greeting,
@@ -372,16 +436,24 @@ class EmailService:
         elif template_alias == EmailTemplateAlias.PORTAL_READY:
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
-            greeting = f"Hello {model.get('client_name', 'there')},"
-            body = "<p>Great news! Your Compliance Vault Pro portal is now ready to use.</p>"
+            greeting = _format_greeting(model.get("client_name"))
+            body = (
+                "<p>Your password is set — you now have full access to your <strong>Compliance Vault Pro</strong> dashboard.</p>"
+                "<p style=\"color: #0B1D3A; font-weight: 600; margin-top: 20px;\">Suggested first steps</p>"
+                "<ul style=\"margin: 12px 0; padding-left: 20px; color: #334155; line-height: 1.6;\">"
+                "<li>Review <strong>your properties</strong> and add any missing addresses.</li>"
+                "<li>Check your <strong>compliance status</strong> and upcoming renewals.</li>"
+                "<li><strong>Upload certificates</strong> so expiry tracking and reminders work for you.</li>"
+                "</ul>"
+            )
             return build_customer_email_layout(
                 greeting=greeting,
                 body_html=body,
-                header_title="Your Portal is Ready!",
+                header_title="Your dashboard is ready",
                 ref_badge=ref_badge,
-                cta_label="Access Your Portal",
+                cta_label="Go to your dashboard",
                 cta_url=model.get('portal_link', '#'),
-                why_received="your compliance portal has been provisioned and is ready to use.",
+                why_received="you successfully activated your Compliance Vault Pro account.",
                 show_preferences_link=False,
                 preferences_url=_notification_preferences_url(model) or None,
                 customer_reference=customer_ref or None,
@@ -660,7 +732,7 @@ class EmailService:
             portal_base = (model.get("portal_base_url") or model.get("portal_link") or _email_app_base()).strip().rstrip("/")
             c = _get_onboarding_content(template_alias)
             cta_url = (portal_base + c.get("cta_url_suffix", "/dashboard")) if portal_base else "#"
-            greeting = f"Hello {model.get('client_name', 'there')},"
+            greeting = _format_greeting(model.get("client_name"))
             ref_badge = ""
             if model.get("customer_reference"):
                 ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{model["customer_reference"]}</span></p>'
@@ -714,23 +786,59 @@ class EmailService:
         
         if template_alias == EmailTemplateAlias.PASSWORD_SETUP:
             return f"""
-Welcome to Compliance Vault Pro
+Welcome — set your password
 {ref_line}
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get('client_name'))}
 
-Your compliance portal account has been created. Please set your password to get started.
+Your Compliance Vault Pro account is ready for activation. Set your password to secure your portal.
 
-Set your password here: {model.get('setup_link', '#')}
+Set your password: {model.get('setup_link', '#')}
 
-This link will expire in 24 hours. If you didn't request this, please ignore this email.
+This link will expire in 24 hours.
+{footer}
+            """
+        elif template_alias == EmailTemplateAlias.ACTIVATION_REMINDER:
+            return f"""
+Complete your setup
+{ref_line}
+
+{_format_greeting(model.get('client_name'))}
+
+We noticed you haven't finished activating your Compliance Vault Pro account. Set your password to unlock your dashboard.
+
+Set your password: {model.get('setup_link', '#')}
+
+This link will expire in 24 hours.
+{footer}
+            """
+        elif template_alias == EmailTemplateAlias.PAYMENT_RECEIPT:
+            support = model.get("support_email") or "info@pleerityenterprise.co.uk"
+            return f"""
+Payment received — Compliance Vault Pro
+{ref_line}
+
+{_format_greeting(model.get('client_name'))}
+
+Thank you. Your payment was received.
+
+Plan: {model.get('plan_name', '')}
+Amount: {model.get('amount_display', '')}
+Date: {model.get('payment_date_display', '')}
+Reference: {model.get('reference_display', '')}
+
+What happens next:
+1. You'll receive a separate email to set your password.
+2. After activation, sign in to manage properties and compliance.
+
+Support: {support}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PASSWORD_RESET:
             return f"""
 Reset your password
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get('client_name'))}
 
 You requested a password reset for your Compliance Vault Pro account. Use the link below to set a new password.
 
@@ -743,7 +851,7 @@ This link will expire in 1 hour. If you didn't request this, please ignore this 
             return f"""
 Password changed
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get('client_name'))}
 
 Your password was changed successfully. If you did not make this change, please contact support immediately.
 
@@ -752,14 +860,19 @@ View your dashboard: {model.get('portal_link', '#')}
             """
         elif template_alias == EmailTemplateAlias.PORTAL_READY:
             return f"""
-Your Portal is Ready!
+Your dashboard is ready
 {ref_line}
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get('client_name'))}
 
-Great news! Your Compliance Vault Pro portal is now ready to use.
+Your password is set — you now have full access to Compliance Vault Pro.
 
-Access your portal here: {model.get('portal_link', '#')}
+Suggested first steps:
+- Review your properties and add any missing addresses.
+- Check compliance status and upcoming renewals.
+- Upload certificates for expiry tracking.
+
+Go to your dashboard: {model.get('portal_link', '#')}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.COMPLIANCE_ALERT:

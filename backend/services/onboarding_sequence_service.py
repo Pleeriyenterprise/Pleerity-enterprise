@@ -158,7 +158,7 @@ async def process_onboarding_email_queue() -> dict:
 def _subject_for_event(event_id: str) -> str:
     """Default subject line per onboarding event."""
     subjects = {
-        "ONBOARDING_DAY0_WELCOME": "Welcome to Compliance Vault Pro",
+        "ONBOARDING_DAY0_WELCOME": "Add your first property in Compliance Vault Pro",
         "ONBOARDING_DAY1_SETUP_REMINDER": "Complete your setup",
         "ONBOARDING_DAY2_COMPLIANCE_EDUCATION": "Track your compliance requirements",
         "ONBOARDING_DAY3_PRODUCT_VALUE": "Your compliance dashboard",

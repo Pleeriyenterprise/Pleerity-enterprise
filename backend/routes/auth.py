@@ -363,6 +363,16 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 await log_event("password_set", {"client_id": password_token.get("client_id")})
             except Exception:
                 pass
+            try:
+                from services.onboarding_lifecycle_service import send_dashboard_ready_and_start_sequence
+
+                await send_dashboard_ready_and_start_sequence(password_token.get("client_id"))
+            except Exception as onb_err:
+                logger.warning(
+                    "send_dashboard_ready_and_start_sequence failed client_id=%s: %s",
+                    password_token.get("client_id"),
+                    onb_err,
+                )
         
         # Create access token for auto-login (include session_version)
         token_data = {

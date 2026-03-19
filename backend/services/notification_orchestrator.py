@@ -663,6 +663,39 @@ class NotificationOrchestrator:
             text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
             subj = (context.get("subject") or default_subject)
             return html, text, subj
+        # Subscription payment receipt: always use code-built layout (structured context from Stripe webhook).
+        if alias_str == "payment-receipt" and context.get("payment_receipt_layout") == "structured":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.PAYMENT_RECEIPT, model)
+            text = svc._build_text_body(EmailTemplateAlias.PAYMENT_RECEIPT, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        # Activation reminder uses canonical customer layout (not stale DB overrides).
+        if alias_str == "activation-reminder":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.ACTIVATION_REMINDER, model)
+            text = svc._build_text_body(EmailTemplateAlias.ACTIVATION_REMINDER, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        # Post-password dashboard milestone (avoid stale DB portal-ready overriding copy).
+        if alias_str == "portal-ready" and context.get("dashboard_milestone_email"):
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.PORTAL_READY, model)
+            text = svc._build_text_body(EmailTemplateAlias.PORTAL_READY, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
         db_template = await db.email_templates.find_one({"alias": alias_str, "is_active": True}, {"_id": 0})
         if db_template:
             html = db_template.get("html_body", "")

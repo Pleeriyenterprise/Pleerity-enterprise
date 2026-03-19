@@ -106,6 +106,7 @@ from job_runner import (
     run_lead_sla_check,
     run_checklist_nurture_processing,
     run_onboarding_sequence_processing,
+    run_activation_reminder_processing,
     run_risk_lead_nurture_processing,
     run_notification_failure_spike_monitor,
     run_notification_retry_worker,
@@ -693,6 +694,16 @@ async def lifespan(app: FastAPI):
             name="Onboarding Sequence (landlord 7-day emails)",
             replace_existing=True,
             args=["onboarding_sequence_processing"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Activation reminders (paid but password not set) - every 6 hours
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=40, hour="*/6", timezone=SCHEDULER_TIMEZONE),
+            id="activation_reminder_processing",
+            name="Activation reminder (set password)",
+            replace_existing=True,
+            args=["activation_reminder_processing"],
             kwargs={"run_type": "schedule"},
         )
         # Predictive maintenance insights - daily 4:00 AM UTC (warms insights for clients with PREDICTIVE_MAINTENANCE)

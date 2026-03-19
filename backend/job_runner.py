@@ -551,6 +551,21 @@ async def run_onboarding_sequence_processing():
         raise
 
 
+async def run_activation_reminder_processing():
+    """Remind subscribers who paid but have not set their portal password (first + final)."""
+    try:
+        from services.onboarding_lifecycle_service import process_activation_reminders
+
+        r = await process_activation_reminders()
+        return {
+            "message": f"Activation reminders: first={r.get('first', 0)} final={r.get('final', 0)}",
+            **r,
+        }
+    except Exception as e:
+        logger.error("Activation reminder processing failed: %s", e)
+        raise
+
+
 async def run_compliance_recalc_sla_monitor():
     """Compliance recalc SLA: detect stuck PENDING/RUNNING, repeated failures, property pending too long; dedupe alerts, audit, optional email."""
     try:
@@ -909,6 +924,7 @@ JOB_RUNNERS = {
     "lead_sla_check": run_lead_sla_check,
     "checklist_nurture_processing": run_checklist_nurture_processing,
     "onboarding_sequence_processing": run_onboarding_sequence_processing,
+    "activation_reminder_processing": run_activation_reminder_processing,
     "risk_lead_nurture_processing": run_risk_lead_nurture_processing,
     "compliance_recalc_sla_monitor": run_compliance_recalc_sla_monitor,
     "sla_watchdog": run_sla_watchdog,

@@ -572,6 +572,8 @@ class ProvisioningService:
                 "support_email": support_email,
                 "link_expiry_hours": link_expiry_hours,
                 "if_you_did_not_request": "If you didn't request this link, you can safely ignore this email.",
+                "subject": "Welcome to Compliance Vault Pro — set your password",
+                "customer_reference": crn,
             },
             idempotency_key=idempotency_key,
             event_type="provisioning_welcome",
@@ -642,6 +644,75 @@ class ProvisioningService:
         except Exception:
             pass
         logger.warning("ACTIVATION_EMAIL_FAILED client_id=%s error=%s provider_response_code=%s", client_id, err, getattr(result, "status_code", None))
+        return False, "FAILED", err
+
+    async def send_activation_reminder_email(
+        self,
+        client_id: str,
+        user_id: str,
+        email: str,
+        name: str,
+        *,
+        idempotency_key: str,
+    ) -> tuple[bool, str, Optional[str]]:
+        """
+        Second-chance activation email (reminder). Generates a new token; same mechanics as welcome/activation.
+        """
+        db = database.get_db()
+        raw_token = generate_secure_token()
+        token_hash = hash_token(raw_token)
+
+        from models import PasswordToken
+
+        link_expiry_hours = 24
+        password_token = PasswordToken(
+            token_hash=token_hash,
+            portal_user_id=user_id,
+            client_id=client_id,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=link_expiry_hours),
+            created_by="SYSTEM",
+            send_count=1,
+        )
+        doc = password_token.model_dump()
+        for key in ["expires_at", "used_at", "revoked_at", "created_at"]:
+            if doc.get(key) and isinstance(doc[key], datetime):
+                doc[key] = doc[key].isoformat()
+        await db.password_tokens.insert_one(doc)
+
+        from utils.public_app_url import get_frontend_base_url
+
+        try:
+            base_url = get_frontend_base_url()
+        except ValueError as e:
+            logger.error("Activation reminder not sent: %s", e)
+            return False, "FAILED", str(e)[:500]
+        setup_link = f"{base_url.rstrip('/')}/set-password?token={raw_token}"
+
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "customer_reference": 1})
+        crn = (client or {}).get("customer_reference") or ""
+        support_email = os.getenv("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk") or "info@pleerityenterprise.co.uk"
+
+        from services.notification_orchestrator import notification_orchestrator
+
+        result = await notification_orchestrator.send(
+            template_key="ACTIVATION_REMINDER",
+            client_id=client_id,
+            context={
+                "setup_link": setup_link,
+                "client_name": name,
+                "customer_reference": crn,
+                "support_email": support_email,
+                "subject": "Complete your Compliance Vault Pro setup",
+            },
+            idempotency_key=idempotency_key,
+            event_type="activation_reminder",
+        )
+        if result.outcome in ("sent", "duplicate_ignored"):
+            return True, "SENT", None
+        if result.outcome == "blocked" and (result.block_reason or "").strip() == "BLOCKED_PROVIDER_NOT_CONFIGURED":
+            err_msg = (result.error_message or result.block_reason or "POSTMARK_SERVER_TOKEN not set")[:500]
+            return False, "NOT_CONFIGURED", err_msg
+        err = (result.error_message or result.block_reason or result.outcome or "unknown")[:500]
         return False, "FAILED", err
     
     async def _fail_provisioning(self, client_id: str, reason: str):

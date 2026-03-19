@@ -600,33 +600,67 @@ class StripeWebhookService:
             }
         )
 
-        # Billing notification via orchestrator (allowed pre-provisioning, idempotent)
+        # Billing notification: payment confirmation only (no dashboard link until password is set).
         try:
             plan_def = plan_registry.get_plan(plan_code)
             client_for_email = await db.clients.find_one(
                 {"client_id": client_id},
-                {"_id": 0, "contact_name": 1, "full_name": 1},
+                {"_id": 0, "contact_name": 1, "full_name": 1, "customer_reference": 1},
             )
-            client_name = (client_for_email or {}).get("contact_name") or (client_for_email or {}).get("full_name") or "Valued Customer"
-            amount = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
-            from utils.public_app_url import get_public_app_url
-            base_url = get_public_app_url(for_email_links=False)
+            client_name = (client_for_email or {}).get("contact_name") or (client_for_email or {}).get("full_name") or ""
+            plan_pricing_line = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
+            amount_total_cents = session.get("amount_total")
+            currency = (session.get("currency") or "gbp").strip().upper()
+            if amount_total_cents is not None:
+                sym = "£" if currency == "GBP" else ""
+                amt_display = f"{sym}{amount_total_cents / 100:.2f}" + ("" if sym else f" {currency}")
+            else:
+                amt_display = plan_pricing_line
+            payment_dt = datetime.now(timezone.utc)
+            payment_date_display = payment_dt.strftime("%d %B %Y %H:%M UTC")
+            sess_id = checkout_session_id or (session.get("id") or "")
+            pi = session.get("payment_intent")
+            if isinstance(pi, dict):
+                pi_ref = pi.get("id") or ""
+            else:
+                pi_ref = (pi or "") if isinstance(pi, str) else ""
             event_id = (event or {}).get("id", "")
+            reference_display = sess_id or pi_ref or event_id or client_id
+            support_email = (os.getenv("SUPPORT_EMAIL") or "info@pleerityenterprise.co.uk").strip()
             idempotency_key = f"{event_id}_SUBSCRIPTION_CONFIRMED" if event_id else None
             from services.notification_orchestrator import notification_orchestrator
-            await notification_orchestrator.send(
+
+            result = await notification_orchestrator.send(
                 template_key="SUBSCRIPTION_CONFIRMED",
                 client_id=client_id,
                 context={
-                    "client_name": client_name,
+                    "payment_receipt_layout": "structured",
+                    "client_name": client_name or "Valued Customer",
                     "plan_name": plan_def.get("name", plan_code.value),
-                    "amount": amount,
-                    "portal_link": f"{base_url}/app/dashboard",
-                    "subject": "Payment received - Compliance Vault Pro",
+                    "amount_display": amt_display,
+                    "payment_date_display": payment_date_display,
+                    "reference_display": reference_display,
+                    "support_email": support_email,
+                    "customer_reference": (client_for_email or {}).get("customer_reference") or "",
+                    "subject": "Payment received — Compliance Vault Pro",
                 },
                 idempotency_key=idempotency_key,
                 event_type="checkout.session.completed",
             )
+            if result.outcome in ("sent", "duplicate_ignored"):
+                await db.clients.update_one(
+                    {"client_id": client_id},
+                    {"$set": {"onboarding_payment_confirmation_email_sent_at": payment_dt.isoformat()}},
+                )
+                await create_audit_log(
+                    action=AuditAction.ONBOARDING_PAYMENT_CONFIRMATION_EMAIL_SENT,
+                    client_id=client_id,
+                    metadata={
+                        "template_key": "SUBSCRIPTION_CONFIRMED",
+                        "stripe_event_id": event_id,
+                        "message_id": getattr(result, "message_id", None),
+                    },
+                )
         except Exception as e:
             logger.warning(f"SUBSCRIPTION_CONFIRMED notification: {e}")
         

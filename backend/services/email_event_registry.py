@@ -113,7 +113,7 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
     "ONBOARDING_DAY0_WELCOME": {
         "category": "reporting_notifications",
         "template_key": "ONBOARDING_DAY0_WELCOME",
-        "trigger": "provisioning_runner after WELCOME_EMAIL_SENT; onboarding_sequence_processing",
+        "trigger": "after password set: onboarding_lifecycle_service then onboarding_sequence_processing",
     },
     "ONBOARDING_DAY1_SETUP_REMINDER": {
         "category": "reporting_notifications",
@@ -170,7 +170,17 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
     "SUBSCRIPTION_STARTED": {
         "category": "system_critical",
         "template_key": "SUBSCRIPTION_CONFIRMED",
-        "trigger": "stripe checkout.session.completed",
+        "trigger": "stripe checkout.session.completed (structured payment receipt; no dashboard link)",
+    },
+    "DASHBOARD_READY_MILESTONE": {
+        "category": "system_critical",
+        "template_key": "DASHBOARD_READY",
+        "trigger": "auth set_password success (client); then schedule_onboarding_sequence",
+    },
+    "ACTIVATION_REMINDER_CLIENT": {
+        "category": "system_critical",
+        "template_key": "ACTIVATION_REMINDER",
+        "trigger": "activation_reminder_processing job if activation sent and password not set",
     },
     "PAYMENT_SUCCESS": {
         "category": "system_critical",
