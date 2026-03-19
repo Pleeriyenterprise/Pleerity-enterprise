@@ -9,7 +9,7 @@
  * - Review checkbox gate before approval
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -258,45 +258,48 @@ const DocumentPreviewModal = ({
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
-  const getTokenizedPreviewUrl = async (format = 'pdf') => {
-    const token = localStorage.getItem('auth_token');
-    if (!token || !selectedVersion || !orderId) {
-      throw new Error('Missing auth/session context');
-    }
-    const response = await fetch(
-      `${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/token?format=${format}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+  const getTokenizedPreviewUrl = useCallback(
+    async (format = 'pdf') => {
+      const token = localStorage.getItem('auth_token');
+      if (!token || !selectedVersion || !orderId) {
+        throw new Error('Missing auth/session context');
       }
-    );
-    if (!response.ok) {
-      let detail = 'Failed to get document access token';
-      try {
-        const data = await response.json();
-        detail = data?.detail || detail;
-      } catch (_) {
-        // ignore json parse failure
+      const response = await fetch(
+        `${API_URL}/api/admin/orders/${orderId}/documents/${selectedVersion.version}/token?format=${format}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (!response.ok) {
+        let detail = 'Failed to get document access token';
+        try {
+          const data = await response.json();
+          detail = data?.detail || detail;
+        } catch (_) {
+          // ignore json parse failure
+        }
+        throw new Error(detail);
       }
-      throw new Error(detail);
-    }
-    const data = await response.json();
-    if (!data?.preview_url) {
-      throw new Error('Invalid token response');
-    }
-    return data.preview_url;
-  };
+      const data = await response.json();
+      if (!data?.preview_url) {
+        throw new Error('Invalid token response');
+      }
+      return data.preview_url;
+    },
+    [selectedVersion, orderId]
+  );
 
   // Fetch token-based preview URL when version changes
-  React.useEffect(() => {
+  useEffect(() => {
     setHasReviewed(false);
     setPreviewUrl(null);
-    
+
     if (!selectedVersion || !orderId) return;
-    
+
     let mounted = true;
-    
+
     const fetchPreviewToken = async () => {
       setIsLoadingPreview(true);
       try {
@@ -314,11 +317,13 @@ const DocumentPreviewModal = ({
         }
       }
     };
-    
+
     fetchPreviewToken();
-    
-    return () => { mounted = false; };
-  }, [selectedVersion, orderId]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedVersion, orderId, getTokenizedPreviewUrl]);
 
   const handleApprove = () => {
     if (!hasReviewed) {
