@@ -4,7 +4,7 @@ Handles admin operations for the Orders system.
 NO CVP COLLECTIONS TOUCHED - Works only with orders and workflow_executions.
 """
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 from datetime import datetime, timezone
 from database import database
@@ -35,6 +35,17 @@ class TransitionRequest(BaseModel):
 
 class NoteRequest(BaseModel):
     note: str
+
+
+class RetryGenerationRequest(BaseModel):
+    preferred_provider: Optional[str] = None  # "openai" | "gemini" | null
+    reason: str = Field(..., min_length=3, max_length=2000)
+
+
+class RetryGenerationOverrideRequest(BaseModel):
+    preferred_provider: str
+    reason: str = Field(..., min_length=3, max_length=2000)
+    force_skip_auto_retry_guard: bool = True
 
 
 # ============================================
@@ -578,6 +589,34 @@ async def request_client_info(
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{order_id}/regenerate-receipt")
+async def admin_regenerate_order_receipt(
+    order_id: str,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Regenerate payment receipt PDF and store on order (GridFS). Idempotent replace.
+    """
+    from services.order_receipt_service import ensure_order_receipt_stored
+    from utils.audit import create_audit_log
+    from models import AuditAction
+
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    ok, _, err = await ensure_order_receipt_stored(order_id, order, force_regenerate=True)
+    if not ok:
+        raise HTTPException(status_code=500, detail=err or "Receipt generation failed")
+    await create_audit_log(
+        action=AuditAction.ORDER_RECEIPT_PDF_GENERATED,
+        actor_id=current_user.get("user_id"),
+        resource_type="order",
+        resource_id=order_id,
+        metadata={"source": "admin_regenerate_receipt"},
+    )
+    return {"success": True, "order_id": order_id, "message": "Receipt regenerated"}
 
 
 # ============================================
@@ -1362,60 +1401,52 @@ async def retry_order_delivery(
 @router.post("/{order_id}/retry-generation")
 async def retry_order_generation(
     order_id: str,
+    body: RetryGenerationRequest,
     current_user: dict = Depends(admin_route_guard),
 ):
     """
     Retry generation for an order in FAILED state.
-    Transitions FAILED → QUEUED with reason and triggers processing immediately.
+    Creates audit log + workflow event (RETRY_TRIGGERED metadata), FAILED → QUEUED, WF2+WF3.
     """
-    order = await get_order(order_id)
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    if order["status"] != OrderStatus.FAILED.value:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Order must be in FAILED status to retry generation (current: {order['status']})",
-        )
+    from services.generation_retry_service import admin_retry_order_generation
 
-    updated_order = await transition_order_state(
-        order_id=order_id,
-        new_status=OrderStatus.QUEUED,
-        triggered_by_type="admin",
-        triggered_by_user_id=current_user.get("user_id"),
-        triggered_by_email=current_user.get("email"),
-        reason="Admin retry generation",
-    )
-
-    from services.workflow_automation_service import workflow_automation_service
     try:
-        result = await workflow_automation_service.wf2_queue_to_generation(order_id)
-        if result.get("success"):
-            # Optionally move to review if WF2+WF3 run in sequence; WF2 only goes to DRAFT_READY
-            review_result = await workflow_automation_service.wf3_draft_to_review(order_id)
-            return {
-                "success": True,
-                "message": "Order re-queued and processing triggered",
-                "order_id": order_id,
-                "status": updated_order.get("status"),
-                "generation": result,
-                "review": review_result,
-            }
-        return {
-            "success": False,
-            "message": result.get("error", "Generation failed"),
-            "order_id": order_id,
-            "status": updated_order.get("status"),
-            "generation": result,
-        }
-    except Exception as e:
-        logger.exception("Retry generation failed for order %s: %s", order_id, e)
-        return {
-            "success": True,
-            "message": "Order re-queued; generation will run on next scheduled job",
-            "order_id": order_id,
-            "status": "QUEUED",
-            "error": str(e),
-        }
+        return await admin_retry_order_generation(
+            order_id=order_id,
+            admin_user=current_user,
+            reason=body.reason,
+            preferred_provider=body.preferred_provider,
+            force_skip_auto_retry_guard=False,
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.post("/{order_id}/retry-generation-with-override")
+async def retry_order_generation_with_override(
+    order_id: str,
+    body: RetryGenerationOverrideRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Same as retry-generation but requires explicit provider and can bypass pending auto-retry guard.
+    """
+    from services.generation_retry_service import admin_retry_order_generation
+
+    try:
+        return await admin_retry_order_generation(
+            order_id=order_id,
+            admin_user=current_user,
+            reason=body.reason,
+            preferred_provider=body.preferred_provider,
+            force_skip_auto_retry_guard=body.force_skip_auto_retry_guard,
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 class ManualCompleteRequest(BaseModel):

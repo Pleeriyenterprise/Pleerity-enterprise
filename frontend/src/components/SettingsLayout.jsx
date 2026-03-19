@@ -1,11 +1,12 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { User, Bell, CreditCard, Palette } from 'lucide-react';
+import { User, Bell, CreditCard, Palette, Receipt } from 'lucide-react';
 
 const TABS = [
   { path: '/settings/profile', label: 'Profile', icon: User },
   { path: '/settings/notifications', label: 'Notifications', icon: Bell },
   { path: '/settings/billing', label: 'Billing', icon: CreditCard },
+  { path: '/settings/billing/receipts', label: 'Receipts', icon: Receipt },
   { path: '/settings/branding', label: 'Branding', icon: Palette },
 ];
 

@@ -372,6 +372,46 @@ export const ordersApi = {
   },
 
   /**
+   * Retry document generation for a FAILED order (audit + workflow event).
+   */
+  retryGeneration: async (orderId, { preferred_provider = null, reason }) => {
+    const response = await fetch(
+      `${API_URL}/api/admin/orders/${orderId}/retry-generation`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          preferred_provider,
+          reason,
+        }),
+      }
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Retry with required provider; can bypass pending automatic retry guard.
+   */
+  retryGenerationWithOverride: async (
+    orderId,
+    { preferred_provider, reason, force_skip_auto_retry_guard = true }
+  ) => {
+    const response = await fetch(
+      `${API_URL}/api/admin/orders/${orderId}/retry-generation-with-override`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          preferred_provider,
+          reason,
+          force_skip_auto_retry_guard,
+        }),
+      }
+    );
+    return handleResponse(response);
+  },
+
+  /**
    * Manually complete an order (admin override)
    */
   manualComplete: async (orderId, reason) => {

@@ -23,8 +23,9 @@ import os
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Request, status, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request, status, Depends, Query
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from database import database
 from middleware import admin_route_guard
 from models import AuditAction, EmailTemplateAlias, UserRole, PasswordToken
@@ -34,6 +35,32 @@ from services.provisioning import provisioning_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/billing", tags=["admin-billing"], dependencies=[Depends(admin_route_guard)])
+
+# Human-readable labels for stored Stripe webhook types (no invented events).
+_STRIPE_EVENT_LABELS = {
+    "checkout.session.completed": "Checkout completed",
+    "checkout.session.expired": "Checkout expired",
+    "customer.subscription.created": "Subscription created",
+    "customer.subscription.updated": "Subscription updated",
+    "customer.subscription.deleted": "Subscription ended",
+    "customer.subscription.paused": "Subscription paused",
+    "customer.subscription.resumed": "Subscription resumed",
+    "invoice.paid": "Invoice paid",
+    "invoice.payment_failed": "Invoice payment failed",
+    "invoice.payment_action_required": "Payment requires action",
+    "invoice.finalized": "Invoice finalized",
+    "payment_intent.succeeded": "Payment succeeded",
+    "payment_intent.payment_failed": "Payment failed",
+}
+
+
+def _stripe_timeline_summary(event_type: Optional[str]) -> str:
+    if not event_type:
+        return "Stripe event"
+    return _STRIPE_EVENT_LABELS.get(
+        event_type,
+        event_type.replace(".", " ").replace("_", " ").title(),
+    )
 
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_API_KEY", "")
@@ -56,6 +83,12 @@ class ChangePlanRequest(BaseModel):
     """Request to change a client's subscription plan (admin support flow)."""
     plan_code: str  # PLAN_1_SOLO | PLAN_2_PORTFOLIO | PLAN_3_PRO
     apply_at_period_end: bool = True  # If True, new price applies at next billing; if False, prorate immediately
+
+
+class AdminReceiptResendBody(BaseModel):
+    """Resend receipt email for a subscription ledger row or paid order."""
+    source: str = Field(..., description="subscription | order")
+    ref: str = Field(..., description="Invoice number / cs_ session id, or order_id")
 
 
 # =============================================================================
@@ -209,15 +242,32 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             {"_id": 0, "portal_user_id": 1, "auth_email": 1, "email": 1, "password_set": 1, "password_status": 1, "created_at": 1}
         )
         
-        # Get last Stripe events
-        last_events = await db.stripe_events.find(
+        # Stripe webhook timeline (stored events only; labels are summaries of `type`)
+        raw_timeline = await db.stripe_events.find(
             {"related_client_id": client_id}
-        ).sort("created", -1).limit(5).to_list(5)
-        
-        for event in last_events:
-            if "_id" in event:
-                del event["_id"]
-        
+        ).sort("created", -1).limit(25).to_list(25)
+
+        stripe_timeline: List[Dict[str, Any]] = []
+        for ev in raw_timeline:
+            created = ev.get("created")
+            if hasattr(created, "isoformat"):
+                created_iso = created.isoformat()
+            else:
+                created_iso = str(created) if created else ""
+            err = ev.get("error") or ""
+            stripe_timeline.append(
+                {
+                    "event_id": ev.get("event_id"),
+                    "type": ev.get("type"),
+                    "summary": _stripe_timeline_summary(ev.get("type")),
+                    "status": ev.get("status"),
+                    "created": created_iso,
+                    "error_preview": (err[:240] + "…") if len(err) > 240 else err if ev.get("status") == "FAILED" else None,
+                }
+            )
+
+        checkout_receipt_count = await db.stripe_checkout_invoices.count_documents({"client_id": client_id})
+
         # Get property count
         property_count = await db.properties.count_documents({"client_id": client_id})
         
@@ -267,12 +317,74 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             } if portal_user else None,
             "password_setup_complete": (portal_user.get("password_set", False) or portal_user.get("password_status") == "SET") if portal_user else False,
             
-            # Recent events
-            "recent_stripe_events": last_events,
+            # Stripe activity & receipts (for admin UI)
+            "stripe_timeline": stripe_timeline,
+            "checkout_receipt_ledger_count": checkout_receipt_count,
+            "next_billing_date": billing.get("current_period_end") if billing else None,
+            "last_stripe_invoice_id": billing.get("latest_invoice_id") if billing else None,
             
             # Created
             "created_at": client.get("created_at"),
         }
+
+        # Per-client attention (rule-based; only flags we can justify from stored fields)
+        attention: List[Dict[str, Any]] = []
+        es = client.get("entitlement_status")
+        if es == "LIMITED":
+            attention.append(
+                {
+                    "code": "entitlement_limited",
+                    "severity": "high",
+                    "message": "Entitlement is LIMITED — often payment or compliance-related.",
+                }
+            )
+        elif es == "DISABLED":
+            attention.append(
+                {
+                    "code": "entitlement_disabled",
+                    "severity": "high",
+                    "message": "Entitlement is DISABLED — subscription or billing inactive.",
+                }
+            )
+        ob = client.get("onboarding_status")
+        if ob and ob not in ("PROVISIONED", "COMPLETE"):
+            attention.append(
+                {
+                    "code": "onboarding_incomplete",
+                    "severity": "medium",
+                    "message": f"Onboarding not complete (status: {ob}).",
+                }
+            )
+        if billing and billing.get("payment_failed_at"):
+            attention.append(
+                {
+                    "code": "payment_failed_recorded",
+                    "severity": "high",
+                    "message": "Payment failure recorded on billing record — review Stripe and client payment method.",
+                }
+            )
+        pwd_ok = (
+            (portal_user.get("password_set", False) or portal_user.get("password_status") == "SET")
+            if portal_user
+            else True
+        )
+        if portal_user and ob == "PROVISIONED" and not pwd_ok:
+            attention.append(
+                {
+                    "code": "password_setup_pending",
+                    "severity": "medium",
+                    "message": "Portal admin has not completed password setup.",
+                }
+            )
+        if billing and billing.get("stripe_subscription_id") and checkout_receipt_count == 0:
+            attention.append(
+                {
+                    "code": "no_subscription_checkout_receipt",
+                    "severity": "low",
+                    "message": "Subscription on file but no subscription checkout PDF in ledger (legacy or out-of-band Stripe).",
+                }
+            )
+        snapshot["billing_attention_items"] = attention
         
         return snapshot
         
@@ -284,6 +396,158 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get billing snapshot"
         )
+
+
+# =============================================================================
+# Receipts & Invoices (canonical GridFS + ledger collections)
+# =============================================================================
+
+def _parse_admin_date(q: Optional[str]) -> Optional[datetime]:
+    if not q or not str(q).strip():
+        return None
+    s = str(q).strip()
+    try:
+        if len(s) == 10 and s[4] == "-" and s[7] == "-":
+            dt = datetime.fromisoformat(s)
+            return dt.replace(tzinfo=timezone.utc)
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+@router.get("/clients/{client_id}/receipts")
+async def list_admin_client_receipts(
+    request: Request,
+    client_id: str,
+    type: str = Query("all", description="all | subscription | order | intake_order | one_off_order | cvp_order"),
+    status: Optional[str] = Query(None, description="Filter by payment_status e.g. PAID"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    limit: int = Query(200, ge=1, le=500),
+):
+    """Merged subscription checkout receipts and paid orders for the selected client only."""
+    admin = await admin_route_guard(request)
+    _ = admin
+    from services.admin_billing_receipts import list_receipts_for_client
+
+    df = _parse_admin_date(date_from)
+    dt = _parse_admin_date(date_to)
+    if dt and df and dt < df:
+        raise HTTPException(status_code=400, detail="date_to must be on or after date_from")
+
+    rows, meta = await list_receipts_for_client(
+        client_id,
+        type_filter=type,
+        status_filter=status,
+        date_from=df,
+        date_to=dt,
+        limit=limit,
+    )
+    if not rows and not meta.get("client_id"):
+        raise HTTPException(status_code=404, detail="Client not found")
+    return {"receipts": rows, "meta": meta}
+
+
+@router.get("/clients/{client_id}/receipts/subscription/{ref:path}/download")
+async def download_admin_subscription_receipt(request: Request, client_id: str, ref: str):
+    admin = await admin_route_guard(request)
+    from services.admin_billing_receipts import get_subscription_receipt_doc_for_client
+    from services.order_receipt_service import read_receipt_pdf_bytes
+
+    doc = await get_subscription_receipt_doc_for_client(client_id, ref)
+    if not doc or not doc.get("gridfs_id"):
+        raise HTTPException(status_code=404, detail="Receipt not found or PDF unavailable")
+    pdf = await read_receipt_pdf_bytes(str(doc["gridfs_id"]))
+    if not pdf:
+        raise HTTPException(status_code=404, detail="Receipt file not available")
+    filename = doc.get("filename") or f"{doc.get('invoice_number', 'receipt')}.pdf"
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=admin.get("portal_user_id"),
+        client_id=client_id,
+        resource_type="subscription_receipt",
+        resource_id=str(doc.get("invoice_number") or ref),
+        metadata={
+            "action_type": "ADMIN_RECEIPT_DOWNLOADED",
+            "channel": "admin_billing",
+            "stripe_session_id": str(doc.get("_id")),
+            "path": str(request.url.path),
+        },
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/clients/{client_id}/receipts/order/{order_id}/download")
+async def download_admin_order_receipt(request: Request, client_id: str, order_id: str):
+    admin = await admin_route_guard(request)
+    from services.admin_billing_receipts import get_order_for_client
+    from services.order_receipt_service import get_receipt_for_order
+
+    order = await get_order_for_client(client_id, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found for this client")
+    order.pop("_id", None)
+    pdf, filename = await get_receipt_for_order(order_id, order, allow_generate=True)
+    if not pdf or not filename:
+        raise HTTPException(status_code=404, detail="Receipt not available")
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=admin.get("portal_user_id"),
+        client_id=client_id,
+        resource_type="order",
+        resource_id=order_id,
+        metadata={
+            "action_type": "ADMIN_RECEIPT_DOWNLOADED",
+            "channel": "admin_billing",
+            "invoice_number": order.get("invoice_number"),
+            "path": str(request.url.path),
+        },
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/clients/{client_id}/receipts/resend")
+async def admin_resend_client_receipt(request: Request, client_id: str, body: AdminReceiptResendBody):
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+    if not await db.clients.find_one({"client_id": client_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    src = (body.source or "").strip().lower()
+    ref = (body.ref or "").strip()
+    if not ref:
+        raise HTTPException(status_code=400, detail="ref is required")
+
+    from services.admin_billing_receipts import admin_resend_order_receipt_email, admin_resend_subscription_receipt_email
+
+    if src == "subscription":
+        ok, msg = await admin_resend_subscription_receipt_email(
+            client_id=client_id,
+            ref=ref,
+            admin_portal_user_id=admin.get("portal_user_id"),
+        )
+    elif src == "order":
+        ok, msg = await admin_resend_order_receipt_email(
+            client_id=client_id,
+            order_id=ref,
+            admin_portal_user_id=admin.get("portal_user_id"),
+        )
+    else:
+        raise HTTPException(status_code=400, detail="source must be subscription or order")
+
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    return {"success": True, "message": msg}
 
 
 # =============================================================================

@@ -9,6 +9,7 @@ import logging
 from typing import Optional, Dict, Any, List
 
 from email_templates.email_layout import build_customer_email_layout
+from utils.branding import CUSTOMER_SUPPORT_FOOTER_PLAIN, SUPPORT_EMAIL
 
 logger = logging.getLogger(__name__)
 
@@ -391,12 +392,13 @@ class EmailService:
             amount = html_module.escape(str(model.get("amount_display") or ""))
             pdate = html_module.escape(str(model.get("payment_date_display") or ""))
             ref = html_module.escape(str(model.get("reference_display") or ""))
-            support = html_module.escape(str(model.get("support_email") or "info@pleerityenterprise.co.uk"))
             next_steps = model.get("next_steps_html") or (
                 "<ol style=\"margin: 16px 0; padding-left: 20px; color: #334155;\">"
                 "<li>We’ll email you shortly with a link to <strong>set your password</strong>.</li>"
                 "<li>After activation, sign in to your dashboard to add properties and track compliance.</li>"
-                "<li>Need help? Reply to this email or contact our team.</li></ol>"
+                "<li>If you have any questions, simply reply to this email or contact our support team at "
+                f"<a href=\"mailto:{html_module.escape(SUPPORT_EMAIL)}\" style=\"color: #00B8A9;\">"
+                f"{html_module.escape(SUPPORT_EMAIL)}</a>.</li></ol>"
             )
             body = f"""
             <p>Thank you — your payment for <strong>{plan}</strong> was received successfully.</p>
@@ -407,7 +409,6 @@ class EmailService:
             </table>
             <p style="color: #0B1D3A; font-weight: 600;">What happens next</p>
             {next_steps}
-            <p style="color: #64748b; font-size: 14px;">Support: <a href="mailto:{support}" style="color: #00B8A9;">{support}</a></p>
             """
             return build_customer_email_layout(
                 greeting=greeting,
@@ -776,6 +777,8 @@ class EmailService:
 --
 {model.get('company_name', 'Pleerity Enterprise Ltd')}
 {model.get('tagline', 'AI-Driven Solutions & Compliance')}{ref_line}
+
+{CUSTOMER_SUPPORT_FOOTER_PLAIN}
         """
 
     def _build_text_body(self, template_alias: EmailTemplateAlias, model: Dict[str, Any]) -> str:
@@ -813,7 +816,6 @@ This link will expire in 24 hours.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PAYMENT_RECEIPT:
-            support = model.get("support_email") or "info@pleerityenterprise.co.uk"
             return f"""
 Payment received — Compliance Vault Pro
 {ref_line}
@@ -831,7 +833,6 @@ What happens next:
 1. You'll receive a separate email to set your password.
 2. After activation, sign in to manage properties and compliance.
 
-Support: {support}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PASSWORD_RESET:
@@ -1015,8 +1016,6 @@ Download your documents here:
 
 Your documents are also available in your portal dashboard:
 {model.get('portal_link', '#')}
-
-Need help? Contact us at info@pleerityenterprise.co.uk
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PENDING_VERIFICATION_DIGEST:

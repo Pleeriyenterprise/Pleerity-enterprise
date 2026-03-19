@@ -4,11 +4,11 @@ Internal/staff notifications must NOT use this module.
 """
 from typing import Optional
 
+from utils.branding import SUPPORT_EMAIL, format_customer_support_footer_html
 
 # Brand constants
 COMPANY_NAME = "Pleerity Enterprise Ltd"
 TAGLINE = "AI-Driven Solutions & Compliance"
-SUPPORT_EMAIL = "info@pleerityenterprise.co.uk"
 SECURITY_NOTE = "For security, Pleerity will never ask for your password by email."
 PREFERENCES_LINK_TEXT = "Manage notification preferences"
 
@@ -92,7 +92,7 @@ def build_customer_email_layout(
                         {company_name}<br>{tagline}{ref_line}
                     </p>
                     <p style="color: #64748b; font-size: 12px; margin: 8px 0 0 0;">
-                        Support: <a href="mailto:{support_email}" style="color: {PRIMARY_COLOR};">{support_email}</a><br>
+                        {format_customer_support_footer_html(PRIMARY_COLOR)}<br><br>
                         Website: <a href="{website_url}" style="color: {PRIMARY_COLOR};">{website_url}</a>
                     </p>
                     <p style="color: #94a3b8; font-size: 11px; margin: 12px 0 0 0;">{security_note}</p>

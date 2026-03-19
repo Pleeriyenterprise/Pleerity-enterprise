@@ -170,6 +170,16 @@ class GenerationRunSchema(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
+    # LLM failover (document generation): canonical field is provider_used; provider may duplicate for legacy readers
+    provider_used: Optional[str] = None
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    fallback_used: Optional[bool] = None
+    primary_provider_attempted: Optional[str] = None
+    fallback_reason: Optional[str] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    intake_snapshot_hash: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

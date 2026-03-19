@@ -120,6 +120,7 @@ import BulkPropertyImportPage from './pages/BulkPropertyImportPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import BrandingSettingsPage from './pages/BrandingSettingsPage';
 import BillingPage from './pages/BillingPage';
+import BillingReceiptsPage from './pages/BillingReceiptsPage';
 import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
 import ClientOrdersPage from './pages/ClientOrdersPage';
 import ClientMaintenancePage from './pages/ClientMaintenancePage';
@@ -146,6 +147,7 @@ import AdminNotificationPreferencesPage from './pages/AdminNotificationPreferenc
 import AdminIntakeSchemaPage from './pages/AdminIntakeSchemaPage';
 import AdminAnalyticsDashboard from './pages/AdminAnalyticsDashboard';
 import AdminExecutiveOverviewPage from './pages/AdminExecutiveOverviewPage';
+import AdminGenerationHealthPage from './pages/AdminGenerationHealthPage';
 import AdminSupportPage from './pages/AdminSupportPage';
 import AdminKnowledgeBasePage from './pages/AdminKnowledgeBasePage';
 import AdminLegalContentPage from './pages/AdminLegalContentPage';
@@ -318,6 +320,7 @@ function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="notifications" element={<NotificationPreferencesPage />} />
               <Route path="billing" element={<BillingPage />} />
+              <Route path="billing/receipts" element={<BillingReceiptsPage />} />
               <Route path="branding" element={<EntitlementProtectedRoute requiredFeature="white_label_reports"><BrandingSettingsPage /></EntitlementProtectedRoute>} />
             </Route>
             <Route path="/tenant" element={<ClientPortal><Outlet /></ClientPortal>}>
@@ -362,6 +365,7 @@ function App() {
             <Route path="/app/properties/import" element={<Navigate to="/properties/import" replace />} />
             <Route path="/app/integrations" element={<Navigate to="/integrations" replace />} />
             <Route path="/app/billing" element={<Navigate to="/settings/billing" replace />} />
+            <Route path="/app/billing/receipts" element={<Navigate to="/settings/billing/receipts" replace />} />
             <Route path="/app/settings/branding" element={<Navigate to="/settings/branding" replace />} />
             <Route path="/app/branding" element={<Navigate to="/settings/branding" replace />} />
             <Route path="/app/orders/:orderId/provide-info" element={<Navigate to="/orders/:orderId/provide-info" replace />} />
@@ -481,6 +485,14 @@ function App() {
                   <AdminExecutiveOverviewPage />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/admin/analytics/generation-health"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminGenerationHealthPage />
+                </ProtectedRoute>
+              }
             />
             <Route 
               path="/admin/reporting" 

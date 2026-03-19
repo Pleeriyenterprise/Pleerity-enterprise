@@ -74,6 +74,11 @@ ALLOWED_TRANSITIONS: Dict[OrderStatus, List[OrderStatus]] = {
 }
 
 
+# System-initiated FAILED → QUEUED is only allowed when workflow metadata marks
+# automatic_generation_retry (see transition_order_state guard). Prevents bypassing admin gate.
+AUTOMATIC_GENERATION_RETRY_METADATA_KEY = "automation_source"
+AUTOMATIC_GENERATION_RETRY_METADATA_VALUE = "automatic_generation_retry"
+
 # Transitions that require admin action (human gate)
 ADMIN_ONLY_TRANSITIONS: Set[tuple] = {
     (OrderStatus.INTERNAL_REVIEW, OrderStatus.FINALISING),       # Approve

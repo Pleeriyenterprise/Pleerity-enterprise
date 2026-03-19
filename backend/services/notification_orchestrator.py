@@ -213,7 +213,16 @@ class NotificationOrchestrator:
                 "status": "PENDING",
                 "attempt_count": 1,
                 "idempotency_key": idempotency_key,
-                "metadata": {"event_type": event_type, **({k: str(v) for k, v in (context or {}).items() if k not in ("recipient", "to_email", "email")})},
+                "metadata": {
+                    "event_type": event_type,
+                    **(
+                        {
+                            k: str(v)
+                            for k, v in (context or {}).items()
+                            if k not in ("recipient", "to_email", "email", "attachments")
+                        }
+                    ),
+                },
                 "created_at": datetime.now(timezone.utc),
             }
             try:
@@ -345,7 +354,10 @@ class NotificationOrchestrator:
 
         # Insert PENDING message log (with idempotency_key for duplicate detection)
         now = datetime.now(timezone.utc)
-        meta = {"event_type": event_type, **({k: str(v) for k, v in (context or {}).items()})}
+        meta = {
+            "event_type": event_type,
+            **({k: str(v) for k, v in (context or {}).items() if k != "attachments"}),
+        }
         if template.get("email_category"):
             meta["email_category"] = template["email_category"]
         log_doc = {

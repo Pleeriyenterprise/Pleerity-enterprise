@@ -43,7 +43,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function OrderCard({ order, onViewDocuments }) {
+function OrderCard({ order, onViewDocuments, onDownloadReceipt }) {
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     return new Date(dateStr).toLocaleDateString('en-GB', {
@@ -55,6 +55,8 @@ function OrderCard({ order, onViewDocuments }) {
 
   const isCompleted = order.status === 'COMPLETED';
   const requiresAction = order.status === 'CLIENT_INPUT_REQUIRED';
+  const hasStoredReceipt = Boolean(order.receipt_pdf_gridfs_id || order.receipt_available);
+  const showReceipt = hasStoredReceipt || (order.status && order.status !== 'CREATED');
 
   return (
     <Card 
@@ -91,7 +93,18 @@ function OrderCard({ order, onViewDocuments }) {
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {showReceipt && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onDownloadReceipt(order.order_id)}
+              data-testid={`download-receipt-btn-${order.order_id}`}
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              Download Receipt
+            </Button>
+          )}
           {isCompleted && (
             <Button
               size="sm"
@@ -240,6 +253,25 @@ export default function ClientOrdersPage() {
     } catch (error) {
       console.error('Failed to fetch documents:', error);
       toast.error('Failed to load documents');
+    }
+  };
+
+  const handleDownloadReceipt = async (orderId) => {
+    try {
+      const response = await client.get(`/client/orders/${orderId}/receipt`, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${orderId}_receipt.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Receipt download started');
+    } catch (error) {
+      console.error('Receipt download failed:', error);
+      toast.error('Receipt download failed. Try again or use the link from your confirmation email.');
     }
   };
 
@@ -398,6 +430,7 @@ export default function ClientOrdersPage() {
                 key={order.order_id}
                 order={order}
                 onViewDocuments={handleViewDocuments}
+                onDownloadReceipt={handleDownloadReceipt}
               />
             ))}
           </div>

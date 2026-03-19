@@ -45,6 +45,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../ui/select';
 import { Textarea } from '../../ui/textarea';
 import {
   FileText,
@@ -69,7 +76,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { toast } from 'sonner';
-import { formatPriceShort } from '../../../api/ordersApi';
+import ordersApi, { formatPriceShort } from '../../../api/ordersApi';
 import { AuditTimeline } from './AuditTimeline';
 import { STATUS_COLORS, formatDate } from './OrderList';
 import { getServiceLabel, getCategoryLabel, getStatusLabel } from './orderLabels';
@@ -220,18 +227,32 @@ const OrderInfoSection = ({ order }) => {
         </div>
       )}
 
-      {/* Failure Reason Alert - shown prominently for failed orders */}
+      {/* Failure Reason Alert - shown prominently for failed orders (admin-safe summary) */}
       {order.status === 'FAILED' && (
         <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
           <div className="flex items-start gap-2">
             <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <span className="font-medium text-red-800">Order Failed</span>
-              {order.failure_reason ? (
-                <p className="text-sm text-red-700 mt-1">{order.failure_reason}</p>
-              ) : (
-                <p className="text-sm text-red-600 mt-1 italic">No failure reason recorded. Check workflow logs for details.</p>
-              )}
+            <div className="flex-1">
+              <span className="font-medium text-red-800">Document generation failed</span>
+              <p className="text-sm text-red-800 mt-1">
+                {order.last_generation_error_short ||
+                  (order.failure_reason
+                    ? String(order.failure_reason).slice(0, 400)
+                    : 'No failure summary recorded. Check the Generation health dashboard or workflow timeline.')}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Badge variant="outline" className="text-xs">
+                  Retryable: {order.retryable_failure ? 'Yes' : 'No'}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  Fallback / auto-retry attempted: {order.automatic_retry_attempted ? 'Yes' : 'No'}
+                </Badge>
+                {order.last_generation_error_type && (
+                  <Badge variant="secondary" className="text-xs">
+                    {order.last_generation_error_type}
+                  </Badge>
+                )}
+              </div>
               {order.failed_at && (
                 <p className="text-xs text-red-500 mt-2">Failed at: {formatDate(order.failed_at)}</p>
               )}
@@ -605,12 +626,17 @@ const OrderDetailsPane = ({
   onPriorityToggle,
   onCancel,
   onArchive,
+  onAfterRetry,
   isSubmitting = false,
 }) => {
   const [activeTab, setActiveTab] = useState('details');
   const [selectedDocVersion, setSelectedDocVersion] = useState(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [showGenRetryDialog, setShowGenRetryDialog] = useState(false);
+  const [genRetryReason, setGenRetryReason] = useState('');
+  const [genRetryProvider, setGenRetryProvider] = useState('default');
+  const [genRetryBusy, setGenRetryBusy] = useState(false);
 
   // Auto-select latest version when versions change
   const latestVersion = documentVersions.length > 0 
@@ -621,6 +647,29 @@ const OrderDetailsPane = ({
   const currentDocVersion = selectedDocVersion || latestVersion;
 
   if (!order) return null;
+
+  const submitGenerationRetry = async () => {
+    const reason = genRetryReason.trim();
+    if (reason.length < 3) {
+      toast.error('Please enter a reason (min 3 characters).');
+      return;
+    }
+    setGenRetryBusy(true);
+    try {
+      const pref =
+        genRetryProvider === 'openai' || genRetryProvider === 'gemini' ? genRetryProvider : null;
+      await ordersApi.retryGeneration(order.order_id, { preferred_provider: pref, reason });
+      toast.success('Retry queued successfully');
+      setShowGenRetryDialog(false);
+      setGenRetryReason('');
+      setGenRetryProvider('default');
+      onAfterRetry?.();
+    } catch (e) {
+      toast.error(e?.message || 'Retry failed to start');
+    } finally {
+      setGenRetryBusy(false);
+    }
+  };
 
   const handleDocumentClick = (version) => {
     const docVersion = documentVersions.find((v) => v.version === version);
@@ -657,6 +706,44 @@ const OrderDetailsPane = ({
               {/* Details Tab */}
               <TabsContent value="details" className="space-y-6 pr-4">
                 <OrderInfoSection order={order} />
+                {order.status === 'FAILED' && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => {
+                        setGenRetryProvider('default');
+                        setShowGenRetryDialog(true);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Retry generation
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setGenRetryProvider('openai');
+                        setShowGenRetryDialog(true);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Retry with OpenAI
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setGenRetryProvider('gemini');
+                        setShowGenRetryDialog(true);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Retry with Gemini
+                    </Button>
+                  </div>
+                )}
                 <Separator />
                 <CustomerInfoSection customer={order.customer} />
                 <Separator />
@@ -773,6 +860,46 @@ const OrderDetailsPane = ({
               </TabsContent>
             </ScrollArea>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showGenRetryDialog} onOpenChange={setShowGenRetryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Retry document generation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Preferred provider</Label>
+              <Select value={genRetryProvider} onValueChange={setGenRetryProvider}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default (env)</SelectItem>
+                  <SelectItem value="openai">OpenAI first</SelectItem>
+                  <SelectItem value="gemini">Gemini first</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Reason (required)</Label>
+              <Textarea
+                rows={3}
+                value={genRetryReason}
+                onChange={(e) => setGenRetryReason(e.target.value)}
+                placeholder="Reason for manual retry (audit)"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowGenRetryDialog(false)} disabled={genRetryBusy}>
+              Cancel
+            </Button>
+            <Button onClick={submitGenerationRetry} disabled={genRetryBusy}>
+              {genRetryBusy ? 'Submitting…' : 'Submit'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

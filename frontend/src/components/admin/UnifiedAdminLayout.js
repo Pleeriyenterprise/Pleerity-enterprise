@@ -56,6 +56,7 @@ const navSections = [
       { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
       { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, ownerOrAdminOnly: true },
       { href: '/admin/analytics/executive', label: 'Executive Overview', icon: TrendingUp, ownerOrAdminOnly: true },
+      { href: '/admin/analytics/generation-health', label: 'Generation health', icon: Activity, ownerOrAdminOnly: true },
       { href: '/admin/reporting', label: 'Reporting', icon: FileText },
     ],
   },

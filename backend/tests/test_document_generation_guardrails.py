@@ -629,7 +629,17 @@ class TestIdempotencyTwoIdenticalCallsOneVersion:
             patch(
                 "services.document_orchestrator.document_orchestrator._execute_gpt",
                 new_callable=AsyncMock,
-                return_value=(valid_output, {"prompt_tokens": 0, "completion_tokens": 0}),
+                return_value=(
+                    valid_output,
+                    {"prompt_tokens": 0, "completion_tokens": 0},
+                    {
+                        "provider_used": "openai",
+                        "model_used": "gpt-4o-mini",
+                        "fallback_used": False,
+                        "primary_provider": "openai",
+                        "fallback_reason": None,
+                    },
+                ),
             ),
             patch("services.document_orchestrator.database.get_db", return_value=mock_db),
             patch.object(

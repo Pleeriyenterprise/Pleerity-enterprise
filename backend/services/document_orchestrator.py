@@ -35,6 +35,8 @@ import logging
 import os
 import uuid as uuid_module
 
+from services.admin_failure_summary import classify_generation_error, order_failure_fields_from_message
+
 # Max length for stored error_message (orders + orchestration_executions)
 MAX_ERROR_MESSAGE_LENGTH = 1000
 
@@ -243,6 +245,12 @@ class DocumentOrchestrator:
         }
         if prompt_version_used is not None:
             last_error["prompt_version_used"] = prompt_version_used
+        both_ex = "both llm providers failed" in msg_sanitized.lower()
+        gen_fail_fields = order_failure_fields_from_message(
+            msg_sanitized,
+            error_code=error_code,
+            both_providers_exhausted=both_ex,
+        )
         await db.orders.update_one(
             {"order_id": order_id},
             {
@@ -250,7 +258,9 @@ class DocumentOrchestrator:
                     "orchestration_status": OrchestrationStatus.FAILED.value,
                     "last_orchestration_error": last_error,
                     "last_orchestration_failed_at": now,
-                }
+                    **gen_fail_fields,
+                },
+                "$unset": {"admin_llm_preferred_provider": ""},
             },
         )
         fail_record = {
@@ -277,6 +287,77 @@ class DocumentOrchestrator:
             upsert=True,
         )
         logger.info(f"Orchestration failed for {order_id}: {error_code} at {stage}")
+
+    async def _dual_write_generation_run_failed(
+        self,
+        *,
+        run_id: str,
+        order_id: str,
+        service_code: str = "",
+        doc_type: Optional[str],
+        prompt_version_used: Optional[Dict[str, Any]],
+        intake_hash: Optional[str],
+        started_at: datetime,
+        error_message: str,
+        both_providers_exhausted: bool,
+    ) -> None:
+        """Persist FAILED row to generation_runs (reporting). Non-fatal on DB error."""
+        db = database.get_db()
+        now = datetime.now(timezone.utc)
+        primary = (os.environ.get("DOCUMENT_LLM_PREFERRED_PROVIDER", "openai") or "openai").strip().lower()
+        if primary not in ("openai", "gemini"):
+            primary = "openai"
+        secondary = "gemini" if primary == "openai" else "openai"
+        if both_providers_exhausted:
+            provider_attempts = [
+                {"provider": primary, "outcome": "error"},
+                {"provider": secondary, "outcome": "error"},
+            ]
+        else:
+            provider_attempts = [{"provider": primary, "outcome": "error"}]
+        final_error_type, retryable = classify_generation_error(
+            error_message,
+            both_providers_exhausted=both_providers_exhausted,
+        )
+        latency_ms = max(0, int((now - started_at).total_seconds() * 1000))
+        try:
+            await db.generation_runs.insert_one(
+                {
+                    "run_id": run_id,
+                    "order_id": order_id,
+                    "service_code": service_code or None,
+                    "template_id": (prompt_version_used or {}).get("template_id"),
+                    "prompt_version": (prompt_version_used or {}).get("version"),
+                    "doc_type": doc_type,
+                    "status": "FAILED",
+                    "provider_used": None,
+                    "provider": None,
+                    "model": None,
+                    "fallback_used": bool(both_providers_exhausted),
+                    "primary_provider_attempted": primary,
+                    "fallback_reason": (
+                        "both_llm_providers_failed"
+                        if both_providers_exhausted
+                        else "llm_stage_failed"
+                    ),
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "intake_snapshot_hash": intake_hash,
+                    "started_at": started_at,
+                    "completed_at": now,
+                    "error_message": (error_message or "")[:MAX_ERROR_MESSAGE_LENGTH],
+                    "final_error_type": final_error_type,
+                    "final_error_message": (error_message or "")[:MAX_ERROR_MESSAGE_LENGTH],
+                    "retryable": bool(retryable),
+                    "retry_count": 0,
+                    "latency_ms": latency_ms,
+                    "provider_attempts": provider_attempts,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            )
+        except Exception as ex:
+            logger.warning("generation_runs FAILED dual-write (non-fatal): %s", ex)
     
     async def finalize_orchestration_failure(
         self,
@@ -607,10 +688,17 @@ class DocumentOrchestrator:
             {"$set": {"orchestration_status": OrchestrationStatus.GENERATING.value}}
         )
         
+        admin_pref = order.get("admin_llm_preferred_provider")
+        if isinstance(admin_pref, str):
+            admin_pref = admin_pref.strip().lower()
+        if admin_pref not in ("openai", "gemini"):
+            admin_pref = None
+
         try:
-            structured_output, tokens = await self._execute_gpt(
+            structured_output, tokens, llm_meta = await self._execute_gpt(
                 prompt_def,
                 user_prompt,
+                preferred_provider=admin_pref,
             )
         except ValueError as e:
             if str(e) == "LLM output not valid JSON":
@@ -626,6 +714,17 @@ class DocumentOrchestrator:
                     execution_id=execution_id,
                     idempotency_key=idempotency_key,
                 )
+                await self._dual_write_generation_run_failed(
+                    run_id=execution_id,
+                    order_id=order_id,
+                    service_code=service_code,
+                    doc_type=doc_type,
+                    prompt_version_used=prompt_version_used,
+                    intake_hash=intake_hash,
+                    started_at=start_time,
+                    error_message="LLM output not valid JSON",
+                    both_providers_exhausted=False,
+                )
                 return OrchestrationResult(
                     success=False,
                     status=OrchestrationStatus.FAILED,
@@ -637,6 +736,8 @@ class DocumentOrchestrator:
             raise
         except Exception as e:
             logger.error(f"GPT execution failed for {order_id}: {e}")
+            msg = str(e)
+            both_exhausted = "Both LLM providers failed" in msg
             await self._mark_orchestration_failed(
                 order_id=order_id,
                 service_code=service_code,
@@ -644,16 +745,27 @@ class DocumentOrchestrator:
                 prompt_version_used=prompt_version_used,
                 stage="gpt",
                 error_code="GPT_ERROR",
-                error_message=f"GPT execution failed: {str(e)}",
+                error_message=f"GPT execution failed: {msg}",
                 execution_id=execution_id,
                 idempotency_key=idempotency_key,
+            )
+            await self._dual_write_generation_run_failed(
+                run_id=execution_id,
+                order_id=order_id,
+                service_code=service_code,
+                doc_type=doc_type,
+                prompt_version_used=prompt_version_used,
+                intake_hash=intake_hash,
+                started_at=start_time,
+                error_message=f"GPT execution failed: {msg}",
+                both_providers_exhausted=both_exhausted,
             )
             return OrchestrationResult(
                 success=False,
                 status=OrchestrationStatus.FAILED,
                 service_code=service_code,
                 order_id=order_id,
-                error_message=f"GPT execution failed: {str(e)}",
+                error_message=f"GPT execution failed: {msg}",
                 execution_id=execution_id,
             )
         
@@ -837,8 +949,11 @@ class DocumentOrchestrator:
             "render_time_ms": render_result.render_time_ms,
             "prompt_tokens": tokens.get("prompt_tokens", 0),
             "completion_tokens": tokens.get("completion_tokens", 0),
-            "provider": "gemini",
-            "model": "gemini-2.0-flash",
+            "provider": llm_meta.get("provider_used", "unknown"),
+            "model": llm_meta.get("model_used", ""),
+            "fallback_used": llm_meta.get("fallback_used", False),
+            "llm_primary_provider": llm_meta.get("primary_provider"),
+            "llm_fallback_reason": llm_meta.get("fallback_reason"),
             # Audit
             "created_at": datetime.now(timezone.utc),
         }
@@ -848,20 +963,41 @@ class DocumentOrchestrator:
         # Dual-write to generation_runs for reporting (task: store generation_runs with provider, model, token_usage)
         now_utc = datetime.now(timezone.utc)
         try:
+            prim = llm_meta.get("primary_provider") or ""
+            used = llm_meta.get("provider_used") or ""
+            if llm_meta.get("fallback_used"):
+                provider_attempts = [
+                    {"provider": prim, "outcome": "failover"},
+                    {"provider": used, "outcome": "success"},
+                ]
+            else:
+                provider_attempts = [{"provider": used, "outcome": "success"}]
+            latency_ms = max(0, int((now_utc - start_time).total_seconds() * 1000))
             gen_run = {
                 "run_id": execution_id,
                 "order_id": order_id,
+                "service_code": service_code,
                 "template_id": (prompt_version_used or {}).get("template_id"),
                 "prompt_version": (prompt_version_used or {}).get("version"),
                 "doc_type": doc_type,
                 "status": "COMPLETED",
-                "provider": "gemini",
-                "model": "gemini-2.0-flash",
+                "provider_used": llm_meta.get("provider_used"),
+                "provider": llm_meta.get("provider_used"),
+                "model": llm_meta.get("model_used"),
+                "fallback_used": bool(llm_meta.get("fallback_used")),
+                "primary_provider_attempted": llm_meta.get("primary_provider"),
+                "fallback_reason": llm_meta.get("fallback_reason"),
                 "prompt_tokens": tokens.get("prompt_tokens", 0),
                 "completion_tokens": tokens.get("completion_tokens", 0),
                 "intake_snapshot_hash": intake_hash,
                 "started_at": start_time,
                 "completed_at": now_utc,
+                "latency_ms": latency_ms,
+                "retry_count": 0,
+                "retryable": False,
+                "final_error_type": None,
+                "final_error_message": None,
+                "provider_attempts": provider_attempts,
                 "created_at": now_utc,
                 "updated_at": now_utc,
             }
@@ -919,9 +1055,17 @@ class DocumentOrchestrator:
                 # CRITICAL: Store prompt_version_used permanently for audit
                 "prompt_version_used": prompt_version_used,
             },
+            "$unset": {
+                "admin_llm_preferred_provider": "",
+                "last_generation_error_type": "",
+                "last_generation_error_short": "",
+                "retryable_failure": "",
+                "automatic_retry_pending": "",
+                "scheduled_automatic_retry_at": "",
+            },
             "$push": {
                 "document_versions": doc_version_entry
-            }
+            },
         }
         
         if regeneration:
@@ -1024,14 +1168,13 @@ class DocumentOrchestrator:
         self,
         prompt_def: PromptDefinition,
         user_prompt: str,
-    ) -> Tuple[Dict[str, Any], Dict[str, int]]:
+        preferred_provider: Optional[str] = None,
+    ) -> Tuple[Dict[str, Any], Dict[str, int], Dict[str, Any]]:
         """
-        Execute GPT generation and return structured output.
-        Uses Google Generative AI (utils.llm_chat).
+        Execute LLM generation with OpenAI→Gemini failover (document unified service).
         """
-        from utils.llm_chat import chat, _get_api_key
-        if not _get_api_key():
-            raise ValueError("LLM_API_KEY not found in environment")
+        from services.unified_llm_service import generate_with_failover, get_default_preferred_provider
+
         output_schema_str = json.dumps(prompt_def.output_schema, indent=2)
         full_system_prompt = f"""{prompt_def.system_prompt}
 
@@ -1044,14 +1187,22 @@ You MUST return your response as valid JSON matching this exact schema:
 
 Return ONLY the JSON object, no additional text or markdown formatting.
 """
-        response_text = await chat(
+        pref: Optional[str] = None
+        if preferred_provider and isinstance(preferred_provider, str):
+            p = preferred_provider.strip().lower()
+            if p in ("openai", "gemini"):
+                pref = p
+        if not pref:
+            pref = get_default_preferred_provider()
+        result = await generate_with_failover(
             system_prompt=full_system_prompt,
-            user_text=user_prompt,
-            model="gemini-2.0-flash",
+            user_prompt=user_prompt,
+            temperature=float(prompt_def.temperature or 0.2),
+            max_tokens=int(prompt_def.max_tokens or 8192),
+            preferred_provider=pref,
+            gemini_model=os.environ.get("DOCUMENT_GEMINI_MODEL", "gemini-2.0-flash"),
         )
-        
-        # Clean up response - remove markdown code blocks if present
-        response_text = response_text.strip()
+        response_text = result.text.strip()
         if response_text.startswith("```json"):
             response_text = response_text[7:]
         if response_text.startswith("```"):
@@ -1059,21 +1210,26 @@ Return ONLY the JSON object, no additional text or markdown formatting.
         if response_text.endswith("```"):
             response_text = response_text[:-3]
         response_text = response_text.strip()
-        
+
         try:
             structured_output = json.loads(response_text)
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse GPT response as JSON: {e}")
             logger.error(f"Response text: {response_text[:500]}...")
             raise ValueError("LLM output not valid JSON") from e
-        
-        # Extract token counts if available
+
         tokens = {
-            "prompt_tokens": getattr(response, 'prompt_tokens', 0) or 0,
-            "completion_tokens": getattr(response, 'completion_tokens', 0) or 0,
+            "prompt_tokens": result.prompt_tokens,
+            "completion_tokens": result.completion_tokens,
         }
-        
-        return structured_output, tokens
+        llm_meta = {
+            "provider_used": result.provider_used,
+            "model_used": result.model_used,
+            "fallback_used": result.fallback_used,
+            "primary_provider": result.primary_provider,
+            "fallback_reason": result.fallback_reason,
+        }
+        return structured_output, tokens, llm_meta
     
     async def get_execution_history(
         self,

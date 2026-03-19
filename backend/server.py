@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 import uuid
 from contextlib import asynccontextmanager
 from database import database
-from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
+from routes import auth, intake, onboarding, portal, webhooks, client, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
 from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job
 
 # ClearForm - Separate Product Routes
@@ -621,6 +621,17 @@ async def lifespan(app: FastAPI):
             args=["queued_order_processing"],
             kwargs={"run_type": "schedule"},
         )
+
+        # Automatic generation retry (FAILED → QUEUED after delay) — every 5 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/5", timezone=SCHEDULER_TIMEZONE),
+            id="generation_auto_retry_processing",
+            name="Generation Auto Retry Processing",
+            replace_existing=True,
+            args=["generation_auto_retry_processing"],
+            kwargs={"run_type": "schedule"},
+        )
         
         # Abandoned intake detection - every 15 minutes
         scheduler.add_job(
@@ -894,6 +905,7 @@ app.include_router(public_orders.router)
 app.include_router(admin_orders.router)
 app.include_router(orders.router)
 app.include_router(client_orders.router)
+app.include_router(client_billing.router)
 app.include_router(admin_notifications.router)
 app.include_router(admin_services.router)  # Canonical /api/admin/services (task paths)
 app.include_router(public_services.router)
@@ -906,6 +918,7 @@ app.include_router(intake_wizard.router)
 app.include_router(admin_intake_schema.router)
 app.include_router(admin_pending_payments.router)
 app.include_router(analytics.router)
+app.include_router(admin_generation_analytics.router, prefix="/api/admin/analytics")
 app.include_router(support.public_router)
 app.include_router(support.client_router)
 app.include_router(support.admin_router)

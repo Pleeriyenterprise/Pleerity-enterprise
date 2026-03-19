@@ -5,13 +5,12 @@ Sends transactional emails for support tickets:
 - Customer ticket confirmation (SUPPORT_TICKET_CONFIRMATION)
 - Internal support team notification (SUPPORT_INTERNAL_NOTIFICATION)
 """
-import os
 import logging
 from typing import Optional
 
-logger = logging.getLogger(__name__)
+from utils.branding import format_customer_support_footer_html
 
-SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
+logger = logging.getLogger(__name__)
 def _support_app_base() -> str:
     from utils.app_urls import get_app_base_url
 
@@ -35,7 +34,8 @@ async def send_ticket_confirmation_email(
             f"<strong>Subject:</strong> {subject}<br>"
             f"<strong>Category:</strong> {category.replace('_', ' ').title()}<br>"
             f"<strong>Priority:</strong> {priority.title()}<br><br>"
-            f"Your message: {description[:500]}{'...' if len(description) > 500 else ''}"
+            f"Your message: {description[:500]}{'...' if len(description) > 500 else ''}<br><br>"
+            f"{format_customer_support_footer_html('#00B8A9')}"
         )
         result = await notification_orchestrator.send(
             template_key="SUPPORT_TICKET_CONFIRMATION",

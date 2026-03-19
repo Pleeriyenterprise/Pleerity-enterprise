@@ -856,45 +856,98 @@ async def convert_draft_to_order(
     return order_doc
 
 
-async def _send_order_confirmation_email(order: Dict[str, Any]) -> bool:
+async def _send_order_confirmation_email(
+    order: Dict[str, Any],
+    *,
+    idempotency_key_override: Optional[str] = None,
+) -> bool:
     """Send order confirmation email to customer via NotificationOrchestrator."""
+    import base64
+    from urllib.parse import quote
+
+    from models import AuditAction
     from services.order_email_templates import build_order_confirmation_email
-    import os
-    
+    from services.notification_orchestrator import notification_orchestrator
+    from services.order_receipt_service import ensure_order_receipt_stored
+    from services.order_view_token import generate_order_receipt_token
+    from utils.app_urls import get_api_base_url, get_app_base_url
+    from utils.audit import create_audit_log
+
     customer = order.get("customer", {})
     customer_email = customer.get("email")
     customer_name = customer.get("full_name", "Customer")
-    
+    order_id = order.get("order_id", "")
+
     if not customer_email:
         logger.warning(f"No customer email for order {order.get('order_ref')}")
         return False
-    
+
+    # Receipt PDF (non-blocking for email): failures are logged; email still sends with link when possible
+    pdf_bytes = None
+    try:
+        ok, pdf_bytes, rerr = await ensure_order_receipt_stored(order_id, order, force_regenerate=False)
+        if ok:
+            await create_audit_log(
+                action=AuditAction.ORDER_RECEIPT_PDF_GENERATED,
+                resource_type="order",
+                resource_id=order_id,
+                metadata={"source": "intake_order_confirmation"},
+            )
+        elif rerr:
+            logger.error("Receipt PDF not stored for order %s: %s", order_id, rerr)
+    except Exception as e:
+        logger.exception("Receipt generation failed for order %s: %s", order_id, e)
+
+    receipt_download_url = ""
+    try:
+        tok = generate_order_receipt_token(order_id, customer_email)
+        api_base = get_api_base_url().rstrip("/")
+        receipt_download_url = f"{api_base}/api/orders/{order_id}/receipt?token={quote(tok, safe='')}"
+        await create_audit_log(
+            action=AuditAction.ORDER_RECEIPT_DOWNLOAD_LINK_ISSUED,
+            resource_type="order",
+            resource_id=order_id,
+            metadata={"source": "intake_order_confirmation"},
+        )
+    except Exception as e:
+        logger.critical("Order receipt download link could not be created for %s: %s", order_id, e)
+
+    attachments = []
+    if pdf_bytes:
+        db = database.get_db()
+        row = await db.orders.find_one({"order_id": order_id}, {"invoice_number": 1, "order_ref": 1})
+        inv = (row or {}).get("invoice_number") or order.get("order_ref") or order_id
+        attach_name = f"{inv}.pdf"
+        attachments.append(
+            {
+                "Name": attach_name,
+                "Content": base64.b64encode(pdf_bytes).decode("utf-8"),
+                "ContentType": "application/pdf",
+            }
+        )
+
     # Format total amount
     pricing = order.get("pricing_snapshot", {})
     total_pence = pricing.get("total_price_pence", 0)
     total_amount = f"£{total_pence / 100:.2f}"
-    
+
     # Format order date
     created_at = order.get("created_at")
     if created_at:
         order_date = created_at.strftime("%d %B %Y")
     else:
         order_date = datetime.now(timezone.utc).strftime("%d %B %Y")
-    
+
     # Determine estimated delivery
     sla_hours = order.get("sla_hours", 48)
     if sla_hours <= 24:
         estimated_delivery = "24 hours (Fast Track)"
     else:
         estimated_delivery = f"{sla_hours} hours"
-    
-    # Build view order link
-    from utils.app_urls import get_app_base_url
 
     frontend_url = get_app_base_url(for_email_links=True)
     view_order_link = f"{frontend_url}/app/orders"
-    
-    # Build email content
+
     email_content = build_order_confirmation_email(
         client_name=customer_name,
         order_reference=order.get("order_ref", ""),
@@ -903,31 +956,83 @@ async def _send_order_confirmation_email(order: Dict[str, Any]) -> bool:
         order_date=order_date,
         estimated_delivery=estimated_delivery,
         view_order_link=view_order_link,
+        receipt_download_url=receipt_download_url or "",
     )
-    
-    from services.notification_orchestrator import notification_orchestrator
+
     client_id = order.get("client_id")
     order_ref = order.get("order_ref", order.get("order_id", ""))
-    idempotency_key = f"{order_ref}_ORDER_CONFIRMATION"
+    idempotency_key = idempotency_key_override or f"{order_ref}_ORDER_CONFIRMATION"
+    ctx = {
+        "subject": email_content["subject"],
+        "message": email_content.get("html") or email_content.get("text", ""),
+        "text_message": email_content.get("text") or "",
+        "client_name": customer_name,
+        "recipient": customer_email,
+    }
+    if attachments:
+        ctx["attachments"] = attachments
+
     result = await notification_orchestrator.send(
         template_key="ORDER_CONFIRMATION",
         client_id=client_id,
-        context={
-            "subject": email_content["subject"],
-            "message": email_content.get("html") or email_content.get("text", ""),
-            "text_message": email_content.get("text") or "",
-            "client_name": customer_name,
-            "recipient": customer_email,
-        },
+        context=ctx,
         idempotency_key=idempotency_key,
         event_type="order_confirmation",
     )
     success = result.outcome in ("sent", "duplicate_ignored")
     if success:
+        try:
+            now_sent = datetime.now(timezone.utc)
+            await database.get_db().orders.update_one(
+                {"order_id": order_id},
+                {"$set": {"order_confirmation_email_sent_at": now_sent, "updated_at": now_sent}},
+            )
+        except Exception as ex:
+            logger.warning("Could not persist order_confirmation_email_sent_at for %s: %s", order_id, ex)
         logger.info(f"Order confirmation email sent to {customer_email} for order {order.get('order_ref')}")
+        if attachments:
+            try:
+                await create_audit_log(
+                    action=AuditAction.ORDER_RECEIPT_ATTACHED_TO_EMAIL,
+                    resource_type="order",
+                    resource_id=order_id,
+                    metadata={"filename": attachments[0].get("Name"), "template_key": "ORDER_CONFIRMATION"},
+                )
+            except Exception as audit_e:
+                logger.warning("Receipt attach audit failed: %s", audit_e)
+        try:
+            await create_audit_log(
+                action=AuditAction.ORDER_CONFIRMATION_EMAIL_DISPATCHED,
+                resource_type="order",
+                resource_id=order_id,
+                metadata={"recipient": customer_email, "order_ref": order_ref},
+            )
+        except Exception as audit_e:
+            logger.warning("Order confirmation dispatch audit failed: %s", audit_e)
     else:
         logger.warning(f"Failed to send order confirmation email to {customer_email}")
     return success
+
+
+async def admin_resend_order_confirmation_email(order_id: str) -> tuple:
+    """
+    Admin-initiated resend of order confirmation (with receipt PDF when available).
+    Uses a fresh idempotency key so delivery is not deduplicated with the original send.
+    Returns (success: bool, message: str).
+    """
+    import uuid as _uuid
+
+    db = database.get_db()
+    order = await db.orders.find_one({"order_id": order_id})
+    if not order:
+        return False, "Order not found"
+    order_ref = order.get("order_ref") or order.get("order_id") or ""
+    suffix = f"admin_resend_{_uuid.uuid4().hex[:16]}"
+    override = f"{order_ref}_ORDER_CONFIRMATION_{suffix}"
+    ok = await _send_order_confirmation_email(order, idempotency_key_override=override)
+    if ok:
+        return True, "Order confirmation email sent"
+    return False, "Failed to send order confirmation email"
 
 
 def _get_service_name(service_code: str) -> str:

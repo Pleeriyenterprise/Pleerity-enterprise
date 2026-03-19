@@ -70,6 +70,15 @@ async def ensure_indexes():
     await db.orders.create_index([("service_code", 1), ("created_at", -1)])
     await db.orders.create_index([("status", 1), ("created_at", -1)])
     await db.orders.create_index("created_at")
+    # Automatic generation retry worker (FAILED + pending + due time)
+    await db.orders.create_index(
+        [
+            ("status", 1),
+            ("automatic_retry_pending", 1),
+            ("scheduled_automatic_retry_at", 1),
+        ],
+        sparse=True,
+    )
     logger.info("orders indexes OK")
 
     # --- prompt_templates ---
@@ -84,6 +93,7 @@ async def ensure_indexes():
     await db.generation_runs.create_index("run_id", unique=True)
     await db.generation_runs.create_index([("order_id", 1), ("created_at", -1)])
     await db.generation_runs.create_index([("status", 1), ("created_at", -1)])
+    await db.generation_runs.create_index([("service_code", 1), ("created_at", -1)], sparse=True)
     await db.generation_runs.create_index("created_at")
     logger.info("generation_runs indexes OK")
 

@@ -605,9 +605,12 @@ class StripeWebhookService:
             plan_def = plan_registry.get_plan(plan_code)
             client_for_email = await db.clients.find_one(
                 {"client_id": client_id},
-                {"_id": 0, "contact_name": 1, "full_name": 1, "customer_reference": 1},
+                {"_id": 0, "contact_name": 1, "full_name": 1, "customer_reference": 1, "email": 1, "contact_email": 1},
             )
             client_name = (client_for_email or {}).get("contact_name") or (client_for_email or {}).get("full_name") or ""
+            client_email_for_pdf = (
+                (client_for_email or {}).get("email") or (client_for_email or {}).get("contact_email") or ""
+            ).strip()
             plan_pricing_line = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
             amount_total_cents = session.get("amount_total")
             currency = (session.get("currency") or "gbp").strip().upper()
@@ -629,29 +632,87 @@ class StripeWebhookService:
             support_email = (os.getenv("SUPPORT_EMAIL") or "info@pleerityenterprise.co.uk").strip()
             idempotency_key = f"{event_id}_SUBSCRIPTION_CONFIRMED" if event_id else None
             from services.notification_orchestrator import notification_orchestrator
+            import base64
+
+            from services.order_receipt_service import ensure_subscription_checkout_invoice_pdf
+
+            sub_ctx = {
+                "payment_receipt_layout": "structured",
+                "client_name": client_name or "Valued Customer",
+                "plan_name": plan_def.get("name", plan_code.value),
+                "amount_display": amt_display,
+                "payment_date_display": payment_date_display,
+                "reference_display": reference_display,
+                "support_email": support_email,
+                "customer_reference": (client_for_email or {}).get("customer_reference") or "",
+                "subject": "Payment received — Compliance Vault Pro",
+            }
+            subscription_invoice_number = None
+            try:
+                ok_pdf, pdf_sub, inv_no, pdf_err = await ensure_subscription_checkout_invoice_pdf(
+                    client_id=client_id,
+                    checkout_session_id=checkout_session_id or "",
+                    session=session,
+                    customer_name=client_name or "Valued Customer",
+                    customer_email=client_email_for_pdf,
+                    plan_display_name=plan_def.get("name", plan_code.value),
+                )
+                if ok_pdf and pdf_sub and inv_no:
+                    subscription_invoice_number = inv_no
+                    sub_ctx["attachments"] = [
+                        {
+                            "Name": f"{inv_no}.pdf",
+                            "Content": base64.b64encode(pdf_sub).decode("utf-8"),
+                            "ContentType": "application/pdf",
+                        }
+                    ]
+                    await create_audit_log(
+                        action=AuditAction.ORDER_RECEIPT_PDF_GENERATED,
+                        client_id=client_id,
+                        resource_type="stripe_checkout",
+                        resource_id=checkout_session_id or "",
+                        metadata={"source": "cvp_subscription_checkout", "invoice_number": inv_no},
+                    )
+                elif pdf_err:
+                    logger.warning("CVP subscription invoice PDF skipped: %s", pdf_err)
+            except Exception as pdf_ex:
+                logger.warning("CVP subscription invoice PDF failed (non-blocking): %s", pdf_ex)
 
             result = await notification_orchestrator.send(
                 template_key="SUBSCRIPTION_CONFIRMED",
                 client_id=client_id,
-                context={
-                    "payment_receipt_layout": "structured",
-                    "client_name": client_name or "Valued Customer",
-                    "plan_name": plan_def.get("name", plan_code.value),
-                    "amount_display": amt_display,
-                    "payment_date_display": payment_date_display,
-                    "reference_display": reference_display,
-                    "support_email": support_email,
-                    "customer_reference": (client_for_email or {}).get("customer_reference") or "",
-                    "subject": "Payment received — Compliance Vault Pro",
-                },
+                context=sub_ctx,
                 idempotency_key=idempotency_key,
                 event_type="checkout.session.completed",
             )
+            if result.outcome in ("sent", "duplicate_ignored") and sub_ctx.get("attachments") and subscription_invoice_number:
+                try:
+                    await create_audit_log(
+                        action=AuditAction.ORDER_RECEIPT_ATTACHED_TO_EMAIL,
+                        client_id=client_id,
+                        metadata={
+                            "source": "cvp_subscription_checkout",
+                            "invoice_number": subscription_invoice_number,
+                            "template_key": "SUBSCRIPTION_CONFIRMED",
+                        },
+                    )
+                except Exception:
+                    pass
             if result.outcome in ("sent", "duplicate_ignored"):
                 await db.clients.update_one(
                     {"client_id": client_id},
                     {"$set": {"onboarding_payment_confirmation_email_sent_at": payment_dt.isoformat()}},
                 )
+                if checkout_session_id:
+                    try:
+                        from services.order_receipt_service import STRIPE_CHECKOUT_INVOICES
+
+                        await db[STRIPE_CHECKOUT_INVOICES].update_one(
+                            {"_id": checkout_session_id},
+                            {"$set": {"receipt_email_sent_at": payment_dt}},
+                        )
+                    except Exception as _inv_e:
+                        logger.warning("receipt_email_sent_at not set on checkout invoice: %s", _inv_e)
                 await create_audit_log(
                     action=AuditAction.ONBOARDING_PAYMENT_CONFIRMATION_EMAIL_SENT,
                     client_id=client_id,

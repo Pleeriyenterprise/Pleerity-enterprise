@@ -889,6 +889,13 @@ async def run_scheduler_heartbeat():
         raise
 
 
+async def run_generation_auto_retry_processing():
+    """Process FAILED orders with due scheduled automatic generation retries."""
+    from services.automatic_generation_retry_service import process_due_automatic_generation_retries
+
+    return await process_due_automatic_generation_retries()
+
+
 async def run_contractor_performance_recalc():
     """Recalculate contractor performance metrics and overall score for all contractors. Runs daily and on-demand."""
     try:
@@ -919,6 +926,7 @@ JOB_RUNNERS = {
     "sla_monitoring": run_sla_monitoring,
     "stuck_order_detection": run_stuck_order_detection,
     "queued_order_processing": run_queued_order_processing,
+    "generation_auto_retry_processing": run_generation_auto_retry_processing,
     "abandoned_intake_detection": run_abandoned_intake_detection,
     "lead_followup_processing": run_lead_followup_processing,
     "lead_sla_check": run_lead_sla_check,

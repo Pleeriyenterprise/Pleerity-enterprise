@@ -11,11 +11,17 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, List, Any
 from database import database
 from services.order_workflow import (
-    OrderStatus, TransitionType, 
-    is_valid_transition, requires_admin_action, 
-    is_terminal_state, requires_admin_notification,
-    is_sla_paused, get_allowed_transitions,
-    PIPELINE_COLUMNS
+    OrderStatus,
+    TransitionType,
+    is_valid_transition,
+    requires_admin_action,
+    is_terminal_state,
+    requires_admin_notification,
+    is_sla_paused,
+    get_allowed_transitions,
+    PIPELINE_COLUMNS,
+    AUTOMATIC_GENERATION_RETRY_METADATA_KEY,
+    AUTOMATIC_GENERATION_RETRY_METADATA_VALUE,
 )
 
 logger = logging.getLogger(__name__)
@@ -159,12 +165,19 @@ async def transition_order_state(
     
     # Check if admin action required
     if requires_admin_action(current_status, new_status):
-        if triggered_by_type != "admin":
+        allow_system_auto_retry = (
+            triggered_by_type == "system"
+            and current_status == OrderStatus.FAILED
+            and new_status == OrderStatus.QUEUED
+            and (metadata or {}).get(AUTOMATIC_GENERATION_RETRY_METADATA_KEY)
+            == AUTOMATIC_GENERATION_RETRY_METADATA_VALUE
+        )
+        if triggered_by_type != "admin" and not allow_system_auto_retry:
             raise ValueError(
                 f"Transition {current_status.value} → {new_status.value} requires admin action"
             )
         if not reason:
-            raise ValueError("Admin manual transitions require a reason")
+            raise ValueError("Transitions that require an audit reason must include `reason`")
     
     # Handle SLA pause/resume
     update_fields = {

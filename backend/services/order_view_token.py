@@ -13,6 +13,7 @@ from auth import JWT_SECRET
 logger = logging.getLogger(__name__)
 VIEW_ORDER_TOKEN_VALIDITY_DAYS = 30
 PROVIDE_INFO_TOKEN_VALIDITY_DAYS = 14
+ORDER_RECEIPT_TOKEN_VALIDITY_DAYS = 365
 
 
 def generate_order_provide_info_token(order_id: str, customer_email: str) -> str:
@@ -60,6 +61,38 @@ def generate_order_view_token(
         "iat": datetime.now(timezone.utc),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+def generate_order_receipt_token(
+    order_id: str,
+    customer_email: str,
+    validity_days: int = ORDER_RECEIPT_TOKEN_VALIDITY_DAYS,
+) -> str:
+    """JWT for secure download of payment receipt PDF (email link + API_BASE_URL)."""
+    expiry = datetime.now(timezone.utc) + timedelta(days=validity_days)
+    payload = {
+        "type": "order_receipt",
+        "order_id": order_id,
+        "email": (customer_email or "").strip().lower(),
+        "exp": expiry,
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+def validate_order_receipt_token(token: str) -> Optional[Dict[str, Any]]:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        if payload.get("type") != "order_receipt":
+            return None
+        if not payload.get("order_id") or not payload.get("email"):
+            return None
+        return payload
+    except jwt.ExpiredSignatureError:
+        logger.debug("Order receipt token expired")
+        return None
+    except jwt.InvalidTokenError:
+        return None
 
 
 def validate_order_view_token(token: str) -> Optional[Dict[str, Any]]:

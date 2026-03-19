@@ -2,7 +2,8 @@
 Orders API Routes - Public order creation and checkout
 NO CVP COLLECTIONS TOUCHED - Works only with orders collection.
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Dict
 from datetime import datetime, timezone
@@ -169,6 +170,47 @@ async def get_order_status(order_id: str, token: Optional[str] = None):
     }
 
 
+@router.get("/{order_id}/receipt")
+async def download_order_receipt_by_token(
+    order_id: str,
+    token: str = Query(..., description="Receipt JWT from order confirmation email"),
+):
+    """
+    Download branded invoice/receipt PDF. Secured with order_receipt JWT (API_BASE_URL link from email).
+    """
+    from models import AuditAction
+    from services.order_receipt_service import get_receipt_for_order
+    from services.order_view_token import validate_order_receipt_token
+    from utils.audit import create_audit_log
+
+    payload = validate_order_receipt_token(token)
+    if not payload or payload.get("order_id") != order_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    cust_email = (order.get("customer") or {}).get("email") or ""
+    if (cust_email or "").strip().lower() != (payload.get("email") or "").strip().lower():
+        raise HTTPException(status_code=403, detail="Not authorized for this order")
+    pdf, filename = await get_receipt_for_order(order_id, order, allow_generate=True)
+    if not pdf or not filename:
+        raise HTTPException(status_code=404, detail="Receipt not available")
+    try:
+        await create_audit_log(
+            action=AuditAction.ORDER_RECEIPT_PDF_ACCESSED,
+            resource_type="order",
+            resource_id=order_id,
+            metadata={"channel": "public_token", "invoice_number": order.get("invoice_number")},
+        )
+    except Exception:
+        pass
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/webhook/payment")
 async def handle_order_payment_webhook(request: Request):
     """
@@ -230,6 +272,27 @@ async def handle_order_payment_webhook(request: Request):
                     )
                     
                     logger.info(f"Order {order_id} paid and queued")
+
+                    # Payment receipt PDF (non-blocking for webhook response)
+                    try:
+                        order_after = await get_order(order_id)
+                        if order_after:
+                            from services.order_receipt_service import ensure_order_receipt_stored
+                            from utils.audit import create_audit_log
+                            from models import AuditAction
+
+                            ok, _, err = await ensure_order_receipt_stored(order_id, order_after, force_regenerate=False)
+                            if ok:
+                                await create_audit_log(
+                                    action=AuditAction.ORDER_RECEIPT_PDF_GENERATED,
+                                    resource_type="order",
+                                    resource_id=order_id,
+                                    metadata={"source": "stripe_orders_webhook"},
+                                )
+                            elif err:
+                                logger.error("Order receipt generation failed (webhook) for %s: %s", order_id, err)
+                    except Exception as rex:
+                        logger.error("Order receipt side-effect failed for %s: %s", order_id, rex)
                     
             except Exception as e:
                 logger.error(f"Error processing order payment: {e}")

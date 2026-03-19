@@ -157,6 +157,12 @@ class Database:
             # Operations & Compliance: module feature flags per client
             await self.db.client_feature_flags.create_index([("client_id", 1), ("flag_key", 1)], unique=True)
             await self.db.client_feature_flags.create_index("client_id")
+            # CVP subscription checkout PDF receipts (portal billing)
+            try:
+                await self.db.stripe_checkout_invoices.create_index([("client_id", 1), ("created_at", -1)])
+                await self.db.stripe_checkout_invoices.create_index([("client_id", 1), ("invoice_number", 1)])
+            except Exception:
+                pass
             # Provisioning status per property/module (compliance, maintenance)
             await self.db.provisioning_status.create_index([("client_id", 1), ("property_id", 1), ("module_name", 1)], unique=True)
             await self.db.provisioning_status.create_index([("client_id", 1), ("module_name", 1)])

@@ -3,6 +3,7 @@ Client Orders Routes - Client-facing order operations
 Handles client input submission for the Orders workflow.
 """
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
@@ -56,7 +57,47 @@ async def get_client_order(
         "completed_at": order.get("completed_at"),
         "client_input_request": order.get("client_input_request"),
         "client_input_responses": order.get("client_input_responses", []),
+        "receipt_available": bool(order.get("receipt_pdf_gridfs_id")),
     }
+
+
+@router.get("/{order_id}/receipt")
+async def download_client_order_receipt(
+    order_id: str,
+    current_user: dict = Depends(client_route_guard),
+):
+    """
+    Download payment receipt PDF for an order (authenticated portal user).
+    Generates and stores receipt on first request if missing (paid orders).
+    """
+    from services.order_receipt_service import get_receipt_for_order
+
+    order = await get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.get("customer", {}).get("email") != current_user.get("email"):
+        raise HTTPException(status_code=403, detail="Not authorized to view this order")
+    pdf, filename = await get_receipt_for_order(order_id, order, allow_generate=True)
+    if not pdf or not filename:
+        raise HTTPException(status_code=404, detail="Receipt not available for this order")
+    try:
+        from models import AuditAction
+        from utils.audit import create_audit_log
+
+        await create_audit_log(
+            action=AuditAction.ORDER_RECEIPT_PDF_ACCESSED,
+            resource_type="order",
+            resource_id=order_id,
+            client_id=current_user.get("client_id"),
+            metadata={"channel": "client_portal", "invoice_number": order.get("invoice_number")},
+        )
+    except Exception:
+        pass
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ============================================

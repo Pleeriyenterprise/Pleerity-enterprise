@@ -7,6 +7,23 @@ PRODUCT_NAME = "Compliance Vault Pro"
 TAGLINE = "AI-Driven Solutions & Compliance"
 SUPPORT_EMAIL = "info@pleerityenterprise.co.uk"
 
+# Canonical customer-facing support line (order, payment, onboarding, support templates)
+CUSTOMER_SUPPORT_FOOTER_PLAIN = (
+    "If you have any questions, simply reply to this email or contact our support team at "
+    f"{SUPPORT_EMAIL}"
+)
+
+
+def format_customer_support_footer_html(link_color: str = "#00B8A9") -> str:
+    """HTML snippet: full sentence with mailto on support address only."""
+    import html as html_module
+
+    esc = html_module.escape(SUPPORT_EMAIL)
+    return (
+        "If you have any questions, simply reply to this email or contact our support team at "
+        f'<a href="mailto:{esc}" style="color: {link_color}; text-decoration: none;">{esc}</a>'
+    )
+
 
 def get_branding_website_url() -> str:
     """Public site URL for PDF/email footers (same origin as SPA)."""

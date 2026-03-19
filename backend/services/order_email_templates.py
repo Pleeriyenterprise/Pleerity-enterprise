@@ -3,13 +3,13 @@ Order Email Templates - Branded HTML + plaintext email templates for the Orders 
 Includes: Client Input Required, Client Response Received, Order Approved & Processing
 """
 from typing import Dict, Any, Optional
-import os
+import html as html_module
 
-# Branding constants
-COMPANY_NAME = "Pleerity Enterprise Ltd"
+from utils.branding import COMPANY_NAME, CUSTOMER_SUPPORT_FOOTER_PLAIN, SUPPORT_EMAIL, format_customer_support_footer_html
+
+# Branding (order emails)
 BRAND_COLOR_PRIMARY = "#0B1D3A"  # Midnight blue
 BRAND_COLOR_ACCENT = "#00B8A9"  # Electric teal
-SUPPORT_EMAIL = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
 
 def _build_email_header(title: str, subtitle: Optional[str] = None, badge_text: Optional[str] = None) -> str:
     """Build consistent branded header."""
@@ -58,7 +58,7 @@ def _build_text_footer(order_reference: Optional[str] = None) -> str:
 {COMPANY_NAME}
 AI-Driven Solutions & Compliance{ref_line}
 
-Questions? Contact us at {SUPPORT_EMAIL}
+{CUSTOMER_SUPPORT_FOOTER_PLAIN}
 """
 
 
@@ -74,6 +74,7 @@ def build_order_confirmation_email(
     order_date: str,
     estimated_delivery: str = "48 hours",
     view_order_link: str = "",
+    receipt_download_url: str = "",
 ) -> Dict[str, str]:
     """
     Build 'Order Confirmation' email - sent to customer after successful payment.
@@ -95,7 +96,32 @@ def build_order_confirmation_email(
             </div>
         """
         cta_text = f"\nView your order: {view_order_link}\n"
-    
+
+    receipt_html = ""
+    receipt_text = ""
+    if receipt_download_url:
+        safe_receipt_url = html_module.escape(receipt_download_url, quote=True)
+        receipt_html = f"""
+            <div style="margin: 28px 0; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+                <h3 style="color: {BRAND_COLOR_PRIMARY}; margin: 0 0 12px 0; font-size: 16px;">Receipt / Invoice</h3>
+                <p style="color: #64748b; margin: 0 0 16px 0; font-size: 14px;">
+                    Your payment receipt is attached to this email when available. You can also download a copy using the button below.
+                </p>
+                <div style="text-align: center;">
+                    <a href="{safe_receipt_url}" style="background-color: {BRAND_COLOR_PRIMARY}; color: white;
+                              padding: 12px 28px; text-decoration: none; border-radius: 6px;
+                              display: inline-block; font-weight: 600;">
+                        Download Receipt
+                    </a>
+                </div>
+            </div>
+        """
+        receipt_text = f"""
+RECEIPT / INVOICE
+-----------------
+Download your receipt: {receipt_download_url}
+"""
+
     html = f"""
     <html>
     <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto;">
@@ -143,12 +169,9 @@ def build_order_confirmation_email(
                 <li style="margin: 10px 0;">You'll receive an email when your order is ready for download</li>
             </ol>
             
-            {cta_html}
+            {receipt_html}
             
-            <p style="margin-top: 25px; color: #64748b;">
-                If you have any questions about your order, please reply to this email or contact us at 
-                <a href="mailto:{SUPPORT_EMAIL}" style="color: {BRAND_COLOR_ACCENT};">{SUPPORT_EMAIL}</a>
-            </p>
+            {cta_html}
             
             {_build_email_footer(order_reference)}
         </div>
@@ -177,9 +200,7 @@ WHAT HAPPENS NEXT?
 1. Our team will review your order and begin processing
 2. Your documents will be generated based on the information you provided
 3. You'll receive an email when your order is ready for download
-{cta_text}
-If you have any questions, please contact us at {SUPPORT_EMAIL}
-
+{receipt_text}{cta_text}
 {_build_text_footer(order_reference)}
 """
     
@@ -584,8 +605,7 @@ def build_order_delivered_email(
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;">
             
             <p style="color: #64748b; font-size: 14px;">
-                <strong>Need help?</strong> If you have any questions about your documents, 
-                please don't hesitate to contact us at <a href="mailto:{SUPPORT_EMAIL}" style="color: {BRAND_COLOR_ACCENT};">{SUPPORT_EMAIL}</a>.
+                <strong>Need help?</strong> {format_customer_support_footer_html(BRAND_COLOR_ACCENT)}
             </p>
         </div>
         
@@ -618,7 +638,7 @@ Your documents are also available in your portal dashboard:
 
 NEED HELP?
 ----------
-If you have any questions about your documents, please contact us at {SUPPORT_EMAIL}.
+{CUSTOMER_SUPPORT_FOOTER_PLAIN}
 
 {_build_text_footer(order_reference)}
 """

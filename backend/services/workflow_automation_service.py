@@ -393,6 +393,23 @@ class WorkflowAutomationService:
                         reason=f"WF2: Pack generation failed: {err_msg}",
                     )
                     try:
+                        from services.automatic_generation_retry_service import (
+                            maybe_schedule_automatic_generation_retry,
+                            persist_generation_failure_on_order,
+                        )
+
+                        both_ex = "both llm" in (err_msg or "").lower() or "both llm providers failed" in (
+                            err_msg or ""
+                        ).lower()
+                        await persist_generation_failure_on_order(
+                            order_id, err_msg, both_providers_exhausted=both_ex
+                        )
+                        await maybe_schedule_automatic_generation_retry(
+                            order_id, err_msg, both_providers_exhausted=both_ex
+                        )
+                    except Exception as meta_err:
+                        logger.warning("WF2: failure metadata / auto-retry hook failed: %s", meta_err)
+                    try:
                         notif_service = self._get_notification_service()
                         await notif_service.notify_order_failed(order_id=order_id, error=err_msg, order=order)
                     except Exception as e:
@@ -415,6 +432,22 @@ class WorkflowAutomationService:
                     triggered_by_type="system",
                     reason=f"WF2: Pack generation exception: {str(e)}",
                 )
+                try:
+                    from services.automatic_generation_retry_service import (
+                        maybe_schedule_automatic_generation_retry,
+                        persist_generation_failure_on_order,
+                    )
+
+                    msg = str(e)
+                    both_ex = "both llm" in msg.lower()
+                    await persist_generation_failure_on_order(
+                        order_id, msg, both_providers_exhausted=both_ex
+                    )
+                    await maybe_schedule_automatic_generation_retry(
+                        order_id, msg, both_providers_exhausted=both_ex
+                    )
+                except Exception as meta_err:
+                    logger.warning("WF2: pack exception metadata hook failed: %s", meta_err)
                 return {"success": False, "status": "FAILED", "workflow": "WF2", "error": str(e)}
         
         try:
@@ -463,7 +496,22 @@ class WorkflowAutomationService:
                     triggered_by_type="system",
                     reason=f"WF2: Document generation failed: {result_error}",
                 )
-                
+                try:
+                    from services.automatic_generation_retry_service import (
+                        maybe_schedule_automatic_generation_retry,
+                        persist_generation_failure_on_order,
+                    )
+
+                    both_ex = "both llm providers failed" in (result_error or "").lower()
+                    await persist_generation_failure_on_order(
+                        order_id, result_error, both_providers_exhausted=both_ex
+                    )
+                    await maybe_schedule_automatic_generation_retry(
+                        order_id, result_error, both_providers_exhausted=both_ex
+                    )
+                except Exception as meta_err:
+                    logger.warning("WF2: failure metadata / auto-retry hook failed: %s", meta_err)
+
                 # Notify of failure
                 try:
                     notif_service = self._get_notification_service()
@@ -486,7 +534,21 @@ class WorkflowAutomationService:
                 triggered_by_type="system",
                 reason=f"WF2: Generation exception: {str(e)}",
             )
-            
+            try:
+                from services.automatic_generation_retry_service import (
+                    maybe_schedule_automatic_generation_retry,
+                    persist_generation_failure_on_order,
+                )
+
+                msg = str(e)
+                both_ex = "both llm" in msg.lower()
+                await persist_generation_failure_on_order(order_id, msg, both_providers_exhausted=both_ex)
+                await maybe_schedule_automatic_generation_retry(
+                    order_id, msg, both_providers_exhausted=both_ex
+                )
+            except Exception as meta_err:
+                logger.warning("WF2: exception metadata hook failed: %s", meta_err)
+
             return {"success": False, "status": "FAILED", "workflow": "WF2", "error": str(e)}
     
     # =========================================================================

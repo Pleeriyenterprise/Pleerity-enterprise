@@ -24,7 +24,8 @@ import {
   FileText,
   Phone,
   Info,
-  AlertCircle
+  AlertCircle,
+  Download
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -69,6 +70,15 @@ const AdminBillingPage = () => {
   // Statistics
   const [statistics, setStatistics] = useState(null);
 
+  // Receipts & invoices (canonical ledger + orders)
+  const [receipts, setReceipts] = useState([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+  const [receiptTypeFilter, setReceiptTypeFilter] = useState('all');
+  const [receiptStatusFilter, setReceiptStatusFilter] = useState('');
+  const [receiptDateFrom, setReceiptDateFrom] = useState('');
+  const [receiptDateTo, setReceiptDateTo] = useState('');
+  const [receiptActionKey, setReceiptActionKey] = useState(null);
+
   // Fetch statistics on mount
   useEffect(() => {
     fetchStatistics();
@@ -88,6 +98,37 @@ const AdminBillingPage = () => {
       setChangePlanCode(billingSnapshot.plan_code);
     }
   }, [billingSnapshot?.plan_code, billingSnapshot?.stripe_subscription_id]);
+
+  const fetchClientReceipts = useCallback(async (clientId) => {
+    if (!clientId) {
+      setReceipts([]);
+      return;
+    }
+    setReceiptsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('type', receiptTypeFilter || 'all');
+      if (receiptStatusFilter.trim()) params.set('status', receiptStatusFilter.trim());
+      if (receiptDateFrom.trim()) params.set('date_from', receiptDateFrom.trim());
+      if (receiptDateTo.trim()) params.set('date_to', receiptDateTo.trim());
+      const response = await api.get(`/admin/billing/clients/${clientId}/receipts?${params.toString()}`);
+      setReceipts(response.data.receipts || []);
+    } catch (error) {
+      console.error('Receipts fetch error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to load receipts');
+      setReceipts([]);
+    } finally {
+      setReceiptsLoading(false);
+    }
+  }, [receiptTypeFilter, receiptStatusFilter, receiptDateFrom, receiptDateTo]);
+
+  useEffect(() => {
+    if (selectedClientId) {
+      fetchClientReceipts(selectedClientId);
+    } else {
+      setReceipts([]);
+    }
+  }, [selectedClientId, fetchClientReceipts]);
 
   const fetchStatistics = async () => {
     try {
@@ -285,6 +326,80 @@ const AdminBillingPage = () => {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard');
+  };
+
+  const receiptSourceLabel = (detail) => {
+    const m = {
+      subscription_checkout: 'CVP subscription',
+      intake_order: 'Intake order',
+      one_off_order: 'One-off service',
+      cvp_order: 'CVP order',
+    };
+    return m[detail] || detail || '—';
+  };
+
+  const handleReceiptDownload = async (row) => {
+    if (!selectedClientId || !row.pdf_available) return;
+    const key = row.receipt_key || '';
+    setReceiptActionKey(`dl-${key}`);
+    try {
+      let path;
+      if (row.source === 'subscription') {
+        const ref = encodeURIComponent(row.invoice_number || row.order_reference || '');
+        path = `/admin/billing/clients/${selectedClientId}/receipts/subscription/${ref}/download`;
+      } else {
+        path = `/admin/billing/clients/${selectedClientId}/receipts/order/${encodeURIComponent(row.order_id)}/download`;
+      }
+      const response = await api.get(path, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${row.invoice_number || row.order_reference || 'receipt'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Receipt downloaded');
+    } catch (error) {
+      console.error('Receipt download error:', error);
+      toast.error(error.response?.data?.detail || 'Download failed');
+    } finally {
+      setReceiptActionKey(null);
+    }
+  };
+
+  const handleReceiptResend = async (row) => {
+    if (!selectedClientId) return;
+    const key = row.receipt_key || '';
+    setReceiptActionKey(`rs-${key}`);
+    try {
+      const source = row.source === 'subscription' ? 'subscription' : 'order';
+      const ref =
+        source === 'subscription'
+          ? (row.invoice_number || row.order_reference || '').trim()
+          : (row.order_id || '').trim();
+      if (!ref) {
+        toast.error('Missing reference for resend');
+        return;
+      }
+      const response = await api.post(`/admin/billing/clients/${selectedClientId}/receipts/resend`, {
+        source,
+        ref,
+      });
+      if (response.data.success) {
+        toast.success('Receipt email sent', {
+          description: response.data.message || 'Check delivery logs if needed.',
+        });
+        fetchClientReceipts(selectedClientId);
+      }
+    } catch (error) {
+      console.error('Receipt resend error:', error);
+      const d = error.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : d?.message || 'Resend failed');
+    } finally {
+      setReceiptActionKey(null);
+    }
   };
 
   const getEntitlementBadge = (status) => {
@@ -539,6 +654,86 @@ const AdminBillingPage = () => {
                   </CardContent>
                 </Card>
 
+                {billingSnapshot.billing_attention_items?.length > 0 && (
+                  <Card data-testid="billing-needs-attention" className="border-amber-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        Needs attention
+                      </CardTitle>
+                      <CardDescription>
+                        Rule-based flags from billing records only — verify in Stripe or logs before acting.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {billingSnapshot.billing_attention_items.map((item, idx) => (
+                        <Alert
+                          key={idx}
+                          className={
+                            item.severity === 'high'
+                              ? 'border-red-200 bg-red-50'
+                              : item.severity === 'medium'
+                                ? 'border-amber-200 bg-amber-50'
+                                : 'border-gray-200 bg-gray-50'
+                          }
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                          <AlertDescription className="text-sm">
+                            <span className="font-mono text-xs text-gray-500 mr-2">{item.code}</span>
+                            {item.message}
+                          </AlertDescription>
+                        </Alert>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card data-testid="client-billing-overview">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Client billing overview
+                    </CardTitle>
+                    <CardDescription>Summary fields for support — Stripe remains the billing authority.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Next billing / period end</p>
+                        <p className="font-medium">
+                          {billingSnapshot.next_billing_date
+                            ? new Date(billingSnapshot.next_billing_date).toLocaleString()
+                            : '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Latest Stripe invoice (app record)</p>
+                        <p className="font-mono text-xs break-all">
+                          {billingSnapshot.last_stripe_invoice_id || '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Onboarding</p>
+                        <p className="font-medium">{billingSnapshot.onboarding_status || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Portal password setup</p>
+                        <p className="font-medium">
+                          {billingSnapshot.password_setup_complete ? 'Complete' : billingSnapshot.portal_user ? 'Pending' : 'No portal user'}
+                        </p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-gray-500">Subscription checkout PDFs in ledger</p>
+                        <p className="font-medium">
+                          {typeof billingSnapshot.checkout_receipt_ledger_count === 'number'
+                            ? billingSnapshot.checkout_receipt_ledger_count
+                            : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Plan & Subscription */}
                 <Card data-testid="subscription-info">
                   <CardHeader className="pb-3">
@@ -707,6 +902,164 @@ const AdminBillingPage = () => {
                   </CardContent>
                 </Card>
 
+                {/* Receipts & Invoices */}
+                <Card data-testid="admin-receipts-section">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Receipts &amp; Invoices
+                    </CardTitle>
+                    <CardDescription>
+                      Subscription checkout PDFs and paid service orders for this client (canonical GridFS storage). Use filters to narrow the list.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-2 items-end">
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-500">Type</label>
+                        <select
+                          value={receiptTypeFilter}
+                          onChange={(e) => setReceiptTypeFilter(e.target.value)}
+                          className="flex h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                          data-testid="receipt-filter-type"
+                        >
+                          <option value="all">All</option>
+                          <option value="subscription">Subscription only</option>
+                          <option value="order">Orders only</option>
+                          <option value="intake_order">Intake orders</option>
+                          <option value="one_off_order">One-off services</option>
+                          <option value="cvp_order">CVP-linked orders</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-500">Status</label>
+                        <Input
+                          placeholder="e.g. PAID"
+                          value={receiptStatusFilter}
+                          onChange={(e) => setReceiptStatusFilter(e.target.value)}
+                          className="h-9 w-28 text-sm"
+                          data-testid="receipt-filter-status"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-500">From</label>
+                        <Input
+                          type="date"
+                          value={receiptDateFrom}
+                          onChange={(e) => setReceiptDateFrom(e.target.value)}
+                          className="h-9 w-40 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-500">To</label>
+                        <Input
+                          type="date"
+                          value={receiptDateTo}
+                          onChange={(e) => setReceiptDateTo(e.target.value)}
+                          className="h-9 w-40 text-sm"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchClientReceipts(selectedClientId)}
+                        disabled={receiptsLoading}
+                        data-testid="receipt-refresh"
+                      >
+                        {receiptsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                        <span className="ml-1">Refresh</span>
+                      </Button>
+                    </div>
+
+                    {receiptsLoading && receipts.length === 0 ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500 py-6 justify-center">
+                        <Loader2 className="w-5 h-5 animate-spin text-electric-teal" />
+                        Loading receipts…
+                      </div>
+                    ) : receipts.length === 0 ? (
+                      <p className="text-sm text-gray-600 py-6 text-center border border-dashed rounded-md bg-gray-50/50">
+                        No receipts available for this client yet.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto border rounded-md">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gray-50 text-left border-b">
+                              <th className="p-2 font-medium">Invoice #</th>
+                              <th className="p-2 font-medium">Reference</th>
+                              <th className="p-2 font-medium">Issued</th>
+                              <th className="p-2 font-medium">Amount</th>
+                              <th className="p-2 font-medium">Status</th>
+                              <th className="p-2 font-medium">Payment</th>
+                              <th className="p-2 font-medium">Source</th>
+                              <th className="p-2 font-medium">PDF / Email</th>
+                              <th className="p-2 font-medium text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {receipts.map((row) => {
+                              const rk = row.receipt_key || '';
+                              const busyDl = receiptActionKey === `dl-${rk}`;
+                              const busyRs = receiptActionKey === `rs-${rk}`;
+                              const issued = row.date_issued
+                                ? new Date(row.date_issued).toLocaleDateString()
+                                : '—';
+                              return (
+                                <tr key={rk} className="border-b last:border-0 hover:bg-gray-50/80">
+                                  <td className="p-2 font-mono text-xs">{row.invoice_number || '—'}</td>
+                                  <td className="p-2 font-mono text-xs max-w-[140px] truncate" title={row.order_reference}>
+                                    {row.order_reference || '—'}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">{issued}</td>
+                                  <td className="p-2">{row.amount_display || '—'}</td>
+                                  <td className="p-2">{row.payment_status || '—'}</td>
+                                  <td className="p-2 text-xs">{row.payment_method || '—'}</td>
+                                  <td className="p-2 text-xs">{receiptSourceLabel(row.source_detail)}</td>
+                                  <td className="p-2 text-xs">
+                                    <span className={row.pdf_available ? 'text-green-700' : 'text-amber-700'}>
+                                      PDF: {row.pdf_available ? 'yes' : 'no'}
+                                    </span>
+                                    <br />
+                                    <span className="text-gray-600">
+                                      Emailed: {row.email_sent_at ? new Date(row.email_sent_at).toLocaleString() : '—'}
+                                    </span>
+                                  </td>
+                                  <td className="p-2 text-right whitespace-nowrap">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      disabled={!row.pdf_available || busyDl}
+                                      onClick={() => handleReceiptDownload(row)}
+                                      data-testid={`receipt-download-${rk}`}
+                                    >
+                                      {busyDl ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      disabled={busyRs}
+                                      onClick={() => handleReceiptResend(row)}
+                                      title="Resend confirmation email with receipt when available"
+                                      data-testid={`receipt-resend-${rk}`}
+                                    >
+                                      {busyRs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Admin Actions */}
                 <Card data-testid="admin-actions">
                   <CardHeader className="pb-3">
@@ -808,37 +1161,77 @@ const AdminBillingPage = () => {
                   </CardContent>
                 </Card>
 
-                {/* Recent Stripe Events */}
-                {billingSnapshot.recent_stripe_events?.length > 0 && (
-                  <Card data-testid="stripe-events">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Recent Stripe Events</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {billingSnapshot.recent_stripe_events.map((event, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                            <div>
-                              <p className="font-medium">{event.type}</p>
-                              <p className="text-xs text-gray-500">{new Date(event.created).toLocaleString()}</p>
-                            </div>
-                            <span className={`px-2 py-1 text-xs rounded ${
-                              event.status === 'PROCESSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {event.status}
-                            </span>
-                          </div>
-                        ))}
+                {/* Subscription activity — stored Stripe webhooks only */}
+                <Card data-testid="subscription-activity">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Subscription activity</CardTitle>
+                    <CardDescription>
+                      Stripe webhook events recorded for this client (processed or failed). Not a full Stripe audit
+                      trail.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {!billingSnapshot.stripe_timeline?.length ? (
+                      <p className="text-sm text-gray-500 text-center py-8 border border-dashed rounded-md bg-gray-50/50">
+                        No subscription webhook history recorded for this client yet.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto border rounded-md">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gray-50 text-left border-b">
+                              <th className="p-2 font-medium">When</th>
+                              <th className="p-2 font-medium">Summary</th>
+                              <th className="p-2 font-medium">Raw type</th>
+                              <th className="p-2 font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {billingSnapshot.stripe_timeline.map((row, idx) => (
+                              <tr key={row.event_id || idx} className="border-b last:border-0">
+                                <td className="p-2 whitespace-nowrap text-xs text-gray-600">
+                                  {row.created ? new Date(row.created).toLocaleString() : '—'}
+                                </td>
+                                <td className="p-2">{row.summary}</td>
+                                <td className="p-2 font-mono text-xs text-gray-500 max-w-[180px] truncate" title={row.type}>
+                                  {row.type}
+                                </td>
+                                <td className="p-2">
+                                  <span
+                                    className={`px-2 py-0.5 text-xs rounded ${
+                                      row.status === 'PROCESSED'
+                                        ? 'bg-green-100 text-green-800'
+                                        : row.status === 'FAILED'
+                                          ? 'bg-red-100 text-red-800'
+                                          : 'bg-gray-100 text-gray-700'
+                                    }`}
+                                  >
+                                    {row.status}
+                                  </span>
+                                  {row.error_preview && (
+                                    <p className="text-xs text-red-600 mt-1 max-w-xs truncate" title={row.error_preview}>
+                                      {row.error_preview}
+                                    </p>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
+              <Card data-testid="admin-billing-empty">
+                <CardContent className="py-14 text-center px-6">
                   <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Search for a client to view billing details</p>
+                  <p className="text-gray-700 font-medium">No client selected</p>
+                  <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
+                    Search by email, CRN, client ID, or postcode, then select a client to view billing summary,
+                    receipts, subscription activity, and support actions.
+                  </p>
                 </CardContent>
               </Card>
             )}

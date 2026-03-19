@@ -106,6 +106,29 @@ async def create_checkout(request: Request, body: CheckoutRequest):
         )
 
 
+@router.get("/payment-method-summary")
+async def get_payment_method_summary(request: Request):
+    """
+    Masked card summary for Billing UI. Fails soft (empty) if Stripe unavailable.
+    Full updates happen in Stripe Billing Portal.
+    """
+    user = await client_route_guard(request)
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No client_id associated with user",
+        )
+    try:
+        summary = await stripe_service.get_payment_method_summary(client_id)
+        if summary:
+            return summary
+        return {"available": False, "managed_in_portal": True, "display": None, "message": None}
+    except Exception as e:
+        logger.error(f"payment-method-summary error: {e}")
+        return {"available": False, "managed_in_portal": True, "display": None, "message": None}
+
+
 @router.get("/status")
 async def get_billing_status(request: Request):
     """Get current subscription and billing status."""
@@ -180,7 +203,7 @@ async def create_billing_portal(request: Request):
         
         portal_session = stripe.billing_portal.Session.create(
             customer=billing.get("stripe_customer_id"),
-            return_url=f"{origin}/app/billing",
+            return_url=f"{origin}/settings/billing",
         )
         
         return {

@@ -21,6 +21,7 @@ import hashlib
 import io
 import json
 import logging
+import os
 import zipfile
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
@@ -29,6 +30,7 @@ from enum import Enum
 
 from bson import ObjectId
 from database import database
+from services.admin_failure_summary import classify_generation_error
 
 logger = logging.getLogger(__name__)
 
@@ -608,18 +610,38 @@ class DocumentPackOrchestrator:
                 intake_data=input_data,
             )
             
-            # Execute LLM generation
-            from services.prompt_service import prompt_service
-            llm = await prompt_service._get_llm_provider()
-            
-            raw_output, tokens = await llm.generate(
+            # Execute LLM generation (OpenAI primary, Gemini failover)
+            from services.unified_llm_service import generate_with_failover, get_default_preferred_provider
+
+            order_row = await db.orders.find_one(
+                {"order_id": item["order_id"]},
+                {"_id": 0, "service_code": 1, "admin_llm_preferred_provider": 1},
+            )
+            pack_service_code_early = (order_row or {}).get(
+                "service_code", self._get_service_code_for_doc_type(definition.doc_type)
+            )
+            admin_pref = (order_row or {}).get("admin_llm_preferred_provider")
+            pref = get_default_preferred_provider()
+            if isinstance(admin_pref, str) and admin_pref.strip().lower() in ("openai", "gemini"):
+                pref = admin_pref.strip().lower()
+
+            llm_result = await generate_with_failover(
                 system_prompt=prompt_def.system_prompt,
                 user_prompt=user_prompt,
-                temperature=prompt_def.temperature,
-                max_tokens=prompt_def.max_tokens,
+                temperature=float(prompt_def.temperature or 0.2),
+                max_tokens=int(prompt_def.max_tokens or 8192),
+                preferred_provider=pref,
+                gemini_model=os.environ.get("DOCUMENT_PACK_GEMINI_MODEL", "gemini-2.5-flash"),
             )
+            raw_output = llm_result.text
+            tokens = {
+                "prompt_tokens": llm_result.prompt_tokens,
+                "completion_tokens": llm_result.completion_tokens,
+            }
             
             # Parse output
+            from services.prompt_service import prompt_service
+
             parsed_output = prompt_service._parse_llm_output(raw_output)
             
             if not parsed_output:
@@ -650,7 +672,9 @@ class DocumentPackOrchestrator:
                 from services.template_renderer import template_renderer
                 from services.template_renderer import RenderStatus as TRenderStatus
                 order_doc = await db.orders.find_one({"order_id": item["order_id"]}, {"_id": 0, "service_code": 1})
-                pack_service_code = (order_doc or {}).get("service_code", self._get_service_code_for_doc_type(definition.doc_type))
+                pack_service_code = (order_doc or {}).get(
+                    "service_code", pack_service_code_early
+                )
                 render_result = await template_renderer.render_pack_item(
                     order_id=item["order_id"],
                     item_id=item_id,
@@ -681,22 +705,41 @@ class DocumentPackOrchestrator:
             input_hash = self.compute_input_hash(input_data)
             try:
                 run_id = self._generate_run_id()
-                llm = await prompt_service._get_llm_provider()
-                model_used = getattr(llm, "_model", None) or "gemini-2.5-flash"
+                prim = llm_result.primary_provider or ""
+                used = llm_result.provider_used or ""
+                if llm_result.fallback_used:
+                    pa = [
+                        {"provider": prim, "outcome": "failover"},
+                        {"provider": used, "outcome": "success"},
+                    ]
+                else:
+                    pa = [{"provider": used, "outcome": "success"}]
+                latency_ms = max(0, int((now_utc - now).total_seconds() * 1000))
                 await db.generation_runs.insert_one({
                     "run_id": run_id,
                     "order_id": item["order_id"],
+                    "service_code": pack_service_code_early,
                     "template_id": prompt_info.template_id if prompt_info else None,
                     "prompt_version": prompt_info.version if prompt_info else None,
                     "doc_type": definition.doc_type,
                     "status": "COMPLETED",
-                    "provider": getattr(llm, "provider_name", "gemini"),
-                    "model": model_used,
+                    "provider_used": llm_result.provider_used,
+                    "provider": llm_result.provider_used,
+                    "model": llm_result.model_used,
+                    "fallback_used": bool(llm_result.fallback_used),
+                    "primary_provider_attempted": llm_result.primary_provider,
+                    "fallback_reason": llm_result.fallback_reason,
                     "prompt_tokens": tokens.get("prompt_tokens", 0),
                     "completion_tokens": tokens.get("completion_tokens", 0),
                     "intake_snapshot_hash": input_hash,
                     "started_at": now,
                     "completed_at": now_utc,
+                    "latency_ms": latency_ms,
+                    "retry_count": 0,
+                    "retryable": False,
+                    "final_error_type": None,
+                    "final_error_message": None,
+                    "provider_attempts": pa,
                     "created_at": now_utc,
                     "updated_at": now_utc,
                 })
@@ -709,34 +752,63 @@ class DocumentPackOrchestrator:
             
         except Exception as e:
             logger.error(f"Document generation failed for {item_id}: {e}")
-            
+            err_msg = str(e)
+            both_llm_failed = "Both LLM providers failed" in err_msg
+
             await db[self.COLLECTION].update_one(
                 {"item_id": item_id},
                 {"$set": {
                     "status": "FAILED",
-                    "error_message": str(e),
+                    "error_message": err_msg,
                 }}
             )
             
-            # Dual-write FAILED run to generation_runs
+            # Dual-write FAILED run to generation_runs (both providers exhausted or non-retryable)
             try:
                 run_id = self._generate_run_id()
+                done = datetime.now(timezone.utc)
+                primary = (os.environ.get("DOCUMENT_LLM_PREFERRED_PROVIDER", "openai") or "openai").strip().lower()
+                if primary not in ("openai", "gemini"):
+                    primary = "openai"
+                secondary = "gemini" if primary == "openai" else "openai"
+                if both_llm_failed:
+                    pa = [
+                        {"provider": primary, "outcome": "error"},
+                        {"provider": secondary, "outcome": "error"},
+                    ]
+                else:
+                    pa = [{"provider": primary, "outcome": "error"}]
+                em = (str(e))[:1000]
+                ft, ryb = classify_generation_error(em, both_providers_exhausted=both_llm_failed)
+                odoc = await db.orders.find_one({"order_id": item["order_id"]}, {"_id": 0, "service_code": 1})
+                svc = (odoc or {}).get("service_code")
                 await db.generation_runs.insert_one({
                     "run_id": run_id,
                     "order_id": item["order_id"],
+                    "service_code": svc,
                     "template_id": None,
                     "doc_type": item.get("doc_type", ""),
                     "status": "FAILED",
+                    "provider_used": None,
                     "provider": None,
                     "model": None,
+                    "fallback_used": bool(both_llm_failed),
+                    "primary_provider_attempted": primary,
+                    "fallback_reason": "both_llm_providers_failed" if both_llm_failed else "generation_failed",
                     "prompt_tokens": 0,
                     "completion_tokens": 0,
                     "intake_snapshot_hash": None,
                     "started_at": now,
-                    "completed_at": datetime.now(timezone.utc),
-                    "error_message": (str(e))[:1000],
-                    "created_at": datetime.now(timezone.utc),
-                    "updated_at": datetime.now(timezone.utc),
+                    "completed_at": done,
+                    "error_message": em,
+                    "final_error_type": ft,
+                    "final_error_message": em,
+                    "retryable": bool(ryb),
+                    "retry_count": 0,
+                    "latency_ms": max(0, int((done - now).total_seconds() * 1000)),
+                    "provider_attempts": pa,
+                    "created_at": done,
+                    "updated_at": done,
                 })
             except Exception as ex:
                 logger.warning("generation_runs FAILED dual-write failed: %s", ex)

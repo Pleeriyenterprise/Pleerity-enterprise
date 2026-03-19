@@ -464,6 +464,10 @@ const AdminOrdersPage = () => {
           onPriorityToggle={handlePriorityToggle}
           onCancel={handleCancelOrder}
           onArchive={handleArchiveOrder}
+          onAfterRetry={() => {
+            if (selectedOrder?.order_id) fetchOrderDetail(selectedOrder.order_id);
+            fetchOrders();
+          }}
           isSubmitting={isSubmitting}
         />
 

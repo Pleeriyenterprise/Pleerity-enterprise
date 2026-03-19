@@ -460,6 +460,67 @@ class StripeService:
             "has_more": invoices.get("has_more", False),
         }
 
+    async def get_payment_method_summary(self, client_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Read-only card summary for client Billing UI. Does not store PAN; Stripe is source of truth.
+        """
+        if not (stripe.api_key or "").strip():
+            return None
+        db = database.get_db()
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "stripe_customer_id": 1},
+        )
+        cid = (billing or {}).get("stripe_customer_id")
+        if not cid:
+            row = await db.clients.find_one({"client_id": client_id}, {"stripe_customer_id": 1})
+            cid = (row or {}).get("stripe_customer_id")
+        if not cid:
+            return None
+        try:
+            cust = stripe.Customer.retrieve(str(cid))
+            pm = None
+            pm_ref = cust.get("invoice_settings", {}).get("default_payment_method")
+            if isinstance(pm_ref, str) and pm_ref:
+                pm = stripe.PaymentMethod.retrieve(pm_ref)
+            elif isinstance(pm_ref, dict):
+                pm = pm_ref
+            if not pm:
+                pms = stripe.PaymentMethod.list(customer=str(cid), type="card", limit=1)
+                if pms.data:
+                    pm = pms.data[0]
+            if not pm:
+                return {
+                    "available": True,
+                    "managed_in_portal": True,
+                    "display": None,
+                    "message": "No card on file. Add one in the billing portal.",
+                }
+            card = pm.get("card") if isinstance(pm, dict) else getattr(pm, "card", None)
+            if not card:
+                return {
+                    "available": True,
+                    "managed_in_portal": True,
+                    "display": None,
+                    "message": "Payment method on file (card details not shown).",
+                }
+            if isinstance(card, dict):
+                brand = (card.get("brand") or "Card").title()
+                last4 = card.get("last4") or "••••"
+            else:
+                brand = (getattr(card, "brand", None) or "Card").title()
+                last4 = getattr(card, "last4", None) or "••••"
+            return {
+                "available": True,
+                "managed_in_portal": True,
+                "display": f"{brand} •••• {last4}",
+                "brand": brand.lower() if isinstance(brand, str) else str(brand),
+                "last4": last4,
+            }
+        except stripe.error.StripeError as e:
+            logger.warning("get_payment_method_summary Stripe error for %s: %s", client_id, e)
+            return None
+
 
 # Singleton instance
 stripe_service = StripeService()

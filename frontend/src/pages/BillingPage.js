@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
   Check, 
   X, 
@@ -215,6 +215,10 @@ const BillingPage = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [invoices, setInvoices] = useState([]);
+  const [billingMainTab, setBillingMainTab] = useState('account');
+  const [paymentMethodInfo, setPaymentMethodInfo] = useState(null);
+  const [pdfReceipts, setPdfReceipts] = useState([]);
+  const [portalOpening, setPortalOpening] = useState(false);
   
   const highlightPlan = searchParams.get('upgrade_to');
 
@@ -236,6 +240,56 @@ const BillingPage = () => {
       setInvoices([]);
     }
   }, [billingStatus?.has_subscription]);
+
+  useEffect(() => {
+    if (billingMainTab !== 'account') return;
+    const loadPm = async () => {
+      if (!billingStatus?.has_subscription) {
+        setPaymentMethodInfo(null);
+        return;
+      }
+      try {
+        const res = await api.get('/billing/payment-method-summary');
+        setPaymentMethodInfo(res.data);
+      } catch {
+        setPaymentMethodInfo(null);
+      }
+    };
+    loadPm();
+  }, [billingMainTab, billingStatus?.has_subscription]);
+
+  useEffect(() => {
+    if (billingMainTab !== 'account' || !billingStatus?.has_subscription) {
+      setPdfReceipts([]);
+      return;
+    }
+    const loadPdf = async () => {
+      try {
+        const res = await api.get('/client/billing/receipts');
+        setPdfReceipts(res.data.receipts || []);
+      } catch {
+        setPdfReceipts([]);
+      }
+    };
+    loadPdf();
+  }, [billingMainTab, billingStatus?.has_subscription]);
+
+  const openBillingPortal = async () => {
+    setPortalOpening(true);
+    try {
+      const origin = window.location.origin;
+      const res = await api.post('/billing/portal', {}, { headers: { Origin: origin } });
+      if (res.data?.portal_url) {
+        window.location.href = res.data.portal_url;
+      } else {
+        toast.error('Could not open billing portal');
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Billing portal unavailable');
+    } finally {
+      setPortalOpening(false);
+    }
+  };
 
   const fetchEntitlements = async () => {
     try {
@@ -387,14 +441,304 @@ const BillingPage = () => {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
             <div>
-              <h1 className="text-xl font-semibold text-midnight-blue">Plans & Billing</h1>
-              <p className="text-sm text-gray-500">Compare plans and manage your subscription</p>
+              <h1 className="text-xl font-semibold text-midnight-blue">Billing</h1>
+              <p className="text-sm text-gray-500">
+                {billingMainTab === 'account'
+                  ? 'Subscription summary, receipts, and payment details'
+                  : 'Compare plans and upgrade your subscription'}
+              </p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200 pb-4" data-testid="billing-main-tabs">
+          <button
+            type="button"
+            onClick={() => setBillingMainTab('account')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              billingMainTab === 'account'
+                ? 'bg-midnight-blue text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Account &amp; receipts
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingMainTab('plans')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              billingMainTab === 'plans'
+                ? 'bg-midnight-blue text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Plans &amp; upgrades
+          </button>
+        </div>
+
+        {billingMainTab === 'account' ? (
+          <div className="space-y-6" data-testid="billing-account-tab">
+            {/* A. Subscription summary */}
+            <Card data-testid="subscription-summary-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Subscription summary</CardTitle>
+                <CardDescription>Your Compliance Vault Pro subscription status</CardDescription>
+              </CardHeader>
+              <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500">Current plan</p>
+                  <p className="font-medium text-midnight-blue">
+                    {PLANS.find((p) => p.code === currentPlan)?.name || currentPlan || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Billing status</p>
+                  <p className="font-medium">
+                    {billingStatus?.has_subscription
+                      ? billingStatus.cancel_at_period_end
+                        ? 'Cancelling at period end'
+                        : 'Active'
+                      : 'No active subscription'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Next renewal / period end</p>
+                  <p className="font-medium">
+                    {billingStatus?.current_period_end
+                      ? new Date(billingStatus.current_period_end).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Price (plan rate)</p>
+                  <p className="font-medium">
+                    {currentPlan && PLANS.find((p) => p.code === currentPlan) ? (
+                      <>
+                        £{PLANS.find((p) => p.code === currentPlan).monthlyPrice}/mo
+                        <span className="text-gray-500 font-normal">
+                          {' '}
+                          + £{PLANS.find((p) => p.code === currentPlan).onboardingFee} setup
+                        </span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-gray-500">Subscription state</p>
+                  <p className="font-medium font-mono text-xs mt-1">
+                    {billingStatus?.subscription_status || (billingStatus?.has_subscription ? '—' : 'NONE')}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* C. Payment method — Stripe portal is source of truth */}
+            <Card data-testid="payment-method-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Payment method</CardTitle>
+                <CardDescription>
+                  Card and billing details are managed securely in Stripe. We only show a masked summary here when
+                  available.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!billingStatus?.has_subscription ? (
+                  <p className="text-sm text-gray-600">Subscribe to a plan to add a payment method.</p>
+                ) : (
+                  <>
+                    {paymentMethodInfo?.display && (
+                      <p className="text-sm font-medium text-midnight-blue">{paymentMethodInfo.display}</p>
+                    )}
+                    {paymentMethodInfo?.message && !paymentMethodInfo?.display && (
+                      <p className="text-sm text-gray-600">{paymentMethodInfo.message}</p>
+                    )}
+                    {!paymentMethodInfo?.display && !paymentMethodInfo?.message && paymentMethodInfo?.available === false && (
+                      <p className="text-sm text-gray-600">Unable to load card summary. You can still manage payment methods in the portal.</p>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-electric-teal text-electric-teal"
+                      onClick={openBillingPortal}
+                      disabled={portalOpening}
+                    >
+                      {portalOpening ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ExternalLink className="w-4 h-4 mr-2" />}
+                      Update payment method in Stripe
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* B. Official PDF receipts (canonical ledger) */}
+            <Card data-testid="official-receipts-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Official receipts (PDF)</CardTitle>
+                <CardDescription>
+                  Downloadable PDF receipts for subscription checkouts (stored in our billing system). This is separate
+                  from Stripe&apos;s invoice list below.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!billingStatus?.has_subscription ? (
+                  <p className="text-sm text-gray-600 py-4">No subscription — receipts appear after you subscribe and pay.</p>
+                ) : pdfReceipts.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500 border border-dashed rounded-lg bg-gray-50/50">
+                    <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">No PDF receipts on file yet.</p>
+                    <p className="text-xs mt-1">They are created after each subscription checkout.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-gray-500">
+                          <th className="py-2 pr-4">Invoice #</th>
+                          <th className="py-2 pr-4">Date</th>
+                          <th className="py-2 pr-4">Description</th>
+                          <th className="py-2 pr-4">Amount</th>
+                          <th className="py-2 pr-4">Status</th>
+                          <th className="py-2 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pdfReceipts.slice(0, 8).map((r) => (
+                          <tr key={r.invoice_number || r.stripe_checkout_session_id} className="border-b border-gray-100">
+                            <td className="py-3 pr-4 font-mono text-xs">{r.invoice_number}</td>
+                            <td className="py-3 pr-4">
+                              {r.date_issued ? new Date(r.date_issued).toLocaleDateString('en-GB') : '—'}
+                            </td>
+                            <td className="py-3 pr-4 text-gray-700">CVP subscription payment</td>
+                            <td className="py-3 pr-4">{r.amount_display || '—'}</td>
+                            <td className="py-3 pr-4">{r.payment_status}</td>
+                            <td className="py-3 text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={!r.invoice_number}
+                                onClick={async () => {
+                                  if (!r.invoice_number) return;
+                                  try {
+                                    const response = await api.get(
+                                      `/client/billing/receipt/${encodeURIComponent(r.invoice_number)}/download`,
+                                      { responseType: 'blob' }
+                                    );
+                                    const blob = new Blob([response.data], { type: 'application/pdf' });
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `${r.invoice_number}.pdf`;
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                    toast.success('Download started');
+                                  } catch {
+                                    toast.error('Download failed');
+                                  }
+                                }}
+                              >
+                                PDF
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {billingStatus?.has_subscription && pdfReceipts.length > 0 && (
+                  <div className="mt-4 flex justify-end">
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link to="/settings/billing/receipts">View all receipts</Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Stripe invoice activity (separate from PDF receipts) */}
+            {billingStatus?.has_subscription && (
+              <div className="mb-6" data-testid="stripe-invoice-history">
+                <h2 className="text-lg font-semibold text-midnight-blue mb-2">Invoice history (Stripe)</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Paid invoices from Stripe (line items and amounts). Official PDF receipts for checkout are listed
+                  above.
+                </p>
+                {invoices.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-10 text-center text-gray-500 text-sm border-dashed">
+                      No Stripe invoices loaded yet.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {invoices.map((inv) => (
+                      <Card key={inv.id}>
+                        <CardContent className="pt-4 pb-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <span className="text-sm font-medium text-gray-700">{inv.number || inv.id}</span>
+                            <span className="text-sm text-gray-500">
+                              {inv.created ? new Date(inv.created * 1000).toLocaleDateString() : ''}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="space-y-1">
+                              {(inv.lines || []).map((line, idx) => (
+                                <div key={idx} className="text-sm text-gray-600">
+                                  {line.description}
+                                  {line.type === 'setup_fee' && (
+                                    <span className="ml-2 text-gray-500">
+                                      £{((line.amount_cents || 0) / 100).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            <span className="font-semibold text-midnight-blue">
+                              £{((inv.amount_paid || 0) / 100).toFixed(2)}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Card className="border-teal-100 bg-teal-50/30" data-testid="billing-support-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Billing support</CardTitle>
+                <CardDescription>We&apos;re here if something doesn&apos;t look right.</CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-gray-700 space-y-2">
+                <p>
+                  Email{' '}
+                  <a className="text-electric-teal font-medium hover:underline" href="mailto:info@pleerityenterprise.co.uk">
+                    info@pleerityenterprise.co.uk
+                  </a>
+                </p>
+                <p className="text-xs text-gray-600">Include your account email and any invoice numbers if you need help with a charge.</p>
+              </CardContent>
+            </Card>
+
+            <p className="text-sm text-gray-600">
+              Paid service orders (one-off) have receipts in{' '}
+              <Link to="/orders" className="text-electric-teal font-medium hover:underline">
+                Orders
+              </Link>
+              .
+            </p>
+          </div>
+        ) : (
+          <>
         {/* Cancellation Pending Notice */}
         {billingStatus?.cancel_at_period_end && (
           <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="cancellation-notice">
@@ -654,50 +998,6 @@ const BillingPage = () => {
           })}
         </div>
 
-        {/* Billing History */}
-        {billingStatus?.has_subscription && (
-          <div className="mb-12" data-testid="billing-history">
-            <h2 className="text-xl font-semibold text-midnight-blue mb-4">Billing history</h2>
-            {invoices.length === 0 ? (
-              <p className="text-sm text-gray-500">No invoices yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {invoices.map((inv) => (
-                  <Card key={inv.id}>
-                    <CardContent className="pt-4 pb-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                        <span className="text-sm font-medium text-gray-700">
-                          {inv.number || inv.id}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {inv.created ? new Date(inv.created * 1000).toLocaleDateString() : ''}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="space-y-1">
-                          {(inv.lines || []).map((line, idx) => (
-                            <div key={idx} className="text-sm text-gray-600">
-                              {line.description}
-                              {line.type === 'setup_fee' && (
-                                <span className="ml-2 text-gray-500">
-                                  £{((line.amount_cents || 0) / 100).toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        <span className="font-semibold text-midnight-blue">
-                          £{((inv.amount_paid || 0) / 100).toFixed(2)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* FAQ Section */}
         <div className="mt-12" data-testid="billing-faq">
           <h2 className="text-xl font-semibold text-midnight-blue mb-6">Frequently Asked Questions</h2>
@@ -749,6 +1049,8 @@ const BillingPage = () => {
             Contact Support
           </Button>
         </div>
+          </>
+        )}
       </main>
 
       {/* Cancel Subscription Modal */}
