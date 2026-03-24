@@ -13,6 +13,7 @@ import json
 import os
 from urllib.parse import urlparse
 from fastapi.responses import FileResponse
+from auth import create_access_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
@@ -3604,6 +3605,87 @@ async def admin_action_unlock_account(request: Request, client_id: str):
         },
     )
     return {"success": True, "unlocked_users": len(portal_user_ids)}
+
+
+@router.post("/clients/{client_id}/impersonation/start", dependencies=[Depends(require_owner_or_admin)])
+async def admin_start_impersonation(request: Request, client_id: str, ttl_minutes: int = Query(30, ge=5, le=120)):
+    """
+    Start audited admin impersonation for a client portal user.
+    Returns short-lived client token with explicit impersonation claims.
+    """
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+
+    client = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "client_id": 1, "full_name": 1, "onboarding_status": 1},
+    )
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if client.get("onboarding_status") != OnboardingStatus.PROVISIONED.value:
+        raise HTTPException(status_code=403, detail="Client is not provisioned for portal access")
+
+    target = await db.portal_users.find_one(
+        {"client_id": client_id, "role": UserRole.ROLE_CLIENT_ADMIN.value},
+        {"_id": 0},
+    )
+    if not target:
+        target = await db.portal_users.find_one(
+            {"client_id": client_id, "role": {"$in": [UserRole.ROLE_CLIENT.value, UserRole.ROLE_CLIENT_ADMIN.value]}},
+            {"_id": 0},
+        )
+    if not target:
+        raise HTTPException(status_code=404, detail="No client portal user found")
+    if target.get("status") != UserStatus.ACTIVE.value:
+        raise HTTPException(status_code=403, detail="Target user is not active")
+    if target.get("password_status") != PasswordStatus.SET.value:
+        raise HTTPException(status_code=403, detail="Target user has not completed password setup")
+
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=ttl_minutes)
+    token_data = {
+        "portal_user_id": target.get("portal_user_id"),
+        "client_id": target.get("client_id"),
+        "email": target.get("auth_email"),
+        "role": target.get("role"),
+        "session_version": target.get("session_version", 0),
+        "impersonation": True,
+        "impersonated_by_portal_user_id": admin.get("portal_user_id"),
+        "impersonated_by_role": admin.get("role"),
+        "impersonation_started_at": now.isoformat(),
+    }
+    access_token = create_access_token(token_data, expires_delta=timedelta(minutes=ttl_minutes))
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=admin.get("portal_user_id"),
+        actor_role=UserRole.ROLE_ADMIN,
+        client_id=client_id,
+        resource_type="portal_user",
+        resource_id=target.get("portal_user_id"),
+        metadata={
+            "action_type": "impersonation_start",
+            "ttl_minutes": ttl_minutes,
+            "target_role": target.get("role"),
+            "target_email_masked": ((target.get("auth_email") or "")[:3] + "***"),
+        },
+    )
+    return {
+        "access_token": access_token,
+        "expires_at": expires.isoformat(),
+        "user": {
+            "portal_user_id": target.get("portal_user_id"),
+            "email": target.get("auth_email"),
+            "role": target.get("role"),
+            "client_id": target.get("client_id"),
+            "impersonation": True,
+            "impersonated_by_portal_user_id": admin.get("portal_user_id"),
+        },
+        "client": {
+            "client_id": client_id,
+            "name": client.get("full_name"),
+        },
+    }
 
 def _get_profile_avatars_path():
     data_dir = os.getenv("DATA_DIR", "/tmp")

@@ -13,6 +13,7 @@ from utils.rate_limiter import rate_limiter
 from datetime import datetime, timezone, timedelta
 import logging
 import re
+from middleware import require_auth
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -32,6 +33,33 @@ def _client_ip(request: Request) -> str:
 # Portal separation: which roles may use which login endpoint
 CLIENT_PORTAL_ROLES = (UserRole.ROLE_CLIENT.value, UserRole.ROLE_CLIENT_ADMIN.value)
 STAFF_PORTAL_ROLES = (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value, UserRole.ROLE_SUPPORT.value, UserRole.ROLE_CONTENT.value)
+
+
+@router.post("/impersonation/stop")
+async def stop_impersonation(request: Request):
+    """
+    End impersonation session (audit only). Frontend restores saved admin session locally.
+    """
+    user = await require_auth(request)
+    if not user.get("impersonation"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not in impersonation mode")
+
+    client_id = user.get("client_id")
+    impersonated_by = user.get("impersonated_by_portal_user_id")
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=impersonated_by,
+        actor_role=UserRole.ROLE_ADMIN,
+        client_id=client_id,
+        resource_type="portal_user",
+        resource_id=user.get("portal_user_id"),
+        metadata={
+            "action_type": "impersonation_stop",
+            "impersonated_role": user.get("role"),
+            "impersonation_started_at": user.get("impersonation_started_at"),
+        },
+    )
+    return {"success": True, "message": "Impersonation stopped"}
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: Request, credentials: LoginRequest):

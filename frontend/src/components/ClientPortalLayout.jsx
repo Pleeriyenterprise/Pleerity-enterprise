@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
-import api, { clientAPI } from '../api/client';
+import api, { clientAPI, authAPI } from '../api/client';
 import { Button } from './ui/button';
 import { SUPPORT_EMAIL } from '../config';
 import { branding, BRAND_LOGO_URL } from '../config/branding';
@@ -78,6 +78,18 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const [crnState, setCrnState] = useState(crnProp);
   const [profile, setProfile] = useState(null);
   const [headerAvatarUrl, setHeaderAvatarUrl] = useState(null);
+  const [impersonation, setImpersonation] = useState(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem('impersonation_context');
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.active) setImpersonation(parsed);
+    } catch (_) {
+      // ignore malformed local storage
+    }
+  }, []);
 
   useEffect(() => {
     if (crnProp) {
@@ -175,6 +187,28 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       return false;
     }
     return p === '/settings' || p.startsWith('/settings/');
+  };
+
+  const handleStopImpersonation = async () => {
+    try {
+      await authAPI.stopImpersonation();
+    } catch (_) {
+      // Audit call is best effort; still restore local admin session.
+    }
+    const adminToken = sessionStorage.getItem('impersonation_admin_token');
+    const adminUser = sessionStorage.getItem('impersonation_admin_user');
+    localStorage.removeItem('impersonation_context');
+    sessionStorage.removeItem('impersonation_admin_token');
+    sessionStorage.removeItem('impersonation_admin_user');
+    if (adminToken && adminUser) {
+      localStorage.setItem('auth_token', adminToken);
+      localStorage.setItem('user', adminUser);
+      window.location.href = '/admin/dashboard';
+      return;
+    }
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    window.location.href = '/login/admin?impersonation_expired=1';
   };
 
   return (
@@ -335,6 +369,23 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
           </div>
         </nav>
       </header>
+
+      {impersonation?.active && (
+        <div className="bg-amber-100 border-y border-amber-300 px-4 py-2">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            <p className="text-sm text-amber-900">
+              You are viewing this account as user{impersonation.client_name ? `: ${impersonation.client_name}` : ''}. Actions are audited.
+            </p>
+            <button
+              type="button"
+              onClick={handleStopImpersonation}
+              className="px-3 py-1.5 rounded-md text-sm font-medium bg-amber-900 text-white hover:bg-amber-950"
+            >
+              Stop impersonation
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}

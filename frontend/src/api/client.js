@@ -124,6 +124,7 @@ export const authAPI = {
   contractorSetPassword: (data) => apiClient.post('/auth/contractor-set-password', data),
   setPassword: (data) => apiClient.post('/auth/set-password', data),
   forgotPassword: (data) => apiClient.post('/auth/forgot-password', data),
+  stopImpersonation: () => apiClient.post('/auth/impersonation/stop'),
 };
 
 export const intakeAPI = {
@@ -267,6 +268,8 @@ export const adminAPI = {
   recalculateCompliance: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/recalculate-compliance`),
   runClientJob: (clientId, job = 'compliance_recalc_client') => apiClient.post(`/admin/clients/${clientId}/actions/run-job`, { job }),
   unlockClientAccount: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/unlock-account`),
+  startClientImpersonation: (clientId, ttlMinutes = 30) =>
+    apiClient.post(`/admin/clients/${clientId}/impersonation/start`, null, { params: { ttl_minutes: ttlMinutes } }),
   getClientReceipts: (clientId, params = {}) => apiClient.get(`/admin/billing/clients/${clientId}/receipts`, { params }),
   resendClientReceipt: (clientId, body) => apiClient.post(`/admin/billing/clients/${clientId}/receipts/resend`, body),
   getAuditLogs: (skip = 0, limit = 100, clientId = null) => 

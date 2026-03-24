@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { adminAPI, API_URL } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 const SectionCard = ({ title, children, actions = null }) => (
   <section className="bg-white border border-gray-200 rounded-xl p-4">
@@ -30,6 +31,7 @@ const fmtDate = (value) => {
 
 const AdminClientControlPanelPage = () => {
   const { clientId } = useParams();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -68,6 +70,48 @@ const AdminClientControlPanelPage = () => {
     } catch (err) {
       const msg = err?.response?.data?.detail;
       toast.error(typeof msg === 'string' ? msg : `${label} failed`);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const startImpersonation = async () => {
+    if (!clientId) return;
+    setIsBusy(true);
+    try {
+      const currentToken = localStorage.getItem('auth_token');
+      const currentUser = localStorage.getItem('user');
+      if (!currentToken || !currentUser) {
+        toast.error('Current admin session unavailable');
+        setIsBusy(false);
+        return;
+      }
+      sessionStorage.setItem('impersonation_admin_token', currentToken);
+      sessionStorage.setItem('impersonation_admin_user', currentUser);
+
+      const res = await adminAPI.startClientImpersonation(clientId, 30);
+      const newToken = res?.data?.access_token;
+      const newUser = res?.data?.user;
+      if (!newToken || !newUser) {
+        throw new Error('Invalid impersonation response');
+      }
+      localStorage.setItem('auth_token', newToken);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      localStorage.setItem(
+        'impersonation_context',
+        JSON.stringify({
+          active: true,
+          client_id: clientId,
+          client_name: res?.data?.client?.name || identity.name || null,
+          started_at: new Date().toISOString(),
+          expires_at: res?.data?.expires_at || null,
+          admin_portal_user_id: user?.portal_user_id || null,
+        })
+      );
+      window.location.href = '/dashboard';
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Unable to start impersonation';
+      toast.error(typeof msg === 'string' ? msg : 'Unable to start impersonation');
     } finally {
       setIsBusy(false);
     }
@@ -154,6 +198,13 @@ const AdminClientControlPanelPage = () => {
               className="px-3 py-2 text-sm rounded-lg bg-amber-100 text-amber-900 border border-amber-300 disabled:opacity-50"
             >
               Unlock account
+            </button>
+            <button
+              disabled={isBusy || loading}
+              onClick={startImpersonation}
+              className="px-3 py-2 text-sm rounded-lg bg-indigo-100 text-indigo-900 border border-indigo-300 disabled:opacity-50"
+            >
+              View as user
             </button>
           </div>
         </div>
