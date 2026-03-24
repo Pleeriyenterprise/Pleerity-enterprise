@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status, Query, Body
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from database import database
 from middleware import admin_route_guard, require_owner, require_owner_or_admin, require_support_or_above
 from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus
@@ -16,6 +16,14 @@ from fastapi.responses import FileResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
+
+
+def _iso_or_none(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
 
 
 # Request models for admin invite
@@ -383,7 +391,7 @@ async def get_email_delivery(
 @router.get("/search")
 async def global_search(request: Request, q: str = "", limit: int = 20):
     """
-    Global search across clients by CRN, email, name, or postcode.
+    Global search across clients by CRN, email, name, phone, order reference, or postcode.
     Returns matching clients with their key details.
     """
     user = await admin_route_guard(request)
@@ -395,11 +403,10 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
     search_term = q.strip()
     
     try:
-        # Build search conditions
-        # 1. Exact CRN match (case-insensitive)
-        # 2. Email contains (case-insensitive)
-        # 3. Name contains (case-insensitive)
-        # 4. Company name contains
+        # Build search conditions:
+        # - CRN, email, name, company, phone on clients
+        # - order_reference on orders
+        # - postcode via properties
         search_regex = {"$regex": search_term, "$options": "i"}
         
         # Search clients
@@ -408,18 +415,40 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
                 {"customer_reference": search_regex},
                 {"email": search_regex},
                 {"full_name": search_regex},
-                {"company_name": search_regex}
+                {"company_name": search_regex},
+                {"phone": search_regex},
             ]
         }
         
         clients_cursor = db.clients.find(
             client_query,
-            {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1, 
+            {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1,
              "email": 1, "company_name": 1, "subscription_status": 1, 
-             "onboarding_status": 1, "billing_plan": 1, "created_at": 1}
+             "onboarding_status": 1, "billing_plan": 1, "phone": 1, "created_at": 1}
         ).limit(limit)
         
         clients = await clients_cursor.to_list(limit)
+
+        # Search by order reference and map to clients
+        order_hits = await db.orders.find(
+            {"order_reference": search_regex},
+            {"_id": 0, "client_id": 1, "order_reference": 1}
+        ).limit(50).to_list(50)
+        order_client_ids = list({o.get("client_id") for o in order_hits if o.get("client_id")})
+        existing_client_ids = [c["client_id"] for c in clients]
+        order_new_ids = [cid for cid in order_client_ids if cid not in existing_client_ids]
+        if order_new_ids:
+            order_clients = await db.clients.find(
+                {"client_id": {"$in": order_new_ids}},
+                {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1,
+                 "email": 1, "company_name": 1, "subscription_status": 1,
+                 "onboarding_status": 1, "billing_plan": 1, "phone": 1, "created_at": 1}
+            ).to_list(limit)
+            for c in order_clients:
+                match_order = next((o for o in order_hits if o.get("client_id") == c.get("client_id")), None)
+                c["matched_via"] = "order_reference"
+                c["matched_order_reference"] = match_order.get("order_reference") if match_order else None
+            clients.extend(order_clients)
         
         # Also search by postcode in properties and return linked clients
         postcode_search = search_term.upper().replace(" ", "")
@@ -439,7 +468,7 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
                 {"client_id": {"$in": new_client_ids}},
                 {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1,
                  "email": 1, "company_name": 1, "subscription_status": 1,
-                 "onboarding_status": 1, "billing_plan": 1, "created_at": 1}
+                 "onboarding_status": 1, "billing_plan": 1, "phone": 1, "created_at": 1}
             ).to_list(limit)
             
             # Mark these as found via postcode
@@ -461,10 +490,20 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
             }
         )
         
+        normalized_results = []
+        for c in clients[:limit]:
+            normalized_results.append({
+                **c,
+                "name": c.get("full_name"),
+                "crn": c.get("customer_reference"),
+                "plan": c.get("billing_plan"),
+                "status": c.get("subscription_status"),
+            })
+
         return {
-            "results": clients[:limit],
+            "results": normalized_results,
             "query": search_term,
-            "total": len(clients)
+            "total": len(clients),
         }
         
     except Exception as e:
@@ -3293,6 +3332,278 @@ async def get_client_full_status(request: Request, client_id: str):
             detail="Failed to get client status"
         )
 
+
+@router.get("/clients/{client_id}/control-panel")
+async def get_client_control_panel(request: Request, client_id: str):
+    """
+    Unified client control panel payload for admin support workflows.
+    Returns normalized, UI-safe fields only.
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+
+    try:
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+
+        portal_users = await db.portal_users.find(
+            {"client_id": client_id},
+            {"_id": 0, "portal_user_id": 1, "role": 1, "status": 1, "password_status": 1, "last_login": 1, "auth_email": 1},
+        ).to_list(10)
+        primary_user = next((u for u in portal_users if u.get("role") == UserRole.ROLE_CLIENT_ADMIN.value), None)
+        if not primary_user and portal_users:
+            primary_user = portal_users[0]
+
+        billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+        properties_count = await db.properties.count_documents({"client_id": client_id})
+        missing_docs = await db.requirements.count_documents({"client_id": client_id, "status": "PENDING"})
+        overdue_items = await db.requirements.count_documents({"client_id": client_id, "status": "OVERDUE"})
+
+        compliance_score = None
+        compliance_risk_level = None
+        try:
+            from services.compliance_score import calculate_compliance_score
+
+            score_data = await calculate_compliance_score(client_id)
+            compliance_score = score_data.get("overall_score")
+            compliance_risk_level = score_data.get("risk_level")
+        except Exception:
+            # Do not fail control panel if score recompute is unavailable.
+            compliance_score = client.get("compliance_score")
+            compliance_risk_level = client.get("risk_level")
+
+        issues_count = await db.maintenance_issues.count_documents({"client_id": client_id})
+        work_orders_count = await db.work_orders.count_documents({"client_id": client_id})
+        contractors_count = await db.contractors.count_documents(
+            {"$or": [{"client_id": client_id}, {"client_id": None}]}
+        )
+
+        # Reuse existing merged receipts model from admin billing service.
+        from services.admin_billing_receipts import list_receipts_for_client
+
+        receipts, receipts_meta = await list_receipts_for_client(client_id, type_filter="all", limit=20)
+
+        payment_events = await db.payments.find(
+            {"client_id": client_id},
+            {"_id": 0, "payment_id": 1, "amount": 1, "currency": 1, "status": 1, "created_at": 1},
+        ).sort("created_at", -1).limit(15).to_list(15)
+        login_events = await db.audit_logs.find(
+            {"client_id": client_id, "action": {"$in": [AuditAction.USER_LOGIN_SUCCESS.value, AuditAction.USER_LOGIN_FAILED.value]}},
+            {"_id": 0, "action": 1, "timestamp": 1, "metadata": 1},
+        ).sort("timestamp", -1).limit(20).to_list(20)
+        system_events = await db.audit_logs.find(
+            {"client_id": client_id},
+            {"_id": 0, "action": 1, "timestamp": 1, "metadata": 1},
+        ).sort("timestamp", -1).limit(50).to_list(50)
+
+        onboarding_stage = client.get("onboarding_status")
+        activation_email_sent = bool(client.get("activation_email_sent_at"))
+        dashboard_ready_sent = bool(client.get("onboarding_dashboard_ready_email_sent_at"))
+
+        return {
+            "identity": {
+                "client_id": client_id,
+                "name": client.get("full_name"),
+                "crn": client.get("customer_reference"),
+                "email": client.get("email") or (primary_user or {}).get("auth_email"),
+                "phone": client.get("phone"),
+                "plan": client.get("billing_plan"),
+                "status": client.get("subscription_status"),
+            },
+            "account_state": {
+                "password_set": bool(primary_user and primary_user.get("password_status") == PasswordStatus.SET.value),
+                "last_login": _iso_or_none((primary_user or {}).get("last_login")),
+                "onboarding_stage": onboarding_stage,
+                "activation_email_sent": activation_email_sent,
+                "dashboard_ready_sent": dashboard_ready_sent,
+            },
+            "subscription_billing": {
+                "plan": client.get("billing_plan"),
+                "status": client.get("subscription_status"),
+                "last_payment": _iso_or_none(client.get("last_payment_date")),
+                "next_billing_date": _iso_or_none((billing or {}).get("current_period_end")),
+                "receipts": receipts,
+                "receipts_meta": receipts_meta,
+            },
+            "compliance_overview": {
+                "properties_count": properties_count,
+                "compliance_score": compliance_score,
+                "risk_level": compliance_risk_level,
+                "missing_documents": missing_docs,
+                "overdue_items": overdue_items,
+            },
+            "operations": {
+                "issues": issues_count,
+                "work_orders": work_orders_count,
+                "contractors": contractors_count,
+            },
+            "activity_timeline": {
+                "payments": payment_events,
+                "login_events": login_events,
+                "system_actions": system_events,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get client control panel error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load client control panel",
+        )
+
+
+class RunClientJobRequest(BaseModel):
+    job: str = "compliance_recalc_client"
+
+
+@router.post("/clients/{client_id}/actions/resend-activation-email")
+async def admin_action_resend_activation_email(request: Request, client_id: str):
+    """Alias endpoint for control panel action. Reuses existing resend-password flow."""
+    return await resend_password_setup(request, client_id)
+
+
+@router.post("/clients/{client_id}/actions/resend-dashboard-email")
+async def admin_action_resend_dashboard_email(request: Request, client_id: str):
+    """Resend dashboard-ready email with explicit admin audit trail."""
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "full_name": 1, "email": 1, "contact_email": 1})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    recipient = (client.get("contact_email") or client.get("email") or "").strip()
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Client has no email address")
+
+    from utils.app_urls import get_app_base_url
+    from services.notification_orchestrator import notification_orchestrator
+
+    portal_base = get_app_base_url(for_email_links=True).strip().rstrip("/")
+    portal_link = f"{portal_base}/app/dashboard" if portal_base else "#"
+    result = await notification_orchestrator.send(
+        template_key="DASHBOARD_READY",
+        client_id=client_id,
+        context={
+            "recipient": recipient,
+            "client_name": (client.get("full_name") or "there"),
+            "portal_link": portal_link,
+            "portal_base_url": portal_base,
+            "dashboard_milestone_email": True,
+            "subject": "Your Compliance Vault Pro dashboard is ready",
+        },
+        idempotency_key=f"ADMIN_DASHBOARD_READY_{client_id}_{uuid.uuid4()}",
+        event_type="admin_resend_dashboard_ready",
+    )
+    if result.outcome not in ("sent", "duplicate_ignored"):
+        raise HTTPException(status_code=502, detail="Dashboard-ready email failed to send")
+
+    await db.clients.update_one(
+        {"client_id": client_id},
+        {"$set": {"onboarding_dashboard_ready_email_sent_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=admin.get("portal_user_id"),
+        actor_role=UserRole.ROLE_ADMIN,
+        client_id=client_id,
+        metadata={
+            "action_type": "resend_dashboard_email",
+            "message_id": result.message_id,
+            "outcome": result.outcome,
+        },
+    )
+    return {"success": True, "message": "Dashboard-ready email resent", "outcome": result.outcome}
+
+
+@router.post("/clients/{client_id}/actions/recalculate-compliance")
+async def admin_action_recalculate_compliance(request: Request, client_id: str):
+    """Queue compliance recalculation for all client properties."""
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "client_id": 1})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    from services.compliance_recalc_queue import (
+        enqueue_compliance_recalc,
+        TRIGGER_ADMIN_UPLOAD,
+        ACTOR_ADMIN,
+    )
+
+    props = await db.properties.find({"client_id": client_id}, {"_id": 0, "property_id": 1}).to_list(1000)
+    enqueued = 0
+    for prop in props:
+        pid = prop.get("property_id")
+        if not pid:
+            continue
+        ok = await enqueue_compliance_recalc(
+            property_id=pid,
+            client_id=client_id,
+            trigger_reason=TRIGGER_ADMIN_UPLOAD,
+            actor_type=ACTOR_ADMIN,
+            actor_id=admin.get("portal_user_id"),
+            correlation_id=f"admin_client_recalc:{client_id}:{pid}:{int(datetime.now(timezone.utc).timestamp())}",
+        )
+        if ok:
+            enqueued += 1
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=admin.get("portal_user_id"),
+        actor_role=UserRole.ROLE_ADMIN,
+        client_id=client_id,
+        metadata={"action_type": "recalculate_compliance", "properties_enqueued": enqueued},
+    )
+    return {"success": True, "enqueued": enqueued}
+
+
+@router.post("/clients/{client_id}/actions/run-job")
+async def admin_action_run_client_job(request: Request, client_id: str, body: RunClientJobRequest):
+    """
+    Run a scoped client job action.
+    Current safe job: compliance_recalc_client.
+    """
+    job = (body.job or "").strip() or "compliance_recalc_client"
+    if job != "compliance_recalc_client":
+        raise HTTPException(status_code=400, detail="Unsupported client job")
+    return await admin_action_recalculate_compliance(request, client_id)
+
+
+@router.post("/clients/{client_id}/actions/unlock-account")
+async def admin_action_unlock_account(request: Request, client_id: str):
+    """Unlock client portal users by re-enabling account and clearing lock flags."""
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+    users = await db.portal_users.find(
+        {"client_id": client_id},
+        {"_id": 0, "portal_user_id": 1, "status": 1},
+    ).to_list(20)
+    if not users:
+        raise HTTPException(status_code=404, detail="Portal user not found")
+
+    portal_user_ids = [u.get("portal_user_id") for u in users if u.get("portal_user_id")]
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.portal_users.update_many(
+        {"portal_user_id": {"$in": portal_user_ids}},
+        {
+            "$set": {"status": UserStatus.ACTIVE.value, "updated_at": now_iso},
+            "$unset": {"locked_until": "", "lock_reason": "", "failed_login_attempts": ""},
+            "$inc": {"session_version": 1},
+        },
+    )
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=admin.get("portal_user_id"),
+        actor_role=UserRole.ROLE_ADMIN,
+        client_id=client_id,
+        metadata={
+            "action_type": "unlock_account",
+            "affected_users": len(portal_user_ids),
+        },
+    )
+    return {"success": True, "unlocked_users": len(portal_user_ids)}
 
 def _get_profile_avatars_path():
     data_dir = os.getenv("DATA_DIR", "/tmp")

@@ -3,7 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
 
-const isStaffRole = (role) => role === 'ROLE_OWNER' || role === 'ROLE_ADMIN';
+const isStaffRole = (role) =>
+  ['ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPPORT', 'ROLE_CONTENT', 'ROLE_AUDITOR'].includes(role);
 
 export const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, loading } = useAuth();

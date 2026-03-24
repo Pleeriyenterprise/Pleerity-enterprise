@@ -256,10 +256,19 @@ export const clientAPI = {
 
 export const adminAPI = {
   getDashboard: () => apiClient.get('/admin/dashboard'),
+  globalSearch: (q, limit = 20) => apiClient.get('/admin/search', { params: { q, limit } }),
   getPendingVerificationDocuments: (hours = 24, clientId = null, limit = 50, skip = 0) =>
     apiClient.get('/admin/documents/pending-verification', { params: { hours, client_id: clientId || undefined, limit, skip } }),
   getClients: (skip = 0, limit = 50) => apiClient.get('/admin/clients', { params: { skip, limit } }),
   getClientDetail: (clientId) => apiClient.get(`/admin/clients/${clientId}`),
+  getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
+  resendActivationEmail: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/resend-activation-email`),
+  resendDashboardEmail: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/resend-dashboard-email`),
+  recalculateCompliance: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/recalculate-compliance`),
+  runClientJob: (clientId, job = 'compliance_recalc_client') => apiClient.post(`/admin/clients/${clientId}/actions/run-job`, { job }),
+  unlockClientAccount: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/unlock-account`),
+  getClientReceipts: (clientId, params = {}) => apiClient.get(`/admin/billing/clients/${clientId}/receipts`, { params }),
+  resendClientReceipt: (clientId, body) => apiClient.post(`/admin/billing/clients/${clientId}/receipts/resend`, body),
   getAuditLogs: (skip = 0, limit = 100, clientId = null) => 
     apiClient.get('/admin/audit-logs', { params: { skip, limit, client_id: clientId } }),
   getEmailDelivery: (params = {}) =>

@@ -178,6 +178,7 @@ import AdminOpsMaintenancePage from './pages/admin/AdminOpsMaintenancePage';
 import AdminRiskDashboardPage from './pages/admin/AdminRiskDashboardPage';
 import AdminWorkOrderDetailPage from './pages/admin/AdminWorkOrderDetailPage';
 import AdminReportingPage from './pages/AdminReportingPage';
+import AdminClientControlPanelPage from './pages/AdminClientControlPanelPage';
 import AdminExtractionQueuePage from './pages/AdminExtractionQueuePage';
 import AdminTeamPage from './pages/AdminTeamPage';
 import AdminPromptManagerPage from './pages/AdminPromptManagerPage';
@@ -570,6 +571,7 @@ function App() {
             <Route path="/admin/marketing/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletterPage /></ProtectedRoute>} />
             <Route path="/admin/content/feedback" element={<ProtectedRoute requireAdmin><AdminInsightsFeedbackPage /></ProtectedRoute>} />
             <Route path="/admin/postal-tracking" element={<ProtectedRoute requireAdmin><AdminPostalTrackingPage /></ProtectedRoute>} />
+            <Route path="/admin/clients/:clientId" element={<ProtectedRoute requireAdmin><AdminClientControlPanelPage /></ProtectedRoute>} />
             <Route 
               path="/admin/privacy/consent" 
               element={
