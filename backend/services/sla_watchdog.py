@@ -114,7 +114,9 @@ async def _send_incident_alert_email(
         alert_type = _alert_type_from_incident(source, title)
         config = get_alert_config(alert_type) or {}
         meta = metadata or {}
-        last_run = meta.get("last_finished_at") or meta.get("last_heartbeat_at")
+        last_finished_at = meta.get("last_finished_at") or meta.get("last_heartbeat_at")
+        is_degraded_alert = bool(meta.get("degraded_run"))
+        last_success_at = meta.get("last_successful_at")
         expected_interval = None
         if meta.get("max_delay_minutes") is not None:
             expected_interval = f"every {int(meta['max_delay_minutes'])} min"
@@ -129,7 +131,10 @@ async def _send_incident_alert_email(
             "title": title,
             "description": description,
             "component": component,
-            "last_successful_run": last_run,
+            # degraded alerts: do not label a degraded finish time as "last successful run"
+            "last_successful_run": (last_success_at if is_degraded_alert else last_finished_at),
+            "last_run_at": last_finished_at,
+            "degraded_run": is_degraded_alert,
             "expected_interval": expected_interval,
             "current_status": description,
             "possible_impact": config.get("description", description),
@@ -285,18 +290,35 @@ async def run_sla_watchdog() -> Dict[str, Any]:
                     {"_id": 1},
                 )
                 if not existing_degraded:
+                    last_pure_success = await db[JOB_RUNS_COLLECTION].find_one(
+                        {"job_name": job_name, "status": STATUS_SUCCESS},
+                        {"_id": 0, "finished_at": 1},
+                        sort=[("finished_at", -1)],
+                    )
+                    last_success_at = last_pure_success.get("finished_at") if last_pure_success else None
                     incident_id = await create_incident(
                         severity=SEVERITY_P2,
                         title=f"Job {job_name} last run was degraded",
                         description=f"Job completed but some outputs failed or were skipped. {description} Last run: {finished_str}. Check Automation Centre outcome_metrics.",
                         source=SOURCE_JOB_MONITOR,
                         related_job_name=job_name,
-                        metadata={"last_finished_at": finished_str, "degraded_run": True, "triggering_reason": "degraded_run"},
+                        metadata={
+                            "last_finished_at": finished_str,
+                            "last_successful_at": last_success_at,
+                            "degraded_run": True,
+                            "triggering_reason": "degraded_run",
+                        },
                     )
                     incidents_created += 1
                     if await _send_incident_alert_email(
                         incident_id, f"Job {job_name} last run was degraded", f"Job completed with degraded outcome. Last run: {finished_str}. Check outcome_metrics in Automation Centre.", SEVERITY_P2,
-                        source=SOURCE_JOB_MONITOR, metadata={"last_finished_at": finished_str, "degraded_run": True}, related_job_name=job_name,
+                        source=SOURCE_JOB_MONITOR,
+                        metadata={
+                            "last_finished_at": finished_str,
+                            "last_successful_at": last_success_at,
+                            "degraded_run": True,
+                        },
+                        related_job_name=job_name,
                     ):
                         alerts_sent += 1
             continue

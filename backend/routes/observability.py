@@ -643,6 +643,7 @@ async def get_health_summary(request: Request):
             "last_success": jobs_detail[jid].get("last_success"),
             "last_degraded": jobs_detail[jid].get("last_degraded"),
             "last_failure": jobs_detail[jid].get("last_failure"),
+            "last_failure_message": jobs_detail[jid].get("last_failure_message"),
             "next_run": next_run_iso,
             "next_run_reason_code": next_run_reason,
             "last_run_reason_code": last_run_reason,
@@ -706,6 +707,12 @@ async def get_health_summary(request: Request):
             "heartbeat_stale": 1 if heartbeat_stale else 0,
             "delivery_unknown_stale": len(delivery_unknown_stale_runs),
         },
+        "failed_runs_24h_by_job": [
+            {"job_name": r["_id"], "count": r.get("failure_count", 0)} for r in failed_runs_24h_by_job if r.get("_id")
+        ],
+        "degraded_runs_24h_by_job": [
+            {"job_name": r["_id"], "count": r.get("degraded_count", 0)} for r in degraded_runs_24h_by_job if r.get("_id")
+        ],
         "last_heartbeat_at": last_heartbeat_at,
         "heartbeat_stale": heartbeat_stale,
         "alerting_configured": alerting_configured,

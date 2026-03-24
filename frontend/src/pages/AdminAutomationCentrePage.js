@@ -119,6 +119,15 @@ export default function AdminAutomationCentrePage() {
       .finally(() => setRunning(null));
   };
 
+  const failed24hByJob = (healthSummary?.failed_runs_24h_by_job || []).reduce((acc, row) => {
+    if (row?.job_name) acc[row.job_name] = row.count || 0;
+    return acc;
+  }, {});
+  const degraded24hByJob = (healthSummary?.degraded_runs_24h_by_job || []).reduce((acc, row) => {
+    if (row?.job_name) acc[row.job_name] = row.count || 0;
+    return acc;
+  }, {});
+
   const byJobRuns = (jobRuns.items || []).reduce((acc, r) => {
     const name = r.job_name || 'unknown';
     if (!acc[name]) acc[name] = { lastRun: null, lastSuccess: null, lastDegraded: null, lastFailed: null, failures24h: 0, degraded24h: 0 };
@@ -180,7 +189,12 @@ export default function AdminAutomationCentrePage() {
       .catch(() => toast.error('Failed to export CSV'));
   };
   const heartbeatStale = healthSummary?.heartbeat_stale === true;
-  const jobIds = [...new Set([...Object.keys(byJobRuns), ...inventory.map((i) => i.job_name)].filter(Boolean))].sort();
+  const jobIds = [...new Set([
+    ...Object.keys(byJobRuns),
+    ...inventory.map((i) => i.job_name),
+    ...Object.keys(failed24hByJob),
+    ...Object.keys(degraded24hByJob),
+  ].filter(Boolean))].sort();
   const deliveryUnknownJobNames = new Set(
     (healthSummary?.delivery_unknown_stale_runs || []).map((r) => r.job_name).filter(Boolean)
   );
@@ -189,6 +203,17 @@ export default function AdminAutomationCentrePage() {
     if (cardFilter === 'delivery_unknown_stale') return jobIds.filter((jid) => deliveryUnknownJobNames.has(jid));
     if (cardFilter === 'heartbeat_stale') return jobIds.filter((jid) => jid === 'scheduler_heartbeat');
     if (cardFilter === 'open_incidents') return jobIds; // "Open incidents" links away; no table filter
+    // Summary cards count *run rows* in 24h; job_states reflect latest outcome per registry job — align filters.
+    if (cardFilter === 'failed') {
+      return jobIds.filter(
+        (jid) => (failed24hByJob[jid] || 0) > 0 || healthSummary?.job_states?.[jid]?.state === 'failed',
+      );
+    }
+    if (cardFilter === 'degraded') {
+      return jobIds.filter(
+        (jid) => (degraded24hByJob[jid] || 0) > 0 || healthSummary?.job_states?.[jid]?.state === 'degraded',
+      );
+    }
     return jobIds.filter((jid) => healthSummary?.job_states?.[jid]?.state === cardFilter);
   })();
   const hasNoRuns = !jobRuns.items?.length && jobIds.length > 0;
@@ -275,20 +300,22 @@ export default function AdminAutomationCentrePage() {
               <button
                 type="button"
                 onClick={() => setCardFilter(cardFilter === 'degraded' ? null : 'degraded')}
+                title="Count = degraded job_runs in the last 24h. Table lists job names with ≥1 degraded run or current degraded state."
                 className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'degraded' ? 'ring-2 ring-amber-400 border-amber-300 bg-amber-100' : 'border-amber-200 bg-amber-50 hover:bg-amber-100'}`}
               >
                 <span className="font-medium text-amber-800">{healthSummary.summary_counts.degraded_24h}</span>
-                <span className="text-amber-700"> degraded (24h)</span>
+                <span className="text-amber-700"> degraded runs (24h)</span>
               </button>
             )}
             {healthSummary.summary_counts.failed_24h > 0 && (
               <button
                 type="button"
                 onClick={() => setCardFilter(cardFilter === 'failed' ? null : 'failed')}
+                title="Count = failed job_runs in the last 24h (same job may appear more than once). Table lists distinct job names with at least one failure."
                 className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${cardFilter === 'failed' ? 'ring-2 ring-red-400 border-red-300 bg-red-100' : 'border-red-200 bg-red-50 hover:bg-red-100'}`}
               >
                 <span className="font-medium text-red-800">{healthSummary.summary_counts.failed_24h}</span>
-                <span className="text-red-700"> failed (24h)</span>
+                <span className="text-red-700"> failed runs (24h)</span>
               </button>
             )}
             {healthSummary.summary_counts.open_incidents > 0 && (
@@ -328,8 +355,8 @@ export default function AdminAutomationCentrePage() {
               cardFilter === 'missed' ? 'Critical missed'
               : cardFilter === 'never_ran_and_overdue' ? 'Never ran (overdue)'
               : cardFilter === 'not_yet_due_since_startup' ? 'Not yet due'
-              : cardFilter === 'degraded' ? 'Degraded (24h)'
-              : cardFilter === 'failed' ? 'Failed (24h)'
+              : cardFilter === 'degraded' ? 'Degraded runs (24h)'
+              : cardFilter === 'failed' ? 'Failed runs (24h)'
               : cardFilter === 'heartbeat_stale' ? 'Stale heartbeat'
               : cardFilter === 'delivery_unknown_stale' ? 'Delivery unknown stale'
               : cardFilter
@@ -392,12 +419,23 @@ export default function AdminAutomationCentrePage() {
                   };
                   const backendState = healthSummary?.job_states?.[jobName];
                   const state = backendState?.state || getJobState(info, jobName, heartbeatStale, invInfo?.next_run_time);
-                  const reason =
+                  const lastRunTs = info.lastRun?.finished_at || info.lastRun?.created_at || backendState?.last_run;
+                  const lastSuccessTs = info.lastSuccess?.finished_at || backendState?.last_success;
+                  const lastDegradedTs = info.lastDegraded?.finished_at || backendState?.last_degraded;
+                  const failures24hCount = Math.max(failed24hByJob[jobName] || 0, info.failures24h || 0);
+                  const degraded24hCount = Math.max(degraded24hByJob[jobName] || 0, info.degraded24h || 0);
+                  let reason =
                     backendState?.reason ||
                     VISIBILITY_REASON[invInfo?.next_run_reason] ||
                     VISIBILITY_REASON[invInfo?.last_run_reason] ||
                     DIAGNOSTIC_REASON[invInfo?.diagnostic_category] ||
                     '';
+                  if (backendState?.last_failure_message && (state === 'failed' || failures24hCount > 0)) {
+                    reason = reason ? `${reason} — ${backendState.last_failure_message}` : backendState.last_failure_message;
+                  }
+                  if (!reason && info.lastFailed?.error_message && failures24hCount > 0) {
+                    reason = info.lastFailed.error_message;
+                  }
                   const recommendedAction =
                     backendState?.recommended_action ||
                     (!invInfo?.can_be_run_manually && invInfo ? 'Manual run intentionally excluded for this job contract.' : '');
@@ -411,8 +449,11 @@ export default function AdminAutomationCentrePage() {
                           <StateIcon className="w-3.5 h-3.5" />
                           {stateConfig.label}
                         </span>
-                        {info.degraded24h > 0 && state !== 'degraded' && (
-                          <span className="ml-1 text-amber-600 text-xs">({info.degraded24h} degraded 24h)</span>
+                        {degraded24hCount > 0 && state !== 'degraded' && (
+                          <span className="ml-1 text-amber-600 text-xs">({degraded24hCount} degraded run{degraded24hCount !== 1 ? 's' : ''} 24h)</span>
+                        )}
+                        {failures24hCount > 0 && state !== 'failed' && (
+                          <span className="ml-1 text-red-600 text-xs" title="Failed run events in last 24h (latest run may be success)">({failures24hCount} failed 24h)</span>
                         )}
                         {(state === 'degraded' || state === 'failed') && (
                           <span className="ml-1.5 text-gray-500 text-xs" title="Review outcome_metrics and Message logs; act if failures repeat or key notifications are affected.">
@@ -425,10 +466,10 @@ export default function AdminAutomationCentrePage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-gray-600">{formatTime(info.lastRun?.finished_at || info.lastRun?.created_at)}</td>
-                      <td className="px-4 py-2 text-gray-600">{formatTime(info.lastSuccess?.finished_at)}</td>
-                      <td className="px-4 py-2 text-amber-600">{formatTime(info.lastDegraded?.finished_at)}</td>
-                      <td className="px-4 py-2">{info.failures24h > 0 ? <span className="text-red-600">{info.failures24h}</span> : '—'}</td>
+                      <td className="px-4 py-2 text-gray-600">{formatTime(lastRunTs)}</td>
+                      <td className="px-4 py-2 text-gray-600">{formatTime(lastSuccessTs)}</td>
+                      <td className="px-4 py-2 text-amber-600">{formatTime(lastDegradedTs)}</td>
+                      <td className="px-4 py-2">{failures24hCount > 0 ? <span className="text-red-600">{failures24hCount}</span> : '—'}</td>
                       <td className="px-4 py-2 text-gray-600">{invInfo?.next_run_time ? formatTime(invInfo.next_run_time) : '—'}</td>
                       <td className="px-4 py-2 text-gray-500 text-xs max-w-[14rem]" title={reason}>{reason || invInfo?.diagnostic_category || '—'}</td>
                       <td className="px-4 py-2 text-gray-600 text-xs max-w-[14rem]" title={recommendedAction}>{recommendedAction || '—'}</td>

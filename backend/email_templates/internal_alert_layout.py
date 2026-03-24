@@ -14,8 +14,8 @@ def build_internal_alert_html(model: Dict[str, Any]) -> str:
     """
     Build HTML for an internal alert email from a context dict.
     Expected keys (all optional except severity/title): severity, title, component,
-    last_successful_run, expected_interval, current_status, possible_impact,
-    suggested_action, dashboard_link, timestamp.
+    last_successful_run, last_run_at, degraded_run, expected_interval, current_status,
+    possible_impact, suggested_action, dashboard_link, timestamp.
     """
     severity = model.get("severity", "P2")
     title = model.get("title", "Internal alert")
@@ -39,8 +39,12 @@ def build_internal_alert_html(model: Dict[str, Any]) -> str:
         sections.append(f'<p style="margin: 0 0 12px 0;">{description}</p>')
     if component:
         sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Component:</strong> {component}</p>')
-    if last_run is not None and str(last_run).strip():
-        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last successful run:</strong> {last_run}</p>')
+    if degraded and last_run_any is not None and str(last_run_any).strip():
+        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last run (degraded outcome):</strong> {last_run_any}</p>')
+    if last_run_success is not None and str(last_run_success).strip():
+        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last successful run:</strong> {last_run_success}</p>')
+    elif not degraded and last_run_any is not None and str(last_run_any).strip():
+        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last successful run:</strong> {last_run_any}</p>')
     if expected_interval is not None and str(expected_interval).strip():
         sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Expected interval:</strong> {expected_interval}</p>')
     if current_status is not None and str(current_status).strip():
