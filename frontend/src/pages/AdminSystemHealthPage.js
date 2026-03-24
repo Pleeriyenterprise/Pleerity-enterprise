@@ -34,6 +34,8 @@ export default function AdminSystemHealthPage() {
       next_run_not_exposed_by_scheduler: 'Next run not exposed by scheduler',
       no_run_history_not_yet_due: 'No run history yet (first run still future due)',
       no_run_history_overdue: 'No run history and due window has passed',
+      last_run_available:
+        'A run finished recently but not with success status (e.g. degraded). See timestamp and status on the card.',
     };
     return map[code] || code;
   };
@@ -170,31 +172,43 @@ export default function AdminSystemHealthPage() {
             )}
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Last successful run</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Scheduled jobs — last success &amp; latest run</h2>
               <p className="text-sm text-gray-500 mb-3">
-                Daily and hourly jobs show &quot;No run yet&quot; until their first scheduled run after server start (e.g. daily_reminders at 9:00 UTC). See <Link to="/admin/automation" className="text-indigo-600 hover:underline">Automation Control Centre</Link> for next run times.
+                Primary line shows the last <strong>successful</strong> finish when one exists. If the latest execution was only degraded or failed, the <strong>last finished</strong> time and job-run status are shown instead (reminder jobs often finish as valid runs but not &quot;success&quot; when sends are partially skipped). See <Link to="/admin/automation" className="text-indigo-600 hover:underline">Automation Control Centre</Link> for full history.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {data.last_success && Object.entries(data.last_success).map(([jobName, finishedAt]) => {
-                  const jobState = data.job_states?.[jobName]?.state;
-                  const nextRunReasonCode = data.job_states?.[jobName]?.next_run_reason_code;
-                  const lastRunReasonCode = data.job_states?.[jobName]?.last_run_reason_code;
+                  const js = data.job_states?.[jobName];
+                  const jobState = js?.state;
+                  const nextRunReasonCode = js?.next_run_reason_code;
+                  const lastRunReasonCode = js?.last_run_reason_code;
+                  const lastFinishAt = js?.last_run;
+                  const lastRunStatus = (js?.last_run_status || '').toLowerCase();
                   const isNotYetDue = jobState === 'not_yet_due_since_startup';
-                  const label = finishedAt != null
-                    ? formatTime(finishedAt)
-                    : isNotYetDue
-                      ? 'No run yet (next run scheduled)'
-                      : 'No run yet';
+                  const hasSuccess = finishedAt != null;
+                  const hasAnyFinish = Boolean(lastFinishAt);
+                  let primaryLabel;
+                  let subReason = '';
+                  if (hasSuccess) {
+                    primaryLabel = `${formatTime(finishedAt)} · success`;
+                  } else if (hasAnyFinish) {
+                    primaryLabel = `${formatTime(lastFinishAt)} · latest: ${lastRunStatus || 'unknown'}`;
+                    subReason = 'No successful run recorded after this finish — check Automation Centre for outcome_metrics.';
+                  } else if (isNotYetDue) {
+                    primaryLabel = 'No run yet (next run scheduled)';
+                    subReason = visibilityReasonLabel(lastRunReasonCode || nextRunReasonCode);
+                  } else {
+                    primaryLabel = 'No run yet';
+                    subReason = visibilityReasonLabel(lastRunReasonCode || nextRunReasonCode);
+                  }
                   return (
                     <div key={jobName} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-3">
                       <Clock className="w-5 h-5 text-gray-400" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{jobName}</p>
-                        <p className={`text-xs ${finishedAt != null ? 'text-gray-500' : 'text-gray-500 italic'}`}>{label}</p>
-                        {!finishedAt && (
-                          <p className="text-[11px] text-gray-500 mt-0.5">
-                            {visibilityReasonLabel(lastRunReasonCode || nextRunReasonCode)}
-                          </p>
+                        <p className={`text-xs ${hasSuccess ? 'text-gray-700' : 'text-gray-600'}`}>{primaryLabel}</p>
+                        {subReason && (
+                          <p className="text-[11px] text-gray-500 mt-0.5">{subReason}</p>
                         )}
                       </div>
                     </div>

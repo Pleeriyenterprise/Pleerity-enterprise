@@ -640,6 +640,7 @@ async def get_health_summary(request: Request):
             "reason": reason,
             "recommended_action": recommended_action,
             "last_run": last_run_value,
+            "last_run_status": jobs_detail[jid].get("last_run_status"),
             "last_success": jobs_detail[jid].get("last_success"),
             "last_degraded": jobs_detail[jid].get("last_degraded"),
             "last_failure": jobs_detail[jid].get("last_failure"),

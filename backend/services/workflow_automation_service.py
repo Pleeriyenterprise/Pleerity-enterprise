@@ -979,8 +979,12 @@ class WorkflowAutomationService:
             # Calculate effective time (excluding pause duration)
             # SLA clock starts at PAID, not created_at
             sla_start = order.get("paid_at") or order.get("created_at")
+            if sla_start is None:
+                continue
             if isinstance(sla_start, str):
                 sla_start = datetime.fromisoformat(sla_start.replace("Z", "+00:00"))
+            elif isinstance(sla_start, datetime) and sla_start.tzinfo is None:
+                sla_start = sla_start.replace(tzinfo=timezone.utc)
             
             pause_duration = order.get("sla_pause_duration_hours", 0)
             effective_hours = ((now - sla_start).total_seconds() / 3600) - pause_duration
