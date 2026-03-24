@@ -2,6 +2,8 @@
 Client API for maintenance work orders. Gated by MAINTENANCE_WORKFLOWS.
 List own work orders, create new (client or property manager).
 """
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel
 from typing import Optional, List
@@ -14,6 +16,10 @@ from services import contractor_service
 from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE, CONTRACTOR_NETWORK
 from services import property_assets_service
 from services import risk_signal_service
+from utils.audit import create_audit_log
+from models import AuditAction
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/client", tags=["client-maintenance"], dependencies=[Depends(client_route_guard)])
 
@@ -588,7 +594,34 @@ async def recalculate_property_risk_signals(request: Request, property_id: str):
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
     out = await risk_signal_service.generate_risk_signals_for_property(property_id=property_id, client_id=client_id)
-    return {"ok": True, "property_id": property_id, "generated": out["generated"], "signals": out["signals"]}
+    removed = int(out.get("previous_active_removed") or 0)
+    generated = int(out.get("generated") or 0)
+    outcome_status = "conditional_no_output" if generated == 0 else "success"
+    try:
+        await create_audit_log(
+            action=AuditAction.RISK_SIGNAL_UPDATED,
+            actor_id=user.get("portal_user_id"),
+            client_id=client_id,
+            resource_type="property",
+            resource_id=property_id,
+            metadata={
+                "operation": "risk_signals_property_recalculate",
+                "property_id": property_id,
+                "generated": generated,
+                "previous_active_removed": removed,
+                "outcome_status": outcome_status,
+            },
+        )
+    except Exception as e:
+        logger.warning("Audit log for risk signal recalc failed: %s", e)
+    return {
+        "ok": True,
+        "property_id": property_id,
+        "generated": generated,
+        "previous_active_removed": removed,
+        "outcome_status": outcome_status,
+        "signals": out.get("signals") or [],
+    }
 
 
 class UpdateRiskSignalStatusBody(BaseModel):

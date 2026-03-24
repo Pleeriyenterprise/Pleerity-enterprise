@@ -753,22 +753,116 @@ async def run_risk_signals_job():
     from database import database
     from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
     from services import risk_signal_service
+    from services.job_run_service import (
+        OUTCOME_SUCCESS,
+        OUTCOME_DEGRADED,
+        OUTCOME_FAILED,
+        OUTCOME_CONDITIONAL_NO_OUTPUT,
+    )
 
     db = database.get_db()
     clients = await db.clients.find({}, {"_id": 0, "client_id": 1, "billing_plan": 1}).to_list(10000)
-    total_signals = 0
-    count = 0
+    skipped_no_flag = 0
+    eligible_clients = 0
+    successful_clients = 0
+    client_errors = 0
+    properties_scanned = 0
+    signals_generated = 0
+    signals_cleared = 0
+
     for c in clients:
+        cid = c.get("client_id")
         try:
-            flags = await get_effective_flags(c["client_id"], c.get("billing_plan"))
+            flags = await get_effective_flags(cid, c.get("billing_plan"))
             if not flags.get(PREDICTIVE_MAINTENANCE):
+                skipped_no_flag += 1
                 continue
-            out = await risk_signal_service.generate_risk_signals_for_org(c["client_id"])
-            total_signals += out.get("total_signals", 0)
-            count += 1
+            eligible_clients += 1
+            out = await risk_signal_service.generate_risk_signals_for_org(cid)
+            successful_clients += 1
+            properties_scanned += int(out.get("properties_processed") or 0)
+            signals_generated += int(out.get("total_signals") or 0)
+            signals_cleared += int(out.get("previous_active_signals_cleared") or 0)
         except Exception as e:
-            logger.warning("Risk signals skip client %s: %s", c.get("client_id"), e)
-    return {"message": f"Risk signals generated for {count} client(s), {total_signals} total signals", "count": count, "total_signals": total_signals}
+            client_errors += 1
+            logger.warning("Risk signals failed for client %s: %s", cid, e)
+
+    if skipped_no_flag:
+        logger.info(
+            "risk_signals_job: skipped %s client(s) without PREDICTIVE_MAINTENANCE",
+            skipped_no_flag,
+        )
+
+    outcome_metrics = {
+        "clients_skipped_no_predictive_flag": skipped_no_flag,
+        "clients_eligible": eligible_clients,
+        "clients_processed_ok": successful_clients,
+        "clients_failed": client_errors,
+        "properties_processed": properties_scanned,
+        "signals_generated": signals_generated,
+        "signals_replaced_cleared": signals_cleared,
+        # Health summary / conditional_no_output: "work units" emitted this run
+        "attempted_count": signals_generated,
+    }
+
+    if eligible_clients == 0:
+        return {
+            "message": "Risk signals: no clients with predictive maintenance enabled",
+            "count": 0,
+            "outcome_status": OUTCOME_CONDITIONAL_NO_OUTPUT,
+            "outcome_metrics": {**outcome_metrics, "reason_code": "no_eligible_clients"},
+        }
+    if client_errors > 0 and successful_clients == 0:
+        return {
+            "message": f"Risk signals failed for all {eligible_clients} eligible client(s)",
+            "count": 0,
+            "outcome_status": OUTCOME_FAILED,
+            "error_code": "AllClientsFailed",
+            "error_message": "Every eligible client raised an error during risk signal generation",
+            "outcome_metrics": outcome_metrics,
+        }
+    if client_errors > 0:
+        return {
+            "message": (
+                f"Risk signals: partial success — {successful_clients} client(s) ok, "
+                f"{client_errors} failed; {signals_generated} signal(s) written, "
+                f"{properties_scanned} propert(ies) scanned"
+            ),
+            "count": successful_clients,
+            "outcome_status": OUTCOME_DEGRADED,
+            "error_message": f"{client_errors} client(s) failed during generation",
+            "outcome_metrics": outcome_metrics,
+        }
+    if properties_scanned == 0:
+        return {
+            "message": (
+                "Risk signals: eligible clients had no active properties to scan "
+                f"({successful_clients} client(s))"
+            ),
+            "count": successful_clients,
+            "outcome_status": OUTCOME_CONDITIONAL_NO_OUTPUT,
+            "outcome_metrics": {**outcome_metrics, "reason_code": "no_properties_to_scan"},
+        }
+    if signals_generated == 0:
+        return {
+            "message": (
+                f"Risk signals: scanned {properties_scanned} propert(ies) across "
+                f"{successful_clients} client(s); no new risk signals (rules produced empty set)"
+            ),
+            "count": successful_clients,
+            "outcome_status": OUTCOME_CONDITIONAL_NO_OUTPUT,
+            "outcome_metrics": {**outcome_metrics, "reason_code": "no_rules_triggered"},
+        }
+
+    return {
+        "message": (
+            f"Risk signals: {signals_generated} signal(s) for {successful_clients} client(s), "
+            f"{properties_scanned} propert(ies) scanned"
+        ),
+        "count": successful_clients,
+        "outcome_status": OUTCOME_SUCCESS,
+        "outcome_metrics": outcome_metrics,
+    }
 
 
 async def run_work_order_sla_breach_job():

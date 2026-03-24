@@ -820,6 +820,8 @@ async def get_automation_framework_audit(request: Request):
             return "database/environment_mismatch"
         if total_runs > 0 and row["included_in_automation_centre"] is False:
             return "UI_state_bug"
+        if total_runs > 0 and last_status == "success" and last_outcome == "conditional_no_output":
+            return "conditionally_no_output"
         if total_runs > 0 and last_status == "success" and last_outcome == "success" and (attempted == 0):
             return "conditionally_no_output"
         if registered and total_runs == 0 and row["can_run_manually"]:

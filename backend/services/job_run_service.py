@@ -24,6 +24,7 @@ STATUS_SKIPPED = "skipped"
 OUTCOME_SUCCESS = "success"
 OUTCOME_DEGRADED = "degraded"
 OUTCOME_FAILED = "failed"
+OUTCOME_CONDITIONAL_NO_OUTPUT = "conditional_no_output"
 
 RUN_TYPE_SCHEDULE = "schedule"
 RUN_TYPE_MANUAL = "manual"

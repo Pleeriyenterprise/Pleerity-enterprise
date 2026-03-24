@@ -55,6 +55,8 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("scheduler_heartbeat", True, 5, "Every 2 min", False),
     JobScheduleEntry("delivery_reconciliation", True, 25, "Every 15 min", True),
     JobScheduleEntry("contractor_performance_recalc", False, 26 * 60, "Daily", True),
+    # Risk signals batch job (non-critical; zero signals after scanning data is valid)
+    JobScheduleEntry("risk_signals_job", False, 26 * 60, "Daily", True),
 ]
 
 # All jobs that may appear in health summary / automation centre (including non-critical)

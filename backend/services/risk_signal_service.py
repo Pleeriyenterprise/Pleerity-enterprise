@@ -459,7 +459,7 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
 
     property_doc = await _fetch_property(db, property_id, client_id)
     if not property_doc:
-        return {"generated": 0, "signals": []}
+        return {"generated": 0, "signals": [], "previous_active_removed": 0}
 
     assets = await _fetch_assets(db, property_id)
     work_orders_12 = await _fetch_work_orders(db, property_id, client_id, ROLLING_12_MONTHS_DAYS)
@@ -510,6 +510,7 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
         "status": STATUS_ACTIVE,
         "source": SOURCE_HEURISTIC,
     })
+    previous_active_removed = int(deleted.deleted_count)
 
     inserted = []
     for s in unique_signals:

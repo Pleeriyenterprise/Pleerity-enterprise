@@ -914,7 +914,26 @@ export default function PropertyDetailPage() {
                           </div>
                           <div className="flex flex-wrap gap-1.5 shrink-0">
                             {actions.includes('create_work_order') && (
-                              <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); setCreateWoForm((f) => ({ ...f, description: s.recommended_action })); }}><Wrench className="w-3 h-3 mr-1" /> Work order</Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  if (hasFeature('maintenance_workflows')) {
+                                    try {
+                                      await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
+                                      toast.success('Work order created');
+                                      loadRiskSignals();
+                                      setActiveTab(TAB_MAINTENANCE);
+                                    } catch (e) {
+                                      toast.error(e?.response?.data?.detail || 'Failed');
+                                    }
+                                  } else {
+                                    setActiveTab(TAB_MAINTENANCE);
+                                    setCreateWoOpen(true);
+                                    setCreateWoForm((f) => ({ ...f, description: s.recommended_action }));
+                                  }
+                                }}
+                              ><Wrench className="w-3 h-3 mr-1" /> Work order</Button>
                             )}
                             {actions.includes('create_issue') && (
                               <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Issue</Button>
@@ -2052,7 +2071,26 @@ export default function PropertyDetailPage() {
                         return (
                           <>
                             {actions.includes('create_work_order') && (
-                              <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); setCreateWoForm((f) => ({ ...f, description: s.recommended_action })); }}><Wrench className="w-4 h-4 mr-1" /> Create work order</Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  if (hasFeature('maintenance_workflows')) {
+                                    try {
+                                      await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
+                                      toast.success('Work order created');
+                                      loadRiskSignals();
+                                      setActiveTab(TAB_MAINTENANCE);
+                                    } catch (e) {
+                                      toast.error(e?.response?.data?.detail || 'Failed');
+                                    }
+                                  } else {
+                                    setActiveTab(TAB_MAINTENANCE);
+                                    setCreateWoOpen(true);
+                                    setCreateWoForm((f) => ({ ...f, description: s.recommended_action }));
+                                  }
+                                }}
+                              ><Wrench className="w-4 h-4 mr-1" /> Create work order</Button>
                             )}
                             {actions.includes('create_issue') && (
                               <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Create issue</Button>
