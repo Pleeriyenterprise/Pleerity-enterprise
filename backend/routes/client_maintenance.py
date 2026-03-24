@@ -597,6 +597,18 @@ async def get_risk_signal_by_id_route(request: Request, signal_id: str):
     return doc
 
 
+@router.get("/maintenance/risk-signals/{signal_id}/suggested-actions")
+async def get_risk_signal_suggested_actions_route(request: Request, signal_id: str):
+    """Read-only recommended_action + alternatives (same semantics as create-issue / create-work-order buttons). Requires PREDICTIVE_MAINTENANCE."""
+    user = await _require_predictive_enabled(request)
+    data = await risk_signal_service.get_risk_signal_suggested_actions_view(
+        signal_id=signal_id, client_id=user["client_id"]
+    )
+    if not data:
+        raise HTTPException(status_code=404, detail="Risk signal not found")
+    return data
+
+
 @router.get("/maintenance/risk-signals/{signal_id}/explanation")
 async def get_risk_signal_explanation_route(request: Request, signal_id: str):
     """Get contextual explanation for a risk signal (why it matters, recommended action). Requires PREDICTIVE_MAINTENANCE."""

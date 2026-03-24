@@ -118,6 +118,8 @@ async def create_issue(
         "risk_signal_id": risk_signal_id,
         "created_at": now,
         "updated_at": now,
+        "resolved_at": None,
+        "closed_at": None,
         "triage": {
             "severity": triage.get("severity"),
             "priority_score": triage.get("priority_score"),
@@ -234,6 +236,14 @@ async def update_issue(
         updates["description"] = (description or "").strip() or issue.get("description", "")
     if category is not None:
         updates["category"] = (category or "").strip() or "general"
+
+    new_status = updates.get("status")
+    if new_status and new_status != old_status:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        if new_status == STATUS_RESOLVED and not issue.get("resolved_at"):
+            updates["resolved_at"] = now_iso
+        if new_status in (STATUS_CLOSED, STATUS_CANCELLED) and not issue.get("closed_at"):
+            updates["closed_at"] = now_iso
 
     if len(updates) <= 1:
         return issue  # only updated_at, no real change

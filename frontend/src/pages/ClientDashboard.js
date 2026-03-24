@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
-import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2, Wrench, ListTodo } from 'lucide-react';
+import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2, Wrench, ListTodo, LayoutDashboard } from 'lucide-react';
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
@@ -90,6 +90,8 @@ const ClientDashboard = () => {
   const [maintenanceSpendMonth, setMaintenanceSpendMonth] = useState(null);
   /** undefined = not loaded yet; null = load failed (hide digest card); object = digest payload */
   const [tasksDigest, setTasksDigest] = useState(undefined);
+  /** Composed bundle: urgent rows, risks, compliance (same fetch backs tasks digest summary + activity) */
+  const [commandCenter, setCommandCenter] = useState(undefined);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -161,17 +163,39 @@ const ClientDashboard = () => {
       .catch(() => setPriorityActions({ actions: [], total: 0 }));
   }, [isClientUser]);
 
-  // Command Centre tasks digest (compact; no full task lists)
+  // When score trend is in "Property" mode, scope command center + tasks digest to that property (API filter).
+  const commandCenterScopePropertyId =
+    scoreTrendView === 'property' && selectedTrendPropertyId ? selectedTrendPropertyId : null;
+  const commandCenterScopeLabel = useMemo(() => {
+    if (!commandCenterScopePropertyId) return null;
+    const p = portfolioSummary?.properties?.find((x) => x.property_id === commandCenterScopePropertyId);
+    return p ? getPropertyDisplayLabel(p) : commandCenterScopePropertyId;
+  }, [commandCenterScopePropertyId, portfolioSummary?.properties]);
+
+  // Command center bundle: digest summary + activity + urgent rows + risks + compliance (one round-trip)
   useEffect(() => {
     if (!isClientUser) {
       setTasksDigest(undefined);
+      setCommandCenter(undefined);
       return;
     }
+    const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
     clientAPI
-      .getTasksDigest({ activity_limit: 8 })
-      .then((res) => setTasksDigest(res.data))
-      .catch(() => setTasksDigest(null));
-  }, [isClientUser]);
+      .getCommandCenter(params)
+      .then((res) => {
+        const b = res.data || {};
+        setCommandCenter(b);
+        setTasksDigest({
+          summary: b.tasks_digest_summary || {},
+          activity_feed: Array.isArray(b.recent_activity) ? b.recent_activity.slice(0, 8) : [],
+          freshness: b.freshness || {},
+        });
+      })
+      .catch(() => {
+        setTasksDigest(null);
+        setCommandCenter(null);
+      });
+  }, [isClientUser, commandCenterScopePropertyId]);
 
   // Refetch score trend card when user switches Portfolio vs Property or selects another property
   useEffect(() => {
@@ -872,6 +896,9 @@ const ClientDashboard = () => {
                     Snapshot refreshed {new Date(tasksDigest.freshness.tasks_refreshed_at).toLocaleString()}
                   </p>
                 )}
+                {commandCenterScopeLabel && (
+                  <p className="text-xs text-electric-teal mt-1">Scoped to: {commandCenterScopeLabel}</p>
+                )}
               </div>
               <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/tasks')}>
                 Open Command Centre
@@ -924,6 +951,107 @@ const ClientDashboard = () => {
                   </ul>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!setupView && commandCenter && typeof commandCenter === 'object' && (
+          <Card
+            className="mb-6 border border-gray-200 shadow-sm"
+            data-testid="command-center-snapshot-card"
+          >
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <LayoutDashboard className="w-4 h-4 text-teal-600" />
+                  Command center snapshot
+                </CardTitle>
+                {commandCenter.freshness?.tasks_refreshed_at && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tasks snapshot {new Date(commandCenter.freshness.tasks_refreshed_at).toLocaleString()}
+                  </p>
+                )}
+                {commandCenterScopeLabel && (
+                  <p className="text-xs text-electric-teal mt-1">Scoped to: {commandCenterScopeLabel}</p>
+                )}
+              </div>
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/tasks')}>
+                All tasks
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {(commandCenter.urgent_actions?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Urgent &amp; in progress</p>
+                  <ul className="space-y-2 text-sm">
+                    {commandCenter.urgent_actions.slice(0, 6).map((t) => (
+                      <li key={t.id || t.title} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                        <button
+                          type="button"
+                          className="text-left text-midnight-blue hover:underline font-medium min-w-0"
+                          onClick={() => {
+                            const url = t.primary_action_url || t.cta_url;
+                            if (url && url.startsWith('/')) navigate(url);
+                            else if (url) window.location.assign(url);
+                            else navigate('/tasks');
+                          }}
+                        >
+                          {t.title || 'Task'}
+                        </button>
+                        <span className="text-xs text-gray-500 shrink-0">
+                          {[t.property_label, t.timing_label || t.urgency_level].filter(Boolean).join(' · ')}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {hasFeature('predictive_maintenance') && (commandCenter.upcoming_risks?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Active predicted risks</p>
+                  <ul className="space-y-2 text-sm">
+                    {commandCenter.upcoming_risks.slice(0, 4).map((r) => (
+                      <li key={r.signal_id || r.description} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                        <button
+                          type="button"
+                          className="text-left text-midnight-blue hover:underline min-w-0"
+                          onClick={() => navigate(r.cta_url || '/operations/risk-signals')}
+                        >
+                          {r.description || (r.risk_type ? String(r.risk_type).replace(/_/g, ' ') : '') || 'Risk signal'}
+                        </button>
+                        <span className="text-xs text-gray-500 shrink-0 capitalize">{r.risk_level || ''}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button variant="link" className="h-auto p-0 mt-1 text-electric-teal" onClick={() => navigate('/operations/risk-signals')}>
+                    View all risk signals
+                  </Button>
+                </div>
+              )}
+              {commandCenter.compliance_status_summary && commandCenter.compliance_status_summary.score != null && (
+                <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-sm">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Compliance</p>
+                  <p className="font-semibold text-midnight-blue">
+                    Grade {commandCenter.compliance_status_summary.grade ?? '—'} · Score {Math.round(Number(commandCenter.compliance_status_summary.score))}
+                  </p>
+                  {commandCenter.compliance_status_summary.message && (
+                    <p className="text-gray-600 mt-1">{commandCenter.compliance_status_summary.message}</p>
+                  )}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-600">
+                    {commandCenter.compliance_status_summary.requirements_overdue != null && (
+                      <span>Overdue: {commandCenter.compliance_status_summary.requirements_overdue}</span>
+                    )}
+                    {commandCenter.compliance_status_summary.requirements_expiring_soon != null && (
+                      <span>Expiring soon: {commandCenter.compliance_status_summary.requirements_expiring_soon}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {(commandCenter.urgent_actions?.length ?? 0) === 0 &&
+                (!hasFeature('predictive_maintenance') || (commandCenter.upcoming_risks?.length ?? 0) === 0) &&
+                !(commandCenter.compliance_status_summary && commandCenter.compliance_status_summary.score != null) && (
+                  <p className="text-sm text-gray-500">No urgent items in this snapshot. Open tasks for the full inbox.</p>
+                )}
             </CardContent>
           </Card>
         )}

@@ -536,6 +536,34 @@ async def get_client_tasks_digest(
         )
 
 
+@router.get("/command-center")
+async def get_client_command_center(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Optional filter by property"),
+):
+    """
+    Composed operations + compliance snapshot: urgent task rows, active risk signals,
+    recent inbox activity, compliance summary. Reuses unified tasks, risk signals, and score services.
+    """
+    user = await client_route_guard(request)
+    try:
+        from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+        from services.command_center_service import get_command_center_bundle
+
+        flags = await get_effective_flags(user["client_id"])
+        return await get_command_center_bundle(
+            user["client_id"],
+            predictive_enabled=bool(flags.get(PREDICTIVE_MAINTENANCE)),
+            property_id_filter=property_id,
+        )
+    except Exception as e:
+        logger.error("Command center error for client %s: %s", user.get("client_id"), e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load command center",
+        )
+
+
 @router.get("/tasks")
 async def get_client_unified_tasks(
     request: Request,

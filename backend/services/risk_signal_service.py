@@ -819,6 +819,86 @@ async def get_risk_signal_by_id(signal_id: str, client_id: str) -> Optional[Dict
     return doc
 
 
+def _suggested_priority_from_level(risk_level: Optional[str]) -> str:
+    l = (risk_level or "medium").strip().lower()
+    if l == RISK_LEVEL_CRITICAL:
+        return "critical"
+    if l == RISK_LEVEL_HIGH:
+        return "high"
+    if l == RISK_LEVEL_LOW:
+        return "low"
+    return "medium"
+
+
+def _recommended_trade_from_risk_type(risk_type: Optional[str]) -> Optional[str]:
+    """Lightweight trade hint from risk_type label (not a booking system)."""
+    rt = (risk_type or "").lower()
+    if any(x in rt for x in ("boiler", "gas", "heating", "cp12")):
+        return "gas_engineer"
+    if any(x in rt for x in ("electrical", "eicr")):
+        return "electrician"
+    if any(x in rt for x in ("damp", "moisture", "plumb", "leak", "roof")):
+        return "plumber"
+    if "sla" in rt or "contractor" in rt:
+        return "general_contractor"
+    return None
+
+
+def _action_code_title(code: str) -> str:
+    labels = {
+        SUGGESTED_ACTION_CREATE_ISSUE: "Create maintenance issue",
+        SUGGESTED_ACTION_CREATE_WORK_ORDER: "Create work order",
+        SUGGESTED_ACTION_SCHEDULE_INSPECTION: "Schedule inspection",
+        SUGGESTED_ACTION_SEND_CONTRACTOR_REMINDER: "Send contractor reminder",
+        SUGGESTED_ACTION_REASSIGN_CONTRACTOR: "Reassign contractor",
+    }
+    return labels.get(code, code.replace("_", " ").title())
+
+
+def _build_recommended_action_dict(signal_doc: Dict[str, Any], action_code: str) -> Dict[str, Any]:
+    rtype = signal_doc.get("risk_type") or ""
+    body = (
+        signal_doc.get("description")
+        or signal_doc.get("recommended_action")
+        or rtype
+        or action_code
+    )
+    return {
+        "type": action_code,
+        "title": _action_code_title(action_code),
+        "priority": _suggested_priority_from_level(signal_doc.get("risk_level")),
+        "estimated_cost": None,
+        "recommended_trade": _recommended_trade_from_risk_type(rtype),
+        "description": (body or "")[:500],
+    }
+
+
+async def get_risk_signal_suggested_actions_view(
+    signal_id: str, client_id: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Read-only projection for integrations and UI: primary recommended_action + alternatives.
+    Aligns with POST .../create-issue, create-work-order, schedule-inspection routes.
+    """
+    doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
+    if not doc:
+        return None
+    cat = doc.get("signal_category") or ""
+    rtype = doc.get("risk_type") or ""
+    actions = doc.get("suggested_actions")
+    if not isinstance(actions, list) or not actions:
+        actions = _suggested_actions_for_signal(cat, rtype)
+    primary = actions[0] if actions else SUGGESTED_ACTION_CREATE_ISSUE
+    recommended = _build_recommended_action_dict(doc, primary)
+    alternatives = [_build_recommended_action_dict(doc, c) for c in actions[1:] if c and c != primary][:6]
+    return {
+        "signal_id": signal_id,
+        "recommended_action": recommended,
+        "suggested_action_codes": list(actions),
+        "alternatives": alternatives,
+    }
+
+
 async def create_issue_from_risk_signal(
     signal_id: str,
     client_id: str,

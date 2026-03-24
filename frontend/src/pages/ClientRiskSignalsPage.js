@@ -91,6 +91,8 @@ function ClientRiskSignalsPageInner() {
   const [drawerExplanationLoading, setDrawerExplanationLoading] = useState(false);
   const [drawerExplanationOpen, setDrawerExplanationOpen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
+  /** Read-only GET .../suggested-actions (primary + codes + alternatives); loaded with drawer */
+  const [drawerSuggestedView, setDrawerSuggestedView] = useState(null);
   const [actionFromSignal, setActionFromSignal] = useState(null); // 'issue' | 'work_order'
   const [filters, setFilters] = useState({
     risk_level: '',
@@ -154,14 +156,23 @@ function ClientRiskSignalsPageInner() {
       setDrawerExplanation(null);
       setDrawerExplanationOpen(false);
       setDrawerSignal(null);
+      setDrawerSuggestedView(null);
       return;
     }
     setDrawerLoading(true);
-    clientAPI
-      .getRiskSignal(drawerSignalId)
-      .then((res) => setDrawerSignal(res.data || null))
+    setDrawerSuggestedView(null);
+    Promise.all([
+      clientAPI.getRiskSignal(drawerSignalId).then((res) => res.data || null),
+      clientAPI.getRiskSignalSuggestedActions(drawerSignalId).then((res) => res.data || null),
+    ])
+      .then(([sig, view]) => {
+        setDrawerSignal(sig);
+        setDrawerSuggestedView(sig ? view : null);
+        if (!sig) toast.error('Failed to load signal details');
+      })
       .catch(() => {
         setDrawerSignal(null);
+        setDrawerSuggestedView(null);
         toast.error('Failed to load signal details');
       })
       .finally(() => setDrawerLoading(false));
@@ -624,10 +635,41 @@ function ClientRiskSignalsPageInner() {
                   </ul>
                 </div>
               )}
-              {drawerSignal.recommended_action && (
+              {drawerSuggestedView?.recommended_action && (
+                <div className="rounded-md border border-gray-200 bg-gray-50/80 p-3 space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase">Primary suggestion</p>
+                  <p className="text-sm font-medium text-midnight-blue">{drawerSuggestedView.recommended_action.title}</p>
+                  {drawerSuggestedView.recommended_action.recommended_trade && (
+                    <p className="text-xs text-gray-600">Trade: {drawerSuggestedView.recommended_action.recommended_trade}</p>
+                  )}
+                  {drawerSuggestedView.recommended_action.description && (
+                    <p className="text-sm text-gray-700">{drawerSuggestedView.recommended_action.description}</p>
+                  )}
+                </div>
+              )}
+              {!drawerSuggestedView?.recommended_action && drawerSignal.recommended_action && (
                 <div>
                   <p className="text-xs text-muted-foreground uppercase">Recommended action</p>
                   <p className="text-sm">{drawerSignal.recommended_action}</p>
+                </div>
+              )}
+              {Array.isArray(drawerSuggestedView?.alternatives) && drawerSuggestedView.alternatives.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase mb-2">Other options</p>
+                  <ul className="space-y-2 text-sm rounded-md border border-gray-200 bg-white p-3">
+                    {drawerSuggestedView.alternatives.map((alt, i) => (
+                      <li
+                        key={alt.type || `alt-${i}`}
+                        className="border-b border-gray-100 pb-2 last:border-0 last:pb-0"
+                      >
+                        <p className="font-medium text-midnight-blue">{alt.title || alt.type}</p>
+                        {alt.recommended_trade && (
+                          <p className="text-xs text-gray-600">Trade: {alt.recommended_trade}</p>
+                        )}
+                        {alt.description && <p className="text-gray-700">{alt.description}</p>}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
               {/* Expandable "Why this matters" from explanation engine */}
@@ -677,7 +719,12 @@ function ClientRiskSignalsPageInner() {
                 <p className="text-xs text-muted-foreground uppercase">Suggested actions</p>
                 <div className="flex flex-wrap gap-2">
                   {(() => {
-                    const actions = Array.isArray(drawerSignal.suggested_actions) ? drawerSignal.suggested_actions : ['create_issue', 'create_work_order'];
+                    const actions =
+                      Array.isArray(drawerSuggestedView?.suggested_action_codes) && drawerSuggestedView.suggested_action_codes.length > 0
+                        ? drawerSuggestedView.suggested_action_codes
+                        : Array.isArray(drawerSignal.suggested_actions)
+                          ? drawerSignal.suggested_actions
+                          : ['create_issue', 'create_work_order'];
                     return (
                       <>
                         {actions.includes('create_issue') && (

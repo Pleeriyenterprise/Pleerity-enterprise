@@ -181,6 +181,8 @@ export const clientAPI = {
   getTasks: (params = {}) => apiClient.get('/client/tasks', { params }),
   /** Dashboard digest: summary, freshness, short activity (no full task lists). */
   getTasksDigest: (params = {}) => apiClient.get('/client/tasks/digest', { params }),
+  /** Composed urgent tasks, risks, activity, compliance summary (read-only aggregate). */
+  getCommandCenter: (params = {}) => apiClient.get('/client/command-center', { params }),
   /** Phase 2: snooze | dismiss | done | restore (inbox overlay). */
   postTaskOverride: (body) => apiClient.post('/client/tasks/override', body),
   getTasksActivity: (params = {}) => apiClient.get('/client/tasks/activity', { params }),
@@ -268,6 +270,8 @@ export const clientAPI = {
   getRiskSignals: (params = {}) => apiClient.get('/client/maintenance/risk-signals', { params }),
   getRiskSignal: (signalId) => apiClient.get(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}`),
   getRiskSignalExplanation: (signalId) => apiClient.get(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/explanation`),
+  getRiskSignalSuggestedActions: (signalId) =>
+    apiClient.get(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/suggested-actions`),
   createIssueFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/create-issue`, body),
   createWorkOrderFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/create-work-order`, body),
   scheduleInspectionFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/schedule-inspection`, body),
