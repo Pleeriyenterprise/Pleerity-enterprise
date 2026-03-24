@@ -658,6 +658,22 @@ async def get_health_summary(request: Request):
     since_24h_str = since_24h.isoformat()
     failed_24h = await db.job_runs.count_documents({"status": STATUS_FAILED, "finished_at": {"$gte": since_24h_str}})
     degraded_24h = await db.job_runs.count_documents({"status": STATUS_DEGRADED, "finished_at": {"$gte": since_24h_str}})
+    failed_runs_24h_by_job = await db.job_runs.aggregate(
+        [
+            {"$match": {"status": STATUS_FAILED, "finished_at": {"$gte": since_24h_str}, "job_name": {"$exists": True, "$ne": ""}}},
+            {"$group": {"_id": "$job_name", "failure_count": {"$sum": 1}}},
+            {"$sort": {"failure_count": -1}},
+            {"$limit": 300},
+        ]
+    ).to_list(300)
+    degraded_runs_24h_by_job = await db.job_runs.aggregate(
+        [
+            {"$match": {"status": STATUS_DEGRADED, "finished_at": {"$gte": since_24h_str}, "job_name": {"$exists": True, "$ne": ""}}},
+            {"$group": {"_id": "$job_name", "degraded_count": {"$sum": 1}}},
+            {"$sort": {"degraded_count": -1}},
+            {"$limit": 300},
+        ]
+    ).to_list(300)
     critical_missed_count = sum(1 for jid in critical_job_ids if job_states.get(jid, {}).get("state") == JOB_STATE_MISSED)
     never_ran_overdue_count = sum(
         1 for jid in critical_job_ids
