@@ -305,7 +305,6 @@ export const adminAPI = {
     apiClient.post(`/admin/observability/incidents/${incidentId}/resolve`, note != null ? { note } : {}),
   getScoreEvents: (params = {}) => apiClient.get('/admin/observability/score-events', { params }),
   runJobNow: (jobId) => apiClient.post('/admin/jobs/run', { job: jobId }),
-  getJobsStatus: () => apiClient.get('/admin/jobs/status'),
   // Operations & Compliance
   getOpsOverview: () => apiClient.get('/admin/ops/overview'),
   /** Admin priority actions (action queue / operational priorities). */

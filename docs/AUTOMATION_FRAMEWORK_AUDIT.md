@@ -207,6 +207,18 @@ Implemented in this pass:
    - Automation Centre reason fallback now uses visibility reason fields.
    - System Health shows scheduler-runtime warning and per-job no-run reason text.
 
+## Framework Standardizations Applied (Phase D)
+
+Implemented in this pass:
+
+1. Removed the remaining first-party frontend dependency on legacy status endpoint:
+   - Admin Dashboard job monitor now reads `GET /api/admin/observability/framework-audit` + `GET /api/admin/observability/health-summary`.
+2. Froze legacy endpoints behind an explicit compatibility window contract:
+   - `GET /api/admin/jobs/status` and `POST /api/admin/jobs/trigger/{job_type}` now return:
+     - `deprecated: true`
+     - `compatibility_window_ends_at: "2026-06-30T00:00:00Z"`
+3. Added server-side warning logs on legacy endpoint usage for cutover tracking.
+
 ## Acceptance Checklist (Per Job)
 
 Checklist fields:
@@ -250,12 +262,12 @@ Expected future-due states may appear after restart:
 3. Billing reminder manual path is outside canonical scheduler/runner registration model.
 4. Multi-instance scheduler visibility can create apparent mismatch unless deployment role ownership is explicit.
 
-## Recommended Next Safe Step (Phase B)
+## Recommended Next Safe Step
 
 1. Unify metadata authority across:
    - `job_schedule_registry`
    - `server.py` registrations
    - `job_runner.JOB_RUNNERS`
-2. Deprecate legacy trigger/status endpoint variants and converge UI to observability-first payloads.
+2. After compatibility-window expiry, remove legacy trigger/status endpoint variants and keep observability-first payloads only.
 3. Move manual-only outlier jobs into canonical runner contract or explicitly mark as excluded with reason code.
 

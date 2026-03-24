@@ -17,6 +17,7 @@ from auth import create_access_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
+LEGACY_JOBS_ENDPOINT_SUNSET = "2026-06-30T00:00:00Z"
 
 
 def _iso_or_none(value: Any) -> Optional[str]:
@@ -2701,8 +2702,10 @@ async def get_jobs_status(request: Request):
         # If scheduler returned no jobs, treat as issues (scheduler may not be running)
         system_status = "operational" if scheduler_jobs else "issues"
 
+        logger.warning("Deprecated endpoint used: GET /api/admin/jobs/status")
         return {
             "deprecated": True,
+            "compatibility_window_ends_at": LEGACY_JOBS_ENDPOINT_SUNSET,
             "replacement_endpoints": [
                 "/api/admin/observability/framework-audit",
                 "/api/admin/observability/health-summary",
@@ -2817,10 +2820,12 @@ async def trigger_job(request: Request, job_type: str):
                 "admin_email": user["email"]
             }
         )
+        logger.warning("Deprecated endpoint used: POST /api/admin/jobs/trigger/%s", job_type)
         return {
             "message": message,
             "count": count,
             "deprecated": True,
+            "compatibility_window_ends_at": LEGACY_JOBS_ENDPOINT_SUNSET,
             "replacement_endpoint": "/api/admin/jobs/run",
             "mapped_job_id": job_id,
         }

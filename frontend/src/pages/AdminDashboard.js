@@ -1280,6 +1280,7 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
 // Tab Components
 const JobsMonitoring = () => {
   const [jobsStatus, setJobsStatus] = useState(null);
+  const [frameworkAudit, setFrameworkAudit] = useState(null);
   const [healthSummary, setHealthSummary] = useState(null);
   const [jobsStatusError, setJobsStatusError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1288,15 +1289,39 @@ const JobsMonitoring = () => {
   const fetchJobsStatus = async () => {
     setJobsStatusError(null);
     try {
-      const [jobsRes, healthRes] = await Promise.all([
-        api.get('/admin/jobs/status'),
+      const [auditRes, healthRes] = await Promise.all([
+        api.get('/admin/observability/framework-audit'),
         api.get('/admin/observability/health-summary').catch(() => ({ data: null })),
       ]);
-      setJobsStatus(jobsRes.data);
+      const audit = auditRes?.data || {};
+      const inventory = audit.inventory || [];
+      const byJob = Object.fromEntries(inventory.map((row) => [row.job_name, row]));
+      const scheduledJobs = inventory
+        .filter((row) => row.registered)
+        .map((row) => ({
+          id: row.job_name,
+          name: row.purpose || row.job_name,
+          next_run: row.next_run_time || null,
+        }));
+      setFrameworkAudit(audit);
+      setJobsStatus({
+        system_status: scheduledJobs.length > 0 ? 'operational' : 'issues',
+        scheduled_jobs: scheduledJobs,
+        deprecated: false,
+        daily_reminders: {
+          last_run: byJob.daily_reminders?.last_finished_at || null,
+          pending_count: null,
+        },
+        monthly_digest: {
+          last_run: byJob.monthly_digest?.last_finished_at || null,
+          total_sent: null,
+        },
+      });
       setHealthSummary(healthRes?.data ?? null);
     } catch (error) {
       setJobsStatusError(error.response?.data?.detail || 'Failed to load job status. Check Automation Control Centre or server logs.');
       setJobsStatus(null);
+      setFrameworkAudit(null);
       setHealthSummary(null);
       toast.error('Failed to load jobs status');
     } finally {
@@ -1418,6 +1443,12 @@ const JobsMonitoring = () => {
             );
           })}
         </div>
+
+        {frameworkAudit?.reconciliation && (
+          <p className="mt-3 text-xs text-gray-500">
+            Observability truth source active. Registry-only: {(frameworkAudit.reconciliation.registry_only || []).length}, Scheduler-only: {(frameworkAudit.reconciliation.scheduler_only || []).length}.
+          </p>
+        )}
       </div>
 
       {/* Manual Job Triggers */}
@@ -1486,7 +1517,9 @@ const JobsMonitoring = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Pending Reminders</span>
-              <span className="font-medium text-amber-600">{jobsStatus?.daily_reminders?.pending_count || 0}</span>
+              <span className="font-medium text-amber-600">
+                {jobsStatus?.daily_reminders?.pending_count == null ? '—' : jobsStatus.daily_reminders.pending_count}
+              </span>
             </div>
           </div>
         </div>
@@ -1504,7 +1537,9 @@ const JobsMonitoring = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total Sent</span>
-              <span className="font-medium text-electric-teal">{jobsStatus?.monthly_digest?.total_sent || 0}</span>
+              <span className="font-medium text-electric-teal">
+                {jobsStatus?.monthly_digest?.total_sent == null ? '—' : jobsStatus.monthly_digest.total_sent}
+              </span>
             </div>
           </div>
         </div>
