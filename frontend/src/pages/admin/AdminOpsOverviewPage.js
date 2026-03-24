@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
-import { LayoutDashboard, FileText, Settings, Users, BarChart3, History, RefreshCw, Zap } from 'lucide-react';
+import { LayoutDashboard, Settings, Users, BarChart3, RefreshCw, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MODULE_LINKS = [
-  { id: 'compliance', label: 'Compliance', icon: FileText, href: '/admin/ops/compliance' },
   { id: 'maintenance', label: 'Maintenance', icon: Settings, href: '/admin/ops/maintenance' },
   { id: 'contractors', label: 'Contractors', icon: Users, href: '/admin/ops/contractors' },
   { id: 'risk', label: 'Risk & Insights', icon: BarChart3, href: '/admin/ops/risk' },
-  { id: 'audit', label: 'Audit & Logs', icon: History, href: '/admin/ops/audit' },
 ];
 
 export default function AdminOpsOverviewPage() {

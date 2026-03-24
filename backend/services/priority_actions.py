@@ -4,10 +4,40 @@ Combines compliance, operations, risk, approvals, and (for admin) incidents and 
 into ranked, actionable priorities for client and admin users.
 """
 from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from urllib.parse import quote as _url_quote
 from database import database
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _iso_or_none(val: Any) -> Optional[str]:
+    """Normalize datetime-like values to ISO-8601 string for API consumers."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        if val.tzinfo is None:
+            val = val.replace(tzinfo=timezone.utc)
+        return val.isoformat()
+    s = str(val).strip()
+    return s or None
+
+
+def _requirement_effective_due_iso(r: Dict[str, Any]) -> Optional[str]:
+    """Best-effort compliance due / expiry for prioritization and task display."""
+    for key in ("confirmed_expiry_date", "due_date", "extracted_expiry_date", "expires_at"):
+        v = r.get(key)
+        if v is None:
+            continue
+        iso = _iso_or_none(v)
+        if iso:
+            return iso
+    return None
+
+
+def _requirement_code_for_hash(r: Dict[str, Any]) -> str:
+    return (r.get("code") or r.get("requirement_code") or r.get("requirement_type") or "").strip()
 
 # --- Action types (for filtering and linking) ---
 ACTION_OVERDUE_COMPLIANCE = "overdue_compliance"
@@ -53,12 +83,18 @@ def _action(
     related_risk_signal_id: Optional[str] = None,
     related_invoice_id: Optional[str] = None,
     related_incident_id: Optional[str] = None,
+    related_requirement_id: Optional[str] = None,
+    requirement_code: Optional[str] = None,
+    due_at: Optional[str] = None,
+    source_updated_at: Optional[str] = None,
+    why_matters: Optional[str] = None,
+    recommended_action_detail: Optional[str] = None,
     recommended_url: str = "",
     recommended_action_label: str = "View",
     client_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Build a single priority action dict."""
-    return {
+    out: Dict[str, Any] = {
         "action_type": action_type,
         "title": title,
         "description": description,
@@ -74,6 +110,19 @@ def _action(
         "recommended_action_label": recommended_action_label,
         "client_id": client_id,
     }
+    if related_requirement_id:
+        out["related_requirement_id"] = related_requirement_id
+    if requirement_code:
+        out["requirement_code"] = requirement_code
+    if due_at:
+        out["due_at"] = due_at
+    if source_updated_at:
+        out["source_updated_at"] = source_updated_at
+    if why_matters:
+        out["why_matters"] = why_matters
+    if recommended_action_detail:
+        out["recommended_action_detail"] = recommended_action_detail
+    return out
 
 
 async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str], limit: int) -> List[Dict[str, Any]]:
@@ -90,6 +139,11 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
     for r in reqs:
         prop_id = r.get("property_id")
         code = r.get("code") or r.get("requirement_type") or "Requirement"
+        req_code = _requirement_code_for_hash(r) or code
+        rid = r.get("requirement_id")
+        due_iso = _requirement_effective_due_iso(r)
+        src_upd = _iso_or_none(r.get("updated_at"))
+        hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
         actions.append(_action(
             ACTION_OVERDUE_COMPLIANCE,
             f"Overdue: {code}",
@@ -97,7 +151,13 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
             SCORE_OVERDUE_COMPLIANCE,
             SEVERITY_HIGH,
             related_property_id=prop_id,
-            recommended_url=f"/properties/{prop_id}" if prop_id else "/compliance-score",
+            related_requirement_id=rid,
+            requirement_code=req_code or None,
+            due_at=due_iso,
+            source_updated_at=src_upd,
+            why_matters="Overdue statutory or contractual obligations can invalidate insurance and attract enforcement.",
+            recommended_action_detail="Upload valid evidence or renew the certificate, then confirm dates.",
+            recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/compliance-score"),
             recommended_action_label="Review compliance",
         ))
 
@@ -110,6 +170,11 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
     for r in exp_reqs:
         prop_id = r.get("property_id")
         code = r.get("code") or r.get("requirement_type") or "Certificate"
+        req_code = _requirement_code_for_hash(r) or code
+        rid = r.get("requirement_id")
+        due_iso = _requirement_effective_due_iso(r)
+        src_upd = _iso_or_none(r.get("updated_at"))
+        hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
         actions.append(_action(
             ACTION_CERT_EXPIRING_SOON,
             f"Expiring soon: {code}",
@@ -117,7 +182,13 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
             SCORE_CERT_EXPIRING_7D,
             SEVERITY_MEDIUM,
             related_property_id=prop_id,
-            recommended_url=f"/properties/{prop_id}" if prop_id else "/compliance-score",
+            related_requirement_id=rid,
+            requirement_code=req_code or None,
+            due_at=due_iso,
+            source_updated_at=src_upd,
+            why_matters="Expiry reduces your compliance score and increases enforcement and void-risk exposure.",
+            recommended_action_detail="Renew or schedule renewal and upload evidence with confirmed expiry dates.",
+            recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/compliance-score"),
             recommended_action_label="Review compliance",
         ))
 
@@ -132,6 +203,11 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
             continue
         prop_id = r.get("property_id")
         code = r.get("code") or r.get("requirement_type") or "Document"
+        req_code = _requirement_code_for_hash(r) or code
+        rid = r.get("requirement_id")
+        due_iso = _requirement_effective_due_iso(r)
+        src_upd = _iso_or_none(r.get("updated_at"))
+        hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
         actions.append(_action(
             ACTION_MISSING_DOCUMENT,
             f"Missing document: {code}",
@@ -139,7 +215,13 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
             SCORE_MISSING_DOCUMENT,
             SEVERITY_MEDIUM,
             related_property_id=prop_id,
-            recommended_url=f"/properties/{prop_id}" if prop_id else "/compliance-score",
+            related_requirement_id=rid,
+            requirement_code=req_code or None,
+            due_at=due_iso,
+            source_updated_at=src_upd,
+            why_matters="Without evidence, the platform cannot confirm compliance for this obligation.",
+            recommended_action_detail="Upload the certificate or statutory document and confirm extracted dates.",
+            recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/documents"),
             recommended_action_label="Upload document",
         ))
 
@@ -160,6 +242,8 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
             score = SCORE_HIGH_RISK_SIGNAL if level in ("high", "critical") else 55
             sig_id = s.get("signal_id") or s.get("risk_signal_id") or s.get("id")
             prop_id = s.get("property_id")
+            sig_upd = _iso_or_none(s.get("updated_at") or s.get("generated_at"))
+            rec_url = f"/operations/risk-signals?signal_id={sig_id}" if sig_id else "/operations/risk-signals"
             actions.append(_action(
                 ACTION_RISK_SIGNAL,
                 s.get("risk_type") or "Risk signal",
@@ -168,7 +252,10 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                 SEVERITY_HIGH if level in ("high", "critical") else SEVERITY_MEDIUM,
                 related_risk_signal_id=sig_id,
                 related_property_id=prop_id,
-                recommended_url="/operations/risk-signals",
+                source_updated_at=sig_upd,
+                why_matters="Early action on risk signals reduces costly failures and compliance drift.",
+                recommended_action_detail=s.get("recommended_action"),
+                recommended_url=rec_url,
                 recommended_action_label="Review risk signal",
             ))
     except Exception as e:
@@ -190,6 +277,8 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
             for wo in (wo_result.get("work_orders") or [])[:limit]:
                 wo_id = wo.get("work_order_id")
                 prop_id = wo.get("property_id")
+                wo_upd = _iso_or_none(wo.get("updated_at"))
+                wo_url = f"/operations/work-orders?work_order_id={wo_id}" if wo_id else "/operations/work-orders"
                 actions.append(_action(
                     ACTION_WORK_ORDER_BREACHED if sla_state == "breached" else ACTION_WORK_ORDER_NEAR_BREACH,
                     f"Work order {label.lower()}",
@@ -198,7 +287,10 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                     SEVERITY_HIGH if sla_state == "breached" else SEVERITY_MEDIUM,
                     related_work_order_id=wo_id,
                     related_property_id=prop_id,
-                    recommended_url="/operations/work-orders",
+                    source_updated_at=wo_upd,
+                    why_matters="SLA breaches indicate delayed response or completion and may affect tenant safety and contracts.",
+                    recommended_action_detail=f"Status: {wo.get('status') or 'open'}. Update the work order or reassign the contractor.",
+                    recommended_url=wo_url,
                     recommended_action_label="View work order",
                 ))
     except Exception as e:
@@ -210,6 +302,7 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
         appr_data = await list_approvals(client_id=client_id, status=STATUS_PENDING, limit=limit)
         for inv in (appr_data.get("approvals") or [])[:limit]:
             inv_id = inv.get("invoice_id") or inv.get("id")
+            appr_url = f"/operations/approvals?invoice_id={inv_id}" if inv_id else "/operations/approvals"
             actions.append(_action(
                 ACTION_PENDING_APPROVAL,
                 "Pending invoice approval",
@@ -218,8 +311,11 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                 SEVERITY_MEDIUM,
                 related_invoice_id=inv_id,
                 related_property_id=inv.get("property_id"),
-                recommended_url="/operations/approvals",
-                recommended_action_label="Approve invoice",
+                source_updated_at=_iso_or_none(inv.get("submitted_at") or inv.get("updated_at")),
+                why_matters="Unapproved invoices block accurate spend tracking and contractor payment.",
+                recommended_action_detail="Compare to benchmark, then approve, reject, or request more information.",
+                recommended_url=appr_url,
+                recommended_action_label="Review approval",
             ))
     except Exception as e:
         logger.debug("Priority actions: approvals fetch failed for client %s: %s", client_id, e)
@@ -243,15 +339,20 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                 limit=limit,
             )
             for iss in (issues_result.get("issues") or [])[:limit]:
+                iid = iss.get("issue_id")
+                issue_url = f"/operations/issues/{iid}" if iid else "/operations/issues"
                 actions.append(_action(
                     ACTION_OPEN_ISSUE,
                     "Open operational issue",
                     (iss.get("description") or "")[:200] or f"Issue {iss.get('issue_id', '')[:8]}…",
                     SCORE_OPEN_ISSUE,
                     SEVERITY_MEDIUM,
-                    related_issue_id=iss.get("issue_id"),
+                    related_issue_id=iid,
                     related_property_id=iss.get("property_id"),
-                    recommended_url="/operations/issues",
+                    source_updated_at=_iso_or_none(iss.get("updated_at")),
+                    why_matters="Unresolved issues can escalate into property damage, complaints, or statutory risk.",
+                    recommended_action_detail=f"Status: {iss.get('status') or 'open'}. Triage, assign, or create a work order.",
+                    recommended_url=issue_url,
                     recommended_action_label="View issue",
                 ))
     except Exception as e:
@@ -459,7 +560,7 @@ def _dedupe_and_rank(actions: List[Dict[str, Any]], limit: int) -> List[Dict[str
     for a in sorted(actions, key=lambda x: (-x["priority"], x.get("title") or "")):
         key = (a["action_type"], a.get("related_work_order_id"), a.get("related_risk_signal_id"),
                a.get("related_invoice_id"), a.get("related_issue_id"), a.get("related_incident_id"),
-               a.get("related_property_id"), a.get("client_id"))
+               a.get("related_property_id"), a.get("related_requirement_id"), a.get("client_id"))
         if key in seen:
             continue
         seen.add(key)

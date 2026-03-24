@@ -94,6 +94,44 @@ The platform sends **reminders** when compliance items are coming due or overdue
 If you are not receiving reminders, check your notification settings and email address.""",
         "tags": ["reminders", "alerts", "notifications", "compliance"],
     },
+    {
+        "slug": "command-centre-tasks-inbox",
+        "title": "Tasks (Command Centre): Snooze, Dismiss, and Done",
+        "category_id": "dashboard-guide",
+        "excerpt": "What the Tasks inbox does when you snooze, dismiss, or mark an item done—and what it does not change elsewhere in Pleerity.",
+        "content": """## What the Tasks inbox is for
+
+**Tasks** (also labelled **Command Centre** on the page) brings overdue compliance items, expiring requirements, risk signals, work orders, approvals, and open issues into one place so you can see what needs attention and open the right screen.
+
+## Snooze
+
+**Snooze** hides a task from your open lists for the number of days you choose (for example 1 day or 7 days). When the snooze period ends, the task can appear again if the underlying issue still exists.
+
+- Snooze only changes how the item appears in **your** inbox. It does not renew certificates, upload evidence, approve invoices, or close work orders.
+
+## Dismiss
+
+**Dismiss** hides a task from your open lists until you **Restore** it from the **Hidden (dismiss or done)** section.
+
+- Dismiss does **not** fix compliance, cancel an obligation, or complete operational work. Use the primary action (for example **Open** or **Review approval**) to take real action on the underlying record.
+
+## Done
+
+**Done** marks the item as handled **in your inbox** and moves it to the hidden list until you restore it.
+
+- **Done** does **not** mark a work order complete, approve an invoice, or resolve a maintenance issue in the Operations area. Use the linked work order, approval, or issue screens for those outcomes.
+
+## Restore
+
+Use **Restore** on items under **Snoozed** or **Hidden (dismiss or done)** to show them again in your open lists.
+
+## Recently completed
+
+Items under **Recently completed** may include real milestones (for example requirements satisfied or invoices paid) as well as inbox actions you took (dismiss or done). Check the labels to see which is which.
+
+If something still needs doing in the real world, always follow the **Open** / **Review** actions and complete the work in the relevant property or Operations screen.""",
+        "tags": ["tasks", "command centre", "inbox", "snooze", "dashboard", "getting organized"],
+    },
 ]
 
 

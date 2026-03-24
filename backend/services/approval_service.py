@@ -449,3 +449,65 @@ async def export_approvals_csv(
         writer.writeheader()
         writer.writerows(rows)
     return buf.getvalue()
+
+
+async def get_maintenance_invoice_spend_this_month(client_id: str) -> Dict[str, Any]:
+    """
+    Real spend metric for client dashboards: sum of submitted_amount for maintenance/contractor
+    invoices in **paid** status where **paid_at** falls in the current calendar month (UTC).
+
+    Only **paid** invoices are included (money recognised as paid through the approvals workspace).
+    Amounts are as recorded on the invoice (submitted_amount); currency defaults to GBP per invoice row.
+    """
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if start.month == 12:
+        next_month = start.replace(year=start.year + 1, month=1)
+    else:
+        next_month = start.replace(month=start.month + 1)
+
+    match = {
+        "client_id": client_id,
+        "status": STATUS_PAID,
+        "paid_at": {"$gte": start, "$lt": next_month},
+        "submitted_amount": {"$exists": True, "$ne": None},
+    }
+    cursor = db.invoices.aggregate(
+        [
+            {"$match": match},
+            {"$group": {"_id": "$currency", "total": {"$sum": "$submitted_amount"}, "count": {"$sum": 1}}},
+        ]
+    )
+    rows = await cursor.to_list(length=20)
+    if not rows:
+        count = await db.invoices.count_documents({"client_id": client_id})
+        # No paid rows this month: still report zero when client has invoice history (trustworthy £0).
+        return {
+            "total_amount": 0.0,
+            "currency": "GBP",
+            "invoice_count": 0,
+            "period_utc": {"start": start.isoformat(), "end_exclusive": next_month.isoformat()},
+            "calculation_summary": (
+                "Sum of submitted_amount for invoices with status paid and paid_at in the current UTC month."
+            ),
+            "has_any_invoices": count > 0,
+        }
+
+    # Prefer GBP bucket; if multiple currencies, return primary GBP and list others in metadata.
+    by_ccy = {r["_id"] or "GBP": r for r in rows}
+    gbp_row = by_ccy.get("GBP") or by_ccy.get("gbp") or rows[0]
+    currency = gbp_row["_id"] or "GBP"
+    total = float(gbp_row.get("total") or 0)
+    inv_count = int(gbp_row.get("count") or 0)
+    return {
+        "total_amount": total,
+        "currency": currency,
+        "invoice_count": inv_count,
+        "period_utc": {"start": start.isoformat(), "end_exclusive": next_month.isoformat()},
+        "calculation_summary": (
+            "Sum of submitted_amount for invoices with status paid and paid_at in the current UTC month."
+        ),
+        "has_any_invoices": True,
+        "other_currencies": [r for r in rows if (r["_id"] or "").upper() != "GBP" and r is not gbp_row],
+    }

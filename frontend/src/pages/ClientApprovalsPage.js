@@ -3,7 +3,7 @@
  * Summary KPIs, filters, queue table, exceptions panel, detail drawer, export. Gated by invoicing.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -105,6 +105,7 @@ function BenchmarkBadge({ fit }) {
 
 function ClientApprovalsPageInner() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -184,6 +185,19 @@ function ClientApprovalsPageInner() {
       })
       .finally(() => setDetailLoading(false));
   };
+
+  const invoiceIdFromUrl = searchParams.get('invoice_id');
+  const workOrderIdFromUrl = searchParams.get('work_order_id');
+  useEffect(() => {
+    if (invoiceIdFromUrl) openDrawer(invoiceIdFromUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceIdFromUrl]);
+
+  useEffect(() => {
+    if (workOrderIdFromUrl) {
+      setFilters((f) => (f.workOrderId === workOrderIdFromUrl ? f : { ...f, workOrderId: workOrderIdFromUrl }));
+    }
+  }, [workOrderIdFromUrl]);
 
   const handleAction = (action, notes, invoiceIdParam) => {
     const id = invoiceIdParam ?? selectedId;

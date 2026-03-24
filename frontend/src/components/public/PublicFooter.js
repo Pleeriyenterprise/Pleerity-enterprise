@@ -44,7 +44,8 @@ const PublicFooter = () => {
     { href: '/newsletter', label: 'Newsletter' },
     { href: '/faq', label: 'FAQ' },
     { href: '/pricing', label: 'Pricing' },
-    { href: '/login', label: 'Portal Login' },
+    { href: '/login', label: 'Portal login' },
+    { href: '/contractor/login', label: 'Contractor login' },
   ];
 
   return (

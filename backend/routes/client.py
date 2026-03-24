@@ -512,6 +512,107 @@ async def get_client_priority_actions(
         )
 
 
+@router.get("/tasks/digest")
+async def get_client_tasks_digest(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Filter by property"),
+    activity_limit: int = Query(8, ge=1, le=25),
+):
+    """Dashboard-sized snapshot: task counts, freshness, short activity feed (no full task lists)."""
+    user = await client_route_guard(request)
+    try:
+        from services.unified_tasks_service import get_unified_tasks_digest
+
+        return await get_unified_tasks_digest(
+            user["client_id"],
+            property_id_filter=property_id,
+            activity_limit=activity_limit,
+        )
+    except Exception as e:
+        logger.error("Tasks digest error for client %s: %s", user.get("client_id"), e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load tasks digest",
+        )
+
+
+@router.get("/tasks")
+async def get_client_unified_tasks(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Filter by property"),
+):
+    """
+    Unified Command Centre tasks: aggregated open work from compliance, maintenance, approvals,
+    and risk signals; sections, freshness, and optional spend summary. Server-side prioritization.
+    """
+    user = await client_route_guard(request)
+    try:
+        from services.unified_tasks_service import get_unified_tasks_for_client
+
+        return await get_unified_tasks_for_client(
+            client_id=user["client_id"],
+            property_id_filter=property_id,
+            raw_limit=120,
+        )
+    except Exception as e:
+        logger.error("Unified tasks error for client %s: %s", user.get("client_id"), e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load tasks",
+        )
+
+
+class ClientTaskOverrideBody(BaseModel):
+    """Phase 2: snooze | dismiss | done | restore on unified Command Centre tasks (inbox overlay only)."""
+
+    task_id: str
+    action: str
+    snooze_days: Optional[int] = None
+    title: Optional[str] = None
+    source_type: Optional[str] = None
+    property_id: Optional[str] = None
+
+
+@router.post("/tasks/override")
+async def post_client_task_override(request: Request, body: ClientTaskOverrideBody):
+    """Apply or clear a personal task override (snooze, dismiss, done, restore). Audited."""
+    user = await client_route_guard(request)
+    try:
+        from services.client_task_state_service import apply_task_action
+
+        return await apply_task_action(
+            user["client_id"],
+            body.task_id.strip(),
+            body.action.strip().lower(),
+            portal_user_id=user.get("portal_user_id"),
+            snooze_days=body.snooze_days,
+            title_snapshot=body.title,
+            source_type_snapshot=body.source_type,
+            property_id_snapshot=body.property_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("Task override error for client %s: %s", user.get("client_id"), e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update task",
+        )
+
+
+@router.get("/tasks/activity")
+async def get_client_task_activity(
+    request: Request,
+    limit: int = Query(30, ge=1, le=100),
+):
+    """Recent Command Centre inbox actions (snooze, dismiss, done, restore) for this client."""
+    user = await client_route_guard(request)
+    from services.client_task_state_service import list_recent_activity
+
+    items = await list_recent_activity(user["client_id"], limit=limit)
+    return {"items": items}
+
+
 @router.get("/onboarding/checklist")
 async def get_onboarding_checklist(request: Request):
     """Get server-driven onboarding checklist (items + completion)."""

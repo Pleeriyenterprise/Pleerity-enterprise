@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
-import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2, Wrench } from 'lucide-react';
+import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2, Wrench, ListTodo } from 'lucide-react';
 import api, { API_URL } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
@@ -36,6 +36,17 @@ function getPropertyDisplayLabel(p) {
   if (p.postcode && p.postcode.trim()) return p.postcode.trim();
   if (p.name && p.name.trim()) return p.name.trim();
   return p.property_id || '';
+}
+
+/** One-line label for dashboard tasks digest activity feed (matches inbox actions). */
+function formatTaskDigestActivityLine(row) {
+  if (!row) return '';
+  const act = String(row.action || '').toLowerCase();
+  const title = row.extra?.title;
+  const verbs = { snooze: 'Snoozed', dismiss: 'Dismissed', done: 'Marked done', restore: 'Restored' };
+  const v = verbs[act] || (act ? act : 'Activity');
+  const t = title && String(title).trim() ? ` — ${String(title).trim()}` : '';
+  return `${v}${t}`;
 }
 
 const ClientDashboard = () => {
@@ -75,6 +86,10 @@ const ClientDashboard = () => {
   const [riskSignalsData, setRiskSignalsData] = useState(null);
   // Priority actions (orchestration/copilot layer)
   const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
+  const [openIssuesCountKpi, setOpenIssuesCountKpi] = useState(null);
+  const [maintenanceSpendMonth, setMaintenanceSpendMonth] = useState(null);
+  /** undefined = not loaded yet; null = load failed (hide digest card); object = digest payload */
+  const [tasksDigest, setTasksDigest] = useState(undefined);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -116,12 +131,46 @@ const ClientDashboard = () => {
     }
   }, [isClientUser, hasFeature]);
 
+  useEffect(() => {
+    if (!isClientUser || !hasFeature('maintenance_workflows')) {
+      setOpenIssuesCountKpi(null);
+      return;
+    }
+    clientAPI
+      .getOpenIssuesCount()
+      .then((res) => setOpenIssuesCountKpi(res.data?.open_issues_count ?? 0))
+      .catch(() => setOpenIssuesCountKpi(null));
+  }, [isClientUser, hasFeature]);
+
+  useEffect(() => {
+    if (!isClientUser || !hasFeature('invoicing')) {
+      setMaintenanceSpendMonth(null);
+      return;
+    }
+    clientAPI
+      .getMaintenanceSpendThisMonth()
+      .then((res) => setMaintenanceSpendMonth(res.data))
+      .catch(() => setMaintenanceSpendMonth(null));
+  }, [isClientUser, hasFeature]);
+
   // Priority actions (orchestration layer) — always fetch when client user
   useEffect(() => {
     if (!isClientUser) return;
     clientAPI.getPriorityActions({ limit: 10 })
       .then((res) => setPriorityActions({ actions: res.data?.actions || [], total: res.data?.total ?? 0 }))
       .catch(() => setPriorityActions({ actions: [], total: 0 }));
+  }, [isClientUser]);
+
+  // Command Centre tasks digest (compact; no full task lists)
+  useEffect(() => {
+    if (!isClientUser) {
+      setTasksDigest(undefined);
+      return;
+    }
+    clientAPI
+      .getTasksDigest({ activity_limit: 8 })
+      .then((res) => setTasksDigest(res.data))
+      .catch(() => setTasksDigest(null));
   }, [isClientUser]);
 
   // Refetch score trend card when user switches Portfolio vs Property or selects another property
@@ -141,6 +190,10 @@ const ClientDashboard = () => {
         fetchScoreChanges();
         fetchComplianceScore();
         clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
+        clientAPI
+          .getTasksDigest({ activity_limit: 8 })
+          .then((res) => setTasksDigest(res.data))
+          .catch(() => setTasksDigest(null));
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -427,10 +480,21 @@ const ClientDashboard = () => {
     return { level, drivers, overdue, missingPct, confirmedPct };
   }, [complianceScore?.stats, portfolioSummary?.kpis, actionableMissingCount]);
 
-  // Operations: open issues count, work order funnel, risk signals count
-  const openIssuesCount = useMemo(() => {
-    return workOrdersList.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status)).length;
-  }, [workOrdersList]);
+  // Operations: open issues (real issues, not work orders), work order funnel, risk signals count
+  const openIssuesCount = openIssuesCountKpi;
+  const slaBreachedCount = useMemo(
+    () => workOrdersList.filter((wo) => wo.sla_breached_at != null && String(wo.sla_breached_at).trim() !== '').length,
+    [workOrdersList]
+  );
+  const slaNearBreachCount = useMemo(
+    () =>
+      workOrdersList.filter(
+        (wo) =>
+          (wo.sla_breach_risk_at != null && String(wo.sla_breach_risk_at).trim() !== '') &&
+          !(wo.sla_breached_at != null && String(wo.sla_breached_at).trim() !== '')
+      ).length,
+    [workOrdersList]
+  );
   const workOrderFunnel = useMemo(() => {
     const open = workOrdersList.filter((wo) => wo.status === 'OPEN').length;
     const assigned = workOrdersList.filter((wo) => wo.status === 'ASSIGNED').length;
@@ -726,6 +790,19 @@ const ClientDashboard = () => {
         {/* Executive KPI row (compliance + operations) */}
         {!setupView && (
           <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" data-testid="executive-kpi-row">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/tasks')}>
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Tasks inbox</p>
+                <p className="text-xl font-bold text-midnight-blue">
+                  {tasksDigest && typeof tasksDigest === 'object'
+                    ? (Number(tasksDigest.summary?.urgent_count ?? 0)
+                      + Number(tasksDigest.summary?.upcoming_count ?? 0)
+                      + Number(tasksDigest.summary?.in_progress_count ?? 0))
+                    : 'Open'}
+                </p>
+                <p className="text-xs text-electric-teal mt-1">Command Centre →</p>
+              </CardContent>
+            </Card>
             <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/compliance-score')}>
               <CardContent className="p-4">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Portfolio compliance</p>
@@ -736,15 +813,20 @@ const ClientDashboard = () => {
               <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/issues')}>
                 <CardContent className="p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
-                  <p className="text-xl font-bold text-midnight-blue">{openIssuesCount}</p>
+                  <p className="text-xl font-bold text-midnight-blue">{openIssuesCount == null ? '—' : openIssuesCount}</p>
                 </CardContent>
               </Card>
             )}
             {hasFeature('maintenance_workflows') && (
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/work-orders')}>
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                title="Work orders with SLA breached timestamp set (current list, up to 500 loaded)."
+                onClick={() => navigate('/operations/work-orders?sla_state=breached')}
+              >
                 <CardContent className="p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">SLA breaches</p>
-                  <p className="text-xl font-bold text-midnight-blue">—</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Work orders · SLA breached</p>
+                  <p className="text-xl font-bold text-midnight-blue">{slaBreachedCount}</p>
+                  <p className="text-xs text-gray-500 mt-1">Near breach: {slaNearBreachCount}</p>
                 </CardContent>
               </Card>
             )}
@@ -756,21 +838,94 @@ const ClientDashboard = () => {
                 </CardContent>
               </Card>
             )}
-            {hasFeature('contractor_network') && (
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/contractors')}>
+            {hasFeature('invoicing') && maintenanceSpendMonth && maintenanceSpendMonth.has_any_invoices && (
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                title={maintenanceSpendMonth.calculation_summary || 'Paid contractor invoices this UTC month.'}
+                onClick={() => navigate('/operations/approvals')}
+              >
                 <CardContent className="p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Contractor perf.</p>
-                  <p className="text-xl font-bold text-midnight-blue">—</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Maintenance spend (month)</p>
+                  <p className="text-xl font-bold text-midnight-blue">
+                    {new Intl.NumberFormat('en-GB', { style: 'currency', currency: maintenanceSpendMonth.currency || 'GBP' }).format(Number(maintenanceSpendMonth.total_amount ?? 0))}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Paid invoices · UTC month</p>
                 </CardContent>
               </Card>
             )}
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/settings/billing')}>
-              <CardContent className="p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">This month&apos;s spend</p>
-                <p className="text-xl font-bold text-midnight-blue">—</p>
-              </CardContent>
-            </Card>
           </div>
+        )}
+
+        {!setupView && tasksDigest && typeof tasksDigest === 'object' && (
+          <Card
+            className="mb-6 border border-gray-200 shadow-sm"
+            data-testid="tasks-digest-card"
+          >
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ListTodo className="w-4 h-4 text-teal-600" />
+                  Tasks — this week
+                </CardTitle>
+                {tasksDigest.freshness?.tasks_refreshed_at && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Snapshot refreshed {new Date(tasksDigest.freshness.tasks_refreshed_at).toLocaleString()}
+                  </p>
+                )}
+              </div>
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/tasks')}>
+                Open Command Centre
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
+                <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Urgent</p>
+                  <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.urgent_count ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Upcoming</p>
+                  <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.upcoming_count ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">In progress</p>
+                  <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.in_progress_count ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Snoozed</p>
+                  <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.snoozed_count ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Hidden</p>
+                  <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.hidden_count ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Acknowledged (7d)</p>
+                  <p className="text-lg font-semibold text-midnight-blue">
+                    {tasksDigest.summary?.habit?.tasks_acknowledged_last_7_days ?? 0}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Due / expiring in 7d: {tasksDigest.summary?.habit?.items_due_or_expiring_in_7_days ?? 0}
+                  </p>
+                </div>
+              </div>
+              {(tasksDigest.activity_feed?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent inbox activity</p>
+                  <ul className="space-y-1.5 text-sm text-gray-700">
+                    {tasksDigest.activity_feed.map((row) => (
+                      <li key={row.event_id || `${row.task_id}-${row.created_at}`} className="flex gap-2">
+                        <span className="text-gray-400 shrink-0 tabular-nums">
+                          {row.created_at ? new Date(row.created_at).toLocaleString() : ''}
+                        </span>
+                        <span className="min-w-0">{formatTaskDigestActivityLine(row)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Score Trend (90 days) + What Changed */}
@@ -1285,7 +1440,7 @@ const ClientDashboard = () => {
         )}
 
         {/* Action Required: operations items (deep links to Issues, Risk Signals) */}
-        {!setupView && (openIssuesCount > 0 || riskSignalsCount > 0) && (
+        {!setupView && ((openIssuesCount ?? 0) > 0 || riskSignalsCount > 0) && (
           <Card className="mb-8 border-amber-200 bg-amber-50/50" data-testid="action-required-operations">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2 text-amber-900">
@@ -1296,7 +1451,7 @@ const ClientDashboard = () => {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {openIssuesCount > 0 && hasFeature('maintenance_workflows') && (
+                {(openIssuesCount ?? 0) > 0 && hasFeature('maintenance_workflows') && (
                   <li className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
                     <span className="text-sm text-gray-800">{openIssuesCount} open issue{openIssuesCount !== 1 ? 's' : ''}</span>
                     <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => navigate('/operations/issues')}>

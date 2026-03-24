@@ -186,6 +186,30 @@ async def list_my_issues(
     return result
 
 
+@router.get("/maintenance/issues/open-count")
+async def get_open_issues_count(request: Request):
+    """Count non-terminal maintenance issues for dashboard KPIs. Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    n = await maintenance_issues_service.count_open_issues(user["client_id"])
+    return {"open_issues_count": n}
+
+
+@router.get("/maintenance/issues/{issue_id}/timeline")
+async def get_issue_timeline(
+    request: Request,
+    issue_id: str,
+    limit: int = Query(120, ge=10, le=200),
+):
+    """Read-only merged timeline for one issue (audit, work orders, asset events). Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    from services.maintenance_issue_timeline_service import get_issue_timeline as build_timeline
+
+    data = await build_timeline(user["client_id"], issue_id, limit=limit)
+    if not data:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    return data
+
+
 @router.get("/maintenance/issues/{issue_id}")
 async def get_issue(request: Request, issue_id: str):
     """Get a single maintenance issue with triage result. Requires MAINTENANCE_WORKFLOWS."""

@@ -101,8 +101,29 @@ apiClient.interceptors.response.use(
       error.upgradeDetail = typeof detail === 'object' ? detail : { message, feature: data.feature ?? data.feature_key, upgrade_required: true };
     }
     // On 401: only redirect if this was NOT a login request (wrong credentials on login page should show error, not redirect)
-    const isLoginRequest = (error.config?.url || '').includes('/auth/login') || (error.config?.url || '').includes('/auth/admin/login');
+    const requestUrl = error.config?.url || '';
+    const isLoginRequest =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/admin/login') ||
+      requestUrl.includes('/auth/contractor-login');
     if (status === 401 && !isLoginRequest) {
+      const norm = requestUrl.replace(/^\//, '');
+      // Contractor portal JWT is separate; do not clear client auth_token for contractor API failures.
+      if (norm.startsWith('contractor/')) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('contractor_token');
+          localStorage.removeItem('contractor_user');
+          const path = window.location.pathname || '';
+          if (path.startsWith('/contractor') && !path.includes('/login') && !path.includes('set-password')) {
+            window.location.href = '/contractor/login?session_expired=1';
+          }
+        }
+        return Promise.reject(error);
+      }
+      // Secure job link (no main session): never wipe client portal session on token expiry.
+      if (norm.startsWith('job/')) {
+        return Promise.reject(error);
+      }
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
       const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
@@ -156,6 +177,17 @@ export const clientAPI = {
   getDashboard: () => apiClient.get('/client/dashboard'),
   /** Ranked priority actions (orchestration/copilot layer). */
   getPriorityActions: (params = {}) => apiClient.get('/client/priority-actions', { params }),
+  /** Unified Command Centre tasks (sections, freshness, spend snapshot). */
+  getTasks: (params = {}) => apiClient.get('/client/tasks', { params }),
+  /** Dashboard digest: summary, freshness, short activity (no full task lists). */
+  getTasksDigest: (params = {}) => apiClient.get('/client/tasks/digest', { params }),
+  /** Phase 2: snooze | dismiss | done | restore (inbox overlay). */
+  postTaskOverride: (body) => apiClient.post('/client/tasks/override', body),
+  getTasksActivity: (params = {}) => apiClient.get('/client/tasks/activity', { params }),
+  /** Open maintenance issues count (non-terminal statuses). Requires MAINTENANCE_WORKFLOWS. */
+  getOpenIssuesCount: () => apiClient.get('/client/maintenance/issues/open-count'),
+  /** Paid invoice total this UTC month (maintenance/contractor). Requires INVOICING. */
+  getMaintenanceSpendThisMonth: () => apiClient.get('/client/finance/maintenance-spend-this-month'),
   getEntitlements: () => apiClient.get('/client/entitlements'),
   getProperties: () => apiClient.get('/client/properties'),
   getPropertyRequirements: (propertyId) => apiClient.get(`/client/properties/${propertyId}/requirements`),
@@ -214,6 +246,9 @@ export const clientAPI = {
   /** Maintenance issues (create issue → triage → create work order). */
   getMaintenanceIssues: (params = {}) => apiClient.get('/client/maintenance/issues', { params }),
   getMaintenanceIssue: (issueId) => apiClient.get(`/client/maintenance/issues/${issueId}`),
+  /** Read-only issue timeline (newest first). */
+  getMaintenanceIssueTimeline: (issueId, params = {}) =>
+    apiClient.get(`/client/maintenance/issues/${issueId}/timeline`, { params }),
   createMaintenanceIssue: (body) => apiClient.post('/client/maintenance/issues', body),
   createWorkOrderFromIssue: (issueId) => apiClient.post(`/client/maintenance/issues/${issueId}/create-work-order`),
   /** Predictive maintenance insights (requires PREDICTIVE_MAINTENANCE). */
@@ -263,6 +298,8 @@ export const adminAPI = {
   getClients: (skip = 0, limit = 50) => apiClient.get('/admin/clients', { params: { skip, limit } }),
   getClientDetail: (clientId) => apiClient.get(`/admin/clients/${clientId}`),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
+  getClientCommandCentreTaskActivity: (clientId, params = {}) =>
+    apiClient.get(`/admin/clients/${clientId}/command-centre-task-activity`, { params }),
   resendActivationEmail: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/resend-activation-email`),
   resendDashboardEmail: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/resend-dashboard-email`),
   recalculateCompliance: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/recalculate-compliance`),

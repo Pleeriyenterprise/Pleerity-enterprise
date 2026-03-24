@@ -135,6 +135,7 @@ import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrderProvideInfoPublicPage from './pages/OrderProvideInfoPublicPage';
 import OrderCheckoutPage from './pages/OrderCheckoutPage';
 import ClientAuditLogPage from './pages/ClientAuditLogPage';
+import ClientTasksPage from './pages/ClientTasksPage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
@@ -303,6 +304,7 @@ function App() {
                   /dashboard, /properties, /requirements, etc. + /app/* redirects
                   ======================================== */}
             <Route path="/dashboard" element={<ClientPortal><ClientDashboard /></ClientPortal>} />
+            <Route path="/tasks" element={<ClientPortal><ClientTasksPage /></ClientPortal>} />
             <Route path="/properties" element={<ClientPortal><PropertiesPage /></ClientPortal>} />
             <Route path="/properties/:propertyId" element={<ClientPortal><PropertyDetailPage /></ClientPortal>} />
             <Route path="/properties/create" element={<ClientPortal><PropertyCreatePage /></ClientPortal>} />
@@ -347,6 +349,7 @@ function App() {
 
             {/* Redirect legacy /app/* to new paths */}
             <Route path="/app/dashboard" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/app/tasks" element={<Navigate to="/tasks" replace />} />
             <Route path="/app/assistant" element={<Navigate to="/assistant" replace />} />
             <Route path="/app/settings" element={<Navigate to="/settings" replace />} />
             <Route path="/app/profile" element={<Navigate to="/settings/profile" replace />} />

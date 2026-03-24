@@ -163,8 +163,9 @@ const LandingPage = () => {
             <div>
               <h5 className="text-lg font-semibold mb-4">Quick Links</h5>
               <ul className="space-y-2 text-gray-300">
-                <li><button onClick={() => navigate('/login')} className="hover:text-electric-teal transition-smooth">Client Sign In</button></li>
-                <li><button onClick={() => navigate('/admin/signin')} className="hover:text-electric-teal transition-smooth">Admin Sign In</button></li>
+                <li><button onClick={() => navigate('/login')} className="hover:text-electric-teal transition-smooth">Portal sign in</button></li>
+                <li><button onClick={() => navigate('/contractor/login')} className="hover:text-electric-teal transition-smooth">Contractor sign in</button></li>
+                <li><button onClick={() => navigate('/admin/signin')} className="hover:text-electric-teal transition-smooth">Admin sign in</button></li>
                 <li><button onClick={() => navigate('/intake/start')} className="hover:text-electric-teal transition-smooth">Get Started</button></li>
               </ul>
             </div>

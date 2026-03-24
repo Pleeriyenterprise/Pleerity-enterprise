@@ -210,6 +210,15 @@ async def lifespan(app: FastAPI):
             logger.info("Consent indexes created")
         except Exception as e:
             logger.error(f"Failed to create consent indexes: {e}")
+
+        # Command Centre / unified tasks (overrides + activity log)
+        try:
+            from services.client_task_state_service import ensure_client_task_indexes
+
+            await ensure_client_task_indexes()
+            logger.info("Client task (Command Centre) indexes created")
+        except Exception as e:
+            logger.error("Failed to create client task indexes: %s", e)
         
         # Create CMS indexes
         try:

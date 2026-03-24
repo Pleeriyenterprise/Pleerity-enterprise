@@ -4,7 +4,7 @@
  * Gated by predictive_maintenance.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -80,6 +80,7 @@ function riskLevelBadgeClass(level) {
 
 function ClientRiskSignalsPageInner() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -142,6 +143,11 @@ function ClientRiskSignalsPageInner() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const sid = searchParams.get('signal_id');
+    if (sid) setDrawerSignalId(sid);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!drawerSignalId) {

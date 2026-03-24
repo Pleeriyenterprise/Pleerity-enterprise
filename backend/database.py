@@ -211,6 +211,7 @@ class Database:
             # Asset events (per-asset history: issue_created, repair_completed, document_linked, etc.)
             await self.db.asset_events.create_index([("asset_id", 1), ("timestamp", -1)])
             await self.db.asset_events.create_index([("property_id", 1), ("timestamp", -1)])
+            await self.db.asset_events.create_index([("client_id", 1), ("related_issue_id", 1)], sparse=True)
             await self.db.asset_events.create_index("event_id", unique=True)
             # Predictive insights cache (scheduled job writes; API can read when fresh)
             await self.db.predictive_insights_cache.create_index("client_id", unique=True)

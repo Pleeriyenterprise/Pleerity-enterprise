@@ -2005,6 +2005,24 @@ async def get_client_audit_timeline(request: Request, client_id: str, limit: int
         )
 
 
+@router.get("/clients/{client_id}/command-centre-task-activity")
+async def get_client_command_centre_task_activity(
+    request: Request,
+    client_id: str,
+    limit: int = Query(50, ge=1, le=100),
+):
+    """Read-only Command Centre inbox activity (snooze, dismiss, done, restore) for support visibility."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "client_id": 1})
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+    from services.client_task_state_service import list_recent_activity
+
+    items = await list_recent_activity(client_id, limit=limit)
+    return {"items": items, "client_id": client_id}
+
+
 # ============================================================================
 # KPI DRILL-DOWN ENDPOINTS
 # ============================================================================

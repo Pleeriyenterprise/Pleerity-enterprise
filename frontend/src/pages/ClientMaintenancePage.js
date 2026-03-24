@@ -123,6 +123,9 @@ function ClientMaintenancePageInner() {
   const [contractorExplainLoading, setContractorExplainLoading] = useState(false);
   const [insights, setInsights] = useState(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  /** Invoices linked to the open work order drawer (contractor-submitted or client-recorded). */
+  const [woLinkedInvoices, setWoLinkedInvoices] = useState(null);
+  const [woInvoicesLoading, setWoInvoicesLoading] = useState(false);
 
   const loadWorkOrders = useCallback(() => {
     setLoading(true);
@@ -175,6 +178,16 @@ function ClientMaintenancePageInner() {
 
   useEffect(() => { loadWorkOrders(); }, [loadWorkOrders]);
   useEffect(() => { loadProperties(); loadContractors(); }, [loadProperties, loadContractors]);
+
+  useEffect(() => {
+    const woid = searchParams.get('work_order_id');
+    if (woid) setWoDetailDrawer(woid);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const sla = searchParams.get('sla_state');
+    if (sla) setFilterSlaState(sla);
+  }, [searchParams]);
   useEffect(() => { setInsightsLoading(true); loadInsights(); }, [loadInsights]);
 
   useEffect(() => {
@@ -192,7 +205,14 @@ function ClientMaintenancePageInner() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!woDetailDrawer) { setWoDetailData(null); setWoRecommendList(null); setContractorExplainId(null); setContractorExplainData(null); return; }
+    if (!woDetailDrawer) {
+      setWoDetailData(null);
+      setWoRecommendList(null);
+      setContractorExplainId(null);
+      setContractorExplainData(null);
+      setWoLinkedInvoices(null);
+      return;
+    }
     setWoDetailLoading(true);
     setWoRecommendList(null);
     clientAPI.getMaintenanceWorkOrder(woDetailDrawer)
@@ -209,6 +229,20 @@ function ClientMaintenancePageInner() {
       .catch(() => setWoDetailData(null))
       .finally(() => setWoDetailLoading(false));
   }, [woDetailDrawer, hasFeature]);
+
+  useEffect(() => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid || !hasFeature('invoicing')) {
+      setWoLinkedInvoices(null);
+      return;
+    }
+    setWoInvoicesLoading(true);
+    clientAPI
+      .getApprovals({ workOrderId: wid, limit: 50 })
+      .then((res) => setWoLinkedInvoices(res.data?.approvals || []))
+      .catch(() => setWoLinkedInvoices([]))
+      .finally(() => setWoInvoicesLoading(false));
+  }, [woDetailData?.work_order_id, hasFeature]);
 
   const propertyLabel = useCallback((id) => {
     const p = properties.find((x) => x.property_id === id);
@@ -691,6 +725,49 @@ function ClientMaintenancePageInner() {
                   {woDetailData.resolution_outcome && <p className="text-sm text-gray-600 mb-2">Outcome: {woDetailData.resolution_outcome}</p>}
                   {(woDetailData.cost_estimate_min != null || woDetailData.cost_estimate_max != null) && (
                     <p className="text-sm text-gray-600 mb-4">Cost estimate: £{woDetailData.cost_estimate_min ?? '—'} – £{woDetailData.cost_estimate_max ?? '—'}</p>
+                  )}
+                  {hasFeature('invoicing') && woDetailData.contractor_id && (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-3 mb-4 text-sm">
+                      <p className="font-medium text-gray-800 mb-1">Invoices (Approvals)</p>
+                      {woInvoicesLoading ? (
+                        <p className="text-gray-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
+                      ) : !woLinkedInvoices?.length ? (
+                        <p className="text-gray-600">
+                          No invoices linked yet. Your contractor can submit one from the job link email when the job is complete, or use Record invoice below.
+                        </p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {woLinkedInvoices.map((inv) => (
+                            <li key={inv.invoice_id} className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-gray-700">
+                                {(inv.reference || inv.invoice_id || '').slice(0, 24)}
+                                {inv.submitted_amount != null && (
+                                  <span className="text-gray-500 ml-1">· £{Number(inv.submitted_amount).toFixed(2)}</span>
+                                )}
+                                <span className="ml-1 capitalize text-xs text-gray-500">({inv.status || '—'})</span>
+                              </span>
+                              <button
+                                type="button"
+                                className="text-electric-teal hover:underline text-xs"
+                                onClick={() => {
+                                  navigate(`/operations/approvals?invoice_id=${encodeURIComponent(inv.invoice_id)}`);
+                                  setWoDetailDrawer(null);
+                                }}
+                              >
+                                Open in Approvals
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <button
+                        type="button"
+                        className="text-xs text-electric-teal hover:underline mt-2"
+                        onClick={() => navigate(`/operations/approvals?work_order_id=${encodeURIComponent(woDetailData.work_order_id)}`)}
+                      >
+                        View all invoices for this work order
+                      </button>
+                    </div>
                   )}
                   <div className="rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-900 mb-4">
                     <p className="font-medium mb-1">Payment responsibility</p>

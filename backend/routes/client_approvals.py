@@ -69,6 +69,17 @@ async def create_invoice(request: Request, body: CreateInvoiceBody):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.get("/finance/maintenance-spend-this-month")
+async def get_maintenance_spend_this_month(request: Request):
+    """
+    Paid maintenance invoice total for the current UTC month (see approval_service for definition).
+    Requires INVOICING.
+    """
+    user = await _require_invoicing_enabled(request)
+    data = await approval_service.get_maintenance_invoice_spend_this_month(user["client_id"])
+    return data
+
+
 @router.get("/approvals")
 async def list_approvals(
     request: Request,

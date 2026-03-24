@@ -92,11 +92,9 @@ const navSections = [
     ownerOrAdminOnly: true,
     items: [
       { href: '/admin/ops', label: 'Overview', icon: LayoutDashboard },
-      { href: '/admin/ops/compliance', label: 'Compliance', icon: FileText },
       { href: '/admin/ops/maintenance', label: 'Maintenance', icon: Settings },
       { href: '/admin/ops/contractors', label: 'Contractors', icon: Users },
       { href: '/admin/ops/risk', label: 'Risk & Insights', icon: BarChart3 },
-      { href: '/admin/ops/audit', label: 'Audit & Logs', icon: History },
       { href: '/admin/ops/feature-controls', label: 'Feature Controls', icon: Zap },
     ],
   },

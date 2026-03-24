@@ -35,6 +35,8 @@ const AdminClientControlPanelPage = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [taskActivity, setTaskActivity] = useState(null);
+  const [taskActivityLoading, setTaskActivityLoading] = useState(false);
 
   const loadPanel = useCallback(async () => {
     if (!clientId) return;
@@ -286,6 +288,25 @@ const AdminClientControlPanelPage = () => {
               <Row label="Contractors" value={ops.contractors} />
               <div className="pt-2 text-xs text-gray-500">
                 <Link className="text-electric-teal hover:underline" to="/admin/ops">Open Operations Dashboard</Link>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Command Centre task activity (read-only)">
+              <p className="text-xs text-gray-500 mb-2">Client portal Tasks inbox actions (snooze, dismiss, done, restore). For support visibility only.</p>
+              <div className="max-h-60 overflow-y-auto">
+                {taskActivityLoading ? (
+                  <div className="text-sm text-gray-500">Loading…</div>
+                ) : !taskActivity?.length ? (
+                  <div className="text-sm text-gray-500">No recorded inbox activity.</div>
+                ) : (
+                  taskActivity.map((row) => (
+                    <div key={row.event_id || `${row.task_id}-${row.created_at}`} className="py-2 border-b border-gray-100 last:border-0 text-sm">
+                      <div className="text-xs text-gray-500">{fmtDate(row.created_at)}</div>
+                      <div className="text-gray-900">{formatTaskActivityLine(row)}</div>
+                      {row.task_id && <div className="text-xs text-gray-400 font-mono mt-0.5 truncate" title={row.task_id}>{row.task_id}</div>}
+                    </div>
+                  ))
+                )}
               </div>
             </SectionCard>
 

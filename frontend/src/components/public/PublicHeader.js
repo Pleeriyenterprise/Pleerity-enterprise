@@ -201,13 +201,23 @@ const PublicHeader = () => {
             <Button asChild variant="default" className="bg-electric-teal hover:bg-electric-teal/90">
               <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
-            <Link 
-              to="/login" 
-              className="text-gray-700 hover:text-electric-teal font-medium text-sm transition-colors"
-              data-testid="header-portal-login"
-            >
-              Portal Login
-            </Link>
+            <div className="flex items-center gap-2 text-sm">
+              <Link
+                to="/login"
+                className="text-gray-700 hover:text-electric-teal font-medium transition-colors"
+                data-testid="header-portal-login"
+              >
+                Portal login
+              </Link>
+              <span className="text-gray-300" aria-hidden>|</span>
+              <Link
+                to="/contractor/login"
+                className="text-gray-600 hover:text-electric-teal font-medium transition-colors"
+                data-testid="header-contractor-login"
+              >
+                Contractor
+              </Link>
+            </div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -297,7 +307,10 @@ const PublicHeader = () => {
                 <Link to="/risk-check" onClick={() => setMobileMenuOpen(false)}>Check Your Compliance Risk</Link>
               </Button>
               <Button variant="outline" className="w-full" asChild>
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Portal Login</Link>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Portal login</Link>
+              </Button>
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/contractor/login" onClick={() => setMobileMenuOpen(false)}>Contractor login</Link>
               </Button>
             </div>
           </div>

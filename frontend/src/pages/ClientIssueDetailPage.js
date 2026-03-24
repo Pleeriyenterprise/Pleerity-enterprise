@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { AlertCircle, Loader2, Wrench, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Loader2, Wrench, ArrowLeft, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 
@@ -18,11 +18,15 @@ function ClientIssueDetailPageInner() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
+  const [timeline, setTimeline] = useState(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   useEffect(() => {
     if (!issueId) return;
     setLoading(true);
     setError(null);
+    setIssue(null);
+    setTimeline(null);
     clientAPI
       .getMaintenanceIssue(issueId)
       .then((res) => setIssue(res.data))
@@ -32,6 +36,16 @@ function ClientIssueDetailPageInner() {
       })
       .finally(() => setLoading(false));
   }, [issueId]);
+
+  useEffect(() => {
+    if (!issueId || !issue || issue.issue_id !== issueId) return;
+    setTimelineLoading(true);
+    clientAPI
+      .getMaintenanceIssueTimeline(issueId, { limit: 120 })
+      .then((res) => setTimeline(res.data?.items || []))
+      .catch(() => setTimeline([]))
+      .finally(() => setTimelineLoading(false));
+  }, [issueId, issue]);
 
   const handleCreateWorkOrder = () => {
     if (!issueId) return;
@@ -51,6 +65,15 @@ function ClientIssueDetailPageInner() {
   const formatDate = (s) => {
     if (!s) return '—';
     try { return new Date(s).toLocaleDateString(undefined, { dateStyle: 'short' }); } catch { return s; }
+  };
+
+  const formatDateTime = (s) => {
+    if (!s) return '—';
+    try {
+      return new Date(s).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    } catch {
+      return s;
+    }
   };
 
   if (loading) {
@@ -99,6 +122,46 @@ function ClientIssueDetailPageInner() {
         <CardContent>
           <p className="text-gray-700">{issue.description || '—'}</p>
           {issue.category && <p className="text-sm text-gray-500 mt-2">Category: {issue.category}</p>}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="w-4 h-4 text-teal-600" />
+            Timeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {timelineLoading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading activity…
+            </div>
+          ) : !timeline?.length ? (
+            <p className="text-sm text-gray-500">No timeline events yet.</p>
+          ) : (
+            <ul className="space-y-4 border-l-2 border-gray-200 ml-2 pl-4">
+              {timeline.map((row) => (
+                <li key={row.id} className="relative">
+                  <span className="absolute -left-[calc(0.5rem+5px)] top-1.5 w-2 h-2 rounded-full bg-teal-500 ring-4 ring-white" aria-hidden />
+                  <p className="text-xs text-gray-500">{formatDateTime(row.timestamp)}</p>
+                  <p className="font-medium text-gray-900">{row.title}</p>
+                  <p className="text-sm text-gray-600 mt-0.5">{row.description}</p>
+                  {row.metadata?.work_order_id && (
+                    <button
+                      type="button"
+                      className="text-xs text-electric-teal hover:underline mt-1"
+                      onClick={() => navigate(`/operations/work-orders?work_order_id=${encodeURIComponent(row.metadata.work_order_id)}`)}
+                    >
+                      View work order
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-gray-400 mt-4">Read-only history from this issue, linked work orders, and audits.</p>
         </CardContent>
       </Card>
 

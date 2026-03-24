@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -25,6 +25,8 @@ export function getContractorToken() {
 
 export default function ContractorLoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('session_expired') === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,6 +59,15 @@ export default function ContractorLoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {sessionExpired && (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription>
+                  <span className="font-medium text-amber-900">Session expired.</span>
+                  <span className="block mt-1 text-amber-800">Please sign in again.</span>
+                </AlertDescription>
+              </Alert>
+            )}
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -88,6 +99,13 @@ export default function ContractorLoginPage() {
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
+          <p className="text-center text-sm text-gray-500 mt-4">
+            <button type="button" className="text-electric-teal hover:underline" onClick={() => navigate('/login')}>
+              Client or staff?
+            </button>
+            <span className="text-gray-400"> · </span>
+            <span className="text-gray-500">Use the secure link in your assignment email for a single job (no password).</span>
+          </p>
         </CardContent>
       </Card>
     </div>

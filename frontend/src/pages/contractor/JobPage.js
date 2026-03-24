@@ -252,7 +252,7 @@ export default function JobPage() {
               </Button>
             </div>
 
-            {detail.status === 'COMPLETED' && (
+            {['COMPLETED', 'VERIFIED', 'CLOSED'].includes((detail.status || '').toUpperCase()) && (
               <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => setInvoiceModal(true)}>
                 <FileText className="w-4 h-4 mr-1" /> Submit invoice
               </Button>

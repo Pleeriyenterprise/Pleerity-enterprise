@@ -1,0 +1,395 @@
+"""
+Client Command Centre — persistent per-user task overrides (snooze, dismiss, mark done) and
+append-only activity for history / habit metrics. Does not mutate underlying compliance or
+operations entities; overlays only affect inbox presentation until restore or snooze expiry.
+"""
+from __future__ import annotations
+
+import re
+import uuid
+import logging
+from datetime import datetime, timezone, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+
+from database import database
+from models import AuditAction
+from utils.audit import create_audit_log
+
+logger = logging.getLogger(__name__)
+
+COLLECTION_OVERRIDES = "client_task_overrides"
+COLLECTION_ACTIVITY = "client_task_activity_log"
+
+OVERRIDE_SNOOZE = "snooze"
+OVERRIDE_DISMISS = "dismiss"
+OVERRIDE_DONE = "done"
+
+ACTION_SNOOZE = "snooze"
+ACTION_DISMISS = "dismiss"
+ACTION_DONE = "done"
+ACTION_RESTORE = "restore"
+
+# Stable ids from unified_tasks_service: "requirement:uuid", "risk_signal:...", etc.
+_TASK_ID_RE = re.compile(r"^[a-z_]+:[A-Za-z0-9_-]{1,128}$")
+
+
+def is_valid_task_id(task_id: str) -> bool:
+    if not task_id or len(task_id) > 180:
+        return False
+    return bool(_TASK_ID_RE.match(task_id.strip()))
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_dt(value: Any) -> Optional[datetime]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+    try:
+        s = str(value).replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s)
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+    except Exception:
+        return None
+
+
+async def _log_activity(
+    client_id: str,
+    task_id: str,
+    action: str,
+    actor_id: Optional[str],
+    extra: Optional[Dict[str, Any]] = None,
+) -> None:
+    db = database.get_db()
+    doc = {
+        "event_id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "task_id": task_id,
+        "action": action,
+        "created_at": _now(),
+        "actor_portal_user_id": actor_id,
+        "extra": extra or {},
+    }
+    await db[COLLECTION_ACTIVITY].insert_one(doc)
+
+
+async def apply_task_action(
+    client_id: str,
+    task_id: str,
+    action: str,
+    *,
+    portal_user_id: Optional[str] = None,
+    snooze_days: Optional[int] = None,
+    title_snapshot: Optional[str] = None,
+    source_type_snapshot: Optional[str] = None,
+    property_id_snapshot: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Apply snooze, dismiss, done, or restore. Writes override row (except restore) and activity log.
+    """
+    if not is_valid_task_id(task_id):
+        raise ValueError("Invalid task_id")
+    action = (action or "").strip().lower()
+    if action not in (ACTION_SNOOZE, ACTION_DISMISS, ACTION_DONE, ACTION_RESTORE):
+        raise ValueError("action must be snooze, dismiss, done, or restore")
+
+    db = database.get_db()
+    coll = db[COLLECTION_OVERRIDES]
+
+    if action == ACTION_RESTORE:
+        await coll.delete_one({"client_id": client_id, "task_id": task_id})
+        await _log_activity(
+            client_id, task_id, ACTION_RESTORE, portal_user_id,
+            extra={},
+        )
+        await create_audit_log(
+            action=AuditAction.CLIENT_TASK_RESTORED,
+            actor_id=portal_user_id,
+            client_id=client_id,
+            resource_type="client_task",
+            resource_id=task_id,
+            metadata={"task_id": task_id},
+        )
+        return {"ok": True, "task_id": task_id, "state": None}
+
+    now = _now()
+    snap = {
+        "title": (title_snapshot or "")[:500] or None,
+        "source_type": source_type_snapshot,
+        "property_id": property_id_snapshot,
+    }
+
+    if action == ACTION_SNOOZE:
+        days = int(snooze_days) if snooze_days is not None else 1
+        days = max(1, min(days, 30))
+        until = now + timedelta(days=days)
+        doc = {
+            "client_id": client_id,
+            "task_id": task_id,
+            "override": OVERRIDE_SNOOZE,
+            "snoozed_until": until,
+            "recorded_at": now,
+            "actor_portal_user_id": portal_user_id,
+            "snapshot": snap,
+        }
+        await coll.update_one(
+            {"client_id": client_id, "task_id": task_id},
+            {"$set": doc},
+            upsert=True,
+        )
+        await _log_activity(
+            client_id,
+            task_id,
+            ACTION_SNOOZE,
+            portal_user_id,
+            extra={
+                "snooze_days": days,
+                "snoozed_until": until.isoformat(),
+                "title": (title_snapshot or "")[:500] or None,
+                "source_type": source_type_snapshot,
+            },
+        )
+        await create_audit_log(
+            action=AuditAction.CLIENT_TASK_SNOOZED,
+            actor_id=portal_user_id,
+            client_id=client_id,
+            resource_type="client_task",
+            resource_id=task_id,
+            metadata={"task_id": task_id, "snooze_days": days, "snoozed_until": until.isoformat()},
+        )
+        return {"ok": True, "task_id": task_id, "state": OVERRIDE_SNOOZE, "snoozed_until": until.isoformat()}
+
+    # dismiss | done
+    override = OVERRIDE_DISMISS if action == ACTION_DISMISS else OVERRIDE_DONE
+    doc = {
+        "client_id": client_id,
+        "task_id": task_id,
+        "override": override,
+        "snoozed_until": None,
+        "recorded_at": now,
+        "actor_portal_user_id": portal_user_id,
+        "snapshot": snap,
+    }
+    await coll.update_one(
+        {"client_id": client_id, "task_id": task_id},
+        {"$set": doc},
+        upsert=True,
+    )
+    await _log_activity(
+        client_id,
+        task_id,
+        action,
+        portal_user_id,
+        extra={"title": (title_snapshot or "")[:500] or None, "source_type": source_type_snapshot},
+    )
+    audit_action = (
+        AuditAction.CLIENT_TASK_DISMISSED if action == ACTION_DISMISS else AuditAction.CLIENT_TASK_MARKED_DONE
+    )
+    await create_audit_log(
+        action=audit_action,
+        actor_id=portal_user_id,
+        client_id=client_id,
+        resource_type="client_task",
+        resource_id=task_id,
+        metadata={"task_id": task_id, "override": override},
+    )
+    return {"ok": True, "task_id": task_id, "state": override}
+
+
+async def load_active_overrides(client_id: str) -> Dict[str, Dict[str, Any]]:
+    """Return task_id -> override doc, dropping expired snoozes (and deleting them)."""
+    db = database.get_db()
+    coll = db[COLLECTION_OVERRIDES]
+    now = _now()
+    cursor = coll.find({"client_id": client_id})
+    docs = await cursor.to_list(length=500)
+    out: Dict[str, Dict[str, Any]] = {}
+    for d in docs:
+        d.pop("_id", None)
+        tid = d.get("task_id")
+        if not tid:
+            continue
+        if d.get("override") == OVERRIDE_SNOOZE:
+            until = _parse_dt(d.get("snoozed_until"))
+            if until and until <= now:
+                await coll.delete_one({"client_id": client_id, "task_id": tid})
+                logger.debug("Expired snooze removed task_id=%s client=%s", tid, client_id)
+                continue
+        out[tid] = d
+    return out
+
+
+def partition_tasks_by_override(
+    tasks: List[Dict[str, Any]],
+    overrides: Dict[str, Dict[str, Any]],
+    now: datetime,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Split into visible (for urgent/upcoming/in_progress) and snoozed (still active snooze).
+    Dismissed/done tasks are omitted from both.
+    """
+    visible: List[Dict[str, Any]] = []
+    snoozed: List[Dict[str, Any]] = []
+    for t in tasks:
+        tid = t.get("id")
+        if not tid:
+            continue
+        o = overrides.get(tid)
+        if not o:
+            visible.append(t)
+            continue
+        kind = o.get("override")
+        if kind == OVERRIDE_SNOOZE:
+            until = _parse_dt(o.get("snoozed_until"))
+            if until and until > now:
+                sn = dict(t)
+                sn["user_override"] = "snooze"
+                sn["snoozed_until"] = until.isoformat()
+                sn["section"] = "snoozed"
+                snoozed.append(sn)
+            else:
+                visible.append(t)
+        elif kind in (OVERRIDE_DISMISS, OVERRIDE_DONE):
+            continue
+        else:
+            visible.append(t)
+    return visible, snoozed
+
+
+async def count_activity_since(
+    client_id: str,
+    since: datetime,
+    actions: List[str],
+) -> int:
+    db = database.get_db()
+    return await db[COLLECTION_ACTIVITY].count_documents(
+        {"client_id": client_id, "action": {"$in": actions}, "created_at": {"$gte": since}}
+    )
+
+
+async def list_hidden_inbox_items(client_id: str, limit: int = 40) -> List[Dict[str, Any]]:
+    """Dismissed or inbox-done tasks still in overrides — user can restore to open lists."""
+    db = database.get_db()
+    coll = db[COLLECTION_OVERRIDES]
+    cursor = (
+        coll.find(
+            {"client_id": client_id, "override": {"$in": [OVERRIDE_DISMISS, OVERRIDE_DONE]}},
+            {"_id": 0, "task_id": 1, "override": 1, "snapshot": 1, "recorded_at": 1},
+        )
+        .sort("recorded_at", -1)
+        .limit(min(limit, 100))
+    )
+    rows = await cursor.to_list(length=min(limit, 100))
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        tid = r.get("task_id")
+        if not tid:
+            continue
+        snap = r.get("snapshot") or {}
+        ra = r.get("recorded_at")
+        if hasattr(ra, "isoformat"):
+            ra = ra.isoformat()
+        out.append(
+            {
+                "id": tid,
+                "task_id": tid,
+                "user_override": r.get("override"),
+                "title": snap.get("title") or tid,
+                "source_type": snap.get("source_type"),
+                "property_id": snap.get("property_id"),
+                "hidden_at": ra,
+            }
+        )
+    return out
+
+
+async def list_recent_activity(
+    client_id: str,
+    limit: int = 25,
+) -> List[Dict[str, Any]]:
+    """Recent inbox actions for Phase 2 history strip (newest first)."""
+    db = database.get_db()
+    cursor = (
+        db[COLLECTION_ACTIVITY]
+        .find({"client_id": client_id}, {"_id": 0})
+        .sort("created_at", -1)
+        .limit(min(limit, 100))
+    )
+    rows = await cursor.to_list(length=min(limit, 100))
+    for r in rows:
+        ca = r.get("created_at")
+        if hasattr(ca, "isoformat"):
+            r["created_at"] = ca.isoformat()
+    return rows
+
+
+def merge_user_acknowledgements_into_recent(
+    system_recent: List[Dict[str, Any]],
+    activity_rows: List[Dict[str, Any]],
+    limit: int = 20,
+) -> List[Dict[str, Any]]:
+    """Prepend synthetic 'completed' items from dismiss/done activity for the Recently completed section."""
+    synthetic: List[Dict[str, Any]] = []
+    for row in activity_rows:
+        act = (row.get("action") or "").lower()
+        if act not in (ACTION_DISMISS, ACTION_DONE):
+            continue
+        tid = row.get("task_id") or ""
+        if not tid:
+            continue
+        ca = row.get("created_at")
+        ca_s = ca.isoformat() if hasattr(ca, "isoformat") else str(ca)
+        extra = row.get("extra") or {}
+        title_from_log = extra.get("title")
+        label = title_from_log or ("Dismissed in inbox" if act == ACTION_DISMISS else "Marked done in inbox")
+        synthetic.append({
+            "id": f"user_ack:{tid}:{ca_s}",
+            "source_type": "inbox_acknowledgement",
+            "source_id": tid,
+            "title": label,
+            "description": "You hid this from your open task lists. It does not change work orders, approvals, or compliance records. Restore from Tasks → Hidden or Snoozed, or read how inbox actions work in Help.",
+            "property_id": None,
+            "property_label": None,
+            "urgency_level": "low",
+            "due_date": None,
+            "overdue_days": None,
+            "impact_label": "Inbox",
+            "impact_score": 1,
+            "status": "completed",
+            "section": "recently_completed",
+            "primary_action_type": "restore_hint",
+            "primary_action_label": "How inbox actions work",
+            "primary_action_url": "/help?article=command-centre-tasks-inbox",
+            "inline_action_supported": False,
+            "metadata": {"user_action": act, "task_id": tid},
+            "freshness_timestamp": ca_s,
+            "created_at": ca_s,
+            "updated_at": ca_s,
+            "filter_tags": [],
+        })
+    merged = synthetic[:8] + list(system_recent)
+    merged.sort(key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)
+    return merged[:limit]
+
+
+async def ensure_client_task_indexes() -> None:
+    """
+    Idempotent indexes for Command Centre task overrides and activity log.
+    Called from API startup and from scripts.ensure_services_indexes.
+    """
+    db = database.get_db()
+    overrides = db[COLLECTION_OVERRIDES]
+    activity = db[COLLECTION_ACTIVITY]
+    await overrides.create_index(
+        [("client_id", 1), ("task_id", 1)],
+        unique=True,
+        name="idx_client_task_overrides_client_task",
+    )
+    await activity.create_index(
+        [("client_id", 1), ("created_at", -1)],
+        name="idx_client_task_activity_client_created",
+    )
+    await activity.create_index("event_id", unique=True, name="idx_client_task_activity_event_id")

@@ -33,6 +33,7 @@ import {
   AlertCircle,
   TrendingUp,
   ClipboardCheck,
+  ListTodo,
 } from 'lucide-react';
 
 // Operations sub-items (feature-gated). Shown under Operations group; no standalone Maintenance/Contractors.
@@ -46,6 +47,7 @@ const OPERATIONS_CHILDREN = [
 
 const PORTAL_TABS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/tasks', label: 'Tasks', icon: ListTodo },
   { path: '/properties', label: 'Properties', icon: Building2 },
   { path: '/requirements', label: 'Compliance', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },

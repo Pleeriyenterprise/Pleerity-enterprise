@@ -20,6 +20,8 @@ Indexes created:
 - workflow_events: event_id, order_id, created_at
 - deliveries: delivery_id, order_id, status, created_at
 - audit_logs: client_id, action, timestamp, resource_type+resource_id
+- client_task_overrides: unique client_id+task_id (Command Centre inbox)
+- client_task_activity_log: client_id+created_at, unique event_id
 """
 import asyncio
 import logging
@@ -148,6 +150,11 @@ async def ensure_indexes():
     await db.audit_logs.create_index("action")
     await db.audit_logs.create_index([("resource_type", 1), ("resource_id", 1)])
     logger.info("audit_logs indexes OK")
+
+    from services.client_task_state_service import ensure_client_task_indexes
+
+    await ensure_client_task_indexes()
+    logger.info("client_task_overrides / client_task_activity_log indexes OK")
 
     await database.close()
     logger.info("All services indexes ensured.")

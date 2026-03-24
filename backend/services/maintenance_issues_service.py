@@ -38,6 +38,17 @@ ALL_ISSUE_STATUSES = (
     STATUS_CANCELLED,
 )
 
+# Open / in-flight issues (excludes terminal states) — used for KPIs and task surfacing.
+OPEN_ISSUE_STATUSES = (
+    STATUS_OPEN,
+    STATUS_NEW,
+    STATUS_TRIAGED,
+    STATUS_MONITORING,
+    STATUS_INVESTIGATING,
+    STATUS_READY_FOR_WORK_ORDER,
+    STATUS_IN_PROGRESS,
+)
+
 SOURCE_TENANT = "tenant"
 SOURCE_TENANT_REQUEST = "tenant_request"
 SOURCE_CLIENT = "client"
@@ -176,6 +187,15 @@ async def list_issues(
     return {"issues": items, "total": total, "skip": skip, "limit": limit}
 
 
+async def count_open_issues(client_id: str, property_id: Optional[str] = None) -> int:
+    """Count issues that are not resolved, closed, or cancelled."""
+    db = database.get_db()
+    q: Dict[str, Any] = {"client_id": client_id, "status": {"$in": list(OPEN_ISSUE_STATUSES)}}
+    if property_id:
+        q["property_id"] = property_id
+    return await db.maintenance_issues.count_documents(q)
+
+
 async def get_issue(issue_id: str, client_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Get a single issue by id. If client_id provided, ensure issue belongs to client."""
     db = database.get_db()
@@ -201,12 +221,6 @@ async def update_issue(
     issue = await get_issue(issue_id, client_id=client_id)
     if not issue:
         return None
-    if issue.get("status") in (STATUS_CLOSED, STATUS_CANCELLED) and (status is None or status.strip().lower() not in (STATUS_CLOSED, STATUS_CANCELLED)):
-        # Do not reopen closed/cancelled
-        if status is not None and status.strip():
-            updates.pop("updated_at", None)
-            if "status" in updates:
-                updates.pop("status")
     updates = {"updated_at": datetime.now(timezone.utc).isoformat()}
     old_status = issue.get("status")
     if status is not None and status.strip():

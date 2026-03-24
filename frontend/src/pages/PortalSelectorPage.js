@@ -3,13 +3,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Shield, User, AlertCircle, Lock, Key, FileCheck } from 'lucide-react';
+import { Shield, User, AlertCircle, Lock, Key, FileCheck, Wrench } from 'lucide-react';
 import { SUPPORT_EMAIL } from '../config';
 import { BRAND_LOGO_URL, branding } from '../config/branding';
 
 /**
  * Portal Selector — Compliance Vault Pro Secure Access.
- * Client first, Admin secondary; trust and support copy.
+ * Client first, then staff/admin and contractor maintenance portal; trust and support copy.
  */
 const PortalSelectorPage = () => {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ const PortalSelectorPage = () => {
             Compliance Vault Pro Secure Access
           </h1>
           <p className="text-gray-600">
-            Sign in to access your compliance dashboard.
+            Choose your portal: clients, internal staff, or assigned maintenance contractors.
           </p>
         </div>
 
@@ -62,7 +62,7 @@ const PortalSelectorPage = () => {
 
         {/* Secondary: Staff / Admin */}
         <Card
-          className="cursor-pointer hover:shadow transition-shadow border border-gray-200 mb-6 overflow-hidden"
+          className="cursor-pointer hover:shadow transition-shadow border border-gray-200 mb-4 overflow-hidden"
           onClick={() => navigate('/login/admin')}
         >
           <div className="p-4 flex items-center gap-3 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors">
@@ -72,6 +72,22 @@ const PortalSelectorPage = () => {
             <div className="flex-1">
               <h2 className="text-base font-semibold text-midnight-blue">Staff / Admin</h2>
               <p className="text-gray-500 text-sm">Internal team access only.</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Contractor: separate auth (contractor_token); does not use client or admin login */}
+        <Card
+          className="cursor-pointer hover:shadow transition-shadow border border-gray-200 mb-6 overflow-hidden"
+          onClick={() => navigate('/contractor/login')}
+        >
+          <div className="p-4 flex items-center gap-3 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors">
+            <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+              <Wrench className="w-5 h-5 text-teal-700" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-base font-semibold text-midnight-blue">Contractor</h2>
+              <p className="text-gray-500 text-sm">Assigned maintenance jobs, updates, and invoices.</p>
             </div>
           </div>
         </Card>
