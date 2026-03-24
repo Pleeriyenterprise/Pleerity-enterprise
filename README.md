@@ -231,11 +231,15 @@ REACT_APP_BACKEND_URL=https://your-backend.onrender.com
 ### Quick Start
 
 ```bash
-# Backend (Render or local)
+# Backend — local
 cd backend
 pip install -r requirements.txt
 python seed.py  # Create admin user
 uvicorn server:app --host 0.0.0.0 --port 8001
+
+# Backend — Render (Web Service): root directory = backend, start command must use Render’s PORT:
+#   uvicorn server:app --host 0.0.0.0 --port $PORT
+# See render.yaml and docs/RENDER_STARTUP_DIAGNOSIS.md.
 
 # Frontend (Vercel or local)
 cd frontend
@@ -384,6 +388,12 @@ curl -X POST https://YOUR_BACKEND_URL/api/auth/admin/login \
 
 ## 🔧 Render + Vercel + Atlas – Env Checklist
 
+**Backend Web Service (Render):** Use **`render.yaml`** as a blueprint, or set **Root Directory** to `backend` and **Start Command** to:
+
+`uvicorn server:app --host 0.0.0.0 --port $PORT`
+
+Using a fixed port (e.g. `8001`) while Render assigns **`PORT`** leads to deploy timeout (“no open ports”). Vercel only builds the frontend; it does not validate this.
+
 Set these for a clean deploy with **no Emergent dependencies**:
 
 | Where | Variable | Required | Notes |
@@ -402,7 +412,11 @@ Set these for a clean deploy with **no Emergent dependencies**:
 
 **Scripts:** `scripts/production_check.sh` uses `BACKEND_URL` (default `http://localhost:8001`) and `FRONTEND_URL` (default `http://localhost:3000`).
 
-**Backend entry:** `uvicorn server:app --host 0.0.0.0 --port 8001` (or Render’s default).  
+| Context | Start command |
+|--------|----------------|
+| **Local** | `uvicorn server:app --host 0.0.0.0 --port 8001` (from `backend/`) |
+| **Render** | `uvicorn server:app --host 0.0.0.0 --port $PORT` (root **`backend/`**; see `render.yaml`) |
+
 **Frontend build:** `npm run build` (CRA); Vercel runs this automatically.
 
 ---

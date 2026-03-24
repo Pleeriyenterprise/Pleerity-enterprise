@@ -1,0 +1,17 @@
+# Render Blueprint — FastAPI backend (Pleerity Enterprise).
+#
+# New stack: Dashboard → New → Blueprint → select this repo (render.yaml is detected).
+# Existing Web Service: do not duplicate the service; copy startCommand + root directory
+# from below into Settings → Build & Deploy.
+#
+# Render probes the port in $PORT. A fixed port (e.g. 8001) causes
+# "Port scan timeout / no open ports". See docs/RENDER_STARTUP_DIAGNOSIS.md.
+
+services:
+  - type: web
+    name: pleerity-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
