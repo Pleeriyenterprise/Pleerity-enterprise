@@ -28,6 +28,26 @@ const JOB_STATE = {
   conditional_no_output: { label: 'No output (OK)', className: 'bg-slate-100 text-slate-600', Icon: CheckCircle },
 };
 
+const DIAGNOSTIC_REASON = {
+  registered_not_yet_due: 'Registered and awaiting first scheduled run.',
+  registered_overdue_never_ran: 'Registered but overdue with no run history.',
+  startup_reconciliation_issue: 'Not yet reconciled by startup recovery scope.',
+  triggered_but_uninstrumented: 'Manual trigger exists but no instrumented run recorded.',
+  conditionally_no_output: 'Job ran successfully with no qualifying records.',
+  UI_state_bug: 'Run history exists but job visibility mapping is inconsistent.',
+  database_environment_mismatch: 'Run history exists but scheduler registration missing in this process.',
+  'database/environment_mismatch': 'Run history exists but scheduler registration missing in this process.',
+};
+
+const VISIBILITY_REASON = {
+  scheduler_runtime_unavailable: 'Scheduler runtime metadata unavailable in this process.',
+  not_registered_in_scheduler_runtime: 'Job is not currently registered in in-process scheduler runtime.',
+  job_not_registered_in_scheduler_runtime: 'Job is not currently registered in in-process scheduler runtime.',
+  next_run_not_exposed_by_scheduler: 'Scheduler did not expose next run time for this job.',
+  no_run_history_not_yet_due: 'No run history yet because first scheduled run is still in the future.',
+  no_run_history_overdue: 'No run history and first due window has passed.',
+};
+
 function getJobState(info, jobName, heartbeatStale, nextRunIso) {
   if (jobName === 'scheduler_heartbeat' && heartbeatStale) return 'failed';
   const last = info?.lastRun;
@@ -51,7 +71,7 @@ function getJobState(info, jobName, heartbeatStale, nextRunIso) {
 
 export default function AdminAutomationCentrePage() {
   const [jobRuns, setJobRuns] = useState({ items: [], total: 0 });
-  const [jobsStatus, setJobsStatus] = useState(null);
+  const [frameworkAudit, setFrameworkAudit] = useState(null);
   const [healthSummary, setHealthSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(null);
@@ -63,12 +83,12 @@ export default function AdminAutomationCentrePage() {
     setLoading(true);
     Promise.all([
       adminAPI.getJobRuns({ limit: 200 }),
-      adminAPI.getJobsStatus(),
+      adminAPI.getAutomationFrameworkAudit(),
       adminAPI.getObservabilityHealthSummary().catch(() => ({ data: null })),
     ])
-      .then(([runsRes, statusRes, healthRes]) => {
+      .then(([runsRes, auditRes, healthRes]) => {
         setJobRuns(runsRes.data);
-        setJobsStatus(statusRes.data);
+        setFrameworkAudit(auditRes?.data || null);
         setHealthSummary(healthRes?.data || null);
       })
       .catch(() => toast.error('Failed to load automation data'))
@@ -99,7 +119,7 @@ export default function AdminAutomationCentrePage() {
       .finally(() => setRunning(null));
   };
 
-  const byJob = (jobRuns.items || []).reduce((acc, r) => {
+  const byJobRuns = (jobRuns.items || []).reduce((acc, r) => {
     const name = r.job_name || 'unknown';
     if (!acc[name]) acc[name] = { lastRun: null, lastSuccess: null, lastDegraded: null, lastFailed: null, failures24h: 0, degraded24h: 0 };
     if (!acc[name].lastRun || (r.finished_at && r.finished_at > (acc[name].lastRun?.finished_at || '')))
@@ -120,9 +140,13 @@ export default function AdminAutomationCentrePage() {
     }
     return acc;
   }, {});
+  const byJobInventory = (frameworkAudit?.inventory || []).reduce((acc, item) => {
+    acc[item.job_name] = item;
+    return acc;
+  }, {});
 
   const formatTime = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
-  const nextRuns = jobsStatus?.scheduled_jobs || [];
+  const inventory = frameworkAudit?.inventory || [];
 
   const openMessageLogs = (run) => {
     if (!run?.id) return;
@@ -156,7 +180,7 @@ export default function AdminAutomationCentrePage() {
       .catch(() => toast.error('Failed to export CSV'));
   };
   const heartbeatStale = healthSummary?.heartbeat_stale === true;
-  const jobIds = [...new Set([...Object.keys(byJob), ...nextRuns.map((j) => j.id)].filter(Boolean))].sort();
+  const jobIds = [...new Set([...Object.keys(byJobRuns), ...inventory.map((i) => i.job_name)].filter(Boolean))].sort();
   const deliveryUnknownJobNames = new Set(
     (healthSummary?.delivery_unknown_stale_runs || []).map((r) => r.job_name).filter(Boolean)
   );
@@ -351,12 +375,32 @@ export default function AdminAutomationCentrePage() {
                 </tr>
               ) : (
                 filteredJobIds.map((jobName) => {
-                  const info = byJob[jobName] || { lastRun: null, lastSuccess: null, lastDegraded: null, lastFailed: null, failures24h: 0, degraded24h: 0 };
-                  const next = nextRuns.find((j) => j.id === jobName);
+                  const runInfo = byJobRuns[jobName] || { lastRun: null, lastSuccess: null, lastDegraded: null, lastFailed: null, failures24h: 0, degraded24h: 0 };
+                  const invInfo = byJobInventory[jobName] || null;
+                  const lastRunFromInventory = invInfo?.last_run_id
+                    ? {
+                        id: invInfo.last_run_id,
+                        job_name: jobName,
+                        status: invInfo.last_status,
+                        finished_at: invInfo.last_finished_at,
+                        created_at: invInfo.last_started_at,
+                      }
+                    : null;
+                  const info = {
+                    ...runInfo,
+                    lastRun: runInfo.lastRun || lastRunFromInventory,
+                  };
                   const backendState = healthSummary?.job_states?.[jobName];
-                  const state = backendState?.state || getJobState(info, jobName, heartbeatStale, next?.next_run);
-                  const reason = backendState?.reason || '';
-                  const recommendedAction = backendState?.recommended_action || '';
+                  const state = backendState?.state || getJobState(info, jobName, heartbeatStale, invInfo?.next_run_time);
+                  const reason =
+                    backendState?.reason ||
+                    VISIBILITY_REASON[invInfo?.next_run_reason] ||
+                    VISIBILITY_REASON[invInfo?.last_run_reason] ||
+                    DIAGNOSTIC_REASON[invInfo?.diagnostic_category] ||
+                    '';
+                  const recommendedAction =
+                    backendState?.recommended_action ||
+                    (!invInfo?.can_be_run_manually && invInfo ? 'Manual run intentionally excluded for this job contract.' : '');
                   const stateConfig = JOB_STATE[state] || JOB_STATE.no_runs;
                   const StateIcon = stateConfig.Icon;
                   return (
@@ -385,8 +429,8 @@ export default function AdminAutomationCentrePage() {
                       <td className="px-4 py-2 text-gray-600">{formatTime(info.lastSuccess?.finished_at)}</td>
                       <td className="px-4 py-2 text-amber-600">{formatTime(info.lastDegraded?.finished_at)}</td>
                       <td className="px-4 py-2">{info.failures24h > 0 ? <span className="text-red-600">{info.failures24h}</span> : '—'}</td>
-                      <td className="px-4 py-2 text-gray-600">{next?.next_run ? formatTime(next.next_run) : '—'}</td>
-                      <td className="px-4 py-2 text-gray-500 text-xs max-w-[14rem]" title={reason}>{reason || '—'}</td>
+                      <td className="px-4 py-2 text-gray-600">{invInfo?.next_run_time ? formatTime(invInfo.next_run_time) : '—'}</td>
+                      <td className="px-4 py-2 text-gray-500 text-xs max-w-[14rem]" title={reason}>{reason || invInfo?.diagnostic_category || '—'}</td>
                       <td className="px-4 py-2 text-gray-600 text-xs max-w-[14rem]" title={recommendedAction}>{recommendedAction || '—'}</td>
                       <td className="px-4 py-2">
                         <div className="flex flex-wrap items-center gap-1">

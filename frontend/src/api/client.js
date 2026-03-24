@@ -287,6 +287,7 @@ export const adminAPI = {
     apiClient.get(`/admin/properties/${propertyId}/compliance-score-history`, { params: { limit } }),
   // Observability (job runs, incidents, system health)
   getObservabilityHealthSummary: () => apiClient.get('/admin/observability/health-summary'),
+  getAutomationFrameworkAudit: () => apiClient.get('/admin/observability/framework-audit'),
   getJobRuns: (params = {}) => apiClient.get('/admin/observability/job-runs', { params }),
   getJobRunMessageLogs: (runId, params = {}) =>
     apiClient.get(`/admin/observability/job-runs/${runId}/message-logs`, { params }),

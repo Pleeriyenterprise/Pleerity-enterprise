@@ -5,7 +5,7 @@ All routes require admin. Export endpoints should be rate-limited in production.
 from fastapi import APIRouter, HTTPException, Request, Depends, status, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 import io
 import csv as csv_module
@@ -379,6 +379,30 @@ def _get_scheduler_next_runs() -> dict:
         return {}
 
 
+def _get_scheduler_job_details() -> Dict[str, Dict[str, Any]]:
+    """Return scheduler runtime details keyed by job_id."""
+    details: Dict[str, Dict[str, Any]] = {}
+    try:
+        from server import scheduler
+
+        for job in scheduler.get_jobs():
+            jid = getattr(job, "id", None)
+            if not jid:
+                continue
+            trigger = getattr(job, "trigger", None)
+            next_run = getattr(job, "next_run_time", None)
+            details[jid] = {
+                "job_id": jid,
+                "name": getattr(job, "name", None),
+                "trigger_type": trigger.__class__.__name__ if trigger is not None else None,
+                "trigger_expression": str(trigger) if trigger is not None else None,
+                "next_run_time": next_run.isoformat() if next_run and hasattr(next_run, "isoformat") else (str(next_run) if next_run else None),
+            }
+    except Exception:
+        return {}
+    return details
+
+
 def _parse_iso(ts) -> Optional[datetime]:
     """Parse ISO timestamp to datetime (timezone-aware)."""
     if ts is None:
@@ -578,25 +602,51 @@ async def get_health_summary(request: Request):
         pass
 
     next_runs = _get_scheduler_next_runs()
+    scheduler_details = _get_scheduler_job_details()
+    scheduler_runtime_available = len(scheduler_details) > 0
     # Per-job state and reason (pass heartbeat_stale and next_run for startup-aware never-ran)
     job_states = {}
     for jid in HEALTH_SUMMARY_JOBS:
         entry = registry.get(jid)
         next_run_iso = next_runs.get(jid)
+        scheduler_registered = jid in scheduler_details
         state, reason = _compute_job_state_and_reason(
             jid, jobs_detail[jid], now, entry,
             heartbeat_stale=heartbeat_stale,
             next_run_iso=next_run_iso,
         )
+        last_run_value = jobs_detail[jid].get("last_completed")
+        if scheduler_runtime_available and not scheduler_registered:
+            next_run_reason = "job_not_registered_in_scheduler_runtime"
+        elif not scheduler_runtime_available:
+            next_run_reason = "scheduler_runtime_unavailable"
+        elif scheduler_registered and not next_run_iso:
+            next_run_reason = "next_run_not_exposed_by_scheduler"
+        else:
+            next_run_reason = "next_run_available"
+
+        if last_run_value:
+            last_run_reason = "last_run_available"
+        elif state == JOB_STATE_NOT_YET_DUE_SINCE_STARTUP:
+            last_run_reason = "no_run_history_not_yet_due"
+        elif state in (JOB_STATE_NEVER_RAN, JOB_STATE_NEVER_RAN_AND_OVERDUE):
+            last_run_reason = "no_run_history_overdue"
+        else:
+            last_run_reason = "no_run_history"
+
         recommended_action = RECOMMENDED_ACTIONS.get(state, "Review state and logs.")
         job_states[jid] = {
             "state": state,
             "reason": reason,
             "recommended_action": recommended_action,
-            "last_run": jobs_detail[jid].get("last_completed"),
+            "last_run": last_run_value,
             "last_success": jobs_detail[jid].get("last_success"),
             "last_degraded": jobs_detail[jid].get("last_degraded"),
             "last_failure": jobs_detail[jid].get("last_failure"),
+            "next_run": next_run_iso,
+            "next_run_reason_code": next_run_reason,
+            "last_run_reason_code": last_run_reason,
+            "scheduler_registered": scheduler_registered,
             "schedule": entry.frequency_label if entry else None,
             "critical": entry.critical if entry else False,
         }
@@ -663,8 +713,209 @@ async def get_health_summary(request: Request):
         "delivery_unknown_stale_hours": DELIVERY_UNKNOWN_STALE_HOURS,
         "job_state_reasons": JOB_STATE_REASONS,
         "recommended_actions": RECOMMENDED_ACTIONS,
+        "scheduler_runtime": {
+            "available": scheduler_runtime_available,
+            "registered_jobs_count": len(scheduler_details),
+        },
         "grace_period_explanation": (
             f"{not_yet_due_count} critical job(s) have not had their first scheduled run yet; no incident created (grace period)."
             if not_yet_due_count > 0 else None
         ),
+    }
+
+
+@router.get("/framework-audit")
+async def get_automation_framework_audit(request: Request):
+    """
+    Read-only framework audit matrix for automation jobs.
+    Reconciles registry, scheduler runtime, runner map, run history, and incident state.
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+
+    from job_runner import JOB_RUNNERS
+    from services.startup_reconciliation import STARTUP_RECOVERY_JOB_IDS
+
+    registry = get_registry_by_id()
+    health_ids = set(HEALTH_SUMMARY_JOBS)
+    scheduler_details = _get_scheduler_job_details()
+    scheduler_ids = set(scheduler_details.keys())
+    runner_ids = set(JOB_RUNNERS.keys())
+    startup_recovery_ids = set(STARTUP_RECOVERY_JOB_IDS)
+
+    # Run history (single aggregation pass)
+    pipeline = [
+        {
+            "$sort": {
+                "started_at": -1,
+            }
+        },
+        {
+            "$group": {
+                "_id": "$job_name",
+                "total_runs": {"$sum": 1},
+                "last_run_id": {"$first": "$_id"},
+                "last_started_at": {"$first": "$started_at"},
+                "last_finished_at": {"$first": "$finished_at"},
+                "last_status": {"$first": "$status"},
+                "last_outcome_status": {"$first": "$outcome_status"},
+                "last_outcome_metrics": {"$first": "$outcome_metrics"},
+            }
+        },
+    ]
+    run_rows = await db.job_runs.aggregate(pipeline).to_list(1000)
+    runs_map: Dict[str, Dict[str, Any]] = {}
+    run_history_ids = set()
+    for row in run_rows:
+        jid = row.get("_id")
+        if not jid:
+            continue
+        run_history_ids.add(jid)
+        runs_map[jid] = {
+            "total_runs": row.get("total_runs", 0),
+            "last_run_id": str(row.get("last_run_id")) if row.get("last_run_id") is not None else None,
+            "last_started_at": row.get("last_started_at"),
+            "last_finished_at": row.get("last_finished_at"),
+            "last_status": row.get("last_status"),
+            "last_outcome_status": row.get("last_outcome_status"),
+            "last_outcome_metrics": row.get("last_outcome_metrics") or {},
+        }
+
+    # Incident state by related_job_name
+    incident_cursor = db.incidents.find(
+        {"related_job_name": {"$exists": True, "$ne": None}, "status": {"$in": ["open", "acknowledged"]}},
+        {"_id": 0, "incident_id": 1, "related_job_name": 1, "status": 1, "severity": 1, "title": 1, "created_at": 1},
+    )
+    incident_map: Dict[str, Dict[str, Any]] = {}
+    async for inc in incident_cursor:
+        jid = inc.get("related_job_name")
+        if not jid:
+            continue
+        prev = incident_map.get(jid)
+        # Keep highest severity/open-most signal (simple lexical severity order)
+        sev_rank = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
+        rank = sev_rank.get(inc.get("severity"), 9)
+        prev_rank = sev_rank.get((prev or {}).get("severity"), 9)
+        if prev is None or rank < prev_rank:
+            incident_map[jid] = inc
+
+    all_job_ids = sorted(set().union(registry.keys(), scheduler_ids, runner_ids, run_history_ids, incident_map.keys()))
+
+    def _classify(jid: str, row: Dict[str, Any]) -> str:
+        registered = row["registered"]
+        total_runs = row["total_runs"] or 0
+        next_run = _parse_iso(row.get("next_run_time"))
+        last_status = (row.get("last_status") or "").lower()
+        last_outcome = (row.get("last_outcome_status") or "").lower()
+        attempted = (row.get("last_outcome_metrics") or {}).get("attempted_count")
+
+        if registered and total_runs == 0:
+            if next_run and (next_run - now).total_seconds() > NEXT_RUN_FUTURE_TOLERANCE_SEC:
+                return "registered_not_yet_due"
+            if jid in startup_recovery_ids:
+                return "startup_reconciliation_issue"
+            return "registered_overdue_never_ran"
+        if total_runs > 0 and not registered:
+            return "database/environment_mismatch"
+        if total_runs > 0 and row["included_in_automation_centre"] is False:
+            return "UI_state_bug"
+        if total_runs > 0 and last_status == "success" and last_outcome == "success" and (attempted == 0):
+            return "conditionally_no_output"
+        if registered and total_runs == 0 and row["can_run_manually"]:
+            return "triggered_but_uninstrumented"
+        return "none"
+
+    inventory: List[Dict[str, Any]] = []
+    for jid in all_job_ids:
+        sched = scheduler_details.get(jid, {})
+        run = runs_map.get(jid, {})
+        incident = incident_map.get(jid)
+        registered = jid in scheduler_ids
+        can_manual = jid in runner_ids
+        in_health = jid in health_ids
+        # Current Automation Centre behavior is scheduler jobs + run history rows.
+        in_automation = registered or (jid in run_history_ids)
+
+        row = {
+            "job_name": jid,
+            "purpose": sched.get("name") or (f"{registry[jid].frequency_label} automation job" if jid in registry else "No declared purpose in scheduler runtime"),
+            "registered": registered,
+            "registration_reason": (
+                "registered_in_scheduler_runtime"
+                if registered
+                else ("scheduler_runtime_unavailable" if not scheduler_details else "not_registered_in_scheduler_runtime")
+            ),
+            "trigger_type": sched.get("trigger_type"),
+            "trigger_expression": sched.get("trigger_expression"),
+            "next_run_time": sched.get("next_run_time"),
+            "next_run_reason": (
+                "next_run_available"
+                if sched.get("next_run_time")
+                else (
+                    "scheduler_runtime_unavailable"
+                    if not scheduler_details
+                    else ("not_registered_in_scheduler_runtime" if not registered else "next_run_not_exposed_by_scheduler")
+                )
+            ),
+            "included_in_health_summary": in_health,
+            "included_in_automation_centre": in_automation,
+            "can_be_run_manually": can_manual,
+            "total_runs": run.get("total_runs", 0),
+            "last_run_id": run.get("last_run_id"),
+            "last_started_at": run.get("last_started_at"),
+            "last_finished_at": run.get("last_finished_at"),
+            "last_run_reason": (
+                "last_run_available"
+                if run.get("last_finished_at")
+                else (
+                    "no_run_history_not_yet_due"
+                    if (registered and _parse_iso(sched.get("next_run_time")) and (_parse_iso(sched.get("next_run_time")) - now).total_seconds() > NEXT_RUN_FUTURE_TOLERANCE_SEC)
+                    else "no_run_history"
+                )
+            ),
+            "last_status": run.get("last_status"),
+            "last_outcome_status": run.get("last_outcome_status"),
+            "last_outcome_metrics": run.get("last_outcome_metrics") or {},
+            "current_incident_state": (
+                {
+                    "status": incident.get("status"),
+                    "severity": incident.get("severity"),
+                    "incident_id": incident.get("incident_id"),
+                    "title": incident.get("title"),
+                    "created_at": incident.get("created_at"),
+                }
+                if incident
+                else None
+            ),
+            "startup_reconciliation_included": jid in startup_recovery_ids,
+        }
+        row["diagnostic_category"] = _classify(jid, row)
+        inventory.append(row)
+
+    registry_only = sorted(list(set(registry.keys()) - scheduler_ids))
+    scheduler_only = sorted(list(scheduler_ids - set(registry.keys())))
+    runner_only = sorted(list(runner_ids - scheduler_ids))
+
+    return {
+        "generated_at": now.isoformat(),
+        "inventory": inventory,
+        "summary": {
+            "total_jobs": len(inventory),
+            "registered_count": sum(1 for i in inventory if i["registered"]),
+            "manual_runnable_count": sum(1 for i in inventory if i["can_be_run_manually"]),
+            "health_summary_count": sum(1 for i in inventory if i["included_in_health_summary"]),
+            "automation_centre_count": sum(1 for i in inventory if i["included_in_automation_centre"]),
+            "open_or_ack_incident_jobs": sum(1 for i in inventory if i["current_incident_state"] is not None),
+        },
+        "reconciliation": {
+            "registry_only": registry_only,
+            "scheduler_only": scheduler_only,
+            "runner_only": runner_only,
+            "notes": [
+                "registry_only jobs are expected in health metadata but not currently registered in the in-process scheduler.",
+                "scheduler_only jobs are scheduled but not part of health-summary critical/all list.",
+                "runner_only jobs are manually runnable but not currently registered in scheduler runtime.",
+            ],
+        },
     }

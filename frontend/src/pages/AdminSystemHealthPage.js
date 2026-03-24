@@ -26,6 +26,17 @@ export default function AdminSystemHealthPage() {
   useEffect(() => { load(); }, []);
 
   const formatTime = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
+  const visibilityReasonLabel = (code) => {
+    if (!code) return '';
+    const map = {
+      scheduler_runtime_unavailable: 'Scheduler metadata unavailable in this process',
+      job_not_registered_in_scheduler_runtime: 'Job not registered in scheduler runtime',
+      next_run_not_exposed_by_scheduler: 'Next run not exposed by scheduler',
+      no_run_history_not_yet_due: 'No run history yet (first run still future due)',
+      no_run_history_overdue: 'No run history and due window has passed',
+    };
+    return map[code] || code;
+  };
 
   return (
     <UnifiedAdminLayout>
@@ -62,6 +73,12 @@ export default function AdminSystemHealthPage() {
             <span>
               {data.delivery_unknown_stale_runs.length} run(s) have <strong>delivery unknown</strong> still unresolved after {data.delivery_unknown_stale_hours ?? 6}h. Check Message logs (Automation Centre) or provider webhooks.
             </span>
+          </div>
+        )}
+
+        {data?.scheduler_runtime?.available === false && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm">
+            Scheduler runtime metadata is unavailable in this API process. Next-run visibility may be incomplete; rely on `job_runs` history and incidents while scheduler ownership is verified.
           </div>
         )}
 
@@ -160,6 +177,8 @@ export default function AdminSystemHealthPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {data.last_success && Object.entries(data.last_success).map(([jobName, finishedAt]) => {
                   const jobState = data.job_states?.[jobName]?.state;
+                  const nextRunReasonCode = data.job_states?.[jobName]?.next_run_reason_code;
+                  const lastRunReasonCode = data.job_states?.[jobName]?.last_run_reason_code;
                   const isNotYetDue = jobState === 'not_yet_due_since_startup';
                   const label = finishedAt != null
                     ? formatTime(finishedAt)
@@ -172,6 +191,11 @@ export default function AdminSystemHealthPage() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{jobName}</p>
                         <p className={`text-xs ${finishedAt != null ? 'text-gray-500' : 'text-gray-500 italic'}`}>{label}</p>
+                        {!finishedAt && (
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            {visibilityReasonLabel(lastRunReasonCode || nextRunReasonCode)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   );

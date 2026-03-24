@@ -2650,7 +2650,7 @@ async def generate_compliance_pack(request: Request, client_id: str):
 
 @router.get("/jobs/status")
 async def get_jobs_status(request: Request):
-    """Get background jobs status (read-only monitoring)."""
+    """Legacy jobs status endpoint. Prefer /api/admin/observability/framework-audit + /health-summary."""
     user = await admin_route_guard(request)
     db = database.get_db()
     
@@ -2702,6 +2702,11 @@ async def get_jobs_status(request: Request):
         system_status = "operational" if scheduler_jobs else "issues"
 
         return {
+            "deprecated": True,
+            "replacement_endpoints": [
+                "/api/admin/observability/framework-audit",
+                "/api/admin/observability/health-summary",
+            ],
             "daily_reminders": {
                 "last_run": last_reminder["timestamp"] if last_reminder else None,
                 "pending_count": pending_reminders
@@ -2812,7 +2817,13 @@ async def trigger_job(request: Request, job_type: str):
                 "admin_email": user["email"]
             }
         )
-        return {"message": message, "count": count}
+        return {
+            "message": message,
+            "count": count,
+            "deprecated": True,
+            "replacement_endpoint": "/api/admin/jobs/run",
+            "mapped_job_id": job_id,
+        }
     except Exception as e:
         logger.error(f"Manual job trigger error: {e}")
         raise HTTPException(
