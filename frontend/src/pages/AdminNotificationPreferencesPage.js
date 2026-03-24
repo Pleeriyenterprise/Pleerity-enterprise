@@ -129,14 +129,23 @@ export default function AdminNotificationPreferencesPage() {
     try {
       setSaving(true);
       
-      await client.put('/admin/notifications/preferences', {
+      const res = await client.put('/admin/notifications/preferences', {
         email_enabled: preferences.email_enabled,
         sms_enabled: preferences.sms_enabled,
         in_app_enabled: preferences.in_app_enabled,
         notification_email: preferences.notification_email || null,
         notification_phone: preferences.notification_phone || null,
       });
-      
+      const saved = res.data?.preferences;
+      if (saved) {
+        setPreferences({
+          email_enabled: saved.email_enabled ?? true,
+          sms_enabled: saved.sms_enabled ?? false,
+          in_app_enabled: saved.in_app_enabled ?? true,
+          notification_email: saved.notification_email || '',
+          notification_phone: saved.notification_phone || '',
+        });
+      }
       toast.success('Notification preferences saved');
     } catch (error) {
       console.error('Failed to save preferences:', error);

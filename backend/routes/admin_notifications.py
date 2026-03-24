@@ -51,14 +51,17 @@ async def update_notification_preferences(
 ):
     """Update admin's notification preferences."""
     admin_id = current_user.get("portal_user_id") or current_user.get("user_id")
-    updated = await update_admin_notification_preferences(
-        admin_id=admin_id,
-        email_enabled=request.email_enabled,
-        sms_enabled=request.sms_enabled,
-        in_app_enabled=request.in_app_enabled,
-        notification_email=request.notification_email,
-        notification_phone=request.notification_phone,
-    )
+    try:
+        updated = await update_admin_notification_preferences(
+            admin_id=admin_id,
+            email_enabled=request.email_enabled,
+            sms_enabled=request.sms_enabled,
+            in_app_enabled=request.in_app_enabled,
+            notification_email=request.notification_email,
+            notification_phone=request.notification_phone,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     
     return {
         "success": True,

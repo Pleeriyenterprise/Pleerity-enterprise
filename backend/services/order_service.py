@@ -732,30 +732,30 @@ async def reopen_for_edit(order_id: str, admin_email: str, reason: str) -> Dict:
 # ADMIN NOTIFICATION PREFERENCES
 # ============================================================================
 
+def _portal_user_prefs_query(admin_id: str) -> Dict:
+    """Match the logged-in staff user by id only. admin_route_guard already enforced staff role."""
+    return {"$or": [{"portal_user_id": admin_id}, {"user_id": admin_id}]}
+
+
 async def get_admin_notification_preferences(admin_id: str) -> Dict:
-    """Get admin's notification preferences. Lookup by portal_user_id or user_id; role admin or ROLE_ADMIN."""
+    """Get staff notification preferences. Lookup by portal_user_id or user_id (any admin-capable role)."""
+    default_prefs = {
+        "email_enabled": True,
+        "sms_enabled": False,
+        "in_app_enabled": True,
+        "notification_email": None,
+        "notification_phone": None,
+    }
     if not admin_id:
-        return {
-            "email_enabled": True,
-            "sms_enabled": False,
-            "in_app_enabled": True,
-            "email": None,
-            "phone": None,
-        }
+        return default_prefs
     db = database.get_db()
     admin = await db.portal_users.find_one(
-        {"$or": [{"portal_user_id": admin_id}, {"user_id": admin_id}], "role": {"$in": ["admin", "ROLE_ADMIN"]}},
+        _portal_user_prefs_query(admin_id),
         {"notification_preferences": 1, "email": 1, "phone": 1, "name": 1}
     )
     
     if not admin:
-        return {
-            "email_enabled": True,
-            "sms_enabled": False,
-            "in_app_enabled": True,
-            "email": None,
-            "phone": None,
-        }
+        return default_prefs
     
     prefs = admin.get("notification_preferences", {})
     return {
@@ -791,10 +791,16 @@ async def update_admin_notification_preferences(
     if notification_phone is not None:
         update_fields["notification_preferences.notification_phone"] = notification_phone
     
-    await db.portal_users.update_one(
-        {"$or": [{"portal_user_id": admin_id}, {"user_id": admin_id}], "role": {"$in": ["admin", "ROLE_ADMIN"]}},
+    result = await db.portal_users.update_one(
+        _portal_user_prefs_query(admin_id),
         {"$set": update_fields}
     )
+    if result.matched_count == 0:
+        logger.warning(
+            "update_admin_notification_preferences: no portal_users row matched admin_id=%s",
+            admin_id,
+        )
+        raise ValueError("Could not save notification preferences: portal user not found.")
     
     return await get_admin_notification_preferences(admin_id)
 
