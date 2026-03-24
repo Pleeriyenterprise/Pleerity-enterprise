@@ -173,6 +173,8 @@ import AdminAutomationCentrePage from './pages/AdminAutomationCentrePage';
 import AdminIncidentsPage from './pages/AdminIncidentsPage';
 import AdminOpsOverviewPage from './pages/admin/AdminOpsOverviewPage';
 import AdminOpsPlaceholderPage from './pages/admin/AdminOpsPlaceholderPage';
+import AdminOpsCompliancePage from './pages/admin/AdminOpsCompliancePage';
+import AdminOpsAuditPage from './pages/admin/AdminOpsAuditPage';
 import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
 import AdminOpsContractorsPage from './pages/admin/AdminOpsContractorsPage';
 import AdminOpsMaintenancePage from './pages/admin/AdminOpsMaintenancePage';
@@ -617,7 +619,7 @@ function App() {
             <Route path="/admin/ops/maintenance/work-orders/:workOrderId" element={<ProtectedRoute requireAdmin><AdminWorkOrderDetailPage /></ProtectedRoute>} />
             <Route path="/admin/ops/contractors" element={<ProtectedRoute requireAdmin><AdminOpsContractorsPage /></ProtectedRoute>} />
             <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminRiskDashboardPage /></ProtectedRoute>} />
-            <Route path="/admin/ops/audit" element={<ProtectedRoute requireAdmin><AdminOpsPlaceholderPage title="Audit & Logs" /></ProtectedRoute>} />
+            <Route path="/admin/ops/audit" element={<ProtectedRoute requireAdmin><AdminOpsAuditPage /></ProtectedRoute>} />
             <Route path="/admin/ops/feature-controls" element={<ProtectedRoute requireAdmin><AdminOpsFeatureControlsPage /></ProtectedRoute>} />
 
             {/* ClearForm Admin Routes */}

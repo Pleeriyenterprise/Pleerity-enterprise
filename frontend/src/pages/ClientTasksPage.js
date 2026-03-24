@@ -13,6 +13,7 @@ import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Loader2, LayoutList, Info, ExternalLink, Bell, EyeOff, CheckCircle, RotateCcw, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { UrgencyRow } from '../components/client/UrgencyDisplay';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -24,7 +25,7 @@ const FILTER_CHIPS = [
 ];
 
 function formatMoney(amount, currency = 'GBP') {
-  if (amount == null || Number.isNaN(Number(amount))) return '—';
+  if (amount == null || Number.isNaN(Number(amount))) return 'No data';
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'GBP' }).format(Number(amount));
 }
 
@@ -35,14 +36,6 @@ function formatWhen(iso) {
   } catch {
     return null;
   }
-}
-
-function urgencyBadgeClass(level) {
-  const l = (level || '').toLowerCase();
-  if (l === 'critical') return 'bg-red-100 text-red-800 border-red-200';
-  if (l === 'high') return 'bg-amber-100 text-amber-900 border-amber-200';
-  if (l === 'medium') return 'bg-gray-100 text-gray-800 border-gray-200';
-  return 'bg-slate-50 text-slate-600 border-slate-100';
 }
 
 function sourceTypeLabel(st) {
@@ -84,14 +77,7 @@ function TaskCard({
               <Badge variant="outline" className="text-xs font-normal">
                 {sourceTypeLabel(task.source_type)}
               </Badge>
-              <Badge className={`text-xs font-medium border ${urgencyBadgeClass(task.urgency_level)}`}>
-                {(task.urgency_level || '').toUpperCase()}
-              </Badge>
-              {meta.timing_label && (
-                <Badge variant="secondary" className="text-xs font-normal">
-                  {meta.timing_label}
-                </Badge>
-              )}
+              <UrgencyRow urgencyLevel={task.urgency_level} timingLabel={meta.timing_label} />
             </div>
             <h3 className="font-semibold text-midnight-blue text-base leading-snug">{task.title}</h3>
             {task.property_label && (
@@ -289,22 +275,33 @@ export default function ClientTasksPage() {
   const [riskLoading, setRiskLoading] = useState(null);
   const [overrideBusyId, setOverrideBusyId] = useState(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [propertyFilter, setPropertyFilter] = useState('');
+  const [propertyOptions, setPropertyOptions] = useState([]);
 
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
+
+  useEffect(() => {
+    if (!isClientUser) return;
+    clientAPI
+      .getComplianceSummary()
+      .then((res) => setPropertyOptions(res.data?.properties || []))
+      .catch(() => setPropertyOptions([]));
+  }, [isClientUser]);
 
   const load = useCallback(() => {
     if (!isClientUser) return;
     setLoading(true);
     setError('');
+    const params = propertyFilter ? { property_id: propertyFilter } : {};
     clientAPI
-      .getTasks()
+      .getTasks(params)
       .then((res) => setPayload(res.data))
       .catch((err) => {
         setError(err?.response?.data?.detail || 'Failed to load tasks');
         setPayload(null);
       })
       .finally(() => setLoading(false));
-  }, [isClientUser]);
+  }, [isClientUser, propertyFilter]);
 
   useEffect(() => {
     load();
@@ -465,15 +462,15 @@ export default function ClientTasksPage() {
         <CardContent className="flex flex-wrap gap-4 text-sm">
           <div>
             <span className="text-gray-500">Urgent</span>
-            <p className="text-xl font-semibold text-midnight-blue">{summary?.urgent_count ?? '—'}</p>
+            <p className="text-xl font-semibold text-midnight-blue">{summary?.urgent_count ?? 0}</p>
           </div>
           <div>
             <span className="text-gray-500">Upcoming</span>
-            <p className="text-xl font-semibold text-midnight-blue">{summary?.upcoming_count ?? '—'}</p>
+            <p className="text-xl font-semibold text-midnight-blue">{summary?.upcoming_count ?? 0}</p>
           </div>
           <div>
             <span className="text-gray-500">In progress</span>
-            <p className="text-xl font-semibold text-midnight-blue">{summary?.in_progress_count ?? '—'}</p>
+            <p className="text-xl font-semibold text-midnight-blue">{summary?.in_progress_count ?? 0}</p>
           </div>
           <div title="Tasks you snoozed; they return after the snooze date">
             <span className="text-gray-500">Snoozed</span>
@@ -493,24 +490,52 @@ export default function ClientTasksPage() {
             {freshness?.risk_signals_updated_at && (
               <p>Risk signals updated: {formatWhen(freshness.risk_signals_updated_at)}</p>
             )}
+            {freshness?.last_automation_score_recalc_at && (
+              <p>Last automated score recalc: {formatWhen(freshness.last_automation_score_recalc_at)}</p>
+            )}
+            {freshness?.last_automation_risk_refresh_at && (
+              <p>Last automated risk refresh: {formatWhen(freshness.last_automation_risk_refresh_at)}</p>
+            )}
             {freshness?.tasks_refreshed_at && <p>Tasks refreshed: {formatWhen(freshness.tasks_refreshed_at)}</p>}
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        {FILTER_CHIPS.map((c) => (
-          <Button
-            key={c.id}
-            type="button"
-            size="sm"
-            variant={filter === c.id ? 'default' : 'outline'}
-            className={filter === c.id ? 'bg-midnight-blue' : ''}
-            onClick={() => setFilter(c.id)}
-          >
-            {c.label}
-          </Button>
-        ))}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex flex-wrap gap-2">
+          {FILTER_CHIPS.map((c) => (
+            <Button
+              key={c.id}
+              type="button"
+              size="sm"
+              variant={filter === c.id ? 'default' : 'outline'}
+              className={filter === c.id ? 'bg-midnight-blue' : ''}
+              onClick={() => setFilter(c.id)}
+            >
+              {c.label}
+            </Button>
+          ))}
+        </div>
+        {propertyOptions.length > 0 && (
+          <div className="flex items-center gap-2 text-sm">
+            <label htmlFor="tasks-property-filter" className="text-gray-600 whitespace-nowrap">
+              Property
+            </label>
+            <select
+              id="tasks-property-filter"
+              value={propertyFilter}
+              onChange={(e) => setPropertyFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white min-w-[12rem] max-w-[20rem]"
+            >
+              <option value="">All properties</option>
+              {propertyOptions.map((p) => (
+                <option key={p.property_id} value={p.property_id}>
+                  {p.nickname || p.name || p.address_line_1 || p.property_id}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {error && (

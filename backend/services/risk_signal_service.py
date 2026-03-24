@@ -552,6 +552,13 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
         except Exception as e:
             logger.warning("Audit log for risk signal create failed: %s", e)
 
+    try:
+        from services.automation_status_service import record_risk_refresh
+
+        await record_risk_refresh(client_id)
+    except Exception as e:
+        logger.debug("automation_status risk refresh stamp skipped: %s", e)
+
     return {"generated": len(inserted), "signals": inserted}
 
 

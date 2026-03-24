@@ -14,13 +14,45 @@ import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
 import ScoreTrendChart from '../components/ScoreTrendChart';
 import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
+import { UrgencyRow, timingLabelFromDueAtIso } from '../components/client/UrgencyDisplay';
+
+const KPI_NO_DATA = 'No data yet';
+const FRESH_SCORE_STALE_HOURS = 48;
+const FRESH_RISK_STALE_HOURS = 72;
+
+function isTimestampStale(iso, maxAgeHours) {
+  if (!iso || !maxAgeHours) return false;
+  try {
+    const t = new Date(iso).getTime();
+    if (Number.isNaN(t)) return false;
+    return Date.now() - t > maxAgeHours * 3600000;
+  } catch {
+    return false;
+  }
+}
+
+function formatDashboardScore(score) {
+  if (score == null || score === '' || (typeof score === 'number' && Number.isNaN(score))) return KPI_NO_DATA;
+  return score;
+}
+
+function formatDashboardGrade(grade) {
+  if (grade == null || grade === '' || grade === '—') return KPI_NO_DATA;
+  return grade;
+}
+
+/** Short label for compact UI (e.g. grade circle). */
+function formatDashboardGradeShort(grade) {
+  if (grade == null || grade === '' || grade === '—') return 'N/A';
+  return grade;
+}
 
 const SETUP_CHECKLIST_DONE_KEY = 'pleerity_setup_checklist_done';
 const SETUP_INCOMPLETE_KEY = 'pleerity_setup_incomplete';
 
 /** Map 0-100 score to grade/color/message (matches backend risk_bands). Use when displaying portfolio score for single-property consistency. */
 function scoreToGradeColorMessage(score) {
-  if (score == null || typeof score !== 'number') return { grade: '—', color: 'gray', message: '' };
+  if (score == null || typeof score !== 'number') return { grade: null, color: 'gray', message: '' };
   if (score >= 80) return { grade: score >= 90 ? 'A' : 'B', color: 'green', message: 'Low risk - good standing' };
   if (score >= 60) return { grade: 'C', color: 'amber', message: 'Moderate risk - action required' };
   if (score >= 40) return { grade: 'D', color: 'amber', message: 'High risk - action required' };
@@ -87,6 +119,7 @@ const ClientDashboard = () => {
   // Priority actions (orchestration/copilot layer)
   const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
   const [openIssuesCountKpi, setOpenIssuesCountKpi] = useState(null);
+  const [openIssuesKpiLoading, setOpenIssuesKpiLoading] = useState(false);
   const [maintenanceSpendMonth, setMaintenanceSpendMonth] = useState(null);
   /** undefined = not loaded yet; null = load failed (hide digest card); object = digest payload */
   const [tasksDigest, setTasksDigest] = useState(undefined);
@@ -136,12 +169,15 @@ const ClientDashboard = () => {
   useEffect(() => {
     if (!isClientUser || !hasFeature('maintenance_workflows')) {
       setOpenIssuesCountKpi(null);
+      setOpenIssuesKpiLoading(false);
       return;
     }
+    setOpenIssuesKpiLoading(true);
     clientAPI
       .getOpenIssuesCount()
       .then((res) => setOpenIssuesCountKpi(res.data?.open_issues_count ?? 0))
-      .catch(() => setOpenIssuesCountKpi(null));
+      .catch(() => setOpenIssuesCountKpi(null))
+      .finally(() => setOpenIssuesKpiLoading(false));
   }, [isClientUser, hasFeature]);
 
   useEffect(() => {
@@ -214,16 +250,28 @@ const ClientDashboard = () => {
         fetchScoreChanges();
         fetchComplianceScore();
         clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
+        const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
         clientAPI
-          .getTasksDigest({ activity_limit: 8 })
-          .then((res) => setTasksDigest(res.data))
-          .catch(() => setTasksDigest(null));
+          .getCommandCenter(params)
+          .then((res) => {
+            const b = res.data || {};
+            setCommandCenter(b);
+            setTasksDigest({
+              summary: b.tasks_digest_summary || {},
+              activity_feed: Array.isArray(b.recent_activity) ? b.recent_activity.slice(0, 8) : [],
+              freshness: b.freshness || {},
+            });
+          })
+          .catch(() => {
+            setTasksDigest(null);
+            setCommandCenter(null);
+          });
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClientUser]);
+  }, [isClientUser, commandCenterScopePropertyId]);
 
   const fetchDashboard = async () => {
     try {
@@ -540,6 +588,12 @@ const ClientDashboard = () => {
     return map;
   }, [workOrdersList]);
 
+  const dashboardFreshness = useMemo(() => {
+    if (commandCenter && typeof commandCenter === 'object' && commandCenter.freshness) return commandCenter.freshness;
+    if (tasksDigest && typeof tasksDigest === 'object' && tasksDigest.freshness) return tasksDigest.freshness;
+    return {};
+  }, [commandCenter, tasksDigest]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -789,18 +843,20 @@ const ClientDashboard = () => {
         {(displayScoreInfo || complianceScore || portfolioSummary) && (
           <div className="mb-6 flex flex-wrap items-center gap-4 py-3 px-4 rounded-xl bg-gray-50 border border-gray-200" data-testid="dashboard-top-strip">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-midnight-blue">{displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score ?? '—'}</span>
+              <span className="text-2xl font-bold text-midnight-blue">
+                {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score)}
+              </span>
               <span className="text-gray-500">/100</span>
               <span className={`ml-1 text-lg font-semibold ${
                 displayScoreInfo?.color === 'green' ? 'text-green-600' :
                 displayScoreInfo?.color === 'amber' ? 'text-amber-600' :
                 displayScoreInfo?.color === 'red' ? 'text-red-600' : 'text-gray-600'
               }`}>
-                Grade {displayScoreInfo?.grade ?? complianceScore?.grade ?? '—'}
+                Grade {formatDashboardGrade(displayScoreInfo?.grade ?? complianceScore?.grade)}
               </span>
             </div>
             <span className="text-sm text-gray-600">
-              {formatRiskLabel(portfolioSummary?.risk_level) || displayScoreInfo?.message || complianceScore?.message || '—'}
+              {formatRiskLabel(portfolioSummary?.risk_level) || displayScoreInfo?.message || complianceScore?.message || KPI_NO_DATA}
             </span>
             {portfolioSummary?.updated_at && (
               <span className="text-xs text-gray-500">Updated {new Date(portfolioSummary.updated_at).toLocaleString()}</span>
@@ -808,6 +864,61 @@ const ClientDashboard = () => {
             {(portfolioSummary?.properties?.length != null || complianceScore?.properties_count != null) && (
               <span className="text-xs text-gray-500">{portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0} propert{(portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0) === 1 ? 'y' : 'ies'}</span>
             )}
+          </div>
+        )}
+
+        {!setupView && isClientUser &&
+          (dashboardFreshness?.score_updated_at ||
+            dashboardFreshness?.risk_signals_updated_at ||
+            dashboardFreshness?.last_automation_score_recalc_at ||
+            dashboardFreshness?.last_automation_risk_refresh_at) && (
+          <div
+            className="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600"
+            data-testid="dashboard-freshness-strip"
+          >
+            <p className="font-medium text-gray-700 mb-1">Data freshness</p>
+            <ul className="space-y-1">
+              {dashboardFreshness.score_updated_at && (
+                <li>
+                  Compliance score updated: {new Date(dashboardFreshness.score_updated_at).toLocaleString()}
+                  {isTimestampStale(dashboardFreshness.score_updated_at, FRESH_SCORE_STALE_HOURS) && (
+                    <span className="ml-2 text-amber-700" title="Snapshot may be outdated; open Command Centre or recalc from admin if needed.">
+                      May be outdated
+                    </span>
+                  )}
+                </li>
+              )}
+              {dashboardFreshness.risk_signals_updated_at && (
+                <li>
+                  Risk signals updated: {new Date(dashboardFreshness.risk_signals_updated_at).toLocaleString()}
+                  {isTimestampStale(dashboardFreshness.risk_signals_updated_at, FRESH_RISK_STALE_HOURS) && (
+                    <span className="ml-2 text-amber-700" title="Risk data may be stale.">
+                      May be outdated
+                    </span>
+                  )}
+                </li>
+              )}
+              {dashboardFreshness.last_automation_score_recalc_at && (
+                <li className="text-gray-500">
+                  Last automated score recalc: {new Date(dashboardFreshness.last_automation_score_recalc_at).toLocaleString()}
+                  {isTimestampStale(dashboardFreshness.last_automation_score_recalc_at, FRESH_SCORE_STALE_HOURS) && (
+                    <span className="ml-2 text-amber-700" title="Scheduled recalc may be overdue.">
+                      May be outdated
+                    </span>
+                  )}
+                </li>
+              )}
+              {dashboardFreshness.last_automation_risk_refresh_at && (
+                <li className="text-gray-500">
+                  Last automated risk refresh: {new Date(dashboardFreshness.last_automation_risk_refresh_at).toLocaleString()}
+                  {isTimestampStale(dashboardFreshness.last_automation_risk_refresh_at, FRESH_RISK_STALE_HOURS) && (
+                    <span className="ml-2 text-amber-700" title="Scheduled risk job may be overdue.">
+                      May be outdated
+                    </span>
+                  )}
+                </li>
+              )}
+            </ul>
           </div>
         )}
 
@@ -830,14 +941,18 @@ const ClientDashboard = () => {
             <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/compliance-score')}>
               <CardContent className="p-4">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Portfolio compliance</p>
-                <p className="text-xl font-bold text-midnight-blue">{displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score ?? '—'}</p>
+                <p className="text-xl font-bold text-midnight-blue">
+                  {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score)}
+                </p>
               </CardContent>
             </Card>
             {hasFeature('maintenance_workflows') && (
               <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/issues')}>
                 <CardContent className="p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
-                  <p className="text-xl font-bold text-midnight-blue">{openIssuesCount == null ? '—' : openIssuesCount}</p>
+                  <p className="text-xl font-bold text-midnight-blue">
+                    {openIssuesKpiLoading ? '…' : openIssuesCount == null ? KPI_NO_DATA : openIssuesCount}
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -1032,7 +1147,10 @@ const ClientDashboard = () => {
                 <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-sm">
                   <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Compliance</p>
                   <p className="font-semibold text-midnight-blue">
-                    Grade {commandCenter.compliance_status_summary.grade ?? '—'} · Score {Math.round(Number(commandCenter.compliance_status_summary.score))}
+                    Grade {formatDashboardGrade(commandCenter.compliance_status_summary.grade)} · Score{' '}
+                    {commandCenter.compliance_status_summary.score != null
+                      ? Math.round(Number(commandCenter.compliance_status_summary.score))
+                      : KPI_NO_DATA}
                   </p>
                   {commandCenter.compliance_status_summary.message && (
                     <p className="text-gray-600 mt-1">{commandCenter.compliance_status_summary.message}</p>
@@ -1276,7 +1394,7 @@ const ClientDashboard = () => {
                       displayScoreInfo?.color === 'red' ? 'text-red-700' :
                       'text-gray-700'
                     }`}>
-                      {displayScoreInfo?.score ?? complianceScore?.score}
+                      {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score)}
                     </span>
                     <span className="text-2xl text-gray-400">/100</span>
                   </div>
@@ -1293,7 +1411,7 @@ const ClientDashboard = () => {
                     displayScoreInfo?.color === 'red' ? 'text-red-700' :
                     'text-gray-700'
                   }`}>
-                    {displayScoreInfo?.grade ?? complianceScore?.grade}
+                    {formatDashboardGradeShort(displayScoreInfo?.grade ?? complianceScore?.grade)}
                   </span>
                 </div>
               </div>
@@ -1459,7 +1577,9 @@ const ClientDashboard = () => {
                   data-testid="stat-expiry"
                 >
                   <p className="text-2xl font-bold text-amber-600">
-                    {complianceScore?.stats?.days_until_next_expiry !== null && complianceScore?.stats?.days_until_next_expiry !== undefined ? complianceScore?.stats?.days_until_next_expiry : '—'}
+                    {complianceScore?.stats?.days_until_next_expiry !== null && complianceScore?.stats?.days_until_next_expiry !== undefined
+                      ? complianceScore?.stats?.days_until_next_expiry
+                      : KPI_NO_DATA}
                   </p>
                   <p className="text-xs text-gray-500">Days to Next Expiry</p>
                 </div>
@@ -1548,6 +1668,11 @@ const ClientDashboard = () => {
                 {priorityActions.actions.map((action, idx) => (
                   <li key={idx} className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
                     <div className="min-w-0 flex-1">
+                      <UrgencyRow
+                        urgencyLevel={action.severity || 'medium'}
+                        timingLabel={timingLabelFromDueAtIso(action.due_at)}
+                        className="mb-1"
+                      />
                       <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
                       {action.description && (
                         <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{action.description}</p>
@@ -1693,7 +1818,7 @@ const ClientDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Score &amp; Risk</p>
                   <p className="text-3xl font-bold text-midnight-blue">
-                    {displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score ?? '—'}
+                    {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score)}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {displayScoreInfo?.message ?? (portfolioSummary?.risk_level ? formatRiskLabel(portfolioSummary.risk_level) : (complianceScore?.message || 'Portfolio'))}
@@ -1917,10 +2042,10 @@ const ClientDashboard = () => {
                               data-testid="property-row"
                             >
                               <td className="p-3 font-medium text-midnight-blue">{p.name || p.address_line_1}</td>
-                              <td className="p-3">{p.score != null ? `${p.score}/100` : '—'}</td>
-                              <td className="p-3">{p.risk_level ? formatRiskLabel(p.risk_level) : '—'}</td>
-                              <td className="p-3">{p.overdue_count ?? '—'}</td>
-                              <td className="p-3">{p.expiring_30_count ?? '—'}</td>
+                              <td className="p-3">{p.score != null ? `${p.score}/100` : KPI_NO_DATA}</td>
+                              <td className="p-3">{p.risk_level ? formatRiskLabel(p.risk_level) : KPI_NO_DATA}</td>
+                              <td className="p-3">{p.overdue_count != null ? p.overdue_count : KPI_NO_DATA}</td>
+                              <td className="p-3">{p.expiring_30_count != null ? p.expiring_30_count : KPI_NO_DATA}</td>
                             </tr>
                           ))}
                         </tbody>

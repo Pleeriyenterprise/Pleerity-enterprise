@@ -46,6 +46,7 @@ ACTION_MISSING_DOCUMENT = "missing_document"
 ACTION_RISK_SIGNAL = "risk_signal"
 ACTION_WORK_ORDER_NEAR_BREACH = "work_order_near_sla_breach"
 ACTION_WORK_ORDER_BREACHED = "work_order_sla_breached"
+ACTION_OPEN_WORK_ORDER = "open_work_order"
 ACTION_PENDING_APPROVAL = "pending_invoice_approval"
 ACTION_OPEN_ISSUE = "open_operational_issue"
 ACTION_OPEN_INCIDENT = "open_critical_incident"  # admin only
@@ -57,6 +58,7 @@ SCORE_CERT_EXPIRING_7D = 75
 SCORE_HIGH_RISK_SIGNAL = 70
 SCORE_WORK_ORDER_NEAR_BREACH = 80
 SCORE_WORK_ORDER_BREACHED = 85
+SCORE_OPEN_WORK_ORDER = 42
 SCORE_PENDING_INVOICE = 50
 SCORE_MISSING_DOCUMENT = 40
 SCORE_OPEN_ISSUE = 45
@@ -295,6 +297,51 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                 ))
     except Exception as e:
         logger.debug("Priority actions: work orders fetch failed for client %s: %s", client_id, e)
+
+    # 5b) Open work orders (OPEN / ASSIGNED / IN_PROGRESS), excluding rows already surfaced via SLA breach / near-breach
+    seen_wo_ids = {
+        a.get("related_work_order_id")
+        for a in actions
+        if a.get("related_work_order_id")
+        and a.get("action_type") in (ACTION_WORK_ORDER_BREACHED, ACTION_WORK_ORDER_NEAR_BREACH)
+    }
+    try:
+        from services import maintenance_service as ms
+        for st in (ms.STATUS_OPEN, ms.STATUS_ASSIGNED, ms.STATUS_IN_PROGRESS):
+            wo_result = await ms.list_work_orders(
+                client_id=client_id,
+                property_id=property_id_filter,
+                status=st,
+                sla_state=None,
+                limit=limit,
+            )
+            for wo in (wo_result.get("work_orders") or [])[:limit]:
+                wo_id = wo.get("work_order_id")
+                if not wo_id or wo_id in seen_wo_ids:
+                    continue
+                seen_wo_ids.add(wo_id)
+                prop_id = wo.get("property_id")
+                wo_upd = _iso_or_none(wo.get("updated_at"))
+                due_iso = _iso_or_none(wo.get("sla_complete_by") or wo.get("sla_respond_by"))
+                wo_url = f"/operations/work-orders?work_order_id={wo_id}" if wo_id else "/operations/work-orders"
+                status_label = (wo.get("status") or st or "OPEN").replace("_", " ").title()
+                actions.append(_action(
+                    ACTION_OPEN_WORK_ORDER,
+                    f"Open work order ({status_label})",
+                    wo.get("description") or f"Work order {str(wo_id)[:8]}…",
+                    SCORE_OPEN_WORK_ORDER,
+                    SEVERITY_MEDIUM,
+                    related_work_order_id=wo_id,
+                    related_property_id=prop_id,
+                    due_at=due_iso,
+                    source_updated_at=wo_upd,
+                    why_matters="Open work orders should be progressed or closed to avoid SLA drift and tenant issues.",
+                    recommended_action_detail=f"Status: {wo.get('status') or st}. Assign, update, or complete the work order.",
+                    recommended_url=wo_url,
+                    recommended_action_label="View work order",
+                ))
+    except Exception as e:
+        logger.debug("Priority actions: open work orders fetch failed for client %s: %s", client_id, e)
 
     # 6) Pending invoice approvals
     try:

@@ -313,8 +313,19 @@ export const adminAPI = {
     apiClient.post(`/admin/clients/${clientId}/impersonation/start`, null, { params: { ttl_minutes: ttlMinutes } }),
   getClientReceipts: (clientId, params = {}) => apiClient.get(`/admin/billing/clients/${clientId}/receipts`, { params }),
   resendClientReceipt: (clientId, body) => apiClient.post(`/admin/billing/clients/${clientId}/receipts/resend`, body),
-  getAuditLogs: (skip = 0, limit = 100, clientId = null) => 
-    apiClient.get('/admin/audit-logs', { params: { skip, limit, client_id: clientId } }),
+  getAuditLogs: (params = {}) =>
+    apiClient.get('/admin/audit-logs', {
+      params: {
+        skip: params.skip ?? 0,
+        limit: params.limit ?? 100,
+        ...(params.client_id ? { client_id: params.client_id } : {}),
+        ...(params.action ? { action: params.action } : {}),
+        ...(params.start_date ? { start_date: params.start_date } : {}),
+        ...(params.end_date ? { end_date: params.end_date } : {}),
+      },
+    }),
+  getComplianceClientsSummary: (params = {}) =>
+    apiClient.get('/admin/ops/compliance-clients-summary', { params }),
   getEmailDelivery: (params = {}) =>
     apiClient.get('/admin/email-delivery', { params: { limit: 50, skip: 0, since_hours: 72, ...params } }),
   resendPasswordSetup: (clientId) => apiClient.post(`/admin/clients/${clientId}/resend-password-setup`),

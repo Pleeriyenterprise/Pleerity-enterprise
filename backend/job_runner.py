@@ -316,6 +316,12 @@ async def run_compliance_recalc_worker():
                         )
                 except Exception as ev_err:
                     logger.warning("Score event write failed after recalc: %s", ev_err)
+                try:
+                    from services.automation_status_service import record_score_recalc
+
+                    await record_score_recalc(client_id)
+                except Exception as auto_err:
+                    logger.debug("automation_status score recalc stamp skipped: %s", auto_err)
                 await db.compliance_recalc_queue.update_one(
                     {"_id": jid},
                     {"$set": {"status": STATUS_DONE, "updated_at": datetime.now(timezone.utc).isoformat()}},

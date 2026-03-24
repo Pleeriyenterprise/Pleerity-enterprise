@@ -353,7 +353,9 @@ class Database:
             await self.db.requirements_catalog.create_index("criticality")
             # Requirements (instance state) - ensure efficient lookups
             await self.db.requirements.create_index([("client_id", 1), ("property_id", 1)])
+            await self.db.requirements.create_index([("client_id", 1), ("status", 1)])
             await self.db.requirements.create_index([("property_id", 1), ("requirement_type", 1)])
+            await self.db.automation_status.create_index("client_id", unique=True)
             # Assistant chat (Compliance Vault Assistant)
             await self.db.assistant_conversations.create_index([("client_id", 1), ("last_activity_at", -1)])
             await self.db.assistant_conversations.create_index("conversation_id", unique=True)

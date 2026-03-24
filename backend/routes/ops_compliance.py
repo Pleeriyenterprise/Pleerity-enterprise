@@ -2,6 +2,8 @@
 Operations & Compliance admin API: feature flags, plan usage, provisioning status.
 All endpoints require admin auth; feature-flag changes require Owner or Admin and are audited.
 """
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -117,6 +119,119 @@ async def get_client_checklist(request: Request, client_id: str):
     from services.onboarding_checklist_service import get_checklist_state
     result = await get_checklist_state(client_id)
     return result
+
+
+@router.get("/compliance-clients-summary")
+async def get_compliance_clients_summary(
+    request: Request,
+    client_id: Optional[str] = Query(None, description="Filter to one client"),
+    limit: int = Query(200, ge=1, le=500),
+):
+    """
+    Cross-client compliance snapshot for ops: requirement counts per client (overdue, expiring soon).
+    Optional portfolio score when filtering to a single client (reuses compliance_score service).
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    match: Dict[str, Any] = {}
+    if client_id:
+        match["client_id"] = client_id
+
+    pipeline: List[Dict[str, Any]] = []
+    if match:
+        pipeline.append({"$match": match})
+    pipeline.extend(
+        [
+            {
+                "$group": {
+                    "_id": "$client_id",
+                    "overdue_count": {
+                        "$sum": {
+                            "$cond": [
+                                {"$in": ["$status", ["OVERDUE", "EXPIRED"]]},
+                                1,
+                                0,
+                            ]
+                        }
+                    },
+                    "expiring_soon_count": {
+                        "$sum": {
+                            "$cond": [
+                                {"$eq": ["$status", "EXPIRING_SOON"]},
+                                1,
+                                0,
+                            ]
+                        }
+                    },
+                    "requirements_last_updated": {"$max": "$updated_at"},
+                }
+            },
+            {"$sort": {"overdue_count": -1, "expiring_soon_count": -1, "_id": 1}},
+            {"$limit": limit},
+        ]
+    )
+    rows_raw = await db.requirements.aggregate(pipeline).to_list(limit)
+    cids = [r["_id"] for r in rows_raw if r.get("_id")]
+    name_by_cid: Dict[str, str] = {}
+    if cids:
+        async for doc in db.clients.find(
+            {"client_id": {"$in": cids}},
+            {"_id": 0, "client_id": 1, "full_name": 1, "company_name": 1},
+        ):
+            cid = doc.get("client_id")
+            if not cid:
+                continue
+            name_by_cid[cid] = (doc.get("company_name") or doc.get("full_name") or cid) or cid
+
+    rows: List[Dict[str, Any]] = []
+    for r in rows_raw:
+        cid = r.get("_id")
+        if not cid:
+            continue
+        row = {
+            "client_id": cid,
+            "client_name": name_by_cid.get(cid, cid),
+            "overdue_count": int(r.get("overdue_count") or 0),
+            "expiring_soon_count": int(r.get("expiring_soon_count") or 0),
+            "requirements_last_updated": r.get("requirements_last_updated"),
+            "portfolio_score": None,
+            "portfolio_grade": None,
+            "score_updated_at": None,
+        }
+        rows.append(row)
+
+    if client_id and not rows:
+        doc = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "client_id": 1, "full_name": 1, "company_name": 1},
+        )
+        if doc:
+            cid = doc["client_id"]
+            rows.append(
+                {
+                    "client_id": cid,
+                    "client_name": doc.get("company_name") or doc.get("full_name") or cid,
+                    "overdue_count": 0,
+                    "expiring_soon_count": 0,
+                    "requirements_last_updated": None,
+                    "portfolio_score": None,
+                    "portfolio_grade": None,
+                    "score_updated_at": None,
+                }
+            )
+
+    if client_id and len(rows) == 1:
+        try:
+            from services.compliance_score import calculate_compliance_score
+
+            cs = await calculate_compliance_score(client_id)
+            rows[0]["portfolio_score"] = cs.get("score")
+            rows[0]["portfolio_grade"] = cs.get("grade")
+            rows[0]["score_updated_at"] = datetime.now(timezone.utc).isoformat()
+        except Exception as e:
+            logger.warning("compliance-clients-summary score for %s: %s", client_id, e)
+
+    return {"rows": rows, "total": len(rows)}
 
 
 @router.get("/overview")

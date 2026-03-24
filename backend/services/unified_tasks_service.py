@@ -22,6 +22,7 @@ from services.priority_actions import (
     ACTION_RISK_SIGNAL,
     ACTION_WORK_ORDER_NEAR_BREACH,
     ACTION_WORK_ORDER_BREACHED,
+    ACTION_OPEN_WORK_ORDER,
     ACTION_PENDING_APPROVAL,
     ACTION_OPEN_ISSUE,
 )
@@ -38,6 +39,7 @@ ACTION_TO_SOURCE = {
     ACTION_RISK_SIGNAL: "risk_signal",
     ACTION_WORK_ORDER_NEAR_BREACH: "work_order",
     ACTION_WORK_ORDER_BREACHED: "work_order",
+    ACTION_OPEN_WORK_ORDER: "work_order",
     ACTION_PENDING_APPROVAL: "approval",
     ACTION_OPEN_ISSUE: "issue",
 }
@@ -100,7 +102,7 @@ def _impact_label(action_type: str, severity: str) -> str:
         return "Elevated portfolio risk"
     if action_type == ACTION_PENDING_APPROVAL:
         return "Blocks payment and spend visibility"
-    if action_type in (ACTION_WORK_ORDER_NEAR_BREACH,):
+    if action_type in (ACTION_WORK_ORDER_NEAR_BREACH, ACTION_OPEN_WORK_ORDER):
         return "SLA / contractor timeliness"
     if action_type == ACTION_OPEN_ISSUE:
         return "Active maintenance issue"
@@ -139,7 +141,7 @@ def _primary_action_fields(a: Dict[str, Any], source_type: str) -> Tuple[str, st
     elif at == ACTION_PENDING_APPROVAL:
         primary_type = "review_approval"
         inline = False
-    elif at in (ACTION_WORK_ORDER_BREACHED, ACTION_WORK_ORDER_NEAR_BREACH):
+    elif at in (ACTION_WORK_ORDER_BREACHED, ACTION_WORK_ORDER_NEAR_BREACH, ACTION_OPEN_WORK_ORDER):
         primary_type = "work_order"
         inline = False
     elif at == ACTION_OPEN_ISSUE:
@@ -164,6 +166,8 @@ def _section_for_action(
         return "urgent"
     if action_type in (ACTION_CERT_EXPIRING_SOON, ACTION_MISSING_DOCUMENT, ACTION_WORK_ORDER_NEAR_BREACH):
         return "upcoming"
+    if action_type == ACTION_OPEN_WORK_ORDER:
+        return "in_progress"
     if action_type == ACTION_PENDING_APPROVAL:
         return "in_progress"
     if action_type == ACTION_OPEN_ISSUE:
@@ -295,8 +299,8 @@ async def _recently_completed_tasks(client_id: str, limit: int = 15) -> List[Dic
     """Lightweight completion feed from requirements and invoices (last state transitions)."""
     db = database.get_db()
     now = datetime.now(timezone.utc)
-    since_req = now - timedelta(days=14)
-    since_inv = now - timedelta(days=14)
+    since_req = now - timedelta(days=7)
+    since_inv = now - timedelta(days=7)
     out: List[Dict[str, Any]] = []
 
     req_cursor = db.requirements.find(
@@ -438,9 +442,22 @@ async def _freshness_block(client_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.debug("unified_tasks: risk freshness failed: %s", e)
 
+    auto_score = None
+    auto_risk = None
+    try:
+        from services.automation_status_service import get_record as _auto_get
+
+        rec = await _auto_get(client_id)
+        auto_score = rec.get("last_score_recalc_at")
+        auto_risk = rec.get("last_risk_refresh_at")
+    except Exception as e:
+        logger.debug("unified_tasks: automation_status freshness failed: %s", e)
+
     return {
         "score_updated_at": score_at,
         "risk_signals_updated_at": risk_at,
+        "last_automation_score_recalc_at": auto_score,
+        "last_automation_risk_refresh_at": auto_risk,
         "tasks_refreshed_at": now,
     }
 
