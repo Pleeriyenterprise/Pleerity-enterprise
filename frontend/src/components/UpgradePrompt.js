@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Lock, ArrowUpRight, Sparkles, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -22,6 +23,7 @@ import { Button } from './ui/button';
  * - variant: 'inline' | 'modal' | 'card' (default: 'card')
  * - onUpgrade: Optional callback when upgrade button clicked
  * - onDismiss: Optional callback when dismissed (only for modal variant)
+ * - contextHint: Optional short line (e.g. portfolio usage) shown under the main copy
  */
 const UpgradePrompt = ({
   featureName,
@@ -33,6 +35,7 @@ const UpgradePrompt = ({
   onUpgrade = null,
   onDismiss = null,
   className = '',
+  contextHint = null,
 }) => {
   const navigate = useNavigate();
 
@@ -46,20 +49,28 @@ const UpgradePrompt = ({
   // Inline variant - minimal, fits within existing UI
   if (variant === 'inline') {
     return (
-      <div 
-        className={`flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 ${className}`}
+      <div
+        className={`flex flex-col gap-1 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 ${className}`}
         data-testid="upgrade-prompt-inline"
       >
-        <Lock className="w-4 h-4 flex-shrink-0" />
-        <span>
-          <strong>{featureName}</strong> requires {requiredPlanName} plan.{' '}
-          <button
-            onClick={handleUpgradeClick}
-            className="text-amber-800 underline hover:text-amber-900 font-medium"
-          >
-            Upgrade now
-          </button>
-        </span>
+        <div className="flex items-center gap-2">
+          <Lock className="w-4 h-4 flex-shrink-0" />
+          <span>
+            <strong>{featureName}</strong> requires {requiredPlanName} plan.{' '}
+            <button
+              type="button"
+              onClick={handleUpgradeClick}
+              className="text-amber-800 underline hover:text-amber-900 font-medium"
+            >
+              Upgrade now
+            </button>
+          </span>
+        </div>
+        {contextHint ? (
+          <p className="text-xs text-amber-900/80 pl-6 leading-snug" data-testid="upgrade-context-hint">
+            {contextHint}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -89,7 +100,13 @@ const UpgradePrompt = ({
               {featureDescription}
             </p>
           )}
-          
+
+          {contextHint ? (
+            <p className="text-center text-xs text-gray-500 mb-4" data-testid="upgrade-context-hint">
+              {contextHint}
+            </p>
+          ) : null}
+
           <div className="bg-gradient-to-r from-electric-teal/10 to-electric-teal/5 border border-electric-teal/20 rounded-xl p-4 mb-6">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-5 h-5 text-electric-teal" />
@@ -144,14 +161,20 @@ const UpgradePrompt = ({
               {featureDescription}
             </p>
           )}
-          
+
+          {contextHint ? (
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed" data-testid="upgrade-context-hint">
+              {contextHint}
+            </p>
+          ) : null}
+
           <div className="flex items-center gap-2 text-sm text-amber-700 mb-4">
             <span className="px-2 py-0.5 bg-amber-100 rounded font-medium">
               {requiredPlanName}
             </span>
             <span>plan required</span>
           </div>
-          
+
           <Button
             size="sm"
             className="bg-electric-teal hover:bg-electric-teal/90"
@@ -181,6 +204,9 @@ export const FeatureGate = ({
   children,
   fallback = null,
 }) => {
+  const { usageContext } = useEntitlements();
+  const contextHint = useMemo(() => formatUpgradeUsageContext(usageContext), [usageContext]);
+
   if (!entitlements || !entitlements.features) {
     // Still loading or no entitlements - show nothing or loading state
     return null;
@@ -205,6 +231,7 @@ export const FeatureGate = ({
       requiredPlanName={getRequiredPlanName(featureData?.minimum_plan)}
       currentPlan={entitlements.plan_name}
       variant="card"
+      contextHint={contextHint}
     />
   );
 };
@@ -228,6 +255,9 @@ export const PropertyLimitPrompt = ({
   className = '',
 }) => {
   const navigate = useNavigate();
+  const { usageContext } = useEntitlements();
+  const existingOnAccount =
+    typeof usageContext?.property_count === 'number' ? usageContext.property_count : null;
 
   const handleUpgradeClick = () => {
     if (onUpgrade) {
@@ -258,7 +288,19 @@ export const PropertyLimitPrompt = ({
             Your current plan ({currentPlan}) allows a maximum of <strong>{currentLimit}</strong> properties.
             You're trying to add {requestedCount} properties.
           </p>
-          
+
+          {existingOnAccount != null && existingOnAccount > 0 ? (
+            <p
+              className="text-sm text-red-900/90 mb-3 border-l-2 border-red-300 pl-3 bg-red-100/40 rounded-r py-2"
+              data-testid="property-limit-existing-portfolio-hint"
+            >
+              Your account already has <strong>{existingOnAccount}</strong> propert
+              {existingOnAccount === 1 ? 'y' : 'ies'} on file. Plan limits apply to your{' '}
+              <strong>whole</strong> portfolio, including properties you add in this intake — not only the rows in
+              this form.
+            </p>
+          ) : null}
+
           {upgradePlanName && (
             <div className="bg-white/50 rounded-lg p-3 mb-4">
               <div className="flex items-center gap-2 text-sm">
@@ -356,6 +398,23 @@ export function getFeatureDisplayInfo(featureKey, entitlements = null) {
 }
 
 /**
+ * One-line portfolio hint for upgrade surfaces (from GET /client/entitlements/context).
+ */
+export function formatUpgradeUsageContext(usageContext) {
+  if (!usageContext || typeof usageContext.property_count !== 'number') return null;
+  const n = usageContext.property_count;
+  const cap = usageContext.max_properties;
+  const at = Boolean(usageContext.at_property_limit);
+  if (typeof cap === 'number' && cap > 0) {
+    if (at) {
+      return `You're at your plan's property limit (${n} of ${cap}). Upgrading can raise your cap and unlock higher-tier features.`;
+    }
+    return `You have ${n} propert${n === 1 ? 'y' : 'ies'} on file; your plan allows up to ${cap}.`;
+  }
+  return `You have ${n} propert${n === 1 ? 'y' : 'ies'} on file.`;
+}
+
+/**
  * Reusable "Upgrade required" state for plan-gated features.
  * Use when a 403 with upgrade_required is returned or when user hits a locked route.
  * Props: feature (key), plan (optional override), variant, showBackToDashboard
@@ -369,6 +428,8 @@ export function UpgradeRequired({
   upgradeDetail = null,
 }) {
   const navigate = useNavigate();
+  const { usageContext } = useEntitlements();
+  const contextHint = useMemo(() => formatUpgradeUsageContext(usageContext), [usageContext]);
   const featureKey = upgradeDetail?.feature ?? upgradeDetail?.feature_key ?? feature;
   const planOverride = plan ?? upgradeDetail?.upgrade_to ?? null;
   const info = getFeatureDisplayInfo(featureKey, null);
@@ -384,6 +445,7 @@ export function UpgradeRequired({
         requiredPlanName={requiredPlanName}
         variant={variant}
         className={className}
+        contextHint={contextHint}
       />
       {showBackToDashboard && (
         <div className="flex justify-center">

@@ -688,14 +688,44 @@ class EmailService:
             if not items:
                 items = ["<li>No sections enabled in your digest preferences.</li>"]
             list_html = "\n                        ".join(items)
+            cc_html = ""
+            if model.get("command_centre_digest_included"):
+                u = int(model.get("command_centre_urgent_open") or 0)
+                up = int(model.get("command_centre_upcoming_open") or 0)
+                ip = int(model.get("command_centre_in_progress_open") or 0)
+                sn = int(model.get("command_centre_snoozed") or 0)
+                cc_html = (
+                    "<p><strong>Open priorities (Today inbox)</strong></p>"
+                    "<ul>"
+                    f"<li><strong>Urgent:</strong> {u}</li>"
+                    f"<li><strong>Upcoming:</strong> {up}</li>"
+                    f"<li><strong>In progress:</strong> {ip}</li>"
+                    f"<li><strong>Snoozed:</strong> {sn}</li>"
+                    "</ul>"
+                )
+                act_lines = model.get("command_centre_recent_activity_lines") or []
+                if act_lines:
+                    lis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in act_lines)
+                    cc_html += f"<p><strong>Recent inbox activity</strong></p><ul>{lis}</ul>"
+            period_html = ""
+            if model.get("digest_period_activity_included"):
+                plines = model.get("digest_period_activity_lines") or []
+                if plines:
+                    plis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in plines)
+                    period_html = f"<p><strong>What changed in this period</strong></p><ul>{plis}</ul>"
+                else:
+                    period_html = (
+                        "<p><strong>What changed in this period</strong></p>"
+                        "<p>No qualifying activity was recorded in audit and operational logs for this window.</p>"
+                    )
             data_as_of = (model.get("data_as_of") or model.get("period_end") or "").replace("T", " ")[:19]
-            body = f"<p>Summary for the period (counts only):</p><ul>{list_html}</ul><p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p><p style=\"color: #64748b; font-size: 12px; margin-top: 16px;\">Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.</p>"
+            body = f"<p>Summary for the period (counts only):</p><ul>{list_html}</ul>{cc_html}{period_html}<p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p><p style=\"color: #64748b; font-size: 12px; margin-top: 16px;\">Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.</p>"
             greeting = f"Hello {model.get('client_name', 'there')},"
             return build_customer_email_layout(
                 greeting=greeting,
                 body_html=body,
                 header_title="Monthly compliance digest",
-                cta_label="View your dashboard",
+                cta_label="Open Today",
                 cta_url=model.get('portal_link', '#'),
                 why_received="you have reporting notifications enabled for your account.",
                 show_preferences_link=True,
@@ -1054,6 +1084,28 @@ Review the admin dashboard pending-verification list to process these documents.
             if not lines:
                 lines = ["- No sections enabled in your digest preferences."]
             body_lines = "\n".join(lines)
+            cc_lines = []
+            if model.get("command_centre_digest_included"):
+                cc_lines.append("")
+                cc_lines.append("Open priorities (Today inbox):")
+                cc_lines.append(f"- Urgent: {int(model.get('command_centre_urgent_open') or 0)}")
+                cc_lines.append(f"- Upcoming: {int(model.get('command_centre_upcoming_open') or 0)}")
+                cc_lines.append(f"- In progress: {int(model.get('command_centre_in_progress_open') or 0)}")
+                cc_lines.append(f"- Snoozed: {int(model.get('command_centre_snoozed') or 0)}")
+                act_lines = model.get("command_centre_recent_activity_lines") or []
+                if act_lines:
+                    cc_lines.append("")
+                    cc_lines.append("Recent inbox activity:")
+                    for line in act_lines:
+                        cc_lines.append(f"- {line}")
+            if model.get("digest_period_activity_included"):
+                pal = model.get("digest_period_activity_lines") or []
+                if pal:
+                    cc_lines.append("")
+                    cc_lines.append("What changed this period:")
+                    for line in pal:
+                        cc_lines.append(f"- {line}")
+            cc_block = "\n".join(cc_lines)
             data_as_of = (model.get("data_as_of") or model.get("period_end") or "").replace("T", " ")[:19]
             return f"""
 MONTHLY COMPLIANCE DIGEST
@@ -1062,6 +1114,7 @@ MONTHLY COMPLIANCE DIGEST
 Summary for the period (counts only):
 
 {body_lines}
+{cc_block}
 
 Period: {model.get('period_start', '')} to {model.get('period_end', '')}
 

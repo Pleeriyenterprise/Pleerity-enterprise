@@ -6,6 +6,7 @@ Supports events:
 - document.verification_changed: PENDING→VERIFIED/REJECTED
 - digest.sent: Monthly/scheduled digest sent
 - reminder.sent: Daily reminder sent
+- work_order.status_changed: Maintenance work order lifecycle transitions
 
 Webhooks are sent as POST requests with JSON payload and HMAC-SHA256 signature.
 Implements exponential backoff retries (3 attempts) and comprehensive logging.
@@ -433,6 +434,53 @@ class WebhookService:
             "success_rate": (successful_deliveries / total_deliveries * 100) if total_deliveries > 0 else 0
         }
 
+    async def list_recent_deliveries(
+        self,
+        client_id: str,
+        *,
+        limit: int = 30,
+        failed_only: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Recent webhook delivery rows from message_logs (provider=WEBHOOK)."""
+        db = database.get_db()
+        cap = max(1, min(int(limit), 100))
+        q: Dict[str, Any] = {"client_id": client_id, "metadata.provider": "WEBHOOK"}
+        if failed_only:
+            q["status"] = "failed"
+        cur = (
+            db.message_logs.find(
+                q,
+                {
+                    "_id": 0,
+                    "created_at": 1,
+                    "status": 1,
+                    "recipient": 1,
+                    "template_alias": 1,
+                    "error_message": 1,
+                    "metadata": 1,
+                },
+            )
+            .sort("created_at", -1)
+            .limit(cap)
+        )
+        rows = await cur.to_list(length=cap)
+        out: List[Dict[str, Any]] = []
+        for r in rows:
+            md = r.get("metadata") or {}
+            out.append(
+                {
+                    "created_at": r.get("created_at"),
+                    "status": r.get("status"),
+                    "target_url": r.get("recipient"),
+                    "event_alias": r.get("template_alias"),
+                    "error_message": r.get("error_message"),
+                    "webhook_id": md.get("webhook_id"),
+                    "response_code": md.get("response_code"),
+                    "attempts": md.get("attempts"),
+                }
+            )
+        return out
+
 
 # Singleton instance
 webhook_service = WebhookService()
@@ -552,4 +600,27 @@ async def fire_reminder_sent(
             "overdue_requirements": overdue_count
         },
         idempotency_key=f"reminder_{client_id}_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+    )
+
+
+async def fire_work_order_status_changed(
+    client_id: str,
+    work_order_id: str,
+    property_id: Optional[str],
+    old_status: str,
+    new_status: str,
+    completed_at: Optional[str] = None,
+):
+    """Fire webhook when a work order status changes."""
+    await webhook_service.trigger_webhooks(
+        client_id=client_id,
+        event_type=WebhookEventType.WORK_ORDER_STATUS_CHANGED.value,
+        payload={
+            "work_order_id": work_order_id,
+            "property_id": property_id,
+            "before": {"status": old_status},
+            "after": {"status": new_status},
+            "completed_at": completed_at,
+        },
+        idempotency_key=f"wo_{work_order_id}_{old_status}_{new_status}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}",
     )

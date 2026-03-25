@@ -240,6 +240,11 @@ async def update_work_order(
 ) -> Optional[Dict[str, Any]]:
     """Update work order status, contractor, resolution outcome, notes, evidence. When contractor_id is set, records assignment and sets assigned_at. accepted_at set when contractor accepts (for response/completion metrics)."""
     db = database.get_db()
+    prev_snapshot = await db.work_orders.find_one(
+        {"work_order_id": work_order_id},
+        {"_id": 0, "status": 1, "client_id": 1, "property_id": 1},
+    )
+    prev_status = (prev_snapshot or {}).get("status")
     now = datetime.now(timezone.utc).isoformat()
     set_fields = {"updated_at": now}
     if contractor_notes is not None:
@@ -277,6 +282,27 @@ async def update_work_order(
     )
     if result:
         result.pop("_id", None)
+        new_status = result.get("status")
+        if (
+            status is not None
+            and prev_status
+            and new_status
+            and str(prev_status).upper() != str(new_status).upper()
+            and result.get("client_id")
+        ):
+            try:
+                from services.webhook_service import fire_work_order_status_changed
+
+                await fire_work_order_status_changed(
+                    client_id=result["client_id"],
+                    work_order_id=work_order_id,
+                    property_id=result.get("property_id"),
+                    old_status=str(prev_status).upper(),
+                    new_status=str(new_status).upper(),
+                    completed_at=result.get("completed_at") if str(new_status).upper() == STATUS_COMPLETED else None,
+                )
+            except Exception as wh_e:
+                logger.warning("Work order status webhook failed (non-fatal): %s", wh_e)
         if contractor_id is not None:
             try:
                 await db.contractor_assignments.insert_one({

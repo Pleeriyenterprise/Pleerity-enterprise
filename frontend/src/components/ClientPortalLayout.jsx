@@ -47,8 +47,8 @@ const OPERATIONS_CHILDREN = [
 ];
 
 const PORTAL_TABS = [
+  { path: '/today', label: 'Today', icon: ListTodo },
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/tasks', label: 'Tasks', icon: ListTodo },
   { path: '/properties', label: 'Properties', icon: Building2 },
   { path: '/requirements', label: 'Compliance', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },

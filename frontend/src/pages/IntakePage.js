@@ -34,6 +34,7 @@ import {
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { PropertyLimitPrompt } from '../components/UpgradePrompt';
+import { useEntitlements } from '../contexts/EntitlementsContext';
 
 // Plan limits - NEW PLAN STRUCTURE (must match backend plan_registry.py)
 const PLAN_LIMITS = {
@@ -950,6 +951,9 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
 // STEP 3: PROPERTIES
 // ============================================================================
 const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, propertyLimitError, setPropertyLimitError, onNext, onBack, goToStep, leadPropertyCountHint }) => {
+  const { usageContext } = useEntitlements();
+  const existingPortfolioCount =
+    typeof usageContext?.property_count === 'number' ? usageContext.property_count : 0;
   const maxProperties = PLAN_LIMITS[formData.billing_plan] ?? 2;
   const currentCount = formData.properties.length;
   const canAddMore = currentCount < maxProperties;
@@ -996,6 +1000,16 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
           </div>
           {leadPropertyCountHint != null && leadPropertyCountHint > 1 && (
             <p className="text-sm text-blue-700 mt-2">You indicated {leadPropertyCountHint} properties; add them here.</p>
+          )}
+          {existingPortfolioCount > 0 && (
+            <p
+              className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3"
+              data-testid="intake-existing-properties-hint"
+            >
+              Your account already has <strong>{existingPortfolioCount}</strong> propert
+              {existingPortfolioCount === 1 ? 'y' : 'ies'} on file. The plan you select limits your{' '}
+              <strong>total</strong> portfolio — include those properties when choosing how many to add here.
+            </p>
           )}
         </CardHeader>
       </Card>

@@ -1,5 +1,5 @@
 /**
- * Client portal — Command Centre / Tasks inbox. Aggregated server-side tasks with sections,
+ * Client portal — Today (priorities inbox). Aggregated server-side tasks with sections,
  * urgency, deep links, and selective inline actions (risk → issue / work order).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,7 +25,7 @@ const FILTER_CHIPS = [
 ];
 
 function formatMoney(amount, currency = 'GBP') {
-  if (amount == null || Number.isNaN(Number(amount))) return 'No data';
+  if (amount == null || Number.isNaN(Number(amount))) return '\u2014';
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'GBP' }).format(Number(amount));
 }
 
@@ -288,6 +288,13 @@ export default function ClientTasksPage() {
       .catch(() => setPropertyOptions([]));
   }, [isClientUser]);
 
+  useEffect(() => {
+    if (!isClientUser || typeof sessionStorage === 'undefined') return;
+    if (sessionStorage.getItem('pleerity_today_opened')) return;
+    sessionStorage.setItem('pleerity_today_opened', '1');
+    clientAPI.postAnalyticsEvent({ event: 'today_opened', path: '/today' }).catch(() => {});
+  }, [isClientUser]);
+
   const load = useCallback(() => {
     if (!isClientUser) return;
     setLoading(true);
@@ -400,7 +407,7 @@ export default function ClientTasksPage() {
   if (!isClientUser) {
     return (
       <div className="p-6">
-        <p className="text-gray-600">Tasks are available to client users only.</p>
+        <p className="text-gray-600">Today is available to client users only.</p>
       </div>
     );
   }
@@ -410,10 +417,10 @@ export default function ClientTasksPage() {
       <div className="mb-6">
         <div className="flex items-center gap-2 text-midnight-blue mb-1">
           <LayoutList className="w-7 h-7" />
-          <h1 className="text-2xl md:text-3xl font-bold">Command Centre</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">Today</h1>
         </div>
         <p className="text-gray-600 text-sm md:text-base">
-          One place for what needs attention across compliance, maintenance, approvals, and risk.
+          Your open priorities across compliance, maintenance, approvals, and risk—ranked for you.
         </p>
         <p className="text-xs text-gray-500 mt-2">
           <Link

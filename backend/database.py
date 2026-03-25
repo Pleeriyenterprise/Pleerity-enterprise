@@ -75,6 +75,32 @@ class Database:
             
             await self.db.portal_users.create_index("client_id")
             await self.db.portal_users.create_index("portal_user_id", unique=True)
+
+            # Evidence pack jobs (client exports)
+            try:
+                await self.db.compliance_evidence_pack_jobs.create_index(
+                    [("client_id", 1), ("created_at", -1)]
+                )
+            except Exception:
+                pass
+            # Product analytics (first-party funnel events)
+            try:
+                await self.db.product_analytics_events.create_index(
+                    [("client_id", 1), ("created_at", -1)]
+                )
+                await self.db.product_analytics_events.create_index(
+                    [("event", 1), ("created_at", -1)]
+                )
+            except Exception:
+                pass
+            # Client read API keys (integrations; secret stored as hash only)
+            try:
+                await self.db.client_read_api_keys.create_index("token_hash", unique=True)
+                await self.db.client_read_api_keys.create_index(
+                    [("client_id", 1), ("revoked_at", 1)]
+                )
+            except Exception:
+                pass
             
             # Audit log indexes - for timeline queries and email-delivery
             await self.db.audit_logs.create_index([("client_id", 1), ("timestamp", -1)])

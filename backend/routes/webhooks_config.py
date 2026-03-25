@@ -5,6 +5,7 @@ Endpoints:
 - GET /api/webhooks - List webhooks
 - GET /api/webhooks/events - Get available event types
 - GET /api/webhooks/stats - Get delivery statistics
+- GET /api/webhooks/deliveries - Recent outbound delivery attempts (message_logs)
 - GET /api/webhooks/{id} - Get webhook details
 - PATCH /api/webhooks/{id} - Update webhook
 - DELETE /api/webhooks/{id} - Soft delete webhook
@@ -13,7 +14,7 @@ Endpoints:
 - POST /api/webhooks/{id}/disable - Disable webhook
 - POST /api/webhooks/{id}/regenerate-secret - Regenerate signing secret
 """
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from database import database
 from middleware import client_route_guard
 from models import WebhookEventType, AuditAction
@@ -88,7 +89,13 @@ async def get_available_events(request: Request):
             "name": "Reminder Sent",
             "description": "Fired when a daily compliance reminder is sent",
             "payload_fields": ["recipient", "expiring_requirements", "overdue_requirements"]
-        }
+        },
+        {
+            "type": WebhookEventType.WORK_ORDER_STATUS_CHANGED.value,
+            "name": "Work Order Status Changed",
+            "description": "Fired when a maintenance work order status changes (e.g. ASSIGNED → COMPLETED)",
+            "payload_fields": ["work_order_id", "property_id", "before.status", "after.status", "completed_at"]
+        },
     ]
     
     return {
@@ -98,7 +105,16 @@ async def get_available_events(request: Request):
             "algorithm": "HMAC-SHA256",
             "header": "X-Webhook-Signature",
             "format": "sha256={hex_digest}"
-        }
+        },
+        "read_api": {
+            "base_path": "/api/client-data/v1",
+            "description": "HTTP pull API for properties, requirements, priorities, and compliance score (Professional / webhooks entitlement).",
+            "authentication": [
+                "Authorization: Bearer <ple_read_…>",
+                "X-Pleerity-Read-Key: <ple_read_…>",
+            ],
+            "manage_keys_path": "/api/client/integrations/read-api-keys",
+        },
     }
 
 
@@ -115,6 +131,38 @@ async def get_webhook_stats(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get statistics"
+        )
+
+
+@router.get("/deliveries")
+async def list_webhook_deliveries(
+    request: Request,
+    limit: int = Query(30, ge=1, le=100),
+    failed_only: bool = Query(False),
+):
+    """Recent webhook HTTP delivery rows from message logs (Professional / webhooks)."""
+    user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "webhooks")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details
+            or {"message": error_msg, "feature": "webhooks", "upgrade_required": True},
+        )
+    try:
+        items = await webhook_service.list_recent_deliveries(
+            user["client_id"],
+            limit=limit,
+            failed_only=failed_only,
+        )
+        return {"deliveries": items}
+    except Exception as e:
+        logger.error("List webhook deliveries error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list deliveries",
         )
 
 

@@ -404,6 +404,7 @@ class WebhookEventType(str, Enum):
     DOCUMENT_VERIFICATION_CHANGED = "document.verification_changed"
     DIGEST_SENT = "digest.sent"
     REMINDER_SENT = "reminder.sent"
+    WORK_ORDER_STATUS_CHANGED = "work_order.status_changed"
 
 
 class Webhook(BaseModel):

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/client';
+import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { UpgradeRequired } from '../components/UpgradePrompt';
@@ -30,7 +30,9 @@ import {
   X,
   Lock,
   ArrowUpRight,
-  Eye
+  Eye,
+  Package,
+  BarChart2,
 } from 'lucide-react';
 import UpgradePrompt from '../components/UpgradePrompt';
 
@@ -65,6 +67,15 @@ const ReportsPage = () => {
 
   const hasReportsAccess = hasFeature('reports_pdf') || hasFeature('reports_csv');
   const hasScheduledReportsAccess = hasFeature('scheduled_reports');
+  const hasAuditLogExport = hasFeature('audit_log_export');
+  const [evidencePackJobs, setEvidencePackJobs] = useState([]);
+  const [evidencePackLoading, setEvidencePackLoading] = useState(false);
+  const [evidencePackGenerating, setEvidencePackGenerating] = useState(false);
+  const [evidencePeriodStart, setEvidencePeriodStart] = useState('');
+  const [evidencePeriodEnd, setEvidencePeriodEnd] = useState('');
+  const [analyticsSummary, setAnalyticsSummary] = useState(null);
+  const [analyticsSummaryLoading, setAnalyticsSummaryLoading] = useState(false);
+  const [analyticsDays, setAnalyticsDays] = useState(30);
 
   const fetchData = useCallback(async () => {
     try {
@@ -95,6 +106,129 @@ const ReportsPage = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const fetchEvidencePackJobs = useCallback(async () => {
+    if (!hasAuditLogExport) return;
+    setEvidencePackLoading(true);
+    try {
+      const r = await clientAPI.listEvidencePackJobs({ limit: 10 });
+      setEvidencePackJobs(r.data?.jobs || []);
+    } catch {
+      setEvidencePackJobs([]);
+    } finally {
+      setEvidencePackLoading(false);
+    }
+  }, [hasAuditLogExport]);
+
+  useEffect(() => {
+    fetchEvidencePackJobs();
+  }, [fetchEvidencePackJobs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setAnalyticsSummaryLoading(true);
+      try {
+        const r = await clientAPI.getAnalyticsSummary({ days: analyticsDays });
+        if (!cancelled) setAnalyticsSummary(r.data);
+      } catch {
+        if (!cancelled) setAnalyticsSummary(null);
+      } finally {
+        if (!cancelled) setAnalyticsSummaryLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [analyticsDays]);
+
+  const requestNewEvidencePack = async () => {
+    const ps = (evidencePeriodStart || '').trim();
+    const pe = (evidencePeriodEnd || '').trim();
+    if ((ps && !pe) || (!ps && pe)) {
+      toast.error('Choose both start and end dates, or leave both empty for a full snapshot.');
+      return;
+    }
+    if (ps && pe && ps > pe) {
+      toast.error('End date must be on or after start date.');
+      return;
+    }
+    setEvidencePackGenerating(true);
+    try {
+      const body =
+        ps && pe
+          ? { period_start: ps.slice(0, 10), period_end: pe.slice(0, 10), background: true }
+          : { background: true };
+      const res = await clientAPI.createEvidencePackJob(body);
+      const jobId = res.data?.job_id;
+      await clientAPI.postAnalyticsEvent({ event: 'evidence_pack_requested', path: '/reports' }).catch(() => {});
+      toast.success('Evidence pack is building — download will appear below when ready.');
+      await fetchEvidencePackJobs();
+      if (jobId) {
+        const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+        (async () => {
+          for (let i = 0; i < 90; i += 1) {
+            await delay(2000);
+            try {
+              const r = await clientAPI.listEvidencePackJobs({ limit: 20 });
+              const jobs = r.data?.jobs || [];
+              setEvidencePackJobs(jobs);
+              const j = jobs.find((x) => x.job_id === jobId);
+              if (j?.status === 'completed') {
+                toast.success('Evidence pack ready — download from the list below.');
+                return;
+              }
+              if (j?.status === 'failed') {
+                toast.error(typeof j.error === 'string' && j.error ? j.error : 'Evidence pack generation failed.');
+                return;
+              }
+            } catch {
+              /* continue polling */
+            }
+          }
+          toast.info('Still building — refresh the list or try again in a moment.');
+        })();
+      }
+    } catch (err) {
+      const st = err.response?.status;
+      const det = err.response?.data?.detail;
+      if (st === 429) {
+        toast.error(typeof det === 'string' ? det : 'Rate limit: maximum 5 evidence packs per 24 hours.');
+      } else if (st === 403 && det?.upgrade_required) {
+        setUpgradeRequiredDetail(det);
+      } else if (st === 400) {
+        toast.error(typeof det === 'string' ? det : 'Invalid export period');
+      } else {
+        toast.error(typeof det === 'string' ? det : 'Failed to generate evidence pack');
+      }
+    } finally {
+      setEvidencePackGenerating(false);
+    }
+  };
+
+  const downloadEvidencePackZip = async (jobId, filenameHint) => {
+    try {
+      const res = await clientAPI.downloadEvidencePackFile(jobId);
+      const blob = new Blob([res.data], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const cd = res.headers['content-disposition'];
+      let fname = filenameHint || `evidence-pack_${jobId}.zip`;
+      if (cd) {
+        const m = cd.match(/filename="?([^";]+)"?/);
+        if (m) fname = m[1];
+      }
+      link.download = fname;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Evidence pack downloaded');
+    } catch {
+      toast.error('Download failed');
+    }
+  };
 
   const generatePDF = (reportData, reportType) => {
     const doc = new jsPDF();
@@ -482,6 +616,61 @@ const ReportsPage = () => {
             />
           </div>
         )}
+        <Card className="mb-6 border border-gray-200" data-testid="portal-analytics-summary-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-electric-teal" />
+              Portal activity (first-party)
+            </CardTitle>
+            <p className="text-sm text-gray-500 mt-1">
+              Aggregated counts of allowlisted portal events for your account (not a full analytics warehouse).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-600">Period</span>
+              {[7, 30, 90].map((d) => (
+                <Button
+                  key={d}
+                  type="button"
+                  variant={analyticsDays === d ? 'default' : 'outline'}
+                  size="sm"
+                  className={analyticsDays === d ? 'bg-electric-teal hover:bg-teal-600' : ''}
+                  onClick={() => setAnalyticsDays(d)}
+                  data-testid={`analytics-summary-days-${d}`}
+                >
+                  {d}d
+                </Button>
+              ))}
+            </div>
+            {analyticsSummaryLoading ? (
+              <p className="text-sm text-gray-500 flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" /> Loading summary…
+              </p>
+            ) : analyticsSummary ? (
+              <div className="text-sm space-y-2">
+                <p className="text-gray-700">
+                  <span className="font-medium text-midnight-blue">{analyticsSummary.total_events ?? 0}</span> events
+                  in the last {analyticsSummary.period_days ?? analyticsDays} days.
+                </p>
+                {(analyticsSummary.by_event || []).length > 0 ? (
+                  <ul className="border border-gray-100 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                    {analyticsSummary.by_event.map((row) => (
+                      <li key={row.event} className="flex justify-between gap-2 px-3 py-2">
+                        <span className="font-mono text-xs text-gray-800 truncate">{row.event}</span>
+                        <span className="text-gray-600 shrink-0">{row.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500">No recorded events in this window.</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Summary unavailable.</p>
+            )}
+          </CardContent>
+        </Card>
         {/* Monthly Digests - last 6 with View and Download PDF */}
         <Card className="mb-6" data-testid="digests-card">
           <CardHeader>
@@ -558,6 +747,92 @@ const ReportsPage = () => {
             )}
           </CardContent>
         </Card>
+        {hasAuditLogExport && (
+          <Card className="mb-6 border border-gray-200" data-testid="evidence-pack-zip-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-electric-teal" />
+                Compliance evidence pack (ZIP)
+              </CardTitle>
+              <p className="text-sm text-gray-500 mt-1">
+                Download a ZIP containing CSV exports of properties, requirements, document metadata, compliance score history, and work orders, plus a JSON manifest. For regulators, lenders, or your own archive. Limited to five exports per 24 hours. Optionally restrict rows to a UTC date range (properties CSV always lists your full portfolio for context).
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-4 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Period start (optional)</label>
+                  <input
+                    type="date"
+                    value={evidencePeriodStart}
+                    onChange={(e) => setEvidencePeriodStart(e.target.value)}
+                    className="border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    data-testid="evidence-pack-period-start"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Period end (optional)</label>
+                  <input
+                    type="date"
+                    value={evidencePeriodEnd}
+                    onChange={(e) => setEvidencePeriodEnd(e.target.value)}
+                    className="border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    data-testid="evidence-pack-period-end"
+                  />
+                </div>
+              </div>
+              <Button
+                onClick={requestNewEvidencePack}
+                disabled={evidencePackGenerating}
+                className="bg-electric-teal hover:bg-teal-600"
+                data-testid="evidence-pack-generate-btn"
+              >
+                {evidencePackGenerating ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                Generate new pack
+              </Button>
+              {evidencePackLoading ? (
+                <p className="text-sm text-gray-500">Loading recent exports…</p>
+              ) : evidencePackJobs.length === 0 ? (
+                <p className="text-sm text-gray-500">No packs yet. Generate one to download.</p>
+              ) : (
+                <ul className="space-y-2 text-sm border border-gray-100 rounded-lg divide-y divide-gray-100">
+                  {evidencePackJobs.map((j) => (
+                    <li key={j.job_id} className="flex flex-wrap items-center justify-between gap-2 p-3">
+                      <div>
+                        <p className="font-medium text-midnight-blue">
+                          {j.created_at ? new Date(j.created_at).toLocaleString() : j.job_id}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {j.period_start && j.period_end
+                            ? `Period ${String(j.period_start).slice(0, 10)} – ${String(j.period_end).slice(0, 10)} · `
+                            : 'Full snapshot · '}
+                          {j.byte_size != null ? `${Math.round(Number(j.byte_size) / 1024)} KB` : ''}
+                          {j.status && j.status !== 'completed' ? ` · ${j.status}` : ''}
+                        </p>
+                      </div>
+                      {j.status === 'processing' ? (
+                        <span className="text-xs text-amber-700 flex items-center gap-1">
+                          <RefreshCw className="w-3 h-3 animate-spin" /> Building…
+                        </span>
+                      ) : null}
+                      {j.status === 'completed' && j.gridfs_id ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadEvidencePackZip(j.job_id, j.filename)}
+                          data-testid={`evidence-pack-download-${j.job_id}`}
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          Download ZIP
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        )}
         {digestView && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDigestView(null)}>
             <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>

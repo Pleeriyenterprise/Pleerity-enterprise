@@ -281,6 +281,94 @@ def _filter_tags(source_type: str, action_type: str, overdue_days: Optional[int]
     return list(dict.fromkeys(tags))
 
 
+async def _tenant_message_tasks(
+    client_id: str,
+    property_id_filter: Optional[str],
+    limit: int = 12,
+) -> List[Dict[str, Any]]:
+    """
+    Surface recent tenant → landlord portal messages on the unified inbox (Today / priorities).
+    """
+    db = database.get_db()
+    q: Dict[str, Any] = {"client_id": client_id}
+    if property_id_filter:
+        q["property_id"] = property_id_filter
+    try:
+        cur = (
+            db.tenant_messages.find(
+                q,
+                {
+                    "_id": 0,
+                    "message_id": 1,
+                    "property_id": 1,
+                    "property_address": 1,
+                    "subject": 1,
+                    "message": 1,
+                    "tenant_name": 1,
+                    "created_at": 1,
+                },
+            )
+            .sort("created_at", -1)
+            .limit(max(1, min(limit, 25)))
+        )
+        rows = await cur.to_list(length=25)
+    except Exception as e:
+        logger.debug("unified_tasks: tenant_messages load failed: %s", e)
+        return []
+
+    if not rows:
+        return []
+
+    prop_ids = [r.get("property_id") for r in rows if r.get("property_id")]
+    labels = await _load_property_labels(client_id, [str(x) for x in prop_ids if x])
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        mid = r.get("message_id")
+        if not mid:
+            continue
+        pid = r.get("property_id")
+        created = _parse_dt(r.get("created_at"))
+        freshness = created.isoformat() if created else None
+        subj = (r.get("subject") or "Tenant message").strip()
+        tenant_name = (r.get("tenant_name") or "Tenant").strip()
+        preview = (r.get("message") or "")[:160]
+        title = f"Tenant message: {subj}"
+        desc = f"From {tenant_name}. {preview}".strip()
+        out.append({
+            "id": f"tenant_message:{mid}",
+            "source_type": "tenant_message",
+            "source_id": str(mid),
+            "title": title,
+            "description": desc,
+            "property_id": pid,
+            "property_label": labels.get(pid or "") if pid else (r.get("property_address") or None),
+            "urgency_level": "medium",
+            "due_date": None,
+            "overdue_days": None,
+            "impact_label": "Tenant communication",
+            "impact_score": 52,
+            "status": "open",
+            "section": "in_progress",
+            "primary_action_type": "view",
+            "primary_action_label": "Open tenant inbox",
+            "primary_action_url": "/tenants",
+            "inline_action_supported": False,
+            "secondary_action_label": None,
+            "secondary_action_url": None,
+            "metadata": {
+                "action_type": "tenant_contact_landlord",
+                "message_id": str(mid),
+            },
+            "why_matters": "Tenants expect a timely response when they use the portal.",
+            "recommended_action": "Review the message and reply or arrange follow-up.",
+            "freshness_timestamp": freshness,
+            "created_at": freshness,
+            "updated_at": freshness,
+            "filter_tags": ["tenant", "operations"],
+        })
+    return out
+
+
 async def _load_property_labels(client_id: str, property_ids: List[str]) -> Dict[str, str]:
     if not property_ids:
         return {}
@@ -496,6 +584,12 @@ async def get_unified_tasks_for_client(
             continue
         seen.add(t["id"])
         tasks.append(t)
+
+    for tm in await _tenant_message_tasks(client_id, property_id_filter, limit=12):
+        if tm["id"] in seen:
+            continue
+        seen.add(tm["id"])
+        tasks.append(tm)
 
     overrides = await client_task_state.load_active_overrides(client_id)
     visible, snoozed = client_task_state.partition_tasks_by_override(tasks, overrides, now)

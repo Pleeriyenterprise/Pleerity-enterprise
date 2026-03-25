@@ -128,6 +128,10 @@ const ClientDashboard = () => {
   /** Read-only protection / continuity snapshot (aligned with billing cancel context). */
   const [protectionSnapshot, setProtectionSnapshot] = useState(null);
   const [protectionSnapshotLoading, setProtectionSnapshotLoading] = useState(false);
+  /** Since last acknowledged visit — server-backed deltas (audit, score, work orders, uploads). */
+  const [activitySince, setActivitySince] = useState(null);
+  const [activitySinceLoading, setActivitySinceLoading] = useState(false);
+  const [activitySinceAckBusy, setActivitySinceAckBusy] = useState(false);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -251,6 +255,44 @@ const ClientDashboard = () => {
       .finally(() => setProtectionSnapshotLoading(false));
   }, [isClientUser, commandCenterScopePropertyId]);
 
+  useEffect(() => {
+    if (!isClientUser) {
+      setActivitySince(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setActivitySinceLoading(true);
+    clientAPI
+      .getActivitySince()
+      .then((res) => {
+        if (cancelled) return;
+        setActivitySince(res.data);
+        if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem('pleerity_activity_since_viewed')) {
+          sessionStorage.setItem('pleerity_activity_since_viewed', '1');
+          clientAPI.postAnalyticsEvent({ event: 'activity_since_viewed', path: '/dashboard' }).catch(() => {});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setActivitySince(null);
+      })
+      .finally(() => {
+        if (!cancelled) setActivitySinceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isClientUser]);
+
+  const handleAckActivitySince = () => {
+    setActivitySinceAckBusy(true);
+    clientAPI
+      .acknowledgeActivitySince()
+      .then(() => clientAPI.getActivitySince())
+      .then((res) => setActivitySince(res.data))
+      .catch(() => {})
+      .finally(() => setActivitySinceAckBusy(false));
+  };
+
   // Refetch score trend card when user switches Portfolio vs Property or selects another property
   useEffect(() => {
     if (!isClientUser) return;
@@ -288,6 +330,10 @@ const ClientDashboard = () => {
           .getProtectionSnapshot(params)
           .then((res) => setProtectionSnapshot(res.data || null))
           .catch(() => setProtectionSnapshot(null));
+        clientAPI
+          .getActivitySince()
+          .then((res) => setActivitySince(res.data))
+          .catch(() => {});
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -1003,9 +1049,9 @@ const ClientDashboard = () => {
         {/* Executive KPI row (compliance + operations) */}
         {!setupView && (
           <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" data-testid="executive-kpi-row">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/tasks')}>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/today')}>
               <CardContent className="p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Tasks inbox</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Today</p>
                 <p className="text-xl font-bold text-midnight-blue">
                   {tasksDigest && typeof tasksDigest === 'object'
                     ? (Number(tasksDigest.summary?.urgent_count ?? 0)
@@ -1013,7 +1059,7 @@ const ClientDashboard = () => {
                       + Number(tasksDigest.summary?.in_progress_count ?? 0))
                     : 'Open'}
                 </p>
-                <p className="text-xs text-electric-teal mt-1">Command Centre →</p>
+                <p className="text-xs text-electric-teal mt-1">Open Today →</p>
               </CardContent>
             </Card>
             <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/compliance-score')}>
@@ -1082,7 +1128,7 @@ const ClientDashboard = () => {
               <div>
                 <CardTitle className="text-base flex items-center gap-2">
                   <ListTodo className="w-4 h-4 text-teal-600" />
-                  Tasks — this week
+                  Today — this week
                 </CardTitle>
                 {tasksDigest.freshness?.tasks_refreshed_at && (
                   <p className="text-xs text-gray-500 mt-1">
@@ -1093,8 +1139,8 @@ const ClientDashboard = () => {
                   <p className="text-xs text-electric-teal mt-1">Scoped to: {commandCenterScopeLabel}</p>
                 )}
               </div>
-              <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/tasks')}>
-                Open Command Centre
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/today')}>
+                Open Today
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1148,6 +1194,50 @@ const ClientDashboard = () => {
           </Card>
         )}
 
+        {!setupView && isClientUser && (activitySinceLoading || activitySince) && (
+          <Card className="mb-6 border border-gray-200 shadow-sm" data-testid="activity-since-card">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <History className="w-4 h-4 text-teal-600" />
+                  Since your last visit
+                </CardTitle>
+                {activitySince?.window?.since && activitySince?.window?.until && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Compared {new Date(activitySince.window.since).toLocaleString()} →{' '}
+                    {new Date(activitySince.window.until).toLocaleString()}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                disabled={activitySinceAckBusy || activitySinceLoading}
+                onClick={handleAckActivitySince}
+                data-testid="activity-since-ack-btn"
+              >
+                Mark as seen
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {activitySinceLoading ? (
+                <p className="text-sm text-gray-500">Loading what changed…</p>
+              ) : Array.isArray(activitySince?.lines) && activitySince.lines.length > 0 ? (
+                <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-800">
+                  {activitySince.lines.map((line, idx) => (
+                    <li key={idx}>{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  No qualifying changes in audit logs, score snapshots, work orders, or uploads for this window.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {!setupView && commandCenter && typeof commandCenter === 'object' && (
           <Card
             className="mb-6 border border-gray-200 shadow-sm"
@@ -1168,8 +1258,8 @@ const ClientDashboard = () => {
                   <p className="text-xs text-electric-teal mt-1">Scoped to: {commandCenterScopeLabel}</p>
                 )}
               </div>
-              <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/tasks')}>
-                All tasks
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/today')}>
+                Open Today
               </Button>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -1186,7 +1276,7 @@ const ClientDashboard = () => {
                             const url = t.primary_action_url || t.cta_url;
                             if (url && url.startsWith('/')) navigate(url);
                             else if (url) window.location.assign(url);
-                            else navigate('/tasks');
+                            else navigate('/today');
                           }}
                         >
                           {t.title || 'Task'}

@@ -182,6 +182,8 @@ export const clientAPI = {
   getPriorityActions: (params = {}) => apiClient.get('/client/priority-actions', { params }),
   /** Unified Command Centre tasks (sections, freshness, spend snapshot). */
   getTasks: (params = {}) => apiClient.get('/client/tasks', { params }),
+  /** Same response as getTasks — stable alias for integrations and “Today / priorities” clients. */
+  getPriorities: (params = {}) => apiClient.get('/client/priorities', { params }),
   /** Dashboard digest: summary, freshness, short activity (no full task lists). */
   getTasksDigest: (params = {}) => apiClient.get('/client/tasks/digest', { params }),
   /** Composed urgent tasks, risks, activity, compliance summary (read-only aggregate). */
@@ -191,6 +193,19 @@ export const clientAPI = {
   /** Phase 2: snooze | dismiss | done | restore (inbox overlay). */
   postTaskOverride: (body) => apiClient.post('/client/tasks/override', body),
   getTasksActivity: (params = {}) => apiClient.get('/client/tasks/activity', { params }),
+  /** Deltas since last acknowledged dashboard visit (cursor advanced via acknowledgeActivitySince). */
+  getActivitySince: () => apiClient.get('/client/activity-since'),
+  acknowledgeActivitySince: () => apiClient.post('/client/activity-since/acknowledge', {}),
+  /** First-party analytics (allowed event names enforced server-side). */
+  postAnalyticsEvent: (body) => apiClient.post('/client/analytics/events', body),
+  /** Aggregated event counts by name for this tenant (query: days 7–90). */
+  getAnalyticsSummary: (params = {}) => apiClient.get('/client/analytics/summary', { params }),
+  /** Compliance evidence ZIP (CSVs + manifest); requires audit_log_export. Max 5 / 24h. */
+  createEvidencePackJob: (body = {}) => apiClient.post('/client/evidence-pack/jobs', body),
+  getEntitlementsContext: () => apiClient.get('/client/entitlements/context'),
+  listEvidencePackJobs: (params = {}) => apiClient.get('/client/evidence-pack/jobs', { params }),
+  downloadEvidencePackFile: (jobId) =>
+    apiClient.get(`/client/evidence-pack/jobs/${encodeURIComponent(jobId)}/file`, { responseType: 'blob' }),
   /** Open maintenance issues count (non-terminal statuses). Requires MAINTENANCE_WORKFLOWS. */
   getOpenIssuesCount: () => apiClient.get('/client/maintenance/issues/open-count'),
   /** Paid invoice total this UTC month (maintenance/contractor). Requires INVOICING. */

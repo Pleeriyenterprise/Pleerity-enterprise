@@ -4,7 +4,7 @@ import ClientPortalLayout from './ClientPortalLayout';
 
 /**
  * Wraps client portal pages with auth and shared layout (nav, CRN, footer).
- * Use for every route under /dashboard, /properties, etc.
+ * Use for every route under /today, /dashboard, /properties, etc.
  */
 export default function ClientPortal({ children, crn }) {
   return (

@@ -3,10 +3,11 @@ import { authAPI } from '../api/client';
 
 const AuthContext = createContext(null);
 
-/** Role-based redirect path: staff -> admin dashboard, client -> app (client) dashboard */
+/** Role-based redirect path: staff -> admin dashboard, tenant -> tenant home, client -> Today (priorities inbox). */
 export function getRedirectPathForRole(role) {
   if (['ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPPORT', 'ROLE_CONTENT', 'ROLE_AUDITOR'].includes(role)) return '/admin/dashboard';
-  return '/app/dashboard';
+  if (role === 'ROLE_TENANT') return '/tenant';
+  return '/app/today';
 }
 
 export const AuthProvider = ({ children }) => {

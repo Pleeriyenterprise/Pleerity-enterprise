@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Webhook,
+  Key,
   Plus,
   ArrowLeft,
   Save,
@@ -45,6 +46,14 @@ const IntegrationsPage = () => {
   const [showSecretId, setShowSecretId] = useState(null);
   const [newSecret, setNewSecret] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
+  const [readApiKeys, setReadApiKeys] = useState([]);
+  const [readApiMeta, setReadApiMeta] = useState(null);
+  const [newReadApiSecret, setNewReadApiSecret] = useState(null);
+  const [creatingReadKey, setCreatingReadKey] = useState(false);
+  const [revokingReadKeyId, setRevokingReadKeyId] = useState(null);
+  const [webhookDeliveries, setWebhookDeliveries] = useState([]);
+  const [webhookDeliveriesLoading, setWebhookDeliveriesLoading] = useState(false);
+  const [webhookDeliveriesFailedOnly, setWebhookDeliveriesFailedOnly] = useState(false);
 
   // Check if webhooks feature is available
   const hasWebhooksAccess = entitlements?.features?.webhooks?.enabled;
@@ -53,6 +62,30 @@ const IntegrationsPage = () => {
     fetchData();
     fetchEntitlements();
   }, []);
+
+  useEffect(() => {
+    if (!hasWebhooksAccess) {
+      setWebhookDeliveries([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setWebhookDeliveriesLoading(true);
+      try {
+        const d = await api.get('/webhooks/deliveries', {
+          params: { limit: 30, failed_only: webhookDeliveriesFailedOnly },
+        });
+        if (!cancelled) setWebhookDeliveries(d.data?.deliveries || []);
+      } catch {
+        if (!cancelled) setWebhookDeliveries([]);
+      } finally {
+        if (!cancelled) setWebhookDeliveriesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasWebhooksAccess, webhookDeliveriesFailedOnly]);
 
   const fetchEntitlements = async () => {
     try {
@@ -75,6 +108,18 @@ const IntegrationsPage = () => {
       setRateLimitInfo(webhooksRes.data.rate_limit);
       setAvailableEvents(eventsRes.data.events || []);
       setStats(statsRes.data);
+      try {
+        const ra = await api.get('/client/integrations/read-api-keys');
+        setReadApiKeys(ra.data.keys || []);
+        setReadApiMeta({
+          data_base_path: ra.data.data_base_path,
+          scopes: ra.data.scopes || [],
+          auth_headers: ra.data.auth_headers || [],
+        });
+      } catch (e) {
+        setReadApiKeys([]);
+        setReadApiMeta(null);
+      }
     } catch (error) {
       toast.error('Failed to load integrations');
     } finally {
@@ -134,6 +179,37 @@ const IntegrationsPage = () => {
       toast.success('Secret regenerated. Copy it now - it won\'t be shown again!');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to regenerate secret');
+    }
+  };
+
+  const createReadApiKey = async () => {
+    setCreatingReadKey(true);
+    try {
+      const res = await api.post('/client/integrations/read-api-keys', { name: 'Integration' });
+      setNewReadApiSecret(res.data.secret);
+      toast.success('Read API key created — copy the secret now.');
+      fetchData();
+    } catch (error) {
+      const d = error.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : d?.message || 'Failed to create read API key');
+    } finally {
+      setCreatingReadKey(false);
+    }
+  };
+
+  const revokeReadApiKey = async (keyId) => {
+    if (!window.confirm('Revoke this key? Any integration using it will stop working.')) return;
+    setRevokingReadKeyId(keyId);
+    try {
+      await api.delete(`/client/integrations/read-api-keys/${keyId}`);
+      toast.success('Read API key revoked');
+      setNewReadApiSecret(null);
+      fetchData();
+    } catch (error) {
+      const d = error.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : d?.message || 'Failed to revoke key');
+    } finally {
+      setRevokingReadKeyId(null);
     }
   };
 
@@ -363,6 +439,83 @@ const IntegrationsPage = () => {
           </div>
         )}
 
+        {hasWebhooksAccess && (
+          <Card className="mb-8" data-testid="webhook-deliveries-card">
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-midnight-blue">
+                    <Send className="w-5 h-5 text-electric-teal" />
+                    Recent webhook deliveries
+                  </CardTitle>
+                  <CardDescription>
+                    Outbound HTTP attempts logged for your tenant (URL, event alias, status). Toggle to show failures
+                    only.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Failures only</span>
+                  <Switch
+                    checked={webhookDeliveriesFailedOnly}
+                    onCheckedChange={setWebhookDeliveriesFailedOnly}
+                    data-testid="webhook-deliveries-failed-only"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {webhookDeliveriesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500 py-6">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading deliveries…
+                </div>
+              ) : webhookDeliveries.length === 0 ? (
+                <p className="text-sm text-gray-500 py-2">No delivery rows in this view yet.</p>
+              ) : (
+                <div className="overflow-x-auto border border-gray-100 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-left text-gray-600">
+                        <th className="p-2 font-medium">Time</th>
+                        <th className="p-2 font-medium">Status</th>
+                        <th className="p-2 font-medium">Event</th>
+                        <th className="p-2 font-medium">Target</th>
+                        <th className="p-2 font-medium">HTTP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {webhookDeliveries.map((row, idx) => (
+                        <tr key={`${row.created_at || ''}-${idx}`} className="border-t border-gray-100">
+                          <td className="p-2 text-gray-700 whitespace-nowrap">
+                            {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                          </td>
+                          <td className="p-2">
+                            <span
+                              className={
+                                row.status === 'failed' || row.status === 'error'
+                                  ? 'text-red-600'
+                                  : 'text-green-700'
+                              }
+                            >
+                              {row.status || '—'}
+                            </span>
+                          </td>
+                          <td className="p-2 font-mono text-xs max-w-[140px] truncate" title={row.event_alias}>
+                            {row.event_alias || '—'}
+                          </td>
+                          <td className="p-2 font-mono text-xs max-w-[200px] truncate" title={row.target_url}>
+                            {row.target_url || '—'}
+                          </td>
+                          <td className="p-2 text-gray-600">{row.response_code ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Rate Limit & Retry Policy Info */}
         {rateLimitInfo && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8" data-testid="rate-limit-info">
@@ -379,6 +532,100 @@ const IntegrationsPage = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {readApiMeta && hasWebhooksAccess && (
+          <Card className="mb-8" data-testid="read-api-section">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-midnight-blue">
+                <Key className="w-5 h-5 text-electric-teal" />
+                Read API (HTTP)
+              </CardTitle>
+              <CardDescription>
+                Pull properties, requirements, priorities, and compliance score with a scoped key. Same plan gate as
+                webhooks (Professional). Discovery document:{' '}
+                <code className="text-xs bg-gray-100 px-1 rounded">GET /api/client-data/v1/capabilities</code>. Use{' '}
+                <code className="text-xs bg-gray-100 px-1 rounded">Authorization: Bearer &lt;token&gt;</code> or{' '}
+                <code className="text-xs bg-gray-100 px-1 rounded">X-Pleerity-Read-Key</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-gray-600">
+                <p className="font-medium text-gray-800 mb-1">Base path</p>
+                <code className="block text-xs bg-gray-100 p-2 rounded break-all">
+                  {readApiMeta.data_base_path || '/api/client-data/v1'}
+                </code>
+                <p className="mt-2 text-xs text-gray-500">
+                  Example: GET {readApiMeta.data_base_path || '/api/client-data/v1'}/properties
+                </p>
+              </div>
+              {readApiMeta.scopes?.length > 0 && (
+                <div className="text-sm">
+                  <p className="font-medium text-gray-800 mb-1">Scopes</p>
+                  <div className="flex flex-wrap gap-1">
+                    {readApiMeta.scopes.map((s) => (
+                      <span
+                        key={s}
+                        className="text-xs px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-700"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {newReadApiSecret && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                  <p className="font-medium text-amber-900 mb-2">New secret (copy now)</p>
+                  <code className="block text-xs break-all bg-white p-2 rounded border mb-2">{newReadApiSecret}</code>
+                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(newReadApiSecret)}>
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy secret
+                  </Button>
+                </div>
+              )}
+              <div className="flex justify-end">
+                <Button
+                  onClick={createReadApiKey}
+                  disabled={creatingReadKey}
+                  className="bg-midnight-blue hover:bg-midnight-blue/90"
+                  data-testid="create-read-api-key-btn"
+                >
+                  {creatingReadKey ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Key className="w-4 h-4 mr-2" />}
+                  Create read API key
+                </Button>
+              </div>
+              {readApiKeys.length > 0 && (
+                <ul className="divide-y border rounded-lg">
+                  {readApiKeys.map((k) => (
+                    <li key={k.key_id} className="flex items-center justify-between p-3 text-sm">
+                      <div>
+                        <p className="font-medium text-gray-900">{k.name}</p>
+                        <p className="text-xs text-gray-500 font-mono">{k.key_hint}</p>
+                        <p className="text-xs text-gray-400">Created {k.created_at}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        disabled={revokingReadKeyId === k.key_id}
+                        onClick={() => revokeReadApiKey(k.key_id)}
+                      >
+                        {revokingReadKeyId === k.key_id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Revoke
+                          </>
+                        )}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Webhooks List */}

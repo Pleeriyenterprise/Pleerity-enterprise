@@ -16,6 +16,29 @@ load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
+
+def _format_digest_inbox_activity_lines(activity_feed, limit: int = 5):
+    """Short lines for monthly digest from real client_task_activity_log rows (newest first in feed)."""
+    out = []
+    act_labels = {
+        "snooze": "Snoozed",
+        "dismiss": "Dismissed",
+        "done": "Marked done",
+        "restore": "Restored",
+    }
+    for row in (activity_feed or [])[:limit]:
+        act = (row.get("action") or "").strip().lower()
+        extra = row.get("extra") or {}
+        title = (extra.get("title") or "").strip()
+        tid = (row.get("task_id") or "").strip()
+        label = title or tid
+        if not label:
+            continue
+        verb = act_labels.get(act, act.replace("_", " ").title() if act else "Activity")
+        out.append(f"{verb}: {label}")
+    return out
+
+
 # Status severity ranking (lower is better)
 STATUS_SEVERITY = {
     "GREEN": 0,
@@ -348,6 +371,50 @@ class JobScheduler:
                 digest_content["include_recent_documents"] = prefs.get("digest_recent_documents", True) if prefs else True
                 digest_content["include_recommendations"] = prefs.get("digest_recommendations", True) if prefs else True
                 digest_content["include_audit_summary"] = prefs.get("digest_audit_summary", False) if prefs else False
+
+                # Same aggregation as portal "activity" (audit + score + work orders + uploads) for the digest window.
+                try:
+                    from services.portal_activity_service import compute_activity_deltas
+
+                    period_act = await compute_activity_deltas(
+                        client["client_id"],
+                        period_start.isoformat(),
+                        period_end.isoformat(),
+                    )
+                    digest_content["digest_period_activity_included"] = True
+                    digest_content["digest_period_activity_lines"] = period_act.get("lines") or []
+                except Exception as e:
+                    logger.warning(
+                        "Monthly digest: period activity summary failed for client %s: %s",
+                        client.get("client_id"),
+                        e,
+                    )
+
+                # Align "action items" with Command Centre / unified tasks (same engine as portal Today view).
+                if digest_content.get("include_action_items", True):
+                    try:
+                        from services.unified_tasks_service import get_unified_tasks_digest
+
+                        ut_digest = await get_unified_tasks_digest(
+                            client["client_id"],
+                            activity_limit=5,
+                        )
+                        summ = ut_digest.get("summary") or {}
+                        digest_content["command_centre_digest_included"] = True
+                        digest_content["command_centre_urgent_open"] = int(summ.get("urgent_count") or 0)
+                        digest_content["command_centre_upcoming_open"] = int(summ.get("upcoming_count") or 0)
+                        digest_content["command_centre_in_progress_open"] = int(summ.get("in_progress_count") or 0)
+                        digest_content["command_centre_snoozed"] = int(summ.get("snoozed_count") or 0)
+                        digest_content["command_centre_recent_activity_lines"] = _format_digest_inbox_activity_lines(
+                            ut_digest.get("activity_feed") or [],
+                            limit=5,
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Monthly digest: unified tasks snapshot failed for client %s: %s",
+                            client.get("client_id"),
+                            e,
+                        )
                 
                 # Send digest email (skip and audit if no recipient)
                 digest_id = str(uuid.uuid4())
@@ -590,6 +657,9 @@ class JobScheduler:
 
             period_end = (content.get("period_end") or "").replace("T", " ")[:10]
             idempotency_key = f"{client['client_id']}_MONTHLY_DIGEST_{period_end}"
+            from utils.app_urls import get_app_base_url
+
+            base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
             template_model = {
                 "period_start": content.get("period_start", ""),
                 "period_end": content.get("period_end", ""),
@@ -603,12 +673,27 @@ class JobScheduler:
                 "company_name": "Pleerity Enterprise Ltd",
                 "tagline": "AI-Driven Solutions & Compliance",
                 "subject": "Monthly Compliance Digest",
+                "portal_link": f"{base_url}/today",
             }
+            _cname = (client.get("full_name") or client.get("contact_name") or "").strip()
+            if _cname:
+                template_model["client_name"] = _cname
             for key in ("include_compliance_summary", "include_action_items", "include_upcoming_expiries",
                        "include_property_breakdown", "include_recent_documents", "include_recommendations", "include_audit_summary"):
                 if key in content:
                     template_model[key] = content[key]
-            from services.notification_orchestrator import notification_orchestrator
+            for key in (
+                "command_centre_digest_included",
+                "command_centre_urgent_open",
+                "command_centre_upcoming_open",
+                "command_centre_in_progress_open",
+                "command_centre_snoozed",
+                "command_centre_recent_activity_lines",
+                "digest_period_activity_included",
+                "digest_period_activity_lines",
+            ):
+                if key in content:
+                    template_model[key] = content[key]
             result = await notification_orchestrator.send(
                 template_key="MONTHLY_DIGEST",
                 client_id=client["client_id"],

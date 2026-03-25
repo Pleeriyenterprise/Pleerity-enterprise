@@ -7,6 +7,7 @@ const EntitlementsContext = createContext(null);
 export function EntitlementsProvider({ children }) {
   const { user } = useAuth();
   const [entitlements, setEntitlements] = useState(null);
+  const [usageContext, setUsageContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -14,17 +15,25 @@ export function EntitlementsProvider({ children }) {
     const isClient = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
     if (!isClient) {
       setEntitlements(null);
+      setUsageContext(null);
       setLoading(false);
-      return;
+      return false;
     }
     setLoading(true);
     setError(null);
     try {
-      const response = await clientAPI.getEntitlements();
-      setEntitlements(response.data);
+      const [entRes, ctxRes] = await Promise.all([
+        clientAPI.getEntitlements(),
+        clientAPI.getEntitlementsContext().catch(() => null),
+      ]);
+      setEntitlements(entRes.data);
+      setUsageContext(ctxRes?.data ?? null);
+      return true;
     } catch (err) {
       setError(err.response?.data?.detail ?? err.message ?? 'Failed to load entitlements');
       setEntitlements(null);
+      setUsageContext(null);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -56,6 +65,7 @@ export function EntitlementsProvider({ children }) {
 
   const value = {
     entitlements,
+    usageContext,
     loading,
     error,
     hasFeature,
@@ -78,6 +88,7 @@ export function useEntitlements() {
   if (!ctx) {
     return {
       entitlements: null,
+      usageContext: null,
       loading: false,
       error: null,
       hasFeature: () => false,
@@ -85,7 +96,7 @@ export function useEntitlements() {
       planName: null,
       subscriptionStatus: null,
       isActive: false,
-      refetch: () => {},
+      refetch: async () => false,
     };
   }
   return ctx;

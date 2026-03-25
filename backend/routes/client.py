@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, status, File, UploadFile, Query
+from fastapi import APIRouter, HTTPException, Request, Depends, status, File, UploadFile, Query, Body, BackgroundTasks
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from database import database
@@ -693,10 +693,18 @@ async def get_protection_snapshot(
     }
 
 
-@router.get("/tasks")
+@router.get(
+    "/tasks",
+    summary="Unified tasks (Command Centre)",
+    response_description=(
+        "Unified inbox: `tasks` (sectioned lists), `summary`, `freshness`, optional `spend_this_month`, "
+        "`activity_feed`. Same shape as GET /api/client/priorities."
+    ),
+)
 async def get_client_unified_tasks(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
+    limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before sectioning"),
 ):
     """
     Unified Command Centre tasks: aggregated open work from compliance, maintenance, approvals,
@@ -709,7 +717,7 @@ async def get_client_unified_tasks(
         return await get_unified_tasks_for_client(
             client_id=user["client_id"],
             property_id_filter=property_id,
-            raw_limit=120,
+            raw_limit=limit,
         )
     except Exception as e:
         logger.error("Unified tasks error for client %s: %s", user.get("client_id"), e)
@@ -717,6 +725,322 @@ async def get_client_unified_tasks(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load tasks",
         )
+
+
+@router.get(
+    "/priorities",
+    summary="Priorities / Today inbox",
+    description=(
+        "Returns the **same JSON** as `GET /api/client/tasks`: unified prioritized work "
+        "(`tasks`, `summary`, `freshness`, optional `spend_this_month`, `activity_feed`). "
+        "Use this path when your integration or product copy uses “priorities” or “Today”; query parameters and "
+        "server-side limits match `/tasks` (e.g. `property_id`, `limit` 1–200 for raw row cap)."
+    ),
+    response_description="Identical to GET /api/client/tasks.",
+    openapi_extra={
+        "x-equivalent-path": "/api/client/tasks",
+    },
+)
+async def get_client_priorities(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Filter by property"),
+    limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before sectioning"),
+):
+    """
+    Same payload as GET /api/client/tasks — canonical “priorities / Today” inbox for API clients and integrations.
+    """
+    user = await client_route_guard(request)
+    try:
+        from services.unified_tasks_service import get_unified_tasks_for_client
+
+        return await get_unified_tasks_for_client(
+            client_id=user["client_id"],
+            property_id_filter=property_id,
+            raw_limit=limit,
+        )
+    except Exception as e:
+        logger.error("Priorities (unified tasks) error for client %s: %s", user.get("client_id"), e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load priorities",
+        )
+
+
+class ClientAnalyticsEventBody(BaseModel):
+    """Allowed event names are enforced server-side (product_analytics_service.ALLOWED_EVENTS)."""
+
+    event: str
+    properties: Optional[Dict[str, Any]] = None
+    path: Optional[str] = None
+
+
+class EvidencePackJobCreateBody(BaseModel):
+    """Optional UTC date range (YYYY-MM-DD, inclusive). Both required together; filters CSV tables except full properties list."""
+
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    background: bool = False
+
+
+@router.get("/analytics/summary")
+async def get_client_analytics_summary(request: Request, days: int = Query(30, ge=7, le=90)):
+    """First-party event totals by name for this client (Mongo aggregates; not a full warehouse)."""
+    user = await client_route_guard(request)
+    try:
+        from services.product_analytics_service import summarize_client_events
+
+        return await summarize_client_events(user["client_id"], days=days)
+    except Exception as e:
+        logger.error("analytics summary error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load analytics summary",
+        )
+
+
+@router.get("/activity-since")
+async def get_client_activity_since(request: Request):
+    """
+    Structured deltas since this user's last acknowledged visit (or last login / 30 days).
+    Does not advance the cursor; POST /activity-since/acknowledge after the user marks the feed as seen.
+    """
+    user = await client_route_guard(request)
+    portal_user_id = user.get("portal_user_id")
+    if not portal_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Portal user session required",
+        )
+    try:
+        from services.portal_activity_service import peek_activity_since_for_portal_user
+
+        return await peek_activity_since_for_portal_user(portal_user_id, user["client_id"])
+    except Exception as e:
+        logger.error("activity-since error for client %s: %s", user.get("client_id"), e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load activity since last visit",
+        )
+
+
+@router.post("/activity-since/acknowledge")
+async def post_client_activity_since_acknowledge(request: Request):
+    """Advance the 'since last visit' cursor to now."""
+    user = await client_route_guard(request)
+    portal_user_id = user.get("portal_user_id")
+    if not portal_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Portal user session required",
+        )
+    try:
+        from services.portal_activity_service import acknowledge_activity_cursor
+
+        at = await acknowledge_activity_cursor(portal_user_id)
+        return {"acknowledged_at": at}
+    except Exception as e:
+        logger.error("activity-since acknowledge error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to acknowledge activity feed",
+        )
+
+
+@router.post("/analytics/events")
+async def post_client_analytics_event(request: Request, body: ClientAnalyticsEventBody):
+    """First-party product analytics (Mongo). Unknown event names are ignored."""
+    user = await client_route_guard(request)
+    try:
+        from services.product_analytics_service import record_event
+
+        await record_event(
+            user["client_id"],
+            user.get("portal_user_id"),
+            body.event.strip(),
+            body.properties,
+            body.path,
+        )
+        return {"recorded": True}
+    except Exception as e:
+        logger.error("analytics event error: %s", e)
+        return {"recorded": False}
+
+
+@router.post("/evidence-pack/jobs")
+async def post_client_evidence_pack_job(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: Optional[EvidencePackJobCreateBody] = Body(default=None),
+):
+    """
+    Build a ZIP evidence pack (CSVs + manifest) and store in GridFS.
+    Plan: requires audit_log_export (Pro). Rate: max 5 jobs per client per rolling 24h.
+    Optional `period_start` / `period_end` (YYYY-MM-DD): filter requirements, documents, scores, work orders to that range; properties remain full portfolio.
+    Set `background: true` to enqueue generation and poll GET /evidence-pack/jobs until status is completed.
+    """
+    from services.plan_registry import plan_registry
+    from models import AuditAction
+    from utils.audit import create_audit_log
+    from services.evidence_pack_service import parse_export_period
+
+    user = await client_route_guard(request)
+    b = body or EvidencePackJobCreateBody()
+    client_id = user["client_id"]
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(client_id, "audit_log_export")
+    if not allowed:
+        detail = {
+            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
+            "message": error_msg,
+            "upgrade_required": True,
+            **(error_details or {}),
+        }
+        detail["feature"] = "audit_log_export"
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(hours=24)).isoformat()
+    recent = await db.compliance_evidence_pack_jobs.count_documents(
+        {"client_id": client_id, "created_at": {"$gte": cutoff}}
+    )
+    if recent >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Evidence pack rate limit: maximum 5 exports per 24 hours.",
+        )
+
+    cl = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "customer_reference": 1})
+    crn = (cl or {}).get("customer_reference")
+
+    try:
+        parse_export_period(b.period_start, b.period_end)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+
+    try:
+        from services.evidence_pack_service import (
+            create_evidence_pack_job,
+            create_processing_evidence_pack_job,
+            run_evidence_pack_job_in_background,
+        )
+
+        if b.background:
+            job = await create_processing_evidence_pack_job(
+                client_id,
+                user.get("portal_user_id") or "",
+                crn,
+                period_start=b.period_start,
+                period_end=b.period_end,
+            )
+            background_tasks.add_task(run_evidence_pack_job_in_background, job["job_id"])
+            return job
+
+        job = await create_evidence_pack_job(
+            client_id,
+            user.get("portal_user_id") or "",
+            crn,
+            period_start=b.period_start,
+            period_end=b.period_end,
+        )
+        await create_audit_log(
+            action=AuditAction.REPORT_EXPORTED,
+            client_id=client_id,
+            actor_id=user.get("portal_user_id"),
+            metadata={
+                "export_kind": "compliance_evidence_pack_v1",
+                "job_id": job.get("job_id"),
+                "period_start": job.get("period_start"),
+                "period_end": job.get("period_end"),
+            },
+        )
+        return job
+    except Exception as e:
+        logger.error("evidence pack job error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate evidence pack",
+        )
+
+
+@router.get("/evidence-pack/jobs")
+async def list_client_evidence_pack_jobs(request: Request, limit: int = Query(10, ge=1, le=30)):
+    from services.plan_registry import plan_registry
+    from services.evidence_pack_service import recent_jobs
+
+    user = await client_route_guard(request)
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "audit_log_export")
+    if not allowed:
+        detail = {
+            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
+            "message": error_msg,
+            "upgrade_required": True,
+            **(error_details or {}),
+        }
+        detail["feature"] = "audit_log_export"
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+    items = await recent_jobs(user["client_id"], limit=limit)
+    return {"jobs": items}
+
+
+@router.get("/evidence-pack/jobs/{job_id}/file")
+async def download_client_evidence_pack_file(request: Request, job_id: str):
+    from services.plan_registry import plan_registry
+    from services.evidence_pack_service import get_job, read_pack_bytes
+
+    user = await client_route_guard(request)
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "audit_log_export")
+    if not allowed:
+        detail = {
+            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
+            "message": error_msg,
+            "upgrade_required": True,
+            **(error_details or {}),
+        }
+        detail["feature"] = "audit_log_export"
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+    job = await get_job(user["client_id"], job_id.strip())
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export job not found")
+    st = job.get("status")
+    if st == "processing":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "EXPORT_PROCESSING", "message": "Evidence pack is still being generated. Try again shortly."},
+        )
+    if st == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=job.get("error") or "Export job failed",
+        )
+    if st != "completed":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export job not found")
+    gid = job.get("gridfs_id")
+    if not gid:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export file missing")
+    data = await read_pack_bytes(str(gid))
+    if not data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export file unavailable")
+
+    try:
+        from services.product_analytics_service import record_event
+
+        await record_event(
+            user["client_id"],
+            user.get("portal_user_id"),
+            "evidence_pack_downloaded",
+            {"job_id": job_id},
+            "/evidence-pack",
+        )
+    except Exception:
+        pass
+
+    fname = job.get("filename") or "evidence-pack.zip"
+    return StreamingResponse(
+        iter([data]),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
 
 
 class ClientTaskOverrideBody(BaseModel):
@@ -1177,6 +1501,39 @@ async def get_client_entitlements(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load entitlements"
+        )
+
+
+@router.get("/entitlements/context")
+async def get_client_entitlements_context(request: Request):
+    """
+    Lightweight usage context for upsell and dashboard copy (property count vs plan cap, read API path).
+    Does not replace GET /entitlements; safe to call when building contextual upgrade messaging.
+    """
+    user = await client_route_guard(request)
+    try:
+        from services.plan_registry import plan_registry
+
+        db = database.get_db()
+        client_id = user["client_id"]
+        prop_count = await db.properties.count_documents({"client_id": client_id})
+        ent = await plan_registry.get_client_entitlements(client_id)
+        cap = int(ent.get("max_properties") or 0)
+        at_limit = cap > 0 and prop_count >= cap
+        return {
+            "property_count": prop_count,
+            "max_properties": cap,
+            "at_property_limit": at_limit,
+            "plan": ent.get("plan"),
+            "plan_name": ent.get("plan_name"),
+            "is_active": bool(ent.get("is_active")),
+            "read_api_base_path": "/api/client-data/v1",
+        }
+    except Exception as e:
+        logger.error("entitlements context error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load entitlements context",
         )
 
 

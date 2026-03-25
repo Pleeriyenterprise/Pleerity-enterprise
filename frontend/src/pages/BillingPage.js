@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  RefreshCw,
   ArrowRight,
   AlertTriangle,
   XCircle,
@@ -29,6 +30,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from 'sonner';
 import api, { clientAPI } from '../api/client';
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import { formatUpgradeUsageContext } from '../components/UpgradePrompt';
 
 // Plan configuration - matches backend plan_registry.py
 const PLANS = [
@@ -127,7 +130,11 @@ const FEATURE_CATEGORIES = [
     name: 'Integrations',
     icon: Webhook,
     features: [
-      { key: 'webhooks', name: 'Webhooks', description: 'Send compliance events to external systems' },
+      {
+        key: 'webhooks',
+        name: 'Webhooks & read API',
+        description: 'Outbound webhooks (push) and scoped read API keys (HTTP pull) for integrations',
+      },
     ],
   },
   {
@@ -206,6 +213,9 @@ const FEATURE_MATRIX = {
 
 const BillingPage = () => {
   const navigate = useNavigate();
+  const { usageContext, refetch: refetchEntitlements } = useEntitlements();
+  const billingUsageHint = formatUpgradeUsageContext(usageContext);
+  const [usageRefreshing, setUsageRefreshing] = useState(false);
   const billingStepUp = useStepUpApi();
   const [searchParams] = useSearchParams();
   const [currentPlan, setCurrentPlan] = useState(null);
@@ -225,6 +235,20 @@ const BillingPage = () => {
   const [portalOpening, setPortalOpening] = useState(false);
   
   const highlightPlan = searchParams.get('upgrade_to');
+
+  const handleRefreshUsage = useCallback(async () => {
+    setUsageRefreshing(true);
+    try {
+      const ok = await refetchEntitlements();
+      if (ok) {
+        toast.success('Usage data updated');
+      } else {
+        toast.error('Could not refresh usage data');
+      }
+    } finally {
+      setUsageRefreshing(false);
+    }
+  }, [refetchEntitlements]);
 
   useEffect(() => {
     fetchEntitlements();
@@ -514,6 +538,33 @@ const BillingPage = () => {
           >
             Plans &amp; upgrades
           </button>
+        </div>
+
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 mb-6 p-3 bg-white border border-gray-200 rounded-lg"
+          data-testid="billing-usage-row"
+        >
+          {billingUsageHint ? (
+            <p className="text-sm text-gray-600 flex-1 min-w-[200px]" data-testid="billing-usage-context">
+              {billingUsageHint}
+            </p>
+          ) : (
+            <span className="text-sm text-gray-500 flex-1 min-w-[200px]">
+              Portfolio usage syncs with your account. Refresh to pull the latest property count and limits.
+            </span>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={handleRefreshUsage}
+            disabled={usageRefreshing}
+            data-testid="billing-refresh-usage"
+          >
+            <RefreshCw className={`w-4 h-4 mr-1.5 ${usageRefreshing ? 'animate-spin' : ''}`} />
+            Refresh usage
+          </Button>
         </div>
 
         {billingMainTab === 'account' ? (

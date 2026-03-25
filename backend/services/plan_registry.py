@@ -231,7 +231,7 @@ PLAN_DEFINITIONS = {
 # FEATURE ENTITLEMENT MATRIX - What each plan gets (Pricing Page truth)
 # SOLO: Core + Basic AI. PORTFOLIO: SOLO + ZIP bulk, PDF reports, Scheduled reports.
 # PROFESSIONAL: PORTFOLIO + Advanced AI, Review UI, CSV, SMS, Tenant portal,
-# Webhooks, White label, Audit log export. API Access removed (not implemented).
+# Webhooks (includes scoped read API keys under /api/client-data/v1), White label, Audit log export.
 # Legacy keys (zip_upload, compliance_calendar, extraction_review_ui, tenant_portal)
 # kept for backward compatibility with existing enforce_feature/require_feature.
 # ============================================================================
