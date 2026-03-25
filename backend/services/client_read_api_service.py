@@ -69,6 +69,7 @@ async def create_key(
         "revoked_at": None,
     }
     await db[COLLECTION].insert_one(doc)
+    doc.pop("_id", None)
     safe = {k: v for k, v in doc.items() if k != "token_hash"}
     return raw, safe
 
