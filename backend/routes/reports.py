@@ -14,6 +14,8 @@ from database import database
 from middleware import client_route_guard, admin_route_guard
 from models import AuditAction
 from utils.audit import create_audit_log
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
+from config.security_limits import security_limits
 from services.reporting_service import reporting_service
 from services.pdf_report_builder import build_portfolio_report, build_property_report, build_score_explanation_report
 from services.report_service import load_evidence_readiness_data
@@ -21,6 +23,34 @@ from services.compliance_score import calculate_compliance_score
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+
+async def _enforce_report_export_rate(
+    *,
+    rate_key: str,
+    client_id: Optional[str],
+    actor_id: Optional[str],
+    max_per_hour: Optional[int] = None,
+) -> None:
+    """Hourly cap per client or per admin staff user for report generation / export."""
+    cap = max_per_hour if max_per_hour is not None else security_limits.report_export_per_client_per_hour
+    ok, msg = await rate_limiter.check_rate_limit(
+        rate_key,
+        cap,
+        60,
+    )
+    if not ok:
+        log_rate_limit_event("report_export", rate_key, None)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            actor_id=actor_id,
+            client_id=client_id,
+            metadata={"scope": "report_export", "rate_key": rate_key},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=msg or "Report export limit reached. Try again later.",
+        )
 
 
 class ReportRequest(BaseModel):
@@ -64,6 +94,11 @@ async def generate_evidence_readiness_report(request: Request, body: GenerateRep
             status_code=status.HTTP_403_FORBIDDEN,
             detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
         )
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:client:{user['client_id']}",
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+    )
     if body.scope == "property" and not body.property_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id required when scope is property")
     try:
@@ -157,6 +192,11 @@ async def get_score_drivers_csv(request: Request):
             status_code=status.HTTP_403_FORBIDDEN,
             detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
         )
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:client:{user['client_id']}",
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+    )
     try:
         db = database.get_db()
         client = await db.clients.find_one(
@@ -256,6 +296,11 @@ async def get_score_explanation_pdf(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
         )
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:client:{user['client_id']}",
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+    )
     try:
         score_data = await calculate_compliance_score(user["client_id"])
         db = database.get_db()
@@ -317,6 +362,11 @@ async def download_report_by_id(request: Request, report_id: str):
     allowed, _, _ = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
     if not allowed:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Upgrade required for PDF reports")
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:client:{user['client_id']}",
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+    )
     db = database.get_db()
     from bson import ObjectId
     try:
@@ -379,6 +429,11 @@ async def get_compliance_summary_report(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=error_details or {"message": error_msg, "feature": "reports_csv", "upgrade_required": True}
             )
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:client:{user['client_id']}",
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+    )
     
     try:
         result = await reporting_service.generate_compliance_summary_report(
@@ -454,6 +509,11 @@ async def get_requirements_report(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=error_details or {"message": error_msg, "feature": "reports_csv", "upgrade_required": True}
             )
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:client:{user['client_id']}",
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+    )
     
     try:
         result = await reporting_service.generate_requirements_report(
@@ -517,6 +577,12 @@ async def get_audit_logs_report(
     Formats: csv, pdf
     """
     user = await admin_route_guard(request)
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:admin:{user['portal_user_id']}",
+        client_id=None,
+        actor_id=user.get("portal_user_id"),
+        max_per_hour=security_limits.admin_export_per_staff_per_hour,
+    )
     
     try:
         # Parse actions if provided
@@ -911,6 +977,11 @@ async def download_compliance_summary_pdf(request: Request):
                     **(error_details or {})
                 }
             )
+        await _enforce_report_export_rate(
+            rate_key=f"report_export:client:{user['client_id']}",
+            client_id=user["client_id"],
+            actor_id=user.get("portal_user_id"),
+        )
         
         # Generate PDF
         pdf_buffer = await professional_report_generator.generate_compliance_summary_pdf(
@@ -979,6 +1050,11 @@ async def download_expiry_schedule_pdf(
                     **(error_details or {})
                 }
             )
+        await _enforce_report_export_rate(
+            rate_key=f"report_export:client:{user['client_id']}",
+            client_id=user["client_id"],
+            actor_id=user.get("portal_user_id"),
+        )
         
         # Limit days
         days = min(days, 365)
@@ -1052,6 +1128,12 @@ async def download_audit_log_pdf(
             }
             detail["feature"] = "audit_exports"  # preserve response shape
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+        await _enforce_report_export_rate(
+            rate_key=f"report_export:client:{user['client_id']}",
+            client_id=user["client_id"],
+            actor_id=user.get("portal_user_id"),
+        )
 
         # Parse actions filter
         action_list = actions.split(",") if actions else None

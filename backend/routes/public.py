@@ -10,7 +10,6 @@ from datetime import datetime, timezone, timedelta
 from database import database
 from utils.submission_utils import (
     sanitize_html,
-    check_rate_limit,
     is_website_honeypot_filled,
     is_honeypot_filled,
     compute_spam_score,
@@ -24,6 +23,8 @@ from utils.submission_utils import (
 )
 import logging
 import uuid
+
+from utils.public_form_rate_limit import enforce_public_form_rate, client_ip_from_request
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/public", tags=["public"])
@@ -75,14 +76,6 @@ def generate_submission_id(prefix: str) -> str:
 
 
 # ============================================
-# RATE LIMITING (delegate to submission_utils for consistency)
-# ============================================
-
-def _rate_limit_contact(ip: str) -> bool:
-    return check_rate_limit(ip, "contact")
-
-
-# ============================================
 # ENDPOINTS
 # ============================================
 
@@ -95,9 +88,8 @@ async def submit_contact_form(submission: ContactSubmission, request: Request):
     if not submission.privacy_accepted:
         raise HTTPException(status_code=422, detail="You must accept the privacy policy to submit.")
 
-    client_ip = request.client.host if request.client else "unknown"
-    if not _rate_limit_contact(client_ip):
-        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
+    await enforce_public_form_rate(request, "contact")
+    client_ip = client_ip_from_request(request)
 
     honeypot_filled = is_website_honeypot_filled(submission.website, submission.honeypot)
     message_safe = sanitize_html(submission.message)
@@ -245,9 +237,8 @@ async def submit_lead(data: LeadSubmission, request: Request):
         raise HTTPException(status_code=422, detail="You must accept the privacy policy to submit.")
     if is_website_honeypot_filled(data.website, data.honeypot):
         return {"ok": True, "submission_id": "", "message": "Thank you. We'll be in touch soon."}
-    client_ip = request.client.host if request.client else "unknown"
-    if not check_rate_limit(client_ip, "lead"):
-        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
+    await enforce_public_form_rate(request, "lead")
+    client_ip = client_ip_from_request(request)
     from services.lead_service import LeadService
     from services.lead_models import LeadCreateRequest, LeadSourcePlatform, LeadServiceInterest
     message_safe = sanitize_html(data.message_summary or "", max_len=MAX_MESSAGE_LENGTH)
@@ -314,9 +305,8 @@ async def track_event(body: TrackEventBody, request: Request):
     Record a client-side analytics event (page view, CTA click, etc.).
     Rate-limited; writes to analytics_events. Marketing site can call on load or interaction.
     """
-    client_ip = request.client.host if request.client else "unknown"
-    if not check_rate_limit(client_ip, "track"):
-        raise HTTPException(status_code=429, detail="Too many requests.")
+    await enforce_public_form_rate(request, "track")
+    client_ip = client_ip_from_request(request)
     from services.analytics_service import log_public_track
     ok = await log_public_track(
         event_name=body.event_name,
@@ -333,10 +323,9 @@ async def submit_service_inquiry(inquiry: ServiceInquiry, request: Request):
     Submit a service inquiry from the public website.
     Writes to service_inquiries collection ONLY.
     """
-    client_ip = request.client.host if request.client else "unknown"
-    if not check_rate_limit(client_ip, "service-inquiry"):
-        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
-    
+    await enforce_public_form_rate(request, "service-inquiry")
+    client_ip = client_ip_from_request(request)
+
     db = database.get_db()
     
     # Create inquiry record
@@ -498,10 +487,6 @@ class ContractorRegisterBody(BaseModel):
     insurance_details: Optional[str] = Field(None, max_length=1000)
 
 
-def _rate_limit_contractor_register(ip: str) -> bool:
-    return check_rate_limit(ip, "contractor_register")
-
-
 @contractor_public_router.post("/register")
 async def register_contractor_public(body: ContractorRegisterBody, request: Request):
     """Public self-registration for contractors. Creates contractor with status=pending_review. Requires CONTRACTOR_SELF_REGISTRATION_ENABLED=true."""
@@ -512,9 +497,8 @@ async def register_contractor_public(body: ContractorRegisterBody, request: Requ
         raise HTTPException(status_code=403, detail="Contractor self-registration is not available.")
     if not body.phone and not body.email:
         raise HTTPException(status_code=400, detail="phone or email is required")
-    client_ip = request.client.host if request.client else "unknown"
-    if not _rate_limit_contractor_register(client_ip):
-        raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
+    await enforce_public_form_rate(request, "contractor_register")
+    client_ip = client_ip_from_request(request)
     doc = await contractor_service.create_contractor_self_registered(
         company_name=body.company_name.strip(),
         contact_name=body.contact_name.strip(),
@@ -536,18 +520,13 @@ router.include_router(contractor_public_router)
 # ============================================
 
 
-def _rate_limit_provide_info(ip: str) -> bool:
-    return check_rate_limit(ip, "order_provide_info")
-
-
 @router.get("/orders/provide-info-context")
 async def get_order_provide_info_context(token: str, request: Request):
     """Return admin's info request for an order when token is valid (awaiting client)."""
     if not token or len(token) > 8000:
         raise HTTPException(status_code=400, detail="Invalid token")
-    client_ip = request.client.host if request.client else "unknown"
-    if not _rate_limit_provide_info(client_ip):
-        raise HTTPException(status_code=429, detail="Too many requests")
+    await enforce_public_form_rate(request, "order_provide_info")
+    client_ip = client_ip_from_request(request)
     from services.order_view_token import validate_order_provide_info_token
     from services.order_service import get_order
     from services.order_workflow import OrderStatus
@@ -590,9 +569,8 @@ class OrderProvideInfoSubmitBody(BaseModel):
 @router.post("/orders/submit-provide-info")
 async def submit_order_provide_info(body: OrderProvideInfoSubmitBody, request: Request):
     """Submit requested information using magic link (intake / guest customers)."""
-    client_ip = request.client.host if request.client else "unknown"
-    if not _rate_limit_provide_info(client_ip):
-        raise HTTPException(status_code=429, detail="Too many requests")
+    await enforce_public_form_rate(request, "order_provide_info_submit")
+    client_ip = client_ip_from_request(request)
     from services.order_view_token import validate_order_provide_info_token
     from services.order_service import get_order, submit_client_input_response, transition_order_state, create_in_app_notification
     from services.order_workflow import OrderStatus

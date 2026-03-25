@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { BRAND_LOGO_URL } from '../../config/branding';
+import SessionIdleGuard from '../SessionIdleGuard';
 
 /**
  * UnifiedAdminLayout - Enterprise-grade admin console with consolidated navigation
@@ -456,6 +457,7 @@ const UnifiedAdminLayout = ({ children }) => {
   };
 
   return (
+    <SessionIdleGuard>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Desktop Sidebar */}
       <aside
@@ -597,6 +599,7 @@ const UnifiedAdminLayout = ({ children }) => {
         </main>
       </div>
     </div>
+    </SessionIdleGuard>
   );
 };
 

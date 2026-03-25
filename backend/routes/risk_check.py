@@ -2,7 +2,7 @@
 Compliance Risk Check – standalone conversion demo.
 No client creation, no provisioning, no Stripe. Two endpoints: preview (no PII), report (persist + optional email).
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, status
 from database import database
 from datetime import datetime, timezone
 from typing import Optional, List, Any
@@ -15,6 +15,11 @@ from services.risk_check_scoring import (
     compute_risk_check_result,
     simulated_property_breakdown,
 )
+
+from config.security_limits import security_limits
+from models import AuditAction
+from utils.audit import create_audit_log
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +60,29 @@ class RiskCheckActivateRequest(BaseModel):
 # --- Helpers ---
 
 
+def _client_ip_risk(request: Request) -> str:
+    fwd = request.headers.get("X-Forwarded-For")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return (request.client and request.client.host) or "unknown"
+
+
+async def _enforce_risk_check_rate(request: Request, scope: str, max_attempts: int, window_minutes: int = 60) -> None:
+    ip = _client_ip_risk(request)
+    key = f"risk_check:{scope}:{ip}"
+    ok, msg = await rate_limiter.check_rate_limit(key, max_attempts, window_minutes)
+    if not ok:
+        log_rate_limit_event(f"risk_check_{scope}", ip, ip)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            metadata={"scope": f"risk_check_{scope}", "ip": ip},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=msg or "Too many requests. Please try again later.",
+        )
+
+
 def _teaser_text(risk_band: str) -> str:
     if risk_band == "HIGH":
         return "Your responses suggest elevated monitoring risk."
@@ -82,11 +110,17 @@ async def _send_risk_report_email(lead: dict, activation_token: Optional[str] = 
 
 
 @router.post("/preview")
-async def risk_check_preview(body: RiskCheckStep1):
+async def risk_check_preview(body: RiskCheckStep1, request: Request):
     """
     Step 1: answers only, no email. Returns risk_band, teaser_text, blurred_score_hint, flags_count.
     No persistence.
     """
+    await _enforce_risk_check_rate(
+        request,
+        "preview",
+        security_limits.risk_check_preview_per_ip_per_hour,
+        60,
+    )
     if body.property_count < 1:
         body.property_count = 1
     if body.property_count > 100:
@@ -114,6 +148,12 @@ async def risk_check_report(body: RiskCheckReportRequest, request: Request):
     Step 1 + name + email. Upsert risk_leads by email, return full report + lead_id.
     Sends 'Your Compliance Risk Snapshot' email with Activate Monitoring link (lead_token for prefill).
     """
+    await _enforce_risk_check_rate(
+        request,
+        "report",
+        security_limits.risk_check_report_per_ip_per_hour,
+        60,
+    )
     if body.property_count < 1:
         body.property_count = 1
     if body.property_count > 100:
@@ -277,12 +317,18 @@ async def risk_check_lead_from_token(lead_token: Optional[str] = None):
 
 
 @router.post("/activate")
-async def risk_check_activate(body: RiskCheckActivateRequest):
+async def risk_check_activate(body: RiskCheckActivateRequest, request: Request):
     """
     Record that a lead clicked the CTA (Activate Monitoring). Sets status to activated_cta.
     Idempotent: only if current status is 'new' or 'activated_cta'.
     Does not create client or trigger provisioning.
     """
+    await _enforce_risk_check_rate(
+        request,
+        "activate",
+        security_limits.risk_check_activate_per_ip_per_hour,
+        60,
+    )
     db = database.get_db()
     result = await db[COLLECTION].update_one(
         {"lead_id": body.lead_id, "status": {"$in": ["new", "activated_cta", "nurture_started"]}},

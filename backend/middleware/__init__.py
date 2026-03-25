@@ -1,8 +1,6 @@
 from fastapi import Request, HTTPException, status
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Optional, Callable
-from datetime import datetime, timezone
+from typing import Optional
 import logging
 import uuid
 from auth import decode_access_token

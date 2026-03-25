@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useStepUpApi } from '../hooks/useStepUpApi';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
   Check, 
@@ -27,7 +28,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from 'sonner';
-import api from '../api/client';
+import api, { clientAPI } from '../api/client';
 
 // Plan configuration - matches backend plan_registry.py
 const PLANS = [
@@ -205,6 +206,7 @@ const FEATURE_MATRIX = {
 
 const BillingPage = () => {
   const navigate = useNavigate();
+  const billingStepUp = useStepUpApi();
   const [searchParams] = useSearchParams();
   const [currentPlan, setCurrentPlan] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
@@ -214,6 +216,8 @@ const BillingPage = () => {
   const [upgrading, setUpgrading] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [cancelContextSnapshot, setCancelContextSnapshot] = useState(null);
+  const [cancelContextLoading, setCancelContextLoading] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [billingMainTab, setBillingMainTab] = useState('account');
   const [paymentMethodInfo, setPaymentMethodInfo] = useState(null);
@@ -274,17 +278,41 @@ const BillingPage = () => {
     loadPdf();
   }, [billingMainTab, billingStatus?.has_subscription]);
 
+  useEffect(() => {
+    if (!showCancelModal) return;
+    let cancelled = false;
+    setCancelContextLoading(true);
+    setCancelContextSnapshot(null);
+    clientAPI
+      .getProtectionSnapshot()
+      .then((res) => {
+        if (!cancelled) setCancelContextSnapshot(res.data || null);
+      })
+      .catch(() => {
+        if (!cancelled) setCancelContextSnapshot(null);
+      })
+      .finally(() => {
+        if (!cancelled) setCancelContextLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showCancelModal]);
+
   const openBillingPortal = async () => {
     setPortalOpening(true);
     try {
       const origin = window.location.origin;
-      const res = await api.post('/billing/portal', {}, { headers: { Origin: origin } });
+      const res = await billingStepUp.request((headers) =>
+        api.post('/billing/portal', {}, { headers: { ...headers, Origin: origin } })
+      );
       if (res.data?.portal_url) {
         window.location.href = res.data.portal_url;
       } else {
         toast.error('Could not open billing portal');
       }
     } catch (e) {
+      if (e?.message === 'step_up_cancelled') return;
       toast.error(e.response?.data?.detail || 'Billing portal unavailable');
     } finally {
       setPortalOpening(false);
@@ -325,8 +353,10 @@ const BillingPage = () => {
   const handleCancelSubscription = async (cancelImmediately = false) => {
     setCancelling(true);
     try {
-      await api.post('/billing/cancel', { cancel_immediately: cancelImmediately });
-      
+      await billingStepUp.request((headers) =>
+        api.post('/billing/cancel', { cancel_immediately: cancelImmediately }, { headers })
+      );
+
       if (cancelImmediately) {
         toast.success('Subscription cancelled', {
           description: 'Your subscription has been cancelled immediately.',
@@ -343,6 +373,9 @@ const BillingPage = () => {
       await fetchEntitlements();
       
     } catch (error) {
+      if (error?.message === 'step_up_cancelled') {
+        return;
+      }
       console.error('Cancel error:', error);
       const errorMessage = error.response?.data?.detail || 'Failed to cancel subscription';
       toast.error(errorMessage);
@@ -376,9 +409,10 @@ const BillingPage = () => {
     setUpgrading(planCode);
     
     try {
-      // Call the billing API to create checkout session
-      const response = await api.post('/billing/checkout', { plan_code: planCode });
-      
+      const response = await billingStepUp.request((headers) =>
+        api.post('/billing/checkout', { plan_code: planCode }, { headers })
+      );
+
       toast.success('Redirecting to payment...', {
         description: 'You will be redirected to complete your upgrade.',
       });
@@ -394,6 +428,10 @@ const BillingPage = () => {
       }
       
     } catch (error) {
+      if (error?.message === 'step_up_cancelled') {
+        setUpgrading(null);
+        return;
+      }
       console.error('Upgrade error:', error);
       const errorMessage = error.response?.data?.detail || 'Failed to initiate upgrade';
       toast.error(errorMessage);
@@ -1064,9 +1102,43 @@ const BillingPage = () => {
               <h3 className="text-lg font-semibold text-gray-900">Cancel Subscription</h3>
             </div>
             
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-4">
               Are you sure you want to cancel your subscription? You have two options:
             </p>
+
+            {(cancelContextLoading || cancelContextSnapshot) && (
+              <div
+                className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
+                data-testid="cancel-modal-context-snapshot"
+              >
+                <p className="font-medium text-gray-800 mb-2">Portfolio snapshot</p>
+                {cancelContextLoading && <p className="text-gray-500">Loading…</p>}
+                {!cancelContextLoading && cancelContextSnapshot && (
+                  <ul className="list-disc list-inside space-y-1 text-gray-600">
+                    <li>
+                      Compliance:{' '}
+                      {Number(cancelContextSnapshot.compliance?.requirements_overdue || 0)} overdue,{' '}
+                      {Number(cancelContextSnapshot.compliance?.requirements_expiring_soon || 0)} expiring soon,{' '}
+                      {Number(cancelContextSnapshot.compliance?.requirements_pending || 0)} pending
+                    </li>
+                    {cancelContextSnapshot.operations?.maintenance_workflows_enabled &&
+                      cancelContextSnapshot.operations?.open_maintenance_issues != null && (
+                        <li>Open maintenance issues: {cancelContextSnapshot.operations.open_maintenance_issues}</li>
+                      )}
+                    {cancelContextSnapshot.risk?.predictive_enabled &&
+                      cancelContextSnapshot.risk?.active_risk_signals_count != null && (
+                        <li>
+                          Active risk signals: {cancelContextSnapshot.risk.active_risk_signals_count}
+                          {Number(cancelContextSnapshot.risk.high_or_critical_active_count || 0) > 0
+                            ? ` (${cancelContextSnapshot.risk.high_or_critical_active_count} high or critical)`
+                            : ''}
+                        </li>
+                      )}
+                  </ul>
+                )}
+                <p className="text-xs text-gray-500 mt-2">For your records only — you can still cancel.</p>
+              </div>
+            )}
             
             <div className="space-y-3 mb-6">
               <div className="p-4 border border-gray-200 rounded-lg">
@@ -1120,6 +1192,7 @@ const BillingPage = () => {
           </div>
         </div>
       )}
+      {billingStepUp.modal}
     </div>
   );
 };

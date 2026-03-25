@@ -1,15 +1,29 @@
 from fastapi import APIRouter, HTTPException, Request, status
 from database import database
 from models import (
-    LoginRequest, ForgotPasswordRequest, SetPasswordRequest, TokenResponse,
-    UserRole, UserStatus, PasswordStatus, OnboardingStatus, AuditAction
+    LoginRequest,
+    ForgotPasswordRequest,
+    SetPasswordRequest,
+    TokenResponse,
+    StepUpPasswordRequest,
+    UserRole,
+    UserStatus,
+    PasswordStatus,
+    OnboardingStatus,
+    AuditAction,
 )
 from auth import (
-    verify_password, hash_password, create_access_token, hash_token,
-    validate_password_strength, generate_secure_token,
+    verify_password,
+    hash_password,
+    create_access_token,
+    hash_token,
+    validate_password_strength,
+    generate_secure_token,
+    create_step_up_token,
 )
 from utils.audit import create_audit_log
-from utils.rate_limiter import rate_limiter
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
+from config.security_limits import security_limits
 from datetime import datetime, timezone, timedelta
 import logging
 import re
@@ -17,11 +31,6 @@ from middleware import require_auth
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-# Login rate limiting: per-IP to mitigate brute-force
-LOGIN_RATE_LIMIT_ATTEMPTS = 15
-LOGIN_RATE_LIMIT_WINDOW_MINUTES = 15
-
 
 def _client_ip(request: Request) -> str:
     """Prefer X-Forwarded-For when behind a proxy."""
@@ -61,17 +70,155 @@ async def stop_impersonation(request: Request):
     )
     return {"success": True, "message": "Impersonation stopped"}
 
+@router.post("/session/extend", response_model=TokenResponse)
+async def extend_session(request: Request):
+    """
+    Issue a new access token with the same claims (sliding session length).
+    Requires valid Bearer; does not verify password. Used after idle warning.
+    """
+    user = await require_auth(request)
+    db = database.get_db()
+    portal_user = await db.portal_users.find_one(
+        {"portal_user_id": user["portal_user_id"]},
+        {"_id": 0, "portal_user_id": 1, "client_id": 1, "auth_email": 1, "role": 1, "session_version": 1},
+    )
+    if not portal_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    token_data = {
+        "portal_user_id": portal_user["portal_user_id"],
+        "client_id": portal_user.get("client_id"),
+        "email": portal_user["auth_email"],
+        "role": portal_user["role"],
+        "session_version": portal_user.get("session_version", 0),
+    }
+    if user.get("impersonation"):
+        token_data["impersonation"] = True
+        token_data["impersonated_by_portal_user_id"] = user.get("impersonated_by_portal_user_id")
+        token_data["impersonated_by_role"] = user.get("impersonated_by_role")
+        token_data["impersonation_started_at"] = user.get("impersonation_started_at")
+
+    expires_delta = None
+    if user.get("impersonation") and user.get("exp") is not None:
+        try:
+            exp_claim = user["exp"]
+            if isinstance(exp_claim, (int, float)):
+                exp_dt = datetime.fromtimestamp(float(exp_claim), tz=timezone.utc)
+                now = datetime.now(timezone.utc)
+                if exp_dt > now:
+                    expires_delta = exp_dt - now
+        except (TypeError, ValueError, OSError):
+            expires_delta = None
+
+    access_token = create_access_token(token_data, expires_delta=expires_delta)
+    await create_audit_log(
+        action=AuditAction.SESSION_EXTENDED,
+        actor_id=portal_user["portal_user_id"],
+        actor_role=UserRole(portal_user["role"]),
+        client_id=portal_user.get("client_id"),
+        metadata={"path": "session_extend"},
+    )
+    user_out = {
+        "portal_user_id": portal_user["portal_user_id"],
+        "email": portal_user["auth_email"],
+        "role": portal_user["role"],
+        "client_id": portal_user.get("client_id"),
+    }
+    if user.get("impersonation"):
+        user_out["impersonation"] = True
+        user_out["impersonated_by_portal_user_id"] = user.get("impersonated_by_portal_user_id")
+        user_out["impersonated_by_role"] = user.get("impersonated_by_role")
+
+    return TokenResponse(
+        access_token=access_token,
+        user=user_out,
+    )
+
+
+@router.post("/session/idle-notify")
+async def session_idle_notify(request: Request):
+    """Client calls when inactivity timeout fires (before redirect). Audited for security monitoring."""
+    user = await require_auth(request)
+    actor_role = None
+    if user.get("role"):
+        try:
+            actor_role = UserRole(user["role"])
+        except ValueError:
+            actor_role = None
+    await create_audit_log(
+        action=AuditAction.SESSION_IDLE_TIMEOUT,
+        actor_id=user.get("portal_user_id"),
+        actor_role=actor_role,
+        client_id=user.get("client_id"),
+        metadata={"source": "client_idle_timer"},
+    )
+    return {"ok": True}
+
+
+@router.post("/step-up/verify")
+async def step_up_verify(request: Request, body: StepUpPasswordRequest):
+    """Verify current password; return short-lived step-up token for sensitive actions."""
+    user = await require_auth(request)
+    db = database.get_db()
+    portal_user = await db.portal_users.find_one(
+        {"portal_user_id": user["portal_user_id"]},
+        {"_id": 0, "password_hash": 1, "portal_user_id": 1, "role": 1},
+    )
+    if not portal_user or not portal_user.get("password_hash"):
+        await create_audit_log(
+            action=AuditAction.STEP_UP_FAILED,
+            actor_id=user.get("portal_user_id"),
+            metadata={"reason": "no_password"},
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot verify password")
+    if not verify_password(body.password, portal_user["password_hash"]):
+        await create_audit_log(
+            action=AuditAction.STEP_UP_FAILED,
+            actor_id=user.get("portal_user_id"),
+            metadata={"reason": "invalid_password"},
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
+    token = create_step_up_token(portal_user["portal_user_id"])
+    await create_audit_log(
+        action=AuditAction.STEP_UP_VERIFIED,
+        actor_id=portal_user["portal_user_id"],
+        actor_role=UserRole(portal_user["role"]),
+        client_id=user.get("client_id"),
+        metadata={},
+    )
+    return {
+        "step_up_token": token,
+        "expires_in_seconds": security_limits.step_up_token_minutes * 60,
+    }
+
+
 @router.post("/login", response_model=TokenResponse)
 async def login(request: Request, credentials: LoginRequest):
     """Client login endpoint."""
     ip = _client_ip(request)
-    allowed, err_msg = await rate_limiter.check_rate_limit(
-        f"login_client:{ip}", LOGIN_RATE_LIMIT_ATTEMPTS, LOGIN_RATE_LIMIT_WINDOW_MINUTES
+    email_key = (credentials.email or "").strip().lower()
+    lim = security_limits
+    blocked_ip, err_ip = await rate_limiter.peek_blocked(
+        f"login_client_ip:{ip}", lim.login_client_ip_max, lim.login_window_minutes
     )
-    if not allowed:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many login attempts. Try again later.")
+    blocked_email, err_email = await rate_limiter.peek_blocked(
+        f"login_client_email:{email_key}", lim.login_client_email_max, lim.login_window_minutes
+    )
+    if blocked_ip or blocked_email:
+        log_rate_limit_event("login_client", f"ip={ip} email={email_key[:3]}***", ip)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            metadata={"scope": "login_client", "ip": ip, "email_prefix": email_key[:3] + "***" if len(email_key) > 3 else "***"},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(err_ip or err_email or "Too many login attempts. Try again later."),
+        )
     db = database.get_db()
-    
+
+    async def _record_login_failure() -> None:
+        await rate_limiter.record_hit(f"login_client_ip:{ip}", lim.login_window_minutes)
+        await rate_limiter.record_hit(f"login_client_email:{email_key}", lim.login_window_minutes)
+
     try:
         # Find portal user
         portal_user = await db.portal_users.find_one(
@@ -84,6 +231,7 @@ async def login(request: Request, credentials: LoginRequest):
                 action=AuditAction.USER_LOGIN_FAILED,
                 metadata={"email": credentials.email, "reason": "user_not_found"}
             )
+            await _record_login_failure()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -99,6 +247,7 @@ async def login(request: Request, credentials: LoginRequest):
                 actor_id=portal_user["portal_user_id"],
                 metadata={"email": credentials.email, "reason": "invalid_password"}
             )
+            await _record_login_failure()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -106,6 +255,7 @@ async def login(request: Request, credentials: LoginRequest):
         
         # Check user status
         if portal_user["status"] != UserStatus.ACTIVE.value:
+            await _record_login_failure()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account is not active"
@@ -113,6 +263,7 @@ async def login(request: Request, credentials: LoginRequest):
         
         # Check password status
         if portal_user["password_status"] != PasswordStatus.SET.value:
+            await _record_login_failure()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Password not set"
@@ -125,6 +276,7 @@ async def login(request: Request, credentials: LoginRequest):
                 actor_id=portal_user["portal_user_id"],
                 metadata={"email": credentials.email, "reason": "staff_use_client_portal"}
             )
+            await _record_login_failure()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This account must sign in via the Staff/Admin portal."
@@ -142,6 +294,7 @@ async def login(request: Request, credentials: LoginRequest):
             )
             
             if not client:
+                await _record_login_failure()
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Client not found"
@@ -149,6 +302,7 @@ async def login(request: Request, credentials: LoginRequest):
             
             # Check provisioning for client users
             if client["onboarding_status"] != OnboardingStatus.PROVISIONED.value:
+                await _record_login_failure()
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail={"error_code": "ACCOUNT_NOT_READY", "message": "Your portal is still being provisioned."}
@@ -233,6 +387,20 @@ def _request_id(request: Request) -> str:
 @router.post("/set-password")
 async def set_password(request: Request, data: SetPasswordRequest):
     """Set password using token (production-safe)."""
+    ip = _client_ip(request)
+    sl = security_limits
+    allowed_sp, err_sp = await rate_limiter.check_rate_limit(
+        f"set_password_ip:{ip}",
+        sl.set_password_ip_max,
+        sl.set_password_ip_window_minutes,
+    )
+    if not allowed_sp:
+        log_rate_limit_event("set_password", ip, ip)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            metadata={"scope": "set_password", "ip": ip},
+        )
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_sp or "Too many attempts.")
     db = database.get_db()
     request_id = _request_id(request)
     token_prefix = (data.token[:6] if data.token and len(data.token) >= 6 else "short")
@@ -444,11 +612,19 @@ async def set_password(request: Request, data: SetPasswordRequest):
 async def contractor_login(request: Request, credentials: LoginRequest):
     """Contractor portal login. Returns JWT with role=ROLE_CONTRACTOR and contractor_id."""
     ip = _client_ip(request)
-    allowed, err_msg = await rate_limiter.check_rate_limit(
-        f"login_contractor:{ip}", LOGIN_RATE_LIMIT_ATTEMPTS, LOGIN_RATE_LIMIT_WINDOW_MINUTES
+    cl = security_limits
+    blocked_c, err_c = await rate_limiter.peek_blocked(
+        f"login_contractor_ip:{ip}",
+        cl.login_contractor_ip_max,
+        cl.login_contractor_window_minutes,
     )
-    if not allowed:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many attempts.")
+    if blocked_c:
+        log_rate_limit_event("login_contractor", ip, ip)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            metadata={"scope": "login_contractor", "ip": ip},
+        )
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_c or "Too many attempts.")
     try:
         from services.contractor_portal_auth_service import verify_contractor_password
         from services import contractor_service
@@ -458,6 +634,7 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 action=AuditAction.USER_LOGIN_FAILED,
                 metadata={"email": credentials.email, "reason": "contractor_invalid_credentials"}
             )
+            await rate_limiter.record_hit(f"login_contractor_ip:{ip}", cl.login_contractor_window_minutes)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         contractor_id = acc["contractor_id"]
         contractor = await contractor_service.get_contractor(contractor_id)
@@ -466,6 +643,7 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 action=AuditAction.USER_LOGIN_FAILED,
                 metadata={"email": credentials.email, "contractor_id": contractor_id, "reason": "contractor_inactive"}
             )
+            await rate_limiter.record_hit(f"login_contractor_ip:{ip}", cl.login_contractor_window_minutes)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is not active")
         token_data = {
             "portal_user_id": f"contractor_{contractor_id}",
@@ -552,13 +730,6 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
     }
 
 
-# Self-service forgot password: same token + set-password flow as admin resend; no user enumeration
-FORGOT_PASSWORD_RATE_LIMIT_IP = 5
-FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES = 15
-FORGOT_PASSWORD_RATE_LIMIT_PER_EMAIL = 3
-FORGOT_PASSWORD_RATE_LIMIT_EMAIL_WINDOW_MINUTES = 60
-
-
 @router.post("/forgot-password")
 async def forgot_password(request: Request, data: ForgotPasswordRequest):
     """
@@ -571,13 +742,19 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
     if not email_raw:
         return {"message": "If an account exists for this email, you will receive a link to set your password. Please check your inbox."}
 
+    sl = security_limits
     # Rate limit by IP
     allowed, err_msg = await rate_limiter.check_rate_limit(
         f"forgot_password_ip:{ip}",
-        FORGOT_PASSWORD_RATE_LIMIT_IP,
-        FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES,
+        sl.forgot_password_ip_max,
+        sl.forgot_password_ip_window_minutes,
     )
     if not allowed:
+        log_rate_limit_event("forgot_password_ip", ip, ip)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            metadata={"scope": "forgot_password_ip", "ip": ip},
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=err_msg or "Too many requests. Try again later.",
@@ -585,8 +762,8 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
     # Rate limit by email (abuse / spam)
     allowed_email, _ = await rate_limiter.check_rate_limit(
         f"forgot_password_email:{email_raw}",
-        FORGOT_PASSWORD_RATE_LIMIT_PER_EMAIL,
-        FORGOT_PASSWORD_RATE_LIMIT_EMAIL_WINDOW_MINUTES,
+        sl.forgot_password_email_max,
+        sl.forgot_password_email_window_minutes,
     )
     if not allowed_email:
         return {"message": "If an account exists for this email, you will receive a link to set your password. Please check your inbox."}
@@ -731,13 +908,30 @@ async def admin_login(request: Request, credentials: LoginRequest):
     - Can log in as long as they have a valid password and ACTIVE status
     """
     ip = _client_ip(request)
-    allowed, err_msg = await rate_limiter.check_rate_limit(
-        f"login_admin:{ip}", LOGIN_RATE_LIMIT_ATTEMPTS, LOGIN_RATE_LIMIT_WINDOW_MINUTES
+    email_key = (credentials.email or "").strip().lower()
+    al = security_limits
+    blocked_a_ip, err_a_ip = await rate_limiter.peek_blocked(
+        f"login_admin_ip:{ip}", al.login_admin_ip_max, al.login_admin_window_minutes
     )
-    if not allowed:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many login attempts. Try again later.")
+    blocked_a_em, err_a_em = await rate_limiter.peek_blocked(
+        f"login_admin_email:{email_key}", al.login_admin_ip_max, al.login_admin_window_minutes
+    )
+    if blocked_a_ip or blocked_a_em:
+        log_rate_limit_event("login_admin", ip, ip)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            metadata={"scope": "login_admin", "ip": ip},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(err_a_ip or err_a_em or "Too many login attempts. Try again later."),
+        )
     db = database.get_db()
-    
+
+    async def _record_admin_failure() -> None:
+        await rate_limiter.record_hit(f"login_admin_ip:{ip}", al.login_admin_window_minutes)
+        await rate_limiter.record_hit(f"login_admin_email:{email_key}", al.login_admin_window_minutes)
+
     try:
         # Find user by email (any role); role check happens after password verification
         portal_user = await db.portal_users.find_one(
@@ -750,6 +944,7 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 action=AuditAction.ADMIN_LOGIN_FAILED,
                 metadata={"email": credentials.email, "reason": "admin_not_found"}
             )
+            await _record_admin_failure()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -765,6 +960,7 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 actor_id=portal_user["portal_user_id"],
                 metadata={"email": credentials.email, "reason": "invalid_password"}
             )
+            await _record_admin_failure()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -777,6 +973,7 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 actor_id=portal_user["portal_user_id"],
                 metadata={"email": credentials.email, "reason": "client_use_staff_portal"}
             )
+            await _record_admin_failure()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This account must sign in via the Client portal."
@@ -789,6 +986,7 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 actor_id=portal_user["portal_user_id"],
                 metadata={"email": credentials.email, "reason": "account_not_active", "status": portal_user.get("status")}
             )
+            await _record_admin_failure()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account is not active"
@@ -801,6 +999,7 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 actor_id=portal_user["portal_user_id"],
                 metadata={"email": credentials.email, "reason": "password_not_set"}
             )
+            await _record_admin_failure()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Password not set"

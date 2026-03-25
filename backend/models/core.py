@@ -219,6 +219,12 @@ class AuditAction(str, Enum):
     CLIENT_TASK_DISMISSED = "CLIENT_TASK_DISMISSED"
     CLIENT_TASK_MARKED_DONE = "CLIENT_TASK_MARKED_DONE"
     CLIENT_TASK_RESTORED = "CLIENT_TASK_RESTORED"
+    # Security / rate limiting / session
+    RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED"
+    SESSION_EXTENDED = "SESSION_EXTENDED"
+    SESSION_IDLE_TIMEOUT = "SESSION_IDLE_TIMEOUT"
+    STEP_UP_VERIFIED = "STEP_UP_VERIFIED"
+    STEP_UP_FAILED = "STEP_UP_FAILED"
     # Paid order receipts (intake / one-off orders)
     ORDER_RECEIPT_PDF_GENERATED = "ORDER_RECEIPT_PDF_GENERATED"
     ADMIN_ORDER_GENERATION_MANUAL_RETRY = "ADMIN_ORDER_GENERATION_MANUAL_RETRY"
@@ -231,6 +237,7 @@ class AuditAction(str, Enum):
     WORK_ORDER_CREATED_FROM_RISK_SIGNAL = "WORK_ORDER_CREATED_FROM_RISK_SIGNAL"
     INSPECTION_CREATED_FROM_RISK_SIGNAL = "INSPECTION_CREATED_FROM_RISK_SIGNAL"
     # Issue lifecycle
+    MAINTENANCE_ISSUE_CREATED = "MAINTENANCE_ISSUE_CREATED"
     ISSUE_STATUS_UPDATED = "ISSUE_STATUS_UPDATED"
     ISSUE_CLOSED = "ISSUE_CLOSED"
     # Tenant issue reporting (maintenance issue with source=tenant_request)
@@ -947,6 +954,11 @@ class IntakeFormData(BaseModel):
     # Marketing funnel linking (e.g. risk-check): optional lead_id and source; stored on client.marketing
     lead_id: Optional[str] = None
     source: Optional[str] = None
+
+
+class StepUpPasswordRequest(BaseModel):
+    """Re-auth body: current password for step-up token issuance."""
+    password: str
 
 
 class LoginRequest(BaseModel):

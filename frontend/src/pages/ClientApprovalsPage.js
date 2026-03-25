@@ -3,6 +3,7 @@
  * Summary KPIs, filters, queue table, exceptions panel, detail drawer, export. Gated by invoicing.
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import { useStepUpApi } from '../hooks/useStepUpApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
@@ -209,7 +210,8 @@ function ClientApprovalsPageInner() {
       payload.payment_reference = markPaidForm.payment_reference || undefined;
       payload.payment_notes = markPaidForm.payment_notes || undefined;
     }
-    clientAPI.updateApproval(id, payload)
+    approvalsStepUp
+      .request((headers) => clientAPI.updateApproval(id, payload, { headers }))
       .then(() => {
         if (action === 'mark_paid') {
           toast.success('Invoice marked as paid');
@@ -222,7 +224,10 @@ function ClientApprovalsPageInner() {
         setSelectedId(null);
         setDetail(null);
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Action failed'))
+      .catch((err) => {
+        if (err?.message === 'step_up_cancelled') return;
+        toast.error(err?.response?.data?.detail || 'Action failed');
+      })
       .finally(() => setActionLoading(false));
   };
 
@@ -614,6 +619,7 @@ function ClientApprovalsPageInner() {
           ) : null}
         </SheetContent>
       </Sheet>
+      {approvalsStepUp.modal}
     </div>
   );
 }

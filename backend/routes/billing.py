@@ -13,6 +13,7 @@ from database import database
 from services.stripe_service import stripe_service
 from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError, StripeModeMismatchError
 from middleware import client_route_guard
+from middleware.step_up_auth import require_recent_step_up
 from utils.audit import create_audit_log
 from models import AuditAction
 import logging
@@ -47,7 +48,8 @@ async def create_checkout(request: Request, body: CheckoutRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
-    
+    await require_recent_step_up(request, user)
+
     # Validate plan code
     try:
         plan = PlanCode(body.plan_code)
@@ -174,7 +176,8 @@ async def create_billing_portal(request: Request):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
-    
+    await require_recent_step_up(request, user)
+
     db = database.get_db()
     
     # Get billing record
@@ -234,7 +237,8 @@ async def cancel_subscription(request: Request, body: CancelRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
-    
+    await require_recent_step_up(request, user)
+
     try:
         result = await stripe_service.cancel_subscription(
             client_id=client_id,

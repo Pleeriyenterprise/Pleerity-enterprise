@@ -6,6 +6,7 @@ from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
+import asyncio
 from pathlib import Path
 import logging
 import io
@@ -562,6 +563,134 @@ async def get_client_command_center(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load command center",
         )
+
+
+def _portal_locked_until_active(locked_until: Any) -> bool:
+    if locked_until is None:
+        return False
+    try:
+        if isinstance(locked_until, datetime):
+            dt = locked_until
+        else:
+            dt = datetime.fromisoformat(str(locked_until).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt > datetime.now(timezone.utc)
+    except Exception:
+        return False
+
+
+@router.get("/protection-snapshot")
+async def get_protection_snapshot(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Optional filter for open issues and risk counts"),
+):
+    """
+    Read-only aggregate for security/value surfaces: account sign-in hints, compliance requirement counts,
+    open maintenance issues (when enabled), active risk signals (when predictive is enabled).
+    """
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    portal_user_id = user.get("portal_user_id")
+    db = database.get_db()
+
+    if property_id:
+        prop = await db.properties.find_one(
+            {"property_id": property_id, "client_id": client_id},
+            {"_id": 1},
+        )
+        if not prop:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
+    from services import maintenance_issues_service
+    from services.risk_signal_service import (
+        STATUS_ACTIVE,
+        RISK_LEVEL_HIGH,
+        RISK_LEVEL_CRITICAL,
+    )
+
+    flags = await get_effective_flags(client_id)
+    maintenance_on = bool(flags.get(MAINTENANCE_WORKFLOWS))
+    predictive_on = bool(flags.get(PREDICTIVE_MAINTENANCE))
+
+    async def load_portal_row():
+        if not portal_user_id:
+            return None
+        return await db.portal_users.find_one(
+            {"portal_user_id": portal_user_id},
+            {"_id": 0, "last_login": 1, "failed_login_attempts": 1, "locked_until": 1, "lock_reason": 1},
+        )
+
+    async def load_compliance():
+        return await calculate_compliance_score(client_id)
+
+    async def load_open_issues():
+        if not maintenance_on:
+            return None
+        n = await maintenance_issues_service.count_open_issues(
+            client_id, property_id if property_id else None
+        )
+        return n
+
+    async def load_risk_counts():
+        if not predictive_on:
+            return None
+        q: Dict[str, Any] = {
+            "client_id": client_id,
+            "status": STATUS_ACTIVE,
+        }
+        if property_id:
+            q["property_id"] = property_id
+        active_total = await db.risk_signals.count_documents(q)
+        q_high = {
+            **q,
+            "risk_level": {"$in": [RISK_LEVEL_HIGH, RISK_LEVEL_CRITICAL]},
+        }
+        high_crit = await db.risk_signals.count_documents(q_high)
+        return active_total, high_crit
+
+    portal_row, score_data, open_n, risk_counts = await asyncio.gather(
+        load_portal_row(),
+        load_compliance(),
+        load_open_issues(),
+        load_risk_counts(),
+    )
+    if risk_counts is None:
+        active_risk_total, high_critical_risk = None, None
+    else:
+        active_risk_total, high_critical_risk = risk_counts
+
+    stats = (score_data or {}).get("stats") or {}
+    last_login = (portal_row or {}).get("last_login")
+    if hasattr(last_login, "isoformat"):
+        last_login = last_login.isoformat()
+
+    return {
+        "property_id_filter": property_id,
+        "account": {
+            "last_login_at": last_login,
+            "failed_login_attempts": int((portal_row or {}).get("failed_login_attempts") or 0),
+            "account_locked": _portal_locked_until_active((portal_row or {}).get("locked_until")),
+            "lock_reason": (portal_row or {}).get("lock_reason"),
+        },
+        "compliance": {
+            "score": score_data.get("score"),
+            "grade": score_data.get("grade"),
+            "requirements_overdue": int(stats.get("overdue") or 0),
+            "requirements_expiring_soon": int(stats.get("expiring_soon") or 0),
+            "requirements_pending": int(stats.get("pending") or 0),
+        },
+        "operations": {
+            "open_maintenance_issues": open_n,
+            "maintenance_workflows_enabled": maintenance_on,
+        },
+        "risk": {
+            "predictive_enabled": predictive_on,
+            "active_risk_signals_count": active_risk_total,
+            "high_or_critical_active_count": high_critical_risk,
+        },
+    }
 
 
 @router.get("/tasks")

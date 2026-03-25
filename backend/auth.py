@@ -16,6 +16,16 @@ JWT_SECRET_DEFAULT = "your-secret-key-change-in-production"
 JWT_SECRET = os.getenv("JWT_SECRET", JWT_SECRET_DEFAULT)
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
+# Optional: short access token (minutes). When set, overrides JWT_EXPIRATION_HOURS for new tokens.
+# Use with frontend proactive session extend (SessionIdleGuard) to avoid surprise logouts while active.
+JWT_EXPIRATION_MINUTES: Optional[int] = None
+_jm = os.getenv("JWT_EXPIRATION_MINUTES", "").strip()
+if _jm:
+    try:
+        JWT_EXPIRATION_MINUTES = max(1, int(_jm))
+    except ValueError:
+        JWT_EXPIRATION_MINUTES = None
+STEP_UP_TOKEN_MINUTES = int(os.getenv("STEP_UP_TOKEN_MINUTES", "10"))
 
 
 def require_non_default_jwt_secret() -> None:
@@ -50,6 +60,8 @@ def create_access_token(data: Dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
+    elif JWT_EXPIRATION_MINUTES is not None:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=max(1, JWT_EXPIRATION_MINUTES))
     else:
         expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
     
@@ -61,6 +73,30 @@ def decode_access_token(token: str) -> Optional[Dict]:
     """Decode and validate a JWT token."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("token_use") == "step_up":
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
+def create_step_up_token(portal_user_id: str) -> str:
+    """Short-lived JWT for sensitive actions (re-auth). Not accepted as session Bearer."""
+    to_encode = {
+        "portal_user_id": portal_user_id,
+        "token_use": "step_up",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=max(1, STEP_UP_TOKEN_MINUTES)),
+    }
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def decode_step_up_token(token: str) -> Optional[Dict]:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("token_use") != "step_up":
+            return None
+        if not payload.get("portal_user_id"):
+            return None
         return payload
     except JWTError:
         return None

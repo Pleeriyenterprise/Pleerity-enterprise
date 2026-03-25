@@ -14,13 +14,10 @@ from database import database
 from middleware import get_current_user, client_route_guard
 from models import AuditAction
 from utils.audit import create_audit_log
-from utils.rate_limiter import rate_limiter
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
+from config.security_limits import security_limits
 
 router = APIRouter(prefix="/api/portal", tags=["portal"])
-
-# Resend activation: max 3 requests per client per hour
-RESEND_ACTIVATION_MAX_PER_HOUR = 3
-RESEND_ACTIVATION_WINDOW_MINUTES = 60
 
 SUPPORT_EMAIL = (os.getenv("SUPPORT_EMAIL") or os.getenv("REACT_APP_SUPPORT_EMAIL") or "info@pleerityenterprise.co.uk").strip()
 
@@ -319,10 +316,21 @@ async def resend_activation(
     # Rate limit: 3 per hour per client
     rate_key = f"resend_activation:{resolved_client_id}"
     allowed, err_msg = await rate_limiter.check_rate_limit(
-        rate_key, RESEND_ACTIVATION_MAX_PER_HOUR, RESEND_ACTIVATION_WINDOW_MINUTES
+        rate_key,
+        security_limits.resend_activation_max_per_hour,
+        60,
     )
     if not allowed:
         user = await get_current_user(request)
+        log_rate_limit_event("resend_activation", resolved_client_id, _client_ip_portal(request))
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            actor_id=user.get("user_id") or user.get("portal_user_id") if user else None,
+            client_id=resolved_client_id,
+            resource_type="client",
+            resource_id=resolved_client_id,
+            metadata={"scope": "resend_activation", "message": err_msg},
+        )
         await create_audit_log(
             action=AuditAction.ACTIVATION_EMAIL_RESEND,
             actor_id=user.get("user_id") or user.get("portal_user_id") if user else None,

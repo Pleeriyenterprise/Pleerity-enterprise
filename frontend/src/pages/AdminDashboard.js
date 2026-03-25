@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import api, { adminAPI } from '../api/client';
+import { useStepUpApi } from '../hooks/useStepUpApi';
 import { toast } from 'sonner';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { 
@@ -1549,6 +1550,7 @@ const JobsMonitoring = () => {
 };
 
 const ClientsManagement = () => {
+  const stepUpClients = useStepUpApi();
   const [searchParams, setSearchParams] = useSearchParams();
   const [clients, setClients] = useState([]);
   const [total, setTotal] = useState(0);
@@ -1623,10 +1625,14 @@ const ClientsManagement = () => {
 
   const resendPasswordSetup = async (clientId) => {
     try {
-      await api.post(`/admin/clients/${clientId}/resend-password-setup`);
+      await stepUpClients.request((headers) =>
+        api.post(`/admin/clients/${clientId}/resend-password-setup`, null, { headers }),
+      );
       toast.success('Password setup email sent');
     } catch (error) {
-      toast.error('Failed to send email');
+      if (error?.message !== 'step_up_cancelled') {
+        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to send email'));
+      }
     }
   };
 
@@ -1877,6 +1883,7 @@ const ClientsManagement = () => {
           </div>
         )}
       </div>
+      {stepUpClients.modal}
     </div>
   );
 };
@@ -2043,6 +2050,7 @@ const EMAIL_DELIVERY_RESEND_TEMPLATES = { 'password-setup': true };
 
 // Email Delivery (read-only, no recipient) — message_logs + EMAIL_SKIPPED_NO_RECIPIENT
 const EmailDelivery = () => {
+  const stepUpEmail = useStepUpApi();
   const [data, setData] = useState({ total: 0, returned: 0, has_more: false, items: [] });
   const [loading, setLoading] = useState(true);
   const [templateAlias, setTemplateAlias] = useState('');
@@ -2091,21 +2099,26 @@ const EmailDelivery = () => {
     setResendLoading(true);
     try {
       const { adminAPI } = await import('../api/client');
-      await adminAPI.resendPasswordSetup(resendConfirmRow.client_id);
+      const cid = resendConfirmRow.client_id;
+      await stepUpEmail.request((headers) => adminAPI.resendPasswordSetup(cid, { headers }));
       toast.success('Password setup email resent');
       setResendConfirmRow(null);
       fetchEmailDelivery();
     } catch (e) {
-      const detail = e.response?.data?.detail;
-      const code = detail?.error_code || (typeof detail === 'object' ? detail?.error_code : null);
-      if (e.response?.status === 502 && code === 'EMAIL_SEND_FAILED') {
-        toast.error('Email send failed. Check provider or try again later.');
-      } else if (e.response?.status === 429) {
-        toast.error(detail?.message || 'Too many requests. Please try again later.');
-      } else if (e.response?.status === 404) {
-        toast.error('Client or portal user not found.');
+      if (e?.message === 'step_up_cancelled') {
+        /* closed password modal */
       } else {
-        toast.error(e.response?.data?.detail?.message || e.message || 'Resend failed');
+        const detail = e.response?.data?.detail;
+        const code = detail?.error_code || (typeof detail === 'object' ? detail?.error_code : null);
+        if (e.response?.status === 502 && code === 'EMAIL_SEND_FAILED') {
+          toast.error('Email send failed. Check provider or try again later.');
+        } else if (e.response?.status === 429) {
+          toast.error(detail?.message || 'Too many requests. Please try again later.');
+        } else if (e.response?.status === 404) {
+          toast.error('Client or portal user not found.');
+        } else {
+          toast.error(e.response?.data?.detail?.message || e.message || 'Resend failed');
+        }
       }
     } finally {
       setResendLoading(false);
@@ -2312,12 +2325,14 @@ const EmailDelivery = () => {
           )}
         </div>
       )}
+      {stepUpEmail.modal}
     </div>
   );
 };
 
 // Admin Users Management Component
 const AdminsManagement = () => {
+  const stepUp = useStepUpApi();
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -2353,13 +2368,17 @@ const AdminsManagement = () => {
 
     setInviteLoading(true);
     try {
-      await api.post('/admin/admins/invite', formData);
+      await stepUp.request((headers) => api.post('/admin/admins/invite', formData, { headers }));
       toast.success('Admin invitation sent successfully');
       setShowInviteForm(false);
       setFormData({ email: '', full_name: '' });
       fetchAdmins();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to send invitation');
+      if (error?.message === 'step_up_cancelled') {
+        /* user closed modal */
+      } else {
+        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to send invitation'));
+      }
     } finally {
       setInviteLoading(false);
     }
@@ -2370,11 +2389,13 @@ const AdminsManagement = () => {
     
     setActionLoading(portalUserId);
     try {
-      await api.delete(`/admin/admins/${portalUserId}`);
+      await stepUp.request((headers) => api.delete(`/admin/admins/${portalUserId}`, { headers }));
       toast.success('Admin deactivated successfully');
       fetchAdmins();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to deactivate admin');
+      if (error?.message !== 'step_up_cancelled') {
+        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to deactivate admin'));
+      }
     } finally {
       setActionLoading(null);
     }
@@ -2383,11 +2404,15 @@ const AdminsManagement = () => {
   const handleReactivate = async (portalUserId) => {
     setActionLoading(portalUserId);
     try {
-      await api.post(`/admin/admins/${portalUserId}/reactivate`);
+      await stepUp.request((headers) =>
+        api.post(`/admin/admins/${portalUserId}/reactivate`, null, { headers }),
+      );
       toast.success('Admin reactivated successfully');
       fetchAdmins();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to reactivate admin');
+      if (error?.message !== 'step_up_cancelled') {
+        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to reactivate admin'));
+      }
     } finally {
       setActionLoading(null);
     }
@@ -2396,10 +2421,14 @@ const AdminsManagement = () => {
   const handleResendInvite = async (portalUserId, email) => {
     setActionLoading(portalUserId);
     try {
-      await api.post(`/admin/admins/${portalUserId}/resend-invite`);
+      await stepUp.request((headers) =>
+        api.post(`/admin/admins/${portalUserId}/resend-invite`, null, { headers }),
+      );
       toast.success(`Invitation resent to ${email}`);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to resend invitation');
+      if (error?.message !== 'step_up_cancelled') {
+        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to resend invitation'));
+      }
     } finally {
       setActionLoading(null);
     }
@@ -2720,6 +2749,7 @@ const AdminsManagement = () => {
           </div>
         )}
       </div>
+      {stepUp.modal}
     </div>
   );
 };

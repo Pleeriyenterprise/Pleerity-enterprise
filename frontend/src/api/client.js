@@ -146,6 +146,9 @@ export const authAPI = {
   setPassword: (data) => apiClient.post('/auth/set-password', data),
   forgotPassword: (data) => apiClient.post('/auth/forgot-password', data),
   stopImpersonation: () => apiClient.post('/auth/impersonation/stop'),
+  extendSession: () => apiClient.post('/auth/session/extend'),
+  verifyStepUp: (body) => apiClient.post('/auth/step-up/verify', body),
+  idleSessionNotify: () => apiClient.post('/auth/session/idle-notify'),
 };
 
 export const intakeAPI = {
@@ -183,6 +186,8 @@ export const clientAPI = {
   getTasksDigest: (params = {}) => apiClient.get('/client/tasks/digest', { params }),
   /** Composed urgent tasks, risks, activity, compliance summary (read-only aggregate). */
   getCommandCenter: (params = {}) => apiClient.get('/client/command-center', { params }),
+  /** Read-only security / continuity snapshot (account hints, compliance counts, issues, risk signals). */
+  getProtectionSnapshot: (params = {}) => apiClient.get('/client/protection-snapshot', { params }),
   /** Phase 2: snooze | dismiss | done | restore (inbox overlay). */
   postTaskOverride: (body) => apiClient.post('/client/tasks/override', body),
   getTasksActivity: (params = {}) => apiClient.get('/client/tasks/activity', { params }),
@@ -289,7 +294,8 @@ export const clientAPI = {
   /** Approvals (invoice/work order). Requires INVOICING. */
   getApprovals: (params = {}) => apiClient.get('/client/approvals', { params }),
   getApproval: (invoiceId) => apiClient.get(`/client/approvals/${encodeURIComponent(invoiceId)}`),
-  updateApproval: (invoiceId, body) => apiClient.patch(`/client/approvals/${encodeURIComponent(invoiceId)}`, body),
+  updateApproval: (invoiceId, body, config = {}) =>
+    apiClient.patch(`/client/approvals/${encodeURIComponent(invoiceId)}`, body, config),
   createInvoice: (body) => apiClient.post('/client/invoices', body),
   exportApprovals: (params = {}) => apiClient.get('/client/approvals/export', { params, responseType: 'blob' }),
 };
@@ -328,7 +334,14 @@ export const adminAPI = {
     apiClient.get('/admin/ops/compliance-clients-summary', { params }),
   getEmailDelivery: (params = {}) =>
     apiClient.get('/admin/email-delivery', { params: { limit: 50, skip: 0, since_hours: 72, ...params } }),
-  resendPasswordSetup: (clientId) => apiClient.post(`/admin/clients/${clientId}/resend-password-setup`),
+  resendPasswordSetup: (clientId, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/resend-password-setup`, null, config),
+  /** GET password setup link. generateNew=true revokes old tokens and requires step-up on the server. */
+  getPasswordSetupLink: (clientId, generateNew = false, config = {}) =>
+    apiClient.get(`/admin/clients/${clientId}/password-setup-link`, {
+      ...config,
+      params: { generate_new: generateNew, ...(config.params || {}) },
+    }),
   // Admin user management
   listAdmins: () => apiClient.get('/admin/admins'),
   inviteAdmin: (data) => apiClient.post('/admin/admins/invite', data),

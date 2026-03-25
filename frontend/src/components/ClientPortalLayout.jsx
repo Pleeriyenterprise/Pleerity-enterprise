@@ -7,6 +7,7 @@ import { Button } from './ui/button';
 import { SUPPORT_EMAIL } from '../config';
 import { branding, BRAND_LOGO_URL } from '../config/branding';
 import { toast } from 'sonner';
+import SessionIdleGuard from './SessionIdleGuard';
 import {
   LayoutDashboard,
   Building2,
@@ -214,6 +215,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   return (
+    <SessionIdleGuard>
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header: navy, CRN right, Ask Assistant + Logout right */}
       <header className="bg-midnight-blue text-white shadow-sm sticky top-0 z-30">
@@ -429,5 +431,6 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         </div>
       </footer>
     </div>
+    </SessionIdleGuard>
   );
 }

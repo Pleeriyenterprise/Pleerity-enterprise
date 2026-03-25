@@ -125,6 +125,9 @@ const ClientDashboard = () => {
   const [tasksDigest, setTasksDigest] = useState(undefined);
   /** Composed bundle: urgent rows, risks, compliance (same fetch backs tasks digest summary + activity) */
   const [commandCenter, setCommandCenter] = useState(undefined);
+  /** Read-only protection / continuity snapshot (aligned with billing cancel context). */
+  const [protectionSnapshot, setProtectionSnapshot] = useState(null);
+  const [protectionSnapshotLoading, setProtectionSnapshotLoading] = useState(false);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -233,6 +236,21 @@ const ClientDashboard = () => {
       });
   }, [isClientUser, commandCenterScopePropertyId]);
 
+  useEffect(() => {
+    if (!isClientUser) {
+      setProtectionSnapshot(null);
+      setProtectionSnapshotLoading(false);
+      return;
+    }
+    const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
+    setProtectionSnapshotLoading(true);
+    clientAPI
+      .getProtectionSnapshot(params)
+      .then((res) => setProtectionSnapshot(res.data || null))
+      .catch(() => setProtectionSnapshot(null))
+      .finally(() => setProtectionSnapshotLoading(false));
+  }, [isClientUser, commandCenterScopePropertyId]);
+
   // Refetch score trend card when user switches Portfolio vs Property or selects another property
   useEffect(() => {
     if (!isClientUser) return;
@@ -266,6 +284,10 @@ const ClientDashboard = () => {
             setTasksDigest(null);
             setCommandCenter(null);
           });
+        clientAPI
+          .getProtectionSnapshot(params)
+          .then((res) => setProtectionSnapshot(res.data || null))
+          .catch(() => setProtectionSnapshot(null));
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -920,6 +942,62 @@ const ClientDashboard = () => {
               )}
             </ul>
           </div>
+        )}
+
+        {!setupView && isClientUser && (protectionSnapshotLoading || protectionSnapshot) && (
+          <Card
+            className="mb-6 border border-gray-200 shadow-sm"
+            data-testid="protection-snapshot-card"
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Shield className="w-4 h-4 text-teal-600" />
+                Security &amp; continuity snapshot
+              </CardTitle>
+              <p className="text-xs text-gray-500 mt-1">
+                Read-only summary of account activity signals and open operational work. Not legal advice.
+              </p>
+            </CardHeader>
+            <CardContent className="text-sm text-gray-700 space-y-2 pt-0">
+              {protectionSnapshotLoading && <p className="text-gray-500">Loading…</p>}
+              {!protectionSnapshotLoading && protectionSnapshot && (
+                <>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      Last portal sign-in:{' '}
+                      {protectionSnapshot.account?.last_login_at
+                        ? new Date(protectionSnapshot.account.last_login_at).toLocaleString()
+                        : 'Not recorded'}
+                    </li>
+                    <li>
+                      Compliance requirements:{' '}
+                      {Number(protectionSnapshot.compliance?.requirements_overdue || 0)} overdue,{' '}
+                      {Number(protectionSnapshot.compliance?.requirements_expiring_soon || 0)} expiring soon,{' '}
+                      {Number(protectionSnapshot.compliance?.requirements_pending || 0)} pending
+                    </li>
+                    {protectionSnapshot.operations?.maintenance_workflows_enabled &&
+                      protectionSnapshot.operations?.open_maintenance_issues != null && (
+                        <li>Open maintenance issues: {protectionSnapshot.operations.open_maintenance_issues}</li>
+                      )}
+                    {protectionSnapshot.risk?.predictive_enabled &&
+                      protectionSnapshot.risk?.active_risk_signals_count != null && (
+                        <li>
+                          Active risk signals: {protectionSnapshot.risk.active_risk_signals_count}
+                          {Number(protectionSnapshot.risk.high_or_critical_active_count || 0) > 0
+                            ? ` (${protectionSnapshot.risk.high_or_critical_active_count} high or critical)`
+                            : ''}
+                        </li>
+                      )}
+                  </ul>
+                  {commandCenterScopePropertyId && (
+                    <p className="text-xs text-electric-teal">
+                      Issues and risk counts are scoped to the selected property; compliance totals are portfolio-wide.
+                    </p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Executive KPI row (compliance + operations) */}

@@ -12,8 +12,11 @@ from services.assistant_chat_service import (
     chat_turn as assistant_chat_turn,
     escalate_assistant_conversation,
 )
-from utils.rate_limiter import rate_limiter
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from utils import ai_config
+from config.security_limits import security_limits
+from models import AuditAction
+from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
@@ -21,6 +24,32 @@ router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 # Rate limits: per user 20/10min, per client 100/day (env)
 ASSISTANT_CHAT_PER_USER_PER_10MIN = 20
 ASSISTANT_CHAT_CLIENT_PER_DAY = int(os.getenv("ASSISTANT_RATE_LIMIT_CLIENT_PER_DAY", "100"))
+
+
+def _client_ip_assistant(request: Request) -> str:
+    fwd = request.headers.get("X-Forwarded-For")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return (request.client and request.client.host) or "unknown"
+
+
+async def _enforce_assistant_ip_rate(request: Request) -> None:
+    ip = _client_ip_assistant(request)
+    ok, msg = await rate_limiter.check_rate_limit(
+        f"assistant_ip:{ip}",
+        security_limits.assistant_per_ip_per_hour,
+        60,
+    )
+    if not ok:
+        log_rate_limit_event("assistant_ip", ip, ip)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            metadata={"scope": "assistant_ip", "ip": ip},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=msg or "Too many assistant requests from this network. Try again shortly.",
+        )
 
 
 class AskQuestionRequest(BaseModel):
@@ -56,7 +85,8 @@ async def get_snapshot(request: Request):
     formatted for AI assistant context.
     """
     user = await client_route_guard(request)
-    
+    await _enforce_assistant_ip_rate(request)
+
     try:
         snapshot = await assistant_service.get_client_snapshot(user["client_id"])
         return snapshot
@@ -83,7 +113,8 @@ async def ask_question(request: Request, data: AskQuestionRequest):
     - correlation_id: For support/debugging
     """
     user = await client_route_guard(request)
-    
+    await _enforce_assistant_ip_rate(request)
+
     try:
         # Rate limiting - 10 questions per 10 minutes per client
         allowed, error_msg = await rate_limiter.check_rate_limit(
@@ -137,6 +168,7 @@ async def post_chat(request: Request, data: ChatRequest):
     Requires authenticated portal user. CRN in message is ignored; client_id from auth only.
     """
     user = await client_route_guard(request)
+    await _enforce_assistant_ip_rate(request)
     client_id = user["client_id"]
     user_id = user.get("portal_user_id") or user.get("client_id", "")
 
@@ -184,6 +216,7 @@ async def post_escalate(request: Request, data: EscalateRequest):
     creates support ticket with full transcript, notifies support dashboard.
     """
     user = await client_route_guard(request)
+    await _enforce_assistant_ip_rate(request)
     client_id = user["client_id"]
     user_id = user.get("portal_user_id") or user.get("client_id", "")
 

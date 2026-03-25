@@ -6,7 +6,7 @@ Admin endpoints for lead management.
 
 All actions are audit-logged.
 """
-from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi import APIRouter, HTTPException, Depends, Query, Request, status
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
@@ -30,7 +30,38 @@ from services.lead_models import (
 )
 import logging
 
+from config.security_limits import security_limits
+from models import AuditAction
+from utils.audit import create_audit_log
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
+
 logger = logging.getLogger(__name__)
+
+
+def _client_ip_leads(request: Request) -> str:
+    fwd = request.headers.get("X-Forwarded-For")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return (request.client and request.client.host) or "unknown"
+
+
+async def _enforce_leads_public_rate_limit(request: Request) -> None:
+    ip = _client_ip_leads(request)
+    ok, msg = await rate_limiter.check_rate_limit(
+        f"leads_public:{ip}",
+        security_limits.leads_public_per_hour,
+        60,
+    )
+    if not ok:
+        log_rate_limit_event("leads_public", ip, ip)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            metadata={"scope": "leads_public", "ip": ip},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=msg or "Too many submissions. Please try again later.",
+        )
 
 # Routers
 public_router = APIRouter(prefix="/api/leads", tags=["leads-public"])
@@ -149,6 +180,7 @@ async def capture_chatbot_lead(
     Capture a lead from the website chatbot.
     Creates lead and optionally starts follow-up sequence.
     """
+    await _enforce_leads_public_rate_limit(req)
     # Map service interest
     service_map = {
         "cvp": LeadServiceInterest.CVP,
@@ -221,6 +253,7 @@ async def capture_contact_form_lead(
     req: Request,
 ):
     """Capture a lead from the website contact form."""
+    await _enforce_leads_public_rate_limit(req)
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.CONTACT_FORM,
         service_interest=LeadServiceInterest.UNKNOWN,
@@ -274,6 +307,7 @@ async def capture_compliance_checklist_lead(
     Does not start generic follow-up sequence; redirect to thank-you page for download.
     If marketing_consent: sends immediate checklist delivery email (nurture stage 1) and starts 7-day nurture sequence.
     """
+    await _enforce_leads_public_rate_limit(req)
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.COMPLIANCE_CHECKLIST,
         service_interest=LeadServiceInterest.CVP,
@@ -327,6 +361,7 @@ async def capture_document_service_lead(
     req: Request,
 ):
     """Capture a lead from document service enquiry."""
+    await _enforce_leads_public_rate_limit(req)
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.DOCUMENT_SERVICES,
         service_interest=LeadServiceInterest.DOCUMENT_PACKS,
@@ -372,6 +407,7 @@ async def capture_pricing_lead(
     req: Request,
 ):
     """Capture a lead from pricing page or consultation request. Uses upsert by email."""
+    await _enforce_leads_public_rate_limit(req)
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.PRICING_PAGE,
         service_interest=LeadServiceInterest.UNKNOWN,
@@ -411,6 +447,7 @@ async def capture_automation_enquiry_lead(
     req: Request,
 ):
     """Capture a lead from AI automation / workflow enquiry. Uses upsert by email."""
+    await _enforce_leads_public_rate_limit(req)
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.AUTOMATION_ENQUIRY,
         service_interest=LeadServiceInterest.AUTOMATION,
@@ -450,6 +487,7 @@ async def capture_market_research_lead(
     req: Request,
 ):
     """Capture a lead from market research enquiry. Uses upsert by email."""
+    await _enforce_leads_public_rate_limit(req)
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.MARKET_RESEARCH_ENQUIRY,
         service_interest=LeadServiceInterest.MARKET_RESEARCH,
@@ -489,6 +527,7 @@ async def capture_support_form_lead(
     req: Request,
 ):
     """Capture a lead from support-specific form. Uses upsert by email."""
+    await _enforce_leads_public_rate_limit(req)
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.SUPPORT_FORM,
         service_interest=LeadServiceInterest.UNKNOWN,
@@ -530,6 +569,7 @@ async def capture_whatsapp_lead(
     Capture a lead when user clicks WhatsApp handoff.
     Called by the support chat widget.
     """
+    await _enforce_leads_public_rate_limit(request)
     # Only create lead if we have email
     if not email:
         return {"success": False, "message": "Email required for lead capture"}

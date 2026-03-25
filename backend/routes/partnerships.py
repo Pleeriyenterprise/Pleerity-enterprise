@@ -5,7 +5,6 @@ from models.partnership import PartnershipEnquiry, PartnershipStatus
 from models import AuditAction
 from utils.audit import create_audit_log
 from utils.submission_utils import (
-    check_rate_limit,
     sanitize_html,
     is_website_honeypot_filled,
     compute_spam_score,
@@ -69,9 +68,8 @@ async def submit_partnership_enquiry(data: PartnershipEnquiryRequest, request: R
     if not data.privacy_accepted:
         raise HTTPException(status_code=422, detail="You must accept the privacy policy to submit.")
 
-    client_ip = request.client.host if request.client else "unknown"
-    if not check_rate_limit(client_ip, "partnership"):
-        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
+    await enforce_public_form_rate(request, "partnership")
+    client_ip = client_ip_from_request(request)
 
     honeypot_filled = is_website_honeypot_filled(data.website, data.honeypot)
     safe_notes = sanitize_html(data.additional_notes, max_len=MAX_FIELD_LENGTH) if data.additional_notes else None

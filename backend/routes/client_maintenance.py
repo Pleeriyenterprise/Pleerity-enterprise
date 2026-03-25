@@ -17,9 +17,51 @@ from services.ops_compliance_feature_flags import get_effective_flags, MAINTENAN
 from services import property_assets_service
 from services import risk_signal_service
 from utils.audit import create_audit_log
-from models import AuditAction
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
+from config.security_limits import security_limits
+from models import AuditAction, UserRole
 
 logger = logging.getLogger(__name__)
+
+
+async def _enforce_maintenance_issue_create_rate_limit(client_id: str) -> None:
+    key = f"maintenance_issue_create:{client_id}"
+    ok, msg = await rate_limiter.check_rate_limit(
+        key,
+        security_limits.maintenance_issue_create_per_client_per_hour,
+        60,
+    )
+    if not ok:
+        log_rate_limit_event("maintenance_issue_create", client_id, None)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            client_id=client_id,
+            metadata={"scope": "maintenance_issue_create", "client_id": client_id},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=msg or "Issue creation limit reached for this hour. Try again later.",
+        )
+
+
+async def _enforce_maintenance_work_order_create_rate_limit(client_id: str) -> None:
+    key = f"maintenance_work_order_create:{client_id}"
+    ok, msg = await rate_limiter.check_rate_limit(
+        key,
+        security_limits.maintenance_work_order_create_per_client_per_hour,
+        60,
+    )
+    if not ok:
+        log_rate_limit_event("maintenance_work_order_create", client_id, None)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            client_id=client_id,
+            metadata={"scope": "maintenance_work_order_create", "client_id": client_id},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=msg or "Work order creation limit reached for this hour. Try again later.",
+        )
 
 router = APIRouter(prefix="/api/client", tags=["client-maintenance"], dependencies=[Depends(client_route_guard)])
 
@@ -91,6 +133,7 @@ async def create_work_order(request: Request, body: CreateWorkOrderBody):
     """Create a work order for a property. Requires MAINTENANCE_WORKFLOWS."""
     user = await _require_maintenance_enabled(request)
     client_id = user["client_id"]
+    await _enforce_maintenance_work_order_create_rate_limit(client_id)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": body.property_id, "client_id": client_id},
@@ -130,6 +173,7 @@ async def create_issue(request: Request, body: CreateIssueBody):
     """Create a maintenance issue (triage runs automatically). Requires MAINTENANCE_WORKFLOWS."""
     user = await _require_maintenance_enabled(request)
     client_id = user["client_id"]
+    await _enforce_maintenance_issue_create_rate_limit(client_id)
     try:
         doc = await maintenance_issues_service.create_issue(
             client_id=client_id,
@@ -142,6 +186,20 @@ async def create_issue(request: Request, body: CreateIssueBody):
             reporter_contact=body.reporter_contact,
             reported_urgency=body.reported_urgency,
             photos=body.photos,
+        )
+        try:
+            actor_role = UserRole(user["role"]) if user.get("role") else None
+        except Exception:
+            actor_role = None
+        await create_audit_log(
+            action=AuditAction.MAINTENANCE_ISSUE_CREATED,
+            actor_role=actor_role,
+            actor_id=user.get("portal_user_id"),
+            client_id=client_id,
+            resource_type="maintenance_issue",
+            resource_id=doc.get("issue_id"),
+            metadata={"property_id": body.property_id, "source": maintenance_issues_service.SOURCE_CLIENT},
+            ip_address=request.client.host if request.client else None,
         )
         return doc
     except ValueError as e:

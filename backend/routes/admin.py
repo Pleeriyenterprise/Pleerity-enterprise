@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 from database import database
 from middleware import admin_route_guard, require_owner, require_owner_or_admin, require_support_or_above
+from middleware.step_up_auth import require_recent_step_up
 from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus
 from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
@@ -14,10 +15,32 @@ import os
 from urllib.parse import urlparse
 from fastapi.responses import FileResponse
 from auth import create_access_token
+from config.security_limits import security_limits
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
 LEGACY_JOBS_ENDPOINT_SUNSET = "2026-06-30T00:00:00Z"
+
+
+async def _enforce_admin_job_run_rate(portal_user_id: str) -> None:
+    """Cap manual job / provisioning runner triggers per staff user per hour."""
+    ok, msg = await rate_limiter.check_rate_limit(
+        f"admin_job_run:{portal_user_id}",
+        security_limits.admin_job_run_per_staff_per_hour,
+        60,
+    )
+    if not ok:
+        log_rate_limit_event("admin_job_run", portal_user_id, None)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            actor_id=portal_user_id,
+            metadata={"scope": "admin_job_run", "portal_user_id": portal_user_id},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=msg or "Job run limit reached for this hour. Try again later.",
+        )
 
 
 def _iso_or_none(value: Any) -> Optional[str]:
@@ -1436,6 +1459,7 @@ async def validate_compliance_score(
 async def resend_password_setup(request: Request, client_id: str):
     """Resend password setup link (admin only)."""
     user = await admin_route_guard(request)
+    await require_recent_step_up(request, user)
     db = database.get_db()
     
     try:
@@ -2783,6 +2807,7 @@ class RunJobRequest(BaseModel):
 async def run_job_now(request: Request, body: RunJobRequest):
     """Run a single background job by id (admin only). Returns job-specific message for toast. Persists to job_runs."""
     user = await admin_route_guard(request)
+    await _enforce_admin_job_run_rate(user["portal_user_id"])
     from job_runner import JOB_RUNNERS, run_instrumented
 
     job_id = (body.job or "").strip()
@@ -2817,6 +2842,7 @@ async def run_job_now(request: Request, body: RunJobRequest):
 async def trigger_job(request: Request, job_type: str):
     """Legacy: manually trigger daily/monthly/compliance (admin only). Prefer POST /jobs/run with body { job: '<id>' }."""
     user = await admin_route_guard(request)
+    await _enforce_admin_job_run_rate(user["portal_user_id"])
     if job_type not in ["daily", "monthly", "compliance"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -3086,7 +3112,8 @@ async def admin_trigger_provision(request: Request, client_id: str):
 @router.post("/provisioning-jobs/{job_id}/retry")
 async def retry_provisioning_job(request: Request, job_id: str):
     """Retry a failed or stuck provisioning job (admin only). Runs the job runner once."""
-    await admin_route_guard(request)
+    user = await admin_route_guard(request)
+    await _enforce_admin_job_run_rate(user["portal_user_id"])
     from services.provisioning_runner import run_provisioning_job
     try:
         ok = await run_provisioning_job(job_id)
@@ -3109,7 +3136,8 @@ async def retry_provisioning_job(request: Request, job_id: str):
 @router.post("/provisioning-jobs/{job_id}/resend-invite")
 async def resend_provisioning_invite(request: Request, job_id: str):
     """Resend welcome (password setup) email for a job in PROVISIONING_COMPLETED (admin only)."""
-    await admin_route_guard(request)
+    user = await admin_route_guard(request)
+    await _enforce_admin_job_run_rate(user["portal_user_id"])
     db = database.get_db()
     job = await db.provisioning_jobs.find_one({"job_id": job_id}, {"_id": 0})
     if not job:
@@ -3140,6 +3168,8 @@ async def get_password_setup_link(request: Request, client_id: str, generate_new
     SECURITY: This is for internal testing only. In production, consider restricting access.
     """
     user = await admin_route_guard(request)
+    if generate_new:
+        await require_recent_step_up(request, user)
     db = database.get_db()
     
     try:
@@ -3782,6 +3812,7 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
     Creates PortalUser with ROLE_ADMIN, sends password setup email, audits. Staff field created_by_owner_id set when invited by OWNER.
     """
     inviter = await require_owner(request)
+    await require_recent_step_up(request, inviter)
     db = database.get_db()
     
     try:
@@ -3924,6 +3955,7 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
 async def deactivate_admin(request: Request, portal_user_id: str):
     """Deactivate an ADMIN user (OWNER or ADMIN). OWNER cannot be deactivated or downgraded; last OWNER cannot be removed."""
     user = await admin_route_guard(request)
+    await require_recent_step_up(request, user)
     db = database.get_db()
     
     try:
@@ -3998,6 +4030,7 @@ async def deactivate_admin(request: Request, portal_user_id: str):
 async def reactivate_admin(request: Request, portal_user_id: str):
     """Reactivate a disabled ADMIN user. Only ADMIN can be reactivated (OWNER cannot be deactivated)."""
     user = await admin_route_guard(request)
+    await require_recent_step_up(request, user)
     db = database.get_db()
     
     try:
@@ -4054,6 +4087,7 @@ async def reactivate_admin(request: Request, portal_user_id: str):
 async def force_logout_admin(request: Request, portal_user_id: str):
     """Force logout all sessions for a staff user by incrementing session_version (OWNER only). Audited."""
     user = await require_owner(request)
+    await require_recent_step_up(request, user)
     db = database.get_db()
     
     try:
@@ -4094,6 +4128,7 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
     This revokes all existing tokens and generates a new one with fresh expiration.
     """
     user = await admin_route_guard(request)
+    await require_recent_step_up(request, user)
     db = database.get_db()
     
     try:

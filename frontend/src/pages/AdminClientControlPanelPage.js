@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { adminAPI, API_URL } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useStepUpApi } from '../hooks/useStepUpApi';
 
 const SectionCard = ({ title, children, actions = null }) => (
   <section className="bg-white border border-gray-200 rounded-xl p-4">
@@ -32,6 +33,7 @@ const fmtDate = (value) => {
 const AdminClientControlPanelPage = () => {
   const { clientId } = useParams();
   const { user } = useAuth();
+  const stepUp = useStepUpApi();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -72,6 +74,63 @@ const AdminClientControlPanelPage = () => {
     } catch (err) {
       const msg = err?.response?.data?.detail;
       toast.error(typeof msg === 'string' ? msg : `${label} failed`);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const checkPasswordLinkStatus = async () => {
+    if (!clientId) return;
+    setIsBusy(true);
+    try {
+      const res = await adminAPI.getPasswordSetupLink(clientId, false);
+      const d = res.data || {};
+      if (d.setup_link) {
+        try {
+          await navigator.clipboard.writeText(d.setup_link);
+          toast.success('Link copied to clipboard');
+        } catch {
+          toast.success(d.message || 'Link ready');
+        }
+        return;
+      }
+      toast.info(d.message || 'Token status', {
+        description: d.note || (d.token_exists ? `Expires: ${d.expires_at || '—'}` : 'No link returned'),
+      });
+    } catch (err) {
+      const msg = err?.response?.data?.detail;
+      toast.error(typeof msg === 'string' ? msg : 'Failed to load password link status');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const generatePasswordSetupLink = async () => {
+    if (!clientId) return;
+    setIsBusy(true);
+    try {
+      const res = await stepUp.request((headers) =>
+        adminAPI.getPasswordSetupLink(clientId, true, { headers }),
+      );
+      const link = res?.data?.setup_link;
+      if (link) {
+        try {
+          await navigator.clipboard.writeText(link);
+          toast.success('New password setup link copied to clipboard');
+        } catch {
+          toast.success(link, { duration: 12000 });
+        }
+      } else {
+        toast.error('No link in response');
+      }
+      await loadPanel();
+    } catch (err) {
+      if (err?.message === 'step_up_cancelled') {
+        /* user closed modal */
+      } else {
+        const msg = err?.response?.data?.detail;
+        toast.error(typeof msg === 'string' ? msg : 'Failed to generate password link');
+      }
     } finally {
       setIsBusy(false);
     }
@@ -179,6 +238,24 @@ const AdminClientControlPanelPage = () => {
               className="px-3 py-2 text-sm rounded-lg bg-gray-800 text-white disabled:opacity-50"
             >
               Resend dashboard email
+            </button>
+            <button
+              type="button"
+              disabled={isBusy || loading}
+              onClick={checkPasswordLinkStatus}
+              className="px-3 py-2 text-sm rounded-lg bg-gray-100 text-gray-900 border border-gray-300 disabled:opacity-50"
+              title="Check whether a valid token exists (raw link only if server returns it)"
+            >
+              Password link status
+            </button>
+            <button
+              type="button"
+              disabled={isBusy || loading}
+              onClick={generatePasswordSetupLink}
+              className="px-3 py-2 text-sm rounded-lg bg-teal-700 text-white disabled:opacity-50"
+              title="Creates a new token and link; requires your password"
+            >
+              New password link
             </button>
             <button
               disabled={isBusy || loading}
@@ -327,6 +404,7 @@ const AdminClientControlPanelPage = () => {
           </div>
         )}
       </div>
+      {stepUp.modal}
     </UnifiedAdminLayout>
   );
 };

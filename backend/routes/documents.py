@@ -4,6 +4,8 @@ from database import database
 from middleware import client_route_guard, admin_route_guard
 from models import Document, DocumentStatus, RequirementStatus, AuditAction
 from utils.audit import create_audit_log
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
+from config.security_limits import security_limits
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 import asyncio
@@ -14,6 +16,26 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+
+async def _enforce_document_upload_rate_limit(client_id: str) -> None:
+    key = f"document_upload:{client_id}"
+    ok, msg = await rate_limiter.check_rate_limit(
+        key,
+        security_limits.document_upload_per_client_per_hour,
+        60,
+    )
+    if not ok:
+        log_rate_limit_event("document_upload", client_id, None)
+        await create_audit_log(
+            action=AuditAction.RATE_LIMIT_EXCEEDED,
+            client_id=client_id,
+            metadata={"scope": "document_upload", "client_id": client_id},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=msg or "Upload limit reached for this hour. Try again later.",
+        )
 
 
 def _normalize_and_parse_date(date_value) -> datetime:
@@ -279,6 +301,7 @@ async def bulk_upload_documents(
     await gating_check(lambda r: None)(request)
     
     user = await client_route_guard(request)
+    await _enforce_document_upload_rate_limit(user["client_id"])
     db = database.get_db()
     
     try:
@@ -489,6 +512,7 @@ async def upload_zip_archive(
     import shutil
     
     user = await client_route_guard(request)
+    await _enforce_document_upload_rate_limit(user["client_id"])
     db = database.get_db()
     
     try:
@@ -796,6 +820,7 @@ async def upload_document(
 ):
     """Upload a compliance document (client or admin). requirement_id optional for 'Other' docs (link later)."""
     user = await client_route_guard(request)
+    await _enforce_document_upload_rate_limit(user["client_id"])
     db = database.get_db()
     
     try:
@@ -955,6 +980,7 @@ async def admin_upload_document(
 ):
     """Admin uploads document on behalf of client. Optional document_type, notes, source (default source=admin)."""
     user = await admin_route_guard(request)
+    await _enforce_document_upload_rate_limit(client_id)
     db = database.get_db()
     
     try:

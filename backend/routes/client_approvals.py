@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from middleware import client_route_guard
+from middleware.step_up_auth import require_recent_step_up
 from services.ops_compliance_feature_flags import get_effective_flags, INVOICING
 from services import approval_service
 from services import invoice_service
@@ -166,6 +167,7 @@ class ApprovalActionBody(BaseModel):
 async def update_approval(request: Request, invoice_id: str, body: ApprovalActionBody):
     """Approve, reject, request more info, or mark as paid. Requires INVOICING."""
     user = await _require_invoicing_enabled(request)
+    await require_recent_step_up(request, user)
     if body.action == "mark_paid":
         if not body.payment_method or body.payment_method not in approval_service.PAYMENT_METHODS:
             raise HTTPException(status_code=400, detail="payment_method required and must be one of: bank_transfer, cash, card, cheque, other")
