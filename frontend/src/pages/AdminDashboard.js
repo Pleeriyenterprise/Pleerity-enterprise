@@ -2123,7 +2123,7 @@ const EmailDelivery = () => {
     } finally {
       setResendLoading(false);
     }
-  }, [resendConfirmRow, fetchEmailDelivery]);
+  }, [resendConfirmRow, fetchEmailDelivery, stepUpEmail]);
 
   const canShowResend = (row) =>
     row.status === 'failed' &&
