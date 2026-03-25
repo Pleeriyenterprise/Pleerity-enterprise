@@ -86,7 +86,7 @@ async def get_insights_for_client(
                             dt = datetime.fromisoformat(last_service.replace("Z", "+00:00"))
                         else:
                             dt = last_service
-                        if (now - dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt).days > 365:
+                        if (now - (dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt)).days > 365:
                             insights.append({
                                 "type": "asset_service_due",
                                 "asset_id": a.get("asset_id"),
