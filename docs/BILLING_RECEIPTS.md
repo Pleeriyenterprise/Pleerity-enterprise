@@ -56,6 +56,25 @@ Filters (query parameters on the API; mirrored in the UI):
 
 Clients do not use the admin endpoints; scoping is enforced separately (`client_route_guard` vs `admin_route_guard`).
 
+## PDF invoice line items (technical)
+
+Branded PDFs are built by `services/invoice_pdf_builder.build_branded_invoice_pdf_bytes` from a normalised dict.
+
+**Service orders (non-CVP)** — `services/order_receipt_service.order_to_invoice_data`:
+
+- Reads `orders.pricing_snapshot`: one row for `base_price_pence` using `service_name`, then one row per paid add-on from `pricing_snapshot.addons` (`name`, `price_pence`).
+- If the sum of those rows does not equal `total_price_pence`, the builder falls back to a single collapsed line (warning logged) so totals stay consistent.
+- Orders with VAT (`vat_pence` / `vat_amount`) still use a single net line until a defined net/VAT split per add-on exists.
+
+**CVP subscription checkout** — `subscription_session_to_invoice_data` / `ensure_subscription_checkout_invoice_pdf`:
+
+- Primary line text comes from `plan_registry.format_cvp_invoice_product_line(plan_code)` → `Compliance Vault Pro — {Solo|Portfolio|Professional} Plan`.
+- After Stripe `Subscription.retrieve` in the webhook, `current_period_start` / `current_period_end` are formatted as a second line: `Billing period: <start> to <end>` (UTC-based timestamps).
+
+**Table headers** — Header cells use a dedicated ReportLab `ParagraphStyle` with white text. `TableStyle` `TEXTCOLOR` does not override colours inside `Paragraph` flowables; using the default navy body style previously made header labels invisible on the navy row.
+
+**Logo (optional)** — If `PLEERITY_PDF_LOGO_PATH` points to a PNG, or `BRAND_LOGO_PATH` is set, or `backend/static/branding/logo.png` exists, the PDF places a small image beside the company block without changing copy.
+
 ## Limitations
 
 - Admin **subscription resend** uses the email on the **client** profile, not the original Stripe Checkout customer email, unless they match.

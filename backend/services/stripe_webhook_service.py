@@ -649,13 +649,21 @@ class StripeWebhookService:
             }
             subscription_invoice_number = None
             try:
+                period_start = datetime.fromtimestamp(
+                    int(subscription.get("current_period_start") or 0), tz=timezone.utc
+                )
+                period_end = datetime.fromtimestamp(
+                    int(subscription.get("current_period_end") or 0), tz=timezone.utc
+                )
                 ok_pdf, pdf_sub, inv_no, pdf_err = await ensure_subscription_checkout_invoice_pdf(
                     client_id=client_id,
                     checkout_session_id=checkout_session_id or "",
                     session=session,
                     customer_name=client_name or "Valued Customer",
                     customer_email=client_email_for_pdf,
-                    plan_display_name=plan_def.get("name", plan_code.value),
+                    plan_code=plan_code,
+                    billing_period_start=period_start,
+                    billing_period_end=period_end,
                 )
                 if ok_pdf and pdf_sub and inv_no:
                     subscription_invoice_number = inv_no
@@ -699,9 +707,22 @@ class StripeWebhookService:
                 except Exception:
                     pass
             if result.outcome in ("sent", "duplicate_ignored"):
+                from services.onboarding_email_governance import milestone_set_payload
+
+                logger.info(
+                    "onboarding_payment_confirmation_email_sent client_id=%s template=SUBSCRIPTION_CONFIRMED stripe_event_id=%s",
+                    client_id,
+                    event_id,
+                )
                 await db.clients.update_one(
                     {"client_id": client_id},
-                    {"$set": {"onboarding_payment_confirmation_email_sent_at": payment_dt.isoformat()}},
+                    {
+                        "$set": {
+                            "onboarding_payment_confirmation_email_sent_at": payment_dt.isoformat(),
+                            **milestone_set_payload("payment_confirmed_at", payment_dt),
+                            **milestone_set_payload("payment_email_sent_at", payment_dt),
+                        }
+                    },
                 )
                 if checkout_session_id:
                     try:

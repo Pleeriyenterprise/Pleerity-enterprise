@@ -1,20 +1,29 @@
 """
 Enterprise branded invoice/receipt PDF (ReportLab, sync).
 Used for orders (non-CVP) and subscription checkout (CVP). Single visual template.
+
+Line items:
+  Prefer ``line_items`` (list of dicts: description, quantity, unit_pence, line_total_pence).
+  Legacy single-field keys (line_description, line_quantity, …) are still supported.
+
+Table headers use a dedicated white/bold Paragraph style; TableStyle TEXTCOLOR does not
+override colors inside Paragraph flowables (using the default navy ``body`` style made
+headers invisible on the navy row).
 """
 from __future__ import annotations
 
 import io
-from typing import Any, Dict
+import os
+from typing import Any, Dict, List, Optional
 from xml.sax.saxutils import escape as xml_escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from utils.branding import COMPANY_NAME, SUPPORT_EMAIL, TAGLINE, get_branding_website_url
+from utils.branding import COMPANY_NAME, SUPPORT_EMAIL, TAGLINE, get_branding_logo_path, get_branding_website_url
 
 NAVY = colors.HexColor("#0B1D3A")
 TEAL = colors.HexColor("#00B8A9")
@@ -26,19 +35,78 @@ LIGHT_BG = colors.HexColor("#f8fafc")
 CANONICAL_WEBSITE = "https://pleerityenterprise.co.uk"
 
 
+def _description_to_paragraph_html(text: str) -> str:
+    """One escaped paragraph; newlines become <br/>."""
+    raw = (text or "").strip() or "—"
+    return "<br/>".join(xml_escape(line) for line in raw.split("\n"))
+
+
+def _normalize_line_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    raw = data.get("line_items")
+    if isinstance(raw, list) and raw:
+        out: List[Dict[str, Any]] = []
+        for row in raw:
+            if not isinstance(row, dict):
+                continue
+            qty = int(row.get("quantity") or row.get("line_quantity") or 1)
+            unit = int(row.get("unit_pence") or row.get("line_unit_pence") or 0)
+            lt = row.get("line_total_pence")
+            if lt is None:
+                lt = unit * max(qty, 1)
+            else:
+                lt = int(lt)
+            out.append(
+                {
+                    "description": str(row.get("description") or row.get("line_description") or "Service"),
+                    "quantity": max(qty, 1),
+                    "unit_pence": unit,
+                    "line_total_pence": lt,
+                }
+            )
+        return out if out else _legacy_single_line_item(data)
+
+    return _legacy_single_line_item(data)
+
+
+def _legacy_single_line_item(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    qty = int(data.get("line_quantity") or 1)
+    unit_p = int(data.get("line_unit_pence") or 0)
+    line_total_p = int(data.get("line_total_pence") or unit_p * max(qty, 1))
+    return [
+        {
+            "description": str(data.get("line_description") or "Service"),
+            "quantity": max(qty, 1),
+            "unit_pence": unit_p,
+            "line_total_pence": line_total_p,
+        }
+    ]
+
+
+def _sum_line_totals(items: List[Dict[str, Any]]) -> int:
+    return sum(int(x.get("line_total_pence") or 0) for x in items)
+
+
 def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
     """
     Build PDF from a normalized invoice dict.
 
-    Required keys:
-      document_title: "RECEIPT" | "INVOICE"
-      invoice_number, order_reference, date_issued (str)
+    Required keys (legacy):
+      document_title, invoice_number, order_reference, date_issued (str)
       customer_name, customer_email
-      line_description, line_quantity (int), line_unit_pence, line_total_pence
       subtotal_pence, total_pence, currency (str, e.g. gbp)
       payment_status, payment_method (str)
+
+    Line items (preferred):
+      line_items: list of { description, quantity, unit_pence, line_total_pence }
+
+    Or single-line legacy:
+      line_description, line_quantity (int), line_unit_pence, line_total_pence
+
     Optional:
       vat_pence (int, default 0)
+
+    When ``line_items`` is supplied, ``subtotal_pence`` defaults to the sum of line totals
+    if omitted or None (caller should align VAT/total with Stripe/order totals).
     """
     doc_title = str(data.get("document_title") or "RECEIPT").upper()
     if doc_title not in ("RECEIPT", "INVOICE"):
@@ -49,13 +117,22 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
     date_issued = xml_escape(str(data.get("date_issued") or "—"))
     customer_name = xml_escape(str(data.get("customer_name") or ""))
     customer_email = xml_escape(str(data.get("customer_email") or ""))
-    line_desc = xml_escape(str(data.get("line_description") or "Service"))
-    qty = int(data.get("line_quantity") or 1)
-    unit_p = int(data.get("line_unit_pence") or 0)
-    line_total_p = int(data.get("line_total_pence") or unit_p * qty)
-    subtotal_p = int(data.get("subtotal_pence") if data.get("subtotal_pence") is not None else line_total_p)
+
+    line_items = _normalize_line_items(data)
+    sum_lines = _sum_line_totals(line_items)
+
     vat_p = int(data.get("vat_pence") or 0)
-    total_p = int(data.get("total_pence") or subtotal_p + vat_p)
+    total_p = int(data.get("total_pence") if data.get("total_pence") is not None else sum_lines + vat_p)
+
+    if data.get("line_items") is not None and isinstance(data.get("line_items"), list):
+        subtotal_p = int(data["subtotal_pence"]) if data.get("subtotal_pence") is not None else sum_lines
+    else:
+        line_total_p = int(data.get("line_total_pence") or sum_lines)
+        subtotal_p = int(data.get("subtotal_pence") if data.get("subtotal_pence") is not None else line_total_p)
+
+    if sum_lines and subtotal_p != sum_lines and data.get("line_items"):
+        subtotal_p = sum_lines
+
     currency = str(data.get("currency") or "gbp").lower()
     payment_status = xml_escape(str(data.get("payment_status") or "PAID"))
     payment_method = xml_escape(str(data.get("payment_method") or "Card (Stripe)"))
@@ -79,6 +156,15 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
         leading=13,
         textColor=WHITE,
     )
+    # Header row in service table: must be white on navy (Paragraph ignores Table TEXTCOLOR).
+    table_header_white = ParagraphStyle(
+        "InvTableHdr",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=13,
+        textColor=WHITE,
+        fontName="Helvetica-Bold",
+    )
     title_big = ParagraphStyle(
         "InvDocTitle",
         parent=styles["Heading1"],
@@ -88,7 +174,15 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
         fontName="Helvetica-Bold",
         spaceAfter=8,
     )
-    section = ParagraphStyle("InvSec", parent=styles["Normal"], fontSize=10, fontName="Helvetica-Bold", textColor=NAVY, spaceBefore=10, spaceAfter=6)
+    section = ParagraphStyle(
+        "InvSec",
+        parent=styles["Normal"],
+        fontSize=10,
+        fontName="Helvetica-Bold",
+        textColor=NAVY,
+        spaceBefore=10,
+        spaceAfter=6,
+    )
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -108,7 +202,34 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
     )
     header_para = Paragraph(header_html, white_header)
 
-    header_table = Table([[header_para]], colWidths=[174 * mm])
+    logo_path = get_branding_logo_path()
+    logo_flowable: Optional[Image] = None
+    if logo_path and os.path.isfile(logo_path):
+        try:
+            logo_flowable = Image(logo_path, width=28 * mm)
+        except Exception:
+            logo_flowable = None
+
+    if logo_flowable is not None:
+        header_inner = Table(
+            [[logo_flowable, header_para]],
+            colWidths=[32 * mm, 142 * mm],
+        )
+        header_inner.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
+        header_table = Table([[header_inner]], colWidths=[174 * mm])
+    else:
+        header_table = Table([[header_para]], colWidths=[174 * mm])
+
     header_table.setStyle(
         TableStyle(
             [
@@ -152,18 +273,24 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
 
     story.append(Paragraph("Service Details", section))
     line_header = [
-        Paragraph("<b>Description</b>", body),
-        Paragraph("<b>Qty</b>", body),
-        Paragraph("<b>Unit Price</b>", body),
-        Paragraph("<b>Total</b>", body),
+        Paragraph("Description", table_header_white),
+        Paragraph("Qty", table_header_white),
+        Paragraph("Unit Price", table_header_white),
+        Paragraph("Total", table_header_white),
     ]
-    line_row = [
-        Paragraph(line_desc, body),
-        Paragraph(str(qty), body),
-        Paragraph(money(unit_p), body),
-        Paragraph(money(line_total_p), body),
-    ]
-    line_t = Table([line_header, line_row], colWidths=[78 * mm, 18 * mm, 38 * mm, 40 * mm])
+    line_rows: List[List[Paragraph]] = [line_header]
+    for item in line_items:
+        desc_html = _description_to_paragraph_html(item["description"])
+        line_rows.append(
+            [
+                Paragraph(desc_html, body),
+                Paragraph(str(item["quantity"]), body),
+                Paragraph(money(int(item["unit_pence"])), body),
+                Paragraph(money(int(item["line_total_pence"])), body),
+            ]
+        )
+
+    line_t = Table(line_rows, colWidths=[78 * mm, 18 * mm, 38 * mm, 40 * mm])
     line_t.setStyle(
         TableStyle(
             [
@@ -171,14 +298,15 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
                 ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("BACKGROUND", (0, 1), (-1, 1), LIGHT_BG),
+                ("BACKGROUND", (0, 1), (-1, -1), LIGHT_BG),
                 ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
                 ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e2e8f0")),
                 ("TOPPADDING", (0, 0), (-1, -1), 8),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
                 ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ("ALIGN", (1, 0), (1, -1), "CENTER"),
-                ("ALIGN", (2, 0), (-1, -1), "RIGHT"),
+                ("ALIGN", (0, 0), (0, -1), "LEFT"),
+                ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ]
         )
     )

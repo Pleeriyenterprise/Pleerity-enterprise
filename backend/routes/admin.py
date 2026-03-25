@@ -2001,6 +2001,7 @@ async def get_client_audit_timeline(request: Request, client_id: str, limit: int
                 "ONBOARDING_PAYMENT_CONFIRMATION_EMAIL_SENT",
                 "ONBOARDING_DASHBOARD_READY_EMAIL_SENT",
                 "ONBOARDING_ACTIVATION_REMINDER_SENT",
+                "ONBOARDING_EMAIL_SEND_BLOCKED",
             ]:
                 categorized["authentication"].append(log)
             elif action.startswith("DOCUMENT_"):
@@ -3537,6 +3538,24 @@ async def admin_action_resend_dashboard_email(request: Request, client_id: str):
     client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "full_name": 1, "email": 1, "contact_email": 1})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+
+    from services.onboarding_email_governance import (
+        log_onboarding_email_blocked,
+        milestone_set_payload,
+        primary_client_admin_password_set,
+    )
+
+    if not await primary_client_admin_password_set(client_id):
+        await log_onboarding_email_blocked(
+            template_key="DASHBOARD_READY",
+            client_id=client_id,
+            reason="admin_resend_blocked_password_not_set",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Client admin has not completed password setup; dashboard-ready email cannot be sent.",
+        )
+
     recipient = (client.get("contact_email") or client.get("email") or "").strip()
     if not recipient:
         raise HTTPException(status_code=400, detail="Client has no email address")
@@ -3563,9 +3582,19 @@ async def admin_action_resend_dashboard_email(request: Request, client_id: str):
     if result.outcome not in ("sent", "duplicate_ignored"):
         raise HTTPException(status_code=502, detail="Dashboard-ready email failed to send")
 
+    now_d = datetime.now(timezone.utc)
     await db.clients.update_one(
         {"client_id": client_id},
-        {"$set": {"onboarding_dashboard_ready_email_sent_at": datetime.now(timezone.utc).isoformat()}},
+        {
+            "$set": {
+                "onboarding_dashboard_ready_email_sent_at": now_d.isoformat(),
+                **milestone_set_payload("dashboard_ready_email_sent_at", now_d),
+            }
+        },
+    )
+    logger.info(
+        "onboarding_dashboard_ready_email_sent client_id=%s source=admin_resend template=DASHBOARD_READY",
+        client_id,
     )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,

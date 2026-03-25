@@ -1,9 +1,13 @@
 """
 Compliance Vault Pro subscription onboarding email lifecycle.
 
-Order: payment confirmation → activation (set password) → dashboard-ready + 7-day sequence.
-Dashboard-ready sends only after password is set (auth.set_password). Activation reminders
-if password still unset after configurable delays.
+Strict order:
+  1) Payment received (SUBSCRIPTION_CONFIRMED) — Stripe checkout.session.completed only.
+  2) Set password / welcome (WELCOME_EMAIL) — provisioning job after portal ready.
+  3) Dashboard ready (DASHBOARD_READY) + 7-day queue — only after client-admin password SET
+     (primary: auth.set_password; backup: first successful client-admin login if step 3 missed).
+
+Activation reminders: ACTIVATION_REMINDER after configurable delay if password still unset.
 """
 from __future__ import annotations
 
@@ -15,6 +19,12 @@ from typing import Any, Dict, Optional
 from database import database
 from models import UserRole, PasswordStatus, AuditAction
 from utils.audit import create_audit_log
+
+from services.onboarding_email_governance import (
+    log_onboarding_email_blocked,
+    milestone_set_payload,
+    primary_client_admin_password_set,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +45,16 @@ def _parse_dt(val: Any) -> Optional[datetime]:
 async def send_dashboard_ready_and_start_sequence(client_id: Optional[str]) -> None:
     """
     Idempotent: send DASHBOARD_READY email once, then enqueue landlord onboarding sequence.
-    Called from auth after successful password set (client admin only).
+    Called from auth after successful password set (client admin only), or first login backup.
     """
     if not client_id or client_id == "ADMIN_INVITE":
+        return
+    if not await primary_client_admin_password_set(client_id):
+        await log_onboarding_email_blocked(
+            template_key="DASHBOARD_READY",
+            client_id=client_id,
+            reason="password_not_set",
+        )
         return
     db = database.get_db()
     client = await db.clients.find_one(
@@ -85,10 +102,22 @@ async def send_dashboard_ready_and_start_sequence(client_id: Optional[str]) -> N
         )
         return
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    logger.info(
+        "onboarding_dashboard_ready_email_sent client_id=%s template=DASHBOARD_READY outcome=%s",
+        client_id,
+        getattr(result, "outcome", None),
+    )
+
+    now_ts = datetime.now(timezone.utc)
+    now_iso = now_ts.isoformat()
     await db.clients.update_one(
         {"client_id": client_id},
-        {"$set": {"onboarding_dashboard_ready_email_sent_at": now_iso}},
+        {
+            "$set": {
+                "onboarding_dashboard_ready_email_sent_at": now_iso,
+                **milestone_set_payload("dashboard_ready_email_sent_at", now_ts),
+            }
+        },
     )
     await create_audit_log(
         action=AuditAction.ONBOARDING_DASHBOARD_READY_EMAIL_SENT,
@@ -112,7 +141,8 @@ async def process_activation_reminders() -> Dict[str, int]:
     First reminder after ACTIVATION_REMINDER_HOURS_FIRST (default 24h), final after ACTIVATION_REMINDER_HOURS_FINAL (default 72h from activation send).
     """
     db = database.get_db()
-    hours_first = int(os.getenv("ACTIVATION_REMINDER_HOURS_FIRST", "24") or "24")
+    # First reminder: default 12h (override with ACTIVATION_REMINDER_HOURS_FIRST, e.g. 24)
+    hours_first = int(os.getenv("ACTIVATION_REMINDER_HOURS_FIRST", "12") or "12")
     hours_final = int(os.getenv("ACTIVATION_REMINDER_HOURS_FINAL", "72") or "72")
     now = datetime.now(timezone.utc)
     sent_first = 0
@@ -170,9 +200,18 @@ async def process_activation_reminders() -> Dict[str, int]:
                 idempotency_key=f"ACTIVATION_REMINDER_FIRST_{cid}",
             )
             if ok:
+                logger.info(
+                    "activation_reminder_email_sent client_id=%s round=first template=ACTIVATION_REMINDER",
+                    cid,
+                )
                 await db.clients.update_one(
                     {"client_id": cid},
-                    {"$set": {"onboarding_activation_reminder_sent_at": now.isoformat()}},
+                    {
+                        "$set": {
+                            "onboarding_activation_reminder_sent_at": now.isoformat(),
+                            **milestone_set_payload("activation_reminder_first_sent_at", now),
+                        }
+                    },
                 )
                 await create_audit_log(
                     action=AuditAction.ONBOARDING_ACTIVATION_REMINDER_SENT,
@@ -192,9 +231,18 @@ async def process_activation_reminders() -> Dict[str, int]:
                 idempotency_key=f"ACTIVATION_REMINDER_FINAL_{cid}",
             )
             if ok:
+                logger.info(
+                    "activation_reminder_email_sent client_id=%s round=final template=ACTIVATION_REMINDER",
+                    cid,
+                )
                 await db.clients.update_one(
                     {"client_id": cid},
-                    {"$set": {"onboarding_activation_reminder_final_sent_at": now.isoformat()}},
+                    {
+                        "$set": {
+                            "onboarding_activation_reminder_final_sent_at": now.isoformat(),
+                            **milestone_set_payload("activation_reminder_final_sent_at", now),
+                        }
+                    },
                 )
                 await create_audit_log(
                     action=AuditAction.ONBOARDING_ACTIVATION_REMINDER_SENT,

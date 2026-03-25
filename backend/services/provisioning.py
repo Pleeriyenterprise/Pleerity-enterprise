@@ -250,7 +250,15 @@ class ProvisioningService:
             set_fields = {"activation_email_status": act_status}
             unset_fields = {}
             if ok:
+                from services.onboarding_email_governance import milestone_set_payload
+
                 set_fields["activation_email_sent_at"] = now_act
+                set_fields.update(milestone_set_payload("activation_email_sent_at", now_act))
+                set_fields.update(milestone_set_payload("activation_link_ready_at", now_act))
+                logger.info(
+                    "onboarding_activation_email_sent client_id=%s template=WELCOME_EMAIL source=provision_client_portal",
+                    client_id,
+                )
                 unset_fields = {"last_invite_error": "", "activation_email_error": ""}
             else:
                 if act_err:
@@ -702,7 +710,7 @@ class ProvisioningService:
                 "client_name": name,
                 "customer_reference": crn,
                 "support_email": support_email,
-                "subject": "Complete your Compliance Vault Pro setup",
+                "subject": "Complete your setup — Compliance Vault Pro reminder",
             },
             idempotency_key=idempotency_key,
             event_type="activation_reminder",

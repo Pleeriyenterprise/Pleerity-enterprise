@@ -2,6 +2,12 @@
 Pleerity branding constants for backend (PDF, email, reports).
 Single source for company name, website, support email. Logo path optional for PDF header.
 """
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Optional
+
 COMPANY_NAME = "Pleerity Enterprise Ltd"
 PRODUCT_NAME = "Compliance Vault Pro"
 TAGLINE = "AI-Driven Solutions & Compliance"
@@ -39,5 +45,23 @@ WEBSITE_URL = "https://pleerityenterprise.co.uk"
 PRIMARY_HEX = "#0B1D3A"
 SECONDARY_HEX = "#00B8A9"
 
-# Optional: path or URL to logo image for PDF header (None = text-only header)
-BRAND_LOGO_PATH = None
+# Optional: explicit absolute path to logo PNG for PDF header (overrides default file discovery)
+BRAND_LOGO_PATH: Optional[str] = None
+
+
+def get_branding_logo_path() -> Optional[str]:
+    """
+    Resolve logo file for PDF/email use. Safe no-op when missing.
+
+    Order: ``PLEERITY_PDF_LOGO_PATH`` env → ``BRAND_LOGO_PATH`` constant →
+    ``backend/static/branding/logo.png`` if present.
+    """
+    env = (os.environ.get("PLEERITY_PDF_LOGO_PATH") or "").strip()
+    if env and os.path.isfile(env):
+        return env
+    if BRAND_LOGO_PATH and os.path.isfile(BRAND_LOGO_PATH):
+        return BRAND_LOGO_PATH
+    default_png = Path(__file__).resolve().parent.parent / "static" / "branding" / "logo.png"
+    if default_png.is_file():
+        return str(default_png)
+    return None

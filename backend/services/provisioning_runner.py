@@ -19,6 +19,7 @@ from pymongo import ReturnDocument
 from database import database
 from models import ProvisioningJobStatus, ProvisioningJob
 from services.provisioning import provisioning_service
+from services.onboarding_email_governance import milestone_set_payload
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,10 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
         set_fields = {"activation_email_status": act_status}
         unset_fields = {}
         if ok:
-            set_fields["activation_email_sent_at"] = datetime.now(timezone.utc)
+            act_ts = datetime.now(timezone.utc)
+            set_fields["activation_email_sent_at"] = act_ts
+            set_fields.update(milestone_set_payload("activation_email_sent_at", act_ts))
+            set_fields.update(milestone_set_payload("activation_link_ready_at", act_ts))
             unset_fields = {"last_invite_error": "", "activation_email_error": ""}
             await db.provisioning_jobs.update_one(
                 {"job_id": job_id},
@@ -186,6 +190,11 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
                         "updated_at": now_iso,
                     }
                 }
+            )
+            logger.info(
+                "onboarding_activation_email_sent client_id=%s job_id=%s template=WELCOME_EMAIL (retry path)",
+                client_id,
+                job_id,
             )
             logger.info(f"Job {job_id}: welcome email sent (retry)")
         else:
@@ -296,6 +305,8 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
     unset_fields = {}
     if ok:
         set_fields["activation_email_sent_at"] = now3
+        set_fields.update(milestone_set_payload("activation_email_sent_at", now3))
+        set_fields.update(milestone_set_payload("activation_link_ready_at", now3))
         unset_fields = {"last_invite_error": "", "activation_email_error": ""}
         await db.provisioning_jobs.update_one(
             {"job_id": job_id},
@@ -307,6 +318,11 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
                     "updated_at": now3_iso,
                 }
             }
+        )
+        logger.info(
+            "onboarding_activation_email_sent client_id=%s job_id=%s template=WELCOME_EMAIL",
+            client_id,
+            job_id,
         )
         logger.info("PROVISIONING_COMPLETED job_id=%s client_id=%s", job_id, client_id)
         # Landlord 7-day sequence starts after password is set (onboarding_lifecycle_service).

@@ -1,6 +1,9 @@
 """
 Landlord 7-day onboarding email sequence: queue-based scheduling and processing.
-Triggered when client is provisioned (WELCOME_EMAIL_SENT). Behaviour-aware: stops when monitoring enabled.
+
+Scheduled only after DASHBOARD_READY (password already set). The queue processor MUST NOT send
+if the client admin password is not SET — otherwise stale queue rows or retries can spam milestones
+before activation (root cause of premature onboarding emails).
 """
 import logging
 import os
@@ -9,7 +12,12 @@ from typing import Optional
 
 from database import database
 
+from models import PasswordStatus, UserRole
 from services.email_event_registry import LANDLORD_ONBOARDING_EVENT_IDS, get_template_key_for_event
+from services.onboarding_email_governance import (
+    log_onboarding_email_blocked,
+    primary_client_admin_password_set,
+)
 from services.onboarding_state_checker import check_onboarding_state
 
 logger = logging.getLogger(__name__)
@@ -26,10 +34,16 @@ OFFSET_HOURS = (0, 24, 48, 72, 96, 120, 144, 168)
 async def schedule_onboarding_sequence(client_id: str) -> int:
     """
     Enqueue 8 onboarding email items for the client (Day 0 .. Day 7).
-    Call when user_onboarding_started (e.g. after WELCOME_EMAIL_SENT in provisioning).
+    Call only after password is set and DASHBOARD_READY has been sent (onboarding_lifecycle_service).
     Returns number of items enqueued (0 if already scheduled or client_id missing).
     """
     if not client_id or not LANDLORD_ONBOARDING_EVENT_IDS:
+        return 0
+    if not await primary_client_admin_password_set(client_id):
+        logger.warning(
+            "schedule_onboarding_sequence_refused_password_not_set client_id=%s",
+            client_id,
+        )
         return 0
     db = database.get_db()
     now = datetime.now(timezone.utc)
@@ -114,6 +128,33 @@ async def process_onboarding_email_queue() -> dict:
             await cancel_remaining_onboarding_emails(client_id)
             cancelled += 1
             continue
+
+        pu = await db.portal_users.find_one(
+            {"client_id": client_id, "role": UserRole.ROLE_CLIENT_ADMIN.value},
+            {"password_status": 1},
+        )
+        if not pu or pu.get("password_status") != PasswordStatus.SET.value:
+            defer_hours = int(os.getenv("ONBOARDING_QUEUE_DEFER_HOURS_WHILE_PASSWORD_UNSET", "12") or "12")
+            await db[COLLECTION].update_one(
+                {"_id": item["_id"]},
+                {
+                    "$set": {
+                        "send_at": now + timedelta(hours=defer_hours),
+                        "updated_at": now_iso,
+                        "last_defer_reason": "password_not_set",
+                    },
+                    "$inc": {"password_unset_defer_count": 1},
+                },
+            )
+            await log_onboarding_email_blocked(
+                template_key=get_template_key_for_event(event_id) or event_id,
+                client_id=client_id,
+                reason="password_not_set_deferred_queue",
+                extra={"event_id": event_id, "defer_hours": defer_hours},
+            )
+            skipped += 1
+            continue
+
         template_key = get_template_key_for_event(event_id)
         if not template_key:
             skipped += 1

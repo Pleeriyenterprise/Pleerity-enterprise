@@ -352,6 +352,33 @@ async def login(request: Request, credentials: LoginRequest):
                         plan_code=client.get("plan_code") if client else None,
                         context_payload={"email": portal_user["auth_email"]}
                     )
+                    # Milestone + backup dashboard-ready if set-password handler missed it (same guards inside).
+                    if portal_user.get("role") == UserRole.ROLE_CLIENT_ADMIN.value:
+                        try:
+                            from services.onboarding_email_governance import milestone_set_payload
+
+                            await db.clients.update_one(
+                                {"client_id": portal_user["client_id"]},
+                                {"$set": milestone_set_payload("first_login_completed_at")},
+                            )
+                            logger.info(
+                                "onboarding_milestone_first_login client_id=%s",
+                                portal_user["client_id"],
+                            )
+                        except Exception as m_err:
+                            logger.warning("first_login milestone update failed: %s", m_err)
+                        try:
+                            from services.onboarding_lifecycle_service import (
+                                send_dashboard_ready_and_start_sequence,
+                            )
+
+                            await send_dashboard_ready_and_start_sequence(portal_user["client_id"])
+                        except Exception as dash_err:
+                            logger.warning(
+                                "send_dashboard_ready_and_start_sequence (first login backup) failed client_id=%s: %s",
+                                portal_user["client_id"],
+                                dash_err,
+                            )
             
             # Increment login count for all users
             await db.portal_users.update_one(
@@ -554,6 +581,18 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 actor_id=portal_user["portal_user_id"],
                 client_id=password_token.get("client_id")
             )
+            try:
+                from services.onboarding_email_governance import milestone_set_payload
+
+                cid_pw = password_token.get("client_id")
+                if cid_pw:
+                    await db.clients.update_one(
+                        {"client_id": cid_pw},
+                        {"$set": milestone_set_payload("password_set_at", now)},
+                    )
+                    logger.info("onboarding_milestone_password_set client_id=%s", cid_pw)
+            except Exception as milexc:
+                logger.warning("onboarding milestone password_set_at not persisted: %s", milexc)
             try:
                 from services.analytics_service import log_event
                 await log_event("password_set", {"client_id": password_token.get("client_id")})

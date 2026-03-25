@@ -1,5 +1,15 @@
 """
 Paid order / subscription checkout: invoice PDF (branded), GridFS, invoice numbers.
+
+Order PDF line items:
+  Built from ``orders.pricing_snapshot``: ``base_price_pence`` as the main service row and
+  each entry in ``addons`` (``name``, ``price_pence``) as its own row. If the sum of those
+  lines does not match ``total_price_pence``, a single collapsed line is used (logged).
+
+CVP subscription checkout PDF:
+  Primary description from ``plan_registry.format_cvp_invoice_product_line(plan_code)``.
+  Optional ``Billing period: …`` line when Stripe subscription period start/end are known
+  (passed from ``checkout.session.completed`` after ``Subscription.retrieve``).
 """
 from __future__ import annotations
 
@@ -7,7 +17,10 @@ import io
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from services.plan_registry import PlanCode
 
 from bson import ObjectId
 from pymongo import ReturnDocument
@@ -36,6 +49,90 @@ async def allocate_invoice_number() -> str:
     return f"INV-{year}-{seq:06d}"
 
 
+def _format_billing_period_note(start: Optional[datetime], end: Optional[datetime]) -> Optional[str]:
+    if start is None or end is None:
+        return None
+    try:
+        if start.timestamp() <= 0 or end.timestamp() <= 0:
+            return None
+    except (OSError, ValueError, OverflowError):
+        return None
+    fmt = "%d %b %Y"
+    return f"Billing period: {start.strftime(fmt)} to {end.strftime(fmt)}"
+
+
+def _single_line_order_pdf_item(order: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Legacy single-row invoice line (VAT-aware)."""
+    snap = order.get("pricing_snapshot") or {}
+    pricing = order.get("pricing") or {}
+    total_pence = int(snap.get("total_price_pence") or pricing.get("total_amount") or 0)
+    vat_pence = int(snap.get("vat_pence", pricing.get("vat_amount") or 0) or 0)
+    service_name = str(order.get("service_name") or order.get("service_code") or "Service")
+    if vat_pence > 0:
+        subtotal_pence = max(0, total_pence - vat_pence)
+        unit_pence = subtotal_pence
+        line_total_pence = subtotal_pence
+    else:
+        unit_pence = total_pence
+        line_total_pence = total_pence
+    return [
+        {
+            "description": service_name,
+            "quantity": 1,
+            "unit_pence": unit_pence,
+            "line_total_pence": line_total_pence,
+        }
+    ]
+
+
+def _build_order_line_items_for_pdf(order: Dict[str, Any]) -> List[Dict[str, Any]]:
+    snap = order.get("pricing_snapshot") or {}
+    pricing = order.get("pricing") or {}
+    vat_pence = int(snap.get("vat_pence", pricing.get("vat_amount") or 0) or 0)
+    if vat_pence > 0:
+        return _single_line_order_pdf_item(order)
+
+    service_name = str(order.get("service_name") or order.get("service_code") or "Service")
+    addons = snap.get("addons") if isinstance(snap.get("addons"), list) else []
+    base_pence = int(snap.get("base_price_pence") or 0) if snap else 0
+    total_snap = int(snap.get("total_price_pence") or 0) if snap else 0
+
+    if not snap or (base_pence <= 0 and not addons):
+        return _single_line_order_pdf_item(order)
+
+    items: List[Dict[str, Any]] = []
+    if base_pence > 0:
+        items.append(
+            {
+                "description": service_name,
+                "quantity": 1,
+                "unit_pence": base_pence,
+                "line_total_pence": base_pence,
+            }
+        )
+    for a in addons:
+        p = int(a.get("price_pence") or 0)
+        n = str(a.get("name") or a.get("code") or "Add-on")
+        items.append(
+            {
+                "description": n,
+                "quantity": 1,
+                "unit_pence": p,
+                "line_total_pence": p,
+            }
+        )
+    sum_items = sum(int(x["line_total_pence"]) for x in items)
+    if total_snap and sum_items != total_snap:
+        logger.warning(
+            "Order %s pricing_snapshot line sum %s != total_price_pence %s; collapsing PDF lines",
+            order.get("order_id"),
+            sum_items,
+            total_snap,
+        )
+        return _single_line_order_pdf_item(order)
+    return items if items else _single_line_order_pdf_item(order)
+
+
 def _payment_method_for_order(order: Dict[str, Any]) -> str:
     p = order.get("pricing") or {}
     pm = (p.get("payment_method") or p.get("payment_method_label") or "").strip()
@@ -55,12 +152,13 @@ def order_to_invoice_data(order: Dict[str, Any]) -> Dict[str, Any]:
     vat_pence = int(snap.get("vat_pence", pricing.get("vat_amount") or 0) or 0)
     currency = str(snap.get("currency") or pricing.get("currency") or "gbp")
 
+    line_items = _build_order_line_items_for_pdf(order)
+    sum_lines = sum(int(x["line_total_pence"]) for x in line_items)
+
     if vat_pence > 0:
         subtotal_pence = max(0, total_pence - vat_pence)
-        unit_pence = subtotal_pence
     else:
-        subtotal_pence = total_pence
-        unit_pence = total_pence
+        subtotal_pence = sum_lines if line_items else total_pence
 
     paid_at = order.get("paid_at") or order.get("created_at")
     if isinstance(paid_at, datetime):
@@ -70,8 +168,8 @@ def order_to_invoice_data(order: Dict[str, Any]) -> Dict[str, Any]:
 
     invoice_number = str(order.get("invoice_number") or "")
     order_ref = str(order.get("order_ref") or order.get("order_id") or "—")
-    service_name = str(order.get("service_name") or order.get("service_code") or "Service")
 
+    first = line_items[0] if line_items else {}
     return {
         "document_title": "INVOICE" if vat_pence > 0 else "RECEIPT",
         "invoice_number": invoice_number,
@@ -79,10 +177,11 @@ def order_to_invoice_data(order: Dict[str, Any]) -> Dict[str, Any]:
         "date_issued": date_str,
         "customer_name": customer.get("full_name") or "Customer",
         "customer_email": customer.get("email") or "",
-        "line_description": service_name,
-        "line_quantity": 1,
-        "line_unit_pence": unit_pence,
-        "line_total_pence": subtotal_pence if vat_pence > 0 else total_pence,
+        "line_items": line_items,
+        "line_description": str(first.get("description") or "Service"),
+        "line_quantity": int(first.get("quantity") or 1),
+        "line_unit_pence": int(first.get("unit_pence") or 0),
+        "line_total_pence": int(first.get("line_total_pence") or 0),
         "subtotal_pence": subtotal_pence,
         "vat_pence": vat_pence,
         "total_pence": total_pence,
@@ -238,11 +337,13 @@ def subscription_session_to_invoice_data(
     order_reference: str,
     customer_name: str,
     customer_email: str,
-    line_description: str,
+    primary_line_description: str,
     amount_total_pence: int,
     currency: str,
     vat_pence: int = 0,
     payment_method: str = "Card (Stripe)",
+    billing_period_start: Optional[datetime] = None,
+    billing_period_end: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """Payload for CVP subscription checkout receipt."""
     subtotal_pence = max(0, amount_total_pence - vat_pence)
@@ -250,6 +351,8 @@ def subscription_session_to_invoice_data(
     date_str = now.strftime("%d %B %Y %H:%M UTC")
     unit_pence = subtotal_pence if vat_pence else amount_total_pence
     line_total = subtotal_pence if vat_pence else amount_total_pence
+    note = _format_billing_period_note(billing_period_start, billing_period_end)
+    full_desc = f"{primary_line_description}\n{note}" if note else primary_line_description
     return {
         "document_title": "INVOICE" if vat_pence > 0 else "RECEIPT",
         "invoice_number": invoice_number,
@@ -257,7 +360,15 @@ def subscription_session_to_invoice_data(
         "date_issued": date_str,
         "customer_name": customer_name,
         "customer_email": customer_email,
-        "line_description": line_description,
+        "line_items": [
+            {
+                "description": full_desc,
+                "quantity": 1,
+                "unit_pence": unit_pence,
+                "line_total_pence": line_total,
+            }
+        ],
+        "line_description": full_desc,
         "line_quantity": 1,
         "line_unit_pence": unit_pence,
         "line_total_pence": line_total,
@@ -277,7 +388,9 @@ async def ensure_subscription_checkout_invoice_pdf(
     session: Dict[str, Any],
     customer_name: str,
     customer_email: str,
-    plan_display_name: str,
+    plan_code: "PlanCode",
+    billing_period_start: Optional[datetime] = None,
+    billing_period_end: Optional[datetime] = None,
 ) -> Tuple[bool, Optional[bytes], Optional[str], Optional[str]]:
     """
     Idempotent PDF for Stripe subscription checkout (CVP). Keyed by checkout_session_id.
@@ -304,17 +417,22 @@ async def ensure_subscription_checkout_invoice_pdf(
         tax_vals = [t.get("amount", 0) for t in (td.get("breakdown") or {}).get("taxes", []) or []]
         vat_pence = int(sum(tax_vals)) if tax_vals else 0
 
+    from services.plan_registry import plan_registry
+
     inv = await allocate_invoice_number()
     ref_display = checkout_session_id
+    primary_line = plan_registry.format_cvp_invoice_product_line(plan_code)
     data = subscription_session_to_invoice_data(
         invoice_number=inv,
         order_reference=ref_display,
         customer_name=customer_name or "Customer",
         customer_email=customer_email or "",
-        line_description=plan_display_name,
+        primary_line_description=primary_line,
         amount_total_pence=amount_total_pence,
         currency=currency,
         vat_pence=vat_pence,
+        billing_period_start=billing_period_start,
+        billing_period_end=billing_period_end,
     )
     try:
         pdf_bytes = build_branded_invoice_pdf_bytes(data)

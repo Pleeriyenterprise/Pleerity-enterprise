@@ -488,7 +488,24 @@ class PlanRegistryService:
         base["stripe_subscription_price_id"] = prices.get("subscription_price_id")
         base["stripe_onboarding_price_id"] = prices.get("onboarding_price_id")
         return base
-    
+
+    def format_cvp_invoice_product_line(self, plan_code: PlanCode) -> str:
+        """
+        Customer-facing subscription title for PDF receipts/invoices (Compliance Vault Pro tier).
+        Uses short tier names: Solo, Portfolio, Professional (not internal "Portfolio Landlord" labels).
+        """
+        from utils.branding import PRODUCT_NAME
+
+        tier_labels: Dict[PlanCode, str] = {
+            PlanCode.PLAN_1_SOLO: "Solo",
+            PlanCode.PLAN_2_PORTFOLIO: "Portfolio",
+            PlanCode.PLAN_3_PRO: "Professional",
+        }
+        tier = tier_labels.get(plan_code)
+        if not tier:
+            tier = plan_code.value.replace("PLAN_", "").replace("_", " ").title()
+        return f"{PRODUCT_NAME} — {tier} Plan"
+
     def get_all_plans_for_display(self) -> List[Dict[str, Any]]:
         """Get all plans with static metadata; Stripe IDs are None. Use when Stripe env is missing."""
         return [

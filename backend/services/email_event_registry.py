@@ -113,7 +113,7 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
     "ONBOARDING_DAY0_WELCOME": {
         "category": "reporting_notifications",
         "template_key": "ONBOARDING_DAY0_WELCOME",
-        "trigger": "after password set: onboarding_lifecycle_service then onboarding_sequence_processing",
+        "trigger": "onboarding_sequence_processing only if client-admin password SET (stale queue rows deferred)",
     },
     "ONBOARDING_DAY1_SETUP_REMINDER": {
         "category": "reporting_notifications",
@@ -175,7 +175,7 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
     "DASHBOARD_READY_MILESTONE": {
         "category": "system_critical",
         "template_key": "DASHBOARD_READY",
-        "trigger": "auth set_password success (client); then schedule_onboarding_sequence",
+        "trigger": "onboarding_lifecycle_service after password SET (set_password) or first client-admin login backup; admin resend requires password SET",
     },
     "ACTIVATION_REMINDER_CLIENT": {
         "category": "system_critical",
