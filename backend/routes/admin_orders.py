@@ -23,6 +23,61 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/orders", tags=["admin-orders"])
 
 
+async def _send_client_info_request_email(order: Dict, order_id: str, request_payload: Dict) -> bool:
+    """Send (or resend) the client info request email using current request payload."""
+    from services.order_email_templates import build_client_input_required_email
+    from services.order_view_token import generate_order_provide_info_token
+    from services.notification_orchestrator import notification_orchestrator
+    from utils.app_urls import get_app_base_url
+
+    client_email = (order.get("customer") or {}).get("email")
+    if not client_email:
+        return False
+
+    frontend_url = get_app_base_url(for_email_links=True)
+    provide_info_link = (
+        f"{frontend_url}/order/provide-info?"
+        f"token={generate_order_provide_info_token(order_id, client_email)}"
+    )
+
+    deadline_str = None
+    deadline_val = request_payload.get("deadline")
+    if deadline_val:
+        try:
+            deadline_dt = (
+                datetime.fromisoformat(str(deadline_val).replace("Z", "+00:00"))
+                if isinstance(deadline_val, str)
+                else deadline_val
+            )
+            deadline_str = deadline_dt.strftime("%d %B %Y")
+        except Exception:
+            deadline_str = str(deadline_val)
+
+    email_data = build_client_input_required_email(
+        client_name=(order.get("customer") or {}).get("full_name", "Customer"),
+        order_reference=order_id,
+        service_name=order.get("service_name", "Service"),
+        admin_notes=request_payload.get("request_notes", ""),
+        requested_fields=request_payload.get("requested_fields") or [],
+        deadline=deadline_str,
+        provide_info_link=provide_info_link,
+    )
+
+    await notification_orchestrator.send(
+        template_key="ORDER_INFO_REQUEST",
+        client_id=None,
+        context={
+            "recipient": client_email.strip(),
+            "subject": email_data["subject"],
+            "message": email_data.get("html") or email_data.get("text", ""),
+            "text_message": email_data.get("text") or "",
+        },
+        idempotency_key=f"{order_id}_ORDER_INFO_REQUEST_{request_payload.get('requested_at') or 'manual'}",
+        event_type="order_info_request",
+    )
+    return True
+
+
 # ============================================
 # MODELS
 # ============================================
@@ -395,13 +450,18 @@ async def approve_order(
             },
         )
         
-        # TODO: Trigger automated finalisation and delivery job
+        # Trigger automated finalisation and delivery job (WF7)
+        from services.workflow_automation_service import workflow_automation_service
+        wf7 = await workflow_automation_service.wf7_finalization_to_delivery(order_id)
+        if not wf7.get("success"):
+            logger.warning("WF7 delivery trigger failed for %s: %s", order_id, wf7.get("error"))
         
         return {
             "success": True,
             "order": updated_order,
             "message": f"Order approved. Document v{request.version} locked. System will finalize and deliver automatically.",
             "approved_version": request.version,
+            "delivery_triggered": bool(wf7.get("success")),
         }
         
     except ValueError as e:
@@ -467,12 +527,21 @@ async def request_regeneration(
             },
         )
         
-        # TODO: Trigger automated regeneration job
+        # Trigger automated regeneration workflow (WF4)
+        from services.order_service import get_current_regeneration_notes
+        from services.workflow_automation_service import workflow_automation_service
+
+        regen_payload = await get_current_regeneration_notes(order_id) or {}
+        regen_notes = (regen_payload.get("correction_notes") or "").strip() or request.correction_notes.strip()
+        wf4 = await workflow_automation_service.wf4_regeneration(order_id, regen_notes)
+        if not wf4.get("success"):
+            logger.warning("WF4 regeneration trigger failed for %s: %s", order_id, wf4.get("error"))
         
         return {
             "success": True,
             "order": updated_order,
             "message": "Regeneration requested. System will regenerate with your instructions automatically.",
+            "regeneration_triggered": bool(wf4.get("success")),
         }
         
     except ValueError as e:
@@ -497,8 +566,6 @@ async def request_client_info(
     SLA timer pauses. System will send branded email to client with portal link.
     """
     from services.order_service import create_client_input_request
-    from services.order_email_templates import build_client_input_required_email
-    import os
     
     if not request.request_notes.strip():
         raise HTTPException(status_code=400, detail="Request notes are required")
@@ -534,57 +601,25 @@ async def request_client_info(
             },
         )
         
-        # Build and send client email (token link works without portal login)
-        from utils.app_urls import get_app_base_url
-
-        frontend_url = get_app_base_url(for_email_links=True)
-        from services.order_view_token import generate_order_provide_info_token
-        client_email = (order.get("customer") or {}).get("email")
-        provide_info_link = f"{frontend_url}/order/provide-info?token={generate_order_provide_info_token(order_id, client_email or '')}"
-        
-        deadline_str = None
-        if request.deadline_days:
-            from datetime import timedelta
-            deadline_date = datetime.now(timezone.utc) + timedelta(days=request.deadline_days)
-            deadline_str = deadline_date.strftime("%d %B %Y")
-        
-        email_data = build_client_input_required_email(
-            client_name=order.get("customer", {}).get("full_name", "Customer"),
-            order_reference=order_id,
-            service_name=order.get("service_name", "Service"),
-            admin_notes=request.request_notes,
-            requested_fields=request.requested_fields or [],
-            deadline=deadline_str,
-            provide_info_link=provide_info_link,
-        )
-        
-        if client_email:
-            try:
-                from services.notification_orchestrator import notification_orchestrator
-                idempotency_key = f"{order_id}_ORDER_INFO_REQUEST"
-                await notification_orchestrator.send(
-                    template_key="ORDER_INFO_REQUEST",
-                    client_id=None,
-                    context={
-                        "recipient": client_email.strip(),
-                        "subject": email_data["subject"],
-                        "message": email_data.get("html") or email_data.get("text", ""),
-                        "text_message": email_data.get("text") or "",
-                    },
-                    idempotency_key=idempotency_key,
-                    event_type="order_info_request",
-                )
-                logger.info(f"Client input required email sent for order {order_id} to {client_email}")
-            except Exception as email_error:
-                logger.error(f"Failed to send client email: {email_error}")
-        else:
-            logger.warning(f"No customer email for order {order_id}; cannot send info request email")
+        client_notified = False
+        try:
+            client_notified = await _send_client_info_request_email(
+                order,
+                order_id,
+                (updated_order or {}).get("client_input_request") or {},
+            )
+            if client_notified:
+                logger.info("Client input required email sent for order %s", order_id)
+            else:
+                logger.warning("No customer email for order %s; cannot send info request email", order_id)
+        except Exception as email_error:
+            logger.error("Failed to send client email for order %s: %s", order_id, email_error)
         
         return {
             "success": True,
             "order": updated_order,
             "message": "Info request sent to client. SLA paused until client responds.",
-            "client_notified": bool(client_email),
+            "client_notified": client_notified,
         }
         
     except ValueError as e:
@@ -1348,13 +1383,21 @@ async def resend_client_request(
         metadata={"action": "resend_request"},
     )
     
-    # TODO: Actually resend the email to client
+    client_notified = False
+    try:
+        request_payload = (order or {}).get("client_input_request") or {}
+        if request.note and request.note.strip():
+            request_payload = {**request_payload, "request_notes": request.note.strip()}
+        client_notified = await _send_client_info_request_email(order, order_id, request_payload)
+    except Exception as e:
+        logger.error("Failed to resend client request email for %s: %s", order_id, e)
     
     logger.info(f"Client request resent for order {order_id}")
     
     return {
         "success": True,
         "message": "Client request has been resent",
+        "client_notified": client_notified,
     }
 
 

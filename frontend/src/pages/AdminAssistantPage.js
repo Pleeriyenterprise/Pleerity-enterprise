@@ -136,7 +136,7 @@ const AdminAssistantPage = () => {
       const status = error?.response?.status;
       const detail = error?.response?.data?.detail;
       const errorMsg = typeof detail === 'string' ? detail : (detail?.message) || 'Failed to get response';
-      if (status === 503 && (errorMsg.includes('LLM_API_KEY') || errorMsg.toLowerCase().includes('assistant unavailable'))) {
+      if (status === 503 && (errorMsg.includes('OPENAI_API_KEY') || errorMsg.toLowerCase().includes('assistant unavailable'))) {
         setAssistantUnavailable(true);
       }
       toast.error(errorMsg);
@@ -427,7 +427,7 @@ const AdminAssistantPage = () => {
                 {assistantUnavailable && (
                   <div className="rounded-xl p-4 bg-amber-50 border border-amber-200 text-amber-800" data-testid="assistant-unavailable-banner">
                     <p className="font-medium">AI Assistant is not configured</p>
-                    <p className="text-sm mt-1">To enable, set <code className="bg-amber-100 px-1 rounded">LLM_API_KEY</code> in the server environment (e.g. Google AI Studio / Gemini API key). See README or contact your administrator.</p>
+                    <p className="text-sm mt-1">To enable, set <code className="bg-amber-100 px-1 rounded">OPENAI_API_KEY</code> when <code className="bg-amber-100 px-1 rounded">AI_ENABLED=true</code> in the server environment. See README or contact your administrator.</p>
                   </div>
                 )}
                 {!clientSnapshot ? (

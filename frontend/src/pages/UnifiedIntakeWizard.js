@@ -822,7 +822,7 @@ function ReviewStep({ draft, clientData, intakeData, pricing, onConsentChange, c
               onCheckedChange={(v) => onConsentChange('consent_terms_privacy', v)}
             />
             <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
-              I agree to the <a href="/terms" className="text-teal-600 underline" target="_blank">Terms of Service</a> and <a href="/privacy" className="text-teal-600 underline" target="_blank">Privacy Policy</a> *
+              I agree to the <a href="/legal/terms" className="text-teal-600 underline" target="_blank">Terms of Service</a> and <a href="/legal/privacy" className="text-teal-600 underline" target="_blank">Privacy Policy</a> *
             </Label>
           </div>
           

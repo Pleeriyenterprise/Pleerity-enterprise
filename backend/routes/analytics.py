@@ -1242,7 +1242,7 @@ async def get_marketing_analytics(
     """
     Risk-check marketing funnel: counts and conversion rates from risk_leads.
     Returns leads_created, activated_cta, checkout_created, converted, conversion_rate,
-    conversion_rate_after_cta; revenue placeholders; latest leads table.
+    conversion_rate_after_cta; plus revenue summary and latest leads table.
     """
     db = database.get_db()
     if db is None:
@@ -1268,6 +1268,21 @@ async def get_marketing_analytics(
     ).sort("created_at", -1).limit(50)
     latest_leads = await cursor.to_list(length=50)
 
+    # Revenue summary (real values): MRR from active/trialing client_billing; total paid revenue in period.
+    mrr_pence = 0
+    async for b in db.client_billing.find({}, {"subscription_status": 1, "current_plan_code": 1}):
+        status = (b.get("subscription_status") or "").upper()
+        if status in ("ACTIVE", "TRIALING"):
+            plan_def = plan_registry.get_plan_by_code_string(b.get("current_plan_code") or "PLAN_1_SOLO")
+            monthly_gbp = (plan_def or {}).get("monthly_price") or 0
+            mrr_pence += int(round(monthly_gbp * 100))
+    total_revenue_pence = 0
+    async for p in db.payments.find(
+        {"status": "paid", "created_at": {"$gte": start_dt, "$lte": end_dt}},
+        {"amount": 1},
+    ):
+        total_revenue_pence += int(p.get("amount") or 0)
+
     return {
         "from": start_iso,
         "to": end_iso,
@@ -1280,7 +1295,12 @@ async def get_marketing_analytics(
             "conversion_rate": conversion_rate,
             "conversion_rate_after_cta": conversion_rate_after_cta,
         },
-        "revenue_summary": {"mrr": None, "total_revenue": None},
+        "revenue_summary": {
+            "mrr_pence": mrr_pence,
+            "mrr_formatted": f"£{mrr_pence / 100:,.2f}",
+            "total_revenue_pence": total_revenue_pence,
+            "total_revenue_formatted": f"£{total_revenue_pence / 100:,.2f}",
+        },
         "latest_leads": latest_leads,
     }
 
@@ -1297,7 +1317,7 @@ async def get_marketing_funnel(
 ):
     """
     Marketing funnel: KPIs and stages from leads, clients, portal_users.
-    Returns: visitors (placeholder), leads_count, trials_count, paid_count, conversion_rate, mrr,
+    Returns: visitors, leads_count, trials_count, paid_count, conversion_rate, mrr,
     funnel (leads, activated, portal_activated, paid), source_breakdown (by utm_source),
     conversion_timing (avg_days_lead_to_trial, avg_days_trial_to_paid).
     """
@@ -1325,8 +1345,24 @@ async def get_marketing_funnel(
         "subscription_status": {"$in": ["ACTIVE", "active"]},
     })
     conversion_rate = round(100.0 * paid_count / leads_count, 1) if leads_count else 0.0
-    visitors = None  # placeholder
-    mrr = None  # placeholder until plan pricing / Stripe MRR available
+    # Top-of-funnel visitors proxy: unique contact emails from leads + risk_leads in period.
+    lead_emails = set(
+        await db.leads.distinct("email", {"created_at": created_query, "email": {"$exists": True, "$ne": None}})
+    )
+    risk_lead_emails = set(
+        await db.risk_leads.distinct("email", {"created_at": created_query, "email": {"$exists": True, "$ne": None}})
+    )
+    visitors = len({str(e).strip().lower() for e in (lead_emails | risk_lead_emails) if str(e).strip()})
+    if visitors == 0:
+        visitors = leads_count
+    # MRR from active/trialing billing plan monthly prices.
+    mrr_pence = 0
+    async for b in db.client_billing.find({}, {"subscription_status": 1, "current_plan_code": 1}):
+        status = (b.get("subscription_status") or "").upper()
+        if status in ("ACTIVE", "TRIALING"):
+            plan_def = plan_registry.get_plan_by_code_string(b.get("current_plan_code") or "PLAN_1_SOLO")
+            monthly_gbp = (plan_def or {}).get("monthly_price") or 0
+            mrr_pence += int(round(monthly_gbp * 100))
 
     # --- Funnel stages (counts in period where applicable) ---
     # Leads: count in range
@@ -1406,8 +1442,26 @@ async def get_marketing_funnel(
         except (TypeError, ValueError):
             pass
     avg_days_lead_to_trial = round(sum(deltas_lead_trial) / len(deltas_lead_trial), 1) if deltas_lead_trial else None
-    # avg_days_trial_to_paid: placeholder (would need first TRIALING date and first ACTIVE date per client)
-    avg_days_trial_to_paid = None
+    # avg_days_trial_to_paid: use clients with payment milestone present.
+    clients_paid = await db.clients.find(
+        {"payment_confirmed_at": {"$exists": True, "$ne": None}},
+        {"created_at": 1, "payment_confirmed_at": 1},
+    ).to_list(length=5000)
+    deltas_trial_paid = []
+    for c in clients_paid:
+        cdt = c.get("created_at")
+        pdt = c.get("payment_confirmed_at")
+        if not cdt or not pdt:
+            continue
+        try:
+            cd = cdt if isinstance(cdt, datetime) else datetime.fromisoformat(str(cdt).replace("Z", "+00:00"))
+            pd = pdt if isinstance(pdt, datetime) else datetime.fromisoformat(str(pdt).replace("Z", "+00:00"))
+            delta = (pd - cd).total_seconds() / 86400.0
+            if delta >= 0:
+                deltas_trial_paid.append(delta)
+        except (TypeError, ValueError):
+            pass
+    avg_days_trial_to_paid = round(sum(deltas_trial_paid) / len(deltas_trial_paid), 1) if deltas_trial_paid else None
 
     return {
         "from": start_iso,
@@ -1418,7 +1472,10 @@ async def get_marketing_funnel(
             "trials_count": trials_count,
             "paid_count": paid_count,
             "conversion_rate": conversion_rate,
-            "mrr": mrr,
+            "mrr": {
+                "pence": mrr_pence,
+                "formatted": f"£{mrr_pence / 100:,.2f}",
+            },
         },
         "funnel": funnel,
         "source_breakdown": source_breakdown,

@@ -89,17 +89,25 @@ async def _handle_stripe_webhook(request: Request, stripe_signature: str = None)
         if message == "Invalid signature":
             logger.error("Stripe webhook rejected: invalid signature (STRIPE_WEBHOOK_SECRET vs key mode mismatch?)")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook signature")
-        # Other errors (e.g. invalid payload) - return 200 to avoid Stripe retries; logged internally
-        logger.error("Webhook processing failed: %s", message)
-        return {"status": "error", "message": message}
+        if message == "Invalid payload":
+            logger.error("Stripe webhook rejected: invalid payload")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook payload")
+        retryable = bool((details or {}).get("retryable"))
+        logger.error("Webhook processing failed: %s retryable=%s", message, retryable)
+        if retryable:
+            # Return 5xx so Stripe retries transient/processing failures.
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Webhook processing failed; retry requested")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=message or "Webhook processing failed")
     
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Stripe webhook error: {e}")
         # Notify admins (STRIPE_WEBHOOK_FAILURE_ADMIN) fire-and-forget
         import asyncio
         asyncio.create_task(_send_stripe_webhook_failure_admin_alert(str(e)))
-        # Return 200 to prevent Stripe retries - we've logged the error
-        return {"status": "error", "message": str(e)}
+        # Unexpected server error: return 5xx so Stripe retries.
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Stripe webhook internal error")
 
 
 # Primary webhook endpoint

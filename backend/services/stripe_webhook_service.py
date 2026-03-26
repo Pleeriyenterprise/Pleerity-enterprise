@@ -196,8 +196,8 @@ class StripeWebhookService:
                 }
             )
             
-            # Return 200 to prevent Stripe retries (we've logged the failure)
-            return True, "Event logged with error", {"error": str(e), "event_id": event_id}
+            # Mark as retryable so the route can return 5xx and Stripe retries delivery.
+            return False, "Processing failed", {"error": str(e), "event_id": event_id, "retryable": True}
     
     # =========================================================================
     # Event Handlers

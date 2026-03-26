@@ -202,7 +202,7 @@ async def create_billing_portal(request: Request):
     try:
         import stripe
         import os
-        stripe.api_key = os.getenv("STRIPE_API_KEY", "")
+        stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
         
         portal_session = stripe.billing_portal.Session.create(
             customer=billing.get("stripe_customer_id"),

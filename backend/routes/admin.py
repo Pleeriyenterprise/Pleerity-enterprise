@@ -4588,10 +4588,10 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             ]
         }
         
-        # Step 3: Call LLM — use OpenAI if configured, else Gemini (LLM_API_KEY)
+        # Step 3: Call LLM (canonical config: OPENAI_API_KEY when AI_ENABLED=true)
         try:
             from utils import ai_config
-            from utils.llm_chat import chat, chat_openai, _get_api_key
+            from utils.llm_chat import chat_openai
         except ImportError:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -4600,28 +4600,13 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
         system_prompt = ADMIN_ASSISTANT_PROMPT.format(
             snapshot=json.dumps(snapshot_data, indent=2, default=str)
         )
-        if ai_config.get_openai_api_key():
-            answer = await chat_openai(system_prompt=system_prompt, user_text=question)
-            model_used = getattr(ai_config, "AI_MODEL", "openai")
-        elif _get_api_key():
-            answer = await chat(
-                system_prompt=system_prompt,
-                user_text=question,
-                model="gemini-2.5-flash",
-            )
-            model_used = "gemini-2.5-flash"
-        else:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(
-                "Admin assistant 503: OPENAI_API_KEY present=%s, LLM_API_KEY present=%s (set at least one in server env)",
-                bool(ai_config.get_openai_api_key()),
-                bool(_get_api_key()),
-            )
+        if ai_config.AI_ENABLED and not ai_config.is_configured():
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Admin assistant unavailable (set OPENAI_API_KEY or LLM_API_KEY in the server environment)",
+                detail="Admin assistant unavailable (set OPENAI_API_KEY when AI_ENABLED=true)",
             )
+        answer = await chat_openai(system_prompt=system_prompt, user_text=question)
+        model_used = getattr(ai_config, "AI_MODEL", "openai")
         
         # Step 4: Save query to history collection
         query_history_entry = {
@@ -4817,56 +4802,6 @@ async def get_assistant_query_detail(
         )
 
 
-@router.get("/assistant/conversations", dependencies=[Depends(require_support_or_above)])
-async def list_assistant_conversations(
-    request: Request,
-    client_id: Optional[str] = Query(default=None, description="Filter by client_id"),
-    escalated: Optional[bool] = Query(default=None, description="Filter by escalated"),
-    limit: int = Query(default=50, ge=1, le=100),
-    skip: int = Query(default=0, ge=0),
-):
-    """List Portal Assistant conversations. Support role can read transcripts for handover context."""
-    await require_support_or_above(request)
-    db = database.get_db()
-    query = {}
-    if client_id:
-        query["client_id"] = client_id
-    if escalated is not None:
-        query["escalated"] = escalated
-    total = await db.assistant_conversations.count_documents(query)
-    cursor = db.assistant_conversations.find(
-        query,
-        {"_id": 0, "conversation_id": 1, "client_id": 1, "created_by_user_id": 1, "created_at": 1, "last_activity_at": 1, "escalated": 1, "escalation_reason": 1, "escalated_at": 1},
-    ).sort("last_activity_at", -1).skip(skip).limit(limit)
-    conversations = await cursor.to_list(length=limit)
-    return {
-        "conversations": conversations,
-        "total": total,
-        "skip": skip,
-        "limit": limit,
-        "has_more": total > skip + limit,
-    }
-
-
-@router.get("/assistant/conversations/{conversation_id}", dependencies=[Depends(require_support_or_above)])
-async def get_assistant_conversation_with_messages(
-    request: Request,
-    conversation_id: str,
-):
-    """Get one Portal Assistant conversation with full message transcript. Support role can read."""
-    await require_support_or_above(request)
-    db = database.get_db()
-    conv = await db.assistant_conversations.find_one(
-        {"conversation_id": conversation_id},
-        {"_id": 0},
-    )
-    if not conv:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
-    messages = await db.assistant_messages.find(
-        {"conversation_id": conversation_id},
-        {"_id": 0, "message_id": 1, "role": 1, "message": 1, "created_at": 1, "citations": 1, "safety_flags": 1},
-    ).sort("created_at", 1).to_list(length=500)
-    return {"conversation": conv, "messages": messages}
 
 
 @router.get("/assistant/conversations", dependencies=[Depends(require_support_or_above)])
