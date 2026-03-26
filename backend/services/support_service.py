@@ -358,12 +358,17 @@ class TicketService:
     @staticmethod
     async def create_ticket(
         data: TicketCreate,
-        conversation_id: Optional[str] = None
+        conversation_id: Optional[str] = None,
+        assistant_handoff_summary: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a support ticket."""
         db = database.get_db()
         now = datetime.now(timezone.utc).isoformat()
-        
+
+        summary_clean = (assistant_handoff_summary or "").strip()
+        if len(summary_clean) > 12000:
+            summary_clean = summary_clean[:12000] + "…"
+
         ticket = {
             "ticket_id": generate_ticket_id(),
             "conversation_id": conversation_id,
@@ -382,6 +387,8 @@ class TicketService:
             "resolved_at": None,
             "notes": [],
         }
+        if summary_clean:
+            ticket["assistant_handoff_summary"] = summary_clean
         
         await db[TICKETS_COLLECTION].insert_one(ticket)
         

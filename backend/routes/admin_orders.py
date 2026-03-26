@@ -813,9 +813,13 @@ async def get_document_access_token(
     Use this token to embed documents in iframes without auth headers.
     Token expires in 30 minutes.
     """
-    from services.document_access_token import generate_document_access_token, get_document_preview_url
-    import os
+    from services.document_access_token import generate_document_access_token
     
+    # Validate requested format early to avoid opaque iframe failures.
+    format = (format or "pdf").strip().lower()
+    if format not in ("pdf", "docx"):
+        raise HTTPException(status_code=400, detail="Invalid format. Use pdf or docx")
+
     # Verify document exists (supports both standard versions and pack items indexing).
     order = await get_order(order_id)
     if not order:
@@ -843,6 +847,13 @@ async def get_document_access_token(
                 break
         if not target_version:
             raise HTTPException(status_code=404, detail=f"Document version {version} not found")
+        has_file = (
+            bool(getattr(target_version, "filename_pdf", None))
+            if format == "pdf"
+            else bool(getattr(target_version, "filename_docx", None))
+        )
+        if not has_file:
+            raise HTTPException(status_code=404, detail=f"No {format} file stored for version {version}")
     
     # Generate token
     token = generate_document_access_token(
@@ -853,9 +864,9 @@ async def get_document_access_token(
     )
     
     # Build full URL
-    from utils.app_urls import get_app_base_url
+    from utils.app_urls import get_api_base_url
 
-    base_url = get_app_base_url(for_email_links=True)
+    base_url = get_api_base_url().rstrip("/")
     preview_url = f"{base_url}/api/admin/orders/{order_id}/documents/{version}/view?format={format}&token={token}"
     
     return {
@@ -1014,32 +1025,58 @@ async def trigger_document_generation(
     current_user: dict = Depends(admin_route_guard),
 ):
     """
-    Manually trigger document generation for an order.
-    Creates a new version of documents (MOCK for Phase 1).
+    Manually trigger orchestrator-based document generation for an order.
+    Uses canonical intake stored on the order (no caller-provided intake override).
     """
-    from services.document_generator import generate_documents
+    from services.document_orchestrator import document_orchestrator
     from services.order_service import get_current_regeneration_notes
     
     order = await get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    # Get any pending regeneration notes
+    # Get canonical intake from persisted order state
+    snapshot = order.get("intake_snapshot") or {}
+    intake_payload = snapshot.get("intake_payload") if isinstance(snapshot, dict) else None
+    if not isinstance(intake_payload, dict) or not intake_payload:
+        params = order.get("parameters")
+        intake_payload = params if isinstance(params, dict) else {}
+    if not intake_payload:
+        raise HTTPException(
+            status_code=400,
+            detail="Order has no canonical intake payload; cannot generate documents",
+        )
+
+    # Get any pending regeneration notes (if present, route as regeneration run)
     regen_notes = await get_current_regeneration_notes(order_id)
     regen_text = regen_notes.get("correction_notes") if regen_notes else None
-    
+
     try:
-        doc_version = await generate_documents(
+        result = await document_orchestrator.execute_full_pipeline(
             order_id=order_id,
+            intake_data=intake_payload,
+            regeneration=bool(regen_text),
             regeneration_notes=regen_text,
+            force=False,
         )
-        
+        if not result.success:
+            await document_orchestrator.finalize_orchestration_failure(
+                result,
+                stage="pipeline",
+                error_code="MANUAL_GENERATION_FAILED",
+            )
+            raise HTTPException(status_code=400, detail=result.error_message or "Generation failed")
+
         return {
             "success": True,
-            "message": f"Document version {doc_version.version} generated",
-            "version": doc_version.to_dict(),
+            "message": f"Document version {result.version} generated and rendered",
+            "version": result.version,
+            "status": result.status.value,
+            "rendered_documents": result.rendered_documents,
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Document generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Document generation failed: {str(e)}")

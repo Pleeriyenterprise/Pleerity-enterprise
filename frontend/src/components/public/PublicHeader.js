@@ -56,14 +56,18 @@ const PublicHeader = () => {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2" data-testid="header-logo">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-14 sm:h-16 gap-2">
+          {/* Logo — slightly shorter on narrow phones to preserve nav tap target */}
+          <Link
+            to="/"
+            className="flex items-center min-w-0 shrink-0 py-1 -my-1"
+            data-testid="header-logo"
+          >
             <img
               src={BRAND_LOGO_URL}
               alt={branding.companyName}
-              className="h-10 w-auto"
+              className="h-7 w-auto max-h-8 sm:h-10 sm:max-h-none"
             />
           </Link>
 
@@ -222,7 +226,7 @@ const PublicHeader = () => {
 
           {/* Mobile Menu Button */}
           <button
-            className="lg:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100"
+            className="lg:hidden p-2.5 rounded-md text-gray-700 hover:bg-gray-100 min-h-[44px] min-w-[44px]"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             data-testid="mobile-menu-toggle"
           >
@@ -256,7 +260,7 @@ const PublicHeader = () => {
                   <Link
                     key={link.href}
                     to={link.href}
-                    className="flex items-center justify-between py-2 text-gray-700 hover:text-electric-teal"
+                    className="flex items-center justify-between py-2.5 text-gray-700 hover:text-electric-teal min-h-[44px]"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <span>{link.label}</span>
@@ -277,7 +281,7 @@ const PublicHeader = () => {
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="block py-2 text-gray-700 hover:text-electric-teal"
+                  className="block py-2.5 text-gray-700 hover:text-electric-teal min-h-[44px]"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.label}
@@ -287,29 +291,29 @@ const PublicHeader = () => {
 
             {/* Other Links */}
             <div className="border-t border-gray-200 pt-4">
-              <Link to="/pricing" className="block py-2 text-gray-700 hover:text-electric-teal" onClick={() => setMobileMenuOpen(false)}>
+              <Link to="/pricing" className="block py-2.5 text-gray-700 hover:text-electric-teal min-h-[44px]" onClick={() => setMobileMenuOpen(false)}>
                 Pricing
               </Link>
-              <Link to="/insights" className="block py-2 text-gray-700 hover:text-electric-teal" onClick={() => setMobileMenuOpen(false)}>
+              <Link to="/insights" className="block py-2.5 text-gray-700 hover:text-electric-teal min-h-[44px]" onClick={() => setMobileMenuOpen(false)}>
                 Insights
               </Link>
-              <Link to="/about" className="block py-2 text-gray-700 hover:text-electric-teal" onClick={() => setMobileMenuOpen(false)}>
+              <Link to="/about" className="block py-2.5 text-gray-700 hover:text-electric-teal min-h-[44px]" onClick={() => setMobileMenuOpen(false)}>
                 About
               </Link>
-              <Link to="/contact" className="block py-2 text-gray-700 hover:text-electric-teal" onClick={() => setMobileMenuOpen(false)}>
+              <Link to="/contact" className="block py-2.5 text-gray-700 hover:text-electric-teal min-h-[44px]" onClick={() => setMobileMenuOpen(false)}>
                 Contact
               </Link>
             </div>
 
             {/* Mobile CTA + Portal Login */}
             <div className="border-t border-gray-200 pt-4 space-y-2">
-              <Button className="w-full bg-electric-teal hover:bg-electric-teal/90" asChild>
+              <Button className="w-full min-h-[48px] bg-electric-teal hover:bg-electric-teal/90" asChild>
                 <Link to="/risk-check" onClick={() => setMobileMenuOpen(false)}>Check Your Compliance Risk</Link>
               </Button>
-              <Button variant="outline" className="w-full" asChild>
+              <Button variant="outline" className="w-full min-h-[48px]" asChild>
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Portal login</Link>
               </Button>
-              <Button variant="outline" className="w-full" asChild>
+              <Button variant="outline" className="w-full min-h-[48px]" asChild>
                 <Link to="/contractor/login" onClick={() => setMobileMenuOpen(false)}>Contractor login</Link>
               </Button>
             </div>

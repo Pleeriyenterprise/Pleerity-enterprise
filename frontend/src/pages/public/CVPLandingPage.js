@@ -142,19 +142,19 @@ const CVPLandingPage = () => {
 
       {/* A) HERO */}
       <section className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-midnight-blue leading-tight mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 sm:pt-10 sm:pb-12 lg:py-24">
+          <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
+            <div className="min-w-0">
+              <h1 className="text-[1.625rem] sm:text-4xl lg:text-[2.75rem] font-bold text-midnight-blue leading-[1.15] sm:leading-tight tracking-tight text-balance mb-3 sm:mb-6">
                 Compliance Vault Pro
               </h1>
-              <p className="text-lg text-gray-600 mb-8 max-w-xl">
+              <p className="text-[0.9375rem] sm:text-lg leading-snug sm:leading-relaxed text-gray-600 mb-4 sm:mb-8 max-w-xl">
                 UK landlord compliance tracking, reminders, and evidence vault — built for portfolios.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4">
                 <Button
                   size="lg"
-                  className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+                  className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full sm:w-auto min-h-[48px] px-5 sm:px-8 whitespace-normal text-sm sm:text-base"
                   asChild
                   data-testid="cvp-cta-primary"
                 >
@@ -166,42 +166,48 @@ const CVPLandingPage = () => {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-electric-teal text-electric-teal hover:bg-electric-teal/5"
+                  className="border-electric-teal text-electric-teal hover:bg-electric-teal/5 w-full sm:w-auto min-h-[48px] px-5 whitespace-normal text-sm sm:text-base"
                   asChild
                 >
                   <Link to="/intake/start">Start Monitoring</Link>
                 </Button>
               </div>
-              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
+              <div
+                className="mt-4 sm:mt-8 grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 gap-y-2.5 text-xs sm:text-sm text-gray-600"
+                aria-label="Product highlights"
+              >
                 {trustBullets.map((point) => (
-                  <span key={point} className="flex items-center">
-                    <CheckCircle2 className="w-4 h-4 text-electric-teal mr-2 shrink-0" />
-                    {point}
+                  <span key={point} className="flex items-start gap-1.5 sm:gap-2 min-w-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-electric-teal shrink-0 mt-0.5" />
+                    <span className="leading-snug">{point}</span>
                   </span>
                 ))}
               </div>
             </div>
-            <div className="relative hidden lg:block">
-              <ProductScreenshot className="max-h-[380px]">
+            <div className="relative w-full mt-2 lg:mt-0 block">
+              <ProductScreenshot className="max-h-[210px] sm:max-h-[320px] lg:max-h-[380px]">
                 <MarketingImage
                   name="feature-expiry-list"
                   alt="Upcoming expiries and portfolio view from Compliance Vault Pro"
                   width={1200}
                   height={800}
-                  className="w-full h-auto object-contain object-top"
+                  className="w-full h-[200px] sm:h-auto object-cover sm:object-contain object-[center_12%] sm:object-top"
                   fetchPriority="high"
                   placeholderText="Platform preview"
                 />
               </ProductScreenshot>
+              <p className="text-[0.6875rem] sm:text-xs text-gray-500 text-center mt-2 sm:mt-3 px-1 leading-snug">
+                Illustrative preview. Your live view updates as you add properties and evidence.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       {/* B) WHAT IT DOES */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-6">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-5 sm:mb-6 text-balance leading-snug sm:leading-tight px-1">
             One platform to track certificates, get reminders, and organise evidence
           </h2>
           <ul className="space-y-3 text-left mb-6">
@@ -219,18 +225,18 @@ const CVPLandingPage = () => {
       </section>
 
       {/* B.5) See your compliance risk in 60 seconds — mid-page CTA */}
-      <section className="py-16 lg:py-20 bg-gray-50">
+      <section className="py-10 sm:py-14 lg:py-20 bg-gray-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-3 sm:mb-4 text-balance px-1">
             See your compliance risk in 60 seconds
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 mb-5 sm:mb-6 text-[0.9375rem] sm:text-base leading-relaxed px-1">
             Answer a few questions and get a structured risk report. Lead-only until you activate monitoring.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-center items-stretch sm:items-center px-1">
             <Button
               size="lg"
-              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+              className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full sm:w-auto min-h-[48px] px-5 sm:px-8 whitespace-normal text-sm sm:text-base"
               asChild
             >
               <Link to="/risk-check">
@@ -238,7 +244,7 @@ const CVPLandingPage = () => {
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal" asChild>
+            <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal w-full sm:w-auto min-h-[48px] px-5 whitespace-normal text-sm sm:text-base" asChild>
               <Link to="/pricing">View Pricing</Link>
             </Button>
           </div>
@@ -246,12 +252,12 @@ const CVPLandingPage = () => {
       </section>
 
       {/* C) WHAT YOU GET */}
-      <section className="py-16 lg:py-20 bg-gray-50" id="what-you-get">
+      <section className="py-10 sm:py-14 lg:py-20 bg-gray-50" id="what-you-get">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-8 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-6 sm:mb-8 text-center text-balance px-1">
             What You Get
           </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {deliverables.map((item) => (
               <div key={item.label} className="flex gap-3 p-4 bg-white rounded-xl border border-gray-200">
                 <div className="w-10 h-10 bg-electric-teal/10 rounded-lg flex items-center justify-center shrink-0">
@@ -265,17 +271,17 @@ const CVPLandingPage = () => {
       </section>
 
       {/* D) HOW IT WORKS */}
-      <section className="py-16 lg:py-20 bg-white" id="how-it-works">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white" id="how-it-works">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-3 sm:mb-4 text-center text-balance px-1">
             How It Works
           </h2>
-          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+          <p className="text-center text-[0.9375rem] sm:text-base text-gray-600 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
             Get set up quickly and start tracking with minimal effort.
           </p>
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-3xl mx-auto space-y-5 sm:space-y-6">
             {steps.map((step, i) => (
-              <div key={i} className="flex gap-4">
+              <div key={i} className="flex gap-3 sm:gap-4">
                 <div className="w-10 h-10 rounded-full bg-electric-teal text-white flex items-center justify-center font-semibold shrink-0">
                   {i + 1}
                 </div>
@@ -290,17 +296,17 @@ const CVPLandingPage = () => {
       </section>
 
       {/* E) HOW THE SCORE WORKS */}
-      <section className="py-16 lg:py-20 bg-gray-50" id="how-the-score-works">
+      <section className="py-10 sm:py-14 lg:py-20 bg-gray-50" id="how-the-score-works">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-6 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-5 sm:mb-6 text-center text-balance">
             How the Compliance Score Works
           </h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4 text-[0.9375rem] sm:text-base leading-relaxed">
             The score is an evidence-based risk indicator. It reflects: whether you have evidence for each requirement, 
             expiry status (valid, expiring soon, overdue), and any overdue penalties. You get a score per property 
             and a portfolio summary on your dashboard with per-property drill-down.
           </p>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4 text-[0.9375rem] sm:text-base leading-relaxed">
             It is not a legal verdict or regulatory determination — it helps you see where to focus attention.
           </p>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3 mb-8">
@@ -327,12 +333,12 @@ const CVPLandingPage = () => {
       </section>
 
       {/* F) WHO IT'S FOR */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-8 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-6 sm:mb-8 text-center text-balance px-1">
             Who It’s For
           </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-8">
             {segments.map((seg) => (
               <Card key={seg.title} className="border border-gray-200">
                 <CardContent className="pt-6">
@@ -349,26 +355,26 @@ const CVPLandingPage = () => {
       </section>
 
       {/* G) REMINDERS & NOTIFICATIONS */}
-      <section className="py-16 lg:py-20 bg-gray-50">
+      <section className="py-10 sm:py-14 lg:py-20 bg-gray-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-6 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-5 sm:mb-6 text-center text-balance">
             Reminders & Notifications
           </h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4 text-[0.9375rem] sm:text-base leading-relaxed">
             Reminders are sent when we have a known or confirmed expiry date for a requirement.
             You’ll get advance notice before deadlines so you can renew in time. Scheduling and frequency depend on your plan.
           </p>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4 text-[0.9375rem] sm:text-base leading-relaxed">
             You control how you’re notified: in your account you can set preferences for email and SMS (where available on your plan) so reminders fit how you work.
           </p>
-          <div className="mt-8 max-w-2xl mx-auto">
-            <ProductScreenshot>
+          <div className="mt-6 sm:mt-8 max-w-2xl mx-auto">
+            <ProductScreenshot className="max-h-[220px] sm:max-h-none overflow-hidden">
               <MarketingImage
                 name="support-calendar"
                 alt="Compliance calendar view with upcoming expiries"
                 width={1200}
                 height={800}
-                className="w-full h-auto"
+                className="w-full h-[200px] sm:h-auto object-cover sm:object-contain object-[center_20%] sm:object-center"
                 loading="lazy"
                 placeholderText="Calendar preview"
               />
@@ -378,12 +384,12 @@ const CVPLandingPage = () => {
       </section>
 
       {/* H) REPORTS & EXPORTS */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-6 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-5 sm:mb-6 text-center text-balance px-1">
             Reports & Exports
           </h2>
-          <p className="text-center text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-center text-[0.9375rem] sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
             Organisational reports for internal use or to share with advisers — not legal advice.
           </p>
           {/* TODO: Replace with sample report preview image when available */}
@@ -407,15 +413,15 @@ const CVPLandingPage = () => {
       </section>
 
       {/* I) PRICING */}
-      <section className="py-16 lg:py-20 bg-gray-50" id="pricing">
+      <section className="py-10 sm:py-14 lg:py-20 bg-gray-50" id="pricing">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-3 sm:mb-4 text-center text-balance px-1">
             Pricing
           </h2>
-          <p className="text-center text-gray-600 mb-10 max-w-xl mx-auto">
+          <p className="text-center text-[0.9375rem] sm:text-base text-gray-600 mb-8 sm:mb-10 max-w-xl mx-auto leading-relaxed">
             Upgrade or downgrade anytime. Your data remains secure.
           </p>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-5 sm:gap-8 max-w-5xl mx-auto">
             {plans.map((plan) => (
               <Card
                 key={plan.name}
@@ -445,7 +451,7 @@ const CVPLandingPage = () => {
                     ))}
                   </ul>
                   <Button
-                    className={`w-full ${plan.popular ? 'bg-electric-teal hover:bg-electric-teal/90 text-white' : ''}`}
+                    className={`w-full min-h-[48px] ${plan.popular ? 'bg-electric-teal hover:bg-electric-teal/90 text-white' : ''}`}
                     variant={plan.popular ? 'default' : 'outline'}
                     asChild
                   >
@@ -458,8 +464,8 @@ const CVPLandingPage = () => {
           <p className="text-center text-sm text-gray-500 mt-6">
             <Link to="/pricing" className="text-electric-teal hover:underline">View full pricing details</Link>
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
-            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8" asChild>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center mt-8 sm:mt-10 px-1">
+            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8 w-full sm:w-auto min-h-[48px]" asChild>
               <Link to="/intake/start">Activate Monitoring</Link>
             </Button>
             <Link to="/pricing" className="text-sm text-electric-teal hover:underline">See pricing</Link>
@@ -468,9 +474,9 @@ const CVPLandingPage = () => {
       </section>
 
       {/* J) FAQ */}
-      <section className="py-16 lg:py-20 bg-white" id="faq">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white" id="faq">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-8 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-6 sm:mb-8 text-center text-balance">
             Frequently Asked Questions
           </h2>
           <Accordion type="single" collapsible className="w-full">
@@ -487,18 +493,18 @@ const CVPLandingPage = () => {
       </section>
 
       {/* K) FINAL CTA */}
-      <section className="py-16 lg:py-20 bg-midnight-blue">
+      <section className="py-12 sm:py-16 lg:py-20 bg-midnight-blue">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+          <h2 className="text-xl sm:text-3xl font-bold text-white mb-3 sm:mb-4 text-balance leading-snug">
             Take Control of Your Property Compliance
           </h2>
-          <p className="text-lg text-gray-300 mb-8">
+          <p className="text-base sm:text-lg text-gray-300 mb-6 sm:mb-8 leading-relaxed">
             Track certificates, get reminders, and generate clear reports — all in one place.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
             <Button
               size="lg"
-              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8 w-full sm:w-auto min-h-[48px]"
               asChild
             >
               <Link to="/intake/start">Start Your Setup</Link>
@@ -506,10 +512,10 @@ const CVPLandingPage = () => {
             <Button
               size="lg"
               variant="outline"
-              className="border-white text-white hover:bg-white/10"
+              className="border-white text-white hover:bg-white/10 w-full sm:w-auto min-h-[48px]"
               asChild
             >
-              <Link to="/risk-check">View Platform Overview</Link>
+              <Link to="/risk-check">Check your compliance risk</Link>
             </Button>
           </div>
         </div>

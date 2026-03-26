@@ -113,7 +113,11 @@ def pick_evidence_document(docs: List[Dict[str, Any]], document_type: str) -> Op
         if (d.get("status") or "").upper().strip() == "DISABLED":
             continue
         # Optional: if doc has document_type, filter to match
-        doc_type = (d.get("document_type") or (d.get("ai_extraction") or {}).get("data") or {}).get("document_type")
+        doc_type_val = d.get("document_type")
+        if isinstance(doc_type_val, str):
+            doc_type = doc_type_val
+        else:
+            doc_type = ((d.get("ai_extraction") or {}).get("data") or {}).get("document_type")
         if doc_type is not None and document_type and str(doc_type).strip().lower() != str(document_type).strip().lower():
             continue
         eligible.append(d)

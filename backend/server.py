@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -6,7 +6,8 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre
+from utils.request_ip import get_client_ip as _client_ip
 
 # ClearForm - Separate Product Routes
 from clearform.routes import auth as clearform_auth
@@ -103,6 +104,8 @@ from job_runner import (
     run_queued_order_processing,
     run_abandoned_intake_detection,
     run_lead_followup_processing,
+    run_lead_compliance_gap_detection,
+    run_lead_inactive_reactivation_detection,
     run_lead_sla_check,
     run_checklist_nurture_processing,
     run_onboarding_sequence_processing,
@@ -406,6 +409,20 @@ async def lifespan(app: FastAPI):
             coalesce=True,
             max_instances=1,
         )
+
+        # Subscription lifecycle: grace expiry, dunning nudge, renewal 7d/3d emails (9:15 UTC)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=9, minute=15, timezone=SCHEDULER_TIMEZONE),
+            id="subscription_lifecycle",
+            name="Subscription lifecycle & renewal reminders",
+            replace_existing=True,
+            args=["subscription_lifecycle"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
         
         # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
         scheduler.add_job(
@@ -663,6 +680,26 @@ async def lifespan(app: FastAPI):
             args=["lead_followup_processing"],
             kwargs={"run_type": "schedule"},
         )
+        # Compliance gap triggers (missing docs/expired/high-risk) - every 2 hours
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=20, hour="*/2", timezone=SCHEDULER_TIMEZONE),
+            id="lead_compliance_gap_detection",
+            name="Lead Compliance Gap Detection",
+            replace_existing=True,
+            args=["lead_compliance_gap_detection"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Inactive user reactivation trigger scan - every 6 hours
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=35, hour="*/6", timezone=SCHEDULER_TIMEZONE),
+            id="lead_inactive_reactivation_detection",
+            name="Lead Inactive Reactivation Detection",
+            replace_existing=True,
+            args=["lead_inactive_reactivation_detection"],
+            kwargs={"run_type": "schedule"},
+        )
         
         # Pending payment lifecycle - daily 3:00 AM UTC
         scheduler.add_job(
@@ -862,6 +899,60 @@ app.add_middleware(CorrelationIdMiddleware)
 
 
 @app.middleware("http")
+async def _security_monitoring_gate(request: Request, call_next):
+    """Capture security telemetry and apply temporary network blocks."""
+    ip = _client_ip(request)
+    path = request.url.path or ""
+    method = request.method.upper()
+    try:
+        from services.security_monitoring_service import should_block_ip, record_security_event
+
+        if await should_block_ip(ip):
+            await record_security_event(
+                event_type="abuse.blocked_request",
+                ip=ip,
+                details={"path": path, "method": method},
+                severity="medium",
+            )
+            return JSONResponse(status_code=429, content={"detail": "Request blocked due to suspicious activity."})
+    except Exception:
+        pass
+
+    response = await call_next(request)
+
+    try:
+        from services.security_monitoring_service import record_security_event
+
+        if path.startswith("/api/admin/"):
+            await record_security_event(
+                event_type="http.admin_access_attempt",
+                ip=ip,
+                details={"path": path, "method": method, "status_code": response.status_code},
+                severity="low",
+            )
+        if response.status_code == 401:
+            evt = "webhook.signature_failed" if path.startswith("/api/webhook/") else "http.401"
+            await record_security_event(event_type=evt, ip=ip, details={"path": path, "method": method}, severity="medium")
+        elif path.startswith("/api/webhook/") and response.status_code in (400, 422):
+            await record_security_event(
+                event_type="webhook.invalid_payload",
+                ip=ip,
+                details={"path": path, "method": method, "status_code": response.status_code},
+                severity="medium",
+            )
+        elif response.status_code == 403:
+            evt = "document.access_denied" if "/documents/" in path else "http.403"
+            await record_security_event(event_type=evt, ip=ip, details={"path": path, "method": method}, severity="medium")
+        elif response.status_code == 404 and path.startswith("/api/"):
+            await record_security_event(event_type="http.404", ip=ip, details={"path": path, "method": method}, severity="low")
+        elif response.status_code == 429:
+            await record_security_event(event_type="abuse.rate_limited", ip=ip, details={"path": path, "method": method}, severity="medium")
+    except Exception:
+        pass
+    return response
+
+
+@app.middleware("http")
 async def _startup_readiness_gate(request: Request, call_next):
     """On Render, PORT must open before heavy startup finishes; return 503 until DB/scheduler ready."""
     if getattr(request.app.state, "db_ready", True):
@@ -961,6 +1052,8 @@ app.include_router(intake_uploads.router)  # Intake document uploads
 app.include_router(risk_check.router)  # Compliance Risk Check (standalone demo, no client/provisioning)
 app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, resend report
 app.include_router(observability.router)  # Admin: job-runs, incidents, score-events (observability)
+app.include_router(security_monitoring.router)  # Admin: security monitoring and incident detection
+app.include_router(control_centre.router)  # Admin: unified Control Centre snapshot
 app.include_router(ops_compliance.router)  # Admin: Operations & Compliance (feature flags, plan usage)
 app.include_router(contractors.router)  # Admin: Contractors (Ops Contractor Network)
 app.include_router(maintenance.router)  # Admin: Work orders (Ops Maintenance)
@@ -1056,10 +1149,27 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             path,
             [(e.get("loc"), e.get("msg"), e.get("type")) for e in errors],
         )
+    try:
+        from services.security_monitoring_service import record_security_event
+        await record_security_event(
+            event_type="http.validation_failed",
+            ip=_client_ip(request),
+            details={"path": path, "errors_count": len(errors), "error_types": [e.get("type") for e in errors[:20]]},
+            severity="low",
+        )
+    except Exception:
+        pass
     return JSONResponse(
         status_code=422,
         content={"detail": errors, "request_id": request_id},
     )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    # Security events for HTTP status are recorded in _security_monitoring_gate (response status)
+    # and in targeted paths (e.g. auth.role_violation in require_role_in). Avoid duplicate emission here.
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 # Global exception handler

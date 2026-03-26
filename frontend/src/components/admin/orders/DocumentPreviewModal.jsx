@@ -256,6 +256,7 @@ const DocumentPreviewModal = ({
 }) => {
   const [hasReviewed, setHasReviewed] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewError, setPreviewError] = useState('');
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const getTokenizedPreviewUrl = useCallback(
@@ -295,6 +296,7 @@ const DocumentPreviewModal = ({
   useEffect(() => {
     setHasReviewed(false);
     setPreviewUrl(null);
+    setPreviewError('');
 
     if (!selectedVersion || !orderId) return;
 
@@ -304,12 +306,17 @@ const DocumentPreviewModal = ({
       setIsLoadingPreview(true);
       try {
         const url = await getTokenizedPreviewUrl('pdf');
-        if (mounted) setPreviewUrl(url);
+        if (mounted) {
+          setPreviewUrl(url);
+          setPreviewError('');
+        }
       } catch (error) {
         console.error('Error fetching preview token:', error);
         if (mounted) {
           setPreviewUrl(null);
-          toast.error(error?.message || 'Unable to load document preview');
+          const msg = error?.message || 'Unable to load document preview';
+          setPreviewError(msg);
+          toast.error(msg);
         }
       } finally {
         if (mounted) {
@@ -333,9 +340,17 @@ const DocumentPreviewModal = ({
     onApprove(selectedVersion);
   };
 
+  const disabledReason = (() => {
+    if (isSubmitting) return 'Action in progress. Please wait.';
+    if (!selectedVersion) return 'No document version selected.';
+    if (isLocked) return 'Document is already locked as final.';
+    if (!hasReviewed) return 'Confirm review to enable approval.';
+    return '';
+  })();
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh]" data-testid="document-preview-modal">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto" data-testid="document-preview-modal">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -356,7 +371,7 @@ const DocumentPreviewModal = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left sidebar - Metadata and versions */}
           <div className="space-y-4">
             <DocumentMetadata
@@ -375,11 +390,11 @@ const DocumentPreviewModal = ({
           </div>
 
           {/* Main content - Document preview */}
-          <div className="col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-4">
             {/* PDF Preview */}
             <div 
               className="border rounded-lg bg-gray-100 overflow-hidden" 
-              style={{ height: '55vh' }}
+              style={{ height: 'min(55vh, 560px)' }}
             >
               {isLoadingPreview ? (
                 <div className="flex items-center justify-center h-full">
@@ -398,7 +413,10 @@ const DocumentPreviewModal = ({
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center text-gray-500">
                     <FileText className="h-12 w-12 mx-auto mb-2 opacity-40" />
-                    <p>No document selected</p>
+                    <p className="font-medium">Preview unavailable</p>
+                    <p className="text-sm mt-1 max-w-md">
+                      {previewError || 'Document version not selected or preview could not be generated.'}
+                    </p>
                   </div>
                 </div>
               )}
@@ -526,6 +544,12 @@ const DocumentPreviewModal = ({
                 </Tooltip>
               </TooltipProvider>
             </>
+          )}
+
+          {!isLocked && (
+            <div className="w-full sm:w-auto text-xs text-amber-700 self-center">
+              {disabledReason}
+            </div>
           )}
 
           <Button variant="outline" onClick={onClose}>

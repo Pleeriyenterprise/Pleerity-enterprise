@@ -2,7 +2,7 @@
 Intake Upload Routes - Preferences & Consents step uploads.
 Temporary storage (IntakeUploads); ClamAV scan; migration to vault on provisioning success.
 """
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Request, status
 from database import database
 from models.intake_uploads import IntakeUpload, IntakeUploadStatus
 from utils.audit import create_audit_log
@@ -13,6 +13,8 @@ import os
 import uuid
 from pathlib import Path
 import logging
+import re
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,29 @@ INTAKE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_BYTES = 20 * 1024 * 1024   # 20MB per file
 MAX_SESSION_BYTES = 200 * 1024 * 1024  # 200MB per intake session
 # No document count limit: only size limits apply (per file + per session)
+SAFE_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".txt", ".rtf", ".odt",
+    ".jpg", ".jpeg", ".png", ".webp", ".heic",
+    ".xls", ".xlsx", ".csv",
+}
+INTAKE_SESSION_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("X-Forwarded-For")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return (request.client and request.client.host) or "unknown"
+
+
+def _validate_intake_session_id(value: str) -> str:
+    v = (value or "").strip()
+    if not INTAKE_SESSION_ID_RE.match(v):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_error_payload("Invalid intake session identifier.", error_code="INVALID_SESSION_ID"),
+        )
+    return v
 
 
 def _error_payload(message: str, error_code: str = "UPLOAD_VALIDATION_FAILED", **extra) -> dict:
@@ -39,6 +64,7 @@ def _error_payload(message: str, error_code: str = "UPLOAD_VALIDATION_FAILED", *
 
 @router.post("/upload")
 async def upload_intake_documents(
+    request: Request,
     intake_session_id: str = Form(...),
     files: List[UploadFile] = File(...),
 ):
@@ -47,6 +73,17 @@ async def upload_intake_documents(
     - All file types allowed (no MIME/extension restriction). Max 20MB per file, 200MB per session.
     - Files are scanned with ClamAV; flagged/failed → QUARANTINED (not migrated).
     """
+    intake_session_id = _validate_intake_session_id(intake_session_id)
+    ip = _client_ip(request)
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        f"intake_upload_ip:{ip}",
+        max_attempts=120,
+        window_minutes=60,
+    )
+    if not allowed:
+        log_rate_limit_event("intake_upload", ip, ip)
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Rate limit exceeded")
+
     if not files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -96,10 +133,17 @@ async def upload_intake_documents(
                     file_size=file_size,
                 ),
             )
-        # All file types allowed (no MIME/extension restriction)
-        file_ext = Path(file.filename or ".bin").suffix
+        file_ext = Path(file.filename or ".bin").suffix.lower()
         if not file_ext:
             file_ext = ".bin"
+        if file_ext not in SAFE_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=_error_payload(
+                    f"File type '{file_ext}' is not allowed.",
+                    error_code="FILE_TYPE_NOT_ALLOWED",
+                ),
+            )
         safe_name = f"{uuid.uuid4().hex}{file_ext}"
         storage_path = INTAKE_UPLOAD_DIR / safe_name
         with open(storage_path, "wb") as fh:
@@ -177,8 +221,21 @@ async def upload_intake_documents(
 
 
 @router.get("/list/{intake_session_id}")
-async def list_intake_uploads(intake_session_id: str):
+async def list_intake_uploads(
+    request: Request,
+    intake_session_id: str,
+):
     """List all uploads for an intake session (includes status)."""
+    intake_session_id = _validate_intake_session_id(intake_session_id)
+    ip = _client_ip(request)
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        f"intake_upload_list_ip:{ip}",
+        max_attempts=300,
+        window_minutes=60,
+    )
+    if not allowed:
+        log_rate_limit_event("intake_upload_list", ip, ip)
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Rate limit exceeded")
     db = database.get_db()
     cursor = db.intake_uploads.find(
         {"intake_session_id": intake_session_id},
@@ -196,10 +253,27 @@ async def list_intake_uploads(intake_session_id: str):
 
 
 @router.delete("/{upload_id}")
-async def delete_intake_upload(upload_id: str):
+async def delete_intake_upload(
+    request: Request,
+    upload_id: str,
+    intake_session_id: str = Query(..., min_length=8, max_length=128),
+):
     """Delete an intake upload. Allowed only if not MIGRATED (QUARANTINED and CLEAN may be deleted)."""
+    intake_session_id = _validate_intake_session_id(intake_session_id)
+    ip = _client_ip(request)
+    allowed, err_msg = await rate_limiter.check_rate_limit(
+        f"intake_upload_delete_ip:{ip}",
+        max_attempts=120,
+        window_minutes=60,
+    )
+    if not allowed:
+        log_rate_limit_event("intake_upload_delete", ip, ip)
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Rate limit exceeded")
     db = database.get_db()
-    upload = await db.intake_uploads.find_one({"upload_id": upload_id}, {"_id": 0})
+    upload = await db.intake_uploads.find_one(
+        {"upload_id": upload_id, "intake_session_id": intake_session_id},
+        {"_id": 0},
+    )
     if not upload:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

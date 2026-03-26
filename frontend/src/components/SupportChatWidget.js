@@ -216,7 +216,7 @@ function PortfolioSizeButtons({ options, onSelect, loading }) {
 }
 
 // Lead capture: offer email and submit to /api/leads/capture/chatbot
-function LeadCaptureBlock({ onSubmitted, onDismiss, conversationId, serviceInterest, loading }) {
+function LeadCaptureBlock({ onSubmitted, onDismiss, conversationId, serviceInterest, loading, recentMessages = [] }) {
   const [step, setStep] = useState('offer'); // 'offer' | 'input'
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -234,11 +234,17 @@ function LeadCaptureBlock({ onSubmitted, onDismiss, conversationId, serviceInter
     if (!email.trim()) return;
     setSubmitting(true);
     try {
+      const contextLines = (recentMessages || [])
+        .filter((m) => m.id !== 'greeting')
+        .slice(-8)
+        .map((m) => `${m.sender === 'user' ? 'User' : 'Assistant'}: ${(m.text || '').slice(0, 500)}`)
+        .join('\n');
       await client.post('/leads/capture/chatbot', {
         email: email.trim(),
         service_interest: serviceInterestValue || undefined,
         conversation_id: conversationId || undefined,
         marketing_consent: false,
+        interaction_context: contextLines || undefined,
       });
       onSubmitted();
     } catch (err) {
@@ -380,13 +386,21 @@ function HandoffOptions({ options, onSelect, conversationId, onWhatsAppClick }) 
 }
 
 // Email ticket form
-function EmailTicketForm({ conversationId, onSubmit, onCancel }) {
+function EmailTicketForm({ conversationId, onSubmit, onCancel, initialSubject = '', initialDescription = '' }) {
   const [form, setForm] = useState({
     email: '',
     subject: '',
     description: '',
   });
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setForm((f) => ({
+      ...f,
+      ...(initialSubject ? { subject: initialSubject } : {}),
+      ...(initialDescription ? { description: initialDescription } : {}),
+    }));
+  }, [initialSubject, initialDescription]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -601,6 +615,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   const [showHandoff, setShowHandoff] = useState(false);
   const [handoffOptions, setHandoffOptions] = useState(null);
   const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketPrefill, setTicketPrefill] = useState({ subject: '', description: '' });
   const [conversationContext, setConversationContext] = useState({
     intent: null,
     topic: null,
@@ -635,6 +650,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     setShowHandoff(false);
     setShowQuickActions(true);
     setShowTicketForm(false);
+    setTicketPrefill({ subject: '', description: '' });
   }, []);
 
   // Expose open function globally for external triggers
@@ -811,6 +827,14 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
       setMessages(prev => [...prev, botMessage]);
 
+      const hs = response.data.handoff_summary || response.data.metadata?.handoff_summary;
+      if (hs) {
+        setTicketPrefill({
+          subject: 'Support request — Pleerity assistant',
+          description: hs,
+        });
+      }
+
       // Handle handoff
       if (response.data.action === 'handoff') {
         setShowHandoff(true);
@@ -849,14 +873,22 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       if (response.data.conversation_context) {
         setConversationContext(response.data.conversation_context);
       }
-      setMessages(prev => [...prev, {
+      const botMsg = {
         id: Date.now().toString() + '-bot',
         text: response.data.response,
         sender: 'bot',
         timestamp: new Date().toISOString(),
         metadata: response.data.metadata || null,
         actions: response.data.actions ?? null,
-      }]);
+      };
+      setMessages(prev => [...prev, botMsg]);
+      const hs2 = response.data.handoff_summary || response.data.metadata?.handoff_summary;
+      if (hs2) {
+        setTicketPrefill({
+          subject: 'Support request — Pleerity assistant',
+          description: hs2,
+        });
+      }
       if (response.data.action === 'handoff') {
         setShowHandoff(true);
         setHandoffOptions(response.data.handoff_options);
@@ -1094,6 +1126,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
                   conversationId={conversationId}
                   serviceInterest={conversationContext?.intent}
                   loading={loading}
+                  recentMessages={messages}
                 />
               </div>
             )}
@@ -1112,6 +1145,8 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
             {showTicketForm && (
               <EmailTicketForm
                 conversationId={conversationId}
+                initialSubject={ticketPrefill.subject}
+                initialDescription={ticketPrefill.description}
                 onSubmit={() => {
                   setShowTicketForm(false);
                   setMessages(prev => [...prev, {

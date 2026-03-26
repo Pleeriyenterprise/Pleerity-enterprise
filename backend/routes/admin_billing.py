@@ -11,6 +11,8 @@ Endpoints:
 - POST /api/admin/billing/clients/{client_id}/resend-setup - Resend password setup email
 - POST /api/admin/billing/clients/{client_id}/force-provision - Re-run provisioning
 - POST /api/admin/billing/clients/{client_id}/message - Send message to client
+- POST /api/admin/billing/jobs/subscription-lifecycle - Run subscription lifecycle batch (same runner as scheduled job)
+- POST /api/admin/billing/jobs/renewal-reminders - Alias of subscription lifecycle batch (backward compatible)
 
 NON-NEGOTIABLE RULES:
 1. Stripe is the billing authority. App is the entitlement authority.
@@ -32,6 +34,7 @@ from models import AuditAction, EmailTemplateAlias, UserRole, PasswordToken
 from utils.audit import create_audit_log
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
 from services.provisioning import provisioning_service
+from services.stripe_service import StripeService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/billing", tags=["admin-billing"], dependencies=[Depends(admin_route_guard)])
@@ -133,6 +136,7 @@ async def search_billing_clients(request: Request, q: str = "", limit: int = 20)
                 "billing_plan": 1,
                 "subscription_status": 1,
                 "entitlement_status": 1,
+                "billing_lifecycle_state": 1,
                 "stripe_customer_id": 1,
                 "created_at": 1,
             }
@@ -167,6 +171,7 @@ async def search_billing_clients(request: Request, q: str = "", limit: int = 20)
                         "billing_plan": 1,
                         "subscription_status": 1,
                         "entitlement_status": 1,
+                        "billing_lifecycle_state": 1,
                         "stripe_customer_id": 1,
                         "created_at": 1,
                     }
@@ -327,6 +332,36 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             "created_at": client.get("created_at"),
         }
 
+        # Same subscription/lifecycle projection as tenant Billing API (Stripe + client_billing; may refresh period from Stripe)
+        stripe_svc = StripeService()
+        sub_status = await stripe_svc.get_subscription_status(client_id)
+        snapshot["subscription_lifecycle"] = sub_status
+
+        if sub_status.get("has_subscription"):
+            cpe_iso = sub_status.get("current_period_end")
+            if cpe_iso:
+                try:
+                    snapshot["next_billing_date"] = datetime.fromisoformat(
+                        str(cpe_iso).replace("Z", "+00:00")
+                    )
+                except (ValueError, TypeError):
+                    pass
+            pfail_iso = sub_status.get("payment_failed_at")
+            if pfail_iso:
+                try:
+                    snapshot["payment_failed_at"] = datetime.fromisoformat(
+                        str(pfail_iso).replace("Z", "+00:00")
+                    )
+                except (ValueError, TypeError):
+                    pass
+            else:
+                snapshot["payment_failed_at"] = None
+            ss = sub_status.get("subscription_status")
+            if ss:
+                snapshot["stripe_subscription_status"] = ss
+        else:
+            snapshot["stripe_subscription_status"] = None
+
         # Per-client attention (rule-based; only flags we can justify from stored fields)
         attention: List[Dict[str, Any]] = []
         es = client.get("entitlement_status")
@@ -384,6 +419,43 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
                     "message": "Subscription on file but no subscription checkout PDF in ledger (legacy or out-of-band Stripe).",
                 }
             )
+
+        lc_raw = (sub_status.get("billing_lifecycle_state") or "active").lower()
+        if sub_status.get("has_subscription"):
+            if lc_raw == "grace_period":
+                attention.append(
+                    {
+                        "code": "billing_lifecycle_grace_period",
+                        "severity": "high",
+                        "message": "Subscription is in payment retry (grace period). Client should update payment method or pay the open invoice.",
+                    }
+                )
+            elif lc_raw == "limited":
+                if not any(x.get("code") == "entitlement_limited" for x in attention):
+                    attention.append(
+                        {
+                            "code": "billing_lifecycle_limited",
+                            "severity": "high",
+                            "message": "Billing lifecycle is LIMITED — grace period ended; access is restricted until payment succeeds.",
+                        }
+                    )
+            elif lc_raw == "renewing":
+                attention.append(
+                    {
+                        "code": "billing_lifecycle_renewing",
+                        "severity": "low",
+                        "message": "Current period ends within 7 days — renewal billing is imminent (Stripe is billing authority).",
+                    }
+                )
+            elif lc_raw == "past_due":
+                attention.append(
+                    {
+                        "code": "billing_lifecycle_past_due",
+                        "severity": "high",
+                        "message": "Stripe subscription is past due; confirm open invoices, payment method, and recent webhooks.",
+                    }
+                )
+
         snapshot["billing_attention_items"] = attention
         
         return snapshot
@@ -568,6 +640,7 @@ async def sync_client_billing(request: Request, client_id: str):
     Updates:
     - client_billing record
     - Entitlements
+    - `sync_subscription_lifecycle` (aligns billing_lifecycle_state / entitlements with grace rules)
     - Triggers provisioning if entitlement becomes ENABLED
     
     Returns before/after diff.
@@ -749,6 +822,19 @@ async def sync_client_billing(request: Request, client_id: str):
             "current_plan_code": new_plan_code.value if isinstance(new_plan_code, PlanCode) else new_plan_code,
         }
         
+        lifecycle_sync: Dict[str, Any] = {}
+        try:
+            from services.subscription_lifecycle_service import sync_subscription_lifecycle
+
+            lifecycle_sync = await sync_subscription_lifecycle(client_id, bump_version=True)
+        except Exception as lc_err:
+            logger.warning(
+                "sync_client_billing: sync_subscription_lifecycle failed for %s: %s",
+                client_id,
+                lc_err,
+            )
+            lifecycle_sync = {"updated": False, "error": str(lc_err)}
+
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -762,6 +848,7 @@ async def sync_client_billing(request: Request, client_id: str):
                 "provisioning_triggered": provisioning_triggered,
                 "stripe_customer_id": stripe_customer_id,
                 "stripe_subscription_id": active_subscription.id if active_subscription else None,
+                "lifecycle_sync": lifecycle_sync,
             }
         )
         
@@ -774,6 +861,7 @@ async def sync_client_billing(request: Request, client_id: str):
             "provisioning_triggered": provisioning_triggered,
             "stripe_customer_id": stripe_customer_id,
             "stripe_subscription_id": active_subscription.id if active_subscription else None,
+            "lifecycle_sync": lifecycle_sync,
         }
         
     except HTTPException:
@@ -1538,6 +1626,54 @@ async def get_billing_statistics(request: Request):
         ).limit(20).to_list(20)
         for c in attention_needed:
             c["crn"] = c.get("customer_reference")
+
+        lifecycle_state_counts: Dict[str, int] = {}
+        for st in (
+            "active",
+            "renewing",
+            "past_due",
+            "grace_period",
+            "limited",
+            "cancelled",
+            "expired",
+        ):
+            lifecycle_state_counts[st] = await db.client_billing.count_documents(
+                {"billing_lifecycle_state": st}
+            )
+
+        grace_billing_rows = await db.client_billing.find(
+            {"billing_lifecycle_state": "grace_period"},
+            {"_id": 0, "client_id": 1, "grace_period_ends_at": 1, "payment_failed_at": 1},
+        ).limit(40).to_list(40)
+        clients_in_grace: List[Dict[str, Any]] = []
+        if grace_billing_rows:
+            gcids = [r["client_id"] for r in grace_billing_rows]
+            gclients = await db.clients.find(
+                {"client_id": {"$in": gcids}},
+                {"_id": 0, "client_id": 1, "full_name": 1, "email": 1, "customer_reference": 1},
+            ).to_list(len(gcids))
+            gc_map = {x["client_id"]: x for x in gclients}
+
+            def _iso(d: Any) -> Optional[str]:
+                if d is None:
+                    return None
+                if hasattr(d, "isoformat"):
+                    return d.isoformat()
+                return str(d)
+
+            for row in grace_billing_rows:
+                cid = row["client_id"]
+                cu = gc_map.get(cid, {})
+                clients_in_grace.append(
+                    {
+                        "client_id": cid,
+                        "full_name": cu.get("full_name"),
+                        "contact_email": cu.get("email"),
+                        "crn": cu.get("customer_reference"),
+                        "grace_period_ends_at": _iso(row.get("grace_period_ends_at")),
+                        "payment_failed_at": _iso(row.get("payment_failed_at")),
+                    }
+                )
         
         return {
             "entitlement_counts": {
@@ -1546,6 +1682,8 @@ async def get_billing_statistics(request: Request):
                 "disabled": disabled_count,
             },
             "plan_counts": plan_counts,
+            "billing_lifecycle_state_counts": lifecycle_state_counts,
+            "clients_in_grace": clients_in_grace,
             "recent_webhook_events": recent_events,
             "clients_needing_attention": attention_needed,
         }
@@ -1562,21 +1700,65 @@ async def get_billing_statistics(request: Request):
 # Background Job Triggers (Admin Only)
 # =============================================================================
 
+async def _run_subscription_lifecycle_batch_job() -> Dict[str, Any]:
+    """Post-grace enforcement, mid-grace nudges, 7d/3d renewal reminders — same as scheduler `subscription_lifecycle`."""
+    from services.jobs import run_renewal_reminders
+
+    return await run_renewal_reminders()
+
+
+@router.post("/jobs/subscription-lifecycle")
+async def trigger_subscription_lifecycle_job(request: Request):
+    """Manually run the subscription lifecycle batch job (`process_subscription_lifecycle_and_reminders`)."""
+    admin = await admin_route_guard(request)
+
+    try:
+        result = await _run_subscription_lifecycle_batch_job()
+        count = result.get("count") if isinstance(result, dict) else result
+        metrics = result.get("outcome_metrics") if isinstance(result, dict) else None
+
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=admin.get("portal_user_id"),
+            metadata={
+                "action_type": "JOB_TRIGGERED",
+                "job_name": "subscription_lifecycle",
+                "items_processed": count,
+                "outcome_metrics": metrics,
+            },
+        )
+
+        return {
+            "success": True,
+            "job": "subscription_lifecycle",
+            "items_processed": count,
+            "message": result.get("message") if isinstance(result, dict) else None,
+            "outcome_metrics": metrics,
+        }
+
+    except Exception as e:
+        logger.error(f"Subscription lifecycle job error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to run subscription lifecycle job",
+        )
+
+
 @router.post("/jobs/renewal-reminders")
 async def trigger_renewal_reminders(request: Request):
     """
-    Manually trigger the renewal reminder job.
-    
-    Sends renewal reminders to all eligible clients
-    (ENABLED entitlement, renewal within 7 days, not already reminded).
+    Backward-compatible alias: same batch as POST /jobs/subscription-lifecycle.
+
+    Runs post-grace entitlement updates, mid-grace payment nudges, and renewal reminder emails.
     """
     admin = await admin_route_guard(request)
     
     try:
-        from services.jobs import run_renewal_reminders
-        
-        count = await run_renewal_reminders()
-        
+        result = await _run_subscription_lifecycle_batch_job()
+        count = result.get("count") if isinstance(result, dict) else result
+        metrics = result.get("outcome_metrics") if isinstance(result, dict) else None
+
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -1586,13 +1768,16 @@ async def trigger_renewal_reminders(request: Request):
                 "action_type": "JOB_TRIGGERED",
                 "job_name": "renewal_reminders",
                 "reminders_sent": count,
+                "outcome_metrics": metrics,
             }
         )
-        
+
         return {
             "success": True,
             "job": "renewal_reminders",
             "reminders_sent": count,
+            "message": result.get("message") if isinstance(result, dict) else None,
+            "outcome_metrics": metrics,
         }
         
     except Exception as e:
@@ -1630,7 +1815,8 @@ async def get_job_status(request: Request):
                 {"name": "daily_reminders", "schedule": "Daily at 8 AM", "description": "Compliance expiry reminders"},
                 {"name": "monthly_digest", "schedule": "1st of month", "description": "Monthly compliance digest"},
                 {"name": "compliance_check", "schedule": "Hourly", "description": "Status change detection"},
-                {"name": "renewal_reminders", "schedule": "Daily", "description": "7-day subscription renewal reminders"},
+                {"name": "subscription_lifecycle", "schedule": "Daily ~9:15 UTC", "description": "Post-grace enforcement, grace nudges, 7d/3d renewal emails"},
+                {"name": "renewal_reminders", "schedule": "Alias", "description": "Same batch as subscription_lifecycle (API alias)"},
                 {"name": "scheduled_reports", "schedule": "Per schedule", "description": "Automated report delivery"},
             ],
         }

@@ -53,9 +53,89 @@ def _get_cvp_pricing_from_registry() -> str:
         return "See our Pricing page for current plans."
 
 
+def _services_block_from_registries(cvp_pricing: str) -> Dict[str, Any]:
+    """Document packs, automation, research, audits — prices from pack_registry + SERVICE_BASE_PRICES."""
+    from services.pack_registry import PACK_REGISTRY, PACK_ADDONS
+    from services.support_assistant_catalog import SERVICE_LABELS
+    from services.intake_draft_service import SERVICE_BASE_PRICES
+
+    def _tier_label(k: str) -> str:
+        return {"ESSENTIAL": "essential", "TENANCY": "tenancy", "ULTIMATE": "ultimate"}.get(k, k.lower())
+
+    tiers = {}
+    for pack_key, pack in PACK_REGISTRY.items():
+        lk = _tier_label(pack_key)
+        tiers[lk] = {
+            "name": pack.get("name"),
+            "price": f"£{int(pack.get('price_pence', 0)) // 100}",
+            "documents": pack.get("document_count"),
+        }
+    addons = {}
+    for code, ad in PACK_ADDONS.items():
+        key = "fast_track" if code == "FAST_TRACK" else "printed_copy" if code == "PRINTED_COPY" else code.lower()
+        addons[key] = {
+            "name": ad.get("name"),
+            "price": f"£{int(ad.get('price_pence', 0)) // 100}",
+            "description": ad.get("description"),
+        }
+    ai_rows = []
+    mr_rows = []
+    audit_rows = []
+    for code, pence in SERVICE_BASE_PRICES.items():
+        price = f"£{int(pence) // 100}"
+        label = SERVICE_LABELS.get(code, code)
+        if code.startswith("DOC_PACK"):
+            continue
+        if code.startswith("MR_"):
+            mr_rows.append({"name": label, "price": price, "code": code})
+        elif code in ("HMO_AUDIT", "FULL_AUDIT", "MOVE_CHECKLIST"):
+            audit_rows.append({"name": label, "price": price})
+        else:
+            ai_rows.append({"name": label, "price": price})
+    return {
+        "cvp": {
+            "name": "Compliance Vault Pro",
+            "description": "Comprehensive property compliance management platform for HMO and residential landlords.",
+            "features": [
+                "Property compliance tracking and monitoring",
+                "Document storage and management",
+                "Certificate expiry alerts",
+                "Compliance scoring and risk assessment",
+                "Multi-property portfolio management",
+                "Council licensing tracking",
+            ],
+            "pricing": cvp_pricing,
+            "ideal_for": "Landlords with HMO or multiple properties needing compliance oversight",
+        },
+        "document_packs": {
+            "name": "Document Packs",
+            "description": "Professional, legally-compliant document packs for landlords.",
+            "tiers": tiers,
+            "addons": addons,
+            "turnaround": "Standard 48 hours, Fast Track 24 hours",
+        },
+        "ai_automation": {
+            "name": "AI Workflow Automation",
+            "description": "Automate repetitive property management tasks with AI.",
+            "services": ai_rows,
+        },
+        "market_research": {
+            "name": "Market Research",
+            "description": "Property market insights and area analysis.",
+            "reports": mr_rows,
+        },
+        "compliance_audits": {
+            "name": "Compliance Audits",
+            "description": "Professional property compliance audits.",
+            "services": audit_rows,
+        },
+    }
+
+
 def get_chatbot_knowledge_base() -> Dict[str, Any]:
     """Build knowledge base with current CVP pricing and frontend links (used in AI prompt and canned text)."""
     cvp_pricing = _get_cvp_pricing_from_registry()
+    services = _services_block_from_registries(cvp_pricing)
     return {
     "company": {
         "name": "Pleerity Enterprise Ltd",
@@ -70,62 +150,7 @@ def get_chatbot_knowledge_base() -> Dict[str, Any]:
             "compliance_vault_landing": f"{_chatbot_app_base()}/compliance-vault-pro",
             "dashboard": f"{_chatbot_app_base()}/dashboard",
         },
-    "services": {
-        "cvp": {
-            "name": "Compliance Vault Pro",
-            "description": "Comprehensive property compliance management platform for HMO and residential landlords.",
-            "features": [
-                "Property compliance tracking and monitoring",
-                "Document storage and management",
-                "Certificate expiry alerts",
-                "Compliance scoring and risk assessment",
-                "Multi-property portfolio management",
-                "Council licensing tracking",
-            ],
-                "pricing": cvp_pricing,
-            "ideal_for": "Landlords with HMO or multiple properties needing compliance oversight",
-        },
-        "document_packs": {
-            "name": "Document Packs",
-            "description": "Professional, legally-compliant document packs for landlords.",
-            "tiers": {
-                "essential": {"name": "Essential Pack", "price": "£29", "documents": 5},
-                "tenancy": {"name": "Tenancy Pack", "price": "£49", "documents": 10},
-                "ultimate": {"name": "Ultimate Pack", "price": "£79", "documents": 15},
-            },
-            "addons": {
-                "fast_track": {"name": "Fast Track", "price": "£20", "description": "24-hour priority processing"},
-                "printed_copy": {"name": "Printed Copy", "price": "£25", "description": "Physical copy by Royal Mail"},
-            },
-            "turnaround": "Standard 48 hours, Fast Track 24 hours",
-        },
-        "ai_automation": {
-            "name": "AI Workflow Automation",
-            "description": "Automate repetitive property management tasks with AI.",
-            "services": [
-                {"name": "Workflow Automation Blueprint", "price": "£79"},
-                {"name": "Business Process Mapping", "price": "£129"},
-                {"name": "AI Tool Recommendation Report", "price": "£59"},
-            ],
-        },
-        "market_research": {
-            "name": "Market Research",
-            "description": "Property market insights and area analysis.",
-            "tiers": {
-                "basic": {"name": "Basic Report", "price": "£69"},
-                "advanced": {"name": "Advanced Report", "price": "£149"},
-            },
-        },
-        "compliance_audits": {
-            "name": "Compliance Audits",
-            "description": "Professional property compliance audits.",
-            "services": [
-                {"name": "HMO Audit", "price": "£79"},
-                {"name": "Full Compliance Audit", "price": "£99"},
-                {"name": "Move-In/Out Checklist", "price": "£35"},
-            ],
-        },
-    },
+    "services": services,
     "faqs": [
         {
             "question": "How do I reset my password?",
@@ -322,10 +347,28 @@ def detect_intent(message: str) -> Optional[str]:
     return None
 
 
+def _pack_pricing_summary_line() -> str:
+    from services.pack_registry import PACK_REGISTRY
+
+    parts = []
+    for key in ("ESSENTIAL", "TENANCY", "ULTIMATE"):
+        p = PACK_REGISTRY.get(key, {})
+        if p:
+            parts.append(
+                f"{p.get('name', key)} £{int(p.get('price_pence', 0)) // 100} ({p.get('document_count', '?')} docs)"
+            )
+    return ", ".join(parts) if parts else "See Pricing page"
+
+
 def get_guided_knowledge() -> Dict[str, Any]:
     """Structured knowledge for guided responses: description, features, actions."""
     kb = get_chatbot_knowledge_base()
     cvp_pricing = _get_cvp_pricing_from_registry()
+    dp = (kb.get("services") or {}).get("document_packs") or {}
+    tiers = dp.get("tiers") or {}
+    tier_counts = ", ".join(
+        f"{t.get('name', k)} ({t.get('documents', '?')} docs)" for k, t in tiers.items()
+    )
     return {
         "compliance_vault_pro": {
             "description": "Compliance Vault Pro helps landlords manage property compliance automatically.",
@@ -347,7 +390,7 @@ def get_guided_knowledge() -> Dict[str, Any]:
         "document_packs": {
             "description": "Professional, legally-compliant document packs for landlords.",
             "features": [
-                "Essential (5 docs), Tenancy (10), Ultimate (15)",
+                tier_counts or "Essential, Tenancy, and Ultimate packs",
                 "Fast Track 24hr or standard 48hr delivery",
                 "Printed copy option",
             ],
@@ -393,7 +436,7 @@ def get_guided_knowledge() -> Dict[str, Any]:
         },
         "pricing": {
             "description": "Current plans and pricing.",
-            "features": [f"CVP: {cvp_pricing}", "Document packs: Essential £29, Tenancy £49, Ultimate £79"],
+            "features": [f"CVP: {cvp_pricing}", f"Document packs: {_pack_pricing_summary_line()}"],
             "actions": [
                 ("View pricing", f"{_chatbot_app_base()}/pricing"),
                 ("Create account", f"{_chatbot_app_base()}/compliance-vault-pro"),
@@ -799,7 +842,8 @@ async def get_client_snapshot(client_id: str) -> Optional[Dict[str, Any]]:
 async def generate_ai_response(
     message: str,
     conversation_history: List[Dict[str, Any]],
-    client_context: Optional[Dict[str, Any]] = None
+    client_context: Optional[Dict[str, Any]] = None,
+    conversation_context: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Generate AI response using Gemini (utils.llm_chat).
@@ -808,13 +852,23 @@ async def generate_ai_response(
     try:
         from utils.llm_chat import chat, _get_api_key
         from prompts.support_assistant_system_prompt import SUPPORT_ASSISTANT_SYSTEM_PROMPT
+        from services.support_assistant_orchestrator import approved_knowledge_json_for_llm
+
         if not _get_api_key():
             logger.warning("LLM_API_KEY not set, using fallback response")
             return await generate_fallback_response(message, client_context)
+        conv = conversation_context or {}
+        eng = conv.get("engagement_mode") or "explore"
         system_parts = [
             SUPPORT_ASSISTANT_SYSTEM_PROMPT,
             "",
-            "KNOWLEDGE BASE (use only the following; never invent URLs):",
+            f"ENGAGEMENT_MODE: {eng} — When 'support', do not pitch or sell; only resolve. When 'convert', you may suggest one clear gated next step (link from APPROVED_KNOWLEDGE only).",
+            f"ROUTER_INTENT: {conv.get('router_intent') or 'unknown'} — If account-specific data is required and not in CUSTOMER CONTEXT, ask for CRN + email or order ref + email; never invent account facts.",
+            "",
+            "APPROVED_KNOWLEDGE_JSON (only source for prices, URLs, policies, product facts):",
+            approved_knowledge_json_for_llm(),
+            "",
+            "LEGACY_FAQ_AND_SERVICES_JSON (supplementary canned structure):",
             json.dumps(get_chatbot_knowledge_base(), indent=2),
         ]
         if client_context:
@@ -832,7 +886,7 @@ async def generate_ai_response(
 
 Customer's new message: {message}
 
-Respond helpfully and concisely. If you don't know something specific to their account, acknowledge it and offer alternatives."""
+Respond helpfully and concisely. Use only APPROVED_KNOWLEDGE_JSON and CUSTOMER CONTEXT for facts. If unsure, say so and offer human support — do not guess."""
         response = await chat(
             system_prompt="\n".join(system_parts),
             user_text=prompt,
@@ -904,13 +958,76 @@ def _count_recent_fallback_responses(conversation_history: List[Dict[str, Any]])
         if msg.get("sender") != "bot":
             break
         meta = msg.get("metadata") or {}
-        if meta.get("guided") or meta.get("matched_faq") or meta.get("legal_refusal") or meta.get("retrieval_matched") or meta.get("clarifying"):
-            break  # Successful or structured answers; don't count toward escalation
+        if (
+            meta.get("guided")
+            or meta.get("matched_faq")
+            or meta.get("legal_refusal")
+            or meta.get("retrieval_matched")
+            or meta.get("clarifying")
+            or meta.get("tool")
+            or meta.get("grounded")
+            or meta.get("router_intent")
+        ):
+            break
         if meta.get("fallback"):
             count += 1
         else:
             break
     return count
+
+
+def _standard_handoff_response_dict(
+    *,
+    conversation_id: str,
+    message: str,
+    conversation_history: List[Dict[str, Any]],
+    ctx: Dict[str, Any],
+    service_area: str,
+    category: str,
+    urgency: str,
+    metadata_extra: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    from services.support_assistant_handoff import build_handoff_summary
+    from services.support_assistant_intent import classify_support_intent
+
+    ri, rc = classify_support_intent(message, ctx)
+    summary = build_handoff_summary(
+        conversation_id=conversation_id,
+        user_message=message,
+        router_intent=ri,
+        intent_confidence=rc,
+        conversation_history=conversation_history,
+        extra={"engagement_mode": ctx.get("engagement_mode")},
+    )
+    meta = {
+        "service_area": service_area,
+        "category": category,
+        "urgency": urgency,
+        "handoff_summary": summary,
+    }
+    if metadata_extra:
+        meta.update(metadata_extra)
+    return {
+        "response": """I'll connect you with a human agent. You have three options:
+
+1. **Live Chat** - Chat with an agent now (Mon-Fri 9am-6pm GMT)
+2. **Email Ticket** - We'll respond within 24 hours
+3. **WhatsApp** - Continue on WhatsApp with your reference
+
+Which would you prefer?""",
+        "action": "handoff",
+        "metadata": meta,
+        "handoff_data": {
+            "conversation_id": conversation_id,
+            "service_area": service_area,
+            "category": category,
+            "urgency": urgency,
+            "message_count": len(conversation_history) + 1,
+            "structured_summary": summary,
+        },
+        "handoff_summary": summary,
+        "conversation_context": ctx,
+    }
 
 
 async def handle_chat_message(
@@ -1053,30 +1170,18 @@ async def handle_chat_message(
             "conversation_context": ctx,
         }
     
-    # Check for human handoff request
-    if needs_human_handoff(message):
-        service_area = detect_service_area(message)
-        category = detect_category(message)
-        urgency = detect_urgency(message)
-        return {
-            "response": """I'll connect you with a human agent. You have three options:
+    from services.support_assistant_orchestrator import router_turn
 
-1. **Live Chat** - Chat with an agent now (Mon-Fri 9am-6pm GMT)
-2. **Email Ticket** - We'll respond within 24 hours
-3. **WhatsApp** - Continue on WhatsApp with your reference
-
-Which would you prefer?""",
-            "action": "handoff",
-            "metadata": {"service_area": service_area, "category": category, "urgency": urgency},
-            "handoff_data": {
-                "conversation_id": conversation_id,
-                "service_area": service_area,
-                "category": category,
-                "urgency": urgency,
-                "message_count": len(conversation_history) + 1,
-            },
-            "conversation_context": ctx,
-        }
+    routed = await router_turn(
+        conversation_id=conversation_id,
+        message=message,
+        conversation_history=conversation_history,
+        ctx=ctx,
+        is_authenticated=is_authenticated,
+        client_context=client_context,
+    )
+    if routed:
+        return routed
 
     message_lower = message.lower().strip()
     pricing_like = any(w in message_lower for w in ["pricing", "price", "how much", "cost", "plans"])
@@ -1113,30 +1218,21 @@ Which would you prefer?""",
         ctx["topic"] = detected
         ctx["last_action"] = "intent_set"
 
-    # human_support intent: trigger handoff (keyword-based, in addition to needs_human_handoff regex)
+    # human_support intent: trigger handoff (keyword-based)
     if ctx.get("intent") == "human_support":
         service_area = detect_service_area(message)
         category = detect_category(message)
         urgency = detect_urgency(message)
-        return {
-            "response": """I'll connect you with a human agent. You have three options:
-
-1. **Live Chat** - Chat with an agent now (Mon-Fri 9am-6pm GMT)
-2. **Email Ticket** - We'll respond within 24 hours
-3. **WhatsApp** - Continue on WhatsApp with your reference
-
-Which would you prefer?""",
-            "action": "handoff",
-            "metadata": {"service_area": service_area, "category": category, "urgency": urgency},
-            "handoff_data": {
-                "conversation_id": conversation_id,
-                "service_area": service_area,
-                "category": category,
-                "urgency": urgency,
-                "message_count": len(conversation_history) + 1,
-            },
-            "conversation_context": ctx,
-        }
+        return _standard_handoff_response_dict(
+            conversation_id=conversation_id,
+            message=message,
+            conversation_history=conversation_history,
+            ctx=ctx,
+            service_area=service_area,
+            category=category,
+            urgency=urgency,
+            metadata_extra={"intent": "human_support"},
+        )
 
     # Explicit intent match: qualification (for compliance) or guided response (intent may be from problem or product)
     current_intent = ctx.get("intent")
@@ -1232,23 +1328,22 @@ Which would you prefer?""",
     fallback_count = _count_recent_fallback_responses(conversation_history)
     if fallback_count >= ESCALATION_AFTER_UNANSWERED:
         ctx["last_action"] = "escalation_offered"
-        return {
-            "response": ESCALATION_MESSAGE,
-            "action": "handoff",
-            "metadata": {"escalation_offered": True, "service_area": "other"},
-            "handoff_data": {
-                "conversation_id": conversation_id,
-                "service_area": "other",
-                "category": "other",
-                "urgency": "medium",
-                "message_count": len(conversation_history) + 1,
-            },
-            "conversation_context": ctx,
-        }
+        handoff = _standard_handoff_response_dict(
+            conversation_id=conversation_id,
+            message=message,
+            conversation_history=conversation_history,
+            ctx=ctx,
+            service_area="other",
+            category="other",
+            urgency="medium",
+            metadata_extra={"escalation_offered": True},
+        )
+        handoff["response"] = ESCALATION_MESSAGE
+        return handoff
 
     # Generate AI response (existing behaviour)
     response, metadata = await generate_ai_response(
-        message, conversation_history, client_context
+        message, conversation_history, client_context, conversation_context=ctx
     )
     return {
         "response": response,
@@ -1298,13 +1393,9 @@ def generate_whatsapp_link(
 CANNED_RESPONSES = {
     "check_order_status": {
         "trigger": "check_order_status",
-        "response": """To check your order status, I need your **Order Reference Number** (e.g., PLE-CVP-2026-XXXXX).
+        "response": """To check your order status, send your **order reference** (format **PLE-YYYYMMDD-####**, from your confirmation email) and the **email used at checkout** in one message.
 
-You can find this in:
-• Your confirmation email
-• Your account dashboard under "My Orders"
-
-Please share your order reference and I'll look it up for you. Or if you're logged in, visit your dashboard to see all your orders.""",
+Or sign in and open **My Orders** on your dashboard for live status.""",
         "action": "respond",
         "metadata": {"canned": True, "category": "documents"}
     },
@@ -1324,21 +1415,7 @@ Need more help? I can connect you with a human agent.""",
     
     "document_packs_info": {
         "trigger": "document_packs_info",
-        "response": """**📄 Document Packs Pricing:**
-
-| Pack | Documents | Price |
-|------|-----------|-------|
-| **Essential** | 5 core documents | £29 |
-| **Tenancy** | 10 docs inc. AST | £49 |
-| **Ultimate** | 15 comprehensive | £79 |
-
-**Add-ons:**
-• ⚡ Fast Track (24hr delivery): +£20
-• 📬 Printed Copy (Royal Mail): +£25
-
-**Standard delivery:** 48 hours
-
-Ready to order? Visit our **Services** page or ask me any questions!""",
+        "response": None,
         "action": "respond",
         "metadata": {"canned": True, "category": "documents", "service_area": "document_services"}
     },
@@ -1397,12 +1474,34 @@ Which would you prefer?""",
 }
 
 
+def _build_document_packs_canned_text() -> str:
+    from services.pack_registry import PACK_REGISTRY, PACK_ADDONS
+
+    lines = ["**Document packs (live catalogue):**", ""]
+    for key in ("ESSENTIAL", "TENANCY", "ULTIMATE"):
+        p = PACK_REGISTRY.get(key, {})
+        if not p:
+            continue
+        lines.append(
+            f"• **{p.get('name')}** — {p.get('document_count', '?')} documents — £{int(p.get('price_pence', 0)) // 100}"
+        )
+    lines.append("")
+    lines.append("**Add-ons:**")
+    for code, ad in PACK_ADDONS.items():
+        lines.append(f"• {ad.get('name')}: +£{int(ad.get('price_pence', 0)) // 100}")
+    lines.extend(["", "**Delivery:** standard 48h; Fast Track 24h.", "", f"Order via **Services**: {_chatbot_app_base()}/services"])
+    return "\n".join(lines)
+
+
 def get_canned_response(trigger: str) -> Optional[Dict[str, Any]]:
     """Get a canned response by trigger name. CVP info uses live pricing and frontend link; reset_password uses live sign-in link. Adds 'actions' for clickable links in UI."""
     out = CANNED_RESPONSES.get(trigger)
     if not out:
         return None
     out = dict(out)
+    if trigger == "document_packs_info" and out.get("response") is None:
+        out["response"] = _build_document_packs_canned_text()
+        out["actions"] = _get_guided_actions("document_packs")
     if trigger == "cvp_info" and out.get("response") is None:
         cvp_pricing = _get_cvp_pricing_from_registry()
         out["response"] = f"""**🏠 Compliance Vault Pro (CVP):**

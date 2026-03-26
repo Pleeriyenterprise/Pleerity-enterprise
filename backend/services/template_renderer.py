@@ -655,11 +655,9 @@ class TemplateRenderer:
             return str(v)
 
         safe_output = {k: safe_value(v) for k, v in structured_output.items() if k not in ("raw_response", "parse_error")}
-        safe_intake = {k: safe_value(v) for k, v in (intake_snapshot or {}).items() if not (isinstance(k, str) and k.startswith("_"))}
         ctx = {
             "order": order,
             "output": safe_output,
-            "intake": safe_intake,
             "version": version,
             "status": status.value,
             "regeneration_notes": regeneration_notes or "",
@@ -670,9 +668,6 @@ class TemplateRenderer:
             "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         }
         for k, v in safe_output.items():
-            if k not in ctx:
-                ctx[k] = v
-        for k, v in safe_intake.items():
             if k not in ctx:
                 ctx[k] = v
         return ctx

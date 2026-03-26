@@ -39,6 +39,7 @@ import {
   Activity,
   Clock,
   AlertTriangle,
+  Gauge,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { BRAND_LOGO_URL } from '../../config/branding';
@@ -55,6 +56,7 @@ const navSections = [
     icon: LayoutDashboard,
     items: [
       { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
+      { href: '/admin/control-centre', label: 'Control Centre', icon: Gauge },
       { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, ownerOrAdminOnly: true },
       { href: '/admin/analytics/executive', label: 'Executive Overview', icon: TrendingUp, ownerOrAdminOnly: true },
       { href: '/admin/analytics/generation-health', label: 'Generation health', icon: Activity, ownerOrAdminOnly: true },
@@ -151,6 +153,7 @@ const navSections = [
       { href: '/admin/system-health', label: 'System Health', icon: Activity },
       { href: '/admin/automation', label: 'Automation Control Centre', icon: Zap },
       { href: '/admin/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
+      { href: '/admin/security', label: 'Security Monitoring', icon: Shield },
       { href: '/admin/dashboard', label: 'Audit Logs', icon: History, tabTarget: 'audit' },
       { href: '/admin/notifications/preferences', label: 'Notifications', icon: Bell },
     ],

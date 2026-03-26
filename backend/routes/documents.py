@@ -952,10 +952,34 @@ async def upload_document(
         except Exception:
             pass
         logger.info(f"Document uploaded: {document.document_id}")
+        outcome = None
+        try:
+            from services.compliance_outcome_engine import (
+                apply_action_outcome,
+                EVENT_CERTIFICATE_UPLOADED,
+            )
+            outcome = await apply_action_outcome(
+                {
+                    "event_type": EVENT_CERTIFICATE_UPLOADED,
+                    "client_id": user["client_id"],
+                    "property_id": property_id,
+                    "asset_id": None,
+                    "requirement_type": (requirement or {}).get("requirement_type"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source_id": document.document_id,
+                    "dedupe_key": f"{EVENT_CERTIFICATE_UPLOADED}:{document.document_id}",
+                    "actor_id": user.get("portal_user_id"),
+                    "actor_role": "CLIENT",
+                    "metadata": {"document_id": document.document_id},
+                }
+            )
+        except Exception as outcome_err:
+            logger.debug("Action outcome skip for document upload: %s", outcome_err)
 
         return {
             "message": "Document uploaded successfully",
-            "document_id": document.document_id
+            "document_id": document.document_id,
+            "outcome": outcome,
         }
     
     except HTTPException:
@@ -1322,8 +1346,28 @@ async def verify_document(request: Request, document_id: str):
             )
         except Exception as enable_err:
             logger.warning(f"Failed to emit enablement event: {enable_err}")
-        
-        return {"message": "Document verified"}
+        outcome = None
+        try:
+            from services.compliance_outcome_engine import apply_action_outcome, EVENT_REQUIREMENT_COMPLETED
+            outcome = await apply_action_outcome(
+                {
+                    "event_type": EVENT_REQUIREMENT_COMPLETED,
+                    "client_id": document["client_id"],
+                    "property_id": document.get("property_id"),
+                    "asset_id": None,
+                    "requirement_type": document.get("requirement_type"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source_id": document_id,
+                    "dedupe_key": f"{EVENT_REQUIREMENT_COMPLETED}:{document_id}",
+                    "actor_id": user.get("portal_user_id"),
+                    "actor_role": "ADMIN",
+                    "metadata": {"document_id": document_id, "requirement_id": document.get("requirement_id")},
+                }
+            )
+        except Exception as outcome_err:
+            logger.debug("Action outcome requirement_completed skip: %s", outcome_err)
+
+        return {"message": "Document verified", "outcome": outcome}
     
     except HTTPException:
         raise
@@ -1712,6 +1756,26 @@ async def get_document_file(request: Request, document_id: str, download: bool =
     db = database.get_db()
     document, file_path, media_type, filename = await _resolve_document_file_path(db, document_id)
     if document["client_id"] != user["client_id"]:
+        try:
+            from services.security_monitoring_service import record_security_event
+
+            xf = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+            rip = xf or (request.headers.get("x-real-ip") or "").strip() or (
+                request.client.host if request.client else "unknown"
+            )
+            await record_security_event(
+                event_type="document.cross_user_access_attempt",
+                user_id=user.get("portal_user_id"),
+                ip=rip,
+                details={
+                    "document_id": document_id,
+                    "actor_client_id": user.get("client_id"),
+                    "resource_client_id": document.get("client_id"),
+                },
+                severity="medium",
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
     await create_audit_log(
         action=AuditAction.DOCUMENT_VIEWED,
@@ -1820,6 +1884,27 @@ async def get_document_extraction(request: Request, document_id: str):
         if not document:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
         if user.get("role") != "ROLE_ADMIN" and document["client_id"] != user["client_id"]:
+            try:
+                from services.security_monitoring_service import record_security_event
+
+                xf = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+                rip = xf or (request.headers.get("x-real-ip") or "").strip() or (
+                    request.client.host if request.client else "unknown"
+                )
+                await record_security_event(
+                    event_type="document.cross_user_access_attempt",
+                    user_id=user.get("portal_user_id"),
+                    ip=rip,
+                    details={
+                        "document_id": document_id,
+                        "actor_client_id": user.get("client_id"),
+                        "resource_client_id": document.get("client_id"),
+                        "surface": "extraction",
+                    },
+                    severity="medium",
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
 
         extraction_id = document.get("extraction_id")
@@ -2166,6 +2251,29 @@ async def apply_ai_extraction(
             )
         except Exception as ev_err:
             logger.debug("Score event DOCUMENT_CONFIRMED skip: %s", ev_err)
+        outcome = None
+        try:
+            from services.compliance_outcome_engine import (
+                apply_action_outcome,
+                EVENT_CERTIFICATE_VERIFIED,
+            )
+            outcome = await apply_action_outcome(
+                {
+                    "event_type": EVENT_CERTIFICATE_VERIFIED,
+                    "client_id": document["client_id"],
+                    "property_id": document.get("property_id"),
+                    "asset_id": None,
+                    "requirement_type": (requirement or {}).get("requirement_type") or (requirement or {}).get("requirement_code"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source_id": document_id,
+                    "dedupe_key": f"{EVENT_CERTIFICATE_VERIFIED}:{document_id}",
+                    "actor_id": user.get("portal_user_id"),
+                    "actor_role": "CLIENT",
+                    "metadata": {"requirement_id": requirement_id},
+                }
+            )
+        except Exception as outcome_err:
+            logger.debug("Action outcome skip for extraction apply: %s", outcome_err)
         
         # Send email notification
         try:
@@ -2236,7 +2344,8 @@ async def apply_ai_extraction(
             "changes_applied": changes_made,
             "requirement_status": after_state.get("status"),
             "due_date": after_state.get("due_date"),
-            "note": "Requirement status has been updated based on the certificate expiry date."
+            "note": "Requirement status has been updated based on the certificate expiry date.",
+            "outcome": outcome,
         }
     
     except HTTPException:

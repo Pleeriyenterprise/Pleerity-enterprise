@@ -423,6 +423,26 @@ async def update_work_order(
                 logger.info("Closed linked issue %s when work order %s set to VERIFIED", result["issue_id"], work_order_id)
             except Exception as e:
                 logger.warning("Failed to close linked issue when work order verified: %s", e)
+        if status == STATUS_COMPLETED:
+            try:
+                from services.compliance_outcome_engine import apply_action_outcome, EVENT_WORK_ORDER_COMPLETED
+                result["outcome"] = await apply_action_outcome(
+                    {
+                        "event_type": EVENT_WORK_ORDER_COMPLETED,
+                        "client_id": result.get("client_id"),
+                        "property_id": result.get("property_id"),
+                        "asset_id": result.get("asset_id"),
+                        "requirement_type": None,
+                        "timestamp": result.get("completed_at") or now,
+                        "source_id": work_order_id,
+                        "dedupe_key": f"{EVENT_WORK_ORDER_COMPLETED}:{work_order_id}",
+                        "actor_id": assigned_by,
+                        "actor_role": "SYSTEM",
+                        "metadata": {"work_order_id": work_order_id},
+                    }
+                )
+            except Exception as outcome_err:
+                logger.debug("Action outcome work_order_completed skip: %s", outcome_err)
     return result
 
 

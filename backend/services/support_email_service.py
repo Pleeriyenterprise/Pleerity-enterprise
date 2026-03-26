@@ -66,7 +66,8 @@ async def send_internal_ticket_notification(
     category: str,
     priority: str,
     service_area: str,
-    transcript: Optional[str] = None
+    transcript: Optional[str] = None,
+    assistant_handoff_summary: Optional[str] = None,
 ) -> bool:
     """Send internal notification to support team via NotificationOrchestrator."""
     try:
@@ -79,6 +80,9 @@ async def send_internal_ticket_notification(
             f"<p><strong>Subject:</strong> {subject}</p>"
             f"<p>{description}</p>"
         )
+        if assistant_handoff_summary and assistant_handoff_summary.strip():
+            safe = assistant_handoff_summary.strip()[:8000].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            message += f"<p><strong>Assistant handoff summary:</strong></p><pre style=\"white-space:pre-wrap\">{safe}</pre>"
         if transcript:
             message += f"<p><strong>Transcript:</strong></p><pre>{transcript[:2000]}</pre>"
         message += f"<p><a href=\"{_support_app_base()}/admin/support\">View in Admin Dashboard</a></p>"

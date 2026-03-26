@@ -2,7 +2,7 @@
 Orders API Routes - Public order creation and checkout
 NO CVP COLLECTIONS TOUCHED - Works only with orders collection.
 """
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, HTTPException, Request, Query, status
 from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Dict
@@ -151,16 +151,44 @@ async def create_order_checkout(order_id: str, request: CheckoutRequest):
 
 
 @router.get("/{order_id}/status")
-async def get_order_status(order_id: str, token: Optional[str] = None):
+async def get_order_status(
+    order_id: str,
+    session_id: Optional[str] = Query(None, description="Stripe Checkout session_id from success redirect"),
+    token: Optional[str] = Query(None, description="order_view or order_receipt JWT from email"),
+):
     """
-    Get order status (limited public view).
-    Token-protected for customer access.
+    Limited public order status. Requires proof of access:
+    - `session_id` must match the Stripe Checkout session stored on the order (post-payment redirect), or
+    - `token` must be a valid order_view / order_receipt JWT for this order and customer email.
+    Prevents unauthenticated enumeration of order IDs and service names.
     """
     order = await get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
-    # Return limited info for public view
+
+    authorized = False
+    cust_email = ((order.get("customer") or {}).get("email") or "").strip().lower()
+
+    if token:
+        from services.order_view_token import validate_order_view_token, validate_order_receipt_token
+
+        payload = validate_order_view_token(token) or validate_order_receipt_token(token)
+        if payload and payload.get("order_id") == order_id:
+            tok_email = (payload.get("email") or "").strip().lower()
+            if cust_email and tok_email == cust_email:
+                authorized = True
+
+    if not authorized and session_id:
+        sid = (order.get("pricing") or {}).get("stripe_checkout_session_id")
+        if sid and session_id.strip() == str(sid).strip():
+            authorized = True
+
+    if not authorized:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Valid session_id or token required",
+        )
+
     return {
         "order_id": order["order_id"],
         "status": order["status"],
@@ -230,6 +258,21 @@ async def handle_order_payment_webhook(request: Request):
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except stripe.error.SignatureVerificationError:
         logger.warning("Invalid webhook signature")
+        try:
+            from services.security_monitoring_service import record_security_event
+
+            xf = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+            rip = xf or (request.headers.get("x-real-ip") or "").strip() or (
+                request.client.host if request.client else "unknown"
+            )
+            await record_security_event(
+                event_type="webhook.signature_failed",
+                ip=rip,
+                details={"path": str(request.url.path), "source": "stripe_orders_webhook"},
+                severity="high",
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=400, detail="Invalid signature")
     
     # Handle checkout.session.completed
@@ -306,6 +349,10 @@ async def create_test_order_for_development():
     DEV ONLY: Create a test order that skips payment and goes directly to INTERNAL_REVIEW.
     This allows testing the review workflow without Stripe.
     """
+    _env = (os.environ.get("ENVIRONMENT") or os.environ.get("ENV") or "").strip().lower()
+    if _env in ("production", "prod", "cvp_prod"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
     import uuid
     
     # Generate test order data

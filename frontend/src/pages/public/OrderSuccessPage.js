@@ -19,6 +19,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 const OrderSuccessPage = () => {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('order_id');
+  const sessionId = searchParams.get('session_id');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -28,9 +29,15 @@ const OrderSuccessPage = () => {
         setLoading(false);
         return;
       }
+      // Status endpoint requires Stripe session_id (success redirect) or an email JWT — not order_id alone
+      if (!sessionId) {
+        setLoading(false);
+        return;
+      }
       
       try {
-        const response = await fetch(`${API_URL}/api/orders/${orderId}/status`);
+        const params = new URLSearchParams({ session_id: sessionId });
+        const response = await fetch(`${API_URL}/api/orders/${encodeURIComponent(orderId)}/status?${params}`);
         if (response.ok) {
           const data = await response.json();
           setOrder(data);
@@ -43,7 +50,7 @@ const OrderSuccessPage = () => {
     };
     
     fetchOrder();
-  }, [orderId]);
+  }, [orderId, sessionId]);
   
   return (
     <PublicLayout>

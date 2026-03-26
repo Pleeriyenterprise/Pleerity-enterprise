@@ -76,6 +76,42 @@ def subscription_allows_feature_access(subscription_status: Optional[str]) -> bo
     return subscription_status.upper() in SUBSCRIPTION_STATUSES_ALLOWING_FEATURE_ACCESS
 
 
+# Side-effect / premium features paused while payment is retried (grace period)
+FEATURES_BLOCKED_DURING_GRACE_PERIOD = frozenset(
+    {
+        "webhooks",
+        "sms_reminders",
+        "scheduled_reports",
+        "tenant_portal",
+        "tenant_portal_access",
+        "reports_csv",
+        "white_label_reports",
+        "audit_log_export",
+        "ai_extraction_advanced",
+        "extraction_review_ui",
+        "ai_review_interface",
+    }
+)
+
+# After grace: core compliance + uploads only (billing is ungated elsewhere)
+LIMITED_RECOVERY_FEATURES = frozenset(
+    {
+        "compliance_dashboard",
+        "compliance_score",
+        "compliance_calendar",
+        "expiry_calendar",
+        "email_notifications",
+        "document_upload_single",
+        "multi_file_upload",
+        "score_trending",
+        "ai_extraction_basic",
+        "reports_pdf",
+        "document_upload_bulk_zip",
+        "zip_upload",
+    }
+)
+
+
 # ============================================================================
 # STRIPE PRICE ID MAPPINGS - Loaded from environment (never hardcoded)
 # ============================================================================
@@ -650,18 +686,81 @@ class PlanRegistryService:
         
         client = await db.clients.find_one(
             {"client_id": client_id},
-            {"_id": 0, "billing_plan": 1, "subscription_status": 1}
+            {"_id": 0, "billing_plan": 1, "subscription_status": 1, "billing_lifecycle_state": 1}
         )
         
         if not client:
             return False, "Client not found", {"error_code": "CLIENT_NOT_FOUND"}
-        
-        # Check subscription allows feature access (allow-list: ACTIVE, TRIALING)
-        subscription_status = client.get("subscription_status", "PENDING")
+
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "billing_lifecycle_state": 1, "subscription_status": 1},
+        )
+        subscription_status = (billing or {}).get("subscription_status") or client.get("subscription_status", "PENDING")
+        lifecycle = (billing or {}).get("billing_lifecycle_state") or client.get("billing_lifecycle_state") or "active"
+        lc = (lifecycle or "active").lower()
+
+        if lc == "expired":
+            return False, "Your subscription has ended. Open Billing to renew and restore access.", {
+                "error_code": "SUBSCRIPTION_EXPIRED",
+                "billing_lifecycle_state": lc,
+            }
+        if lc == "cancelled":
+            return False, "This subscription is cancelled. Open Billing if you need to resubscribe.", {
+                "error_code": "SUBSCRIPTION_CANCELLED",
+                "billing_lifecycle_state": lc,
+            }
+        if lc == "limited":
+            if feature not in LIMITED_RECOVERY_FEATURES:
+                return False, (
+                    "Your account is restricted after the payment grace period. "
+                    "Update your payment method in Billing to restore full access."
+                ), {
+                    "error_code": "SUBSCRIPTION_LIMITED",
+                    "billing_lifecycle_state": lc,
+                    "feature": feature,
+                }
+            plan_str = client.get("billing_plan", "PLAN_1_SOLO")
+            plan_code = self.resolve_plan_code(plan_str)
+            is_allowed, message, upgrade_info = self.check_feature_access(plan_code, feature)
+            if not is_allowed:
+                return False, message, {
+                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "feature": feature,
+                    "upgrade_required": True,
+                    "current_plan": plan_str,
+                    **(upgrade_info or {}),
+                }
+            return True, None, None
+        if lc == "grace_period":
+            if feature in FEATURES_BLOCKED_DURING_GRACE_PERIOD:
+                return False, (
+                    "This action is paused while we retry your payment. "
+                    "Update your payment method in Billing to restore it."
+                ), {
+                    "error_code": "SUBSCRIPTION_GRACE_PAYMENT",
+                    "billing_lifecycle_state": lc,
+                    "feature": feature,
+                }
+            plan_str = client.get("billing_plan", "PLAN_1_SOLO")
+            plan_code = self.resolve_plan_code(plan_str)
+            is_allowed, message, upgrade_info = self.check_feature_access(plan_code, feature)
+            if not is_allowed:
+                return False, message, {
+                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "feature": feature,
+                    "upgrade_required": True,
+                    "current_plan": plan_str,
+                    **(upgrade_info or {}),
+                }
+            return True, None, None
+
+        # Default: require ACTIVE/TRIALING Stripe mirror unless lifecycle already handled above
         if not subscription_allows_feature_access(subscription_status):
             return False, f"Subscription is {subscription_status}. Active or trialing subscription required.", {
                 "error_code": "SUBSCRIPTION_INACTIVE",
-                "subscription_status": subscription_status
+                "subscription_status": subscription_status,
+                "billing_lifecycle_state": lc,
             }
 
         # Get plan (handle legacy codes)
@@ -772,24 +871,71 @@ class PlanRegistryService:
     # Client Entitlements
     # -------------------------------------------------------------------------
     
+    def _lifecycle_feature_enabled(
+        self,
+        feature_key: str,
+        plan_has: bool,
+        subscription_status: str,
+        lifecycle: str,
+    ) -> bool:
+        """Whether a feature is effectively on for UI, given billing lifecycle."""
+        if not plan_has:
+            return False
+        lc = (lifecycle or "active").lower()
+        if lc in ("expired", "cancelled"):
+            return False
+        if lc in ("grace_period", "past_due"):
+            if feature_key in FEATURES_BLOCKED_DURING_GRACE_PERIOD:
+                return False
+            return True
+        if lc == "limited":
+            return feature_key in LIMITED_RECOVERY_FEATURES
+        return subscription_allows_feature_access(subscription_status)
+
     async def get_client_entitlements(self, client_id: str) -> Dict[str, Any]:
         """Get complete entitlement info for a client."""
         db = database.get_db()
         
         client = await db.clients.find_one(
             {"client_id": client_id},
-            {"_id": 0, "billing_plan": 1, "subscription_status": 1}
+            {"_id": 0, "billing_plan": 1, "subscription_status": 1, "entitlement_status": 1}
+        )
+        billing = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {
+                "_id": 0,
+                "subscription_status": 1,
+                "billing_lifecycle_state": 1,
+                "grace_period_ends_at": 1,
+                "payment_failed_at": 1,
+                "cancel_at_period_end": 1,
+            },
         )
         
         if not client:
             plan_code = PlanCode.PLAN_1_SOLO
             is_active = False
             subscription_status = "UNKNOWN"
+            lifecycle = "active"
+            grace_period_ends_at = None
+            payment_failed_at = None
+            cancel_at_period_end = False
+            entitlement_status = None
         else:
             plan_str = client.get("billing_plan", "PLAN_1_SOLO")
             plan_code = self.resolve_plan_code(plan_str)
-            subscription_status = client.get("subscription_status", "PENDING")
-            is_active = subscription_allows_feature_access(subscription_status)
+            subscription_status = (billing or {}).get("subscription_status") or client.get("subscription_status", "PENDING")
+            lifecycle = (billing or {}).get("billing_lifecycle_state") or "active"
+            grace_period_ends_at = (billing or {}).get("grace_period_ends_at")
+            payment_failed_at = (billing or {}).get("payment_failed_at")
+            cancel_at_period_end = bool((billing or {}).get("cancel_at_period_end"))
+            entitlement_status = client.get("entitlement_status")
+            is_active = subscription_allows_feature_access(subscription_status) or lifecycle in (
+                "grace_period",
+                "past_due",
+                "limited",
+                "renewing",
+            )
         
         plan_def = self.get_plan(plan_code)
         features = self.get_features(plan_code)
@@ -800,8 +946,11 @@ class PlanRegistryService:
             feature_info = self.get_feature_metadata(feature_key)
             if feature_info:
                 min_plan = self.get_minimum_plan_for_feature(feature_key)
+                eff = self._lifecycle_feature_enabled(
+                    feature_key, is_enabled, subscription_status, lifecycle
+                )
                 detailed_features[feature_key] = {
-                    "enabled": is_enabled and is_active,
+                    "enabled": eff,
                     "name": feature_info.get("name"),
                     "description": feature_info.get("description"),
                     "category": feature_info.get("category"),
@@ -814,6 +963,11 @@ class PlanRegistryService:
             "plan_name": plan_def["name"],
             "plan_display_name": plan_def["display_name"],
             "subscription_status": subscription_status,
+            "billing_lifecycle_state": lifecycle,
+            "entitlement_status": entitlement_status,
+            "grace_period_ends_at": grace_period_ends_at.isoformat() if grace_period_ends_at else None,
+            "payment_failed_at": payment_failed_at.isoformat() if payment_failed_at else None,
+            "cancel_at_period_end": cancel_at_period_end,
             "is_active": is_active,
             "max_properties": plan_def["max_properties"],
             "features": detailed_features,

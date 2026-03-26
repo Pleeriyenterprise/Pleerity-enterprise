@@ -1053,4 +1053,28 @@ async def update_signal_status(
             )
         except Exception as e:
             logger.warning("Audit log for risk signal status update failed: %s", e)
+        try:
+            from services.compliance_outcome_engine import (
+                apply_action_outcome,
+                EVENT_RISK_SIGNAL_ACKNOWLEDGED,
+                EVENT_RISK_SIGNAL_RESOLVED,
+            )
+            event_type = EVENT_RISK_SIGNAL_ACKNOWLEDGED if new_status == STATUS_ACKNOWLEDGED else EVENT_RISK_SIGNAL_RESOLVED
+            result["outcome"] = await apply_action_outcome(
+                {
+                    "event_type": event_type,
+                    "client_id": client_id,
+                    "property_id": result.get("property_id"),
+                    "asset_id": result.get("asset_id"),
+                    "requirement_type": None,
+                    "timestamp": now_iso,
+                    "source_id": signal_id,
+                    "dedupe_key": f"{event_type}:{signal_id}",
+                    "actor_id": None,
+                    "actor_role": "CLIENT",
+                    "metadata": {"signal_id": signal_id},
+                }
+            )
+        except Exception as outcome_err:
+            logger.debug("Action outcome risk signal status skip: %s", outcome_err)
     return result

@@ -18,6 +18,20 @@ from database import database
 from services.lead_service import LeadService, AbandonedIntakeService
 from services.lead_followup_service import LeadFollowUpService
 from services.lead_ai_service import LeadAISummaryService
+from services.lead_automation_service import (
+    record_event,
+    evaluate_automation_rules,
+    EVENT_EMAIL_OPENED,
+    EVENT_LINK_CLICKED,
+    trigger_sequence,
+    stop_sequence,
+    get_sequence_metrics,
+    mark_send_opened,
+    mark_send_clicked,
+    get_email_performance_metrics,
+    SUBJECT_LEAD,
+    SUBJECT_CLIENT,
+)
 from services.lead_models import (
     LeadSourcePlatform,
     LeadServiceInterest,
@@ -82,6 +96,7 @@ class ChatbotLeadCaptureRequest(BaseModel):
     message: Optional[str] = None
     conversation_id: Optional[str] = None
     marketing_consent: bool = False
+    interaction_context: Optional[str] = Field(None, max_length=8000)
     # UTM tracking (from frontend)
     utm_source: Optional[str] = None
     utm_medium: Optional[str] = None
@@ -198,6 +213,13 @@ async def capture_chatbot_lead(
             LeadServiceInterest.UNKNOWN
         )
     
+    msg_parts = []
+    if request.message:
+        msg_parts.append(request.message.strip())
+    if request.interaction_context:
+        msg_parts.append("[Chat context]\n" + request.interaction_context.strip())
+    merged_message = "\n\n".join(msg_parts) if msg_parts else None
+
     # Create lead
     lead_request = LeadCreateRequest(
         source_platform=LeadSourcePlatform.WEB_CHAT,
@@ -206,7 +228,7 @@ async def capture_chatbot_lead(
         email=request.email,
         phone=request.phone,
         company_name=request.company_name,
-        message_summary=request.message,
+        message_summary=merged_message,
         conversation_id=request.conversation_id,
         marketing_consent=request.marketing_consent,
         utm_source=request.utm_source,
@@ -609,6 +631,11 @@ ALLOWED_ACTIVITY_TAGS = frozenset({
     "nurture_email_opened",
     "pricing_requested",
     "consultation_request",
+    "risk_check_completed",
+    "intake_started",
+    "checkout_abandoned",
+    "email_opened",
+    "link_clicked",
 })
 
 
@@ -616,6 +643,7 @@ class LeadActivityRequest(BaseModel):
     """Record an activity on a lead (e.g. CTA click, email open). Used by email links and frontend."""
     lead_id: str
     activity_type: str  # Must be in ALLOWED_ACTIVITY_TAGS
+    metadata: Optional[Dict[str, Any]] = None
 
 
 @public_router.post("/activity")
@@ -641,7 +669,7 @@ async def record_lead_activity(
     tags = list(set(lead.get("tags") or []) | {body.activity_type})
     await db["leads"].update_one(
         {"lead_id": body.lead_id},
-        {"$set": {"tags": tags, "last_activity_at": now, "updated_at": now}},
+        {"$set": {"tags": tags, "last_activity_at": now, "updated_at": now, "lead_status": "engaged"}},
     )
     await LeadService.log_audit(
         event=LeadAuditEvent.LEAD_UPDATED,
@@ -652,6 +680,21 @@ async def record_lead_activity(
         ip_address=req.client.host if req.client else None,
     )
     try:
+        canonical_event = None
+        if body.activity_type in ("nurture_email_opened", "email_opened"):
+            canonical_event = EVENT_EMAIL_OPENED
+        elif body.activity_type in ("nurture_cta_clicked", "link_clicked"):
+            canonical_event = EVENT_LINK_CLICKED
+        elif body.activity_type in ("risk_check_completed", "intake_started", "checkout_abandoned"):
+            canonical_event = body.activity_type
+        if canonical_event:
+            await record_event(
+                lead_id=body.lead_id,
+                event_type=canonical_event,
+                source="public_activity_api",
+                metadata=body.metadata or {},
+            )
+            await evaluate_automation_rules(body.lead_id, canonical_event)
         await LeadService.recalculate_and_persist_lead_score(body.lead_id, f"activity_{body.activity_type}")
     except Exception as e:
         logger.warning("Lead score recalc after activity failed: %s", e)
@@ -685,7 +728,7 @@ async def track_lead_email_open(
         tags = list(set(lead.get("tags") or []) | {"nurture_email_opened"})
         await db["leads"].update_one(
             {"lead_id": lead_id},
-            {"$set": {"tags": tags, "last_activity_at": now, "updated_at": now}},
+            {"$set": {"tags": tags, "last_activity_at": now, "updated_at": now, "lead_status": "engaged"}},
         )
         await LeadService.log_audit(
             event=LeadAuditEvent.LEAD_UPDATED,
@@ -696,6 +739,13 @@ async def track_lead_email_open(
             ip_address=req.client.host if req and req.client else None,
         )
         try:
+            await record_event(
+                lead_id=lead_id,
+                event_type=EVENT_EMAIL_OPENED,
+                source="track_open_pixel",
+                metadata={},
+            )
+            await evaluate_automation_rules(lead_id, EVENT_EMAIL_OPENED)
             await LeadService.recalculate_and_persist_lead_score(lead_id, "nurture_email_opened")
         except Exception as e:
             logger.warning("Lead score recalc after track-open failed: %s", e)
@@ -704,6 +754,35 @@ async def track_lead_email_open(
         media_type="image/gif",
         headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
     )
+
+
+@public_router.get("/automation/track-open")
+async def track_automation_email_open(key: str = Query(..., min_length=8)):
+    try:
+        await mark_send_opened(key)
+    except Exception:
+        pass
+    return Response(
+        content=_TRACKING_PIXEL_GIF,
+        media_type="image/gif",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+    )
+
+
+@public_router.get("/automation/track-click")
+async def track_automation_email_click(
+    key: str = Query(..., min_length=8),
+    url: str = Query(..., min_length=1),
+):
+    safe_url = (url or "").strip()
+    if not (safe_url.startswith("http://") or safe_url.startswith("https://") or safe_url.startswith("/")):
+        safe_url = "/app/dashboard"
+    try:
+        await mark_send_clicked(key, safe_url)
+    except Exception:
+        pass
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=safe_url, status_code=302)
 
 
 @public_router.post("/unsubscribe/{lead_id}")
@@ -1093,6 +1172,58 @@ async def test_checklist_nurture_queue(
     }
 
 
+class ManualSequenceTriggerRequest(BaseModel):
+    subject_type: str = Field(..., description="lead or client")
+    subject_key: str = Field(..., description="lead_id or client_id")
+    sequence_key: str
+    trigger_event: str = "manual_admin_trigger"
+
+
+@admin_router.get("/automation/sequences/active")
+async def admin_get_active_automation_sequences(
+    limit: int = Query(100, ge=1, le=500),
+    current_user: dict = Depends(admin_route_guard),
+):
+    data = await get_sequence_metrics(limit=limit)
+    return {"success": True, **data}
+
+
+@admin_router.get("/automation/email-performance")
+async def admin_get_automation_email_performance(
+    days: int = Query(30, ge=1, le=365),
+    current_user: dict = Depends(admin_route_guard),
+):
+    data = await get_email_performance_metrics(days=days)
+    return {"success": True, **data}
+
+
+@admin_router.post("/automation/sequences/trigger")
+async def admin_trigger_automation_sequence(
+    body: ManualSequenceTriggerRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    subject_type = (body.subject_type or "").strip().lower()
+    if subject_type not in (SUBJECT_LEAD, SUBJECT_CLIENT):
+        raise HTTPException(status_code=400, detail="subject_type must be 'lead' or 'client'")
+    ok = await trigger_sequence(
+        subject_type=subject_type,
+        subject_key=body.subject_key,
+        sequence_key=body.sequence_key,
+        trigger_event=body.trigger_event or "manual_admin_trigger",
+    )
+    return {"success": bool(ok), "triggered": bool(ok)}
+
+
+@admin_router.post("/automation/sequences/{state_id}/stop")
+async def admin_stop_automation_sequence(
+    state_id: str,
+    reason: str = "stopped_by_admin",
+    current_user: dict = Depends(admin_route_guard),
+):
+    ok = await stop_sequence(state_id=state_id, reason=reason)
+    return {"success": bool(ok), "stopped": bool(ok)}
+
+
 # ============================================================================
 # ADMIN ENDPOINTS - Dynamic routes (must come after static routes)
 # ============================================================================
@@ -1131,12 +1262,28 @@ async def get_lead(
                 {"_id": 0}
             ).sort("timestamp", 1).to_list(length=100)
             transcript = messages
+    events = await db["lead_events"].find(
+        {"lead_id": lead_id},
+        {"_id": 0},
+    ).sort("occurred_at", -1).to_list(length=50)
+    sequence_state = await db["lead_sequence_state"].find_one(
+        {"lead_id": lead_id},
+        {"_id": 0},
+        sort=[("updated_at", -1)],
+    )
+    sequence_sends = await db["lead_sequence_sends"].find(
+        {"lead_id": lead_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(length=25)
     
     return {
         **lead,
         "audit_log": audit_log,
         "contacts": contacts,
         "transcript": transcript,
+        "events": events,
+        "sequence_state": sequence_state,
+        "sequence_sends": sequence_sends,
     }
 
 
@@ -1266,6 +1413,7 @@ async def convert_lead(
     lead_id: str,
     client_id: str,
     conversion_notes: Optional[str] = None,
+    conversion_source: Optional[str] = None,
     current_user: dict = Depends(admin_route_guard),
 ):
     """Convert a lead to a client."""
@@ -1274,6 +1422,7 @@ async def convert_lead(
         client_id=client_id,
         actor_id=current_user.get("email"),
         conversion_notes=conversion_notes,
+        conversion_source=conversion_source,
     )
     
     if not lead:

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
@@ -211,6 +211,33 @@ const FEATURE_MATRIX = {
   },
 };
 
+/** Stripe epoch or missing dates must not surface as 1970 in the UI */
+const MIN_VALID_RENEWAL_MS = 946684800000;
+
+function formatRenewalDisplay(isoOrDate) {
+  if (isoOrDate == null || isoOrDate === '') return null;
+  const t = new Date(isoOrDate).getTime();
+  if (Number.isNaN(t) || t < MIN_VALID_RENEWAL_MS) return null;
+  return new Date(isoOrDate).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function humanBillingStatusLabel(bs) {
+  if (!bs?.has_subscription) return 'No active subscription';
+  if (bs.cancel_at_period_end) return 'Cancelling at period end';
+  const lc = (bs.billing_lifecycle_state || 'active').toLowerCase();
+  if (lc === 'grace_period') return 'Payment retry (grace period)';
+  if (lc === 'limited') return 'Restricted — payment overdue';
+  if (lc === 'past_due') return 'Payment past due';
+  if (lc === 'expired') return 'Subscription expired';
+  if (lc === 'cancelled') return 'Subscription cancelled';
+  if (lc === 'renewing') return 'Active — renewal soon';
+  return 'Active';
+}
+
 const BillingPage = () => {
   const navigate = useNavigate();
   const { usageContext, refetch: refetchEntitlements } = useEntitlements();
@@ -233,8 +260,29 @@ const BillingPage = () => {
   const [paymentMethodInfo, setPaymentMethodInfo] = useState(null);
   const [pdfReceipts, setPdfReceipts] = useState([]);
   const [portalOpening, setPortalOpening] = useState(false);
-  
+  const [planCatalog, setPlanCatalog] = useState(null);
+
   const highlightPlan = searchParams.get('upgrade_to');
+
+  const displayPlans = useMemo(() => {
+    if (!planCatalog || planCatalog.length === 0) return PLANS;
+    const byCode = Object.fromEntries(planCatalog.map((p) => [p.code, p]));
+    return PLANS.map((p) => {
+      const api = byCode[p.code];
+      if (!api) return p;
+      return {
+        ...p,
+        name: api.name ?? p.name,
+        description: api.description ?? p.description,
+        monthlyPrice: api.monthly_price != null ? Number(api.monthly_price) : p.monthlyPrice,
+        onboardingFee: api.onboarding_fee != null ? Number(api.onboarding_fee) : p.onboardingFee,
+        maxProperties: api.max_properties != null ? api.max_properties : p.maxProperties,
+        color: api.color ?? p.color,
+        badge: api.badge !== undefined ? api.badge : p.badge,
+        targetAudience: api.target_audience ?? p.targetAudience,
+      };
+    });
+  }, [planCatalog]);
 
   const handleRefreshUsage = useCallback(async () => {
     setUsageRefreshing(true);
@@ -253,6 +301,15 @@ const BillingPage = () => {
   useEffect(() => {
     fetchEntitlements();
     fetchBillingStatus();
+    const loadPlans = async () => {
+      try {
+        const res = await api.get('/billing/plans');
+        setPlanCatalog(res.data?.plans || []);
+      } catch {
+        setPlanCatalog(null);
+      }
+    };
+    loadPlans();
     // Expand all categories by default
     const expanded = {};
     FEATURE_CATEGORIES.forEach(cat => {
@@ -262,12 +319,21 @@ const BillingPage = () => {
   }, []);
 
   useEffect(() => {
-    if (billingStatus?.has_subscription) {
-      fetchInvoices();
-    } else {
-      setInvoices([]);
+    const tab = searchParams.get('tab');
+    if (tab === 'account' || tab === 'plans') {
+      setBillingMainTab(tab);
     }
-  }, [billingStatus?.has_subscription]);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!billingStatus?.has_subscription) {
+      setInvoices([]);
+      return;
+    }
+    if (billingMainTab === 'account') {
+      fetchInvoices();
+    }
+  }, [billingStatus?.has_subscription, billingMainTab]);
 
   useEffect(() => {
     if (billingMainTab !== 'account') return;
@@ -415,30 +481,27 @@ const BillingPage = () => {
     }));
   };
 
-  const handleUpgrade = async (planCode) => {
+  const handlePlanChange = async (planCode) => {
     if (planCode === currentPlan) {
       toast.info('You are already on this plan');
       return;
     }
-    
-    // Check if it's a downgrade
-    const currentPlanIndex = PLANS.findIndex(p => p.code === currentPlan);
-    const targetPlanIndex = PLANS.findIndex(p => p.code === planCode);
-    
-    if (targetPlanIndex < currentPlanIndex) {
-      toast.error('Please contact support to downgrade your plan');
-      return;
-    }
-    
+
+    const currentPlanIndex = displayPlans.findIndex((p) => p.code === currentPlan);
+    const targetPlanIndex = displayPlans.findIndex((p) => p.code === planCode);
+    const isDowngrade = currentPlanIndex >= 0 && targetPlanIndex >= 0 && targetPlanIndex < currentPlanIndex;
+
     setUpgrading(planCode);
-    
+
     try {
       const response = await billingStepUp.request((headers) =>
         api.post('/billing/checkout', { plan_code: planCode }, { headers })
       );
 
-      toast.success('Redirecting to payment...', {
-        description: 'You will be redirected to complete your upgrade.',
+      toast.success('Redirecting to Stripe…', {
+        description: isDowngrade
+          ? 'Confirm your plan change. Downgrades typically apply from the next billing period.'
+          : 'You will confirm payment or plan change in Stripe.',
       });
       
       // Redirect to checkout or billing portal
@@ -456,8 +519,8 @@ const BillingPage = () => {
         setUpgrading(null);
         return;
       }
-      console.error('Upgrade error:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to initiate upgrade';
+      console.error('Plan change error:', error);
+      const errorMessage = error.response?.data?.detail || 'Failed to start plan change';
       toast.error(errorMessage);
       setUpgrading(null);
     }
@@ -465,10 +528,12 @@ const BillingPage = () => {
 
   const getPlanStatus = (planCode) => {
     if (planCode === currentPlan) return 'current';
-    
-    const currentPlanIndex = PLANS.findIndex(p => p.code === currentPlan);
-    const targetPlanIndex = PLANS.findIndex(p => p.code === planCode);
-    
+
+    const currentPlanIndex = displayPlans.findIndex((p) => p.code === currentPlan);
+    const targetPlanIndex = displayPlans.findIndex((p) => p.code === planCode);
+    if (currentPlanIndex < 0 || targetPlanIndex < 0) {
+      return 'upgrade';
+    }
     if (targetPlanIndex > currentPlanIndex) return 'upgrade';
     return 'downgrade';
   };
@@ -506,7 +571,7 @@ const BillingPage = () => {
               <h1 className="text-xl font-semibold text-midnight-blue">Billing</h1>
               <p className="text-sm text-gray-500">
                 {billingMainTab === 'account'
-                  ? 'Subscription summary, receipts, and payment details'
+                  ? 'Subscription summary, billing history, and payment details'
                   : 'Compare plans and upgrade your subscription'}
               </p>
             </div>
@@ -525,7 +590,7 @@ const BillingPage = () => {
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Account &amp; receipts
+            Billing &amp; history
           </button>
           <button
             type="button"
@@ -569,6 +634,53 @@ const BillingPage = () => {
 
         {billingMainTab === 'account' ? (
           <div className="space-y-6" data-testid="billing-account-tab">
+            {billingStatus?.has_subscription && billingStatus?.billing_lifecycle_state && (
+              <>
+                {billingStatus.billing_lifecycle_state === 'grace_period' && (
+                  <Alert className="border-amber-300 bg-amber-50" data-testid="billing-grace-alert">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <AlertDescription className="text-amber-900 text-sm">
+                      <strong>Payment issue</strong> — we could not charge your card. Update your payment method in
+                      Stripe below. Resolve payment by{' '}
+                      {billingStatus.grace_period_ends_at
+                        ? new Date(billingStatus.grace_period_ends_at).toLocaleDateString('en-GB')
+                        : 'the end of your grace period'}
+                      . Some automations (SMS, webhooks, scheduled reports) stay paused until payment succeeds; core
+                      compliance remains available.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {billingStatus.billing_lifecycle_state === 'limited' && (
+                  <Alert className="border-red-200 bg-red-50" data-testid="billing-limited-alert">
+                    <AlertTriangle className="w-4 h-4 text-red-600" />
+                    <AlertDescription className="text-red-900 text-sm">
+                      <strong>Account restricted</strong> — the grace period for this invoice has ended. Update billing
+                      to restore full access. Core compliance features stay available until you pay.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {billingStatus.billing_lifecycle_state === 'renewing' && !billingStatus.cancel_at_period_end && (
+                  <Alert className="border-teal-200 bg-teal-50/50" data-testid="billing-renewing-alert">
+                    <Calendar className="w-4 h-4 text-teal-700" />
+                    <AlertDescription className="text-teal-900 text-sm">
+                      {billingStatus.charge_automatically === false ? (
+                        <>
+                          Your billing period renews soon (
+                          {formatRenewalDisplay(billingStatus?.current_period_end) || 'see date below'}). Complete
+                          payment when invoiced to avoid interruption.
+                        </>
+                      ) : (
+                        <>
+                          Your subscription renews soon (
+                          {formatRenewalDisplay(billingStatus?.current_period_end) || 'see date below'}). Payment is
+                          automatic — confirm your card on file is valid.
+                        </>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </>
+            )}
             {/* A. Subscription summary */}
             <Card data-testid="subscription-summary-card">
               <CardHeader className="pb-2">
@@ -579,40 +691,28 @@ const BillingPage = () => {
                 <div>
                   <p className="text-gray-500">Current plan</p>
                   <p className="font-medium text-midnight-blue">
-                    {PLANS.find((p) => p.code === currentPlan)?.name || currentPlan || '—'}
+                    {displayPlans.find((p) => p.code === currentPlan)?.name || currentPlan || '—'}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-500">Billing status</p>
-                  <p className="font-medium">
-                    {billingStatus?.has_subscription
-                      ? billingStatus.cancel_at_period_end
-                        ? 'Cancelling at period end'
-                        : 'Active'
-                      : 'No active subscription'}
-                  </p>
+                  <p className="font-medium">{humanBillingStatusLabel(billingStatus)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Next renewal / period end</p>
                   <p className="font-medium">
-                    {billingStatus?.current_period_end
-                      ? new Date(billingStatus.current_period_end).toLocaleDateString('en-GB', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })
-                      : '—'}
+                    {formatRenewalDisplay(billingStatus?.current_period_end) || 'Not available'}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-500">Price (plan rate)</p>
                   <p className="font-medium">
-                    {currentPlan && PLANS.find((p) => p.code === currentPlan) ? (
+                    {currentPlan && displayPlans.find((p) => p.code === currentPlan) ? (
                       <>
-                        £{PLANS.find((p) => p.code === currentPlan).monthlyPrice}/mo
+                        £{displayPlans.find((p) => p.code === currentPlan).monthlyPrice}/mo
                         <span className="text-gray-500 font-normal">
                           {' '}
-                          + £{PLANS.find((p) => p.code === currentPlan).onboardingFee} setup
+                          + £{displayPlans.find((p) => p.code === currentPlan).onboardingFee} setup
                         </span>
                       </>
                     ) : (
@@ -624,6 +724,14 @@ const BillingPage = () => {
                   <p className="text-gray-500">Subscription state</p>
                   <p className="font-medium font-mono text-xs mt-1">
                     {billingStatus?.subscription_status || (billingStatus?.has_subscription ? '—' : 'NONE')}
+                    {billingStatus?.billing_lifecycle_state ? (
+                      <span className="block text-gray-600 normal-case mt-1">
+                        Lifecycle: {billingStatus.billing_lifecycle_state}
+                        {billingStatus?.entitlement_status
+                          ? ` · Entitlement: ${billingStatus.entitlement_status}`
+                          : ''}
+                      </span>
+                    ) : null}
                   </p>
                 </div>
               </CardContent>
@@ -667,140 +775,134 @@ const BillingPage = () => {
               </CardContent>
             </Card>
 
-            {/* B. Official PDF receipts (canonical ledger) */}
-            <Card data-testid="official-receipts-card">
+            {/* Unified billing history: Stripe invoices + Pleerity PDF receipts */}
+            <Card data-testid="billing-history-card">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Official receipts (PDF)</CardTitle>
+                <CardTitle className="text-base">Billing history</CardTitle>
                 <CardDescription>
-                  Downloadable PDF receipts for subscription checkouts (stored in our billing system). This is separate
-                  from Stripe&apos;s invoice list below.
+                  Stripe invoices (paid charges) and Pleerity PDF receipts generated from subscription checkouts.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-10">
                 {!billingStatus?.has_subscription ? (
-                  <p className="text-sm text-gray-600 py-4">No subscription — receipts appear after you subscribe and pay.</p>
-                ) : pdfReceipts.length === 0 ? (
-                  <div className="text-center py-10 text-gray-500 border border-dashed rounded-lg bg-gray-50/50">
-                    <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                    <p className="text-sm">No PDF receipts on file yet.</p>
-                    <p className="text-xs mt-1">They are created after each subscription checkout.</p>
-                  </div>
+                  <p className="text-sm text-gray-600 py-2">
+                    No active subscription — billing history appears after you subscribe and pay.
+                  </p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-left text-gray-500">
-                          <th className="py-2 pr-4">Invoice #</th>
-                          <th className="py-2 pr-4">Date</th>
-                          <th className="py-2 pr-4">Description</th>
-                          <th className="py-2 pr-4">Amount</th>
-                          <th className="py-2 pr-4">Status</th>
-                          <th className="py-2 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pdfReceipts.slice(0, 8).map((r) => (
-                          <tr key={r.invoice_number || r.stripe_checkout_session_id} className="border-b border-gray-100">
-                            <td className="py-3 pr-4 font-mono text-xs">{r.invoice_number}</td>
-                            <td className="py-3 pr-4">
-                              {r.date_issued ? new Date(r.date_issued).toLocaleDateString('en-GB') : '—'}
-                            </td>
-                            <td className="py-3 pr-4 text-gray-700">CVP subscription payment</td>
-                            <td className="py-3 pr-4">{r.amount_display || '—'}</td>
-                            <td className="py-3 pr-4">{r.payment_status}</td>
-                            <td className="py-3 text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={!r.invoice_number}
-                                onClick={async () => {
-                                  if (!r.invoice_number) return;
-                                  try {
-                                    const response = await api.get(
-                                      `/client/billing/receipt/${encodeURIComponent(r.invoice_number)}/download`,
-                                      { responseType: 'blob' }
-                                    );
-                                    const blob = new Blob([response.data], { type: 'application/pdf' });
-                                    const url = window.URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = `${r.invoice_number}.pdf`;
-                                    a.click();
-                                    window.URL.revokeObjectURL(url);
-                                    toast.success('Download started');
-                                  } catch {
-                                    toast.error('Download failed');
-                                  }
-                                }}
-                              >
-                                PDF
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {billingStatus?.has_subscription && pdfReceipts.length > 0 && (
-                  <div className="mt-4 flex justify-end">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link to="/settings/billing/receipts">View all receipts</Link>
-                    </Button>
-                  </div>
+                  <>
+                    <div data-testid="stripe-invoice-history">
+                      <h3 className="text-sm font-semibold text-midnight-blue mb-1">Stripe invoices</h3>
+                      <p className="text-xs text-gray-500 mb-3">Line items and amounts as recorded by Stripe.</p>
+                      {invoices.length === 0 ? (
+                        <div className="py-8 text-center text-gray-500 text-sm border border-dashed rounded-lg bg-gray-50/50">
+                          No Stripe invoices loaded yet. They appear after successful payments.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {invoices.map((inv) => (
+                            <Card key={inv.id}>
+                              <CardContent className="pt-4 pb-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                  <span className="text-sm font-medium text-gray-700">{inv.number || inv.id}</span>
+                                  <span className="text-sm text-gray-500">
+                                    {inv.created ? new Date(inv.created * 1000).toLocaleDateString('en-GB') : ''}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="space-y-1">
+                                    {(inv.lines || []).map((line, idx) => (
+                                      <div key={idx} className="text-sm text-gray-600">
+                                        {line.description}
+                                        {line.type === 'setup_fee' && (
+                                          <span className="ml-2 text-gray-500">
+                                            £{((line.amount_cents || 0) / 100).toFixed(2)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <span className="font-semibold text-midnight-blue">
+                                    £{((inv.amount_paid || 0) / 100).toFixed(2)}
+                                  </span>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div data-testid="pleerity-pdf-receipts">
+                      <h3 className="text-sm font-semibold text-midnight-blue mb-1">Pleerity receipts (PDF)</h3>
+                      <p className="text-xs text-gray-500 mb-3">Official PDF receipts stored in your account.</p>
+                      {pdfReceipts.length === 0 ? (
+                        <div className="text-center py-10 text-gray-500 border border-dashed rounded-lg bg-gray-50/50">
+                          <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                          <p className="text-sm">No PDF receipts on file yet.</p>
+                          <p className="text-xs mt-1">Created after each subscription checkout.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b text-left text-gray-500">
+                                <th className="py-2 pr-4">Invoice #</th>
+                                <th className="py-2 pr-4">Date</th>
+                                <th className="py-2 pr-4">Description</th>
+                                <th className="py-2 pr-4">Amount</th>
+                                <th className="py-2 pr-4">Status</th>
+                                <th className="py-2 text-right">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {pdfReceipts.map((r) => (
+                                <tr key={r.invoice_number || r.stripe_checkout_session_id} className="border-b border-gray-100">
+                                  <td className="py-3 pr-4 font-mono text-xs">{r.invoice_number}</td>
+                                  <td className="py-3 pr-4">
+                                    {r.date_issued ? new Date(r.date_issued).toLocaleDateString('en-GB') : '—'}
+                                  </td>
+                                  <td className="py-3 pr-4 text-gray-700">CVP subscription payment</td>
+                                  <td className="py-3 pr-4">{r.amount_display || '—'}</td>
+                                  <td className="py-3 pr-4">{r.payment_status}</td>
+                                  <td className="py-3 text-right">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={!r.invoice_number}
+                                      onClick={async () => {
+                                        if (!r.invoice_number) return;
+                                        try {
+                                          const response = await api.get(
+                                            `/client/billing/receipt/${encodeURIComponent(r.invoice_number)}/download`,
+                                            { responseType: 'blob' }
+                                          );
+                                          const blob = new Blob([response.data], { type: 'application/pdf' });
+                                          const url = window.URL.createObjectURL(blob);
+                                          const a = document.createElement('a');
+                                          a.href = url;
+                                          a.download = `${r.invoice_number}.pdf`;
+                                          a.click();
+                                          window.URL.revokeObjectURL(url);
+                                          toast.success('Download started');
+                                        } catch {
+                                          toast.error('Download failed');
+                                        }
+                                      }}
+                                    >
+                                      PDF
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
-
-            {/* Stripe invoice activity (separate from PDF receipts) */}
-            {billingStatus?.has_subscription && (
-              <div className="mb-6" data-testid="stripe-invoice-history">
-                <h2 className="text-lg font-semibold text-midnight-blue mb-2">Invoice history (Stripe)</h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  Paid invoices from Stripe (line items and amounts). Official PDF receipts for checkout are listed
-                  above.
-                </p>
-                {invoices.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-10 text-center text-gray-500 text-sm border-dashed">
-                      No Stripe invoices loaded yet.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {invoices.map((inv) => (
-                      <Card key={inv.id}>
-                        <CardContent className="pt-4 pb-4">
-                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                            <span className="text-sm font-medium text-gray-700">{inv.number || inv.id}</span>
-                            <span className="text-sm text-gray-500">
-                              {inv.created ? new Date(inv.created * 1000).toLocaleDateString() : ''}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="space-y-1">
-                              {(inv.lines || []).map((line, idx) => (
-                                <div key={idx} className="text-sm text-gray-600">
-                                  {line.description}
-                                  {line.type === 'setup_fee' && (
-                                    <span className="ml-2 text-gray-500">
-                                      £{((line.amount_cents || 0) / 100).toFixed(2)}
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                            <span className="font-semibold text-midnight-blue">
-                              £{((inv.amount_paid || 0) / 100).toFixed(2)}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
             <Card className="border-teal-100 bg-teal-50/30" data-testid="billing-support-card">
               <CardHeader className="pb-2">
@@ -835,7 +937,8 @@ const BillingPage = () => {
             <AlertDescription className="text-amber-800">
               <strong>Cancellation Scheduled</strong>
               <p className="mt-1">
-                Your subscription will end on {billingStatus.current_period_end ? new Date(billingStatus.current_period_end).toLocaleDateString() : 'the end of your billing period'}. 
+                Your subscription will end on{' '}
+                {formatRenewalDisplay(billingStatus.current_period_end) || 'the end of your billing period'}. 
                 You'll continue to have full access until then.
               </p>
             </AlertDescription>
@@ -849,7 +952,7 @@ const BillingPage = () => {
               <div>
                 <p className="text-sm text-gray-300 mb-1">Your Current Plan</p>
                 <h2 className="text-2xl font-bold">
-                  {PLANS.find(p => p.code === currentPlan)?.name || currentPlan}
+                  {displayPlans.find((p) => p.code === currentPlan)?.name || currentPlan}
                 </h2>
                 <p className="text-sm text-gray-300 mt-1">
                   {entitlements?.max_properties} properties • {getFeatureCount(currentPlan)} features enabled
@@ -857,7 +960,7 @@ const BillingPage = () => {
               </div>
               <div className="text-right">
                 <p className="text-3xl font-bold">
-                  £{PLANS.find(p => p.code === currentPlan)?.monthlyPrice || 0}
+                  £{displayPlans.find((p) => p.code === currentPlan)?.monthlyPrice || 0}
                   <span className="text-lg font-normal text-gray-300">/mo</span>
                 </p>
                 {billingStatus?.has_subscription && !billingStatus?.cancel_at_period_end && (
@@ -876,7 +979,7 @@ const BillingPage = () => {
 
         {/* Plan Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12" data-testid="plan-cards">
-          {PLANS.map((plan) => {
+          {displayPlans.map((plan) => {
             const status = getPlanStatus(plan.code);
             const isHighlighted = highlightPlan === plan.code;
             const PlanIcon = plan.icon;
@@ -961,14 +1064,15 @@ const BillingPage = () => {
                   {/* CTA Button */}
                   <Button
                     className={`w-full ${
-                      status === 'current' 
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                      status === 'current'
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : status === 'upgrade'
                           ? 'bg-electric-teal hover:bg-teal-600 text-white'
-                          : 'bg-gray-200 text-gray-600'
+                          : 'border-amber-600 text-amber-900 bg-amber-50 hover:bg-amber-100'
                     }`}
-                    onClick={() => handleUpgrade(plan.code)}
-                    disabled={status === 'current' || status === 'downgrade' || upgrading === plan.code}
+                    variant={status === 'downgrade' ? 'outline' : 'default'}
+                    onClick={() => handlePlanChange(plan.code)}
+                    disabled={status === 'current' || upgrading === plan.code}
                     data-testid={`upgrade-btn-${plan.code}`}
                   >
                     {upgrading === plan.code ? (
@@ -977,14 +1081,17 @@ const BillingPage = () => {
                         Processing...
                       </>
                     ) : status === 'current' ? (
-                      'Current Plan'
+                      'Current plan'
                     ) : status === 'upgrade' ? (
                       <>
                         Upgrade to {plan.name}
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </>
                     ) : (
-                      'Contact Support'
+                      <>
+                        Downgrade (next billing cycle)
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
                     )}
                   </Button>
                 </CardContent>
@@ -1003,7 +1110,7 @@ const BillingPage = () => {
           {/* Header Row */}
           <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 border-b border-gray-200 sticky top-[73px] z-10">
             <div className="font-medium text-gray-700">Feature</div>
-            {PLANS.map(plan => (
+            {displayPlans.map((plan) => (
               <div key={plan.code} className="text-center">
                 <span 
                   className="font-semibold text-sm"
@@ -1037,7 +1144,7 @@ const BillingPage = () => {
                       <ChevronDown className="w-4 h-4 text-gray-400" />
                     )}
                   </div>
-                  {PLANS.map(plan => {
+                  {displayPlans.map((plan) => {
                     const enabledCount = category.features.filter(f => FEATURE_MATRIX[plan.code][f.key]).length;
                     return (
                       <div key={plan.code} className="text-center text-sm text-gray-500">
@@ -1062,7 +1169,7 @@ const BillingPage = () => {
                           <p className="text-sm text-gray-700">{feature.name}</p>
                           <p className="text-xs text-gray-500">{feature.description}</p>
                         </div>
-                        {PLANS.map(plan => {
+                        {displayPlans.map((plan) => {
                           const isEnabled = FEATURE_MATRIX[plan.code][feature.key];
                           return (
                             <div key={plan.code} className="flex items-center justify-center">
@@ -1126,18 +1233,6 @@ const BillingPage = () => {
           </div>
         </div>
 
-        {/* Contact Support */}
-        <div className="mt-12 text-center">
-          <p className="text-gray-600 mb-4">
-            Need help choosing the right plan? Have questions about enterprise pricing?
-          </p>
-          <Button 
-            variant="outline"
-            onClick={() => window.location.href = 'mailto:info@pleerityenterprise.co.uk'}
-          >
-            Contact Support
-          </Button>
-        </div>
           </>
         )}
       </main>
@@ -1195,7 +1290,9 @@ const BillingPage = () => {
               <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-1">Cancel at Period End</h4>
                 <p className="text-sm text-gray-500">
-                  Keep full access until {billingStatus?.current_period_end ? new Date(billingStatus.current_period_end).toLocaleDateString() : 'the end of your billing period'}, then your subscription ends.
+                  Keep full access until{' '}
+                  {formatRenewalDisplay(billingStatus?.current_period_end) || 'the end of your billing period'}, then
+                  your subscription ends.
                 </p>
               </div>
               <div className="p-4 border border-red-200 rounded-lg bg-red-50">

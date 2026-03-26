@@ -124,6 +124,17 @@ async def send_dashboard_ready_and_start_sequence(client_id: Optional[str]) -> N
         client_id=client_id,
         metadata={"template_key": "DASHBOARD_READY", "message_id": getattr(result, "message_id", None)},
     )
+    try:
+        from services.lead_automation_service import record_client_event, evaluate_client_automation_rules, EVENT_DASHBOARD_READY
+        await record_client_event(
+            client_id=client_id,
+            event_type=EVENT_DASHBOARD_READY,
+            source="onboarding_lifecycle.send_dashboard_ready",
+            metadata={},
+        )
+        await evaluate_client_automation_rules(client_id, EVENT_DASHBOARD_READY)
+    except Exception as flow_err:
+        logger.warning("dashboard-ready automation event skipped client_id=%s: %s", client_id, flow_err)
 
     try:
         from services.onboarding_sequence_service import schedule_onboarding_sequence

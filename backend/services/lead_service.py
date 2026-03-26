@@ -209,6 +209,7 @@ class LeadService:
             "intent_score": intent_score.value,
             "stage": LeadStage.NEW.value,
             "status": LeadStatus.ACTIVE.value,
+            "lead_status": "new",
 
             # Context
             "message_summary": request.message_summary,
@@ -250,6 +251,8 @@ class LeadService:
             "last_activity_at": now,
             "last_contacted_at": None,
             "converted_at": None,
+            "conversion_source": None,
+            "time_to_convert_seconds": None,
 
             # Conversion tracking
             "client_id": None,
@@ -314,6 +317,16 @@ class LeadService:
         # Hot lead alert (score >= 80) is sent from recalculate_and_persist_lead_score. Otherwise HIGH intent at create.
         if (lead_doc.get("lead_score") or 0) < HOT_LEAD_SCORE_THRESHOLD and intent_score == LeadIntentScore.HIGH:
             await LeadService.notify_high_intent_lead(lead_doc)
+        try:
+            from services.lead_automation_service import record_event, EVENT_LEAD_CREATED
+            await record_event(
+                lead_id=lead_id,
+                event_type=EVENT_LEAD_CREATED,
+                source="lead_service.create_lead",
+                metadata={"source_platform": request.source_platform.value},
+            )
+        except Exception as e:
+            logger.warning("Lead created event log failed: %s", e)
 
         return {**lead_doc, "is_duplicate": False}
     
@@ -657,6 +670,12 @@ class LeadService:
         db = database.get_db()
         now = datetime.now(timezone.utc).isoformat()
         
+        attribution = {}
+        try:
+            from services.lead_automation_service import apply_conversion_attribution
+            attribution = await apply_conversion_attribution(lead_id=lead_id, client_id=client_id, converted_at_iso=now)
+        except Exception:
+            attribution = {}
         # Update lead
         await db[LEADS_COLLECTION].update_one(
             {"lead_id": lead_id},
@@ -701,6 +720,7 @@ class LeadService:
         client_id: str,
         actor_id: str,
         conversion_notes: Optional[str] = None,
+        conversion_source: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Convert a lead to a client.
@@ -709,15 +729,31 @@ class LeadService:
         db = database.get_db()
         now = datetime.now(timezone.utc).isoformat()
         
+        lead_before = await db[LEADS_COLLECTION].find_one({"lead_id": lead_id}, {"_id": 0, "created_at": 1, "source_platform": 1})
+        time_to_convert_seconds = None
+        try:
+            created_raw = (lead_before or {}).get("created_at")
+            if isinstance(created_raw, str):
+                created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                if created_dt.tzinfo is None:
+                    created_dt = created_dt.replace(tzinfo=timezone.utc)
+                time_to_convert_seconds = max(0, int((datetime.now(timezone.utc) - created_dt).total_seconds()))
+        except Exception:
+            time_to_convert_seconds = None
+        resolved_conversion_source = (conversion_source or (lead_before or {}).get("source_platform") or "UNKNOWN")
         # Update lead
         await db[LEADS_COLLECTION].update_one(
             {"lead_id": lead_id},
             {
                 "$set": {
                     "status": LeadStatus.CONVERTED.value,
+                    "lead_status": "converted",
                     "stage": LeadStage.WON.value,
                     "client_id": client_id,
                     "converted_at": now,
+                    "conversion_source": resolved_conversion_source,
+                    "time_to_convert_seconds": time_to_convert_seconds,
+                    "conversion_attribution": attribution or None,
                     "conversion_notes": conversion_notes,
                     "updated_at": now,
                     "followup_status": FollowUpStatus.STOPPED.value,
@@ -728,7 +764,7 @@ class LeadService:
         # Also update the client record with lead_id for attribution
         await db["clients"].update_one(
             {"client_id": client_id},
-            {"$set": {"lead_id": lead_id, "lead_source": True}}
+            {"$set": {"lead_id": lead_id, "lead_source": True, "conversion_source": resolved_conversion_source, "lead_converted_at": now, "lead_conversion_attribution": attribution or None}}
         )
         
         # Audit log
@@ -740,8 +776,22 @@ class LeadService:
             details={
                 "client_id": client_id,
                 "conversion_notes": conversion_notes,
+                "conversion_source": resolved_conversion_source,
+                "time_to_convert_seconds": time_to_convert_seconds,
+                "conversion_attribution": attribution or None,
             },
         )
+        try:
+            from services.lead_automation_service import record_event, EVENT_LEAD_CONVERTED
+            await record_event(
+                lead_id=lead_id,
+                event_type=EVENT_LEAD_CONVERTED,
+                source="lead_service.convert_lead",
+                metadata={"client_id": client_id, "conversion_source": resolved_conversion_source},
+                source_ref=client_id,
+            )
+        except Exception as e:
+            logger.warning("Lead converted event log failed: %s", e)
         
         logger.info(f"Lead {lead_id} converted to client {client_id}")
         
@@ -763,6 +813,7 @@ class LeadService:
             {
                 "$set": {
                     "status": LeadStatus.LOST.value,
+                    "lead_status": "lost",
                     "stage": LeadStage.LOST.value,
                     "lost_reason": reason,
                     "lost_competitor": competitor,
@@ -1242,6 +1293,17 @@ class AbandonedIntakeService:
             
             if not lead.get("is_duplicate"):
                 created_leads.append(lead["lead_id"])
+                try:
+                    from services.lead_automation_service import record_event, EVENT_CHECKOUT_ABANDONED
+                    await record_event(
+                        lead_id=lead["lead_id"],
+                        event_type=EVENT_CHECKOUT_ABANDONED,
+                        source="abandoned_intake_detection",
+                        metadata={"draft_id": draft.get("draft_id"), "service_code": service_code},
+                        source_ref=draft.get("draft_id"),
+                    )
+                except Exception:
+                    pass
                 
                 # Mark draft as lead_created to prevent duplicates
                 await db["intake_drafts"].update_one(

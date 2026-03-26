@@ -244,6 +244,18 @@ async def risk_check_report(body: RiskCheckReportRequest, request: Request):
             actor_type="system",
             upsert_by_email=True,
         )
+        try:
+            from services.lead_automation_service import record_event, evaluate_automation_rules, EVENT_RISK_CHECK_COMPLETED
+            await record_event(
+                lead_id=central_lead["lead_id"],
+                event_type=EVENT_RISK_CHECK_COMPLETED,
+                source="risk_check.report",
+                metadata={"risk_band": result.get("risk_band"), "score": result.get("score")},
+                source_ref=lead_id,
+            )
+            await evaluate_automation_rules(central_lead["lead_id"], EVENT_RISK_CHECK_COMPLETED)
+        except Exception:
+            pass
         if central_lead:
             base = get_public_app_url(for_email_links=True).rstrip("/")
             activation_url = f"{base}/intake/start?lead_token={(activation_token or '').strip()}"

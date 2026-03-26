@@ -110,7 +110,47 @@ async def create_audit_log(
         doc["timestamp"] = doc["timestamp"].isoformat() if isinstance(doc["timestamp"], datetime) else doc["timestamp"]
         
         await db.audit_logs.insert_one(doc)
-        logger.info(f"Audit log created: {action.value}" + (f" with {enriched_metadata.get('changes_count', 0)} changes" if diff else ""))
+        try:
+            from services.security_monitoring_service import record_security_event
+            action_name = str(action.value if hasattr(action, "value") else action)
+            mapped_event = None
+            sev = "low"
+            # Login success/failure: emitted only from route handlers with correct IP and
+            # normalized email details to avoid duplicate events and skewed brute-force counts.
+            if action_name in ("PASSWORD_RESET_BY_OWNER", "FORGOT_PASSWORD_REQUESTED"):
+                mapped_event = "auth.password_reset"
+                sev = "medium"
+            elif action_name == "RATE_LIMIT_EXCEEDED":
+                mapped_event = "abuse.rate_limited"
+                sev = "medium"
+            elif action_name in ("ORDER_RECEIPT_PDF_ACCESSED", "DOCUMENT_VIEWED"):
+                mapped_event = "document.download"
+            details: Dict[str, Any] = {
+                "audit_action": action_name,
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+            }
+            if mapped_event == "auth.password_reset" and metadata:
+                em = metadata.get("email_masked")
+                if em:
+                    details["email_masked"] = em
+            if mapped_event:
+                await record_security_event(
+                    event_type=mapped_event,
+                    user_id=actor_id,
+                    ip=ip_address,
+                    details=details,
+                    severity=sev,
+                )
+        except Exception:
+            # Security telemetry must not fail business/audit path.
+            pass
+        logger.info(
+            "audit_log_created action=%s audit_id=%s changes=%s",
+            action.value,
+            getattr(audit_log, "audit_id", ""),
+            enriched_metadata.get("changes_count", 0) if diff else 0,
+        )
         return audit_log.audit_id
     except Exception as e:
         logger.error(f"Failed to create audit log: {e}")

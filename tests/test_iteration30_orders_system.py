@@ -115,16 +115,11 @@ class TestOrderCreation:
         assert create_response.status_code == 200
         order_id = create_response.json()["order_id"]
         
-        # Get status
+        # Status requires session_id or email token (not order_id alone)
         status_response = requests.get(f"{BASE_URL}/api/orders/{order_id}/status")
-        assert status_response.status_code == 200
+        assert status_response.status_code == 401
         
-        data = status_response.json()
-        assert data["order_id"] == order_id
-        assert data["status"] == "CREATED"
-        assert data["service_name"] == "Market Research Report"
-        
-        print(f"✓ Order status retrieved: {order_id} - {data['status']}")
+        print(f"✓ Order status correctly rejects unauthenticated access: {order_id}")
 
 
 class TestAdminPipelineView:

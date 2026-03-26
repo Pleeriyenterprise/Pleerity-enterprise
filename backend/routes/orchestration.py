@@ -31,14 +31,14 @@ router = APIRouter(prefix="/api/orchestration", tags=["document-orchestration"])
 class GenerateDocumentRequest(BaseModel):
     """Request to generate documents for an order."""
     order_id: str = Field(..., description="Order ID to generate documents for")
-    intake_data: Dict[str, Any] = Field(..., description="Intake form data")
+    intake_data: Optional[Dict[str, Any]] = Field(None, description="Deprecated: generation uses canonical intake stored on the order")
     force: Optional[bool] = Field(False, description="If True, run even when previous run with same key failed (retry)")
 
 
 class RegenerateDocumentRequest(BaseModel):
     """Request to regenerate documents with changes."""
     order_id: str = Field(..., description="Order ID to regenerate")
-    intake_data: Dict[str, Any] = Field(..., description="Updated intake form data")
+    intake_data: Optional[Dict[str, Any]] = Field(None, description="Deprecated: regeneration uses canonical intake stored on the order")
     regeneration_notes: str = Field(..., description="Notes describing requested changes")
     force: Optional[bool] = Field(False, description="If True, run even when previous run with same key failed (retry)")
 
@@ -48,6 +48,31 @@ class ReviewRequest(BaseModel):
     order_id: str = Field(..., description="Order ID to review")
     approved: bool = Field(..., description="Whether to approve or reject")
     review_notes: Optional[str] = Field(None, description="Review notes or feedback")
+
+
+async def _load_order_intake_payload(order_id: str) -> Dict[str, Any]:
+    """
+    Load canonical intake payload from persisted order state.
+    No caller-provided intake is used for orchestration content generation.
+    """
+    db = database.get_db()
+    order = await db.orders.find_one(
+        {"order_id": order_id},
+        {"_id": 0, "intake_snapshot": 1, "parameters": 1},
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    snapshot = order.get("intake_snapshot") or {}
+    intake_payload = snapshot.get("intake_payload") if isinstance(snapshot, dict) else None
+    if isinstance(intake_payload, dict) and intake_payload:
+        return intake_payload
+    params = order.get("parameters")
+    if isinstance(params, dict) and params:
+        return params
+    raise HTTPException(
+        status_code=400,
+        detail="Order has no canonical intake payload; cannot generate document",
+    )
 
 
 # ============================================================================
@@ -74,11 +99,14 @@ async def generate_documents(
     Requires admin authentication.
     """
     logger.info(f"Document generation requested for order {request.order_id} by {current_user.get('email')}")
-    
+    intake_data = await _load_order_intake_payload(request.order_id)
+    if request.intake_data is not None:
+        logger.warning("Ignoring caller intake_data for order %s; using persisted order intake", request.order_id)
+
     # Execute full pipeline (generation + rendering)
     result = await document_orchestrator.execute_full_pipeline(
         order_id=request.order_id,
-        intake_data=request.intake_data,
+        intake_data=intake_data,
         regeneration=False,
         force=request.force or False,
     )
@@ -130,10 +158,13 @@ async def regenerate_documents(
         )
     
     logger.info(f"Document regeneration requested for order {request.order_id} by {current_user.get('email')}: {request.regeneration_notes[:50]}...")
-    
+    intake_data = await _load_order_intake_payload(request.order_id)
+    if request.intake_data is not None:
+        logger.warning("Ignoring caller intake_data for order %s; using persisted order intake", request.order_id)
+
     result = await document_orchestrator.execute_full_pipeline(
         order_id=request.order_id,
-        intake_data=request.intake_data,
+        intake_data=intake_data,
         regeneration=True,
         regeneration_notes=request.regeneration_notes,
         force=request.force or False,

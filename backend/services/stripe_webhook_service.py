@@ -14,18 +14,25 @@ Events Handled:
 - customer.subscription.created
 - customer.subscription.updated  
 - customer.subscription.deleted
-- invoice.paid
-- invoice.payment_failed
+- invoice.paid and invoice.payment_succeeded (renewal success, dunning clear)
+- invoice.payment_failed (grace window, dunning)
 - charge.refunded (normalized payment status = refunded)
 """
 import stripe
 from pymongo.errors import DuplicateKeyError
 import os
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, Tuple
 from database import database
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
+from services.billing_period_utils import period_end_from_stripe_unix
+from services.subscription_lifecycle_service import (
+    sync_subscription_lifecycle,
+    grace_period_days,
+    build_renewal_email_context,
+)
+from services.security_monitoring_service import record_security_event
 from utils.audit import create_audit_log
 from models import AuditAction, ProvisioningJob, ProvisioningJobStatus
 
@@ -46,6 +53,11 @@ def _get_webhook_secret() -> str:
     if key.startswith("sk_test_"):
         return (os.getenv("STRIPE_WEBHOOK_SECRET_TEST") or "").strip()
     return ""
+
+
+def _is_production_runtime() -> bool:
+    env = (os.getenv("ENV") or os.getenv("ENVIRONMENT") or "").strip().lower()
+    return env in ("production", "prod")
 
 
 def _extract_webhook_context(event: Dict) -> Dict[str, Any]:
@@ -70,9 +82,10 @@ class StripeWebhookService:
     # =========================================================================
     
     async def process_webhook(
-        self, 
-        payload: bytes, 
-        signature: str
+        self,
+        payload: bytes,
+        signature: str,
+        client_ip: Optional[str] = None,
     ) -> Tuple[bool, str, Optional[Dict]]:
         """
         Main webhook entry point.
@@ -88,6 +101,19 @@ class StripeWebhookService:
                     payload, signature, webhook_secret
                 )
             else:
+                # Production must fail closed when webhook verification is not configured.
+                if _is_production_runtime():
+                    logger.error("Stripe webhook secret is not configured in production runtime")
+                    try:
+                        await record_security_event(
+                            event_type="webhook.signature_failed",
+                            ip=client_ip,
+                            details={"source": "stripe", "reason": "webhook_secret_missing_in_production"},
+                            severity="high",
+                        )
+                    except Exception:
+                        pass
+                    return False, "Invalid signature", {"error": "Webhook secret missing in production"}
                 # Development mode - parse without verification
                 import json
                 event = stripe.Event.construct_from(
@@ -96,9 +122,27 @@ class StripeWebhookService:
                 logger.warning("STRIPE_WEBHOOK_SECRET (or _TEST/_LIVE) not set - skipping signature verification")
         except stripe.error.SignatureVerificationError as e:
             logger.error("Webhook signature verification failed: %s (check STRIPE_WEBHOOK_SECRET vs Stripe key mode)", e)
+            try:
+                await record_security_event(
+                    event_type="webhook.signature_failed",
+                    ip=client_ip,
+                    details={"source": "stripe", "reason": "signature_verification_failed"},
+                    severity="high",
+                )
+            except Exception:
+                pass
             return False, "Invalid signature", {"error": str(e)}
         except Exception as e:
             logger.error(f"Webhook parse error: {e}")
+            try:
+                await record_security_event(
+                    event_type="webhook.invalid_payload",
+                    ip=client_ip,
+                    details={"source": "stripe", "reason": "parse_error"},
+                    severity="medium",
+                )
+            except Exception:
+                pass
             return False, "Invalid payload", {"error": str(e)}
 
         event_id = event.get("id")
@@ -115,6 +159,15 @@ class StripeWebhookService:
         
         if existing and existing.get("status") == "PROCESSED":
             logger.info(f"Event {event_id} already processed - skipping")
+            try:
+                await record_security_event(
+                    event_type="webhook.duplicate_detected",
+                    ip=client_ip,
+                    details={"source": "stripe", "event_id": event_id, "reason": "already_processed"},
+                    severity="low",
+                )
+            except Exception:
+                pass
             return True, "Already processed", {"event_id": event_id}
         
         # Step 3: Record event
@@ -141,6 +194,15 @@ class StripeWebhookService:
             except Exception as insert_err:
                 if "duplicate key" in str(insert_err).lower() or "E11000" in str(insert_err):
                     logger.info(f"Event {event_id} duplicate insert (race) - skipping")
+                    try:
+                        await record_security_event(
+                            event_type="webhook.duplicate_detected",
+                            ip=client_ip,
+                            details={"source": "stripe", "event_id": event_id, "reason": "insert_race_duplicate"},
+                            severity="low",
+                        )
+                    except Exception:
+                        pass
                     return True, "Already processed", {"event_id": event_id}
                 raise
 
@@ -340,6 +402,19 @@ class StripeWebhookService:
                     logger.info(f"Document Pack order {order['order_ref']} processed: {message}")
                 else:
                     logger.error(f"Document Pack processing failed: {message}")
+                try:
+                    from services.lead_automation_service import record_client_event, evaluate_client_automation_rules, EVENT_PAYMENT_SUCCESSFUL
+                    if order.get("client_id"):
+                        await record_client_event(
+                            client_id=order["client_id"],
+                            event_type=EVENT_PAYMENT_SUCCESSFUL,
+                            source="stripe_webhook.order_payment",
+                            metadata={"order_id": order.get("order_id"), "order_ref": order.get("order_ref")},
+                            source_ref=session_id,
+                        )
+                        await evaluate_client_automation_rules(order["client_id"], EVENT_PAYMENT_SUCCESSFUL)
+                except Exception as flow_err:
+                    logger.warning("Post-payment automation trigger skipped for order %s: %s", order.get("order_id"), flow_err)
                 
                 return {
                     "handled": True,
@@ -428,6 +503,7 @@ class StripeWebhookService:
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(subscription_status)
         
         # Upsert ClientBilling record; increment entitlements_version (Stripe is source of truth)
+        period_end_dt = period_end_from_stripe_unix(subscription.get("current_period_end"))
         billing_record = {
             "client_id": client_id,
             "stripe_customer_id": stripe_customer_id,
@@ -435,26 +511,37 @@ class StripeWebhookService:
             "current_plan_code": plan_code.value,
             "subscription_status": subscription_status.upper(),
             "entitlement_status": entitlement_status.value,
-            "current_period_end": datetime.fromtimestamp(
-                subscription.get("current_period_end", 0), 
-                tz=timezone.utc
-            ),
             "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
             "onboarding_fee_paid": onboarding_fee_paid,
             "latest_invoice_id": subscription.get("latest_invoice"),
             "updated_at": datetime.now(timezone.utc),
         }
+        if period_end_dt:
+            billing_record["current_period_end"] = period_end_dt
         if setup_fee_amount_cents is not None:
             billing_record["setup_fee_amount_cents"] = setup_fee_amount_cents
         if setup_fee_invoice_id:
             billing_record["setup_fee_invoice_id"] = setup_fee_invoice_id
+        checkout_billing_update: Dict[str, Any] = {
+            "$set": billing_record,
+            "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
+            "$inc": {"entitlements_version": 1},
+        }
+        dunning_unset = {
+            "payment_failed_at": "",
+            "grace_period_ends_at": "",
+            "dunning_stripe_invoice_id": "",
+            "grace_mid_reminder_sent_at": "",
+            "renewal_reminder_period_key_7d": "",
+            "renewal_reminder_period_key_3d": "",
+        }
+        if not period_end_dt:
+            checkout_billing_update["$unset"] = {**dunning_unset, "current_period_end": ""}
+        else:
+            checkout_billing_update["$unset"] = dunning_unset
         await db.client_billing.update_one(
             {"client_id": client_id},
-            {
-                "$set": billing_record,
-                "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
-                "$inc": {"entitlements_version": 1},
-            },
+            checkout_billing_update,
             upsert=True
         )
         billing_after = await db.client_billing.find_one(
@@ -478,10 +565,16 @@ class StripeWebhookService:
             }
         )
 
+        try:
+            await sync_subscription_lifecycle(client_id, bump_version=False)
+        except Exception as lc_err:
+            logger.warning("sync_subscription_lifecycle after checkout failed: %s", lc_err)
+
         # CRN: generate on payment confirmation only (idempotent; once set, never changed)
+        client_crn = None
         try:
             from services.crn_service import ensure_client_crn
-            await ensure_client_crn(client_id, stripe_event_id=event.get("id") if event else None)
+            client_crn = await ensure_client_crn(client_id, stripe_event_id=event.get("id") if event else None)
         except Exception as crn_err:
             logger.error(f"CRN assignment failed for {client_id}: {crn_err}")
             raise
@@ -649,12 +742,8 @@ class StripeWebhookService:
             }
             subscription_invoice_number = None
             try:
-                period_start = datetime.fromtimestamp(
-                    int(subscription.get("current_period_start") or 0), tz=timezone.utc
-                )
-                period_end = datetime.fromtimestamp(
-                    int(subscription.get("current_period_end") or 0), tz=timezone.utc
-                )
+                period_start = period_end_from_stripe_unix(subscription.get("current_period_start"))
+                period_end = period_end_from_stripe_unix(subscription.get("current_period_end"))
                 ok_pdf, pdf_sub, inv_no, pdf_err = await ensure_subscription_checkout_invoice_pdf(
                     client_id=client_id,
                     checkout_session_id=checkout_session_id or "",
@@ -771,6 +860,8 @@ class StripeWebhookService:
                         "status": "converted",
                         "converted_at": now_utc.isoformat(),
                         "client_id": client_id,
+                        "customer_reference": client_crn or "",
+                        "lead_reference": (lead_id_meta or "").strip(),
                         "stripe_subscription_id": stripe_subscription_id,
                         "updated_at": now_utc.isoformat(),
                     }},
@@ -825,12 +916,18 @@ class StripeWebhookService:
                 try:
                     email_lower = customer_email.strip().lower()
                     now_utc = datetime.now(timezone.utc)
+                    existing_lead = await db.risk_leads.find_one(
+                        {"email": email_lower},
+                        {"_id": 0, "lead_id": 1},
+                    )
                     res = await db.risk_leads.update_one(
                         {"email": email_lower, "status": {"$ne": "converted"}},
                         {"$set": {
                             "status": "converted",
                             "converted_at": now_utc.isoformat(),
                             "client_id": client_id,
+                            "customer_reference": client_crn or "",
+                            "lead_reference": (existing_lead or {}).get("lead_id", ""),
                             "stripe_subscription_id": stripe_subscription_id,
                             "updated_at": now_utc.isoformat(),
                         }},
@@ -873,6 +970,19 @@ class StripeWebhookService:
                                 logger.warning("Central lead conversion sync (by email) failed: %s", e)
                 except Exception as e:
                     logger.warning("Risk lead conversion by email failed email=%s: %s", customer_email[:20] if customer_email else "", e)
+
+        try:
+            from services.lead_automation_service import record_client_event, evaluate_client_automation_rules, EVENT_PAYMENT_SUCCESSFUL
+            await record_client_event(
+                client_id=client_id,
+                event_type=EVENT_PAYMENT_SUCCESSFUL,
+                source="stripe_webhook.subscription_checkout",
+                metadata={"subscription_id": stripe_subscription_id, "plan_code": plan_code.value},
+                source_ref=checkout_session_id,
+            )
+            await evaluate_client_automation_rules(client_id, EVENT_PAYMENT_SUCCESSFUL)
+        except Exception as flow_err:
+            logger.warning("Post-payment automation trigger skipped for client %s: %s", client_id, flow_err)
 
         return {
             "handled": True,
@@ -948,21 +1058,26 @@ class StripeWebhookService:
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(subscription_status)
         
         # Update billing record; increment entitlements_version on plan/status change from Stripe
+        period_end_dt = period_end_from_stripe_unix(subscription.get("current_period_end"))
         billing_update = {
             "current_plan_code": new_plan_code.value,
             "subscription_status": subscription_status.upper(),
             "entitlement_status": entitlement_status.value,
-            "current_period_end": datetime.fromtimestamp(
-                subscription.get("current_period_end", 0),
-                tz=timezone.utc
-            ),
             "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
             "latest_invoice_id": subscription.get("latest_invoice"),
             "updated_at": datetime.now(timezone.utc),
         }
+        if period_end_dt:
+            billing_update["current_period_end"] = period_end_dt
+        sub_status_update: Dict[str, Any] = {
+            "$set": billing_update,
+            "$inc": {"entitlements_version": 1},
+        }
+        if not period_end_dt:
+            sub_status_update["$unset"] = {"current_period_end": ""}
         await db.client_billing.update_one(
             {"client_id": client_id},
-            {"$set": billing_update, "$inc": {"entitlements_version": 1}}
+            sub_status_update,
         )
         billing_after = await db.client_billing.find_one(
             {"client_id": client_id},
@@ -983,6 +1098,11 @@ class StripeWebhookService:
                 }
             }
         )
+        try:
+            await sync_subscription_lifecycle(client_id, bump_version=False)
+        except Exception as lc_err:
+            logger.warning("sync_subscription_lifecycle after subscription change failed: %s", lc_err)
+
         logger.info(
             "HANDLER_END event.type=%s client_id=%s db_updated=subscription_status=%s billing_plan=%s entitlement_status=%s",
             event_type, client_id, sub_status_set, new_plan_code.value, entitlement_status.value,
@@ -1118,7 +1238,13 @@ class StripeWebhookService:
                     "subscription_status": "CANCELED",
                     "entitlement_status": EntitlementStatus.DISABLED.value,
                     "updated_at": datetime.now(timezone.utc),
-                }
+                },
+                "$unset": {
+                    "payment_failed_at": "",
+                    "grace_period_ends_at": "",
+                    "dunning_stripe_invoice_id": "",
+                    "grace_mid_reminder_sent_at": "",
+                },
             }
         )
         
@@ -1131,6 +1257,11 @@ class StripeWebhookService:
                 }
             }
         )
+
+        try:
+            await sync_subscription_lifecycle(client_id, bump_version=False)
+        except Exception as lc_err:
+            logger.warning("sync_subscription_lifecycle after subscription deleted failed: %s", lc_err)
         
         # Reconcile: revoke all paid-feature state (scheduled reports, SMS, tenant portal, white-label)
         try:
@@ -1165,7 +1296,7 @@ class StripeWebhookService:
                     context={
                         "client_name": client.get("contact_name", "Valued Customer"),
                         "access_end_date": access_end_date,
-                        "billing_portal_link": f"{base_url}/app/billing",
+                        "billing_portal_link": f"{base_url}/settings/billing",
                         "company_name": "Pleerity Enterprise Ltd",
                         "support_email": "info@pleerityenterprise.co.uk",
                     },
@@ -1201,13 +1332,16 @@ class StripeWebhookService:
         }
     
     async def _handle_invoice_paid(self, invoice: Dict, event: Dict) -> Dict:
-        """Handle invoice.paid - payment successful."""
+        """Handle invoice.paid / invoice.payment_succeeded — renewal or recovery after failure."""
         db = database.get_db()
         stripe_customer_id = invoice.get("customer")
         subscription_id = invoice.get("subscription")
+        event_type = (event or {}).get("type") or "invoice.paid"
         logger.info(
-            "HANDLER_START event.type=invoice.paid stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) computed_client_id=(lookup)",
-            stripe_customer_id, subscription_id,
+            "HANDLER_START event.type=%s stripe_customer_id=%s subscription_id=%s",
+            event_type,
+            stripe_customer_id,
+            subscription_id,
         )
         if not subscription_id:
             return {"handled": False, "reason": "not_subscription_invoice"}
@@ -1224,38 +1358,126 @@ class StripeWebhookService:
         client_id = billing.get("client_id")
         old_status = billing.get("subscription_status")
         
-        # Fetch current subscription status
+        # Fetch current subscription status (Stripe source of truth)
         subscription = stripe.Subscription.retrieve(subscription_id)
         new_status = subscription.get("status", "unknown")
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(new_status)
-        
-        # Update billing
-        await db.client_billing.update_one(
-            {"client_id": client_id},
-            {
-                "$set": {
-                    "subscription_status": new_status.upper(),
-                    "entitlement_status": entitlement_status.value,
-                    "latest_invoice_id": invoice.get("id"),
-                    "updated_at": datetime.now(timezone.utc),
+        period_end_dt = period_end_from_stripe_unix(subscription.get("current_period_end"))
+        had_dunning = bool(billing.get("payment_failed_at") or billing.get("grace_period_ends_at"))
+
+        set_doc: Dict[str, Any] = {
+            "subscription_status": new_status.upper(),
+            "entitlement_status": entitlement_status.value,
+            "latest_invoice_id": invoice.get("id"),
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if period_end_dt:
+            set_doc["current_period_end"] = period_end_dt
+
+        update: Dict[str, Any] = {"$set": set_doc}
+        unset_doc: Dict[str, str] = {}
+        if not period_end_dt:
+            unset_doc["current_period_end"] = ""
+        if had_dunning:
+            unset_doc.update(
+                {
+                    "payment_failed_at": "",
+                    "grace_period_ends_at": "",
+                    "dunning_stripe_invoice_id": "",
+                    "grace_mid_reminder_sent_at": "",
+                    "renewal_reminder_period_key_7d": "",
+                    "renewal_reminder_period_key_3d": "",
                 }
-            }
+            )
+        if unset_doc:
+            update["$unset"] = unset_doc
+        if had_dunning:
+            update["$inc"] = {"entitlements_version": 1}
+
+        await db.client_billing.update_one({"client_id": client_id}, update)
+
+        billing_after = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "entitlements_version": 1},
         )
-        
-        # Update client
+        entitlements_version = (billing_after or {}).get("entitlements_version", 1)
+
+        sub_for_client = "ACTIVE" if new_status in ("active", "trialing") else new_status.upper()
         await db.clients.update_one(
             {"client_id": client_id},
             {
                 "$set": {
-                    "subscription_status": "ACTIVE" if new_status in ("active", "trialing") else new_status.upper(),
+                    "subscription_status": sub_for_client,
                     "entitlement_status": entitlement_status.value,
+                    "entitlements_version": entitlements_version,
                 }
-            }
+            },
         )
-        
-        # If recovering from PAST_DUE/UNPAID, re-enable features
+
+        try:
+            await sync_subscription_lifecycle(client_id, bump_version=False)
+        except Exception as lc_err:
+            logger.warning("sync_subscription_lifecycle after invoice.paid failed: %s", lc_err)
+
+        billing_final = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "entitlement_status": 1})
+        final_ent = (billing_final or {}).get("entitlement_status") or entitlement_status.value
+
         recovered = old_status in ("PAST_DUE", "UNPAID") and new_status == "active"
-        
+
+        # Recurring cycle confirmation (not initial checkout — that uses SUBSCRIPTION_CONFIRMED)
+        if invoice.get("billing_reason") == "subscription_cycle" and new_status == "active":
+            try:
+                client_row = await db.clients.find_one(
+                    {"client_id": client_id},
+                    {"_id": 0, "contact_name": 1, "full_name": 1},
+                )
+                client_name = (client_row or {}).get("contact_name") or (client_row or {}).get("full_name") or "Valued Customer"
+                from utils.public_app_url import get_public_app_url
+                base_url = get_public_app_url(for_email_links=False)
+                cpe_out = period_end_dt or billing.get("current_period_end")
+                renewal_display = ""
+                if cpe_out:
+                    if hasattr(cpe_out, "strftime"):
+                        renewal_display = cpe_out.strftime("%d %B %Y")
+                    else:
+                        renewal_display = str(cpe_out)[:10]
+                amt = (invoice.get("amount_paid") or 0) / 100.0
+                cur = (invoice.get("currency") or "gbp").lower()
+                sym = "£" if cur == "gbp" else ""
+                amt_display = f"{sym}{amt:.2f}" + ("" if sym else f" {cur.upper()}")
+                # Invoice-stable idempotency: Stripe may emit both invoice.paid and invoice.payment_succeeded
+                inv_stable = (invoice.get("id") or "").strip()
+                event_id = (event or {}).get("id", "")
+                idempotency_key = (
+                    f"{inv_stable}_SUBSCRIPTION_RENEWAL_PAID"
+                    if inv_stable
+                    else (f"{event_id}_SUBSCRIPTION_RENEWAL_PAID" if event_id else None)
+                )
+                from services.notification_orchestrator import notification_orchestrator
+                payment_date_display = datetime.now(timezone.utc).strftime("%d %B %Y %H:%M UTC")
+                next_steps = (
+                    f"<p>Your subscription remains active. Next renewal: <strong>{renewal_display or 'see Billing'}</strong>.</p>"
+                    f"<p>You can review invoices and payment methods any time from Billing.</p>"
+                )
+                await notification_orchestrator.send(
+                    template_key="SUBSCRIPTION_RENEWAL_PAID",
+                    client_id=client_id,
+                    context={
+                        "client_name": client_name,
+                        "plan_name": "Compliance Vault Pro subscription",
+                        "amount_display": amt_display,
+                        "payment_date_display": payment_date_display,
+                        "reference_display": (invoice.get("id") or "")[:120],
+                        "next_steps_html": next_steps,
+                        "receipt_cta_label": "Open Billing",
+                        "receipt_cta_url": f"{base_url}/settings/billing",
+                    },
+                    idempotency_key=idempotency_key,
+                    event_type=event_type,
+                )
+            except Exception as mail_err:
+                logger.warning("SUBSCRIPTION_RENEWAL_PAID send failed (non-blocking): %s", mail_err)
+
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -1263,37 +1485,47 @@ class StripeWebhookService:
             client_id=client_id,
             metadata={
                 "action_type": "STRIPE_EVENT_PROCESSED",
-                "event_type": "invoice.paid",
+                "event_type": event_type,
                 "invoice_id": invoice.get("id"),
                 "old_status": old_status,
                 "new_status": new_status.upper(),
-                "entitlement_status": entitlement_status.value,
+                "entitlement_status": final_ent,
                 "recovered_from_past_due": recovered,
+                "cleared_dunning": had_dunning,
             }
         )
         
         logger.info(
-            "HANDLER_END event.type=invoice.paid client_id=%s db_updated=subscription_status=%s entitlement_status=%s",
-            client_id, new_status.upper(), entitlement_status.value,
+            "HANDLER_END event.type=%s client_id=%s db_updated=subscription_status=%s entitlement_status=%s",
+            event_type,
+            client_id,
+            new_status.upper(),
+            final_ent,
         )
         try:
             from services.analytics_service import log_event
+            inv_for_analytics = (invoice.get("id") or "").strip()
+            analytics_dedupe = (
+                f"invoice_paid:{inv_for_analytics}" if inv_for_analytics else (event or {}).get("id")
+            )
             await log_event(
                 "payment_succeeded",
                 {"client_id": client_id, "stripe_subscription_id": subscription_id},
-                idempotency_key=(event or {}).get("id"),
+                idempotency_key=analytics_dedupe,
             )
         except Exception:
             pass
-        # Normalized payment record for Revenue Analytics (idempotent by stripe_event_id)
-        event_id = (event or {}).get("id")
-        if event_id and client_id:
+        # Normalized payment record: dedupe by invoice id so invoice.paid + payment_succeed don't double-insert
+        event_id_raw = (event or {}).get("id")
+        inv_pid = (invoice.get("id") or "").strip()
+        payment_row_key = f"stripe_invoice:{inv_pid}:paid" if inv_pid else event_id_raw
+        if payment_row_key and client_id:
             charge_id = invoice.get("charge")
             if isinstance(charge_id, dict):
                 charge_id = charge_id.get("id") if charge_id else None
             await self._insert_payment(
                 client_id=client_id,
-                stripe_event_id=event_id,
+                stripe_event_id=payment_row_key,
                 amount=invoice.get("amount_paid") or 0,
                 currency=(invoice.get("currency") or "gbp").lower(),
                 type="subscription",
@@ -1305,7 +1537,7 @@ class StripeWebhookService:
             "handled": True,
             "client_id": client_id,
             "subscription_id": subscription_id,
-            "entitlement_status": entitlement_status.value,
+            "entitlement_status": final_ent,
             "recovered": recovered,
         }
     
@@ -1337,32 +1569,61 @@ class StripeWebhookService:
         subscription = stripe.Subscription.retrieve(subscription_id)
         new_status = subscription.get("status", "past_due")
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(new_status)
-        
-        # Update billing to LIMITED
-        await db.client_billing.update_one(
+
+        inv_id = invoice.get("id")
+        now = datetime.now(timezone.utc)
+        g_days = grace_period_days()
+        prev_dunning = billing.get("dunning_stripe_invoice_id")
+        grace_extra: Dict[str, Any] = {}
+        bump = False
+        if prev_dunning != inv_id:
+            grace_extra["dunning_stripe_invoice_id"] = inv_id
+            grace_extra["grace_period_ends_at"] = now + timedelta(days=g_days)
+            grace_extra["grace_mid_reminder_sent_at"] = None
+            bump = True
+        elif not billing.get("grace_period_ends_at"):
+            grace_extra["grace_period_ends_at"] = now + timedelta(days=g_days)
+            bump = True
+
+        billing_set: Dict[str, Any] = {
+            "subscription_status": new_status.upper(),
+            "entitlement_status": entitlement_status.value,
+            "payment_failed_at": now,
+            "latest_invoice_id": inv_id,
+            "updated_at": now,
+            **grace_extra,
+        }
+        pay_update: Dict[str, Any] = {"$set": billing_set}
+        if bump:
+            pay_update["$inc"] = {"entitlements_version": 1}
+
+        await db.client_billing.update_one({"client_id": client_id}, pay_update)
+
+        billing_after = await db.client_billing.find_one(
             {"client_id": client_id},
-            {
-                "$set": {
-                    "subscription_status": new_status.upper(),
-                    "entitlement_status": entitlement_status.value,
-                    "payment_failed_at": datetime.now(timezone.utc),
-                    "latest_invoice_id": invoice.get("id"),
-                    "updated_at": datetime.now(timezone.utc),
-                }
-            }
+            {"_id": 0, "entitlements_version": 1},
         )
-        
-        # Update client
+        entitlements_version = (billing_after or {}).get("entitlements_version", 1)
+
         await db.clients.update_one(
             {"client_id": client_id},
             {
                 "$set": {
                     "subscription_status": new_status.upper(),
                     "entitlement_status": entitlement_status.value,
+                    "entitlements_version": entitlements_version,
                 }
-            }
+            },
         )
-        
+
+        try:
+            await sync_subscription_lifecycle(client_id, bump_version=False)
+        except Exception as lc_err:
+            logger.warning("sync_subscription_lifecycle after payment_failed failed: %s", lc_err)
+
+        billing_final = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "entitlement_status": 1})
+        final_ent = (billing_final or {}).get("entitlement_status") or entitlement_status.value
+
         # Send payment failed email via orchestrator (idempotent, no direct provider)
         try:
             client_for_name = await db.clients.find_one(
@@ -1385,8 +1646,9 @@ class StripeWebhookService:
                 client_id=client_id,
                 context={
                     "client_name": client_name,
-                    "billing_portal_link": f"{base_url}/app/billing",
+                    "billing_portal_link": f"{base_url}/settings/billing",
                     "retry_date": retry_date or "",
+                    "grace_period_days": str(g_days),
                 },
                 idempotency_key=idempotency_key,
                 event_type="invoice.payment_failed",
@@ -1408,14 +1670,15 @@ class StripeWebhookService:
                 "event_type": "invoice.payment_failed",
                 "invoice_id": invoice.get("id"),
                 "subscription_status": new_status.upper(),
-                "entitlement_status": entitlement_status.value,
+                "entitlement_status": final_ent,
                 "side_effects_blocked": True,
+                "grace_period_days": g_days,
             }
         )
         
         logger.info(
             "HANDLER_END event.type=invoice.payment_failed client_id=%s db_updated=subscription_status=%s entitlement_status=%s",
-            client_id, new_status.upper(), entitlement_status.value,
+            client_id, new_status.upper(), final_ent,
         )
         # Normalized payment record (failed) for Revenue Analytics
         event_id = (event or {}).get("id")
@@ -1433,7 +1696,7 @@ class StripeWebhookService:
             "handled": True,
             "client_id": client_id,
             "subscription_id": subscription_id,
-            "entitlement_status": entitlement_status.value,
+            "entitlement_status": final_ent,
             "side_effects_blocked": True,
         }
     
@@ -1473,7 +1736,12 @@ class StripeWebhookService:
         stripe_payment_intent_id: Optional[str] = None,
         cost_pence: Optional[int] = None,
     ) -> None:
-        """Insert normalized payment for Revenue Analytics. Idempotent by stripe_event_id. cost_pence optional for gross profit."""
+        """Insert normalized payment for Revenue Analytics.
+
+        Idempotent by stripe_event_id (unique index). For subscription invoice *paid* rows,
+        pass a stable key such as ``stripe_invoice:{invoice_id}:paid`` so duplicate
+        Stripe event types (e.g. invoice.paid + invoice.payment_succeeded) do not double-count.
+        """
         db = database.get_db()
         if not db:
             return

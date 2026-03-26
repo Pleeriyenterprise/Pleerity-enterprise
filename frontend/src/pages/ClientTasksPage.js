@@ -314,6 +314,18 @@ export default function ClientTasksPage() {
     load();
   }, [load]);
 
+  // Keep Today inbox aligned with real-time Action -> Outcome events.
+  useEffect(() => {
+    if (!isClientUser) return undefined;
+    const onOutcome = (evt) => {
+      const outcomePropertyId = evt?.detail?.property_id;
+      if (propertyFilter && outcomePropertyId && outcomePropertyId !== propertyFilter) return;
+      load();
+    };
+    window.addEventListener('compliance-outcome', onOutcome);
+    return () => window.removeEventListener('compliance-outcome', onOutcome);
+  }, [isClientUser, propertyFilter, load]);
+
   const filterTask = useCallback(
     (t) => {
       if (filter === 'all') return true;

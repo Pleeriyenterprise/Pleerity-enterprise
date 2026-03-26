@@ -14,9 +14,13 @@ import stripe
 import os
 import logging
 from typing import Optional, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from database import database
+from services.billing_period_utils import (
+    normalize_stored_period_end_for_api,
+    period_end_from_stripe_unix,
+)
 from services.plan_registry import (
     plan_registry, PlanCode, EntitlementStatus,
     get_stripe_price_mappings, _get_stripe_mode, StripeModeMismatchError,
@@ -218,7 +222,7 @@ class StripeService:
             # Should not happen if they have stripe_customer_id from our flow; fallback to portal home
             portal_session = stripe.billing_portal.Session.create(
                 customer=stripe_customer_id,
-                return_url=f"{origin_url.rstrip('/')}/app/billing",
+                return_url=f"{origin_url.rstrip('/')}/settings/billing",
             )
             return {
                 "portal_url": portal_session.url,
@@ -258,7 +262,7 @@ class StripeService:
 
             portal_session = stripe.billing_portal.Session.create(
                 customer=stripe_customer_id,
-                return_url=f"{origin_url.rstrip('/')}/app/billing",
+                return_url=f"{origin_url.rstrip('/')}/settings/billing",
                 flow_data={
                     "type": "subscription_update_confirm",
                     "subscription_update_confirm": {
@@ -309,16 +313,77 @@ class StripeService:
                 "status": "NONE",
                 "entitlement_status": EntitlementStatus.DISABLED.value,
             }
-        
+
+        # Legacy rows without lifecycle: one-time reconcile (no version bump)
+        if billing.get("billing_lifecycle_state") is None:
+            try:
+                from services.subscription_lifecycle_service import sync_subscription_lifecycle
+
+                await sync_subscription_lifecycle(client_id, bump_version=False)
+                billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0}) or billing
+            except Exception as sync_err:
+                logger.warning(
+                    "get_subscription_status: lifecycle backfill skipped client_id=%s: %s",
+                    client_id,
+                    sync_err,
+                )
+
+        cpe = normalize_stored_period_end_for_api(billing.get("current_period_end"))
+        stripe_sub_id = billing.get("stripe_subscription_id")
+        charge_automatically: Optional[bool] = None
+        if stripe_sub_id and (stripe.api_key or "").strip():
+            try:
+                sub = stripe.Subscription.retrieve(stripe_sub_id)
+                charge_automatically = sub.get("collection_method") == "charge_automatically"
+                if cpe is None:
+                    fresh = period_end_from_stripe_unix(sub.get("current_period_end"))
+                    if fresh:
+                        await db.client_billing.update_one(
+                            {"client_id": client_id},
+                            {
+                                "$set": {
+                                    "current_period_end": fresh,
+                                    "updated_at": datetime.now(timezone.utc),
+                                }
+                            },
+                        )
+                        cpe = fresh
+            except stripe.error.StripeError as e:
+                logger.warning(
+                    "get_subscription_status: could not refresh subscription from Stripe client_id=%s: %s",
+                    client_id,
+                    e,
+                )
+
+        cpe_out = cpe.isoformat() if cpe else None
+        g_end = billing.get("grace_period_ends_at")
+        pfail = billing.get("payment_failed_at")
+
+        lifecycle_out = (billing.get("billing_lifecycle_state") or "active").lower()
+        sub_u = (billing.get("subscription_status") or "").upper()
+        if (
+            lifecycle_out == "active"
+            and cpe
+            and sub_u in ("ACTIVE", "TRIALING")
+            and not billing.get("cancel_at_period_end")
+        ):
+            delta = cpe - datetime.now(timezone.utc)
+            if timedelta(0) < delta <= timedelta(days=7):
+                lifecycle_out = "renewing"
+
         return {
             "has_subscription": True,
             "stripe_subscription_id": billing.get("stripe_subscription_id"),
             "current_plan_code": billing.get("current_plan_code"),
             "subscription_status": billing.get("subscription_status"),
             "entitlement_status": billing.get("entitlement_status"),
-            "current_period_end": billing.get("current_period_end"),
+            "billing_lifecycle_state": lifecycle_out,
+            "current_period_end": cpe_out,
             "cancel_at_period_end": billing.get("cancel_at_period_end", False),
             "onboarding_fee_paid": billing.get("onboarding_fee_paid", False),
+            "grace_period_ends_at": g_end.isoformat() if g_end else None,
+            "payment_failed_at": pfail.isoformat() if pfail else None,
+            "charge_automatically": charge_automatically,
         }
     
     async def cancel_subscription(
@@ -355,19 +420,23 @@ class StripeService:
                     subscription_id,
                     cancel_at_period_end=True
                 )
-            
-            # Update local record
-            await db.client_billing.update_one(
-                {"client_id": client_id},
-                {
-                    "$set": {
-                        "cancel_at_period_end": not cancel_immediately,
-                        "subscription_status": "CANCELED" if cancel_immediately else billing.get("subscription_status"),
-                        "entitlement_status": EntitlementStatus.DISABLED.value if cancel_immediately else billing.get("entitlement_status"),
-                        "updated_at": datetime.now(timezone.utc),
-                    }
-                }
-            )
+
+            stripe_cpe = period_end_from_stripe_unix(subscription.get("current_period_end"))
+            cancel_set: Dict[str, Any] = {
+                "cancel_at_period_end": not cancel_immediately,
+                "subscription_status": "CANCELED" if cancel_immediately else billing.get("subscription_status"),
+                "entitlement_status": EntitlementStatus.DISABLED.value if cancel_immediately else billing.get("entitlement_status"),
+                "updated_at": datetime.now(timezone.utc),
+            }
+            if stripe_cpe:
+                cancel_set["current_period_end"] = stripe_cpe
+
+            cancel_update: Dict[str, Any] = {"$set": cancel_set}
+            if not stripe_cpe:
+                cancel_update["$unset"] = {"current_period_end": ""}
+
+            # Update local record (Stripe response is source of truth for period end)
+            await db.client_billing.update_one({"client_id": client_id}, cancel_update)
             
             # Audit log
             await create_audit_log(
@@ -386,7 +455,7 @@ class StripeService:
             return {
                 "success": True,
                 "cancel_at_period_end": not cancel_immediately,
-                "current_period_end": billing.get("current_period_end"),
+                "current_period_end": stripe_cpe.isoformat() if stripe_cpe else None,
             }
             
         except stripe.error.StripeError as e:

@@ -3,9 +3,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Optional
 import logging
 import uuid
+import hashlib
 from auth import decode_access_token
 from models import UserRole, OnboardingStatus, PasswordStatus
 from database import database
+from utils.request_ip import get_client_ip as _request_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,16 @@ async def get_current_user(request: Request) -> Optional[dict]:
     payload = decode_access_token(token)
     
     if not payload:
+        try:
+            from services.security_monitoring_service import record_security_event
+            await record_security_event(
+                event_type="auth.jwt_invalid",
+                ip=_request_client_ip(request),
+                details={"path": request.url.path},
+                severity="medium",
+            )
+        except Exception:
+            pass
         return None
     
     # If token carries session_version, verify it matches DB (force-logout invalidation)
@@ -43,10 +55,44 @@ async def get_current_user(request: Request) -> Optional[dict]:
             {"_id": 0, "session_version": 1}
         )
         if user_doc is None:
+            try:
+                from services.security_monitoring_service import record_security_event
+                await record_security_event(
+                    event_type="auth.invalid_session",
+                    user_id=payload.get("portal_user_id"),
+                    ip=_request_client_ip(request),
+                    details={"reason": "portal_user_missing"},
+                    severity="medium",
+                )
+            except Exception:
+                pass
             return None
         if user_doc.get("session_version", 0) != payload.get("session_version", 0):
+            try:
+                from services.security_monitoring_service import record_security_event
+                await record_security_event(
+                    event_type="auth.invalid_session",
+                    user_id=payload.get("portal_user_id"),
+                    ip=_request_client_ip(request),
+                    details={"reason": "session_version_mismatch"},
+                    severity="high",
+                )
+            except Exception:
+                pass
             return None
-    
+    try:
+        token_fingerprint = hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
+        from services.security_monitoring_service import record_security_event
+        await record_security_event(
+            event_type="auth.token_used",
+            user_id=payload.get("portal_user_id"),
+            ip=_request_client_ip(request),
+            details={"token_fingerprint": token_fingerprint, "path": request.url.path},
+            severity="low",
+        )
+    except Exception:
+        pass
+
     return payload
 
 async def require_auth(request: Request) -> dict:
@@ -92,6 +138,17 @@ async def require_role_in(request: Request, allowed_roles: tuple) -> dict:
     """Require user role to be one of allowed_roles (e.g. OWNER, ADMIN, SUPPORT)."""
     user = await require_auth(request)
     if user.get("role") not in [r.value if hasattr(r, "value") else r for r in allowed_roles]:
+        try:
+            from services.security_monitoring_service import record_security_event
+            await record_security_event(
+                event_type="auth.role_violation",
+                user_id=user.get("portal_user_id"),
+                ip=_request_client_ip(request),
+                details={"path": request.url.path, "role": user.get("role")},
+                severity="medium",
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
     return user
 

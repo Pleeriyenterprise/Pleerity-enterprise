@@ -40,6 +40,17 @@ export default function ViewOrderPage() {
       }
     };
     fetchOrder();
+
+    // Reduce token leakage via browser history/referrer by removing token query from current URL.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('token')) {
+        url.searchParams.delete('token');
+        window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+      }
+    } catch (_) {
+      // no-op
+    }
   }, [token]);
 
   if (loading) {

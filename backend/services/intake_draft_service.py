@@ -1181,6 +1181,9 @@ async def mark_draft_abandoned(draft_id: str) -> Dict[str, Any]:
     """Mark a draft as abandoned."""
     db = database.get_db()
     now = datetime.now(timezone.utc)
+    draft = await get_draft(draft_id)
+    if not draft:
+        raise ValueError(f"Draft not found: {draft_id}")
     
     await db.intake_drafts.update_one(
         {"draft_id": draft_id},
@@ -1197,8 +1200,31 @@ async def mark_draft_abandoned(draft_id: str) -> Dict[str, Any]:
             }
         }
     )
-    
-    return await get_draft(draft_id)
+    updated = await get_draft(draft_id)
+    try:
+        from services.lead_automation_service import (
+            record_event,
+            evaluate_automation_rules,
+            EVENT_CHECKOUT_ABANDONED,
+        )
+        lead = None
+        lead = await db.leads.find_one({"intake_draft_id": draft_id}, {"_id": 0, "lead_id": 1})
+        if not lead:
+            lead_email = ((draft.get("client_identity") or {}).get("email") or "").strip().lower()
+            if lead_email:
+                lead = await db.leads.find_one({"email": lead_email}, {"_id": 0, "lead_id": 1})
+        if lead and lead.get("lead_id"):
+            await record_event(
+                lead_id=lead["lead_id"],
+                event_type=EVENT_CHECKOUT_ABANDONED,
+                source="intake_draft_service.mark_draft_abandoned",
+                metadata={"draft_id": draft_id, "service_code": draft.get("service_code")},
+                source_ref=draft_id,
+            )
+            await evaluate_automation_rules(lead["lead_id"], EVENT_CHECKOUT_ABANDONED)
+    except Exception as e:
+        logger.warning("Failed to emit checkout_abandoned event for draft %s: %s", draft_id, e)
+    return updated
 
 
 async def cleanup_abandoned_drafts(hours_old: int = 24) -> int:
@@ -1211,24 +1237,35 @@ async def cleanup_abandoned_drafts(hours_old: int = 24) -> int:
     
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours_old)
     
-    result = await db.intake_drafts.update_many(
+    stale_drafts = await db.intake_drafts.find(
         {
             "status": {"$in": [DraftStatus.DRAFT, DraftStatus.READY_FOR_PAYMENT]},
             "updated_at": {"$lt": cutoff},
         },
-        {
-            "$set": {"status": DraftStatus.ABANDONED},
-            "$push": {
-                "audit_log": {
-                    "action": "AUTO_ABANDONED",
-                    "timestamp": datetime.now(timezone.utc),
-                    "details": {"reason": f"Inactive for {hours_old}+ hours"},
-                }
-            }
-        }
-    )
-    
-    if result.modified_count > 0:
-        logger.info(f"Marked {result.modified_count} drafts as abandoned")
-    
-    return result.modified_count
+        {"_id": 0, "draft_id": 1},
+    ).to_list(500)
+    modified = 0
+    for row in stale_drafts:
+        draft_id = row.get("draft_id")
+        if not draft_id:
+            continue
+        try:
+            await mark_draft_abandoned(draft_id)
+            await db.intake_drafts.update_one(
+                {"draft_id": draft_id},
+                {
+                    "$push": {
+                        "audit_log": {
+                            "action": "AUTO_ABANDONED",
+                            "timestamp": datetime.now(timezone.utc),
+                            "details": {"reason": f"Inactive for {hours_old}+ hours"},
+                        }
+                    }
+                },
+            )
+            modified += 1
+        except Exception as e:
+            logger.warning("cleanup_abandoned_drafts skip draft %s: %s", draft_id, e)
+    if modified > 0:
+        logger.info(f"Marked {modified} drafts as abandoned")
+    return modified

@@ -22,7 +22,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
-from middleware import admin_route_guard, require_support_or_above, get_current_user
+from middleware import require_support_or_above, client_route_guard, require_owner_or_admin, get_current_user
 from utils.rate_limiter import rate_limiter
 from services.support_service import (
     ConversationService, MessageService, TicketService, SupportAuditService,
@@ -143,14 +143,18 @@ async def chat_endpoint(
         
         # Get conversation history
         history = await MessageService.get_messages(conversation_id, limit=20)
+
+        user = await get_current_user(request)
+        client_id = (user or {}).get("client_id")
+        snapshot = await get_client_snapshot(client_id) if client_id else None
         
         # Process message through chatbot (with optional conversation context for guided assistant)
         result = await handle_chat_message(
             conversation_id=conversation_id,
             message=body.message,
             conversation_history=history,
-            client_context=None,
-            is_authenticated=False,
+            client_context=snapshot,
+            is_authenticated=bool(snapshot),
             conversation_context=body.conversation_context,
         )
         
@@ -165,15 +169,16 @@ async def chat_endpoint(
         )
         await MessageService.add_message(conversation_id, bot_msg)
         
-        # Update conversation metadata
-        await ConversationService.update_conversation(
-            conversation_id,
-            {
-                "service_area": result.get("metadata", {}).get("service_area"),
-                "category": result.get("metadata", {}).get("category"),
-                "urgency": result.get("metadata", {}).get("urgency"),
-            }
-        )
+        # Update conversation metadata + last structured assistant handoff (for ticket queue)
+        hs = result.get("handoff_summary") or (result.get("metadata") or {}).get("handoff_summary")
+        conv_updates: Dict[str, Any] = {
+            "service_area": result.get("metadata", {}).get("service_area"),
+            "category": result.get("metadata", {}).get("category"),
+            "urgency": result.get("metadata", {}).get("urgency"),
+        }
+        if hs:
+            conv_updates["last_assistant_handoff_summary"] = hs[:12000] + ("…" if len(hs) > 12000 else "")
+        await ConversationService.update_conversation(conversation_id, conv_updates)
         
         # Audit log
         await SupportAuditService.log_action(
@@ -194,6 +199,7 @@ async def chat_endpoint(
             metadata=result.get("metadata", {}),
             conversation_context=result.get("conversation_context"),
             actions=result.get("actions"),
+            handoff_summary=result.get("handoff_summary"),
         )
         
         # Add handoff options if needed
@@ -411,9 +417,16 @@ async def create_ticket_endpoint(
             crn=body.crn,
         )
         
+        assistant_hs = None
+        if body.conversation_id:
+            conv = await ConversationService.get_conversation(body.conversation_id)
+            if conv:
+                assistant_hs = conv.get("last_assistant_handoff_summary")
+
         ticket = await TicketService.create_ticket(
             ticket_data,
-            conversation_id=body.conversation_id
+            conversation_id=body.conversation_id,
+            assistant_handoff_summary=assistant_hs,
         )
         
         # Get transcript if conversation linked
@@ -443,7 +456,8 @@ async def create_ticket_endpoint(
             category=ticket_data.category.value,
             priority=ticket_data.priority.value,
             service_area=ticket_data.service_area.value,
-            transcript=transcript
+            transcript=transcript,
+            assistant_handoff_summary=assistant_hs,
         )
         
         # Audit log
@@ -521,6 +535,7 @@ async def live_chat_handoff(
     except Exception:
         service_area = ServiceArea.OTHER
 
+    assistant_hs = conversation.get("last_assistant_handoff_summary")
     ticket_data = TicketCreate(
         subject="Live chat handoff",
         description=desc,
@@ -531,76 +546,11 @@ async def live_chat_handoff(
         email=conversation.get("email"),
         crn=conversation.get("crn"),
     )
-    ticket = await TicketService.create_ticket(ticket_data, conversation_id=conversation_id)
-
-    await SupportAuditService.log_action(
-        action="live_chat_handoff_recorded",
-        actor_type="user",
-        actor_id=None,
-        resource_type="conversation",
-        resource_id=conversation_id,
-        details={"ticket_id": ticket["ticket_id"]},
-        ip_address=request.client.host if request.client else None,
+    ticket = await TicketService.create_ticket(
+        ticket_data,
+        conversation_id=conversation_id,
+        assistant_handoff_summary=assistant_hs,
     )
-    return {"success": True, "ticket_id": ticket["ticket_id"], "already_linked": False}
-
-
-@public_router.post("/conversation/{conversation_id}/live-chat-handoff")
-async def live_chat_handoff(
-    request: Request,
-    conversation_id: str,
-):
-    """
-    Record that the user chose Live Chat. Creates a support ticket linked to the
-    conversation and sets preferred_contact=livechat. Idempotent: if a ticket
-    is already linked, returns existing ticket_id.
-    """
-    conversation = await ConversationService.get_conversation(conversation_id)
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-
-    db = database.get_db()
-    existing_ticket = await db[TICKETS_COLLECTION].find_one(
-        {"conversation_id": conversation_id},
-        {"_id": 0, "ticket_id": 1},
-    )
-
-    await ConversationService.update_conversation(
-        conversation_id,
-        {"preferred_contact": "livechat"},
-    )
-
-    if existing_ticket:
-        await SupportAuditService.log_action(
-            action="live_chat_handoff_recorded",
-            actor_type="user",
-            actor_id=None,
-            resource_type="conversation",
-            resource_id=conversation_id,
-            details={"ticket_id": existing_ticket["ticket_id"], "already_linked": True},
-            ip_address=request.client.host if request.client else None,
-        )
-        return {"success": True, "ticket_id": existing_ticket["ticket_id"], "already_linked": True}
-
-    transcript = await MessageService.get_transcript(conversation_id)
-    desc = (transcript[:5000] if transcript else "User chose Live Chat.") or "User chose Live Chat."
-    sa = conversation.get("service_area") or "other"
-    try:
-        service_area = ServiceArea(sa) if sa in [e.value for e in ServiceArea] else ServiceArea.OTHER
-    except (ValueError, TypeError):
-        service_area = ServiceArea.OTHER
-
-    ticket_data = TicketCreate(
-        subject="Live chat handoff",
-        description=desc,
-        category=TicketCategory.OTHER,
-        priority=TicketPriority.MEDIUM,
-        contact_method=ContactMethod.LIVECHAT,
-        service_area=service_area,
-        email=conversation.get("email"),
-        crn=conversation.get("crn"),
-    )
-    ticket = await TicketService.create_ticket(ticket_data, conversation_id=conversation_id)
 
     await SupportAuditService.log_action(
         action="live_chat_handoff_recorded",
@@ -656,7 +606,7 @@ async def audit_whatsapp_handoff(
 
 @client_router.get("/account-snapshot")
 async def get_account_snapshot(
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(client_route_guard)
 ):
     """
     Get account snapshot for authenticated client.
@@ -677,7 +627,7 @@ async def get_account_snapshot(
 
 @client_router.get("/my-conversations")
 async def get_my_conversations(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(client_route_guard),
     limit: int = Query(20, le=100)
 ):
     """Get client's own conversations."""
@@ -821,11 +771,14 @@ async def get_ticket_detail(
             "description_preview": desc[:1500] + ("..." if len(desc) > 1500 else ""),
         }
 
+    assistant_handoff_summary = ticket.get("assistant_handoff_summary")
+
     return {
         "ticket": ticket,
         "conversation": conversation,
         "messages": messages,
         "handover_summary": handover_summary,
+        "assistant_handoff_summary": assistant_handoff_summary,
     }
 
 
@@ -885,6 +838,7 @@ async def create_ticket_from_conversation(
     subject = (body and body.subject and body.subject.strip()) or "Conversation escalation"
     description = (body and body.description and body.description.strip()) or (transcript[:4000] if transcript else "No transcript.")
 
+    assistant_hs = conversation.get("last_assistant_handoff_summary")
     ticket_data = TicketCreate(
         subject=subject[:200],
         description=description[:5000],
@@ -895,7 +849,11 @@ async def create_ticket_from_conversation(
         email=conversation.get("email"),
         crn=conversation.get("crn"),
     )
-    ticket = await TicketService.create_ticket(ticket_data, conversation_id=conversation_id)
+    ticket = await TicketService.create_ticket(
+        ticket_data,
+        conversation_id=conversation_id,
+        assistant_handoff_summary=assistant_hs,
+    )
 
     await SupportAuditService.log_action(
         action="ticket_created_from_conversation",
@@ -1016,7 +974,7 @@ async def add_ticket_note(
 @admin_router.post("/lookup-by-crn")
 async def admin_lookup_by_crn(
     body: AdminLookupRequest,
-    current_user: dict = Depends(admin_route_guard)
+    current_user: dict = Depends(require_owner_or_admin)
 ):
     """Admin-only (ROLE_ADMIN) account lookup by CRN. Support role cannot access."""
     db = database.get_db()

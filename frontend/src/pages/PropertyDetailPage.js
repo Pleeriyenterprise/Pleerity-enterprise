@@ -124,6 +124,8 @@ export default function PropertyDetailPage() {
   const [complianceStatusFilter, setComplianceStatusFilter] = useState('');
   const [complianceSearchQuery, setComplianceSearchQuery] = useState('');
   const [complianceExpandedReqId, setComplianceExpandedReqId] = useState(null);
+  const [complianceExplainability, setComplianceExplainability] = useState(null);
+  const [complianceExplainabilityLoading, setComplianceExplainabilityLoading] = useState(false);
   const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
   const [urgentExplainKey, setUrgentExplainKey] = useState(null);
   const [urgentExplainData, setUrgentExplainData] = useState(null);
@@ -260,6 +262,58 @@ export default function PropertyDetailPage() {
       .finally(() => setEvidenceLoading(false));
   }, [propertyId]);
 
+  const loadComplianceExplainability = useCallback(() => {
+    if (!propertyId) return;
+    setComplianceExplainabilityLoading(true);
+    clientAPI.getPropertyComplianceScoreExplanation(propertyId)
+      .then((res) => setComplianceExplainability(res.data || null))
+      .catch(() => setComplianceExplainability(null))
+      .finally(() => setComplianceExplainabilityLoading(false));
+  }, [propertyId]);
+
+  // Keep property-level compliance/risk views in sync with Action -> Outcome events from other screens.
+  useEffect(() => {
+    if (!propertyId) return undefined;
+    const onOutcome = (evt) => {
+      const outcomePropertyId = evt?.detail?.property_id;
+      if (outcomePropertyId && outcomePropertyId !== propertyId) return;
+      fetchData();
+      loadComplianceExplainability();
+      if (hasFeature('maintenance_workflows')) {
+        loadWorkOrders();
+        loadMaintenanceIssues();
+      }
+      if (hasFeature('predictive_maintenance')) {
+        loadInsights();
+        loadRiskSignals();
+      }
+      if (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) {
+        loadAssets();
+      }
+      if (activeTab === TAB_EVIDENCE) {
+        loadEvidence();
+      }
+      if (activeTab === TAB_TIMELINE) {
+        loadTimeline();
+      }
+    };
+    window.addEventListener('compliance-outcome', onOutcome);
+    return () => window.removeEventListener('compliance-outcome', onOutcome);
+  }, [
+    propertyId,
+    hasFeature,
+    fetchData,
+    loadWorkOrders,
+    loadMaintenanceIssues,
+    loadInsights,
+    loadRiskSignals,
+    loadAssets,
+    loadEvidence,
+    loadComplianceExplainability,
+    loadTimeline,
+    activeTab,
+  ]);
+
   useEffect(() => {
     if (!propertyId) return;
     if (hasFeature('maintenance_workflows')) loadWorkOrders();
@@ -300,6 +354,13 @@ export default function PropertyDetailPage() {
     if (!propertyId) return;
     if (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) loadAssets();
   }, [propertyId, hasFeature, loadAssets]);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    if (activeTab === TAB_COMPLIANCE || activeTab === TAB_OVERVIEW) {
+      loadComplianceExplainability();
+    }
+  }, [propertyId, activeTab, loadComplianceExplainability]);
 
   useEffect(() => {
     if (propertyId && activeTab === TAB_EVIDENCE) loadEvidence();
@@ -1026,6 +1087,128 @@ export default function PropertyDetailPage() {
               )}
             </>
           )}
+
+          <Card className="border border-gray-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-electric-teal" />
+                Compliance Explainability
+              </CardTitle>
+              <CardDescription>
+                Weighted score with requirement-level rationale and next best actions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {complianceExplainabilityLoading ? (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading explainability...
+                </div>
+              ) : !complianceExplainability ? (
+                <p className="text-sm text-gray-500">Explainability data is currently unavailable.</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-3 text-sm">
+                    <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
+                      Score: <strong>{complianceExplainability.score ?? '—'}/100</strong>
+                    </span>
+                    <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
+                      Jurisdiction: <strong>{String(complianceExplainability.jurisdiction || 'ENGLAND_WALES').replace('_', ' ')}</strong>
+                    </span>
+                    <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
+                      Points: <strong>{Number(complianceExplainability.earned_points || 0).toFixed(1)} / {Number(complianceExplainability.applicable_points || 0).toFixed(1)}</strong>
+                    </span>
+                  </div>
+
+                  {complianceExplainability.bucket_breakdown && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm">
+                      {[
+                        ['Legal core', complianceExplainability.bucket_breakdown?.legal_core?.percent],
+                        ['Documentation', complianceExplainability.bucket_breakdown?.documentation_completeness?.percent],
+                        ['Operational', complianceExplainability.bucket_breakdown?.operational_responsiveness?.percent],
+                        ['Recency', complianceExplainability.bucket_breakdown?.recency_maintenance_confidence?.percent],
+                      ].map(([label, pct]) => (
+                        <div key={label} className="rounded border border-gray-200 p-2 bg-white">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+                          <p className="font-semibold text-midnight-blue">{Number(pct || 0).toFixed(0)}%</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {Array.isArray(complianceExplainability.top_next_actions) && complianceExplainability.top_next_actions.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-midnight-blue mb-1">Top next actions</p>
+                      <ul className="space-y-1 text-sm text-gray-700">
+                        {complianceExplainability.top_next_actions.slice(0, 5).map((a, idx) => (
+                          <li key={`${a.requirement_code || 'req'}-${idx}`} className="flex items-center justify-between gap-2">
+                            <span>• {a.action}</span>
+                            <span className="text-xs text-gray-500">+{Number(a.impact_points || 0).toFixed(1)} pts</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {Array.isArray(complianceExplainability.score_breakdown) && complianceExplainability.score_breakdown.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-midnight-blue mb-1">Requirement breakdown</p>
+                      <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-gray-50 text-left text-gray-600">
+                              <th className="px-3 py-2">Requirement</th>
+                              <th className="px-3 py-2">Status</th>
+                              <th className="px-3 py-2">Risk if failed</th>
+                              <th className="px-3 py-2">Expiry</th>
+                              <th className="px-3 py-2 text-right">Missing points</th>
+                              <th className="px-3 py-2 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {complianceExplainability.score_breakdown
+                              .filter((r) => r?.applies_if)
+                              .sort((a, b) => {
+                                const aMiss = Number(a?.applicable_points || 0) - Number(a?.earned_points || 0);
+                                const bMiss = Number(b?.applicable_points || 0) - Number(b?.earned_points || 0);
+                                return bMiss - aMiss;
+                              })
+                              .slice(0, 8)
+                              .map((r, idx) => {
+                                const missing = Math.max(0, Number(r?.applicable_points || 0) - Number(r?.earned_points || 0));
+                                const status = String(r?.status || '').toUpperCase();
+                                const isMissingOrExpired = ['MISSING', 'MISSING_EVIDENCE', 'EXPIRED'].includes(status);
+                                const actionLabel = isMissingOrExpired ? 'Upload' : 'Review';
+                                const requirementCode = String(r?.requirement_code || '').toLowerCase();
+                                return (
+                                  <tr key={`${r?.requirement_code || 'req'}-${idx}`} className="border-t border-gray-100">
+                                    <td className="px-3 py-2 font-medium text-midnight-blue">{r?.requirement_code || '—'}</td>
+                                    <td className="px-3 py-2 text-gray-700">{String(r?.status || '—').replace(/_/g, ' ')}</td>
+                                    <td className="px-3 py-2 text-gray-700">{String(r?.risk_level_if_failed || '—')}</td>
+                                    <td className="px-3 py-2 text-gray-600">{r?.expiry_date ? formatDate(r.expiry_date) : '—'}</td>
+                                    <td className="px-3 py-2 text-right text-gray-700">{missing.toFixed(1)}</td>
+                                    <td className="px-3 py-2 text-right">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-electric-teal border-electric-teal"
+                                        onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_code=${encodeURIComponent(requirementCode)}`)}
+                                      >
+                                        {actionLabel}
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* A) Compliance Summary Row */}
           {(() => {

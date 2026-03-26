@@ -10,6 +10,7 @@ from services.order_receipt_service import (
     subscription_session_to_invoice_data,
 )
 from services.plan_registry import PlanCode, plan_registry
+from utils.branding import get_branding_logo_path
 
 
 def test_cvp_plan_registry_professional_label():
@@ -47,6 +48,12 @@ def test_cvp_pdf_generates_bytes():
     )
     pdf = build_branded_invoice_pdf_bytes(data)
     assert isinstance(pdf, bytes) and len(pdf) > 1500
+
+
+def test_pdf_logo_path_resolves_default_branding_asset():
+    logo = get_branding_logo_path()
+    assert logo is not None
+    assert logo.replace("\\", "/").endswith("/static/branding/logo.png")
 
 
 def test_non_cvp_order_with_addons_line_items():

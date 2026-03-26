@@ -78,7 +78,9 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
     try:
         properties = await db.properties.find(
             {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_last_calculated_at": 1, "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1}
+            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_bucket_breakdown": 1, "score_breakdown": 1,
+             "compliance_earned_points": 1, "compliance_applicable_points": 1, "compliance_top_deficits": 1, "compliance_top_next_actions": 1,
+             "compliance_last_calculated_at": 1, "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "jurisdiction": 1}
         ).to_list(100)
         if not properties:
             return {
@@ -112,7 +114,9 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             )
         properties = await db.properties.find(
             {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "compliance_last_calculated_at": 1}
+            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_bucket_breakdown": 1, "score_breakdown": 1,
+             "compliance_earned_points": 1, "compliance_applicable_points": 1, "compliance_top_deficits": 1, "compliance_top_next_actions": 1,
+             "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "compliance_last_calculated_at": 1, "jurisdiction": 1}
         ).to_list(100)
         scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
         if not scores:
@@ -322,11 +326,45 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "evidence_uploaded": evidence,
                 "actions": list(dict.fromkeys(actions)) if actions else ["VIEW"],
             })
+        aggregated_actions = []
+        for p in properties:
+            for action in (p.get("compliance_top_next_actions") or []):
+                if isinstance(action, dict):
+                    aggregated_actions.append(action)
+        aggregated_actions.sort(key=lambda a: float(a.get("impact_points") or 0), reverse=True)
         recommendations = []
-        if overdue > 0:
-            recommendations.append({"priority": "high", "action": f"Address {overdue} overdue requirement(s)", "impact": "+10-20 points"})
-        if expiring_soon > 0:
-            recommendations.append({"priority": "medium", "action": f"Renew {expiring_soon} certificate(s) expiring soon", "impact": "+10-15 points"})
+        for action in aggregated_actions[:5]:
+            recommendations.append(
+                {
+                    "priority": action.get("priority") or "medium",
+                    "action": action.get("action") or f"Improve {action.get('requirement_code')}",
+                    "impact": f"+{int(round(float(action.get('impact_points') or 0)))} points",
+                }
+            )
+        if not recommendations:
+            if overdue > 0:
+                recommendations.append({"priority": "high", "action": f"Address {overdue} overdue requirement(s)", "impact": "+10-20 points"})
+            if expiring_soon > 0:
+                recommendations.append({"priority": "medium", "action": f"Renew {expiring_soon} certificate(s) expiring soon", "impact": "+10-15 points"})
+
+        bucket_entries = [p.get("compliance_bucket_breakdown") or {} for p in properties if p.get("compliance_bucket_breakdown")]
+        if bucket_entries:
+            def bucket_avg(bucket_name: str) -> float:
+                vals = []
+                for b in bucket_entries:
+                    vals.append(float((b.get(bucket_name) or {}).get("percent") or 0))
+                return round(sum(vals) / len(vals), 1) if vals else 0.0
+            bucket_breakdown = {
+                "legal_core": {"percent": bucket_avg("legal_core")},
+                "documentation_completeness": {"percent": bucket_avg("documentation_completeness")},
+                "operational_responsiveness": {"percent": bucket_avg("operational_responsiveness")},
+                "recency_maintenance_confidence": {"percent": bucket_avg("recency_maintenance_confidence")},
+            }
+        else:
+            bucket_breakdown = {}
+
+        earned_points = sum(float(p.get("compliance_earned_points") or 0) for p in properties)
+        applicable_points = sum(float(p.get("compliance_applicable_points") or 0) for p in properties)
         result = {
             "score": client_score,
             "grade": grade,
@@ -351,6 +389,21 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "components": components,
             "property_breakdown": property_breakdown,
             "drivers": drivers,
+            "bucket_breakdown": bucket_breakdown,
+            "earned_points": round(earned_points, 2),
+            "applicable_points": round(applicable_points, 2),
+            "top_next_actions": aggregated_actions[:5],
+            "top_deficits": [d for p in properties for d in (p.get("compliance_top_deficits") or [])][:10],
+            "jurisdictions": sorted(list({p.get("jurisdiction") for p in properties if p.get("jurisdiction")})),
+            "score_breakdown_by_property": [
+                {
+                    "property_id": p.get("property_id"),
+                    "name": p.get("nickname") or p.get("address_line_1") or p.get("property_id"),
+                    "jurisdiction": p.get("jurisdiction"),
+                    "score_breakdown": p.get("score_breakdown") or [],
+                }
+                for p in properties
+            ],
         }
         # Single source of truth: when catalog-driven portfolio exists, use its score/risk so dashboard, compliance-score page, and reports all show the same number.
         try:

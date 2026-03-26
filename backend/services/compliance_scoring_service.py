@@ -11,12 +11,12 @@ from datetime import datetime, timezone, date, timedelta
 from typing import Dict, Any, Optional, List
 import logging
 
-from services.compliance_scoring import compute_property_score as compute_property_score_v1
+from services.compliance_scoring_v2 import compute_property_score_v2
 from utils.risk_bands import score_to_grade_color_message
 
 logger = logging.getLogger(__name__)
 
-WEIGHTS_VERSION = "v1"
+WEIGHTS_VERSION = "v2_jurisdictional"
 
 # Reasons for score change (used in history and audit)
 REASON_DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED"
@@ -57,7 +57,7 @@ async def calculate_property_compliance(
         {"property_id": property_id},
         {"_id": 0, "property_id": 1, "client_id": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
          "licence_required": 1, "licence_type": 1, "cert_gas_safety": 1, "cert_licence": 1,
-         "has_gas_supply": 1, "has_gas": 1, "tenancy_active": 1, "deposit_taken": 1}
+         "has_gas_supply": 1, "has_gas": 1, "tenancy_active": 1, "deposit_taken": 1, "jurisdiction": 1}
     )
     if not property_doc:
         return {
@@ -75,43 +75,74 @@ async def calculate_property_compliance(
         {"property_id": property_id},
         {"_id": 0}
     ).to_list(500)
+    client_doc = await db.clients.find_one(
+        {"client_id": property_doc.get("client_id")},
+        {"_id": 0, "default_jurisdiction": 1, "enabled_jurisdictions": 1},
+    ) or {}
+    open_issues_count = await db.maintenance_issues.count_documents(
+        {"property_id": property_id, "status": {"$nin": ["resolved", "closed", "completed"]}}
+    )
+    overdue_work_orders_count = await db.work_orders.count_documents(
+        {"property_id": property_id, "status": {"$nin": ["completed", "closed"]}, "due_date": {"$lt": now.isoformat()}}
+    )
+    open_risks_count = await db.risk_signals.count_documents(
+        {"property_id": property_id, "status": {"$nin": ["resolved"]}}
+    )
 
-    result = compute_property_score_v1(property_doc, requirements, documents, as_of=now)
+    result = compute_property_score_v2(
+        property_doc=property_doc,
+        client_doc=client_doc,
+        requirements=requirements,
+        documents=documents,
+        open_issues_count=int(open_issues_count),
+        overdue_work_orders_count=int(overdue_work_orders_count),
+        open_risks_count=int(open_risks_count),
+        as_of=now,
+    )
     score = result.get("score_0_100", 0)
-    risk_level = result.get("risk_level", "Low risk")
-    breakdown_v1 = result.get("breakdown", [])
+    risk_level = "Low risk" if score >= 90 else ("Moderate risk" if score >= 70 else ("Elevated risk" if score >= 50 else "High risk"))
+    requirement_breakdown = result.get("requirement_breakdown", [])
 
     grade, color, _ = score_to_grade_color_message(score)
     status_score = score
+    bucket_breakdown = result.get("bucket_breakdown") or {}
     breakdown_legacy = {
-        "status_score": float(score),
-        "expiry_score": float(score),
-        "document_score": float(score),
-        "overdue_penalty_score": float(score),
-        "risk_score": 100.0,
+        "status_score": float((bucket_breakdown.get("legal_core") or {}).get("percent", score)),
+        "expiry_score": float((bucket_breakdown.get("recency_maintenance_confidence") or {}).get("percent", score)),
+        "document_score": float((bucket_breakdown.get("documentation_completeness") or {}).get("percent", score)),
+        "overdue_penalty_score": float((bucket_breakdown.get("operational_responsiveness") or {}).get("percent", score)),
+        "risk_score": 100.0 - min(100.0, float(open_risks_count) * 10.0),
     }
     stats = {
-        "total_requirements": len(requirements),
-        "compliant": sum(1 for r in requirements if (r.get("status") or "").upper() == "COMPLIANT"),
-        "pending": sum(1 for r in requirements if (r.get("status") or "").upper() == "PENDING"),
-        "expiring_soon": sum(1 for r in requirements if (r.get("status") or "").upper() == "EXPIRING_SOON"),
-        "overdue": sum(1 for r in requirements if (r.get("status") or "").upper() in ("OVERDUE", "EXPIRED")),
+        "total_requirements": len([r for r in requirement_breakdown if r.get("applies_if")]),
+        "compliant": sum(1 for r in requirement_breakdown if r.get("status") == "VALID"),
+        "pending": sum(1 for r in requirement_breakdown if r.get("status") in ("MISSING", "NEEDS_REVIEW")),
+        "expiring_soon": sum(1 for r in requirement_breakdown if r.get("status") == "EXPIRING_SOON"),
+        "overdue": sum(1 for r in requirement_breakdown if r.get("status") in ("EXPIRED",)),
+        "open_issues": int(open_issues_count),
+        "overdue_work_orders": int(overdue_work_orders_count),
+        "open_risk_signals": int(open_risks_count),
     }
     return {
         "score": score,
         "grade": grade,
         "color": color,
         "risk_level": risk_level,
-        "score_breakdown": breakdown_v1,
+        "score_breakdown": requirement_breakdown,
+        "bucket_breakdown": bucket_breakdown,
+        "earned_points": result.get("earned_points"),
+        "applicable_points": result.get("applicable_points"),
+        "top_deficits": result.get("top_deficits") or [],
+        "top_next_actions": result.get("top_next_actions") or [],
+        "jurisdiction": result.get("jurisdiction"),
         "breakdown": breakdown_legacy,
         "stats": stats,
         "weights_version": WEIGHTS_VERSION,
         "weights": {
-            "status": "35%",
-            "expiry": "25%",
-            "documents": "15%",
-            "overdue_penalty": "15%",
-            "risk_factor": "10%",
+            "legal_core": "60%",
+            "documentation_completeness": "20%",
+            "operational_responsiveness": "10%",
+            "recency_maintenance_confidence": "10%",
         },
     }
 
@@ -154,6 +185,12 @@ async def recalculate_and_persist(
     set_fields = {
         "compliance_score": new_score,
         "compliance_breakdown": new_breakdown,
+        "compliance_bucket_breakdown": result.get("bucket_breakdown") or {},
+        "compliance_earned_points": result.get("earned_points"),
+        "compliance_applicable_points": result.get("applicable_points"),
+        "compliance_top_deficits": result.get("top_deficits") or [],
+        "compliance_top_next_actions": result.get("top_next_actions") or [],
+        "jurisdiction": result.get("jurisdiction"),
         "compliance_last_calculated_at": now.isoformat(),
         "compliance_version": result.get("weights_version", WEIGHTS_VERSION),
         "compliance_score_pending": False,

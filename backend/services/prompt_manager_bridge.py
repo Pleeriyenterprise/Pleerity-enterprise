@@ -72,6 +72,15 @@ SERVICE_CODE_ALIASES = {
     "DOC_PACK_PRO": "DOC_PACK_PRO",
 }
 
+# Legacy prompt registry uses historical service codes. Keep explicit mapping so fallback
+# remains deterministic when Prompt Manager has no ACTIVE prompt.
+LEGACY_PROMPT_SERVICE_FALLBACKS = {
+    "AI_TOOL_RECOMMENDATION": ["AI_TOOLS"],
+    "FULL_COMPLIANCE_AUDIT": ["COMP_FULL_AUDIT"],
+    "HMO_COMPLIANCE_AUDIT": ["COMP_HMO"],
+    "MOVE_IN_OUT_CHECKLIST": ["COMP_MOVEOUT"],
+}
+
 
 @dataclass
 class ManagedPromptInfo:
@@ -104,6 +113,22 @@ class PromptManagerBridge:
     
     PROMPTS_COLLECTION = "prompt_templates"
     EXECUTION_METRICS_COLLECTION = "prompt_execution_metrics"
+
+    def _resolve_service_codes(self, service_code: str) -> Tuple[str, list[str]]:
+        """
+        Resolve service code aliases and provide deterministic legacy lookup candidates.
+        Returns (canonical_service_code, legacy_candidates_in_priority_order).
+        """
+        canonical_service_code = SERVICE_CODE_ALIASES.get(service_code, service_code)
+        legacy_candidates: list[str] = []
+        for candidate in (
+            service_code,
+            canonical_service_code,
+            *LEGACY_PROMPT_SERVICE_FALLBACKS.get(canonical_service_code, []),
+        ):
+            if candidate and candidate not in legacy_candidates:
+                legacy_candidates.append(candidate)
+        return canonical_service_code, legacy_candidates
     
     async def get_prompt_for_service(
         self,
@@ -126,7 +151,7 @@ class PromptManagerBridge:
         db = database.get_db()
         
         # Resolve service code aliases to prevent silent lookup failures
-        canonical_service_code = SERVICE_CODE_ALIASES.get(service_code, service_code)
+        canonical_service_code, legacy_candidates = self._resolve_service_codes(service_code)
         
         if canonical_service_code != service_code:
             logger.info(f"Resolved service code alias: {service_code} -> {canonical_service_code}")
@@ -207,21 +232,27 @@ class PromptManagerBridge:
             
             return prompt_def, prompt_info
         
-        # Fall back to legacy registry
-        legacy_prompt = get_prompt_for_service(service_code)
+        # Fall back to legacy registry (deterministic candidate order)
+        legacy_prompt = None
+        legacy_matched_code = None
+        for candidate in legacy_candidates:
+            legacy_prompt = get_prompt_for_service(candidate)
+            if legacy_prompt:
+                legacy_matched_code = candidate
+                break
         
         if legacy_prompt:
             prompt_info = ManagedPromptInfo(
                 template_id=f"LEGACY_{legacy_prompt.prompt_id}",
                 version=0,  # Legacy prompts don't have versions
-                service_code=service_code,
+                service_code=legacy_matched_code or service_code,
                 doc_type=doc_type or "GENERAL_DOCUMENT",
                 name=legacy_prompt.name,
                 source="legacy_registry",
             )
             
             logger.info(
-                f"Using legacy registry prompt for {service_code} ({canonical_service_code}): "
+                f"Using legacy registry prompt for {service_code} ({legacy_matched_code or canonical_service_code}): "
                 f"{legacy_prompt.prompt_id}"
             )
             

@@ -290,7 +290,11 @@ const DocumentsPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      toast.success('Document uploaded. Extracting details…');
+      const uploadOutcomeMsg = res.data?.outcome?.message;
+      toast.success(uploadOutcomeMsg ? `${uploadOutcomeMsg}. Extracting details…` : 'Document uploaded. Extracting details…');
+      if (res.data?.outcome && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: res.data.outcome }));
+      }
       const documentId = res.data?.document_id;
       const prop = properties.find(p => p.property_id === uploadForm.property_id);
       const req = requirements.find(r => r.requirement_id === uploadForm.requirement_id);
@@ -394,11 +398,15 @@ const DocumentsPage = () => {
         }
       };
 
-      await api.post(`/documents/${reviewModal.document_id}/apply-extraction`, {
+      const response = await api.post(`/documents/${reviewModal.document_id}/apply-extraction`, {
         confirmed_data: confirmedData
       });
 
-      toast.success('Extraction data applied successfully');
+      const outcomeMsg = response.data?.outcome?.message;
+      toast.success(outcomeMsg || 'Extraction data applied successfully');
+      if (response.data?.outcome && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: response.data.outcome }));
+      }
       setReviewModal(null);
       fetchData();
     } catch (error) {

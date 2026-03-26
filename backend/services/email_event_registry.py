@@ -192,6 +192,26 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
         "template_key": "PAYMENT_FAILED",
         "trigger": "stripe invoice.payment_failed",
     },
+    "SUBSCRIPTION_RENEWAL_REMINDER_7D": {
+        "category": "reporting_notifications",
+        "template_key": "SUBSCRIPTION_RENEWAL_REMINDER_7D",
+        "trigger": "jobs.process_subscription_lifecycle_and_reminders (~7 days before current_period_end)",
+    },
+    "SUBSCRIPTION_RENEWAL_REMINDER_3D": {
+        "category": "reporting_notifications",
+        "template_key": "SUBSCRIPTION_RENEWAL_REMINDER_3D",
+        "trigger": "jobs.process_subscription_lifecycle_and_reminders (~3 days before current_period_end)",
+    },
+    "SUBSCRIPTION_GRACE_REMINDER": {
+        "category": "system_critical",
+        "template_key": "SUBSCRIPTION_GRACE_REMINDER",
+        "trigger": "jobs.process_subscription_lifecycle_and_reminders mid grace period",
+    },
+    "SUBSCRIPTION_RENEWAL_PAID": {
+        "category": "system_critical",
+        "template_key": "SUBSCRIPTION_RENEWAL_PAID",
+        "trigger": "stripe invoice.paid billing_reason=subscription_cycle",
+    },
     "INVOICE_AVAILABLE": {
         "category": "system_critical",
         "template_key": "INVOICE_AVAILABLE",

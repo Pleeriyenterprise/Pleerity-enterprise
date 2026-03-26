@@ -146,6 +146,32 @@ function ClientRiskSignalsPageInner() {
     load();
   }, [load]);
 
+  // Real-time refresh when actions emit compliance outcomes elsewhere in client portal.
+  useEffect(() => {
+    const onOutcome = () => {
+      load();
+      if (drawerSignalId) {
+        setDrawerLoading(true);
+        setDrawerSuggestedView(null);
+        Promise.all([
+          clientAPI.getRiskSignal(drawerSignalId).then((res) => res.data || null),
+          clientAPI.getRiskSignalSuggestedActions(drawerSignalId).then((res) => res.data || null),
+        ])
+          .then(([sig, view]) => {
+            setDrawerSignal(sig);
+            setDrawerSuggestedView(sig ? view : null);
+          })
+          .catch(() => {
+            setDrawerSignal(null);
+            setDrawerSuggestedView(null);
+          })
+          .finally(() => setDrawerLoading(false));
+      }
+    };
+    window.addEventListener('compliance-outcome', onOutcome);
+    return () => window.removeEventListener('compliance-outcome', onOutcome);
+  }, [load, drawerSignalId]);
+
   useEffect(() => {
     const sid = searchParams.get('signal_id');
     if (sid) setDrawerSignalId(sid);

@@ -15,6 +15,7 @@ from database import database
 from typing import Optional, List
 import logging
 from services.plan_registry import plan_registry
+from services.lead_automation_service import get_email_performance_metrics
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/analytics", tags=["admin-analytics"])
@@ -1880,3 +1881,49 @@ async def get_executive_overview(request: Request):
         if err_msg and not any(x in err_msg.lower() for x in ("password", "token", "secret", "key")):
             detail = f"{detail} ({err_msg})"
         raise HTTPException(status_code=500, detail=detail)
+
+
+@router.get("/marketing/automation-email-performance")
+async def get_marketing_automation_email_performance(
+    period: str = Query("30d"),
+    current_user: dict = Depends(admin_route_guard),
+):
+    days_map = {"today": 1, "yesterday": 1, "7d": 7, "30d": 30, "90d": 90, "12m": 365, "ytd": 365, "all": 365}
+    days = int(days_map.get(period, 30))
+    data = await get_email_performance_metrics(days=days)
+    return {"period": period, **data}
+
+
+@router.get("/marketing/automation-funnel")
+async def get_marketing_automation_funnel(
+    period: str = Query("30d"),
+    current_user: dict = Depends(admin_route_guard),
+):
+    start_date, end_date = get_date_range(period)
+    db = database.get_db()
+    leads = await db["leads"].find({"created_at": {"$gte": start_date, "$lte": end_date}}, {"_id": 0, "lead_id": 1, "client_id": 1, "status": 1}).to_list(length=100000)
+    lead_ids = [l.get("lead_id") for l in leads if l.get("lead_id")]
+    total_leads = len(lead_ids)
+    converted = len([l for l in leads if l.get("status") == "CONVERTED" or l.get("client_id")])
+
+    paid_clients = await db["clients"].count_documents({"lead_id": {"$in": lead_ids}}) if lead_ids else 0
+    client_ids = [l.get("client_id") for l in leads if l.get("client_id")]
+    activated = await db["portal_users"].count_documents({"client_id": {"$in": client_ids}, "password_status": "SET"}) if client_ids else 0
+
+    def _rate(v: int) -> float:
+        return round((v / total_leads * 100), 2) if total_leads else 0.0
+
+    return {
+        "period": period,
+        "funnel": [
+            {"stage": "Risk Check", "count": total_leads, "conversion_rate": 100.0 if total_leads else 0.0},
+            {"stage": "Signup", "count": converted, "conversion_rate": _rate(converted)},
+            {"stage": "Payment", "count": int(paid_clients), "conversion_rate": _rate(int(paid_clients))},
+            {"stage": "Activation", "count": int(activated), "conversion_rate": _rate(int(activated))},
+        ],
+        "summary": {
+            "risk_check_to_signup_percent": _rate(converted),
+            "signup_to_payment_percent": round((int(paid_clients) / converted * 100), 2) if converted else 0.0,
+            "payment_to_activation_percent": round((int(activated) / int(paid_clients) * 100), 2) if int(paid_clients) else 0.0,
+        },
+    }

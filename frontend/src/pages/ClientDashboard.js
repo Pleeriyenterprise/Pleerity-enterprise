@@ -283,6 +283,39 @@ const ClientDashboard = () => {
     };
   }, [isClientUser]);
 
+  // Real-time Action -> Outcome updates: refresh score/risk/status widgets instantly after meaningful actions.
+  useEffect(() => {
+    if (!isClientUser) return undefined;
+    const onOutcome = () => {
+      fetchComplianceScore();
+      fetchScoreTimeline();
+      fetchScoreTrendCard();
+      fetchScoreChanges();
+      fetchPortfolioSummary();
+      if (hasFeature('predictive_maintenance')) {
+        clientAPI.getRiskSignals({ limit: 1 })
+          .then((res) => setRiskSignalsData(res.data))
+          .catch(() => {});
+      }
+      const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
+      clientAPI
+        .getCommandCenter(params)
+        .then((res) => {
+          const b = res.data || {};
+          setCommandCenter(b);
+          setTasksDigest({
+            summary: b.tasks_digest_summary || {},
+            activity_feed: Array.isArray(b.recent_activity) ? b.recent_activity.slice(0, 8) : [],
+            freshness: b.freshness || {},
+          });
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('compliance-outcome', onOutcome);
+    return () => window.removeEventListener('compliance-outcome', onOutcome);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClientUser, hasFeature, commandCenterScopePropertyId]);
+
   const handleAckActivitySince = () => {
     setActivitySinceAckBusy(true);
     clientAPI
@@ -1125,7 +1158,7 @@ const ClientDashboard = () => {
             data-testid="tasks-digest-card"
           >
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4">
-              <div>
+          <div>
                 <CardTitle className="text-base flex items-center gap-2">
                   <ListTodo className="w-4 h-4 text-teal-600" />
                   Today — this week
@@ -1208,8 +1241,8 @@ const ClientDashboard = () => {
                     {new Date(activitySince.window.until).toLocaleString()}
                   </p>
                 )}
-              </div>
-              <Button
+          </div>
+          <Button 
                 variant="outline"
                 size="sm"
                 className="shrink-0"
@@ -1218,7 +1251,7 @@ const ClientDashboard = () => {
                 data-testid="activity-since-ack-btn"
               >
                 Mark as seen
-              </Button>
+          </Button>
             </CardHeader>
             <CardContent>
               {activitySinceLoading ? (
@@ -1257,7 +1290,7 @@ const ClientDashboard = () => {
                 {commandCenterScopeLabel && (
                   <p className="text-xs text-electric-teal mt-1">Scoped to: {commandCenterScopeLabel}</p>
                 )}
-              </div>
+        </div>
               <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/today')}>
                 Open Today
               </Button>
@@ -1600,18 +1633,49 @@ const ClientDashboard = () => {
 
               {/* Score breakdown and explanation – single trend is shown in Score Trend (90 days) card */}
               <div className="mt-4 pt-4 border-t border-white/50 space-y-2">
+                {complianceScore?.bucket_breakdown ? (
+                  <>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Legal core (60%)</span>
+                      <span className="font-medium">{Number(complianceScore?.bucket_breakdown?.legal_core?.percent || 0).toFixed(0)}%</span>
+                  </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Documentation (20%)</span>
+                      <span className="font-medium">{Number(complianceScore?.bucket_breakdown?.documentation_completeness?.percent || 0).toFixed(0)}%</span>
+                  </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Operational (10%)</span>
+                      <span className="font-medium">{Number(complianceScore?.bucket_breakdown?.operational_responsiveness?.percent || 0).toFixed(0)}%</span>
+                </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Recency confidence (10%)</span>
+                      <span className="font-medium">{Number(complianceScore?.bucket_breakdown?.recency_maintenance_confidence?.percent || 0).toFixed(0)}%</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Status (40%)</span>
-                  <span className="font-medium">{complianceScore?.breakdown?.status_score?.toFixed(0)}%</span>
+                      <span className="font-medium">{complianceScore?.breakdown?.status_score?.toFixed(0)}%</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Timeline (30%)</span>
-                  <span className="font-medium">{complianceScore?.breakdown?.expiry_score?.toFixed(0)}%</span>
+                      <span className="font-medium">{complianceScore?.breakdown?.expiry_score?.toFixed(0)}%</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Documents (15%)</span>
-                  <span className="font-medium">{complianceScore?.breakdown?.document_score?.toFixed(0)}%</span>
+                      <span className="font-medium">{complianceScore?.breakdown?.document_score?.toFixed(0)}%</span>
                 </div>
+                  </>
+                )}
+                {(complianceScore?.earned_points != null && complianceScore?.applicable_points != null) && (
+                  <div className="flex justify-between text-xs pt-1 border-t border-gray-200">
+                    <span className="text-gray-600">Points earned</span>
+                    <span className="font-medium">
+                      {Number(complianceScore?.earned_points || 0).toFixed(1)} / {Number(complianceScore?.applicable_points || 0).toFixed(1)}
+                    </span>
+                  </div>
+                )}
               </div>
               
               {/* Expandable Explanation Toggle */}
@@ -1633,10 +1697,21 @@ const ClientDashboard = () => {
                 <div className="mt-3 pt-3 border-t border-white/50 text-xs space-y-2" onClick={(e) => e.stopPropagation()}>
                   <p className="font-medium text-gray-700">Score Components:</p>
                   <ul className="space-y-1 text-gray-600">
-                    <li>• <strong>Status (40%):</strong> {complianceScore?.stats?.compliant || 0}/{complianceScore?.stats?.total_requirements || 0} requirements valid</li>
-                    <li>• <strong>Timeline (30%):</strong> {complianceScore?.stats?.expiring_soon || 0} items due within 30 days</li>
-                    <li>• <strong>Documents (15%):</strong> {complianceScore?.stats?.document_coverage_percent?.toFixed(0) || 0}% requirement coverage</li>
-                    <li>• <strong>Overdue Penalty (15%):</strong> {complianceScore?.stats?.overdue || 0} overdue items</li>
+                    {complianceScore?.bucket_breakdown ? (
+                      <>
+                        <li>• <strong>Legal core (60%):</strong> weighted legal obligations by applicability and validity</li>
+                        <li>• <strong>Documentation (20%):</strong> verified evidence completeness for applicable obligations</li>
+                        <li>• <strong>Operational (10%):</strong> unresolved issues/work orders reduce confidence</li>
+                        <li>• <strong>Recency (10%):</strong> unresolved risk signals and expiring obligations reduce confidence</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>• <strong>Status (40%):</strong> {complianceScore?.stats?.compliant || 0}/{complianceScore?.stats?.total_requirements || 0} requirements valid</li>
+                        <li>• <strong>Timeline (30%):</strong> {complianceScore?.stats?.expiring_soon || 0} items due within 30 days</li>
+                        <li>• <strong>Documents (15%):</strong> {complianceScore?.stats?.document_coverage_percent?.toFixed(0) || 0}% requirement coverage</li>
+                        <li>• <strong>Overdue Penalty (15%):</strong> {complianceScore?.stats?.overdue || 0} overdue items</li>
+                      </>
+                    )}
                   </ul>
                   <p className="text-electric-teal pt-1">Click card for full breakdown →</p>
                 </div>
@@ -1661,23 +1736,23 @@ const ClientDashboard = () => {
                       actionLower.includes('upload') ? '/documents' :
                       '/requirements';
                     return (
-                      <div
-                        key={idx}
-                        className={`flex items-start gap-3 p-3 rounded-lg ${
+                    <div 
+                      key={idx}
+                      className={`flex items-start gap-3 p-3 rounded-lg ${
                           rec.priority === 'high' || rec.priority === 'critical' ? 'bg-red-50 border border-red-100' :
-                          rec.priority === 'medium' ? 'bg-amber-50 border border-amber-100' :
-                          'bg-gray-50 border border-gray-100'
-                        }`}
-                      >
+                        rec.priority === 'medium' ? 'bg-amber-50 border border-amber-100' :
+                        'bg-gray-50 border border-gray-100'
+                      }`}
+                    >
                         <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
                           rec.priority === 'high' || rec.priority === 'critical' ? 'bg-red-500' :
-                          rec.priority === 'medium' ? 'bg-amber-500' :
-                          'bg-gray-400'
-                        }`} />
+                        rec.priority === 'medium' ? 'bg-amber-500' :
+                        'bg-gray-400'
+                      }`} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800">{rec.action}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">Potential impact: {rec.impact}</p>
-                        </div>
+                        <p className="text-sm font-medium text-gray-800">{rec.action}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Potential impact: {rec.impact}</p>
+                      </div>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1687,7 +1762,7 @@ const ClientDashboard = () => {
                         >
                           Fix now
                         </Button>
-                      </div>
+                    </div>
                     );
                   })}
                 </div>
@@ -1698,13 +1773,13 @@ const ClientDashboard = () => {
                 const allValid = total > 0 && valid === total && actionableMissingCount === 0 && displayScore >= 80;
                 if (allValid) {
                   return (
-                    <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                      <div>
-                        <p className="font-medium text-green-800">Excellent work!</p>
-                        <p className="text-sm text-green-600">Your compliance is in great shape. Keep it up!</p>
-                      </div>
-                    </div>
+                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-800">Excellent work!</p>
+                    <p className="text-sm text-green-600">Your compliance is in great shape. Keep it up!</p>
+                  </div>
+                </div>
                   );
                 }
                 return (
@@ -2218,7 +2293,7 @@ const ClientDashboard = () => {
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                  </div>
                   );
                 })()}
               </CardContent>
@@ -2317,7 +2392,7 @@ const ClientDashboard = () => {
         </footer>
       )}
         </>
-        )}
+      )}
     </div>
   );
 };

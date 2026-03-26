@@ -122,19 +122,19 @@ const HomePage = () => {
 
       {/* B) HERO */}
       <section className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-midnight-blue leading-tight mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 sm:pt-10 sm:pb-12 lg:py-24">
+          <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
+            <div className="min-w-0">
+              <h1 className="text-[1.5625rem] sm:text-4xl lg:text-[2.75rem] font-bold text-midnight-blue leading-[1.18] sm:leading-tight tracking-tight text-balance mb-3 sm:mb-6">
                 Are You Fully Compliant as a UK Landlord?
               </h1>
-              <p className="text-lg text-gray-600 mb-8 max-w-xl">
+              <p className="text-[0.9375rem] sm:text-lg leading-snug sm:leading-relaxed text-gray-600 mb-4 sm:mb-8 max-w-xl">
                 Structured compliance monitoring and renewal tracking for UK portfolios.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4">
                 <Button
                   size="lg"
-                  className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+                  className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full sm:w-auto min-h-[48px] px-5 sm:px-8 whitespace-normal text-sm sm:text-base"
                   asChild
                   data-testid="hero-cta-primary"
                 >
@@ -146,37 +146,40 @@ const HomePage = () => {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-electric-teal text-electric-teal hover:bg-electric-teal/5"
+                  className="border-electric-teal text-electric-teal hover:bg-electric-teal/5 w-full sm:w-auto min-h-[48px] px-5 whitespace-normal text-sm sm:text-base"
                   asChild
                   data-testid="hero-cta-secondary"
                 >
                   <Link to="/compliance-vault-pro">View Platform Overview</Link>
                 </Button>
               </div>
-              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
+              <div
+                className="mt-4 sm:mt-8 grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 gap-y-2.5 text-xs sm:text-sm text-gray-600"
+                aria-label="Product highlights"
+              >
                 {trustBullets.map((point) => (
-                  <span key={point} className="flex items-center">
-                    <CheckCircle2 className="w-4 h-4 text-electric-teal mr-2 shrink-0" />
-                    {point}
+                  <span key={point} className="flex items-start gap-1.5 sm:gap-2 min-w-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-electric-teal shrink-0 mt-0.5" />
+                    <span className="leading-snug">{point}</span>
                   </span>
                 ))}
               </div>
             </div>
             {/* Hero: real dashboard screenshot (cropped); headline remains dominant */}
-            <div className="relative w-full lg:block">
+            <div className="relative w-full mt-2 lg:mt-0 lg:block">
               <h2 className="sr-only">UK landlord compliance tracking—risk report in 60 seconds</h2>
-              <ProductScreenshot className="max-h-[380px] lg:max-h-[420px]">
+              <ProductScreenshot className="max-h-[210px] sm:max-h-[330px] lg:max-h-[420px]">
                 <MarketingImage
                   name="hero-command-centre"
                   alt="Compliance dashboard example showing score and quick actions"
                   width={1200}
                   height={850}
-                  className="w-full h-auto object-contain object-top"
+                  className="w-full h-[200px] sm:h-auto sm:min-h-0 object-cover sm:object-contain object-[center_8%] sm:object-top"
                   fetchPriority="high"
                   placeholderText="Dashboard preview"
                 />
               </ProductScreenshot>
-              <p className="text-xs text-gray-500 text-center mt-4 px-2">
+              <p className="text-[0.6875rem] sm:text-xs text-gray-500 text-center mt-2 sm:mt-4 px-1 sm:px-2 leading-snug">
                 Illustrative preview. Live score generated after structured assessment.
               </p>
             </div>
@@ -185,16 +188,16 @@ const HomePage = () => {
       </section>
 
       {/* Dashboard preview — portfolio in one view */}
-      <section className="py-16 lg:py-20 bg-white border-t border-gray-100">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-3 sm:mb-4 text-center text-balance leading-snug sm:leading-tight px-1">
             See Your Entire Portfolio in One View
           </h2>
-          <p className="text-center text-gray-600 mb-10 max-w-2xl mx-auto">
+          <p className="text-center text-[0.9375rem] sm:text-base text-gray-600 mb-6 sm:mb-10 max-w-2xl mx-auto leading-relaxed px-1">
             Instantly see expiry risk, expiring documents, and compliance visibility across every property you manage.
           </p>
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <ul className="space-y-3 text-gray-700">
+          <div className="grid lg:grid-cols-2 gap-6 sm:gap-10 lg:gap-12 items-center">
+            <ul className="space-y-2.5 sm:space-y-3 text-gray-700 text-sm sm:text-base">
               <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Portfolio compliance score</li>
               <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Property-level breakdown</li>
               <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-electric-teal shrink-0" /> Expiring soon indicator</li>
@@ -207,14 +210,14 @@ const HomePage = () => {
                   alt="Upcoming expiries list from Compliance Calendar"
                   width={1200}
                   height={800}
-                  className="w-full h-auto"
+                  className="w-full h-[180px] sm:h-auto object-cover sm:object-contain object-[center_10%] sm:object-top"
                   loading="lazy"
                   placeholderText="Upcoming expiries preview"
                 />
               </ProductScreenshot>
               <p className="text-xs text-gray-500 text-center mt-2">Expiry alerts generated from confirmed certificate dates.</p>
               <div className="mt-4 flex justify-center">
-                <Button className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+                <Button className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full sm:w-auto min-h-[48px]" asChild>
                   <Link to="/risk-check">Generate Report</Link>
                 </Button>
               </div>
@@ -224,18 +227,18 @@ const HomePage = () => {
       </section>
 
       {/* C) THE PROBLEM */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-6 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-5 sm:mb-6 text-center text-balance leading-snug sm:leading-tight px-1">
             Compliance Is Easy to Forget — Until It&apos;s Too Late
           </h2>
-          <div className="max-w-3xl mx-auto space-y-4 text-gray-600 text-center mb-8">
+          <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4 text-gray-600 text-center text-[0.9375rem] sm:text-base mb-6 sm:mb-8 leading-relaxed">
             <p>Certificates buried in inboxes. Expiry dates lost in spreadsheets. No clear overview across properties.</p>
             <p>When documentation is scattered, visibility disappears — and deadlines get missed.</p>
             <p className="text-midnight-blue font-medium">Compliance Vault Pro gives you structured oversight so nothing critical slips through.</p>
           </div>
-          <div className="flex justify-center">
-            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+          <div className="flex justify-center px-1">
+            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full max-w-md sm:w-auto min-h-[48px]" asChild>
               <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
           </div>
@@ -243,15 +246,15 @@ const HomePage = () => {
       </section>
 
       {/* D) FOUR PILLARS */}
-      <section className="py-16 lg:py-20 bg-gray-50">
+      <section className="py-10 sm:py-14 lg:py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-3 sm:mb-4 text-center text-balance leading-snug sm:leading-tight px-1">
             All Your Compliance Tracking in One Structured Dashboard
           </h2>
-          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+          <p className="text-center text-[0.9375rem] sm:text-base text-gray-600 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
             Track evidence, see risk indicators, get reminders, and generate reports. No legal claims — just structured tracking.
           </p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-8">
             {pillars.map((item) => (
               <Card key={item.title} className="border-0 shadow-lg hover:shadow-xl transition-shadow h-full">
                 <CardContent className="pt-6">
@@ -268,15 +271,15 @@ const HomePage = () => {
       </section>
 
       {/* E) SEGMENTATION */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-3 sm:mb-4 text-center text-balance px-1">
             Built for Modern UK Landlords
           </h2>
-          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+          <p className="text-center text-[0.9375rem] sm:text-base text-gray-600 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
             Works for solo landlords, portfolio landlords, and HMO operators. Also suitable for managing agents overseeing landlord portfolios.
           </p>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-5 sm:gap-8">
             {segments.map((seg) => (
               <Card key={seg.title} className="border border-gray-200 shadow-sm h-full">
                 <CardContent className="pt-6">
@@ -293,14 +296,14 @@ const HomePage = () => {
       </section>
 
       {/* F) HOW IT WORKS */}
-      <section className="py-16 lg:py-20 bg-gray-50">
+      <section className="py-10 sm:py-14 lg:py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-2 sm:mb-4 text-center text-balance px-1">
             Get Set Up in Minutes, Not Hours
           </h2>
-          <div className="max-w-3xl mx-auto space-y-6 mt-12">
+          <div className="max-w-3xl mx-auto space-y-5 sm:space-y-6 mt-8 sm:mt-12">
             {steps.map((step, i) => (
-              <div key={i} className="flex gap-4">
+              <div key={i} className="flex gap-3 sm:gap-4">
                 <div className="w-10 h-10 rounded-full bg-electric-teal text-white flex items-center justify-center font-semibold shrink-0">
                   {i + 1}
                 </div>
@@ -311,8 +314,8 @@ const HomePage = () => {
               </div>
             ))}
           </div>
-          <div className="text-center mt-12">
-            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+          <div className="text-center mt-8 sm:mt-12 px-1">
+            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full max-w-md sm:w-auto min-h-[48px]" asChild>
               <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
           </div>
@@ -320,16 +323,16 @@ const HomePage = () => {
       </section>
 
       {/* G) COMPLIANCE SCORE TRANSPARENCY */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-6 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-5 sm:mb-6 text-center text-balance">
             How the Compliance Score Works
           </h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4 text-[0.9375rem] sm:text-base leading-relaxed">
             Each property gets a structured tracking score based on confirmed evidence and recorded expiry dates. 
             Your dashboard also shows a portfolio-level summary for overall visibility.
           </p>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4 text-[0.9375rem] sm:text-base leading-relaxed">
             For example: valid certificates and no overdue items support a stronger score; expiring or missing items reduce it. 
             It&apos;s a risk indicator to help you prioritise — not a legal verdict.
           </p>
@@ -343,19 +346,19 @@ const HomePage = () => {
       </section>
 
       {/* H) PRICING FRAMING */}
-      <section className="py-16 lg:py-20 bg-gray-50">
+      <section className="py-10 sm:py-14 lg:py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-4 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-3 sm:mb-4 text-center text-balance">
             Simple, Transparent Pricing
           </h2>
-          <p className="text-center text-gray-600 mb-8 max-w-xl mx-auto">
+          <p className="text-center text-[0.9375rem] sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-xl mx-auto leading-relaxed">
             Choose the plan that fits the size of your portfolio. Solo, Portfolio, or Professional — upgrade or downgrade anytime. Your data remains secure.
           </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white" asChild>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 justify-center items-stretch sm:items-center px-1">
+            <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full sm:w-auto min-h-[48px]" asChild>
               <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal" asChild>
+            <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal w-full sm:w-auto min-h-[48px]" asChild>
               <Link to="/pricing">View plans</Link>
             </Button>
           </div>
@@ -363,9 +366,9 @@ const HomePage = () => {
       </section>
 
       {/* I) FAQ */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section className="py-10 sm:py-14 lg:py-20 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-8 text-center">
+          <h2 className="text-xl sm:text-3xl font-bold text-midnight-blue mb-6 sm:mb-8 text-center text-balance">
             Frequently Asked Questions
           </h2>
           <Accordion type="single" collapsible className="w-full">
@@ -382,18 +385,18 @@ const HomePage = () => {
       </section>
 
       {/* J) FINAL CTA */}
-      <section className="py-16 lg:py-20 bg-midnight-blue">
+      <section className="py-12 sm:py-16 lg:py-20 bg-midnight-blue">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+          <h2 className="text-xl sm:text-3xl font-bold text-white mb-3 sm:mb-4 text-balance leading-snug">
             Take Control of Your Property Compliance
           </h2>
-          <p className="text-lg text-gray-300 mb-8">
+          <p className="text-base sm:text-lg text-gray-300 mb-6 sm:mb-8 leading-relaxed">
             Start your structured compliance tracking today.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
             <Button
               size="lg"
-              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8 w-full sm:w-auto min-h-[48px]"
               asChild
             >
               <Link to="/risk-check">Check Your Compliance Risk</Link>
@@ -401,7 +404,7 @@ const HomePage = () => {
             <Button
               size="lg"
               variant="outline"
-              className="border-white text-white hover:bg-white/10"
+              className="border-white text-white hover:bg-white/10 w-full sm:w-auto min-h-[48px]"
               asChild
             >
               <Link to="/compliance-vault-pro">View Platform Overview</Link>

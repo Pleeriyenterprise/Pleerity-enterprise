@@ -106,6 +106,20 @@ export default function AdminLeadsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [notifications, setNotifications] = useState(null);
+  const [automationSummary, setAutomationSummary] = useState(null);
+  const [automationEmailPerformance, setAutomationEmailPerformance] = useState(null);
+  const [automationSummarySortMode, setAutomationSummarySortMode] = useState('best_conversion');
+  const leadPerfHighlightMap = React.useMemo(() => {
+    const map = {};
+    const rows = automationEmailPerformance?.highlights;
+    if (Array.isArray(rows)) {
+      rows.forEach((h) => {
+        if (h?.flow) map[h.flow] = h;
+      });
+    }
+    return map;
+  }, [automationEmailPerformance]);
+
   
   // Dialog state
   const [selectedLead, setSelectedLead] = useState(null);
@@ -202,6 +216,25 @@ export default function AdminLeadsPage() {
   }, []);
 
   useEffect(() => {
+    const fetchAutomationSummary = async () => {
+      try {
+        const [summaryResponse, emailPerfResponse] = await Promise.all([
+          client.get('/admin/leads/automation/sequences/active', { params: { limit: 50 } }),
+          client.get('/admin/leads/automation/email-performance', { params: { days: 30 } }),
+        ]);
+        setAutomationSummary(summaryResponse?.data || null);
+        setAutomationEmailPerformance(emailPerfResponse?.data || null);
+      } catch {
+        setAutomationSummary(null);
+        setAutomationEmailPerformance(null);
+      }
+    };
+    fetchAutomationSummary();
+    const interval = setInterval(fetchAutomationSummary, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
 
@@ -293,6 +326,7 @@ export default function AdminLeadsPage() {
             params: {
               client_id: actionForm.client_id,
               conversion_notes: actionForm.notes,
+              conversion_source: actionForm.conversion_source,
             }
           });
           toast.success('Lead converted to client');
@@ -508,6 +542,130 @@ export default function AdminLeadsPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {automationSummary && (
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Marketing Automation Sequences</CardTitle>
+            <CardDescription>Active flow states and completion totals.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-3 text-sm">
+              {Array.isArray(automationSummary.metrics) && automationSummary.metrics.slice(0, 6).map((m) => (
+                <div key={String(m._id)} className="rounded border p-3">
+                  <div className="font-medium">{String(m._id || '').replace(/_/g, ' ')}</div>
+                  <div className="text-gray-600">Total: {m.total || 0}</div>
+                  <div className="text-emerald-600">Active: {m.active || 0}</div>
+                  <div className="text-slate-600">Completed: {m.completed || 0}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {automationEmailPerformance && (
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Automation Email Performance (30 days)</CardTitle>
+            <CardDescription>Open and click rate by flow step.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {Array.isArray(automationEmailPerformance.highlights) && automationEmailPerformance.highlights.length > 0 && (
+              <>
+              <div className="mb-2 flex items-center gap-2 text-xs">
+                <span className="text-gray-500">Sort:</span>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${automationSummarySortMode === 'best_conversion' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-gray-600'}`}
+                  onClick={() => setAutomationSummarySortMode('best_conversion')}
+                >
+                  Best conversion
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${automationSummarySortMode === 'fastest_conversion' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-600'}`}
+                  onClick={() => setAutomationSummarySortMode('fastest_conversion')}
+                >
+                  Fastest conversion
+                </button>
+              </div>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {[...automationEmailPerformance.highlights]
+                  .sort((a, b) => {
+                    if (automationSummarySortMode === 'fastest_conversion') {
+                      const av = a?.fastest_median_hours == null ? Number.POSITIVE_INFINITY : Number(a.fastest_median_hours);
+                      const bv = b?.fastest_median_hours == null ? Number.POSITIVE_INFINITY : Number(b.fastest_median_hours);
+                      return av - bv;
+                    }
+                    return Number(b?.top_conversion_rate_percent || 0) - Number(a?.top_conversion_rate_percent || 0);
+                  })
+                  .map((h, i) => (
+                  <div key={`${h?.flow || 'flow'}-${i}`} className="rounded border bg-gray-50 px-2 py-1 text-xs text-gray-700">
+                    <span className="font-medium">{String(h?.flow || '').replace(/_/g, ' ')}</span>
+                    <span> - Best: Step {h?.top_conversion_step ?? '—'} ({h?.top_conversion_rate_percent ?? 0}%)</span>
+                    <span> - Fastest: Step {h?.fastest_step ?? '—'} ({h?.fastest_median_hours ?? '—'}h)</span>
+                  </div>
+                ))}
+              </div>
+              </>
+            )}
+            {Array.isArray(automationEmailPerformance.rows) && automationEmailPerformance.rows.length > 0 ? (
+              <div className="overflow-x-auto border rounded">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-2">Flow</th>
+                      <th className="text-right p-2">Step</th>
+                      <th className="text-right p-2">Sent</th>
+                      <th className="text-right p-2">Open %</th>
+                      <th className="text-right p-2">Click %</th>
+                      <th className="text-right p-2">Conv %</th>
+                      <th className="text-right p-2">Median Hrs</th>
+                      <th className="text-left p-2">Winner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {automationEmailPerformance.rows.slice(0, 24).map((row, i) => (
+                      (() => {
+                        const flow = row?._id?.flow || '';
+                        const step = row?._id?.step;
+                        const highlight = leadPerfHighlightMap[flow] || {};
+                        const isTopConv = highlight.top_conversion_step === step;
+                        const isFastest = highlight.fastest_step === step;
+                        return (
+                      <tr key={`${row?._id?.flow || 'flow'}-${row?._id?.step || i}`} className="border-t">
+                        <td className="p-2">{String(row?._id?.flow || '').replace(/_/g, ' ')}</td>
+                        <td className="p-2 text-right">{row?._id?.step ?? '—'}</td>
+                        <td className="p-2 text-right">{row?.sent ?? 0}</td>
+                        <td className="p-2 text-right">{row?.open_rate_percent ?? 0}%</td>
+                        <td className="p-2 text-right">{row?.click_rate_percent ?? 0}%</td>
+                        <td className="p-2 text-right">{row?.conversion_rate_percent ?? 0}%</td>
+                        <td className="p-2 text-right">{row?.median_hours_to_conversion ?? '—'}</td>
+                        <td className="p-2">
+                          <div className="flex items-center gap-1">
+                            {isTopConv && (
+                              <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">Best Conv</span>
+                            )}
+                            {isFastest && (
+                              <span className="text-[11px] px-2 py-0.5 rounded bg-blue-100 text-blue-700">Fastest</span>
+                            )}
+                            {!isTopConv && !isFastest && <span className="text-gray-400">—</span>}
+                          </div>
+                        </td>
+                      </tr>
+                        );
+                      })()
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No sent automation emails in this window yet.</p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Filters */}
@@ -885,6 +1043,8 @@ export default function AdminLeadsPage() {
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="transcript">Transcript</TabsTrigger>
                   <TabsTrigger value="audit">Audit Log</TabsTrigger>
+                  <TabsTrigger value="events">Events</TabsTrigger>
+                  <TabsTrigger value="emails">Emails</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="details" className="space-y-4">
@@ -932,6 +1092,22 @@ export default function AdminLeadsPage() {
                       <div>
                         <span className="text-gray-500">Service:</span>{' '}
                         <span className="font-medium">{selectedLead.service_interest?.replace(/_/g, ' ')}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Lead status:</span>{' '}
+                        <span className="font-medium">{selectedLead.lead_status || 'new'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Conversion source:</span>{' '}
+                        <span className="font-medium">{selectedLead.conversion_source || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Time to convert:</span>{' '}
+                        <span className="font-medium">
+                          {selectedLead.time_to_convert_seconds != null
+                            ? `${Math.round(Number(selectedLead.time_to_convert_seconds) / 3600)}h`
+                            : '-'}
+                        </span>
                       </div>
                       {Array.isArray(selectedLead.tags) && selectedLead.tags.length > 0 && (
                         <div className="md:col-span-3">
@@ -1079,6 +1255,64 @@ export default function AdminLeadsPage() {
                     <p className="text-sm text-gray-500 text-center py-8">No audit log entries</p>
                   )}
                 </TabsContent>
+                <TabsContent value="events">
+                  {selectedLead.events?.length > 0 ? (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {selectedLead.events.map((evt, idx) => (
+                        <div key={`${evt.event_key || idx}`} className="flex items-start gap-3 text-sm py-2 border-b">
+                          <div className="w-40 text-xs text-gray-400 shrink-0">
+                            {evt.occurred_at ? new Date(evt.occurred_at).toLocaleString() : '—'}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">{String(evt.event_type || '').replace(/_/g, ' ')}</div>
+                            <div className="text-xs text-gray-500">{evt.source || 'system'}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-8">No lead events recorded</p>
+                  )}
+                </TabsContent>
+                <TabsContent value="emails">
+                  {selectedLead.sequence_sends?.length > 0 ? (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {selectedLead.sequence_sends.map((row, idx) => (
+                        <div key={`${row.send_id || idx}`} className="p-3 rounded-md border text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{row.sequence_key} • step {row.step}</span>
+                            <Badge
+                              variant={
+                                row.status === 'sent'
+                                  ? 'secondary'
+                                  : row.status === 'suppressed_existing_lifecycle'
+                                    ? 'outline'
+                                    : 'destructive'
+                              }
+                              className={
+                                row.status === 'suppressed_existing_lifecycle'
+                                  ? 'border-amber-300 text-amber-700 bg-amber-50'
+                                  : ''
+                              }
+                            >
+                              {row.status === 'suppressed_existing_lifecycle' ? 'suppressed (existing lifecycle)' : row.status}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {row.created_at ? new Date(row.created_at).toLocaleString() : '—'} • {row.template_id}
+                          </div>
+                          {row.error_message && (
+                            <div className="text-xs text-red-600 mt-1">
+                              {row.error_message}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-8">No sequence emails sent</p>
+                  )}
+                </TabsContent>
               </Tabs>
             </>
           )}
@@ -1166,6 +1400,14 @@ export default function AdminLeadsPage() {
                     value={actionForm.client_id || ''}
                     onChange={(e) => setActionForm({ ...actionForm, client_id: e.target.value })}
                     placeholder="CLT-XXXX"
+                  />
+                </div>
+                <div>
+                  <Label>Conversion Source</Label>
+                  <Input
+                    value={actionForm.conversion_source || ''}
+                    onChange={(e) => setActionForm({ ...actionForm, conversion_source: e.target.value })}
+                    placeholder="risk_check / intake / manual"
                   />
                 </div>
                 <div>

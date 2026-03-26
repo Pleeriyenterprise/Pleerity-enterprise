@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
+from services.compliance_scoring_service import calculate_property_compliance
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import asyncio
@@ -71,6 +72,33 @@ async def get_compliance_score(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to calculate compliance score"
+        )
+
+
+@router.get("/properties/{property_id}/compliance-score/explanation")
+async def get_property_compliance_score_explanation(request: Request, property_id: str):
+    """
+    Property-level compliance explainability payload for v2 scoring.
+    Returns score, jurisdiction, bucket breakdown, requirement breakdown, deficits, and next actions.
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1, "client_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    try:
+        data = await calculate_property_compliance(property_id)
+        return data
+    except Exception as e:
+        logger.error(f"Property compliance explainability error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load property compliance explainability",
         )
 
 
@@ -199,6 +227,29 @@ async def get_score_changes(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get score changes"
+        )
+
+
+@router.get("/compliance/activity")
+async def get_compliance_activity(
+    request: Request,
+    property_id: Optional[str] = None,
+    limit: int = 50,
+):
+    """Action -> Outcome activity timeline for client-visible UX feedback."""
+    user = await client_route_guard(request)
+    try:
+        from services.compliance_outcome_engine import list_activity
+        return await list_activity(
+            client_id=user["client_id"],
+            property_id=property_id,
+            limit=min(max(1, limit), 200),
+        )
+    except Exception as e:
+        logger.error(f"Compliance activity error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get compliance activity"
         )
 
 

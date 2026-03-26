@@ -56,7 +56,7 @@ class Database:
             await self.db.clients.create_index("full_name")  # For name search
             await self.db.clients.create_index("billing_plan")  # Plan filter (admin clients list)
             await self.db.clients.create_index("subscription_status")  # Status filter (admin clients list)
-
+            
             # Property indexes - for postcode search
             await self.db.properties.create_index("postcode")
             await self.db.properties.create_index("client_id")
@@ -120,6 +120,19 @@ class Database:
                 await self.db.message_logs.create_index("idempotency_key", unique=True, sparse=True)
             except Exception:
                 pass
+            # Reminder item-level state + evaluation audit (truth-checked suppression/cooldown)
+            try:
+                await self.db.reminder_item_state.create_index(
+                    [("client_id", 1), ("property_id", 1), ("requirement_code", 1), ("target_ref", 1), ("reminder_type", 1)],
+                    unique=True,
+                )
+            except Exception:
+                pass
+            await self.db.reminder_item_state.create_index([("client_id", 1), ("reminder_type", 1), ("updated_at", -1)])
+            await self.db.reminder_item_state.create_index([("suppression_reason", 1), ("updated_at", -1)])
+            await self.db.reminder_evaluation_log.create_index([("created_at", -1)])
+            await self.db.reminder_evaluation_log.create_index([("reminder_type", 1), ("decision", 1), ("created_at", -1)])
+            await self.db.reminder_evaluation_log.create_index([("client_id", 1), ("property_id", 1), ("created_at", -1)])
             # Notification templates (template_key -> gating + email alias)
             await self.db.notification_templates.create_index("template_key", unique=True)
             # Notification retry queue (outbox pattern)
@@ -168,6 +181,13 @@ class Database:
             # Score events - audit-grade log for score trend and "What Changed" (client dashboard)
             await self.db.score_events.create_index([("client_id", 1), ("created_at", -1)])
             await self.db.score_events.create_index([("client_id", 1), ("event_type", 1), ("created_at", -1)])
+            # Action -> Outcome activity log (client timeline + admin visibility)
+            await self.db.compliance_activity_log.create_index([("client_id", 1), ("property_id", 1), ("created_at", -1)])
+            await self.db.compliance_activity_log.create_index([("client_id", 1), ("created_at", -1)])
+            try:
+                await self.db.compliance_activity_log.create_index("dedupe_key", unique=True)
+            except Exception:
+                pass
             # Score ledger - enterprise statement-of-account for score changes (before/after, drivers, trigger)
             await self.db.score_ledger_events.create_index([("client_id", 1), ("created_at", -1)])
             await self.db.score_ledger_events.create_index([("client_id", 1), ("property_id", 1), ("created_at", -1)])
@@ -180,6 +200,19 @@ class Database:
             await self.db.incidents.create_index([("status", 1), ("created_at", -1)])
             await self.db.incidents.create_index([("severity", 1), ("status", 1)])
             await self.db.incidents.create_index("created_at")
+            # Security monitoring collections (events, incidents, auto-response locks/blocks)
+            await self.db.security_incidents.create_index([("status", 1), ("timestamp", -1)])
+            await self.db.security_incidents.create_index([("severity", 1), ("status", 1)])
+            await self.db.security_incidents.create_index([("type", 1), ("timestamp", -1)])
+            await self.db.security_incidents.create_index("incident_key", unique=True)
+            await self.db.security_events.create_index("event_id", unique=True)
+            await self.db.security_events.create_index([("event_type", 1), ("timestamp", -1)])
+            await self.db.security_events.create_index([("ip", 1), ("timestamp", -1)])
+            await self.db.security_events.create_index([("user_id", 1), ("timestamp", -1)])
+            await self.db.security_locks.create_index([("lock_type", 1), ("principal", 1)], unique=True)
+            await self.db.security_locks.create_index("expires_at")
+            await self.db.security_blocks.create_index("ip", unique=True)
+            await self.db.security_blocks.create_index("expires_at")
             # Operations & Compliance: module feature flags per client
             await self.db.client_feature_flags.create_index([("client_id", 1), ("flag_key", 1)], unique=True)
             await self.db.client_feature_flags.create_index("client_id")
@@ -297,8 +330,41 @@ class Database:
             await self.db.leads.create_index([("status", 1), ("stage", 1)])
             await self.db.leads.create_index("source_platform")
             await self.db.leads.create_index("lead_score")
+            await self.db.leads.create_index("converted_at")
+            await self.db.leads.create_index("conversion_source")
             await self.db.lead_audit_logs.create_index("lead_id")
             await self.db.lead_audit_logs.create_index("created_at")
+            # Lead events timeline (event-driven conversion automation)
+            try:
+                await self.db.lead_events.create_index("event_key", unique=True)
+            except Exception:
+                pass
+            await self.db.lead_events.create_index([("lead_id", 1), ("occurred_at", -1)])
+            await self.db.lead_events.create_index([("client_id", 1), ("occurred_at", -1)])
+            await self.db.lead_events.create_index([("subject_type", 1), ("subject_key", 1), ("occurred_at", -1)])
+            await self.db.lead_events.create_index([("event_type", 1), ("occurred_at", -1)])
+            # Configurable automation rules
+            try:
+                await self.db.lead_automation_rules.create_index("rule_key", unique=True)
+            except Exception:
+                pass
+            await self.db.lead_automation_rules.create_index([("enabled", 1), ("event_type", 1)])
+            # Canonical sequence state and send history
+            try:
+                await self.db.lead_sequence_state.create_index("state_id", unique=True)
+            except Exception:
+                pass
+            await self.db.lead_sequence_state.create_index([("status", 1), ("next_run_at", 1)])
+            await self.db.lead_sequence_state.create_index([("lead_id", 1), ("updated_at", -1)])
+            await self.db.lead_sequence_state.create_index([("client_id", 1), ("updated_at", -1)])
+            await self.db.lead_sequence_state.create_index([("subject_type", 1), ("subject_key", 1), ("updated_at", -1)])
+            await self.db.lead_sequence_sends.create_index([("lead_id", 1), ("created_at", -1)])
+            await self.db.lead_sequence_sends.create_index([("client_id", 1), ("created_at", -1)])
+            await self.db.lead_sequence_sends.create_index([("state_id", 1), ("step", 1)])
+            try:
+                await self.db.lead_sequence_sends.create_index("send_id", unique=True)
+            except Exception:
+                pass
             # Tenant portal: messages and certificate requests (landlord notification flow)
             await self.db.tenant_messages.create_index([("client_id", 1), ("created_at", -1)])
             await self.db.tenant_messages.create_index("message_id", unique=True)
@@ -340,6 +406,17 @@ class Database:
                 await self.db.stripe_events.create_index("event_id", unique=True)
             except Exception:
                 pass
+            # Security monitoring (structured events, incidents, auto-response state)
+            await self.db.security_events.create_index([("timestamp", -1)])
+            await self.db.security_events.create_index([("event_type", 1), ("timestamp", -1)])
+            await self.db.security_events.create_index([("ip", 1), ("timestamp", -1)])
+            try:
+                await self.db.security_incidents.create_index("incident_key", unique=True)
+            except Exception:
+                pass
+            await self.db.security_incidents.create_index([("status", 1), ("timestamp", -1)])
+            await self.db.security_locks.create_index([("expires_at", 1)])
+            await self.db.security_blocks.create_index([("expires_at", 1)])
             # Normalized payments (Revenue Analytics) - idempotency and date queries
             if hasattr(self.db, "payments"):
                 try:
@@ -526,6 +603,10 @@ class Database:
             {"template_key": "PENDING_VERIFICATION_DIGEST", "channel": "EMAIL", "email_template_alias": "pending-verification-digest", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
             {"template_key": "COMPLIANCE_ALERT", "channel": "EMAIL", "email_template_alias": "compliance-alert", "sms_body": None, "requires_provisioned": True, "requires_active_subscription": True, "requires_entitlement_enabled": True, "plan_required_feature_key": None, "email_category": "compliance_notifications", "is_active": True, "updated_at": now},
             {"template_key": "RENEWAL_REMINDER", "channel": "EMAIL", "email_template_alias": "renewal-reminder", "sms_body": None, "requires_provisioned": True, "requires_active_subscription": True, "requires_entitlement_enabled": True, "plan_required_feature_key": None, "email_category": "reporting_notifications", "is_active": True, "updated_at": now},
+            {"template_key": "SUBSCRIPTION_RENEWAL_REMINDER_7D", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": True, "requires_entitlement_enabled": True, "plan_required_feature_key": None, "email_category": "reporting_notifications", "is_active": True, "updated_at": now},
+            {"template_key": "SUBSCRIPTION_RENEWAL_REMINDER_3D", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": True, "requires_entitlement_enabled": True, "plan_required_feature_key": None, "email_category": "reporting_notifications", "is_active": True, "updated_at": now},
+            {"template_key": "SUBSCRIPTION_GRACE_REMINDER", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "system_critical", "is_active": True, "updated_at": now},
+            {"template_key": "SUBSCRIPTION_RENEWAL_PAID", "channel": "EMAIL", "email_template_alias": "payment-receipt", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "system_critical", "is_active": True, "updated_at": now},
             {"template_key": "SCHEDULED_REPORT", "channel": "EMAIL", "email_template_alias": "scheduled-report", "sms_body": None, "requires_provisioned": True, "requires_active_subscription": True, "requires_entitlement_enabled": True, "plan_required_feature_key": None, "email_category": "reporting_notifications", "is_active": True, "updated_at": now},
             {"template_key": "ADMIN_MANUAL", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": True, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
             {"template_key": "INTERNAL_ALERT", "channel": "EMAIL", "email_template_alias": "internal-alert", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},

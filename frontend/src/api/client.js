@@ -6,12 +6,12 @@ const API_URL = typeof _raw === 'string' && _raw.trim() ? _raw.trim().replace(/\
 
 // Runtime debug: log backend URL once; expose for debug panel
 if (typeof window !== 'undefined') {
-  window.__CVP_BACKEND_URL = API_URL || '(not set - using relative /api)';
   if (process.env.NODE_ENV !== 'production' || window.__CVP_DEBUG) {
+    window.__CVP_BACKEND_URL = API_URL || '(not set - using relative /api)';
     console.debug('[CVP] REACT_APP_BACKEND_URL:', window.__CVP_BACKEND_URL);
-  }
-  if (!API_URL) {
-    console.warn('[CVP] REACT_APP_BACKEND_URL is not set; API calls use relative /api (ensure proxy or same host).');
+    if (!API_URL) {
+      console.warn('[CVP] REACT_APP_BACKEND_URL is not set; API calls use relative /api (ensure proxy or same host).');
+    }
   }
 }
 
@@ -62,7 +62,7 @@ apiClient.interceptors.request.use(
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
-    if (!firstRequestLogged && typeof window !== 'undefined') {
+    if (!firstRequestLogged && typeof window !== 'undefined' && (process.env.NODE_ENV !== 'production' || window.__CVP_DEBUG)) {
       firstRequestLogged = true;
       const url = config.url ?? config.baseURL ?? '?';
       console.log('[CVP] First API request:', url, 'Authorization:', token ? 'Bearer present' : 'MISSING');
@@ -228,6 +228,11 @@ export const clientAPI = {
   /** Score change history for property (score_change_log entries). */
   getScoreHistory: (propertyId, limit = 20) =>
     apiClient.get(`/portfolio/properties/${propertyId}/score-history`, { params: { limit } }),
+  /** Action -> Outcome timeline (score/risk/status impact per action). */
+  getComplianceActivity: (params = {}) => apiClient.get('/client/compliance/activity', { params }),
+  /** Property-level compliance score explainability (v2 buckets + requirements + deficits/actions). */
+  getPropertyComplianceScoreExplanation: (propertyId) =>
+    apiClient.get(`/client/properties/${propertyId}/compliance-score/explanation`),
   /** Unified property timeline (ledger + score log + work orders). */
   getPropertyTimeline: (propertyId, params = {}) =>
     apiClient.get(`/portfolio/properties/${propertyId}/timeline`, { params }),
@@ -323,6 +328,8 @@ export const adminAPI = {
   getClients: (skip = 0, limit = 50) => apiClient.get('/admin/clients', { params: { skip, limit } }),
   getClientDetail: (clientId) => apiClient.get(`/admin/clients/${clientId}`),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
+  getClientComplianceActivity: (clientId, params = {}) =>
+    apiClient.get(`/admin/clients/${clientId}/compliance-activity`, { params }),
   getClientCommandCentreTaskActivity: (clientId, params = {}) =>
     apiClient.get(`/admin/clients/${clientId}/command-centre-task-activity`, { params }),
   resendActivationEmail: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/resend-activation-email`),
@@ -384,6 +391,14 @@ export const adminAPI = {
   resolveIncident: (incidentId, note) =>
     apiClient.post(`/admin/observability/incidents/${incidentId}/resolve`, note != null ? { note } : {}),
   getScoreEvents: (params = {}) => apiClient.get('/admin/observability/score-events', { params }),
+  // Security monitoring and incident detection
+  getSecurityDashboard: (params = {}) => apiClient.get('/admin/security/dashboard', { params }),
+  getSecurityEvents: (params = {}) => apiClient.get('/admin/security/events', { params }),
+  getSecurityIncidents: (params = {}) => apiClient.get('/admin/security/incidents', { params }),
+  resolveSecurityIncident: (incidentKey, note) =>
+    apiClient.post(`/admin/security/incidents/${encodeURIComponent(incidentKey)}/resolve`, note != null ? { note } : {}),
+  /** Unified Control Centre (health, automation, security, revenue, engagement, alerts). */
+  getControlCentreSnapshot: () => apiClient.get('/admin/control-centre/snapshot'),
   runJobNow: (jobId) => apiClient.post('/admin/jobs/run', { job: jobId }),
   // Operations & Compliance
   getOpsOverview: () => apiClient.get('/admin/ops/overview'),

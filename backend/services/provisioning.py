@@ -200,6 +200,17 @@ class ProvisioningService:
                 metadata={"portal_user_id": user_id}
             )
             try:
+                from services.lead_automation_service import record_client_event, evaluate_client_automation_rules, EVENT_PROVISIONING_COMPLETED
+                await record_client_event(
+                    client_id=client_id,
+                    event_type=EVENT_PROVISIONING_COMPLETED,
+                    source="provisioning.provision_client_portal_core",
+                    metadata={"portal_user_id": user_id},
+                )
+                await evaluate_client_automation_rules(client_id, EVENT_PROVISIONING_COMPLETED)
+            except Exception as flow_err:
+                logger.warning("Provisioning automation event skipped client_id=%s: %s", client_id, flow_err)
+            try:
                 from services.enablement_service import emit_enablement_event
                 from models.enablement import EnablementEventType
                 plan_code = client.get("billing_plan") or client.get("plan_code")

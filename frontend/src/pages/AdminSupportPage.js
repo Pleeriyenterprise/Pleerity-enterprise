@@ -104,6 +104,11 @@ function TicketRow({ ticket, onSelect, isSelected }) {
             <Badge className={PRIORITY_COLORS[ticket.priority] || PRIORITY_COLORS.medium}>
               {ticket.priority}
             </Badge>
+            {ticket.assistant_handoff_summary && (
+              <Badge variant="outline" className="text-xs border-teal-300 text-teal-700 bg-teal-50/50">
+                AI handoff
+              </Badge>
+            )}
           </div>
           <h4 className="font-medium text-gray-900 truncate">{ticket.subject}</h4>
           <p className="text-sm text-gray-500 truncate">{ticket.description}</p>
@@ -161,6 +166,11 @@ function ConversationRow({ conversation, onSelect, isSelected }) {
             <Badge className={STATUS_COLORS[conversation.status] || STATUS_COLORS.open}>
               {conversation.status}
             </Badge>
+            {conversation.last_assistant_handoff_summary && (
+              <Badge variant="outline" className="text-xs border-teal-300 text-teal-700 bg-teal-50/50">
+                AI handoff
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span className="capitalize">{conversation.channel}</span>
@@ -829,6 +839,14 @@ export default function AdminSupportPage() {
                 </CardHeader>
 
                 <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
+                  {(itemDetail.assistant_handoff_summary || itemDetail.conversation?.last_assistant_handoff_summary) && (
+                    <div className="border-b bg-teal-50 px-4 py-2 shrink-0">
+                      <h4 className="text-xs font-semibold text-teal-800 uppercase mb-1">Website assistant — handoff summary</h4>
+                      <p className="text-sm text-teal-900 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {itemDetail.assistant_handoff_summary || itemDetail.conversation?.last_assistant_handoff_summary}
+                      </p>
+                    </div>
+                  )}
                   {itemDetail.handover_summary && (
                     <div className="border-b bg-amber-50 px-4 py-2">
                       <h4 className="text-xs font-semibold text-amber-800 uppercase mb-1">Handover summary</h4>

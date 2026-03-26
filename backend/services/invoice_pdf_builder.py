@@ -30,6 +30,8 @@ TEAL = colors.HexColor("#00B8A9")
 WHITE = colors.white
 GREY_TEXT = colors.HexColor("#64748b")
 LIGHT_BG = colors.HexColor("#f8fafc")
+LOGO_TARGET_WIDTH_MM = 28
+LOGO_MAX_HEIGHT_MM = 16
 
 # Canonical site for PDF header (spec); avoid localhost from get_branding_website_url in dev if needed
 CANONICAL_WEBSITE = "https://pleerityenterprise.co.uk"
@@ -206,7 +208,21 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
     logo_flowable: Optional[Image] = None
     if logo_path and os.path.isfile(logo_path):
         try:
-            logo_flowable = Image(logo_path, width=28 * mm)
+            logo_flowable = Image(logo_path)
+            iw = float(getattr(logo_flowable, "imageWidth", 0) or 0)
+            ih = float(getattr(logo_flowable, "imageHeight", 0) or 0)
+            if iw > 0 and ih > 0:
+                target_w = LOGO_TARGET_WIDTH_MM * mm
+                target_h = (target_w * ih) / iw
+                max_h = LOGO_MAX_HEIGHT_MM * mm
+                if target_h > max_h:
+                    scale = max_h / target_h
+                    target_w = target_w * scale
+                    target_h = max_h
+                logo_flowable.drawWidth = target_w
+                logo_flowable.drawHeight = target_h
+            else:
+                logo_flowable = Image(logo_path, width=LOGO_TARGET_WIDTH_MM * mm)
         except Exception:
             logo_flowable = None
 
@@ -343,9 +359,10 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
     story.append(Spacer(1, 20))
 
     footer_lines = (
-        "Thank you for your business.<br/>"
-        "This document serves as confirmation of payment.<br/><br/>"
-        f"<font color='#64748b'>Support: {xml_escape(SUPPORT_EMAIL)}</font>"
+        f"<b>{xml_escape(COMPANY_NAME)}</b><br/>"
+        f"{xml_escape(TAGLINE)}<br/>"
+        f"Support: {xml_escape(SUPPORT_EMAIL)} | Website: {xml_escape(website)}<br/>"
+        "This document serves as confirmation of payment."
     )
     story.append(Paragraph(footer_lines, body_small))
 

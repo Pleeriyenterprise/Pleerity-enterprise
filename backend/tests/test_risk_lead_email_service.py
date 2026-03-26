@@ -50,8 +50,9 @@ def test_step1_email_body_contains_intake_start_link():
     with patch("services.risk_lead_email_service._activate_url", return_value="https://example.com/intake/start"):
         body = _body_step1({"first_name": "Test", "computed_score": 70, "risk_band": "MODERATE"})
         assert "/intake/start" in body
-        assert "Activate Monitoring" in body
+        assert "Activate Compliance Monitoring" in body
         assert "https://example.com/intake/start" in body
+        assert "Moderate Risk" in body
 
 
 def test_step1_email_body_with_token_includes_lead_token_in_link():
@@ -61,3 +62,11 @@ def test_step1_email_body_with_token_includes_lead_token_in_link():
     with patch("services.risk_lead_email_service._activate_url", return_value="https://example.com/intake/start?lead_token=abc"):
         body = _body_step1({"first_name": "Test", "computed_score": 70, "risk_band": "MODERATE"}, "abc")
         assert "lead_token=abc" in body
+
+
+def test_step1_omits_risk_level_when_score_invalid():
+    from services.risk_lead_email_service import _body_step1
+
+    with patch("services.risk_lead_email_service._activate_url", return_value="https://example.com/intake/start"):
+        body = _body_step1({"first_name": "Test", "computed_score": "N/A"})
+        assert "Risk Level" not in body

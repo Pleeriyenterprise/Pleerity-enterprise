@@ -19,6 +19,59 @@ NURTURE_SUBJECTS = [
 ]
 
 
+def _risk_level_label(score_val: object) -> Optional[str]:
+    """Enterprise risk-level labels for customer-facing emails."""
+    try:
+        score = int(float(score_val))
+    except (TypeError, ValueError):
+        return None
+    if score >= 90:
+        return "Low Risk"
+    if score >= 70:
+        return "Moderate Risk"
+    if score >= 50:
+        return "Elevated Risk"
+    return "High Risk"
+
+
+def _brand_footer_html() -> str:
+    return (
+        "<p style=\"margin:16px 0 0 0; font-size:12px; color:#64748b;\">"
+        "<strong>Pleerity Enterprise Ltd</strong><br/>"
+        "AI-Driven Solutions & Compliance<br/>"
+        "Support: info@pleerityenterprise.co.uk | https://pleerity.com<br/>"
+        "Security note: Never share account credentials or payment details over email."
+        "</p>"
+    )
+
+
+def _cta_button_html(url: str) -> str:
+    return (
+        f"<a href=\"{url}\" "
+        "style=\"display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;"
+        "padding:12px 18px;border-radius:8px;font-weight:600;\">"
+        "Activate Compliance Monitoring</a>"
+    )
+
+
+def _email_shell(title: str, body: str) -> str:
+    return f"""
+<html>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:Inter,-apple-system,'Segoe UI',Roboto,sans-serif;color:#0f172a;">
+  <div style="max-width:680px;margin:0 auto;padding:24px;">
+    <div style="background:#0f172a;color:#ffffff;padding:16px 20px;border-radius:10px 10px 0 0;">
+      <h1 style="margin:0;font-family:Montserrat,Inter,sans-serif;font-size:20px;color:#14b8a6;">{title}</h1>
+    </div>
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-top:none;padding:20px;border-radius:0 0 10px 10px;">
+      {body}
+      {_brand_footer_html()}
+    </div>
+  </div>
+</body>
+</html>
+""".strip()
+
+
 def _activate_url(lead: dict, activation_token: Optional[str] = None) -> str:
     """
     Build absolute URL for 'Activate Monitoring' CTA.
@@ -36,87 +89,74 @@ def _activate_url(lead: dict, activation_token: Optional[str] = None) -> str:
 def _body_step1(lead: dict, activation_token: Optional[str] = None) -> str:
     first_name = lead.get("first_name") or "there"
     score = lead.get("computed_score", 0)
-    risk_band = lead.get("risk_band", "MODERATE")
+    risk_level = _risk_level_label(score)
     url = _activate_url(lead, activation_token)
-    return f"""
-<p>Hello {first_name},</p>
-<p>Thank you for completing the Pleerity Compliance Risk Check.</p>
-<p>Based on your responses, your monitoring posture was assessed as:</p>
-<p><strong>Compliance Score:</strong> {score}%<br/>
-<strong>Risk Level:</strong> {risk_band}</p>
-<p>This score reflects structured weighting of safety indicators and monitoring structure.</p>
-<p>If certificates are tracked manually, renewal gaps can occur without warning.</p>
-<p>Continuous monitoring centralises expiry tracking across your portfolio and reduces missed renewals.</p>
-<p><a href="{url}">Activate Monitoring</a></p>
-<p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Enterprise Ltd</p>
+    risk_row = f"<li><strong>Risk Level:</strong> {risk_level}</li>" if risk_level else ""
+    body = f"""
+<p style="margin:0 0 12px 0;">Hello {first_name},</p>
+<h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">1) Result</h2>
+<ul style="margin:0 0 14px 18px;padding:0;">
+  <li><strong>Compliance Score:</strong> {score}%</li>
+  {risk_row}
+</ul>
+<h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">2) Meaning</h2>
+<p style="margin:0 0 14px 0;">Your score reflects the monitoring posture indicated by your responses. It highlights where renewals and evidence tracking may need stronger controls.</p>
+<h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">3) Recommended Actions</h2>
+<ul style="margin:0 0 14px 18px;padding:0;">
+  <li>Centralise certificate and evidence records in one monitored system.</li>
+  <li>Set automated reminders for upcoming expiry milestones.</li>
+  <li>Review high-risk properties first and close renewal gaps.</li>
+</ul>
+<h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">4) Next Step</h2>
+<p style="margin:0 0 16px 0;">{_cta_button_html(url)}</p>
+<h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">5) Trust & Disclaimer</h2>
+<p style="margin:0;">This report is informational only and does not constitute legal advice.</p>
 """.strip()
+    return _email_shell("Compliance Risk Snapshot", body)
 
 
 def _body_step2(lead: dict) -> str:
     url = _activate_url(lead)
-    return f"""
-<p>Many landlords assume they are compliant because documents exist.</p>
-<p>The risk often arises from:</p>
-<ul>
-<li>Expired certificates not noticed</li>
-<li>Manual reminders missed</li>
-<li>No centralised audit trail</li>
-</ul>
-<p>Monitoring is not about paperwork. It is about visibility.</p>
-<p>When renewals are tracked automatically, risk reduces structurally.</p>
-<p>You can activate monitoring here:</p>
-<p><a href="{url}">Activate Monitoring</a></p>
-<p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Enterprise Ltd</p>
-""".strip()
+    return _email_shell(
+        "Compliance Monitoring Insights",
+        f"<p style=\"margin:0 0 12px 0;\">Many compliance failures happen when records exist but deadlines are not visible in time.</p>"
+        "<ul style=\"margin:0 0 14px 18px;padding:0;\"><li>Missed certificate renewals</li><li>Manual reminder drift</li><li>No portfolio-wide audit trail</li></ul>"
+        f"<p style=\"margin:0 0 14px 0;\">{_cta_button_html(url)}</p>"
+        "<p style=\"margin:0;\">Informational only, not legal advice.</p>",
+    )
 
 
 def _body_step3(lead: dict) -> str:
     url = _activate_url(lead)
-    return f"""
-<p>During inspections or audits, councils commonly review:</p>
-<ul>
-<li>Gas Safety documentation</li>
-<li>Electrical condition reports</li>
-<li>HMO licence evidence</li>
-<li>Renewal history</li>
-</ul>
-<p>Disorganised records increase friction.</p>
-<p>Structured monitoring provides a documented trail of renewal tracking and evidence storage.</p>
-<p>Activate monitoring when ready:</p>
-<p><a href="{url}">Activate Monitoring</a></p>
-<p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Enterprise Ltd</p>
-""".strip()
+    return _email_shell(
+        "Inspection Readiness",
+        "<p style=\"margin:0 0 12px 0;\">Councils commonly review Gas Safety, EICR, HMO licensing evidence, and renewal history.</p>"
+        "<p style=\"margin:0 0 12px 0;\">Structured monitoring reduces friction by keeping evidence and due dates in one auditable place.</p>"
+        f"<p style=\"margin:0 0 14px 0;\">{_cta_button_html(url)}</p>"
+        "<p style=\"margin:0;\">Informational only, not legal advice.</p>",
+    )
 
 
 def _body_step4(lead: dict) -> str:
     url = _activate_url(lead)
-    return f"""
-<p>Manual tracking relies on memory. Structured monitoring relies on system alerts.</p>
-<p><strong>Manual:</strong></p>
-<ul><li>Calendar reminders</li><li>Spreadsheets</li><li>Email folders</li></ul>
-<p><strong>Monitoring:</strong></p>
-<ul><li>Automated expiry alerts</li><li>Portfolio-level visibility</li><li>Centralised vault</li><li>Risk dashboard</li></ul>
-<p>Your current structure suggests monitoring could improve consistency.</p>
-<p><a href="{url}">Activate Monitoring</a></p>
-<p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Enterprise Ltd</p>
-""".strip()
+    return _email_shell(
+        "Manual vs Structured Monitoring",
+        "<p style=\"margin:0 0 12px 0;\"><strong>Manual:</strong> calendar reminders, spreadsheets, fragmented folders.</p>"
+        "<p style=\"margin:0 0 12px 0;\"><strong>Structured:</strong> automated alerts, portfolio visibility, central evidence vault.</p>"
+        f"<p style=\"margin:0 0 14px 0;\">{_cta_button_html(url)}</p>"
+        "<p style=\"margin:0;\">Informational only, not legal advice.</p>",
+    )
 
 
 def _body_step5(lead: dict) -> str:
     url = _activate_url(lead)
-    return f"""
-<p>Your compliance snapshot identified monitoring gaps.</p>
-<p>Unresolved monitoring structures can increase renewal vulnerability over time.</p>
-<p>If you would like structured oversight across your portfolio:</p>
-<p><a href="{url}">Activate Continuous Monitoring</a></p>
-<p>Cancel anytime.</p>
-<p>This assessment is an informational indicator only and not legal advice.</p>
-<p>Regards,<br/>Pleerity Enterprise Ltd</p>
-""".strip()
+    return _email_shell(
+        "Final Reminder: Monitoring Gaps",
+        "<p style=\"margin:0 0 12px 0;\">Unresolved monitoring gaps can increase renewal risk over time.</p>"
+        "<p style=\"margin:0 0 12px 0;\">Activate continuous oversight for clearer evidence, alerts, and renewal control.</p>"
+        f"<p style=\"margin:0 0 14px 0;\">{_cta_button_html(url)}</p>"
+        "<p style=\"margin:0;\">Informational only, not legal advice.</p>",
+    )
 
 
 def _body_step1_builder(lead: dict, activation_token: Optional[str] = None) -> str:

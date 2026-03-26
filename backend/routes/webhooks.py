@@ -20,6 +20,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["webhooks"])
 
 
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    xr = request.headers.get("x-real-ip", "")
+    if xr:
+        return xr.strip()
+    return request.client.host if request.client else "unknown"
+
+
 def _stripe_admin_recipients():
     """Admin recipients for Stripe webhook failure: ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL."""
     raw = (os.getenv("ADMIN_ALERT_EMAILS") or "").strip()
@@ -73,7 +83,7 @@ async def _handle_stripe_webhook(request: Request, stripe_signature: str = None)
     - customer.subscription.created
     - customer.subscription.updated  
     - customer.subscription.deleted
-    - invoice.paid
+    - invoice.paid / invoice.payment_succeeded
     - invoice.payment_failed
     """
     try:
@@ -81,7 +91,8 @@ async def _handle_stripe_webhook(request: Request, stripe_signature: str = None)
 
         success, message, details = await stripe_webhook_service.process_webhook(
             payload=payload,
-            signature=stripe_signature or ""
+            signature=stripe_signature or "",
+            client_ip=_client_ip(request),
         )
 
         if success:
@@ -313,8 +324,14 @@ async def postmark_webhook(
 
 
 @router.post("/api/webhook/postmark/delivery")
-async def postmark_delivery_webhook(request: Request):
+async def postmark_delivery_webhook(
+    request: Request,
+    x_postmark_token: str = Header(None, alias="X-Postmark-Token"),
+):
     """Legacy: Handle Postmark delivery webhooks. Prefer POST /api/webhooks/postmark."""
+    if not _postmark_webhook_token_ok(x_postmark_token):
+        logger.warning("Postmark delivery webhook rejected: missing or invalid X-Postmark-Token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     try:
         body = await request.json()
         message_id = body.get("MessageID")
@@ -335,8 +352,14 @@ async def postmark_delivery_webhook(request: Request):
 
 
 @router.post("/api/webhook/postmark/bounce")
-async def postmark_bounce_webhook(request: Request):
+async def postmark_bounce_webhook(
+    request: Request,
+    x_postmark_token: str = Header(None, alias="X-Postmark-Token"),
+):
     """Legacy: Handle Postmark bounce webhooks. Prefer POST /api/webhooks/postmark."""
+    if not _postmark_webhook_token_ok(x_postmark_token):
+        logger.warning("Postmark bounce webhook rejected: missing or invalid X-Postmark-Token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     try:
         body = await request.json()
         message_id = body.get("MessageID")

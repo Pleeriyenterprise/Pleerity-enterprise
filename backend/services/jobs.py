@@ -1,5 +1,6 @@
 """Background jobs for reminders and digests - Compliance Vault Pro"""
 import asyncio
+import html
 import json
 import uuid
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -10,6 +11,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
+from services.reminder_truth_service import (
+    evaluate_requirement_for_daily_reminder,
+    mark_requirement_reminder_sent,
+    get_pending_verification_snapshot,
+    get_reminder_cooldown_hours,
+)
 
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
@@ -94,6 +101,9 @@ class JobScheduler:
             success_count = 0
             failed_count = 0
             skipped_count = 0
+            evaluated_items_count = 0
+            suppressed_items_count = 0
+            suppressed_by_reason = {}
 
             for client in clients:
                 # Check notification preferences
@@ -146,48 +156,67 @@ class JobScheduler:
                 for req in requirements:
                     if not is_included_for_calendar(req):
                         continue
-                    due_date = get_effective_expiry_date(req)
+                    cooldown_hours = get_reminder_cooldown_hours("DAILY_COMPLIANCE_EXPIRY_EMAIL")
+                    evaluated_items_count += 1
+                    truth = await evaluate_requirement_for_daily_reminder(
+                        self.db,
+                        req,
+                        reminder_days=reminder_days,
+                        cooldown_hours=cooldown_hours,
+                        reminder_type="DAILY_COMPLIANCE_EXPIRY_EMAIL",
+                    )
+                    if not truth.get("eligible"):
+                        suppressed_items_count += 1
+                        reason = truth.get("suppression_reason") or "UNKNOWN"
+                        suppressed_by_reason[reason] = int(suppressed_by_reason.get(reason, 0)) + 1
+                        continue
+                    current_req = truth.get("current_requirement") or req
+                    due_date = get_effective_expiry_date(current_req)
                     if due_date is None:
                         continue
                     days_until_due = (due_date - now_utc).days
 
                     if days_until_due < 0:
-                        prop_addr = properties_map.get(req.get("property_id"), "Your property")
+                        prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
                         overdue_requirements.append({
-                            "type": req.get("description", req.get("requirement_type", "Certificate")),
+                            "type": current_req.get("description", current_req.get("requirement_type", "Certificate")),
                             "due_date": due_date.strftime("%d %B %Y"),
                             "days_overdue": -days_until_due,
                             "property_address": prop_addr,
+                            "__state_key": truth.get("state_key"),
                         })
                         reminder_refs.append({
-                            "property_id": req.get("property_id"),
-                            "requirement_type": req.get("requirement_type", ""),
+                            "property_id": current_req.get("property_id"),
+                            "requirement_type": current_req.get("requirement_type", ""),
                             "due_date": due_date.strftime("%Y-%m-%d"),
+                            "requirement_id": current_req.get("requirement_id"),
                         })
                         await self.db.requirements.update_one(
-                            {"requirement_id": req["requirement_id"]},
+                            {"requirement_id": current_req["requirement_id"]},
                             {"$set": {"status": "OVERDUE"}}
                         )
-                        properties_status_changed.add(req.get("property_id"))
+                        properties_status_changed.add(current_req.get("property_id"))
                     elif 0 <= days_until_due <= reminder_days:
-                        prop_addr = properties_map.get(req.get("property_id"), "Your property")
+                        prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
                         expiring_requirements.append({
-                            "type": req.get("description", req.get("requirement_type", "Certificate")),
+                            "type": current_req.get("description", current_req.get("requirement_type", "Certificate")),
                             "due_date": due_date.strftime("%d %B %Y"),
                             "days_remaining": days_until_due,
                             "status": "URGENT" if days_until_due <= 7 else "WARNING",
                             "property_address": prop_addr,
+                            "__state_key": truth.get("state_key"),
                         })
                         reminder_refs.append({
-                            "property_id": req.get("property_id"),
-                            "requirement_type": req.get("requirement_type", ""),
+                            "property_id": current_req.get("property_id"),
+                            "requirement_type": current_req.get("requirement_type", ""),
                             "due_date": due_date.strftime("%Y-%m-%d"),
+                            "requirement_id": current_req.get("requirement_id"),
                         })
                         await self.db.requirements.update_one(
-                            {"requirement_id": req["requirement_id"]},
+                            {"requirement_id": current_req["requirement_id"]},
                             {"$set": {"status": "EXPIRING_SOON"}}
                         )
-                        properties_status_changed.add(req.get("property_id"))
+                        properties_status_changed.add(current_req.get("property_id"))
                 
                 # Enqueue compliance recalc for properties whose requirement status changed
                 if properties_status_changed:
@@ -208,6 +237,11 @@ class JobScheduler:
                 
                 # Send reminder if there are expiring or overdue requirements
                 if expiring_requirements or overdue_requirements:
+                    all_state_keys = []
+                    for row in overdue_requirements + expiring_requirements:
+                        sk = row.pop("__state_key", None)
+                        if sk:
+                            all_state_keys.append(sk)
                     reminder_recipients = await self._resolve_reminder_recipients(client)
                     for recipient_email in reminder_recipients:
                         attempted_count += 1
@@ -220,6 +254,12 @@ class JobScheduler:
                         )
                         if ok:
                             success_count += 1
+                            for sk in all_state_keys:
+                                await mark_requirement_reminder_sent(
+                                    self.db,
+                                    sk,
+                                    cooldown_hours=get_reminder_cooldown_hours("DAILY_COMPLIANCE_EXPIRY_EMAIL"),
+                                )
                         else:
                             failed_count += 1
                     # Portfolio and above: runtime plan gating before SMS (survives downgrade/cancel)
@@ -258,14 +298,14 @@ class JobScheduler:
                     "message": "Daily reminders: no reminders due",
                     "count": 0,
                     "outcome_status": "success",
-                    "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": skipped_count},
+                    "outcome_metrics": {"expected_count": 0, "attempted_count": 0, "success_count": 0, "failed_count": 0, "skipped_count": skipped_count, "evaluated_items_count": evaluated_items_count, "suppressed_items_count": suppressed_items_count, "suppressed_by_reason": suppressed_by_reason},
                 }
             if failed_count > 0 and success_count > 0:
                 return {
                     "message": f"Daily reminders: {success_count} sent, {failed_count} failed",
                     "count": success_count,
                     "outcome_status": "degraded",
-                    "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": success_count, "failed_count": failed_count, "skipped_count": skipped_count},
+                    "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": success_count, "failed_count": failed_count, "skipped_count": skipped_count, "evaluated_items_count": evaluated_items_count, "suppressed_items_count": suppressed_items_count, "suppressed_by_reason": suppressed_by_reason},
                 }
             if failed_count > 0 and success_count == 0:
                 return {
@@ -273,13 +313,13 @@ class JobScheduler:
                     "count": 0,
                     "outcome_status": "failed",
                     "error_message": f"All {attempted_count} reminder send(s) failed",
-                    "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": 0, "failed_count": failed_count, "skipped_count": skipped_count},
+                    "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": 0, "failed_count": failed_count, "skipped_count": skipped_count, "evaluated_items_count": evaluated_items_count, "suppressed_items_count": suppressed_items_count, "suppressed_by_reason": suppressed_by_reason},
                 }
             return {
                 "message": f"Daily reminders sent: {success_count}",
                 "count": success_count,
                 "outcome_status": "success",
-                "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": success_count, "failed_count": 0, "skipped_count": skipped_count},
+                "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": success_count, "failed_count": 0, "skipped_count": skipped_count, "evaluated_items_count": evaluated_items_count, "suppressed_items_count": suppressed_items_count, "suppressed_by_reason": suppressed_by_reason},
             }
 
         except Exception as e:
@@ -732,12 +772,9 @@ class JobScheduler:
             from models import AuditAction, UserRole, UserStatus
             from utils.audit import create_audit_log
 
-            count_pending = await self.db.documents.count_documents({"status": "UPLOADED"})
-            cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-            count_older_24h = await self.db.documents.count_documents({
-                "status": "UPLOADED",
-                "uploaded_at": {"$lte": cutoff_24h}
-            })
+            snapshot = await get_pending_verification_snapshot(self.db)
+            count_pending = snapshot["count_pending"]
+            count_older_24h = snapshot["count_older_24h"]
             admins = await self.db.portal_users.find(
                 {
                     "role": {"$in": [UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value]},
@@ -750,6 +787,31 @@ class JobScheduler:
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             attempted = len(recipient_emails)
             sent = 0
+            if count_pending == 0:
+                await create_audit_log(
+                    action=AuditAction.ADMIN_ACTION,
+                    actor_id="system",
+                    metadata={
+                        "action_type": "PENDING_VERIFICATION_DIGEST_SUPPRESSED",
+                        "suppression_reason": "ZERO_PENDING_ITEMS",
+                        "count_pending": 0,
+                        "count_older_24h": 0,
+                    },
+                )
+                logger.info("Pending verification digest suppressed: zero pending items at send-time truth check")
+                return {
+                    "message": "Pending verification digest: suppressed (zero pending items)",
+                    "count": 0,
+                    "outcome_status": "success",
+                    "outcome_metrics": {
+                        "expected_count": 0,
+                        "attempted_count": 0,
+                        "success_count": 0,
+                        "failed_count": 0,
+                        "skipped_count": len(recipient_emails),
+                        "suppression_reason": "ZERO_PENDING_ITEMS",
+                    },
+                }
             for email in recipient_emails:
                 try:
                     result = await notification_orchestrator.send(
@@ -1053,113 +1115,200 @@ class JobScheduler:
         return "Status updated"
 
     async def send_renewal_reminders(self):
-        """Send renewal reminders 7 days before subscription renewal.
-        
-        IMPORTANT: Only runs for clients with ENABLED entitlement.
-        Per spec: no background jobs when entitlement is DISABLED.
-        """
-        logger.info("Running renewal reminder job...")
-        
-        try:
-            from services.plan_registry import plan_registry
-            
-            now = datetime.now(timezone.utc)
-            reminder_window = now + timedelta(days=7)
-            
-            # Get billing records with renewals in the next 7 days
-            billings = await self.db.client_billing.find(
-                {
-                    "subscription_status": {"$in": ["ACTIVE", "TRIALING"]},
-                    "entitlement_status": "ENABLED",
-                    "current_period_end": {
-                        "$gte": now,
-                        "$lte": reminder_window
-                    },
-                    "cancel_at_period_end": {"$ne": True},  # Don't remind if already canceling
-                    "renewal_reminder_sent": {"$ne": True}  # Don't send duplicate reminders
-                },
-                {"_id": 0}
-            ).to_list(500)
-            
-            reminder_count = 0
-            
-            for billing in billings:
-                try:
-                    client_id = billing.get("client_id")
-                    
-                    # Get client info
-                    client = await self.db.clients.find_one(
-                        {"client_id": client_id},
-                        {"_id": 0, "contact_email": 1, "contact_name": 1}
-                    )
-                    
-                    if not client or not client.get("contact_email"):
-                        continue
-                    
-                    # Check notification preferences
-                    prefs = await self.db.notification_preferences.find_one(
-                        {"client_id": client_id},
-                        {"_id": 0}
-                    )
-                    
-                    # Default to enabled if no preferences set
-                    renewal_reminders_enabled = prefs.get("renewal_reminders", True) if prefs else True
-                    
-                    if not renewal_reminders_enabled:
-                        logger.info(f"Skipping renewal reminder for {client_id} - disabled in preferences")
-                        continue
-                    
-                    # Get plan info
-                    plan_code = billing.get("current_plan_code", "PLAN_1_SOLO")
-                    plan_def = plan_registry.get_plan_by_code_string(plan_code)
-                    
-                    renewal_date = billing.get("current_period_end")
-                    if isinstance(renewal_date, datetime):
-                        renewal_date_str = renewal_date.strftime("%B %d, %Y")
-                    else:
-                        renewal_date_str = str(renewal_date)[:10] if renewal_date else "soon"
-                    
-                    amount = f"£{plan_def.get('monthly_price', 0):.2f}"
-                    from utils.app_urls import get_app_base_url
+        """Backward-compatible alias for subscription lifecycle + renewal reminders."""
+        return await self.process_subscription_lifecycle_and_reminders()
 
-                    frontend_url = get_app_base_url(for_email_links=False)
-                    
-                    # Send renewal reminder via orchestrator
-                    period_end = billing.get("current_period_end")
-                    period_str = period_end.strftime("%Y-%m-%d") if isinstance(period_end, datetime) else str(period_end or "")[:10]
-                    idempotency_key = f"{client_id}_RENEWAL_REMINDER_{period_str}"
-                    from services.notification_orchestrator import notification_orchestrator
+    async def process_subscription_lifecycle_and_reminders(self):
+        """
+        Post-grace enforcement, mid-grace dunning nudge, and renewal reminders (7d + 3d).
+        Uses Stripe-backed billing records and idempotent period keys.
+        """
+        logger.info("Running subscription lifecycle and renewal reminders job...")
+        import stripe
+        from services.subscription_lifecycle_service import (
+            apply_post_grace_transitions,
+            grace_period_days,
+            build_renewal_email_context,
+            renewal_reminder_days,
+        )
+        from services.billing_period_utils import normalize_stored_period_end_for_api
+        from services.notification_orchestrator import notification_orchestrator
+        from utils.app_urls import get_app_base_url
+
+        now = datetime.now(timezone.utc)
+        frontend_url = get_app_base_url(for_email_links=False)
+        billing_url = f"{frontend_url}/settings/billing"
+        stripe_key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
+
+        transitioned = await apply_post_grace_transitions(now)
+
+        grace_sent = 0
+        grace_docs = await self.db.client_billing.find(
+            {"billing_lifecycle_state": "grace_period"},
+            {"_id": 0},
+        ).to_list(500)
+        gdays = grace_period_days()
+        for b in grace_docs:
+            client_id = b.get("client_id")
+            if not client_id:
+                continue
+            pfail = b.get("payment_failed_at")
+            if not pfail:
+                continue
+            if getattr(pfail, "tzinfo", None) is None:
+                pfail = pfail.replace(tzinfo=timezone.utc)
+            mid_point = pfail + timedelta(days=max(1.0, gdays / 2))
+            if now < mid_point or b.get("grace_mid_reminder_sent_at"):
+                continue
+            try:
+                client = await self.db.clients.find_one(
+                    {"client_id": client_id},
+                    {"_id": 0, "contact_name": 1, "full_name": 1},
+                )
+                name = (client or {}).get("contact_name") or (client or {}).get("full_name") or "Valued Customer"
+                g_end = b.get("grace_period_ends_at")
+                g_end_s = g_end.strftime("%d %B %Y") if hasattr(g_end, "strftime") else ""
+                idempotency_key = f"{client_id}_GRACE_REMINDER_{(b.get('dunning_stripe_invoice_id') or '')[:40]}"
+                grace_msg = (
+                    f"<p>We still could not charge your saved payment method. "
+                    f"Please update it before <strong>{html.escape(g_end_s)}</strong> "
+                    f"to keep full access. Some automations stay paused until payment succeeds.</p>"
+                    f"<p><a href=\"{html.escape(billing_url, quote=True)}\">Open Billing</a></p>"
+                )
+                await notification_orchestrator.send(
+                    template_key="SUBSCRIPTION_GRACE_REMINDER",
+                    client_id=client_id,
+                    context={
+                        "client_name": name,
+                        "message": grace_msg,
+                        "subject": "Reminder: update your payment method",
+                    },
+                    idempotency_key=idempotency_key,
+                    event_type="subscription_grace_reminder",
+                )
+                await self.db.client_billing.update_one(
+                    {"client_id": client_id},
+                    {"$set": {"grace_mid_reminder_sent_at": now}},
+                )
+                grace_sent += 1
+            except Exception as e:
+                logger.error("Grace reminder failed for %s: %s", client_id, e)
+
+        billings = await self.db.client_billing.find(
+            {
+                "subscription_status": {"$in": ["ACTIVE", "TRIALING"]},
+                "cancel_at_period_end": {"$ne": True},
+                "current_period_end": {"$gte": now},
+            },
+            {"_id": 0},
+        ).to_list(2000)
+
+        day7, day3 = renewal_reminder_days()
+        renewal_7 = 0
+        renewal_3 = 0
+
+        for billing in billings:
+            client_id = billing.get("client_id")
+            if not client_id:
+                continue
+            if (billing.get("entitlement_status") or "").upper() not in ("ENABLED", ""):
+                continue
+
+            prefs = await self.db.notification_preferences.find_one(
+                {"client_id": client_id},
+                {"_id": 0},
+            )
+            if prefs and prefs.get("renewal_reminders") is False:
+                continue
+
+            cpe = normalize_stored_period_end_for_api(billing.get("current_period_end"))
+            if not cpe:
+                continue
+            delta = cpe - now
+            days_until = max(0, delta.days)
+            period_key = cpe.isoformat()
+
+            charge_auto = True
+            sub_id = billing.get("stripe_subscription_id")
+            if sub_id and stripe_key:
+                try:
+                    stripe.api_key = stripe_key
+                    sub = stripe.Subscription.retrieve(sub_id)
+                    charge_auto = sub.get("collection_method") == "charge_automatically"
+                except Exception:
+                    charge_auto = True
+
+            renewal_display = cpe.strftime("%d %B %Y")
+            client = await self.db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "contact_name": 1, "full_name": 1},
+            )
+            name = (client or {}).get("contact_name") or (client or {}).get("full_name") or "Valued Customer"
+            ctx_base = build_renewal_email_context(
+                client_name=name,
+                renewal_date_display=renewal_display,
+                days_until=days_until,
+                charge_automatically=charge_auto,
+                billing_url=billing_url,
+            )
+            msg_html = (
+                f"<p>{html.escape(ctx_base['body_framing'])}</p>"
+                f"<p><a href=\"{html.escape(billing_url, quote=True)}\">Open Billing</a> to review your plan and payment method.</p>"
+            )
+
+            try:
+                if days_until in (day7 - 1, day7) and billing.get("renewal_reminder_period_key_7d") != period_key:
                     await notification_orchestrator.send(
-                        template_key="RENEWAL_REMINDER",
+                        template_key="SUBSCRIPTION_RENEWAL_REMINDER_7D",
                         client_id=client_id,
                         context={
-                            "client_name": client.get("contact_name", "Valued Customer"),
-                            "plan_name": plan_def.get("name", plan_code) if plan_def else plan_code,
-                            "renewal_date": renewal_date_str,
-                            "amount": amount,
-                            "billing_portal_link": f"{frontend_url}/app/billing",
+                            "client_name": name,
+                            "message": msg_html,
+                            "subject": "Upcoming subscription renewal (7 days)",
                         },
-                        idempotency_key=idempotency_key,
-                        event_type="renewal_reminder",
+                        idempotency_key=f"{client_id}_RENEW7_{period_key}",
+                        event_type="subscription_renewal_reminder_7d",
                     )
-                    # Mark reminder as sent to prevent duplicates
                     await self.db.client_billing.update_one(
                         {"client_id": client_id},
-                        {"$set": {"renewal_reminder_sent": True}}
+                        {"$set": {"renewal_reminder_period_key_7d": period_key}},
                     )
-                    
-                    reminder_count += 1
-                    logger.info(f"Renewal reminder sent to {client.get('contact_email')}")
-                    
-                except Exception as e:
-                    logger.error(f"Failed to send renewal reminder for client {billing.get('client_id')}: {e}")
-            
-            logger.info(f"Renewal reminder job complete. Sent {reminder_count} reminders.")
-            return reminder_count
-            
-        except Exception as e:
-            logger.exception("Renewal reminder job error: %s", e)
-            raise
+                    renewal_7 += 1
+                if days_until in (day3 - 1, day3) and billing.get("renewal_reminder_period_key_3d") != period_key:
+                    await notification_orchestrator.send(
+                        template_key="SUBSCRIPTION_RENEWAL_REMINDER_3D",
+                        client_id=client_id,
+                        context={
+                            "client_name": name,
+                            "message": msg_html,
+                            "subject": "Upcoming subscription renewal (3 days)",
+                        },
+                        idempotency_key=f"{client_id}_RENEW3_{period_key}",
+                        event_type="subscription_renewal_reminder_3d",
+                    )
+                    await self.db.client_billing.update_one(
+                        {"client_id": client_id},
+                        {"$set": {"renewal_reminder_period_key_3d": period_key}},
+                    )
+                    renewal_3 += 1
+            except Exception as e:
+                logger.error("Renewal reminder failed for %s: %s", client_id, e)
+
+        msg = (
+            f"Lifecycle: post_grace_updates={transitioned}, grace_nudges={grace_sent}, "
+            f"renewal_7d={renewal_7}, renewal_3d={renewal_3}"
+        )
+        logger.info("Subscription lifecycle job complete. %s", msg)
+        return {
+            "message": msg,
+            "count": transitioned + grace_sent + renewal_7 + renewal_3,
+            "outcome_metrics": {
+                "post_grace_updates": transitioned,
+                "grace_reminders": grace_sent,
+                "renewal_7d": renewal_7,
+                "renewal_3d": renewal_3,
+            },
+        }
 
 async def run_daily_job():
     """Run daily reminder job."""
@@ -1185,12 +1334,14 @@ async def run_compliance_check():
 
 
 async def run_renewal_reminders():
-    """Run subscription renewal reminder job."""
+    """Run subscription lifecycle, grace enforcement, and renewal reminder emails."""
     scheduler = JobScheduler()
     await scheduler.connect()
-    count = await scheduler.send_renewal_reminders()
+    result = await scheduler.send_renewal_reminders()
     await scheduler.close()
-    return count
+    if isinstance(result, dict):
+        return result
+    return {"message": f"Subscription lifecycle job: {result}", "count": result}
 
 
 async def run_scheduled_reports():

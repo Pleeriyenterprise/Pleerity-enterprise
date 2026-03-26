@@ -507,10 +507,40 @@ async def run_abandoned_intake_detection():
 async def run_lead_followup_processing():
     try:
         from services.lead_followup_service import LeadFollowUpService
+        from services.lead_automation_service import process_due_sequences
         await LeadFollowUpService.process_followup_queue()
-        return {"message": "Lead follow-up processing completed"}
+        sequence_result = await process_due_sequences(limit=100)
+        return {
+            "message": (
+                "Lead follow-up processing completed "
+                f"(sequence sent={sequence_result.get('sent', 0)} "
+                f"skipped={sequence_result.get('skipped', 0)} failed={sequence_result.get('failed', 0)})"
+            ),
+            "count": int(sequence_result.get("sent", 0)),
+            "outcome_metrics": sequence_result,
+        }
     except Exception as e:
         logger.error(f"Lead follow-up processing failed: {e}")
+        raise
+
+
+async def run_lead_compliance_gap_detection():
+    try:
+        from services.lead_automation_service import detect_compliance_gap_and_trigger
+        triggered = await detect_compliance_gap_and_trigger()
+        return {"message": f"Lead automation compliance-gap detection: {triggered} trigger(s)", "count": int(triggered)}
+    except Exception as e:
+        logger.error("Lead compliance gap detection failed: %s", e)
+        raise
+
+
+async def run_lead_inactive_reactivation_detection():
+    try:
+        from services.lead_automation_service import detect_inactive_users_and_trigger
+        triggered = await detect_inactive_users_and_trigger()
+        return {"message": f"Lead automation inactivity detection: {triggered} trigger(s)", "count": int(triggered)}
+    except Exception as e:
+        logger.error("Lead inactivity reactivation detection failed: %s", e)
         raise
 
 
@@ -1011,9 +1041,17 @@ async def run_contractor_performance_recalc():
         raise
 
 
+async def run_subscription_lifecycle():
+    """Post-grace entitlement enforcement, mid-grace payment nudges, 7d/3d renewal emails."""
+    from services.jobs import run_renewal_reminders
+
+    return await run_renewal_reminders()
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
+    "subscription_lifecycle": run_subscription_lifecycle,
     "pending_verification_digest": run_pending_verification_digest,
     "monthly_digest": run_monthly_digests,
     "compliance_check_morning": run_compliance_status_check,
@@ -1029,6 +1067,8 @@ JOB_RUNNERS = {
     "generation_auto_retry_processing": run_generation_auto_retry_processing,
     "abandoned_intake_detection": run_abandoned_intake_detection,
     "lead_followup_processing": run_lead_followup_processing,
+    "lead_compliance_gap_detection": run_lead_compliance_gap_detection,
+    "lead_inactive_reactivation_detection": run_lead_inactive_reactivation_detection,
     "lead_sla_check": run_lead_sla_check,
     "checklist_nurture_processing": run_checklist_nurture_processing,
     "onboarding_sequence_processing": run_onboarding_sequence_processing,

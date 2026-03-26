@@ -508,10 +508,10 @@ def _compute_overall_health(
     return OVERALL_HEALTH_HEALTHY
 
 
-@router.get("/health-summary")
-async def get_health_summary(request: Request):
-    """Summary for System Health dashboard: strict overall health, per-job states (never_ran, missed, healthy, etc.), summary counts."""
-    await admin_route_guard(request)
+async def build_health_summary_payload() -> Dict[str, Any]:
+    """
+    Core observability payload (no HTTP). Used by GET /health-summary and Control Centre.
+    """
     import os
     from datetime import datetime, timezone, timedelta
     from services.job_run_service import STATUS_SUCCESS, STATUS_FAILED, STATUS_DEGRADED
@@ -746,6 +746,13 @@ async def get_health_summary(request: Request):
             if not_yet_due_count > 0 else None
         ),
     }
+
+
+@router.get("/health-summary")
+async def get_health_summary(request: Request):
+    """Summary for System Health dashboard: strict overall health, per-job states (never_ran, missed, healthy, etc.), summary counts."""
+    await admin_route_guard(request)
+    return await build_health_summary_payload()
 
 
 @router.get("/framework-audit")

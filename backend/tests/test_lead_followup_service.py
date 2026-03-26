@@ -58,8 +58,22 @@ class TestNurtureTemplatesRender:
         )
         assert "Compliance Risk Snapshot" in subject or "Risk" in subject
         assert "65" in body
-        assert "MODERATE" in body
+        assert "Activate Compliance Monitoring" in body
         assert "lead_token=abc" in body or "app.example.com" in body
+
+    def test_transactional_risk_builder_does_not_expose_lead_id(self):
+        from services.lead_followup_service import _build_transactional_risk_check_html
+
+        lead = {
+            "lead_id": "LEAD-INTERNAL-ONLY",
+            "email": "a@b.co",
+            "name": "Test",
+            "risk_score": 92,
+        }
+        subject, body = _build_transactional_risk_check_html(lead, "https://app.example.com/intake/start")
+        assert "Compliance Risk Snapshot" in subject
+        assert "Low Risk" in body
+        assert "LEAD-INTERNAL-ONLY" not in body
 
 
 class TestSendRiskCheckCompletedTransactional:

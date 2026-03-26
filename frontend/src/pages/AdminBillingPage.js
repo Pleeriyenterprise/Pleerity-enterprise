@@ -35,6 +35,29 @@ import { toast } from 'sonner';
 import api from '../api/client';
 import AdminPendingPaymentsPage from './AdminPendingPaymentsPage';
 
+const MIN_VALID_DATE_MS = 946684800000;
+
+function formatAdminDate(isoOrDate) {
+  if (isoOrDate == null || isoOrDate === '') return null;
+  const t = new Date(isoOrDate).getTime();
+  if (Number.isNaN(t) || t < MIN_VALID_DATE_MS) return null;
+  return new Date(isoOrDate).toLocaleString('en-GB');
+}
+
+/** Mirrors tenant BillingPage labels; `sl` = API `subscription_lifecycle` object */
+function humanLifecycleLabel(sl) {
+  if (!sl?.has_subscription) return 'No active subscription';
+  if (sl.cancel_at_period_end) return 'Cancelling at period end';
+  const lc = (sl.billing_lifecycle_state || 'active').toLowerCase();
+  if (lc === 'grace_period') return 'Payment retry (grace period)';
+  if (lc === 'limited') return 'Restricted — payment overdue';
+  if (lc === 'past_due') return 'Payment past due';
+  if (lc === 'expired') return 'Subscription expired';
+  if (lc === 'cancelled') return 'Subscription cancelled';
+  if (lc === 'renewing') return 'Active — renewal soon';
+  return 'Active';
+}
+
 const AdminBillingPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -69,6 +92,9 @@ const AdminBillingPage = () => {
   
   // Statistics
   const [statistics, setStatistics] = useState(null);
+
+  const [lifecycleJobRunning, setLifecycleJobRunning] = useState(false);
+  const [lastLifecycleJobResult, setLastLifecycleJobResult] = useState(null);
 
   // Receipts & invoices (canonical ledger + orders)
   const [receipts, setReceipts] = useState([]);
@@ -178,12 +204,21 @@ const AdminBillingPage = () => {
       const response = await api.post(`/admin/billing/clients/${selectedClientId}/sync`);
       
       if (response.data.success) {
+        const lc = response.data.lifecycle_sync;
+        const lcOk = lc && !lc.error;
         toast.success('Billing synced', {
-          description: response.data.changes_detected 
-            ? 'Changes detected and applied' 
+          description: response.data.changes_detected
+            ? 'Changes detected and applied'
             : 'Already up to date',
         });
-        
+        if (lc && lc.error) {
+          toast.warning('Lifecycle reconcile failed', { description: String(lc.error) });
+        } else if (lcOk && lc.updated) {
+          toast.info('Subscription lifecycle updated', {
+            description: `State: ${lc.billing_lifecycle_state || '—'} · Entitlement: ${lc.entitlement_status || '—'}`,
+          });
+        }
+
         if (response.data.provisioning_triggered) {
           toast.info('Provisioning triggered', {
             description: 'Client provisioning has been started',
@@ -192,6 +227,7 @@ const AdminBillingPage = () => {
         
         // Refresh snapshot
         await fetchBillingSnapshot(selectedClientId);
+        fetchStatistics();
       } else {
         toast.warning(response.data.message);
       }
@@ -200,6 +236,31 @@ const AdminBillingPage = () => {
       toast.error(error.response?.data?.detail || 'Sync failed');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleRunSubscriptionLifecycleJob = async () => {
+    setLifecycleJobRunning(true);
+    setLastLifecycleJobResult(null);
+    try {
+      const response = await api.post('/admin/billing/jobs/subscription-lifecycle');
+      const d = response.data || {};
+      setLastLifecycleJobResult(d);
+      const m = d.outcome_metrics || {};
+      toast.success('Subscription lifecycle job finished', {
+        description:
+          d.message ||
+          `Post-grace: ${m.post_grace_updates ?? '—'} · Grace nudges: ${m.grace_reminders ?? '—'} · 7d: ${m.renewal_7d ?? '—'} · 3d: ${m.renewal_3d ?? '—'}`,
+      });
+      fetchStatistics();
+      if (selectedClientId) {
+        await fetchBillingSnapshot(selectedClientId);
+      }
+    } catch (error) {
+      console.error('Lifecycle job error:', error);
+      toast.error(error.response?.data?.detail || 'Subscription lifecycle job failed');
+    } finally {
+      setLifecycleJobRunning(false);
     }
   };
 
@@ -523,13 +584,25 @@ const AdminBillingPage = () => {
                         }`}
                         data-testid={`client-result-${client.client_id}`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
                             <p className="font-medium text-gray-900 text-sm">{client.contact_name || client.company_name || 'Unknown'}</p>
                             <p className="text-xs text-gray-500">{client.contact_email}</p>
                             {client.crn && <p className="text-xs text-gray-400">CRN: {client.crn}</p>}
+                            {client.billing_lifecycle_state === 'grace_period' && (
+                              <p className="text-xs text-amber-700 font-medium mt-0.5">Grace period (payment retry)</p>
+                            )}
                           </div>
-                          {getEntitlementBadge(client.entitlement_status)}
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            {getEntitlementBadge(client.entitlement_status)}
+                            {client.billing_lifecycle_state &&
+                              client.billing_lifecycle_state !== 'active' &&
+                              client.billing_lifecycle_state !== 'renewing' && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-700 uppercase">
+                                  {client.billing_lifecycle_state.replace(/_/g, ' ')}
+                                </span>
+                              )}
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -570,6 +643,50 @@ const AdminBillingPage = () => {
                     <p>Portfolio: {statistics.plan_counts?.PLAN_2_PORTFOLIO || 0}</p>
                     <p>Professional: {statistics.plan_counts?.PLAN_3_PRO || 0}</p>
                   </div>
+                  {statistics.billing_lifecycle_state_counts && (
+                    <>
+                      <hr />
+                      <p className="text-xs font-medium text-gray-700">Billing lifecycle (client_billing)</p>
+                      <div className="text-xs text-gray-600 space-y-0.5">
+                        <p>Grace: {statistics.billing_lifecycle_state_counts.grace_period ?? 0}</p>
+                        <p>Limited: {statistics.billing_lifecycle_state_counts.limited ?? 0}</p>
+                        <p>Past due: {statistics.billing_lifecycle_state_counts.past_due ?? 0}</p>
+                        <p>Renewing (≤7d): {statistics.billing_lifecycle_state_counts.renewing ?? 0}</p>
+                        <p>Active: {statistics.billing_lifecycle_state_counts.active ?? 0}</p>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {statistics?.clients_in_grace?.length > 0 && (
+              <Card data-testid="grace-period-panel">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    Payment grace ({statistics.clients_in_grace.length})
+                  </CardTitle>
+                  <CardDescription>Clients with billing_lifecycle_state = grace_period (from database).</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 max-h-72 overflow-y-auto">
+                  {statistics.clients_in_grace.map((row) => (
+                    <button
+                      key={row.client_id}
+                      type="button"
+                      onClick={() => setSelectedClientId(row.client_id)}
+                      className="w-full text-left p-2 rounded border border-amber-200 bg-amber-50/80 hover:bg-amber-100 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-gray-900">
+                        {row.full_name || row.contact_email || row.client_id}
+                      </p>
+                      {row.crn && <p className="text-xs text-gray-600">CRN: {row.crn}</p>}
+                      <p className="text-xs text-amber-800 mt-1">
+                        Grace ends: {formatAdminDate(row.grace_period_ends_at) || '—'}
+                        {row.payment_failed_at ? ` · Failed: ${formatAdminDate(row.payment_failed_at)}` : ''}
+                      </p>
+                    </button>
+                  ))}
                 </CardContent>
               </Card>
             )}
@@ -701,9 +818,10 @@ const AdminBillingPage = () => {
                       <div>
                         <p className="text-gray-500">Next billing / period end</p>
                         <p className="font-medium">
-                          {billingSnapshot.next_billing_date
-                            ? new Date(billingSnapshot.next_billing_date).toLocaleString()
-                            : '—'}
+                          {formatAdminDate(
+                            billingSnapshot.subscription_lifecycle?.current_period_end ||
+                              billingSnapshot.next_billing_date
+                          ) || '—'}
                         </p>
                       </div>
                       <div>
@@ -734,6 +852,88 @@ const AdminBillingPage = () => {
                   </CardContent>
                 </Card>
 
+                {billingSnapshot.subscription_lifecycle && (
+                  <Card data-testid="subscription-lifecycle-card">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-electric-teal" />
+                        Subscription lifecycle
+                      </CardTitle>
+                      <CardDescription>
+                        Same fields as tenant billing status API (Stripe + client_billing; period may be refreshed from
+                        Stripe).
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      {(() => {
+                        const sl = billingSnapshot.subscription_lifecycle;
+                        const subStripe = String(
+                          sl.subscription_status || billingSnapshot.stripe_subscription_status || ''
+                        ).toUpperCase();
+                        return (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <p className="text-gray-500">Summary</p>
+                                <p className="font-medium text-midnight-blue">{humanLifecycleLabel(sl)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">billing_lifecycle_state</p>
+                                <p className="font-mono text-xs">{sl.billing_lifecycle_state || '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Stripe subscription status</p>
+                                <div className="mt-1">
+                                  {subStripe ? getSubscriptionBadge(subStripe) : <span className="text-gray-400">—</span>}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Entitlement (billing record)</p>
+                                <div className="mt-1">{getEntitlementBadge(sl.entitlement_status || '—')}</div>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Period end (API)</p>
+                                <p className="font-medium">{formatAdminDate(sl.current_period_end) || '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Grace ends</p>
+                                <p className="font-medium">{formatAdminDate(sl.grace_period_ends_at) || '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Payment failed at</p>
+                                <p className="font-medium">{formatAdminDate(sl.payment_failed_at) || '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Charge automatically</p>
+                                <p className="font-medium">
+                                  {sl.charge_automatically === true
+                                    ? 'Yes'
+                                    : sl.charge_automatically === false
+                                      ? 'No'
+                                      : '—'}
+                                </p>
+                              </div>
+                              <div className="sm:col-span-2">
+                                <p className="text-gray-500">Cancel at period end</p>
+                                <p className="font-medium">
+                                  {sl.cancel_at_period_end === true
+                                    ? 'Yes'
+                                    : sl.cancel_at_period_end === false
+                                      ? 'No'
+                                      : '—'}
+                                </p>
+                              </div>
+                            </div>
+                            {!sl.has_subscription && (
+                              <p className="text-xs text-gray-500">No subscription on file in client_billing for this client.</p>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Plan & Subscription */}
                 <Card data-testid="subscription-info">
                   <CardHeader className="pb-3">
@@ -758,8 +958,16 @@ const AdminBillingPage = () => {
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-500">Subscription Status</p>
-                        <div className="mt-1">{getSubscriptionBadge(billingSnapshot.subscription_status)}</div>
+                        <p className="text-gray-500">Subscription status (client record)</p>
+                        <div className="mt-1">
+                          {getSubscriptionBadge(
+                            String(
+                              billingSnapshot.stripe_subscription_status ||
+                                billingSnapshot.subscription_status ||
+                                'NONE'
+                            ).toUpperCase()
+                          )}
+                        </div>
                       </div>
                       <div>
                         <p className="text-gray-500">Onboarding</p>
@@ -769,7 +977,10 @@ const AdminBillingPage = () => {
                         <div className="col-span-2">
                           <p className="text-gray-500">Current Period</p>
                           <p className="font-medium">
-                            {new Date(billingSnapshot.current_period_start).toLocaleDateString()} - {new Date(billingSnapshot.current_period_end).toLocaleDateString()}
+                            {billingSnapshot.current_period_start
+                              ? `${new Date(billingSnapshot.current_period_start).toLocaleDateString()} - `
+                              : '— '}
+                            {new Date(billingSnapshot.current_period_end).toLocaleDateString()}
                             {billingSnapshot.cancel_at_period_end && (
                               <span className="ml-2 text-amber-600">(Cancels at end)</span>
                             )}
@@ -889,7 +1100,9 @@ const AdminBillingPage = () => {
                         <Alert className="border-red-200 bg-red-50">
                           <AlertCircle className="w-4 h-4 text-red-600" />
                           <AlertDescription className="text-red-800">
-                            Payment failed on {new Date(billingSnapshot.payment_failed_at).toLocaleDateString()}
+                            Payment failed on{' '}
+                            {formatAdminDate(billingSnapshot.payment_failed_at) ||
+                              new Date(billingSnapshot.payment_failed_at).toLocaleDateString()}
                           </AlertDescription>
                         </Alert>
                       )}
@@ -1081,6 +1294,35 @@ const AdminBillingPage = () => {
                       )}
                       Sync Billing Now
                     </Button>
+
+                    <Button
+                      type="button"
+                      onClick={handleRunSubscriptionLifecycleJob}
+                      disabled={lifecycleJobRunning}
+                      variant="outline"
+                      className="w-full justify-start"
+                      data-testid="subscription-lifecycle-job-btn"
+                      title="Runs the same batch as the scheduled subscription_lifecycle job"
+                    >
+                      {lifecycleJobRunning ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Play className="w-4 h-4 mr-2" />
+                      )}
+                      Run subscription lifecycle job
+                    </Button>
+                    {lastLifecycleJobResult?.outcome_metrics && (
+                      <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 space-y-1">
+                        <p className="font-medium text-gray-800">Last job metrics</p>
+                        <p>Post-grace updates: {lastLifecycleJobResult.outcome_metrics.post_grace_updates ?? '—'}</p>
+                        <p>Grace nudges: {lastLifecycleJobResult.outcome_metrics.grace_reminders ?? '—'}</p>
+                        <p>Renewal 7d: {lastLifecycleJobResult.outcome_metrics.renewal_7d ?? '—'}</p>
+                        <p>Renewal 3d: {lastLifecycleJobResult.outcome_metrics.renewal_3d ?? '—'}</p>
+                        {lastLifecycleJobResult.message && (
+                          <p className="text-gray-500 pt-1 border-t border-gray-200">{lastLifecycleJobResult.message}</p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Portal Link */}
                     <Button

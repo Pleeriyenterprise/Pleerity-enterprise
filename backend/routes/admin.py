@@ -1113,6 +1113,30 @@ async def get_property_compliance_score_history(
         )
 
 
+@router.get("/clients/{client_id}/compliance-activity")
+async def get_client_compliance_activity(
+    request: Request,
+    client_id: str,
+    property_id: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+):
+    """Admin visibility into Action -> Outcome activity log for a client/property."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "client_id": 1})
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+    try:
+        from services.compliance_outcome_engine import list_activity
+        return await list_activity(client_id=client_id, property_id=property_id, limit=limit)
+    except Exception as e:
+        logger.error(f"Compliance activity list error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load compliance activity",
+        )
+
+
 @router.get("/compliance/sla-alerts")
 async def get_compliance_sla_alerts(
     request: Request,

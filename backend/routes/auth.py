@@ -196,6 +196,17 @@ async def login(request: Request, credentials: LoginRequest):
     """Client login endpoint."""
     ip = _client_ip(request)
     email_key = (credentials.email or "").strip().lower()
+    try:
+        from services.security_monitoring_service import is_auth_locked
+        if await is_auth_locked(email=email_key, ip=ip):
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail="Login temporarily locked due to repeated failed attempts. Try again later.",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
     lim = security_limits
     blocked_ip, err_ip = await rate_limiter.peek_blocked(
         f"login_client_ip:{ip}", lim.login_client_ip_max, lim.login_window_minutes
@@ -218,6 +229,16 @@ async def login(request: Request, credentials: LoginRequest):
     async def _record_login_failure() -> None:
         await rate_limiter.record_hit(f"login_client_ip:{ip}", lim.login_window_minutes)
         await rate_limiter.record_hit(f"login_client_email:{email_key}", lim.login_window_minutes)
+        try:
+            from services.security_monitoring_service import record_security_event
+            await record_security_event(
+                event_type="auth.login_failed",
+                ip=ip,
+                details={"email": email_key},
+                severity="medium",
+            )
+        except Exception:
+            pass
 
     try:
         # Find portal user
@@ -330,6 +351,17 @@ async def login(request: Request, credentials: LoginRequest):
             actor_id=portal_user["portal_user_id"],
             client_id=portal_user.get("client_id")  # Use .get() to handle None
         )
+        try:
+            from services.security_monitoring_service import record_security_event
+            await record_security_event(
+                event_type="auth.login_success",
+                user_id=portal_user["portal_user_id"],
+                ip=ip,
+                details={"role": portal_user.get("role")},
+                severity="low",
+            )
+        except Exception:
+            pass
         
         # Check if this is first login and emit enablement event
         try:
@@ -599,6 +631,19 @@ async def set_password(request: Request, data: SetPasswordRequest):
             except Exception:
                 pass
             try:
+                from services.lead_automation_service import record_client_event, evaluate_client_automation_rules, EVENT_PASSWORD_SET
+                client_id_for_event = password_token.get("client_id")
+                if client_id_for_event:
+                    await record_client_event(
+                        client_id=client_id_for_event,
+                        event_type=EVENT_PASSWORD_SET,
+                        source="auth.password_set",
+                        metadata={},
+                    )
+                    await evaluate_client_automation_rules(client_id_for_event, EVENT_PASSWORD_SET)
+            except Exception:
+                pass
+            try:
                 from services.onboarding_lifecycle_service import send_dashboard_ready_and_start_sequence
 
                 await send_dashboard_ready_and_start_sequence(password_token.get("client_id"))
@@ -651,6 +696,18 @@ async def set_password(request: Request, data: SetPasswordRequest):
 async def contractor_login(request: Request, credentials: LoginRequest):
     """Contractor portal login. Returns JWT with role=ROLE_CONTRACTOR and contractor_id."""
     ip = _client_ip(request)
+    email_key = (credentials.email or "").strip().lower()
+    try:
+        from services.security_monitoring_service import is_auth_locked
+        if await is_auth_locked(email=email_key, ip=ip):
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail="Login temporarily locked due to repeated failed attempts. Try again later.",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
     cl = security_limits
     blocked_c, err_c = await rate_limiter.peek_blocked(
         f"login_contractor_ip:{ip}",
@@ -674,6 +731,16 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 metadata={"email": credentials.email, "reason": "contractor_invalid_credentials"}
             )
             await rate_limiter.record_hit(f"login_contractor_ip:{ip}", cl.login_contractor_window_minutes)
+            try:
+                from services.security_monitoring_service import record_security_event
+                await record_security_event(
+                    event_type="auth.login_failed",
+                    ip=ip,
+                    details={"email": email_key, "portal": "contractor"},
+                    severity="medium",
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         contractor_id = acc["contractor_id"]
         contractor = await contractor_service.get_contractor(contractor_id)
@@ -683,6 +750,16 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 metadata={"email": credentials.email, "contractor_id": contractor_id, "reason": "contractor_inactive"}
             )
             await rate_limiter.record_hit(f"login_contractor_ip:{ip}", cl.login_contractor_window_minutes)
+            try:
+                from services.security_monitoring_service import record_security_event
+                await record_security_event(
+                    event_type="auth.login_failed",
+                    ip=ip,
+                    details={"email": email_key, "portal": "contractor"},
+                    severity="medium",
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is not active")
         token_data = {
             "portal_user_id": f"contractor_{contractor_id}",
@@ -696,6 +773,17 @@ async def contractor_login(request: Request, credentials: LoginRequest):
             actor_id=contractor_id,
             metadata={"email": acc["email"], "contractor_id": contractor_id}
         )
+        try:
+            from services.security_monitoring_service import record_security_event
+            await record_security_event(
+                event_type="auth.login_success",
+                user_id=token_data["portal_user_id"],
+                ip=ip,
+                details={"portal": "contractor"},
+                severity="low",
+            )
+        except Exception:
+            pass
         return TokenResponse(
             access_token=access_token,
             user={
@@ -948,6 +1036,17 @@ async def admin_login(request: Request, credentials: LoginRequest):
     """
     ip = _client_ip(request)
     email_key = (credentials.email or "").strip().lower()
+    try:
+        from services.security_monitoring_service import is_auth_locked
+        if await is_auth_locked(email=email_key, ip=ip):
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail="Login temporarily locked due to repeated failed attempts. Try again later.",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
     al = security_limits
     blocked_a_ip, err_a_ip = await rate_limiter.peek_blocked(
         f"login_admin_ip:{ip}", al.login_admin_ip_max, al.login_admin_window_minutes
@@ -970,6 +1069,16 @@ async def admin_login(request: Request, credentials: LoginRequest):
     async def _record_admin_failure() -> None:
         await rate_limiter.record_hit(f"login_admin_ip:{ip}", al.login_admin_window_minutes)
         await rate_limiter.record_hit(f"login_admin_email:{email_key}", al.login_admin_window_minutes)
+        try:
+            from services.security_monitoring_service import record_security_event
+            await record_security_event(
+                event_type="auth.login_failed",
+                ip=ip,
+                details={"email": email_key, "portal": "admin"},
+                severity="medium",
+            )
+        except Exception:
+            pass
 
     try:
         # Find user by email (any role); role check happens after password verification
@@ -1066,6 +1175,17 @@ async def admin_login(request: Request, credentials: LoginRequest):
             actor_id=portal_user["portal_user_id"],
             metadata={"email": credentials.email}
         )
+        try:
+            from services.security_monitoring_service import record_security_event
+            await record_security_event(
+                event_type="auth.login_success",
+                user_id=portal_user["portal_user_id"],
+                ip=ip,
+                details={"portal": "admin", "role": portal_user.get("role")},
+                severity="low",
+            )
+        except Exception:
+            pass
         
         return TokenResponse(
             access_token=access_token,

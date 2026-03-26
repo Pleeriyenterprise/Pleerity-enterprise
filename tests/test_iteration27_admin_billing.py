@@ -91,6 +91,19 @@ class TestAdminBillingStatistics:
         
         assert "clients_needing_attention" in data
         assert isinstance(data["clients_needing_attention"], list)
+
+    def test_statistics_has_lifecycle_aggregates(self, admin_headers):
+        """Statistics includes billing lifecycle counts and grace list (real DB aggregates)."""
+        response = requests.get(
+            f"{BASE_URL}/api/admin/billing/statistics",
+            headers=admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "billing_lifecycle_state_counts" in data
+        assert "grace_period" in data["billing_lifecycle_state_counts"]
+        assert "clients_in_grace" in data
+        assert isinstance(data["clients_in_grace"], list)
     
     def test_statistics_requires_admin_auth(self):
         """Statistics endpoint requires admin authentication."""
@@ -221,6 +234,21 @@ class TestAdminBillingSnapshot:
         assert "stripe_subscription_id" in data
         assert "cancel_at_period_end" in data
         assert "onboarding_fee_paid" in data
+
+    def test_snapshot_includes_subscription_lifecycle_from_api(self, admin_headers):
+        """Snapshot includes subscription_lifecycle (same source as tenant billing status)."""
+        response = requests.get(
+            f"{BASE_URL}/api/admin/billing/clients/{TEST_CLIENT_ID}",
+            headers=admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "subscription_lifecycle" in data
+        sl = data["subscription_lifecycle"]
+        assert isinstance(sl, dict)
+        assert "has_subscription" in sl
+        if sl.get("has_subscription"):
+            assert "billing_lifecycle_state" in sl
     
     def test_snapshot_has_portal_user(self, admin_headers):
         """Snapshot includes portal user info."""

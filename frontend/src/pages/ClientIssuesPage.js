@@ -164,7 +164,11 @@ function ClientIssuesPageInner() {
         category: createForm.category || undefined,
       })
       .then((res) => {
-        toast.success('Issue created and triaged.');
+        const outcomeMsg = res.data?.outcome?.message;
+        toast.success(outcomeMsg || 'Issue created and triaged.');
+        if (res.data?.outcome && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: res.data.outcome }));
+        }
         setCreateIssueOpen(false);
         setCreateForm({ property_id: '', description: '', category: 'general', severity: 'medium' });
         const issueId = res.data?.issue_id;

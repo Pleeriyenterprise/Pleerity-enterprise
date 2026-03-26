@@ -131,6 +131,19 @@ export default function AdminAnalyticsDashboard() {
   const [conversionPlanFilter, setConversionPlanFilter] = useState('');
   const [marketingFunnel, setMarketingFunnel] = useState(null);
   const [marketingRiskCheck, setMarketingRiskCheck] = useState(null);
+  const [marketingAutomationEmailPerformance, setMarketingAutomationEmailPerformance] = useState(null);
+  const [automationSummarySortMode, setAutomationSummarySortMode] = useState('best_conversion');
+  const automationPerfHighlightMap = React.useMemo(() => {
+    const map = {};
+    const rows = marketingAutomationEmailPerformance?.highlights;
+    if (Array.isArray(rows)) {
+      rows.forEach((h) => {
+        if (h?.flow) map[h.flow] = h;
+      });
+    }
+    return map;
+  }, [marketingAutomationEmailPerformance]);
+
   const [revenueAnalytics, setRevenueAnalytics] = useState(null);
   const [revenuePeriod, setRevenuePeriod] = useState('30d');
   const [revenueBreakdown, setRevenueBreakdown] = useState('all');
@@ -188,23 +201,27 @@ export default function AdminAnalyticsDashboard() {
       const sourceParam = conversionSourceFilter ? `&source=${encodeURIComponent(conversionSourceFilter)}` : '';
       const planParam = conversionPlanFilter ? `&plan=${encodeURIComponent(conversionPlanFilter)}` : '';
       try {
-        const [overviewRes, funnelResConv, failuresRes, marketingFunnelRes, marketingRiskCheckRes] = await Promise.all([
+        const [overviewRes, funnelResConv, failuresRes, marketingFunnelRes, marketingRiskCheckRes, marketingAutomationPerfRes, marketingAutomationFunnelRes] = await Promise.all([
           client.get(`/admin/analytics/overview?${convParams}${sourceParam}${planParam}`),
           client.get(`/admin/analytics/funnel?${convParams}${sourceParam}${planParam}`),
           client.get(`/admin/analytics/failures?${convParams}`),
           client.get(`/admin/analytics/marketing-funnel?${convParams}`).catch(() => ({ data: null })),
           client.get(`/admin/analytics/marketing?period=${period}`).catch(() => ({ data: null })),
+          client.get(`/admin/analytics/marketing/automation-email-performance?period=${period}`).catch(() => ({ data: null })),
+          client.get(`/admin/analytics/marketing/automation-funnel?period=${period}`).catch(() => ({ data: null })),
         ]);
         setConversionOverview(overviewRes.data);
         setConversionFunnel(funnelResConv.data);
         setConversionFailures(failuresRes.data);
-        setMarketingFunnel(marketingFunnelRes?.data ?? null);
+        setMarketingFunnel(marketingAutomationFunnelRes?.data ?? marketingFunnelRes?.data ?? null);
         setMarketingRiskCheck(marketingRiskCheckRes?.data ?? null);
+        setMarketingAutomationEmailPerformance(marketingAutomationPerfRes?.data ?? null);
       } catch (convErr) {
         console.error('Conversion funnel fetch failed:', convErr);
         setConversionOverview(null);
         setConversionFunnel(null);
         setConversionFailures(null);
+        setMarketingAutomationEmailPerformance(null);
       }
       // Also fetch advanced data
       await fetchAdvancedData();
@@ -359,6 +376,111 @@ export default function AdminAnalyticsDashboard() {
                   </span>
                 )}
               </div>
+            )}
+
+            {marketingAutomationEmailPerformance && (
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle className="text-base">Email Effectiveness (Automation)</CardTitle>
+                  <CardDescription>
+                    Open and click performance by flow and step over the selected period.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {Array.isArray(marketingAutomationEmailPerformance.highlights) && marketingAutomationEmailPerformance.highlights.length > 0 && (
+                    <>
+                    <div className="mb-2 flex items-center gap-2 text-xs">
+                      <span className="text-gray-500">Sort:</span>
+                      <button
+                        type="button"
+                        className={`px-2 py-1 rounded border ${automationSummarySortMode === 'best_conversion' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-gray-600'}`}
+                        onClick={() => setAutomationSummarySortMode('best_conversion')}
+                      >
+                        Best conversion
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-2 py-1 rounded border ${automationSummarySortMode === 'fastest_conversion' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-600'}`}
+                        onClick={() => setAutomationSummarySortMode('fastest_conversion')}
+                      >
+                        Fastest conversion
+                      </button>
+                    </div>
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {[...marketingAutomationEmailPerformance.highlights]
+                        .sort((a, b) => {
+                          if (automationSummarySortMode === 'fastest_conversion') {
+                            const av = a?.fastest_median_hours == null ? Number.POSITIVE_INFINITY : Number(a.fastest_median_hours);
+                            const bv = b?.fastest_median_hours == null ? Number.POSITIVE_INFINITY : Number(b.fastest_median_hours);
+                            return av - bv;
+                          }
+                          return Number(b?.top_conversion_rate_percent || 0) - Number(a?.top_conversion_rate_percent || 0);
+                        })
+                        .map((h, i) => (
+                        <div key={`${h?.flow || 'flow'}-${i}`} className="rounded border bg-gray-50 px-2 py-1 text-xs text-gray-700">
+                          <span className="font-medium">{String(h?.flow || '').replace(/_/g, ' ')}</span>
+                          <span> - Best: Step {h?.top_conversion_step ?? '—'} ({h?.top_conversion_rate_percent ?? 0}%)</span>
+                          <span> - Fastest: Step {h?.fastest_step ?? '—'} ({h?.fastest_median_hours ?? '—'}h)</span>
+                        </div>
+                      ))}
+                    </div>
+                    </>
+                  )}
+                  {Array.isArray(marketingAutomationEmailPerformance.rows) && marketingAutomationEmailPerformance.rows.length > 0 ? (
+                    <div className="overflow-x-auto border rounded">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left p-2">Flow</th>
+                            <th className="text-right p-2">Step</th>
+                            <th className="text-right p-2">Sent</th>
+                            <th className="text-right p-2">Open %</th>
+                            <th className="text-right p-2">Click %</th>
+                            <th className="text-right p-2">Conv %</th>
+                            <th className="text-right p-2">Median Hrs</th>
+                            <th className="text-left p-2">Winner</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {marketingAutomationEmailPerformance.rows.map((row, i) => (
+                            (() => {
+                              const flow = row?._id?.flow || '';
+                              const step = row?._id?.step;
+                              const highlight = automationPerfHighlightMap[flow] || {};
+                              const isTopConv = highlight.top_conversion_step === step;
+                              const isFastest = highlight.fastest_step === step;
+                              return (
+                            <tr key={`${row?._id?.flow || 'flow'}-${row?._id?.step || i}`} className="border-t">
+                              <td className="p-2">{String(row?._id?.flow || '—').replace(/_/g, ' ')}</td>
+                              <td className="p-2 text-right">{row?._id?.step ?? '—'}</td>
+                              <td className="p-2 text-right">{row?.sent ?? 0}</td>
+                              <td className="p-2 text-right">{row?.open_rate_percent ?? 0}%</td>
+                              <td className="p-2 text-right">{row?.click_rate_percent ?? 0}%</td>
+                              <td className="p-2 text-right">{row?.conversion_rate_percent ?? 0}%</td>
+                              <td className="p-2 text-right">{row?.median_hours_to_conversion ?? '—'}</td>
+                              <td className="p-2">
+                                <div className="flex items-center gap-1">
+                                  {isTopConv && (
+                                    <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">Best Conv</span>
+                                  )}
+                                  {isFastest && (
+                                    <span className="text-[11px] px-2 py-0.5 rounded bg-blue-100 text-blue-700">Fastest</span>
+                                  )}
+                                  {!isTopConv && !isFastest && <span className="text-gray-400">—</span>}
+                                </div>
+                              </td>
+                            </tr>
+                              );
+                            })()
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-6">No automation email performance data for this period.</p>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </div>
         

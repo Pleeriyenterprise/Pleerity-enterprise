@@ -42,6 +42,78 @@ def _lead_api_base() -> str:
 
     return get_api_base_url().rstrip("/")
 
+
+def _risk_level_label(score_val: object) -> Optional[str]:
+    try:
+        score = int(float(score_val))
+    except (TypeError, ValueError):
+        return None
+    if score >= 90:
+        return "Low Risk"
+    if score >= 70:
+        return "Moderate Risk"
+    if score >= 50:
+        return "Elevated Risk"
+    return "High Risk"
+
+
+def _risk_email_footer_html() -> str:
+    return (
+        "<p style=\"margin:16px 0 0 0; font-size:12px; color:#64748b;\">"
+        "<strong>Pleerity Enterprise Ltd</strong><br/>"
+        "AI-Driven Solutions & Compliance<br/>"
+        "Support: info@pleerityenterprise.co.uk | https://pleerity.com<br/>"
+        "Security note: Never share account credentials or payment details over email."
+        "</p>"
+    )
+
+
+def _build_transactional_risk_check_html(lead: Dict[str, Any], activation_url: str) -> tuple[str, str]:
+    name = lead.get("name") or lead.get("email", "").split("@")[0] or "there"
+    raw_score = lead.get("risk_score")
+    try:
+        risk_score = int(raw_score) if raw_score is not None else 0
+    except (TypeError, ValueError):
+        risk_score = 0
+    risk_level = _risk_level_label(risk_score)
+    risk_row = f"<li><strong>Risk Level:</strong> {risk_level}</li>" if risk_level else ""
+    subject = "Your Compliance Risk Snapshot"
+    body = f"""
+<html>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:Inter,-apple-system,'Segoe UI',Roboto,sans-serif;color:#0f172a;">
+  <div style="max-width:680px;margin:0 auto;padding:24px;">
+    <div style="background:#0f172a;color:#ffffff;padding:16px 20px;border-radius:10px 10px 0 0;">
+      <h1 style="margin:0;font-family:Montserrat,Inter,sans-serif;font-size:20px;color:#14b8a6;">Compliance Risk Snapshot</h1>
+    </div>
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-top:none;padding:20px;border-radius:0 0 10px 10px;">
+      <p style="margin:0 0 12px 0;">Hello {name},</p>
+      <h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">1) Result</h2>
+      <ul style="margin:0 0 14px 18px;padding:0;">
+        <li><strong>Compliance Score:</strong> {risk_score}%</li>
+        {risk_row}
+      </ul>
+      <h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">2) Meaning</h2>
+      <p style="margin:0 0 14px 0;">This score indicates how resilient your current compliance monitoring posture appears based on your risk check responses.</p>
+      <h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">3) Recommended Actions</h2>
+      <ul style="margin:0 0 14px 18px;padding:0;">
+        <li>Centralise certificates and evidence into one monitored workflow.</li>
+        <li>Enable automated expiry reminders and follow-up tasks.</li>
+        <li>Prioritise properties with higher risk exposure indicators.</li>
+      </ul>
+      <h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">4) Next Step</h2>
+      <p style="margin:0 0 16px 0;">
+        <a href="{activation_url}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Activate Compliance Monitoring</a>
+      </p>
+      <h2 style="font-family:Montserrat,Inter,sans-serif;color:#0f172a;font-size:16px;margin:0 0 8px 0;">5) Trust & Disclaimer</h2>
+      <p style="margin:0;">This report is informational only and does not constitute legal advice.</p>
+      {_risk_email_footer_html()}
+    </div>
+  </div>
+</body>
+</html>
+""".strip()
+    return subject, body
+
 LEADS_COLLECTION = "leads"
 
 
@@ -426,21 +498,25 @@ Hi {name},
 
 Thank you for completing the Pleerity Compliance Risk Check.
 
-Based on your responses, your monitoring posture was assessed as:
-**Compliance Score:** {risk_score}%
-**Risk Level:** {risk_band}
+1) Result
+- Compliance Score: {risk_score}%
 
-This score reflects structured weighting of safety indicators and monitoring structure. It is an informational indicator only and not legal advice.
+2) Meaning
+Your score indicates your current compliance monitoring posture based on your risk check responses.
 
-If certificates are tracked manually, renewal gaps can occur without warning. Continuous monitoring centralises expiry tracking across your portfolio.
+3) Recommended Actions
+- Centralise evidence and certification records
+- Enable automated expiry tracking
+- Prioritise higher-risk properties first
 
-[Activate Monitoring]({activation_url})
+4) Next Step
+[Activate Compliance Monitoring]({activation_url})
+
+5) Trust & Disclaimer
+Informational only. Not legal advice.
 
 Regards,
 Pleerity Enterprise Ltd
-
----
-Reference: {lead_id}
 """,
         },
     }
@@ -844,14 +920,9 @@ Reference: {lead_id}
         """
         if not lead.get("email"):
             return False
-        lead = dict(lead)
-        lead["activation_url"] = activation_url
         try:
-            subject, body = LeadFollowUpService.render_template(
-                "lead_transactional_risk_check_completed",
-                lead,
-            )
-            html_body = LeadFollowUpService.markdown_to_html(body)
+            lead = dict(lead)
+            subject, html_body = _build_transactional_risk_check_html(lead, activation_url)
             from services.notification_orchestrator import notification_orchestrator
             from datetime import datetime, timezone
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")

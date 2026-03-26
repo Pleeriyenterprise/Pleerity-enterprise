@@ -2161,7 +2161,10 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
 
   const removeFile = async (uploadId) => {
     try {
-      const res = await fetch(`${API_URL}/api/intake/uploads/${uploadId}`, { method: 'DELETE' });
+      const res = await fetch(
+        `${API_URL}/api/intake/uploads/${uploadId}?intake_session_id=${encodeURIComponent(intakeSessionId)}`,
+        { method: 'DELETE' }
+      );
       if (res.ok) {
         toast.success('File removed');
         await loadExistingFiles();

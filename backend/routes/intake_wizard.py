@@ -52,6 +52,14 @@ from services.pack_registry import (
     calculate_pack_price,
     PACK_ADDONS,
 )
+from services.lead_service import LeadService
+from services.lead_models import LeadCreateRequest, LeadSourcePlatform, LeadServiceInterest
+from services.lead_automation_service import (
+    record_event,
+    evaluate_automation_rules,
+    EVENT_INTAKE_STARTED,
+    EVENT_CHECKOUT_STARTED,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -339,6 +347,47 @@ async def update_client_identity(draft_id: str, request: UpdateClientIdentityReq
             draft_id,
             request.model_dump(exclude_none=True)
         )
+        # Intake start event should be explicit and event-driven for lead automation.
+        try:
+            service_code = str((updated or {}).get("service_code") or (draft or {}).get("service_code") or "UNKNOWN")
+            service_interest = LeadServiceInterest.UNKNOWN
+            if service_code in ("HMO_AUDIT", "FULL_AUDIT", "MOVE_CHECKLIST"):
+                service_interest = LeadServiceInterest.COMPLIANCE_AUDITS
+            elif service_code.startswith("DOC_PACK_"):
+                service_interest = LeadServiceInterest.DOCUMENT_PACKS
+            elif service_code.startswith("AI_"):
+                service_interest = LeadServiceInterest.AUTOMATION
+            elif service_code.startswith("MR_"):
+                service_interest = LeadServiceInterest.MARKET_RESEARCH
+            lead_req = LeadCreateRequest(
+                source_platform=LeadSourcePlatform.INTAKE_ABANDONED,
+                service_interest=service_interest,
+                name=request.full_name,
+                full_name=request.full_name,
+                email=request.email,
+                phone=request.phone,
+                company_name=request.company_name,
+                marketing_consent=False,
+                intake_draft_id=draft_id,
+                message_summary=f"Intake started for {service_code}",
+                source_metadata={"draft_id": draft_id, "service_code": service_code, "intake_state": "started"},
+            )
+            lead = await LeadService.create_lead(
+                request=lead_req,
+                actor_id="intake_wizard",
+                actor_type="system",
+                upsert_by_email=True,
+            )
+            await record_event(
+                lead_id=lead["lead_id"],
+                event_type=EVENT_INTAKE_STARTED,
+                source="intake_wizard.update_client_identity",
+                metadata={"draft_id": draft_id, "service_code": service_code},
+                source_ref=draft_id,
+            )
+            await evaluate_automation_rules(lead["lead_id"], EVENT_INTAKE_STARTED)
+        except Exception as lead_err:
+            logger.warning("Intake-start lead automation skipped for draft %s: %s", draft_id, lead_err)
         return updated
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -533,6 +582,24 @@ async def create_draft_checkout(draft_id: str, request: CreateCheckoutRequest):
             success_url=success_url,
             cancel_url=cancel_url,
         )
+        try:
+            db = database.get_db()
+            lead = await db.leads.find_one({"intake_draft_id": draft_id}, {"_id": 0, "lead_id": 1})
+            if not lead:
+                email = ((draft.get("client_identity") or {}).get("email") or "").strip().lower()
+                if email:
+                    lead = await db.leads.find_one({"email": email}, {"_id": 0, "lead_id": 1})
+            if lead and lead.get("lead_id"):
+                await record_event(
+                    lead_id=lead["lead_id"],
+                    event_type=EVENT_CHECKOUT_STARTED,
+                    source="intake_wizard.create_draft_checkout",
+                    metadata={"draft_id": draft_id, "service_code": draft.get("service_code")},
+                    source_ref=draft_id,
+                )
+                await evaluate_automation_rules(lead["lead_id"], EVENT_CHECKOUT_STARTED)
+        except Exception as flow_err:
+            logger.warning("Checkout-start automation event skipped for draft %s: %s", draft_id, flow_err)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

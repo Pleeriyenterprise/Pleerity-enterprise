@@ -61,6 +61,17 @@ export default function OrderProvideInfoPublicPage() {
         setLoading(false);
       }
     })();
+
+    // Remove token query from browser URL to reduce accidental leakage via history/referrer.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('token')) {
+        url.searchParams.delete('token');
+        window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+      }
+    } catch (_) {
+      // no-op
+    }
   }, [token]);
 
   const fieldKeys = useMemo(() => {

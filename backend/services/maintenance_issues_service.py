@@ -144,6 +144,25 @@ async def create_issue(
             )
         except Exception as e:
             logger.debug("Asset event issue_created skip: %s", e)
+    try:
+        from services.compliance_outcome_engine import apply_action_outcome, EVENT_ISSUE_CREATED
+        doc["outcome"] = await apply_action_outcome(
+            {
+                "event_type": EVENT_ISSUE_CREATED,
+                "client_id": client_id,
+                "property_id": property_id,
+                "asset_id": asset_id,
+                "requirement_type": None,
+                "timestamp": now,
+                "source_id": issue_id,
+                "dedupe_key": f"{EVENT_ISSUE_CREATED}:{issue_id}",
+                "actor_id": None,
+                "actor_role": "CLIENT",
+                "metadata": {"issue_id": issue_id},
+            }
+        )
+    except Exception as outcome_err:
+        logger.debug("Action outcome issue_created skip: %s", outcome_err)
     return doc
 
 
@@ -263,7 +282,30 @@ async def update_issue(
             resource_id=issue_id,
             metadata={"old_status": old_status, "new_status": updates["status"]},
         )
-    return await get_issue(issue_id, client_id=client_id)
+    updated = await get_issue(issue_id, client_id=client_id)
+    if updates.get("status") in (STATUS_RESOLVED, STATUS_CLOSED):
+        try:
+            from services.compliance_outcome_engine import apply_action_outcome, EVENT_ISSUE_RESOLVED
+            outcome = await apply_action_outcome(
+                {
+                    "event_type": EVENT_ISSUE_RESOLVED,
+                    "client_id": client_id,
+                    "property_id": issue.get("property_id"),
+                    "asset_id": issue.get("asset_id"),
+                    "requirement_type": None,
+                    "timestamp": updates.get("updated_at") or datetime.now(timezone.utc).isoformat(),
+                    "source_id": issue_id,
+                    "dedupe_key": f"{EVENT_ISSUE_RESOLVED}:{issue_id}:{updates['status']}",
+                    "actor_id": updated_by_id,
+                    "actor_role": "CLIENT",
+                    "metadata": {"new_status": updates.get("status")},
+                }
+            )
+            if updated is not None:
+                updated["outcome"] = outcome
+        except Exception as outcome_err:
+            logger.debug("Action outcome issue_resolved skip: %s", outcome_err)
+    return updated
 
 
 async def create_work_order_from_issue(

@@ -14,6 +14,59 @@ def _frontend_base() -> str:
     return get_app_base_url(for_email_links=True).rstrip("/")
 
 
+def _ai_automation_answer_text() -> str:
+    from services.intake_draft_service import SERVICE_BASE_PRICES
+    from services.support_assistant_catalog import SERVICE_LABELS
+
+    bits = []
+    for code in ("AI_WF_BLUEPRINT", "AI_PROC_MAP", "AI_TOOL_REPORT"):
+        p = SERVICE_BASE_PRICES.get(code)
+        if p is not None:
+            bits.append(f"{SERVICE_LABELS.get(code, code)} (£{int(p) // 100})")
+    return (
+        "We offer AI workflow services for property management: "
+        + ", ".join(bits)
+        + ". View details and book on our Services page."
+    )
+
+
+def _market_research_answer_text() -> str:
+    from services.intake_draft_service import SERVICE_BASE_PRICES
+    from services.support_assistant_catalog import SERVICE_LABELS
+
+    b = SERVICE_BASE_PRICES.get("MR_BASIC")
+    a = SERVICE_BASE_PRICES.get("MR_ADV")
+    return (
+        "We provide property market reports: "
+        f"{SERVICE_LABELS.get('MR_BASIC', 'Basic')} (£{int(b) // 100 if b else 0}) and "
+        f"{SERVICE_LABELS.get('MR_ADV', 'Advanced')} (£{int(a) // 100 if a else 0}). "
+        "See our Services page to order."
+    )
+
+
+def _document_packs_answer_text() -> str:
+    from services.pack_registry import PACK_REGISTRY, PACK_ADDONS
+
+    parts = []
+    for key in ("ESSENTIAL", "TENANCY", "ULTIMATE"):
+        p = PACK_REGISTRY.get(key, {})
+        if p:
+            parts.append(
+                f"{p.get('name')} ({p.get('document_count', '?')} documents, £{int(p.get('price_pence', 0)) // 100})"
+            )
+    addon_bits = [
+        f"{ad.get('name')} +£{int(ad.get('price_pence', 0)) // 100}"
+        for ad in PACK_ADDONS.values()
+    ]
+    return (
+        "We offer professional document packs for landlords: "
+        + "; ".join(parts)
+        + ". Fast Track and printed copy add-ons are priced as follows: "
+        + ", ".join(addon_bits)
+        + ". Standard fulfilment is 48 hours (24 hours with Fast Track)."
+    )
+
+
 def _cvp_pricing() -> str:
     """Live CVP pricing from plan registry for KB entries that need it."""
     try:
@@ -73,7 +126,7 @@ def get_structured_qa() -> List[Dict[str, Any]]:
             "title": "Document packs",
             "category": "document_packs",
             "keywords": ["document pack", "landlord documents", "essential pack", "tenancy pack", "ultimate pack", "ast", "tenancy agreement", "forms", "documents"],
-            "answer": "We offer professional, legally-compliant document packs for landlords: Essential (5 docs, £29), Tenancy (10 docs including AST, £49), Ultimate (15 docs, £79). Fast Track adds £20 for 24-hour delivery; standard is 48 hours. Printed copy option is £25.",
+            "answer": _document_packs_answer_text(),
             "actions": [
                 ("See pricing", f"{base}/pricing"),
                 ("View services", f"{base}/services"),
@@ -161,8 +214,8 @@ def get_structured_qa() -> List[Dict[str, Any]]:
             "id": "order-status",
             "title": "Order status",
             "category": "documents",
-            "keywords": ["order status", "check order", "where is my order", "order reference", "ple-cvp"],
-            "answer": "To check your order status, log into your account and go to 'My Orders' in the dashboard. You can also share your order reference (e.g. PLE-CVP-2026-XXXXX) with support for a lookup. You'll find the reference in your confirmation email.",
+            "keywords": ["order status", "check order", "where is my order", "order reference", "ple-"],
+            "answer": "Sign in and open **My Orders**, or send your order reference (format PLE-YYYYMMDD-####) plus the email used at checkout for a verified lookup.",
             "actions": [
                 ("Sign in", f"{base}/login/client"),
                 ("Talk to support", None),
@@ -174,7 +227,7 @@ def get_structured_qa() -> List[Dict[str, Any]]:
             "title": "AI automation services",
             "category": "automation",
             "keywords": ["ai automation", "automation", "workflow", "ai tool", "process mapping", "automate", "workflow blueprint"],
-            "answer": "We offer AI workflow automation for property management: Workflow Automation Blueprint (£79), Business Process Mapping (£129), and AI Tool Recommendation Report (£59). These help you map and automate repetitive tasks. View details and book on our Services page.",
+            "answer": _ai_automation_answer_text(),
             "actions": [
                 ("See options", f"{base}/services"),
                 ("Contact support", None),
@@ -186,7 +239,7 @@ def get_structured_qa() -> List[Dict[str, Any]]:
             "title": "Market research",
             "category": "market_research",
             "keywords": ["market research", "market report", "area analysis", "rental yield", "investment", "market analysis"],
-            "answer": "We provide property market insights and area analysis: Basic Report (£69) and Advanced Report (£149), including rental yield and investment analysis. See our Services page for details and to order.",
+            "answer": _market_research_answer_text(),
             "actions": [
                 ("See reports", f"{base}/services"),
                 ("Contact support", None),
