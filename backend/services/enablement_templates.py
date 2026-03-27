@@ -75,7 +75,8 @@ ONBOARDING_TEMPLATES = [
         <p>Log in to your dashboard to get started.</p>
         """,
         "assistant_context": "The client {{client_id}} has just had their dashboard provisioned. Help them understand what they can do in the platform and guide them through first steps.",
-        "channels": [DeliveryChannel.IN_APP, DeliveryChannel.EMAIL, DeliveryChannel.ASSISTANT],
+        # Email milestone is sent by onboarding_lifecycle_service only after password is set.
+        "channels": [DeliveryChannel.IN_APP, DeliveryChannel.ASSISTANT],
     },
     {
         "template_code": "password_set_success",

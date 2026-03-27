@@ -430,6 +430,28 @@ async def process_enablement_event(event: EnablementEventPayload):
         
         # Deliver through each enabled channel
         for channel in template.channels:
+            # Hard guard: onboarding "dashboard_ready" email must only send after password is set.
+            if (
+                event.event_type == EnablementEventType.PROVISIONING_COMPLETED
+                and template.template_code == "dashboard_ready"
+                and channel == DeliveryChannel.EMAIL
+            ):
+                pu = await db.portal_users.find_one(
+                    {"client_id": event.client_id, "role": "ROLE_CLIENT_ADMIN"},
+                    {"_id": 0, "password_status": 1},
+                )
+                if not pu or pu.get("password_status") != "SET":
+                    await log_enablement_action(
+                        event=event,
+                        template=template,
+                        channel=channel,
+                        status=EnablementActionStatus.SUPPRESSED,
+                        rendered_title=rendered_title,
+                        rendered_body=rendered_body,
+                        status_reason="Suppressed until password is set",
+                    )
+                    continue
+
             channel_enabled = await is_channel_enabled(event.client_id, channel)
             
             if not channel_enabled:
