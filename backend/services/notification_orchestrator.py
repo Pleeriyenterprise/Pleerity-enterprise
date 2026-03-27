@@ -268,6 +268,11 @@ class NotificationOrchestrator:
                 "_id": 0,
                 "sms_enabled": 1,
                 "sms_phone_number": 1,
+                "sms_phone_verified": 1,
+                "system_announcements": 1,
+                "quiet_hours_enabled": 1,
+                "quiet_hours_start": 1,
+                "quiet_hours_end": 1,
                 "compliance_notifications_enabled": 1,
                 "reporting_notifications_enabled": 1,
                 "marketing_notifications_enabled": 1,
@@ -292,7 +297,7 @@ class NotificationOrchestrator:
 
         # Gating
         channel = template.get("channel", "EMAIL")
-        block_result = await self._apply_gating(template, client, client_id, template_key, context, channel)
+        block_result = await self._apply_gating(template, client, client_id, template_key, context, channel, event_type)
         if block_result:
             return block_result
 
@@ -325,6 +330,21 @@ class NotificationOrchestrator:
                         block_reason="BLOCKED_PREFERENCE_DISABLED",
                         details={"email_category": category},
                     )
+            # Explicit user preference for system/platform announcements.
+            is_system_announcement = (
+                category == "system_announcements"
+                or template_key in {"SYSTEM_ANNOUNCEMENT", "PLATFORM_ANNOUNCEMENT"}
+                or (event_type or "").lower() in {"system_announcement", "platform_announcement"}
+            )
+            if is_system_announcement and not (client.get("notification_preferences") or {}).get("system_announcements", True):
+                await self._write_blocked_log(
+                    db, client_id, template_key, channel, "BLOCKED_PREFERENCE_DISABLED", None, idempotency_key, context, event_type,
+                )
+                return NotificationResult(
+                    outcome="blocked",
+                    block_reason="BLOCKED_PREFERENCE_DISABLED",
+                    details={"preference_key": "system_announcements"},
+                )
 
         # Resolve recipient (context may override for e.g. scheduled report recipients)
         recipient = (context or {}).get("recipient")
@@ -436,6 +456,7 @@ class NotificationOrchestrator:
         template_key: str,
         context: Dict,
         channel: str,
+        event_type: Optional[str] = None,
     ) -> Optional[NotificationResult]:
         db = database.get_db()
 
@@ -499,6 +520,18 @@ class NotificationOrchestrator:
                     status_code=403,
                     details={"error_code": "PLAN_GATE_DENIED", "message": msg or "Feature not available on plan"},
                 )
+        # Quiet-hours gate for non-critical notifications.
+        prefs = client.get("notification_preferences") or {}
+        category = template.get("email_category")
+        if channel in ("EMAIL", "SMS") and category not in ("system_critical", "internal"):
+            if self._is_in_quiet_hours(prefs):
+                await self._write_blocked_log(
+                    db, client_id, template_key, channel, "BLOCKED_QUIET_HOURS", None, None, context, event_type,
+                )
+                return NotificationResult(
+                    outcome="blocked",
+                    block_reason="BLOCKED_QUIET_HOURS",
+                )
         return None
 
     def _resolve_recipient(self, client: Dict, channel: str) -> Optional[str]:
@@ -509,9 +542,30 @@ class NotificationOrchestrator:
             prefs = client.get("notification_preferences") or {}
             if not prefs.get("sms_enabled"):
                 return None
+            if not prefs.get("sms_phone_verified"):
+                return None
             phone = (prefs.get("sms_phone_number") or client.get("sms_phone_number") or "").strip()
             return phone or None
         return None
+
+    def _is_in_quiet_hours(self, prefs: Dict[str, Any]) -> bool:
+        """True if current UTC time falls in configured quiet hours window."""
+        if not prefs or not prefs.get("quiet_hours_enabled"):
+            return False
+        try:
+            start_str = (prefs.get("quiet_hours_start") or "22:00").strip()
+            end_str = (prefs.get("quiet_hours_end") or "08:00").strip()
+            sh, sm = start_str.split(":")
+            eh, em = end_str.split(":")
+            start_min = int(sh) * 60 + int(sm)
+            end_min = int(eh) * 60 + int(em)
+            now = datetime.now(timezone.utc)
+            now_min = now.hour * 60 + now.minute
+            if start_min > end_min:
+                return now_min >= start_min or now_min < end_min
+            return start_min <= now_min < end_min
+        except Exception:
+            return False
 
     async def _write_blocked_log(
         self,

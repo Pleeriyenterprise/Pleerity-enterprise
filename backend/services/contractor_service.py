@@ -463,14 +463,14 @@ async def disable_portal_access(contractor_id: str) -> Dict[str, Any]:
             "purpose": "contractor_invite",
             "metadata.contractor_id": contractor_id,
             "used": {"$ne": True},
-            "revoked_at": {"$exists": False},
+            "revoked_at": None,
         },
         {"$set": {"revoked_at": now_iso, "revoked_reason": "portal_access_disabled"}},
     )
     job_revoke_result = await db.contractor_job_tokens.update_many(
         {
             "contractor_id": contractor_id,
-            "revoked_at": {"$exists": False},
+            "revoked_at": None,
         },
         {"$set": {"revoked_at": now_iso, "revoked_reason": "portal_access_disabled"}},
     )

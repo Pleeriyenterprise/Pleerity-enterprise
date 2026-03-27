@@ -311,7 +311,7 @@ async def _issue_contractor_portal_invite(request: Request, contractor_id: str, 
             "purpose": "contractor_invite",
             "metadata.contractor_id": contractor_id,
             "used": {"$ne": True},
-            "revoked_at": {"$exists": False},
+            "revoked_at": None,
         },
         {"$set": {"revoked_at": now.isoformat(), "revoked_reason": "invite_replaced"}},
     )

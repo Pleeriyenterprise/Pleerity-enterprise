@@ -244,8 +244,12 @@ async def update_notification_preferences(request: Request, data: NotificationPr
         if data.sms_enabled is not None:
             update_fields["sms_enabled"] = data.sms_enabled
         if data.sms_phone_number is not None:
-            update_fields["sms_phone_number"] = data.sms_phone_number
-            update_fields["sms_phone_verified"] = False  # Reset verification on phone change
+            incoming_phone = (data.sms_phone_number or "").strip()
+            current_phone = ((current or {}).get("sms_phone_number") or "").strip()
+            update_fields["sms_phone_number"] = incoming_phone
+            # Only reset verification when the phone number actually changes.
+            if incoming_phone != current_phone:
+                update_fields["sms_phone_verified"] = False
         if data.sms_urgent_alerts_only is not None:
             update_fields["sms_urgent_alerts_only"] = data.sms_urgent_alerts_only
         

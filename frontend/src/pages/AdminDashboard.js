@@ -3938,8 +3938,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
             <div
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
-              onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'requirements-all' }) : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'requirements-all' }); } } : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'clients' }) : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'clients' }); } } : undefined}
               className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
             >
               <span className="text-sm text-gray-600">Total Clients</span>

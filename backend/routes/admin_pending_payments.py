@@ -310,31 +310,35 @@ async def send_payment_link(request: Request, client_id: str):
     )
 
     email_sent = False
-    postmark_token = (os.getenv("POSTMARK_SERVER_TOKEN") or "").strip()
-    postmark_from = (os.getenv("POSTMARK_FROM_EMAIL") or os.getenv("EMAIL_SENDER") or "").strip()
-    if postmark_token and postmark_from and client.get("email"):
+    if client.get("email"):
         try:
-            from postmarker.core import PostmarkClient
-            postmark = PostmarkClient(server_token=postmark_token)
+            from services.notification_orchestrator import notification_orchestrator
             crn = (client.get("customer_reference") or "N/A").strip()
-            # Plain text fallback
-            text_body = f"""You recently started your Compliance Vault Pro onboarding. Complete your payment to activate your account.
-
-Your Customer Reference: {crn}
-Payment link: {checkout_url}
-
-If you have any questions, please contact support."""
-            # Branded HTML (same style as admin invite / order emails)
             html_body = _build_payment_link_email_html(checkout_url=checkout_url, customer_reference=crn)
-            postmark.emails.send(
-                From=postmark_from,
-                To=client["email"],
-                Subject="Complete your Compliance Vault Pro payment",
-                TextBody=text_body,
-                HtmlBody=html_body,
+            result = await notification_orchestrator.send(
+                template_key="ADMIN_MANUAL",
+                client_id=None,
+                context={
+                    "recipient": client["email"],
+                    "client_name": client.get("full_name") or "there",
+                    "subject": "Complete your Compliance Vault Pro payment",
+                    "message": html_body,
+                    "customer_reference": crn,
+                },
+                idempotency_key=f"{client_id}_pending_payment_link_{session_id or 'no_session'}",
+                event_type="pending_payment_link_sent",
             )
-            email_sent = True
-            logger.info("Recovery email sent to %s for client %s", client["email"], client_id)
+            email_sent = result.outcome in ("sent", "duplicate_ignored")
+            if email_sent:
+                logger.info("Recovery email sent to %s for client %s", client["email"], client_id)
+            else:
+                logger.warning(
+                    "Recovery email blocked/failed for client %s: outcome=%s reason=%s error=%s",
+                    client_id,
+                    result.outcome,
+                    result.block_reason,
+                    result.error_message,
+                )
         except Exception as send_err:
             logger.warning("Recovery email failed for client %s: %s", client_id, send_err)
 

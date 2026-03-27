@@ -672,6 +672,9 @@ class EmailService:
             include_actions = model.get("include_action_items", True)
             include_expiries = model.get("include_upcoming_expiries", True)
             include_docs = model.get("include_recent_documents", True)
+            include_property_breakdown = model.get("include_property_breakdown", True)
+            include_recommendations = model.get("include_recommendations", True)
+            include_audit_summary = model.get("include_audit_summary", False)
             items = []
             if include_summary:
                 items.extend([
@@ -685,11 +688,22 @@ class EmailService:
                 items.append(f"<li><strong>Expiring soon:</strong> {model.get('expiring_soon', 0)}</li>")
             if include_docs:
                 items.append(f"<li><strong>Documents uploaded (period):</strong> {model.get('documents_uploaded', 0)}</li>")
+            if include_property_breakdown:
+                items.append("<li><strong>Property breakdown:</strong> available in your portal dashboard.</li>")
+            if include_recommendations:
+                overdue = int(model.get("overdue", 0) or 0)
+                expiring = int(model.get("expiring_soon", 0) or 0)
+                if overdue > 0:
+                    items.append("<li><strong>Recommendation:</strong> Prioritize clearing overdue requirements first.</li>")
+                elif expiring > 0:
+                    items.append("<li><strong>Recommendation:</strong> Schedule uploads for expiring items this week.</li>")
+                else:
+                    items.append("<li><strong>Recommendation:</strong> Maintain current cadence and monitor upcoming deadlines.</li>")
             if not items:
                 items = ["<li>No sections enabled in your digest preferences.</li>"]
             list_html = "\n                        ".join(items)
             cc_html = ""
-            if model.get("command_centre_digest_included"):
+            if include_audit_summary and model.get("command_centre_digest_included"):
                 u = int(model.get("command_centre_urgent_open") or 0)
                 up = int(model.get("command_centre_upcoming_open") or 0)
                 ip = int(model.get("command_centre_in_progress_open") or 0)
@@ -708,7 +722,7 @@ class EmailService:
                     lis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in act_lines)
                     cc_html += f"<p><strong>Recent inbox activity</strong></p><ul>{lis}</ul>"
             period_html = ""
-            if model.get("digest_period_activity_included"):
+            if include_audit_summary and model.get("digest_period_activity_included"):
                 plines = model.get("digest_period_activity_lines") or []
                 if plines:
                     plis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in plines)
@@ -1068,6 +1082,9 @@ Review the admin dashboard pending-verification list to process these documents.
             include_actions = model.get("include_action_items", True)
             include_expiries = model.get("include_upcoming_expiries", True)
             include_docs = model.get("include_recent_documents", True)
+            include_property_breakdown = model.get("include_property_breakdown", True)
+            include_recommendations = model.get("include_recommendations", True)
+            include_audit_summary = model.get("include_audit_summary", False)
             lines = []
             if include_summary:
                 lines.extend([
@@ -1081,11 +1098,22 @@ Review the admin dashboard pending-verification list to process these documents.
                 lines.append(f"- Expiring soon: {model.get('expiring_soon', 0)}")
             if include_docs:
                 lines.append(f"- Documents uploaded (period): {model.get('documents_uploaded', 0)}")
+            if include_property_breakdown:
+                lines.append("- Property breakdown: available in your portal dashboard.")
+            if include_recommendations:
+                overdue = int(model.get("overdue", 0) or 0)
+                expiring = int(model.get("expiring_soon", 0) or 0)
+                if overdue > 0:
+                    lines.append("- Recommendation: prioritize overdue requirements first.")
+                elif expiring > 0:
+                    lines.append("- Recommendation: schedule uploads for expiring items this week.")
+                else:
+                    lines.append("- Recommendation: keep current cadence and monitor upcoming deadlines.")
             if not lines:
                 lines = ["- No sections enabled in your digest preferences."]
             body_lines = "\n".join(lines)
             cc_lines = []
-            if model.get("command_centre_digest_included"):
+            if include_audit_summary and model.get("command_centre_digest_included"):
                 cc_lines.append("")
                 cc_lines.append("Open priorities (Today inbox):")
                 cc_lines.append(f"- Urgent: {int(model.get('command_centre_urgent_open') or 0)}")
@@ -1098,7 +1126,7 @@ Review the admin dashboard pending-verification list to process these documents.
                     cc_lines.append("Recent inbox activity:")
                     for line in act_lines:
                         cc_lines.append(f"- {line}")
-            if model.get("digest_period_activity_included"):
+            if include_audit_summary and model.get("digest_period_activity_included"):
                 pal = model.get("digest_period_activity_lines") or []
                 if pal:
                     cc_lines.append("")
