@@ -166,7 +166,7 @@ async def confirm_compliance_recommended_contractor(request: Request, work_order
     flags = await get_effective_flags(client_id)
     if not flags.get(CONTRACTOR_NETWORK):
         raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
-    _assert_compliance_wo(work_order_id, client_id)
+    await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
         return await wo_contractor_routing.confirm_recommended_contractor(
@@ -183,7 +183,7 @@ async def decline_compliance_recommendation(request: Request, work_order_id: str
     flags = await get_effective_flags(client_id)
     if not flags.get(CONTRACTOR_NETWORK):
         raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
-    _assert_compliance_wo(work_order_id, client_id)
+    await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
         return await wo_contractor_routing.decline_recommendation(
@@ -200,7 +200,7 @@ async def confirm_compliance_alternate_contractor(request: Request, work_order_i
     flags = await get_effective_flags(client_id)
     if not flags.get(CONTRACTOR_NETWORK):
         raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
-    _assert_compliance_wo(work_order_id, client_id)
+    await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
         return await wo_contractor_routing.confirm_alternate_contractor(
@@ -217,7 +217,7 @@ async def request_admin_compliance_routing(request: Request, work_order_id: str,
     flags = await get_effective_flags(client_id)
     if not flags.get(CONTRACTOR_NETWORK):
         raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
-    _assert_compliance_wo(work_order_id, client_id)
+    await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
         return await wo_contractor_routing.request_admin_for_routing(
@@ -234,7 +234,7 @@ async def add_compliance_personal_contractor_and_assign(request: Request, work_o
     flags = await get_effective_flags(client_id)
     if not flags.get(CONTRACTOR_NETWORK):
         raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
-    _assert_compliance_wo(work_order_id, client_id)
+    await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
         return await wo_contractor_routing.add_personal_contractor_and_assign(
