@@ -579,6 +579,7 @@ async def get_client_tasks_digest(
             user["client_id"],
             property_id_filter=property_id,
             activity_limit=activity_limit,
+            portal_user_id=user.get("portal_user_id"),
         )
     except Exception as e:
         logger.error("Tasks digest error for client %s: %s", user.get("client_id"), e)
@@ -607,6 +608,7 @@ async def get_client_command_center(
             user["client_id"],
             predictive_enabled=bool(flags.get(PREDICTIVE_MAINTENANCE)),
             property_id_filter=property_id,
+            portal_user_id=user.get("portal_user_id"),
         )
     except Exception as e:
         logger.error("Command center error for client %s: %s", user.get("client_id"), e)
@@ -769,6 +771,7 @@ async def get_client_unified_tasks(
             client_id=user["client_id"],
             property_id_filter=property_id,
             raw_limit=limit,
+            portal_user_id=user.get("portal_user_id"),
         )
     except Exception as e:
         logger.error("Unified tasks error for client %s: %s", user.get("client_id"), e)
@@ -808,6 +811,7 @@ async def get_client_priorities(
             client_id=user["client_id"],
             property_id_filter=property_id,
             raw_limit=limit,
+            portal_user_id=user.get("portal_user_id"),
         )
     except Exception as e:
         logger.error("Priorities (unified tasks) error for client %s: %s", user.get("client_id"), e)
@@ -1141,7 +1145,11 @@ async def get_client_task_activity(
     user = await client_route_guard(request)
     from services.client_task_state_service import list_recent_activity
 
-    items = await list_recent_activity(user["client_id"], limit=limit)
+    items = await list_recent_activity(
+        user["client_id"],
+        limit=limit,
+        portal_user_id=user.get("portal_user_id"),
+    )
     return {"items": items}
 
 

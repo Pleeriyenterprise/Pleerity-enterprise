@@ -54,6 +54,7 @@ async def get_command_center_bundle(
     *,
     predictive_enabled: bool,
     property_id_filter: Optional[str] = None,
+    portal_user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Return urgent_actions, upcoming_risks, recent_activity, compliance_status_summary
@@ -66,7 +67,10 @@ async def get_command_center_bundle(
 
     try:
         digest = await get_unified_tasks_digest(
-            client_id, property_id_filter=property_id_filter, activity_limit=20
+            client_id,
+            property_id_filter=property_id_filter,
+            activity_limit=20,
+            portal_user_id=portal_user_id,
         )
     except Exception as e:
         logger.warning("command_center digest failed: %s", e)
@@ -74,7 +78,10 @@ async def get_command_center_bundle(
 
     try:
         full_tasks = await get_unified_tasks_for_client(
-            client_id, property_id_filter=property_id_filter, raw_limit=80
+            client_id,
+            property_id_filter=property_id_filter,
+            raw_limit=80,
+            portal_user_id=portal_user_id,
         )
         tasks = full_tasks.get("tasks") or {}
         urgent = tasks.get("urgent") or []

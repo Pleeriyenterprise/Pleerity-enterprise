@@ -61,6 +61,7 @@ async def _log_activity(
     task_id: str,
     action: str,
     actor_id: Optional[str],
+    task_scope_user_id: Optional[str] = None,
     extra: Optional[Dict[str, Any]] = None,
 ) -> None:
     db = database.get_db()
@@ -71,9 +72,29 @@ async def _log_activity(
         "action": action,
         "created_at": _now(),
         "actor_portal_user_id": actor_id,
+        "task_scope_user_id": task_scope_user_id,
         "extra": extra or {},
     }
     await db[COLLECTION_ACTIVITY].insert_one(doc)
+
+
+def _scope_token(portal_user_id: Optional[str]) -> str:
+    token = (portal_user_id or "").strip()
+    return token or "__client__"
+
+
+def _scoped_task_id(task_id: str, portal_user_id: Optional[str]) -> str:
+    return f"{_scope_token(portal_user_id)}::{task_id}"
+
+
+def _raw_task_id_from_doc(row: Dict[str, Any]) -> str:
+    raw = (row.get("raw_task_id") or "").strip()
+    if raw:
+        return raw
+    scoped = str(row.get("task_id") or "")
+    if "::" in scoped:
+        return scoped.split("::", 1)[1]
+    return scoped
 
 
 async def apply_task_action(
@@ -98,11 +119,14 @@ async def apply_task_action(
 
     db = database.get_db()
     coll = db[COLLECTION_OVERRIDES]
+    scope = _scope_token(portal_user_id)
+    scoped_task_id = _scoped_task_id(task_id, portal_user_id)
 
     if action == ACTION_RESTORE:
-        await coll.delete_one({"client_id": client_id, "task_id": task_id})
+        await coll.delete_one({"client_id": client_id, "task_id": scoped_task_id})
         await _log_activity(
             client_id, task_id, ACTION_RESTORE, portal_user_id,
+            task_scope_user_id=scope,
             extra={},
         )
         await create_audit_log(
@@ -111,7 +135,7 @@ async def apply_task_action(
             client_id=client_id,
             resource_type="client_task",
             resource_id=task_id,
-            metadata={"task_id": task_id},
+            metadata={"task_id": task_id, "task_scope_user_id": scope},
         )
         return {"ok": True, "task_id": task_id, "state": None}
 
@@ -128,7 +152,9 @@ async def apply_task_action(
         until = now + timedelta(days=days)
         doc = {
             "client_id": client_id,
-            "task_id": task_id,
+            "task_id": scoped_task_id,
+            "raw_task_id": task_id,
+            "task_scope_user_id": scope,
             "override": OVERRIDE_SNOOZE,
             "snoozed_until": until,
             "recorded_at": now,
@@ -136,7 +162,7 @@ async def apply_task_action(
             "snapshot": snap,
         }
         await coll.update_one(
-            {"client_id": client_id, "task_id": task_id},
+            {"client_id": client_id, "task_id": scoped_task_id},
             {"$set": doc},
             upsert=True,
         )
@@ -145,6 +171,7 @@ async def apply_task_action(
             task_id,
             ACTION_SNOOZE,
             portal_user_id,
+            task_scope_user_id=scope,
             extra={
                 "snooze_days": days,
                 "snoozed_until": until.isoformat(),
@@ -158,7 +185,12 @@ async def apply_task_action(
             client_id=client_id,
             resource_type="client_task",
             resource_id=task_id,
-            metadata={"task_id": task_id, "snooze_days": days, "snoozed_until": until.isoformat()},
+            metadata={
+                "task_id": task_id,
+                "task_scope_user_id": scope,
+                "snooze_days": days,
+                "snoozed_until": until.isoformat(),
+            },
         )
         return {"ok": True, "task_id": task_id, "state": OVERRIDE_SNOOZE, "snoozed_until": until.isoformat()}
 
@@ -166,7 +198,9 @@ async def apply_task_action(
     override = OVERRIDE_DISMISS if action == ACTION_DISMISS else OVERRIDE_DONE
     doc = {
         "client_id": client_id,
-        "task_id": task_id,
+        "task_id": scoped_task_id,
+        "raw_task_id": task_id,
+        "task_scope_user_id": scope,
         "override": override,
         "snoozed_until": None,
         "recorded_at": now,
@@ -174,7 +208,7 @@ async def apply_task_action(
         "snapshot": snap,
     }
     await coll.update_one(
-        {"client_id": client_id, "task_id": task_id},
+        {"client_id": client_id, "task_id": scoped_task_id},
         {"$set": doc},
         upsert=True,
     )
@@ -183,6 +217,7 @@ async def apply_task_action(
         task_id,
         action,
         portal_user_id,
+        task_scope_user_id=scope,
         extra={"title": (title_snapshot or "")[:500] or None, "source_type": source_type_snapshot},
     )
     audit_action = (
@@ -194,28 +229,31 @@ async def apply_task_action(
         client_id=client_id,
         resource_type="client_task",
         resource_id=task_id,
-        metadata={"task_id": task_id, "override": override},
+        metadata={"task_id": task_id, "task_scope_user_id": scope, "override": override},
     )
     return {"ok": True, "task_id": task_id, "state": override}
 
 
-async def load_active_overrides(client_id: str) -> Dict[str, Dict[str, Any]]:
+async def load_active_overrides(client_id: str, portal_user_id: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
     """Return task_id -> override doc, dropping expired snoozes (and deleting them)."""
     db = database.get_db()
     coll = db[COLLECTION_OVERRIDES]
     now = _now()
-    cursor = coll.find({"client_id": client_id})
+    q: Dict[str, Any] = {"client_id": client_id}
+    if portal_user_id is not None:
+        q["task_scope_user_id"] = _scope_token(portal_user_id)
+    cursor = coll.find(q)
     docs = await cursor.to_list(length=500)
     out: Dict[str, Dict[str, Any]] = {}
     for d in docs:
         d.pop("_id", None)
-        tid = d.get("task_id")
+        tid = _raw_task_id_from_doc(d)
         if not tid:
             continue
         if d.get("override") == OVERRIDE_SNOOZE:
             until = _parse_dt(d.get("snoozed_until"))
             if until and until <= now:
-                await coll.delete_one({"client_id": client_id, "task_id": tid})
+                await coll.delete_one({"client_id": client_id, "task_id": d.get("task_id")})
                 logger.debug("Expired snooze removed task_id=%s client=%s", tid, client_id)
                 continue
         out[tid] = d
@@ -263,21 +301,37 @@ async def count_activity_since(
     client_id: str,
     since: datetime,
     actions: List[str],
+    portal_user_id: Optional[str] = None,
 ) -> int:
     db = database.get_db()
-    return await db[COLLECTION_ACTIVITY].count_documents(
-        {"client_id": client_id, "action": {"$in": actions}, "created_at": {"$gte": since}}
-    )
+    q: Dict[str, Any] = {
+        "client_id": client_id,
+        "action": {"$in": actions},
+        "created_at": {"$gte": since},
+    }
+    if portal_user_id is not None:
+        q["task_scope_user_id"] = _scope_token(portal_user_id)
+    return await db[COLLECTION_ACTIVITY].count_documents(q)
 
 
-async def list_hidden_inbox_items(client_id: str, limit: int = 40) -> List[Dict[str, Any]]:
+async def list_hidden_inbox_items(
+    client_id: str,
+    limit: int = 40,
+    portal_user_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Dismissed or inbox-done tasks still in overrides — user can restore to open lists."""
     db = database.get_db()
     coll = db[COLLECTION_OVERRIDES]
+    q: Dict[str, Any] = {
+        "client_id": client_id,
+        "override": {"$in": [OVERRIDE_DISMISS, OVERRIDE_DONE]},
+    }
+    if portal_user_id is not None:
+        q["task_scope_user_id"] = _scope_token(portal_user_id)
     cursor = (
         coll.find(
-            {"client_id": client_id, "override": {"$in": [OVERRIDE_DISMISS, OVERRIDE_DONE]}},
-            {"_id": 0, "task_id": 1, "override": 1, "snapshot": 1, "recorded_at": 1},
+            q,
+            {"_id": 0, "task_id": 1, "raw_task_id": 1, "override": 1, "snapshot": 1, "recorded_at": 1},
         )
         .sort("recorded_at", -1)
         .limit(min(limit, 100))
@@ -285,7 +339,7 @@ async def list_hidden_inbox_items(client_id: str, limit: int = 40) -> List[Dict[
     rows = await cursor.to_list(length=min(limit, 100))
     out: List[Dict[str, Any]] = []
     for r in rows:
-        tid = r.get("task_id")
+        tid = _raw_task_id_from_doc(r)
         if not tid:
             continue
         snap = r.get("snapshot") or {}
@@ -309,12 +363,16 @@ async def list_hidden_inbox_items(client_id: str, limit: int = 40) -> List[Dict[
 async def list_recent_activity(
     client_id: str,
     limit: int = 25,
+    portal_user_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Recent inbox actions for Phase 2 history strip (newest first)."""
     db = database.get_db()
+    q: Dict[str, Any] = {"client_id": client_id}
+    if portal_user_id is not None:
+        q["task_scope_user_id"] = _scope_token(portal_user_id)
     cursor = (
         db[COLLECTION_ACTIVITY]
-        .find({"client_id": client_id}, {"_id": 0})
+        .find(q, {"_id": 0})
         .sort("created_at", -1)
         .limit(min(limit, 100))
     )

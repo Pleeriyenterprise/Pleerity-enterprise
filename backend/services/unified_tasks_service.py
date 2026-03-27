@@ -565,6 +565,7 @@ async def get_unified_tasks_for_client(
     client_id: str,
     property_id_filter: Optional[str] = None,
     raw_limit: int = 120,
+    portal_user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Build unified task list + sections + summary + freshness + spend (when invoicing data exists).
@@ -591,7 +592,7 @@ async def get_unified_tasks_for_client(
         seen.add(tm["id"])
         tasks.append(tm)
 
-    overrides = await client_task_state.load_active_overrides(client_id)
+    overrides = await client_task_state.load_active_overrides(client_id, portal_user_id=portal_user_id)
     visible, snoozed = client_task_state.partition_tasks_by_override(tasks, overrides, now)
     snoozed_sorted = sorted(
         snoozed,
@@ -602,7 +603,11 @@ async def get_unified_tasks_for_client(
     upcoming = _sort_tasks([t for t in visible if t.get("section") == "upcoming"])
     in_progress = _sort_tasks([t for t in visible if t.get("section") == "in_progress"])
     system_recent = await _recently_completed_tasks(client_id, limit=12)
-    activity_rows = await client_task_state.list_recent_activity(client_id, limit=40)
+    activity_rows = await client_task_state.list_recent_activity(
+        client_id,
+        limit=40,
+        portal_user_id=portal_user_id,
+    )
     recent = client_task_state.merge_user_acknowledgements_into_recent(
         system_recent, activity_rows, limit=22
     )
@@ -619,9 +624,14 @@ async def get_unified_tasks_for_client(
         client_id,
         seven_ago,
         [client_task_state.ACTION_DISMISS, client_task_state.ACTION_DONE],
+        portal_user_id=portal_user_id,
     )
 
-    hidden_inbox = await client_task_state.list_hidden_inbox_items(client_id, limit=40)
+    hidden_inbox = await client_task_state.list_hidden_inbox_items(
+        client_id,
+        limit=40,
+        portal_user_id=portal_user_id,
+    )
 
     summary = {
         "urgent_count": len(urgent),
@@ -669,13 +679,17 @@ async def get_unified_tasks_digest(
     property_id_filter: Optional[str] = None,
     *,
     activity_limit: int = 8,
+    portal_user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Lightweight dashboard payload: same prioritisation as full tasks, but no task lists
     (summary, freshness, truncated activity only).
     """
     full = await get_unified_tasks_for_client(
-        client_id, property_id_filter=property_id_filter, raw_limit=120
+        client_id,
+        property_id_filter=property_id_filter,
+        raw_limit=120,
+        portal_user_id=portal_user_id,
     )
     feed = full.get("activity_feed") or []
     cap = max(1, min(int(activity_limit), 25))
