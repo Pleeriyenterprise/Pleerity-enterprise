@@ -966,6 +966,8 @@ class StepUpPasswordRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    mfa_challenge_id: Optional[str] = None
+    mfa_code: Optional[str] = None
 
 
 class ForgotPasswordRequest(BaseModel):

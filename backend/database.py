@@ -214,6 +214,10 @@ class Database:
             await self.db.security_locks.create_index("expires_at")
             await self.db.security_blocks.create_index("ip", unique=True)
             await self.db.security_blocks.create_index("expires_at")
+            # Admin login MFA challenges (email OTP fallback for staff login hardening)
+            await self.db.admin_login_challenges.create_index("challenge_id", unique=True)
+            await self.db.admin_login_challenges.create_index([("portal_user_id", 1), ("created_at", -1)])
+            await self.db.admin_login_challenges.create_index("expires_at")
             # Operations & Compliance: module feature flags per client
             await self.db.client_feature_flags.create_index([("client_id", 1), ("flag_key", 1)], unique=True)
             await self.db.client_feature_flags.create_index("client_id")
@@ -589,6 +593,45 @@ class Database:
                 "template_key": "PAYMENT_FAILED",
                 "channel": "EMAIL",
                 "email_template_alias": "payment-failed",
+                "sms_body": None,
+                "requires_provisioned": False,
+                "requires_active_subscription": False,
+                "requires_entitlement_enabled": False,
+                "plan_required_feature_key": None,
+                "email_category": "system_critical",
+                "is_active": True,
+                "updated_at": now,
+            },
+            {
+                "template_key": "AUTH_ACCOUNT_LOCKED",
+                "channel": "EMAIL",
+                "email_template_alias": "admin-manual",
+                "sms_body": None,
+                "requires_provisioned": False,
+                "requires_active_subscription": False,
+                "requires_entitlement_enabled": False,
+                "plan_required_feature_key": None,
+                "email_category": "system_critical",
+                "is_active": True,
+                "updated_at": now,
+            },
+            {
+                "template_key": "AUTH_LOGIN_RECOVERED",
+                "channel": "EMAIL",
+                "email_template_alias": "admin-manual",
+                "sms_body": None,
+                "requires_provisioned": False,
+                "requires_active_subscription": False,
+                "requires_entitlement_enabled": False,
+                "plan_required_feature_key": None,
+                "email_category": "system_critical",
+                "is_active": True,
+                "updated_at": now,
+            },
+            {
+                "template_key": "AUTH_ADMIN_MFA_CODE",
+                "channel": "EMAIL",
+                "email_template_alias": "admin-manual",
                 "sms_body": None,
                 "requires_provisioned": False,
                 "requires_active_subscription": False,

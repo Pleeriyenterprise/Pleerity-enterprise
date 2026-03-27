@@ -27,6 +27,8 @@ from config.security_limits import security_limits
 from datetime import datetime, timezone, timedelta
 import logging
 import re
+import os
+import secrets
 from middleware import require_auth
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,183 @@ def _client_ip(request: Request) -> str:
 CLIENT_PORTAL_ROLES = (UserRole.ROLE_CLIENT.value, UserRole.ROLE_CLIENT_ADMIN.value)
 STAFF_PORTAL_ROLES = (UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value, UserRole.ROLE_SUPPORT.value, UserRole.ROLE_CONTENT.value)
 
+
+def _frontend_base_url_fallback() -> str:
+    from utils.public_app_url import get_frontend_base_url
+
+    try:
+        return get_frontend_base_url().rstrip("/")
+    except Exception:
+        raw = (os.getenv("PUBLIC_APP_URL") or os.getenv("FRONTEND_URL") or "").strip().rstrip("/")
+        return raw
+
+
+def _admin_mfa_required() -> bool:
+    return (os.getenv("ADMIN_MFA_REQUIRED") or "false").strip().lower() == "true"
+
+
+def _admin_mfa_ttl_seconds() -> int:
+    raw = (os.getenv("ADMIN_MFA_TTL_SECONDS") or "600").strip()
+    try:
+        return max(120, min(int(raw), 1800))
+    except ValueError:
+        return 600
+
+
+def _admin_mfa_max_attempts() -> int:
+    raw = (os.getenv("ADMIN_MFA_MAX_ATTEMPTS") or "5").strip()
+    try:
+        return max(3, min(int(raw), 10))
+    except ValueError:
+        return 5
+
+
+def _generate_mfa_code() -> str:
+    return "".join(secrets.choice("0123456789") for _ in range(6))
+
+
+async def _issue_admin_mfa_challenge(portal_user: dict, ip: str) -> dict:
+    db = database.get_db()
+    challenge_id = generate_secure_token()
+    raw_code = _generate_mfa_code()
+    now = datetime.now(timezone.utc)
+    ttl = _admin_mfa_ttl_seconds()
+    expires_at = now + timedelta(seconds=ttl)
+    await db.admin_login_challenges.insert_one(
+        {
+            "challenge_id": challenge_id,
+            "portal_user_id": portal_user["portal_user_id"],
+            "email": (portal_user.get("auth_email") or "").strip().lower(),
+            "ip": ip,
+            "code_hash": hash_token(raw_code),
+            "attempts": 0,
+            "max_attempts": _admin_mfa_max_attempts(),
+            "created_at": now,
+            "expires_at": expires_at,
+            "used_at": None,
+        }
+    )
+    from services.notification_orchestrator import notification_orchestrator
+    await notification_orchestrator.send(
+        template_key="AUTH_ADMIN_MFA_CODE",
+        client_id=None,
+        context={
+            "recipient": (portal_user.get("auth_email") or "").strip().lower(),
+            "subject": "Your Pleerity admin verification code",
+            "message": (
+                f"Use this code to complete admin sign-in: {raw_code}. "
+                f"It expires in {max(1, ttl // 60)} minute(s). "
+                "If you did not initiate this sign-in, reset your password immediately."
+            ),
+        },
+        idempotency_key=f"admin_mfa_code:{challenge_id}",
+        event_type="admin_mfa_code",
+    )
+    await create_audit_log(
+        action=AuditAction.STEP_UP_VERIFIED,
+        actor_id=portal_user["portal_user_id"],
+        actor_role=UserRole(portal_user["role"]),
+        metadata={"reason": "admin_mfa_challenge_issued", "challenge_id": challenge_id},
+    )
+    return {"challenge_id": challenge_id, "expires_in_seconds": ttl}
+
+
+async def _verify_admin_mfa_challenge(portal_user: dict, ip: str, challenge_id: str, code: str) -> bool:
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    row = await db.admin_login_challenges.find_one(
+        {
+            "challenge_id": challenge_id,
+            "portal_user_id": portal_user["portal_user_id"],
+        },
+        {"_id": 0},
+    )
+    if not row:
+        return False
+    if row.get("used_at"):
+        return False
+    exp = row.get("expires_at")
+    if isinstance(exp, str):
+        exp = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+    if exp and exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if exp and now > exp:
+        return False
+    attempts = int(row.get("attempts") or 0)
+    max_attempts = int(row.get("max_attempts") or _admin_mfa_max_attempts())
+    if attempts >= max_attempts:
+        return False
+    ok = hash_token((code or "").strip()) == row.get("code_hash")
+    if not ok:
+        await db.admin_login_challenges.update_one(
+            {"challenge_id": challenge_id},
+            {"$inc": {"attempts": 1}, "$set": {"updated_at": now, "last_failed_ip": ip}},
+        )
+        await create_audit_log(
+            action=AuditAction.STEP_UP_FAILED,
+            actor_id=portal_user["portal_user_id"],
+            actor_role=UserRole(portal_user["role"]),
+            metadata={"reason": "admin_mfa_invalid_code", "challenge_id": challenge_id},
+        )
+        return False
+    await db.admin_login_challenges.update_one(
+        {"challenge_id": challenge_id},
+        {"$set": {"used_at": now, "updated_at": now, "verified_ip": ip}},
+    )
+    await create_audit_log(
+        action=AuditAction.STEP_UP_VERIFIED,
+        actor_id=portal_user["portal_user_id"],
+        actor_role=UserRole(portal_user["role"]),
+        metadata={"reason": "admin_mfa_verified", "challenge_id": challenge_id},
+    )
+    return True
+
+
+async def _send_auth_lock_notification(email: str, portal: str, retry_after_seconds: int) -> None:
+    """Best-effort lock notification. Uses seeded ADMIN_MANUAL template (no placeholders)."""
+    recipient = (email or "").strip().lower()
+    if not recipient:
+        return
+    base = _frontend_base_url_fallback()
+    reset_link = f"{base}/forgot-password" if base else "/forgot-password"
+    mins = max(1, int((max(0, retry_after_seconds) + 59) / 60))
+    from services.notification_orchestrator import notification_orchestrator
+
+    await notification_orchestrator.send(
+        template_key="AUTH_ACCOUNT_LOCKED",
+        client_id=None,
+        context={
+            "recipient": recipient,
+            "subject": f"Temporary {portal} sign-in lock detected",
+            "message": (
+                f"We detected repeated failed sign-in attempts on your {portal} account and temporarily locked sign-in for about {mins} minute(s). "
+                f"If this was you, wait and try again. If it was not you, reset your password now: {reset_link}"
+            ),
+        },
+        idempotency_key=f"auth_lock_notice:{portal}:{recipient}:{mins}",
+        event_type="auth_lock_notice",
+    )
+
+
+async def _send_post_lock_recovery_notice(email: str, portal: str) -> None:
+    recipient = (email or "").strip().lower()
+    if not recipient:
+        return
+    from services.notification_orchestrator import notification_orchestrator
+    await notification_orchestrator.send(
+        template_key="AUTH_LOGIN_RECOVERED",
+        client_id=None,
+        context={
+            "recipient": recipient,
+            "subject": f"Sign-in restored for your {portal} account",
+            "message": (
+                f"Your {portal} sign-in is active again after a temporary lock. "
+                "If this sign-in was not you, reset your password immediately and contact support."
+            ),
+        },
+        idempotency_key=f"auth_recovery_notice:{portal}:{recipient}",
+        event_type="auth_recovery_notice",
+    )
 
 @router.post("/impersonation/stop")
 async def stop_impersonation(request: Request):
@@ -197,53 +376,52 @@ async def login(request: Request, credentials: LoginRequest):
     ip = _client_ip(request)
     email_key = (credentials.email or "").strip().lower()
     try:
-        from services.security_monitoring_service import is_auth_locked
-        if await is_auth_locked(email=email_key, ip=ip):
+        from services.security_monitoring_service import get_auth_lock_state
+        lock_state = await get_auth_lock_state(email=email_key, ip=ip, portal="client")
+        if lock_state.get("locked"):
+            retry_after = int(lock_state.get("retry_after_seconds") or 0)
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
-                detail="Login temporarily locked due to repeated failed attempts. Try again later.",
+                detail={
+                    "message": "Login temporarily locked due to repeated failed attempts. Try again later.",
+                    "retry_after_seconds": retry_after,
+                },
+                headers={"Retry-After": str(retry_after)} if retry_after > 0 else None,
             )
     except HTTPException:
         raise
     except Exception:
         pass
     lim = security_limits
-    blocked_ip, err_ip = await rate_limiter.peek_blocked(
-        f"login_client_ip:{ip}", lim.login_client_ip_max, lim.login_window_minutes
-    )
-    blocked_email, err_email = await rate_limiter.peek_blocked(
-        f"login_client_email:{email_key}", lim.login_client_email_max, lim.login_window_minutes
-    )
-    if blocked_ip or blocked_email:
-        log_rate_limit_event("login_client", f"ip={ip} email={email_key[:3]}***", ip)
-        await create_audit_log(
-            action=AuditAction.RATE_LIMIT_EXCEEDED,
-            metadata={"scope": "login_client", "ip": ip, "email_prefix": email_key[:3] + "***" if len(email_key) > 3 else "***"},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(err_ip or err_email or "Too many login attempts. Try again later."),
-        )
     db = database.get_db()
 
     async def _record_login_failure() -> None:
-        await rate_limiter.record_hit(f"login_client_ip:{ip}", lim.login_window_minutes)
-        await rate_limiter.record_hit(f"login_client_email:{email_key}", lim.login_window_minutes)
         try:
             from services.security_monitoring_service import record_security_event
             await record_security_event(
                 event_type="auth.login_failed",
                 ip=ip,
-                details={"email": email_key},
+                details={"email": email_key, "portal": "client"},
                 severity="medium",
             )
+            try:
+                from services.security_monitoring_service import get_auth_lock_state
+                state = await get_auth_lock_state(email=email_key, ip=ip, portal="client")
+                if state.get("locked") and state.get("lock_type") == "auth_email":
+                    await _send_auth_lock_notification(
+                        email=email_key,
+                        portal="client",
+                        retry_after_seconds=int(state.get("retry_after_seconds") or 0),
+                    )
+            except Exception:
+                pass
         except Exception:
             pass
 
     try:
         # Find portal user
         portal_user = await db.portal_users.find_one(
-            {"auth_email": credentials.email},
+            {"auth_email": {"$regex": f"^{re.escape(email_key)}$", "$options": "i"}},
             {"_id": 0}
         )
         
@@ -360,8 +538,14 @@ async def login(request: Request, credentials: LoginRequest):
                 details={"role": portal_user.get("role")},
                 severity="low",
             )
+            from services.security_monitoring_service import clear_auth_lock
+            had_lock = await clear_auth_lock(email=email_key, portal="client", reason="login_success")
+            if had_lock:
+                await _send_post_lock_recovery_notice(email=email_key, portal="client")
         except Exception:
             pass
+        # Successful sign-in recovers counters for this account.
+        # No in-memory limiter state to clear here; lock state is DB-backed.
         
         # Check if this is first login and emit enablement event
         try:
@@ -698,29 +882,23 @@ async def contractor_login(request: Request, credentials: LoginRequest):
     ip = _client_ip(request)
     email_key = (credentials.email or "").strip().lower()
     try:
-        from services.security_monitoring_service import is_auth_locked
-        if await is_auth_locked(email=email_key, ip=ip):
+        from services.security_monitoring_service import get_auth_lock_state
+        lock_state = await get_auth_lock_state(email=email_key, ip=ip, portal="contractor")
+        if lock_state.get("locked"):
+            retry_after = int(lock_state.get("retry_after_seconds") or 0)
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
-                detail="Login temporarily locked due to repeated failed attempts. Try again later.",
+                detail={
+                    "message": "Login temporarily locked due to repeated failed attempts. Try again later.",
+                    "retry_after_seconds": retry_after,
+                },
+                headers={"Retry-After": str(retry_after)} if retry_after > 0 else None,
             )
     except HTTPException:
         raise
     except Exception:
         pass
     cl = security_limits
-    blocked_c, err_c = await rate_limiter.peek_blocked(
-        f"login_contractor_ip:{ip}",
-        cl.login_contractor_ip_max,
-        cl.login_contractor_window_minutes,
-    )
-    if blocked_c:
-        log_rate_limit_event("login_contractor", ip, ip)
-        await create_audit_log(
-            action=AuditAction.RATE_LIMIT_EXCEEDED,
-            metadata={"scope": "login_contractor", "ip": ip},
-        )
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_c or "Too many attempts.")
     try:
         from services.contractor_portal_auth_service import verify_contractor_password
         from services import contractor_service
@@ -730,7 +908,6 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 action=AuditAction.USER_LOGIN_FAILED,
                 metadata={"email": credentials.email, "reason": "contractor_invalid_credentials"}
             )
-            await rate_limiter.record_hit(f"login_contractor_ip:{ip}", cl.login_contractor_window_minutes)
             try:
                 from services.security_monitoring_service import record_security_event
                 await record_security_event(
@@ -739,6 +916,14 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                     details={"email": email_key, "portal": "contractor"},
                     severity="medium",
                 )
+                from services.security_monitoring_service import get_auth_lock_state
+                state = await get_auth_lock_state(email=email_key, ip=ip, portal="contractor")
+                if state.get("locked") and state.get("lock_type") == "auth_email":
+                    await _send_auth_lock_notification(
+                        email=email_key,
+                        portal="contractor",
+                        retry_after_seconds=int(state.get("retry_after_seconds") or 0),
+                    )
             except Exception:
                 pass
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -749,7 +934,6 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 action=AuditAction.USER_LOGIN_FAILED,
                 metadata={"email": credentials.email, "contractor_id": contractor_id, "reason": "contractor_inactive"}
             )
-            await rate_limiter.record_hit(f"login_contractor_ip:{ip}", cl.login_contractor_window_minutes)
             try:
                 from services.security_monitoring_service import record_security_event
                 await record_security_event(
@@ -782,8 +966,13 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 details={"portal": "contractor"},
                 severity="low",
             )
+            from services.security_monitoring_service import clear_auth_lock
+            had_lock = await clear_auth_lock(email=email_key, portal="contractor", reason="login_success")
+            if had_lock:
+                await _send_post_lock_recovery_notice(email=email_key, portal="contractor")
         except Exception:
             pass
+        # No in-memory limiter state to clear here; lock state is DB-backed.
         return TokenResponse(
             access_token=access_token,
             user={
@@ -1037,38 +1226,26 @@ async def admin_login(request: Request, credentials: LoginRequest):
     ip = _client_ip(request)
     email_key = (credentials.email or "").strip().lower()
     try:
-        from services.security_monitoring_service import is_auth_locked
-        if await is_auth_locked(email=email_key, ip=ip):
+        from services.security_monitoring_service import get_auth_lock_state
+        lock_state = await get_auth_lock_state(email=email_key, ip=ip, portal="admin")
+        if lock_state.get("locked"):
+            retry_after = int(lock_state.get("retry_after_seconds") or 0)
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
-                detail="Login temporarily locked due to repeated failed attempts. Try again later.",
+                detail={
+                    "message": "Login temporarily locked due to repeated failed attempts. Try again later.",
+                    "retry_after_seconds": retry_after,
+                },
+                headers={"Retry-After": str(retry_after)} if retry_after > 0 else None,
             )
     except HTTPException:
         raise
     except Exception:
         pass
     al = security_limits
-    blocked_a_ip, err_a_ip = await rate_limiter.peek_blocked(
-        f"login_admin_ip:{ip}", al.login_admin_ip_max, al.login_admin_window_minutes
-    )
-    blocked_a_em, err_a_em = await rate_limiter.peek_blocked(
-        f"login_admin_email:{email_key}", al.login_admin_ip_max, al.login_admin_window_minutes
-    )
-    if blocked_a_ip or blocked_a_em:
-        log_rate_limit_event("login_admin", ip, ip)
-        await create_audit_log(
-            action=AuditAction.RATE_LIMIT_EXCEEDED,
-            metadata={"scope": "login_admin", "ip": ip},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(err_a_ip or err_a_em or "Too many login attempts. Try again later."),
-        )
     db = database.get_db()
 
     async def _record_admin_failure() -> None:
-        await rate_limiter.record_hit(f"login_admin_ip:{ip}", al.login_admin_window_minutes)
-        await rate_limiter.record_hit(f"login_admin_email:{email_key}", al.login_admin_window_minutes)
         try:
             from services.security_monitoring_service import record_security_event
             await record_security_event(
@@ -1077,13 +1254,24 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 details={"email": email_key, "portal": "admin"},
                 severity="medium",
             )
+            try:
+                from services.security_monitoring_service import get_auth_lock_state
+                state = await get_auth_lock_state(email=email_key, ip=ip, portal="admin")
+                if state.get("locked") and state.get("lock_type") == "auth_email":
+                    await _send_auth_lock_notification(
+                        email=email_key,
+                        portal="admin",
+                        retry_after_seconds=int(state.get("retry_after_seconds") or 0),
+                    )
+            except Exception:
+                pass
         except Exception:
             pass
 
     try:
         # Find user by email (any role); role check happens after password verification
         portal_user = await db.portal_users.find_one(
-            {"auth_email": credentials.email},
+            {"auth_email": {"$regex": f"^{re.escape(email_key)}$", "$options": "i"}},
             {"_id": 0}
         )
         
@@ -1152,6 +1340,28 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Password not set"
             )
+
+        # Optional production hardening: enforce MFA challenge for staff/admin login.
+        if _admin_mfa_required():
+            challenge_id = (credentials.mfa_challenge_id or "").strip()
+            code = (credentials.mfa_code or "").strip()
+            if not challenge_id or not code:
+                challenge = await _issue_admin_mfa_challenge(portal_user, ip)
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={
+                        "error_code": "MFA_REQUIRED",
+                        "message": "Multi-factor verification required. Enter the code sent to your email.",
+                        "mfa_challenge_id": challenge["challenge_id"],
+                        "expires_in_seconds": challenge["expires_in_seconds"],
+                    },
+                )
+            ok = await _verify_admin_mfa_challenge(portal_user, ip, challenge_id, code)
+            if not ok:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={"error_code": "MFA_INVALID", "message": "Invalid or expired MFA code."},
+                )
         
         # Update last login timestamp
         await db.portal_users.update_one(
@@ -1184,8 +1394,13 @@ async def admin_login(request: Request, credentials: LoginRequest):
                 details={"portal": "admin", "role": portal_user.get("role")},
                 severity="low",
             )
+            from services.security_monitoring_service import clear_auth_lock
+            had_lock = await clear_auth_lock(email=email_key, portal="admin", reason="login_success")
+            if had_lock:
+                await _send_post_lock_recovery_notice(email=email_key, portal="admin")
         except Exception:
             pass
+        # No in-memory limiter state to clear here; lock state is DB-backed.
         
         return TokenResponse(
             access_token=access_token,

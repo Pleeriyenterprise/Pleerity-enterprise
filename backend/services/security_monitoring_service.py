@@ -52,6 +52,42 @@ def _hash_value(raw: str) -> str:
     return hashlib.sha256((raw or "").encode("utf-8")).hexdigest()
 
 
+def _auth_email_threshold() -> int:
+    raw = (os.environ.get("AUTH_LOCK_EMAIL_THRESHOLD") or "5").strip()
+    try:
+        return max(3, min(int(raw), 20))
+    except ValueError:
+        return 5
+
+
+def _auth_email_lock_minutes() -> int:
+    raw = (os.environ.get("AUTH_LOCK_EMAIL_MINUTES") or "15").strip()
+    try:
+        return max(5, min(int(raw), 120))
+    except ValueError:
+        return 15
+
+
+def _auth_ip_distinct_email_threshold() -> int:
+    raw = (os.environ.get("AUTH_IP_DISTINCT_EMAIL_THRESHOLD") or "10").strip()
+    try:
+        return max(5, min(int(raw), 200))
+    except ValueError:
+        return 10
+
+
+def _auth_ip_lock_minutes() -> int:
+    raw = (os.environ.get("AUTH_IP_LOCK_MINUTES") or "30").strip()
+    try:
+        return max(5, min(int(raw), 240))
+    except ValueError:
+        return 30
+
+
+def _auth_email_principal(email: str, portal: str) -> str:
+    return f"{(portal or 'client').strip().lower()}:{(email or '').strip().lower()}"
+
+
 def _incident_key(incident_type: str, principal: str) -> str:
     return _hash_value(f"{incident_type}|{principal}")
 
@@ -105,6 +141,7 @@ async def _lock_principal(lock_type: str, principal: str, minutes: int, reason: 
         {"$set": {"lock_type": lock_type, "principal": principal, "reason": reason, "expires_at": expires_at, "updated_at": _iso()}, "$setOnInsert": {"created_at": _iso()}},
         upsert=True,
     )
+    logger.warning("security.lock_applied lock_type=%s reason=%s", lock_type, reason)
 
 
 async def _block_ip(ip: str, minutes: int, reason: str) -> None:
@@ -119,21 +156,62 @@ async def _block_ip(ip: str, minutes: int, reason: str) -> None:
     )
 
 
-async def is_auth_locked(*, email: Optional[str], ip: Optional[str]) -> bool:
+async def get_auth_lock_state(*, email: Optional[str], ip: Optional[str], portal: str) -> Dict[str, Any]:
     db = database.get_db()
     now_iso = _iso()
-    principals = []
+    principals: List[Dict[str, str]] = []
     if email:
-        principals.append({"lock_type": "auth_email", "principal": str(email).strip().lower()})
+        e_norm = str(email).strip().lower()
+        principals.append({"lock_type": "auth_email", "principal": _auth_email_principal(e_norm, portal)})
+        # Legacy principal compatibility (pre-portal scoping).
+        principals.append({"lock_type": "auth_email", "principal": e_norm})
     if ip:
-        principals.append({"lock_type": "auth_ip", "principal": ip})
+        # IP lock is only for multi-account abuse (not single-account lockouts).
+        principals.append({"lock_type": "auth_ip_abuse", "principal": ip})
     if not principals:
-        return False
+        return {"locked": False}
     hit = await db[SECURITY_LOCKS_COLLECTION].find_one(
         {"$or": principals, "expires_at": {"$gt": now_iso}},
-        {"_id": 0, "principal": 1},
+        {"_id": 0, "principal": 1, "lock_type": 1, "expires_at": 1, "reason": 1},
+        sort=[("expires_at", -1)],
     )
-    return bool(hit)
+    if not hit:
+        return {"locked": False}
+    retry_after_seconds = 0
+    try:
+        exp = datetime.fromisoformat(str(hit.get("expires_at")).replace("Z", "+00:00"))
+        retry_after_seconds = max(0, int((exp - _now()).total_seconds()))
+    except Exception:
+        retry_after_seconds = 0
+    return {
+        "locked": True,
+        "lock_type": hit.get("lock_type"),
+        "reason": hit.get("reason"),
+        "expires_at": hit.get("expires_at"),
+        "retry_after_seconds": retry_after_seconds,
+    }
+
+
+async def is_auth_locked(*, email: Optional[str], ip: Optional[str], portal: str = "client") -> bool:
+    state = await get_auth_lock_state(email=email, ip=ip, portal=portal)
+    return bool(state.get("locked"))
+
+
+async def clear_auth_lock(*, email: str, portal: str, reason: str = "login_success") -> bool:
+    db = database.get_db()
+    email_norm = (email or "").strip().lower()
+    if not email_norm:
+        return
+    p_scoped = _auth_email_principal(email_norm, portal)
+    res = await db[SECURITY_LOCKS_COLLECTION].delete_many(
+        {"lock_type": "auth_email", "principal": {"$in": [p_scoped, email_norm]}}
+    )
+    await record_security_event(
+        event_type="auth.lock_cleared",
+        details={"portal": (portal or "client"), "email": email_norm, "reason": reason},
+        severity="low",
+    )
+    return bool((res and res.deleted_count) or 0)
 
 
 async def should_block_ip(ip: Optional[str]) -> bool:
@@ -197,48 +275,104 @@ async def record_security_event(
         # Brute force / repeated failed auth
         if event_type == "auth.login_failed":
             email_key = (details.get("email") or "").strip().lower()
+            portal = (details.get("portal") or "client").strip().lower()
             since = (now - timedelta(minutes=15)).isoformat()
             count_ip = await db[SECURITY_EVENTS_COLLECTION].count_documents(
                 {"event_type": "auth.login_failed", "ip": ip, "timestamp": {"$gte": since}}
             )
             count_email = await db[SECURITY_EVENTS_COLLECTION].count_documents(
-                {"event_type": "auth.login_failed", "details.email": email_key, "timestamp": {"$gte": since}}
+                {
+                    "event_type": "auth.login_failed",
+                    "details.email": email_key,
+                    "details.portal": portal,
+                    "timestamp": {"$gte": since},
+                }
             ) if email_key else 0
-            if count_ip >= 8 or count_email >= 8:
+            if count_email >= _auth_email_threshold():
                 await _upsert_incident(
                     incident_type="brute_force_login",
                     severity="high",
                     user_id=user_id,
                     ip=ip,
-                    details={"count_ip_15m": int(count_ip), "count_email_15m": int(count_email), "email": email_key},
+                    details={
+                        "count_ip_15m": int(count_ip),
+                        "count_email_15m": int(count_email),
+                        "email": email_key,
+                        "portal": portal,
+                    },
                 )
-                if ip:
-                    await _lock_principal("auth_ip", ip, 30, "too_many_failed_logins")
                 if email_key:
-                    await _lock_principal("auth_email", email_key, 30, "too_many_failed_logins")
+                    await _lock_principal(
+                        "auth_email",
+                        _auth_email_principal(email_key, portal),
+                        _auth_email_lock_minutes(),
+                        "too_many_failed_logins",
+                    )
             since_2m = (now - timedelta(minutes=2)).isoformat()
             rapid_ip = await db[SECURITY_EVENTS_COLLECTION].count_documents(
                 {"event_type": "auth.login_failed", "ip": ip, "timestamp": {"$gte": since_2m}}
             )
             rapid_email = (
                 await db[SECURITY_EVENTS_COLLECTION].count_documents(
-                    {"event_type": "auth.login_failed", "details.email": email_key, "timestamp": {"$gte": since_2m}}
+                    {
+                        "event_type": "auth.login_failed",
+                        "details.email": email_key,
+                        "details.portal": portal,
+                        "timestamp": {"$gte": since_2m},
+                    }
                 )
                 if email_key
                 else 0
             )
-            if rapid_ip >= 5 or rapid_email >= 5:
+            if rapid_email >= _auth_email_threshold():
                 await _upsert_incident(
                     incident_type="rapid_failed_auth",
                     severity="high",
                     user_id=user_id,
                     ip=ip,
-                    details={"count_ip_2m": int(rapid_ip), "count_email_2m": int(rapid_email)},
+                    details={
+                        "count_ip_2m": int(rapid_ip),
+                        "count_email_2m": int(rapid_email),
+                        "portal": portal,
+                    },
                 )
-                if ip:
-                    await _lock_principal("auth_ip", ip, 15, "rapid_failed_auth")
                 if email_key:
-                    await _lock_principal("auth_email", email_key, 15, "rapid_failed_auth")
+                    await _lock_principal(
+                        "auth_email",
+                        _auth_email_principal(email_key, portal),
+                        _auth_email_lock_minutes(),
+                        "rapid_failed_auth",
+                    )
+
+            # Separate IP abuse detector: only lock IP if one source targets many accounts.
+            if ip:
+                distinct_emails = await db[SECURITY_EVENTS_COLLECTION].distinct(
+                    "details.email",
+                    {
+                        "event_type": "auth.login_failed",
+                        "ip": ip,
+                        "details.portal": portal,
+                        "timestamp": {"$gte": since},
+                    },
+                )
+                distinct_count = len([x for x in distinct_emails if x])
+                if distinct_count >= _auth_ip_distinct_email_threshold():
+                    await _upsert_incident(
+                        incident_type="auth_ip_multi_account_attack",
+                        severity="high",
+                        user_id=user_id,
+                        ip=ip,
+                        details={
+                            "portal": portal,
+                            "distinct_emails_15m": int(distinct_count),
+                        },
+                    )
+                    await _lock_principal(
+                        "auth_ip_abuse",
+                        ip,
+                        _auth_ip_lock_minutes(),
+                        "too_many_distinct_accounts_targeted",
+                    )
 
         # Token reuse from multiple IPs
         if event_type == "auth.token_used" and user_id:

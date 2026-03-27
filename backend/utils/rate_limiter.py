@@ -52,6 +52,11 @@ class RateLimiter:
                 self.attempts[key] = []
             self.attempts[key].append(datetime.now(timezone.utc))
 
+    async def clear_key(self, key: str) -> None:
+        """Clear tracked attempts for a single key."""
+        async with self._lock:
+            self.attempts.pop(key, None)
+
     async def check_rate_limit(
         self,
         key: str,
