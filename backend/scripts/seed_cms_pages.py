@@ -25,6 +25,7 @@ from models.cms import PageStatus, PageType, CATEGORY_CONFIG
 from datetime import datetime, timezone
 from bson import ObjectId
 import re
+from pymongo.errors import DuplicateKeyError
 
 
 def generate_slug(text: str) -> str:
@@ -76,8 +77,11 @@ async def seed_cms_pages():
             "updated_by": "system",
             "published_by": "system",
         }
-        await db.cms_pages.insert_one(hub_page)
-        print("   ✓ Created Services Hub page")
+        try:
+            await db.cms_pages.insert_one(hub_page)
+            print("   ✓ Created Services Hub page")
+        except DuplicateKeyError:
+            print("   • Hub slug already exists (idempotent skip)")
     else:
         print("   • Hub page already exists")
     
@@ -117,8 +121,11 @@ async def seed_cms_pages():
                 "updated_by": "system",
                 "published_by": "system",
             }
-            await db.cms_pages.insert_one(cat_page)
-            print(f"   ✓ Created: {config['name']}")
+            try:
+                await db.cms_pages.insert_one(cat_page)
+                print(f"   ✓ Created: {config['name']}")
+            except DuplicateKeyError:
+                print(f"   • Category slug already exists (idempotent skip): {config['name']}")
         else:
             print(f"   • Already exists: {config['name']}")
     
@@ -187,8 +194,22 @@ async def seed_cms_pages():
                 "updated_by": "system",
                 "published_by": "system",
             }
-            await db.cms_pages.insert_one(service_page)
-            print(f"   ✓ Created: {service_name} ({service_code}) -> /services/{cms_category}/{slug}")
+            try:
+                await db.cms_pages.insert_one(service_page)
+                print(f"   ✓ Created: {service_name} ({service_code}) -> /services/{cms_category}/{slug}")
+            except DuplicateKeyError:
+                # Slug uniqueness is global; another page may already own this slug.
+                existing_slug = await db.cms_pages.find_one({"slug": slug}, {"_id": 0, "page_type": 1, "service_code": 1})
+                existing_svc = await db.cms_pages.find_one({"service_code": service_code}, {"_id": 0, "slug": 1})
+                if existing_svc:
+                    print(f"   • Service already seeded: {service_name} ({service_code})")
+                elif existing_slug:
+                    print(
+                        f"   ! Slug conflict for {service_code} -> '{slug}' already used by "
+                        f"{existing_slug.get('page_type')}:{existing_slug.get('service_code') or '-'} (skip)"
+                    )
+                else:
+                    print(f"   • Duplicate key encountered for {service_name} ({service_code}) (idempotent skip)")
         else:
             print(f"   • Already exists: {service_name}")
     

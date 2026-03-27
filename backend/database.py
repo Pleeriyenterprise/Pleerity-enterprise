@@ -236,6 +236,8 @@ class Database:
             await self.db.contractors.create_index([("vetted", 1), ("client_id", 1)])
             await self.db.contractors.create_index("source_type")
             await self.db.contractors.create_index("status")
+            await self.db.contractors.create_index("portal_access_status")
+            await self.db.contractors.create_index([("portal_access_status", 1), ("updated_at", -1)])
             # Contractor ratings (landlord/client rates contractor after job)
             await self.db.contractor_ratings.create_index("rating_id", unique=True)
             await self.db.contractor_ratings.create_index("contractor_id")
@@ -260,6 +262,7 @@ class Database:
             await self.db.contractor_job_tokens.create_index("token_hash", unique=True)
             await self.db.contractor_job_tokens.create_index([("work_order_id", 1), ("contractor_id", 1)])
             await self.db.contractor_job_tokens.create_index("expires_at")
+            await self.db.contractor_job_tokens.create_index("revoked_at")
             # Maintenance issues (issue → triage → work order flow)
             await self.db.maintenance_issues.create_index("issue_id", unique=True)
             await self.db.maintenance_issues.create_index([("client_id", 1), ("created_at", -1)])
@@ -380,6 +383,7 @@ class Database:
             await self.db.contractor_portal_accounts.create_index("email", unique=True)
             await self.db.contractor_portal_accounts.create_index("contractor_id", unique=True)
             await self.db.contractor_portal_accounts.create_index("status")
+            await self.db.password_tokens.create_index([("purpose", 1), ("metadata.contractor_id", 1), ("expires_at", -1)])
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored.
             # Drop legacy unique index (phone_e164, purpose) if present; it causes DuplicateKeyError

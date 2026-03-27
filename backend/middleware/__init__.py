@@ -266,6 +266,24 @@ async def contractor_route_guard(request: Request) -> dict:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Contractor context required",
         )
+    db = database.get_db()
+    contractor_id = user.get("contractor_id")
+    contractor_doc = await db.contractors.find_one(
+        {"contractor_id": contractor_id},
+        {"_id": 0, "status": 1, "portal_access_status": 1},
+    )
+    if not contractor_doc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account not found")
+    if (contractor_doc.get("status") or "").lower() != "active":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is not active")
+    if (contractor_doc.get("portal_access_status") or "").lower() != "enabled":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor portal access is disabled")
+    account_doc = await db.contractor_portal_accounts.find_one(
+        {"contractor_id": contractor_id},
+        {"_id": 0, "status": 1},
+    )
+    if not account_doc or (account_doc.get("status") or "").lower() != "active":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor portal access is disabled")
     return user
 
 async def require_step_up_token(request: Request) -> dict:

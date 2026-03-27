@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
-import { Users, Plus, Pencil, Trash2, Loader2, CheckCircle, Clock, Mail, BarChart3, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Loader2, CheckCircle, Clock, Mail, BarChart3, Info, ChevronDown, ChevronUp, ShieldOff, RefreshCw, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 
@@ -28,6 +28,12 @@ export default function AdminOpsContractorsPage() {
   const [networkFormOpen, setNetworkFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [invitingId, setInvitingId] = useState(null);
+  const [resendingInviteId, setResendingInviteId] = useState(null);
+  const [disablingAccessId, setDisablingAccessId] = useState(null);
+  const [assignedJobsOpen, setAssignedJobsOpen] = useState(false);
+  const [assignedJobsFor, setAssignedJobsFor] = useState(null);
+  const [assignedJobsLoading, setAssignedJobsLoading] = useState(false);
+  const [assignedJobs, setAssignedJobs] = useState([]);
   const [form, setForm] = useState({
     name: '',
     trade_types: [],
@@ -260,6 +266,14 @@ export default function AdminOpsContractorsPage() {
     if (!id) return '—';
     const c = clients.find((x) => x.client_id === id);
     return c ? (c.company_name || c.full_name || c.email || id) : id;
+  };
+
+  const humanPortalAccess = (value) => {
+    const v = (value || '').toLowerCase();
+    if (v === 'enabled') return 'Enabled';
+    if (v === 'invite_pending') return 'Invite pending';
+    if (v === 'disabled') return 'Disabled';
+    return 'Not invited';
   };
 
   return (
@@ -525,6 +539,7 @@ export default function AdminOpsContractorsPage() {
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Client</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Source</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Portal access</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Vetted</th>
                   <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Actions</th>
                 </tr>
@@ -541,6 +556,16 @@ export default function AdminOpsContractorsPage() {
                       {c.status === 'suspended' && <span className="text-red-600">Suspended</span>}
                       {c.status === 'active' && <span className="text-green-600">Active</span>}
                       {!c.status && '—'}
+                    </td>
+                    <td className="px-4 py-2 text-sm text-gray-700">
+                      <div className="flex flex-col">
+                        <span>{humanPortalAccess(c.portal_access_status)}</span>
+                        {c.portal_invite_expires_at && (
+                          <span className="text-xs text-gray-500">
+                            Expires {new Date(c.portal_invite_expires_at).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2">{c.vetted ? <CheckCircle className="w-4 h-4 text-green-600" /> : '—'}</td>
                     <td className="px-4 py-2 text-right">
@@ -560,6 +585,7 @@ export default function AdminOpsContractorsPage() {
                             const res = await adminAPI.inviteContractorToPortal(c.contractor_id);
                             const url = res.data?.setup_url;
                             toast.success(url ? 'Invite sent. Link: ' + url : 'Invite created. Contractor can set password via the link.');
+                            loadContractors();
                           } catch (e) {
                             toast.error(e.response?.data?.detail || 'Invite failed');
                           } finally {
@@ -568,6 +594,73 @@ export default function AdminOpsContractorsPage() {
                         }}
                       >
                         {invitingId === c.contractor_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Resend contractor portal invite"
+                        disabled={!c.email || !!resendingInviteId}
+                        onClick={async () => {
+                          setResendingInviteId(c.contractor_id);
+                          try {
+                            const res = await adminAPI.resendContractorPortalInvite(c.contractor_id);
+                            const url = res.data?.setup_url;
+                            toast.success(url ? `Invite resent. Link: ${url}` : 'Invite resent');
+                            loadContractors();
+                          } catch (e) {
+                            toast.error(e.response?.data?.detail || 'Resend failed');
+                          } finally {
+                            setResendingInviteId(null);
+                          }
+                        }}
+                      >
+                        {resendingInviteId === c.contractor_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Disable contractor portal access"
+                        disabled={!!disablingAccessId}
+                        onClick={async () => {
+                          if (!window.confirm(`Disable portal access for "${c.name || c.company_name}"? This revokes active job links and requires reassignment for open jobs.`)) {
+                            return;
+                          }
+                          setDisablingAccessId(c.contractor_id);
+                          try {
+                            const res = await adminAPI.disableContractorPortalAccess(c.contractor_id, { reason: 'Disabled by admin' });
+                            const required = res.data?.reassignment_required_count || 0;
+                            toast.success(`Portal access disabled. ${required} open job(s) require reassignment.`);
+                            loadContractors();
+                          } catch (e) {
+                            toast.error(e.response?.data?.detail || 'Disable access failed');
+                          } finally {
+                            setDisablingAccessId(null);
+                          }
+                        }}
+                      >
+                        {disablingAccessId === c.contractor_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldOff className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="View assigned jobs"
+                        onClick={async () => {
+                          setAssignedJobsOpen(true);
+                          setAssignedJobsFor(c);
+                          setAssignedJobs([]);
+                          setAssignedJobsLoading(true);
+                          try {
+                            const res = await adminAPI.getContractorAssignedJobs(c.contractor_id, { include_closed: false, limit: 300 });
+                            setAssignedJobs(res.data?.jobs || []);
+                          } catch (e) {
+                            setAssignedJobs([]);
+                            toast.error(e.response?.data?.detail || 'Failed to load assigned jobs');
+                          } finally {
+                            setAssignedJobsLoading(false);
+                          }
+                        }}
+                      >
+                        <Briefcase className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEdit(c)}><Pencil className="w-4 h-4" /></Button>
                       <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDelete(c.contractor_id, c.name || c.company_name)}><Trash2 className="w-4 h-4" /></Button>
@@ -845,6 +938,50 @@ export default function AdminOpsContractorsPage() {
                 <Button type="button" variant="outline" onClick={() => setNetworkFormOpen(false)}>Cancel</Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {assignedJobsOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Assigned jobs</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {assignedJobsFor ? `${assignedJobsFor.name || assignedJobsFor.company_name}` : 'Contractor'}
+            </p>
+            {assignedJobsLoading ? (
+              <div className="flex items-center gap-2 text-gray-500 py-8">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Loading assigned jobs…
+              </div>
+            ) : assignedJobs.length === 0 ? (
+              <p className="text-sm text-gray-600">No open assigned jobs.</p>
+            ) : (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Work order</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Status</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Property</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Client</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {assignedJobs.map((job) => (
+                      <tr key={job.work_order_id}>
+                        <td className="px-3 py-2 text-sm text-gray-900">{job.work_order_id}</td>
+                        <td className="px-3 py-2 text-sm text-gray-700">{job.status || '—'}</td>
+                        <td className="px-3 py-2 text-sm text-gray-700">{job.property_id || '—'}</td>
+                        <td className="px-3 py-2 text-sm text-gray-700">{clientLabel(job.client_id)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="flex gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setAssignedJobsOpen(false)}>Close</Button>
+            </div>
           </div>
         </div>
       )}

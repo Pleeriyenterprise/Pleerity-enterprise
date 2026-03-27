@@ -1126,12 +1126,33 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
         } else if (drilldownType.startsWith('compliance-')) {
           const status = drilldownType.replace('compliance-', '');
           endpoint = `/admin/kpi/properties?status_filter=${status}&limit=50`;
+        } else if (drilldownType === 'requirements-all') {
+          endpoint = '/admin/kpi/requirements?limit=50';
+        } else if (drilldownType === 'requirements-overdue') {
+          endpoint = '/admin/kpi/requirements?status_filter=OVERDUE&limit=50';
+        } else if (drilldownType === 'requirements-expiring-30') {
+          endpoint = '/admin/kpi/requirements?due_within_days=30&exclude_overdue=true&limit=50';
+        } else if (drilldownType === 'requirements-expiring-60') {
+          endpoint = '/admin/kpi/requirements?due_within_days=60&min_due_days=31&exclude_overdue=true&limit=50';
+        } else if (drilldownType === 'documents-all') {
+          endpoint = '/admin/kpi/documents?limit=50';
+        } else if (drilldownType === 'documents-uploaded') {
+          endpoint = '/admin/kpi/documents?status_filter=UPLOADED&limit=50';
         }
 
+        if (!endpoint) {
+          throw new Error(`Unsupported drilldown type: ${drilldownType}`);
+        }
         const response = await api.get(endpoint);
         if (cancelled) return;
         if (drilldownType.includes('client')) {
           setData(response.data.clients || []);
+          setTotalCount(response.data.total || 0);
+        } else if (drilldownType.startsWith('documents-')) {
+          setData(response.data.documents || []);
+          setTotalCount(response.data.total || 0);
+        } else if (drilldownType.startsWith('requirements-')) {
+          setData(response.data.requirements || []);
           setTotalCount(response.data.total || 0);
         } else {
           setData(response.data.properties || []);
@@ -1160,11 +1181,19 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
       case 'compliance-GREEN': return 'Compliant Properties';
       case 'compliance-AMBER': return 'Attention Needed Properties';
       case 'compliance-RED': return 'Non-Compliant Properties';
+      case 'requirements-all': return 'All Requirements';
+      case 'requirements-overdue': return 'Overdue Requirements';
+      case 'requirements-expiring-30': return 'Requirements Due in 30 Days';
+      case 'requirements-expiring-60': return 'Requirements Due in 31-60 Days';
+      case 'documents-all': return 'All Documents';
+      case 'documents-uploaded': return 'Uploaded Documents';
       default: return 'Details';
     }
   };
 
   const isClientView = drilldownType?.includes('client');
+  const isDocumentView = drilldownType?.startsWith('documents-');
+  const isRequirementView = drilldownType?.startsWith('requirements-');
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="kpi-drilldown-modal">
@@ -1231,6 +1260,90 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
                     </div>
                   </div>
                 </button>
+              ))}
+            </div>
+          ) : isDocumentView ? (
+            // Document list view
+            <div className="space-y-3">
+              {(data ?? []).map((doc) => (
+                <div
+                  key={doc.document_id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  data-testid={`drilldown-document-${doc.document_id}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      doc.status === 'UPLOADED' ? 'bg-blue-100 text-blue-600' :
+                      doc.status === 'VERIFIED' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-midnight-blue">{doc.file_name || doc.document_id || 'Document'}</p>
+                      <p className="text-sm text-gray-500">
+                        Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : 'N/A'}
+                        {doc.property?.nickname ? ` • ${doc.property.nickname}` : ''}
+                        {!doc.property?.nickname && doc.property?.address_line_1 ? ` • ${doc.property.address_line_1}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      doc.status === 'VERIFIED' ? 'bg-green-100 text-green-700' :
+                      doc.status === 'UPLOADED' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {doc.status || 'UNKNOWN'}
+                    </span>
+                    {doc.client && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {doc.client.full_name}
+                        {doc.client.customer_reference ? ` (${doc.client.customer_reference})` : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : isRequirementView ? (
+            // Requirement list view
+            <div className="space-y-3">
+              {(data ?? []).map((req) => (
+                <div
+                  key={req.requirement_id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  data-testid={`drilldown-requirement-${req.requirement_id}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      req.status === 'COMPLIANT' ? 'bg-green-100 text-green-600' :
+                      (req.status === 'EXPIRING_SOON' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600')
+                    }`}>
+                      <FileCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-midnight-blue">{req.category || req.requirement_type || 'Requirement'}</p>
+                      <p className="text-sm text-gray-500">
+                        Due {req.due_date ? new Date(req.due_date).toLocaleDateString() : 'N/A'}
+                        {req.property?.nickname ? ` • ${req.property.nickname}` : ''}
+                        {!req.property?.nickname && req.property?.address_line_1 ? ` • ${req.property.address_line_1}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      req.status === 'COMPLIANT' ? 'bg-green-100 text-green-700' :
+                      (req.status === 'EXPIRING_SOON' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')
+                    }`}>
+                      {req.status || 'UNKNOWN'}
+                    </span>
+                    {req.client && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {req.client.full_name}
+                        {req.client.customer_reference ? ` (${req.client.customer_reference})` : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
@@ -3643,8 +3756,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
         <div
           role={onNavigateToTab ? 'button' : undefined}
           tabIndex={onNavigateToTab ? 0 : undefined}
-          onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+          onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'properties' }) : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'properties' }); } } : undefined}
           className={`bg-white rounded-xl border border-gray-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-teal-200 hover:shadow-sm transition-all' : ''}`}
           data-testid="stat-card-total-properties"
         >
@@ -3719,8 +3832,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
         <div
           role={onNavigateToTab ? 'button' : undefined}
           tabIndex={onNavigateToTab ? 0 : undefined}
-          onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+          onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'requirements-expiring-30' }) : undefined}
+          onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'requirements-expiring-30' }); } } : undefined}
           className={`bg-white rounded-xl border border-gray-200 p-5 ${onNavigateToTab ? 'cursor-pointer hover:border-teal-200 hover:shadow-sm transition-all' : ''}`}
           data-testid="stat-card-expiring"
         >
@@ -3754,8 +3867,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
               <div
                 role={onNavigateToTab ? 'button' : undefined}
                 tabIndex={onNavigateToTab ? 0 : undefined}
-                onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+                onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'requirements-overdue' }) : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'requirements-overdue' }); } } : undefined}
                 className={`flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-red-100 transition-colors' : ''}`}
               >
                 <div className="flex items-center gap-3">
@@ -3770,8 +3883,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
               <div
                 role={onNavigateToTab ? 'button' : undefined}
                 tabIndex={onNavigateToTab ? 0 : undefined}
-                onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+                onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'requirements-expiring-30' }) : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'requirements-expiring-30' }); } } : undefined}
                 className={`flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-amber-100 transition-colors' : ''}`}
               >
                 <div className="flex items-center gap-3">
@@ -3786,8 +3899,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
               <div
                 role={onNavigateToTab ? 'button' : undefined}
                 tabIndex={onNavigateToTab ? 0 : undefined}
-                onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+                onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'requirements-expiring-60' }) : undefined}
+                onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'requirements-expiring-60' }); } } : undefined}
                 className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
               >
                 <div className="flex items-center gap-3">
@@ -3825,8 +3938,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
             <div
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
-              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'requirements-all' }) : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'requirements-all' }); } } : undefined}
               className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
             >
               <span className="text-sm text-gray-600">Total Clients</span>
@@ -3835,8 +3948,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
             <div
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
-              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'clients-active' }) : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'clients-active' }); } } : undefined}
               className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
             >
               <span className="text-sm text-gray-600">Active Subscriptions</span>
@@ -3855,8 +3968,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
             <div
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
-              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'documents-all' }) : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'documents-all' }); } } : undefined}
               className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${onNavigateToTab ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
             >
               <span className="text-sm text-gray-600">Documents Uploaded</span>
@@ -3865,8 +3978,8 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
             <div
               role={onNavigateToTab ? 'button' : undefined}
               tabIndex={onNavigateToTab ? 0 : undefined}
-              onClick={onNavigateToTab ? () => onNavigateToTab('clients') : undefined}
-              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('clients'); } } : undefined}
+              onClick={onNavigateToTab ? () => onNavigateToTab('overview', { drilldown: 'requirements-all' }) : undefined}
+              onKeyDown={onNavigateToTab ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab('overview', { drilldown: 'requirements-all' }); } } : undefined}
               className={`flex items-center justify-between p-3 bg-teal-50 rounded-lg border border-teal-100 ${onNavigateToTab ? 'cursor-pointer hover:bg-teal-100 transition-colors' : ''}`}
             >
               <span className="text-sm font-medium text-teal-700">Overall Compliance Rate</span>

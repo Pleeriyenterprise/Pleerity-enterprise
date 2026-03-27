@@ -30,6 +30,75 @@ const fmtDate = (value) => {
   return d.toLocaleString();
 };
 
+const ACTION_HEALTH_DEFS = [
+  {
+    key: 'resend_activation_email',
+    label: 'Resend activation email',
+    actionTypes: ['resend_activation_email'],
+    auditActions: ['PASSWORD_SETUP_LINK_RESENT', 'ACTIVATION_EMAIL_RESEND'],
+    expectedEffect: 'Sends a fresh password setup email so the client can complete portal activation.',
+  },
+  {
+    key: 'resend_dashboard_email',
+    label: 'Resend dashboard email',
+    actionTypes: ['resend_dashboard_email'],
+    auditActions: ['ADMIN_ACTION'],
+    expectedEffect: 'Resends dashboard-ready access guidance after password setup is complete.',
+  },
+  {
+    key: 'password_link_status',
+    label: 'Password link status check',
+    actionTypes: ['password_link_status'],
+    auditActions: [],
+    expectedEffect: 'Checks if an active setup token exists and whether it is still valid.',
+  },
+  {
+    key: 'new_password_link',
+    label: 'Generate new password link',
+    actionTypes: ['new_password_link'],
+    auditActions: ['PASSWORD_SETUP_LINK_RESENT'],
+    expectedEffect: 'Creates a new setup token and invalidates older links to reduce account recovery risk.',
+  },
+  {
+    key: 'recalculate_compliance',
+    label: 'Recalculate compliance',
+    actionTypes: ['recalculate_compliance'],
+    auditActions: ['ADMIN_ACTION'],
+    expectedEffect: 'Queues compliance recalculation for the client portfolio and refreshes score/risk outputs.',
+  },
+  {
+    key: 'run_client_job',
+    label: 'Run client job',
+    actionTypes: ['run_client_job', 'recalculate_compliance'],
+    auditActions: ['ADMIN_ACTION'],
+    expectedEffect: 'Runs the approved scoped job for this client (currently compliance recalculation).',
+  },
+  {
+    key: 'unlock_account',
+    label: 'Unlock account',
+    actionTypes: ['unlock_account'],
+    auditActions: ['ADMIN_ACTION'],
+    expectedEffect: 'Sets client portal users back to ACTIVE and invalidates old sessions via session version bump.',
+  },
+  {
+    key: 'impersonation_start',
+    label: 'View as user (impersonation)',
+    actionTypes: ['impersonation_start'],
+    auditActions: ['ADMIN_ACTION'],
+    expectedEffect: 'Starts a time-limited audited user session for support troubleshooting.',
+  },
+];
+
+const formatTaskActivityLine = (row) => {
+  const action = String(row?.action || '').toUpperCase();
+  const source = row?.source || row?.task_source || 'task';
+  if (action === 'SNOOZE') return `Snoozed ${source}`;
+  if (action === 'DISMISS') return `Dismissed ${source}`;
+  if (action === 'DONE') return `Marked ${source} as done`;
+  if (action === 'RESTORE') return `Restored ${source}`;
+  return row?.summary || row?.description || action || 'Task inbox activity';
+};
+
 const AdminClientControlPanelPage = () => {
   const { clientId } = useParams();
   const { user } = useAuth();
@@ -39,6 +108,7 @@ const AdminClientControlPanelPage = () => {
   const [isBusy, setIsBusy] = useState(false);
   const [taskActivity, setTaskActivity] = useState(null);
   const [taskActivityLoading, setTaskActivityLoading] = useState(false);
+  const [lastActionRunAt, setLastActionRunAt] = useState({});
 
   const loadPanel = useCallback(async () => {
     if (!clientId) return;
@@ -59,6 +129,25 @@ const AdminClientControlPanelPage = () => {
     loadPanel();
   }, [loadPanel]);
 
+  const loadTaskActivity = useCallback(async () => {
+    if (!clientId) return;
+    setTaskActivityLoading(true);
+    try {
+      const res = await adminAPI.getClientCommandCentreTaskActivity(clientId, { limit: 50 });
+      setTaskActivity(res.data?.items || []);
+    } catch (err) {
+      setTaskActivity([]);
+      const msg = err?.response?.data?.detail;
+      toast.error(typeof msg === 'string' ? msg : 'Failed to load command centre task activity');
+    } finally {
+      setTaskActivityLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    loadTaskActivity();
+  }, [loadTaskActivity]);
+
   const identity = data?.identity || {};
   const account = data?.account_state || {};
   const billing = data?.subscription_billing || {};
@@ -70,7 +159,9 @@ const AdminClientControlPanelPage = () => {
     try {
       const res = await call();
       toast.success(res?.data?.message || `${label} completed`);
+      setLastActionRunAt((prev) => ({ ...prev, [label]: new Date().toISOString() }));
       await loadPanel();
+      await loadTaskActivity();
     } catch (err) {
       const msg = err?.response?.data?.detail;
       toast.error(typeof msg === 'string' ? msg : `${label} failed`);
@@ -202,6 +293,33 @@ const AdminClientControlPanelPage = () => {
       .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
       .slice(0, 30);
   }, [data]);
+
+  const actionHealthRows = useMemo(() => {
+    const systemActions = data?.activity_timeline?.system_actions || [];
+    const byActionType = {};
+    systemActions.forEach((row) => {
+      const actionType = row?.metadata?.action_type;
+      if (actionType && (!byActionType[actionType] || new Date(row.timestamp).getTime() > new Date(byActionType[actionType].timestamp).getTime())) {
+        byActionType[actionType] = row;
+      }
+    });
+    return ACTION_HEALTH_DEFS.map((def) => {
+      const fromAudit = (def.actionTypes || [])
+        .map((k) => byActionType[k])
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+      const localAt = lastActionRunAt[def.label];
+      const effectiveTime = fromAudit?.timestamp || localAt || null;
+      const outcome = fromAudit?.metadata?.outcome || (effectiveTime ? 'success' : null);
+      return {
+        key: def.key,
+        label: def.label,
+        expectedEffect: def.expectedEffect,
+        lastRunAt: effectiveTime,
+        outcome: outcome || 'not_run',
+      };
+    });
+  }, [data, lastActionRunAt]);
 
   const buildReceiptDownloadUrl = (receipt) => {
     if (!clientId || !receipt) return null;
@@ -384,6 +502,34 @@ const AdminClientControlPanelPage = () => {
                     </div>
                   ))
                 )}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Action health">
+              <p className="text-xs text-gray-500 mb-2">Latest verified execution status for client control actions.</p>
+              <div className="max-h-72 overflow-y-auto">
+                {actionHealthRows.map((row) => (
+                  <div key={row.key} className="py-2 border-b border-gray-100 last:border-0 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-sm text-gray-900">{row.label}</div>
+                      <div className="text-xs text-gray-600">{row.expectedEffect}</div>
+                      <div className="text-xs text-gray-500">{row.lastRunAt ? `Last run: ${fmtDate(row.lastRunAt)}` : 'Not run yet'}</div>
+                    </div>
+                    <div className="text-right">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded text-xs ${
+                          row.outcome === 'success' || row.outcome === 'sent' || row.outcome === 'duplicate_ignored'
+                            ? 'bg-green-100 text-green-800'
+                            : row.outcome === 'not_run'
+                              ? 'bg-gray-100 text-gray-700'
+                              : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {row.outcome === 'not_run' ? 'Not run' : String(row.outcome).replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </SectionCard>
 

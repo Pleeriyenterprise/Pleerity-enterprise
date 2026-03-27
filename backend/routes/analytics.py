@@ -60,6 +60,27 @@ def get_date_range(period: str) -> tuple:
     return start.isoformat(), end.isoformat()
 
 
+def build_data_quality(
+    source: str,
+    coverage_start: str,
+    coverage_end: str,
+    record_count: int,
+    note: Optional[str] = None,
+    sparse_threshold: int = 1,
+) -> dict:
+    """Build a consistent data quality envelope for analytics responses."""
+    is_sparse = int(record_count or 0) < int(sparse_threshold)
+    return {
+        "source": source,
+        "as_of": datetime.now(timezone.utc).isoformat(),
+        "coverage_start": coverage_start,
+        "coverage_end": coverage_end,
+        "record_count": int(record_count or 0),
+        "is_sparse": is_sparse,
+        "note": note or ("Limited records in selected period." if is_sparse else None),
+    }
+
+
 async def get_orders_in_range(start_date: str, end_date: str, filters: dict = None):
     """Get orders within a date range."""
     db = database.get_db()
@@ -160,6 +181,12 @@ async def get_analytics_summary(
             "total": len(orders)
         },
         "status_breakdown": status_counts,
+        "data_quality": build_data_quality(
+            source="orders",
+            coverage_start=start_date,
+            coverage_end=end_date,
+            record_count=len(orders),
+        ),
     }
 
 
@@ -199,7 +226,15 @@ async def get_daily_revenue(
     return {
         "period": period,
         "data": chart_data,
-        "total_days": len(chart_data)
+        "total_days": len(chart_data),
+        "data_quality": build_data_quality(
+            source="orders_paid",
+            coverage_start=start_date,
+            coverage_end=end_date,
+            record_count=len(orders),
+            sparse_threshold=3,
+            note="Daily chart uses paid orders only.",
+        ),
     }
 
 
@@ -246,7 +281,13 @@ async def get_service_analytics(
     return {
         "period": period,
         "services": services,
-        "total_services": len(services)
+        "total_services": len(services),
+        "data_quality": build_data_quality(
+            source="orders_paid",
+            coverage_start=start_date,
+            coverage_end=end_date,
+            record_count=len(orders),
+        ),
     }
 
 
@@ -281,6 +322,7 @@ async def get_sla_performance(
     total_with_sla = len(orders_with_sla)
     on_time_rate = (on_time / total_with_sla * 100) if total_with_sla > 0 else 0
     breach_rate = (breached / total_with_sla * 100) if total_with_sla > 0 else 0
+    has_sla_data = total_with_sla > 0
     
     return {
         "period": period,
@@ -297,7 +339,15 @@ async def get_sla_performance(
             "count": breached,
             "percent": round(breach_rate, 1)
         },
-        "health_score": round(100 - breach_rate, 1)  # Higher is better
+        "health_score": round(100 - breach_rate, 1) if has_sla_data else None,  # Higher is better when data exists
+        "has_sla_data": has_sla_data,
+        "data_quality": build_data_quality(
+            source="orders_with_sla_target",
+            coverage_start=start_date,
+            coverage_end=end_date,
+            record_count=total_with_sla,
+            note="SLA metrics only include orders that have SLA target timestamps.",
+        ),
     }
 
 
@@ -356,6 +406,13 @@ async def get_customer_analytics(
         "repeat_rate": round(repeat_customers / total_customers * 100, 1) if total_customers > 0 else 0,
         "top_customers": top_customers,
         "average_orders_per_customer": round(sum(c["orders"] for c in customers) / total_customers, 1) if total_customers > 0 else 0,
+        "data_quality": build_data_quality(
+            source="orders_paid",
+            coverage_start=start_date,
+            coverage_end=end_date,
+            record_count=len(orders),
+            note="Customer metrics are derived from paid orders with customer identity data.",
+        ),
     }
 
 
@@ -408,7 +465,14 @@ async def get_conversion_funnel(
                 "conversion_rate": round(completed_orders / total_drafts * 100, 1) if total_drafts > 0 else 0
             }
         ],
-        "overall_conversion": round(completed_orders / total_drafts * 100, 1) if total_drafts > 0 else 0
+        "overall_conversion": round(completed_orders / total_drafts * 100, 1) if total_drafts > 0 else 0,
+        "data_quality": build_data_quality(
+            source="intake_drafts+orders",
+            coverage_start=start_date,
+            coverage_end=end_date,
+            record_count=total_drafts + len(orders),
+            note="Funnel combines draft intake events and order records.",
+        ),
     }
 
 
@@ -459,7 +523,14 @@ async def get_addon_analytics(
         "total_addon_revenue": {
             "pence": fast_track_revenue + printed_copy_revenue,
             "formatted": f"£{(fast_track_revenue + printed_copy_revenue) / 100:,.2f}"
-        }
+        },
+        "data_quality": build_data_quality(
+            source="orders_paid",
+            coverage_start=start_date,
+            coverage_end=end_date,
+            record_count=total_orders,
+            note="Add-on analytics use paid orders and add-on flags.",
+        ),
     }
 
 
@@ -1019,6 +1090,13 @@ async def get_revenue_analytics(
             "past_due_accounts": past_due,
             "refunds_last_30d": refunds_last_30,
         },
+        "data_quality": build_data_quality(
+            source="payments+client_billing",
+            coverage_start=start_iso,
+            coverage_end=end_iso,
+            record_count=len(time_series),
+            note="Revenue KPIs are sourced from normalized payments and billing lifecycle records.",
+        ),
     }
 
 
@@ -1581,6 +1659,13 @@ async def get_executive_overview(request: Request):
         change_ytd_pct = round((revenue_ytd - revenue_ytd_ly) / revenue_ytd_ly * 100, 1) if revenue_ytd_ly else (100.0 if revenue_ytd else 0)
         trend_ytd = "up" if change_ytd_pct > 0 else "down" if change_ytd_pct < 0 else "flat"
 
+        # Payment data quality / coverage diagnostics (used by UI to explain chart gaps).
+        paid_records_total = await db.payments.count_documents({"status": "paid"})
+        earliest_paid = await db.payments.find_one({"status": "paid"}, {"created_at": 1}, sort=[("created_at", 1)])
+        latest_paid = await db.payments.find_one({"status": "paid"}, {"created_at": 1}, sort=[("created_at", -1)])
+        coverage_start = earliest_paid.get("created_at") if earliest_paid else None
+        coverage_end = latest_paid.get("created_at") if latest_paid else None
+
         # MRR and ARR from client_billing + plan_registry
         mrr_pence = 0
         active_subscribers = 0
@@ -1745,6 +1830,12 @@ async def get_executive_overview(request: Request):
                 "total_pence": rec + one,
             })
 
+        months_with_payments_12m = [m["month"] for m in monthly_trend if (m.get("total_pence") or 0) > 0]
+        months_missing_payments_12m = [m["month"] for m in monthly_trend if (m.get("total_pence") or 0) == 0]
+        paid_records_12m = int(sum(1 for m in monthly_trend if (m.get("total_pence") or 0) > 0))
+        sparse_threshold = 3
+        payment_data_is_sparse_12m = len(months_with_payments_12m) < sparse_threshold
+
         # If no payment-derived trend, leave monthly_trend as zeros (no misleading repeat of current MRR)
         trend_total = sum(m.get("total_pence") or 0 for m in monthly_trend)
         monthly_trend_is_mrr_fallback = trend_total == 0 and mrr_pence > 0
@@ -1871,6 +1962,20 @@ async def get_executive_overview(request: Request):
                 "implied_valuation_formatted": f"£{implied_valuation_low_gbp:,.0f} – £{implied_valuation_high_gbp:,.0f}",
             },
             "growth_efficiency": growth_efficiency,
+            "payment_data_quality": {
+                "paid_records_total": paid_records_total,
+                "paid_records_12m": paid_records_12m,
+                "coverage_start": coverage_start,
+                "coverage_end": coverage_end,
+                "months_with_payments_12m": months_with_payments_12m,
+                "months_missing_payments_12m": months_missing_payments_12m,
+                "is_sparse_12m": payment_data_is_sparse_12m,
+                "note": (
+                    "Executive charts are payment-driven. Missing months usually indicate no normalized payment rows for those periods."
+                    if payment_data_is_sparse_12m else
+                    "Payment history coverage is sufficient for trend interpretation."
+                ),
+            },
         }
     except HTTPException:
         raise
@@ -1881,6 +1986,49 @@ async def get_executive_overview(request: Request):
         if err_msg and not any(x in err_msg.lower() for x in ("password", "token", "secret", "key")):
             detail = f"{detail} ({err_msg})"
         raise HTTPException(status_code=500, detail=detail)
+
+
+@router.get("/executive-overview/diagnostics", dependencies=[Depends(require_owner_or_admin)])
+async def get_executive_overview_diagnostics(request: Request):
+    """Operational diagnostics for executive overview payment coverage and trend completeness."""
+    db = database.get_db()
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    now = datetime.now(timezone.utc)
+    first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    try:
+        earliest_paid = await db.payments.find_one({"status": "paid"}, {"created_at": 1}, sort=[("created_at", 1)])
+        latest_paid = await db.payments.find_one({"status": "paid"}, {"created_at": 1}, sort=[("created_at", -1)])
+        paid_total = await db.payments.count_documents({"status": "paid"})
+
+        monthly = []
+        for i in range(11, -1, -1):
+            y, m = first_of_this_month.year, first_of_this_month.month
+            m -= i
+            while m <= 0:
+                m += 12
+                y -= 1
+            month_start = first_of_this_month.replace(year=y, month=m, day=1)
+            next_month = month_start.replace(year=month_start.year + 1, month=1, day=1) if month_start.month == 12 else month_start.replace(month=month_start.month + 1, day=1)
+            month_end = min(next_month - timedelta(microseconds=1), now)
+            paid_count = await db.payments.count_documents({"status": "paid", "created_at": {"$gte": month_start, "$lte": month_end}})
+            monthly.append({"month": month_start.strftime("%Y-%m"), "paid_count": paid_count})
+
+        missing = [m["month"] for m in monthly if m["paid_count"] == 0]
+        populated = [m["month"] for m in monthly if m["paid_count"] > 0]
+        return {
+            "generated_at": now.isoformat(),
+            "paid_records_total": paid_total,
+            "coverage_start": earliest_paid.get("created_at") if earliest_paid else None,
+            "coverage_end": latest_paid.get("created_at") if latest_paid else None,
+            "months": monthly,
+            "months_with_payments_12m": populated,
+            "months_missing_payments_12m": missing,
+            "is_sparse_12m": len(populated) < 3,
+        }
+    except Exception as e:
+        logger.exception("Executive overview diagnostics failed: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to compute executive overview diagnostics")
 
 
 @router.get("/marketing/automation-email-performance")

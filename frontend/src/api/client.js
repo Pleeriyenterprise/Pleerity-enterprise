@@ -418,6 +418,11 @@ export const adminAPI = {
   approveContractor: (contractorId) => apiClient.patch(`/admin/ops/contractors/${contractorId}/approve`),
   updateContractor: (contractorId, body) => apiClient.patch(`/admin/ops/contractors/${contractorId}`, body),
   deleteContractor: (contractorId) => apiClient.delete(`/admin/ops/contractors/${contractorId}`),
+  resendContractorPortalInvite: (contractorId) => apiClient.post(`/admin/ops/contractors/${contractorId}/invite-portal/resend`),
+  disableContractorPortalAccess: (contractorId, body = {}) =>
+    apiClient.post(`/admin/ops/contractors/${contractorId}/portal-access/disable`, body),
+  getContractorAssignedJobs: (contractorId, params = {}) =>
+    apiClient.get(`/admin/ops/contractors/${contractorId}/assigned-jobs`, { params }),
   // Work orders (Ops Maintenance)
   getWorkOrders: (params = {}) => apiClient.get('/admin/ops/work-orders', { params }),
   getWorkOrder: (workOrderId) => apiClient.get(`/admin/ops/work-orders/${workOrderId}`),

@@ -11,6 +11,16 @@ import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { AlertTriangle, Activity, Building2, Users, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  humanRiskType,
+  humanSeverity,
+  severityBadgeClass,
+  humanAction,
+  humanStatus,
+  presentClientName,
+  presentPropertyName,
+  groupSignalsByProperty,
+} from '../../utils/riskPresentation';
 
 function formatDate(s) {
   if (!s) return '—';
@@ -23,9 +33,8 @@ function formatDate(s) {
 }
 
 function LevelBadge({ level }) {
-  const l = (level || '').toLowerCase();
-  const cls = l === 'critical' ? 'bg-red-100 text-red-800' : l === 'high' ? 'bg-orange-100 text-orange-800' : l === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700';
-  return <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{level || '—'}</span>;
+  const cls = severityBadgeClass(level);
+  return <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{humanSeverity(level)}</span>;
 }
 
 export default function AdminRiskDashboardPage() {
@@ -83,7 +92,7 @@ export default function AdminRiskDashboardPage() {
               <Activity className="w-7 h-7 text-electric-teal" />
               Risk & Insights
             </h1>
-            <p className="text-gray-600 mt-1">Portfolio-wide risk signals: boiler, damp, electrical, SLA breach, compliance churn.</p>
+            <p className="text-gray-600 mt-1">Clear, grouped issues across your portfolio with practical next steps for each property.</p>
           </div>
           <Button variant="outline" onClick={loadSummary} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
@@ -102,7 +111,9 @@ export default function AdminRiskDashboardPage() {
                 <SelectContent>
                   <SelectItem value="all">All clients</SelectItem>
                   {clients.map((c) => (
-                    <SelectItem key={c.client_id} value={c.client_id}>{c.client_id}</SelectItem>
+                    <SelectItem key={c.client_id} value={c.client_id}>
+                      {c.company_name || c.full_name || c.client_id}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -113,9 +124,9 @@ export default function AdminRiskDashboardPage() {
                 <SelectContent>
                   <SelectItem value="all">All levels</SelectItem>
                   <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="high">Urgent</SelectItem>
+                  <SelectItem value="medium">Needs attention</SelectItem>
+                  <SelectItem value="low">Monitor</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
@@ -136,9 +147,28 @@ export default function AdminRiskDashboardPage() {
         {loading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-electric-teal" /></div>
         ) : !summary ? (
-          <Card><CardContent className="py-8 text-center text-gray-500">No risk data. Ensure clients have PREDICTIVE_MAINTENANCE and risk signals job has run.</CardContent></Card>
+          <Card><CardContent className="py-8 text-center text-gray-500">No active risk issues yet. Once risk checks run, clear issue summaries will appear here.</CardContent></Card>
         ) : (
           <>
+            {(() => {
+              const grouped = groupSignalsByProperty(recent);
+              const urgentCount = recent.filter((s) => ['critical', 'high'].includes((s.risk_level || '').toLowerCase())).length;
+              const needsAttentionCount = recent.filter((s) => (s.risk_level || '').toLowerCase() === 'medium').length;
+              const topAffected = grouped.slice(0, 3).map((g) => g.propertyName).filter(Boolean);
+              return (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="text-base">Decision summary</CardTitle>
+                    <CardDescription>What needs attention right now</CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-sm text-gray-700 space-y-1">
+                    <p>{summary.totalActive ?? 0} active issues across {grouped.length} properties.</p>
+                    <p>{urgentCount} urgent and {needsAttentionCount} needs-attention issues.</p>
+                    <p>Most affected: {topAffected.length ? topAffected.join(', ') : 'No property concentration detected'}.</p>
+                  </CardContent>
+                </Card>
+              );
+            })()}
             {/* KPI row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <Card>
@@ -152,13 +182,13 @@ export default function AdminRiskDashboardPage() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> By level</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> By priority</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm">
                   {Object.entries(byLevel).length ? (
                     <ul className="space-y-1">
                       {Object.entries(byLevel).map(([k, v]) => (
-                        <li key={k}><LevelBadge level={k} /> {v}</li>
+                          <li key={k}><LevelBadge level={k} /> {v}</li>
                       ))}
                     </ul>
                   ) : (
@@ -189,8 +219,8 @@ export default function AdminRiskDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">By risk type</CardTitle>
-                  <CardDescription>Counts per risk category</CardDescription>
+                  <CardTitle className="text-base">Issue categories</CardTitle>
+                  <CardDescription>Counts by issue theme</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {Object.entries(byType).length ? (
@@ -199,7 +229,7 @@ export default function AdminRiskDashboardPage() {
                         .sort((a, b) => b[1] - a[1])
                         .map(([type, count]) => (
                           <li key={type} className="flex justify-between text-sm">
-                            <span className="text-gray-700">{type}</span>
+                            <span className="text-gray-700">{humanRiskType(type)}</span>
                             <span className="font-medium">{count}</span>
                           </li>
                         ))}
@@ -217,9 +247,9 @@ export default function AdminRiskDashboardPage() {
                 <CardContent>
                   {topProperties.length ? (
                     <ul className="space-y-2">
-                      {topProperties.slice(0, 10).map(({ property_id, count }) => (
+                      {topProperties.slice(0, 10).map(({ property_id, property_name, count }) => (
                         <li key={property_id} className="flex justify-between text-sm">
-                          <span className="font-mono text-gray-700 truncate max-w-[200px]" title={property_id}>{property_id}</span>
+                          <span className="text-gray-700 truncate max-w-[220px]" title={property_name || property_id}>{property_name || presentPropertyName({ property_name })}</span>
                           <span className="font-medium">{count}</span>
                         </li>
                       ))}
@@ -243,7 +273,7 @@ export default function AdminRiskDashboardPage() {
                     <ul className="space-y-1.5 text-sm">
                       {topComplianceRisks.slice(0, 5).map((s) => (
                         <li key={s.signal_id} className="flex justify-between gap-2">
-                          <span className="truncate text-gray-700" title={s.property_id}>{s.risk_type}</span>
+                          <span className="truncate text-gray-700" title={presentPropertyName(s)}>{humanRiskType(s.risk_type)}</span>
                           <LevelBadge level={s.risk_level} />
                         </li>
                       ))}
@@ -261,7 +291,7 @@ export default function AdminRiskDashboardPage() {
                     <ul className="space-y-1.5 text-sm">
                       {topMaintenanceRisks.slice(0, 5).map((s) => (
                         <li key={s.signal_id} className="flex justify-between gap-2">
-                          <span className="truncate text-gray-700">{s.risk_type}</span>
+                          <span className="truncate text-gray-700">{humanRiskType(s.risk_type)}</span>
                           <LevelBadge level={s.risk_level} />
                         </li>
                       ))}
@@ -277,9 +307,9 @@ export default function AdminRiskDashboardPage() {
                 <CardContent>
                   {repeatedIssuesProperties.length ? (
                     <ul className="space-y-1.5 text-sm">
-                      {repeatedIssuesProperties.slice(0, 5).map(({ property_id, count }) => (
+                      {repeatedIssuesProperties.slice(0, 5).map(({ property_id, property_name, count }) => (
                         <li key={property_id} className="flex justify-between">
-                          <span className="font-mono text-xs truncate max-w-[140px]" title={property_id}>{property_id}</span>
+                          <span className="text-xs truncate max-w-[180px]" title={property_name || property_id}>{property_name || presentPropertyName({ property_name })}</span>
                           <span className="font-medium">{count}</span>
                         </li>
                       ))}
@@ -297,7 +327,7 @@ export default function AdminRiskDashboardPage() {
                     <ul className="space-y-1.5 text-sm">
                       {slaBreachRisks.slice(0, 5).map((s) => (
                         <li key={s.signal_id} className="flex justify-between gap-2">
-                          <span className="truncate text-gray-700" title={s.property_id}>{s.property_id}</span>
+                          <span className="truncate text-gray-700" title={presentPropertyName(s)}>{presentPropertyName(s)}</span>
                           <LevelBadge level={s.risk_level} />
                         </li>
                       ))}
@@ -321,17 +351,17 @@ export default function AdminRiskDashboardPage() {
                         <tr className="border-b text-left text-gray-500">
                           <th className="py-2 pr-4">Property</th>
                           <th className="py-2 pr-4">Client</th>
-                          <th className="py-2 pr-4 text-red-600">Critical</th>
+                          <th className="py-2 pr-4 text-red-600">Urgent</th>
                           <th className="py-2 pr-4 text-orange-600">High</th>
-                          <th className="py-2 pr-4 text-amber-600">Medium</th>
+                          <th className="py-2 pr-4 text-amber-600">Needs attention</th>
                           <th className="py-2">Low</th>
                         </tr>
                       </thead>
                       <tbody>
                         {portfolioHeatmap.slice(0, 20).map((row) => (
                           <tr key={row.property_id} className="border-b border-gray-100">
-                            <td className="py-2 pr-4 font-mono text-xs truncate max-w-[120px]" title={row.property_id}>{row.property_id}</td>
-                            <td className="py-2 pr-4 font-mono text-xs truncate max-w-[100px]" title={row.client_id}>{row.client_id || '—'}</td>
+                            <td className="py-2 pr-4 text-xs truncate max-w-[180px]" title={presentPropertyName(row)}>{presentPropertyName(row)}</td>
+                            <td className="py-2 pr-4 text-xs truncate max-w-[140px]" title={presentClientName(row)}>{presentClientName(row)}</td>
                             <td className="py-2 pr-4 font-medium">{row.critical ?? 0}</td>
                             <td className="py-2 pr-4 font-medium">{row.high ?? 0}</td>
                             <td className="py-2 pr-4">{row.medium ?? 0}</td>
@@ -347,8 +377,8 @@ export default function AdminRiskDashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Recent risk signals</CardTitle>
-                <CardDescription>Latest signals (property, type, level, status, action)</CardDescription>
+                <CardTitle className="text-base">Recent issues</CardTitle>
+                <CardDescription>Latest issues by property with plain-language actions</CardDescription>
               </CardHeader>
               <CardContent>
                 {recent.length ? (
@@ -357,8 +387,8 @@ export default function AdminRiskDashboardPage() {
                       <thead>
                         <tr className="border-b text-left text-gray-500">
                           <th className="py-2 pr-4">Property</th>
-                          <th className="py-2 pr-4">Risk type</th>
-                          <th className="py-2 pr-4">Level</th>
+                          <th className="py-2 pr-4">Issue</th>
+                          <th className="py-2 pr-4">Priority</th>
                           <th className="py-2 pr-4">Status</th>
                           <th className="py-2 pr-4">Generated</th>
                           <th className="py-2">Action</th>
@@ -367,12 +397,12 @@ export default function AdminRiskDashboardPage() {
                       <tbody>
                         {recent.slice(0, 25).map((s) => (
                           <tr key={s.signal_id} className="border-b border-gray-100">
-                            <td className="py-2 pr-4 font-mono text-xs truncate max-w-[120px]" title={s.property_id}>{s.property_id}</td>
-                            <td className="py-2 pr-4">{s.risk_type || '—'}</td>
+                            <td className="py-2 pr-4 text-xs truncate max-w-[160px]" title={presentPropertyName(s)}>{presentPropertyName(s)}</td>
+                            <td className="py-2 pr-4">{humanRiskType(s.risk_type) || '—'}</td>
                             <td className="py-2 pr-4"><LevelBadge level={s.risk_level} /></td>
-                            <td className="py-2 pr-4">{s.status || '—'}</td>
+                            <td className="py-2 pr-4">{humanStatus(s.status)}</td>
                             <td className="py-2 pr-4">{formatDate(s.generated_at || s.updated_at)}</td>
-                            <td className="py-2 text-gray-600 truncate max-w-[200px]" title={s.recommended_action}>{s.recommended_action || '—'}</td>
+                            <td className="py-2 text-gray-600 truncate max-w-[260px]" title={humanAction(s.recommended_action, s.risk_type)}>{humanAction(s.recommended_action, s.risk_type)}</td>
                           </tr>
                         ))}
                       </tbody>

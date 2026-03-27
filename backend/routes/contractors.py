@@ -42,6 +42,10 @@ class ContractorUpdate(BaseModel):
     region: Optional[str] = None
 
 
+class DisablePortalAccessBody(BaseModel):
+    reason: Optional[str] = None
+
+
 class ContractorNetworkCreate(BaseModel):
     company_name: str
     trade_types: List[str]
@@ -128,6 +132,17 @@ async def create_contractor(request: Request, body: ContractorCreate):
         client_id=body.client_id,
         areas_served=body.areas_served,
         notes=body.notes,
+    )
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_CREATED,
+        actor_id=user.get("portal_user_id"),
+        actor_role=user.get("role"),
+        client_id=body.client_id,
+        resource_type="contractor",
+        resource_id=doc.get("contractor_id"),
+        metadata={"source_type": doc.get("source_type"), "portal_access_status": doc.get("portal_access_status")},
     )
     return doc
 
@@ -267,9 +282,8 @@ async def delete_contractor(request: Request, contractor_id: str):
     return {"ok": True, "contractor_id": contractor_id}
 
 
-@router.post("/contractors/{contractor_id}/invite-portal", dependencies=[Depends(require_owner_or_admin)])
-async def invite_contractor_to_portal(request: Request, contractor_id: str):
-    """Send contractor portal invite email with set-password link. Creates token with purpose=contractor_invite."""
+async def _issue_contractor_portal_invite(request: Request, contractor_id: str, resend: bool = False):
+    """Create contractor invite token (24h), send email, and persist invite lifecycle state."""
     from datetime import datetime, timezone, timedelta
     from auth import generate_secure_token, hash_token
     from database import database
@@ -285,21 +299,38 @@ async def invite_contractor_to_portal(request: Request, contractor_id: str):
         raise HTTPException(status_code=400, detail="Contractor has no email; add one before inviting to portal")
     from services.contractor_portal_auth_service import get_account_by_contractor_id
     existing = await get_account_by_contractor_id(contractor_id)
-    if existing:
+    if existing and (existing.get("status") or "").lower() == "active":
         raise HTTPException(status_code=400, detail="Contractor already has a portal account; they can use forgot-password if needed")
     raw_token = generate_secure_token()
     token_hash = hash_token(raw_token)
     db = database.get_db()
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(days=7)
+    expires_at = now + timedelta(hours=24)
+    await db.password_tokens.update_many(
+        {
+            "purpose": "contractor_invite",
+            "metadata.contractor_id": contractor_id,
+            "used": {"$ne": True},
+            "revoked_at": {"$exists": False},
+        },
+        {"$set": {"revoked_at": now.isoformat(), "revoked_reason": "invite_replaced"}},
+    )
     await db.password_tokens.insert_one({
         "token_hash": token_hash,
         "purpose": "contractor_invite",
         "metadata": {"contractor_id": contractor_id, "email": email},
         "expires_at": expires_at,
         "used": False,
+        "revoked_at": None,
         "created_at": now.isoformat(),
     })
+    await contractor_service.update_contractor(
+        contractor_id,
+        portal_access_status=contractor_service.PORTAL_ACCESS_INVITE_PENDING,
+        portal_invite_sent_at=now.isoformat(),
+        portal_invite_expires_at=expires_at.isoformat(),
+        portal_invite_last_token_id=token_hash,
+    )
     base_url = get_frontend_base_url().rstrip("/")
     setup_url = f"{base_url}/contractor-set-password?token={raw_token}"
     try:
@@ -310,7 +341,7 @@ async def invite_contractor_to_portal(request: Request, contractor_id: str):
             context={
                 "recipient": email,
                 "subject": "You're invited to the Pleerity Contractor Portal",
-                "message": f"Use the link below to set your password and access your assigned work orders.<br><br><a href=\"{setup_url}\">Set password</a><br><br>Link valid for 7 days.",
+                "message": f"Use the link below to set your password and access your assigned work orders.<br><br><a href=\"{setup_url}\">Set password</a><br><br>Link valid for 24 hours.",
                 "company_name": "Pleerity Enterprise Ltd",
             },
             idempotency_key=f"contractor_invite_{contractor_id}_{now.timestamp()}",
@@ -320,10 +351,64 @@ async def invite_contractor_to_portal(request: Request, contractor_id: str):
         import logging
         logging.getLogger(__name__).warning("Contractor invite email send failed: %s", e)
     await create_audit_log(
-        action=AuditAction.ADMIN_ACTION,
+        action=AuditAction.CONTRACTOR_INVITE_RESENT if resend else AuditAction.CONTRACTOR_INVITE_SENT,
         actor_id=user.get("portal_user_id"),
+        actor_role=user.get("role"),
         resource_type="contractor",
         resource_id=contractor_id,
-        metadata={"action": "contractor_portal_invite", "email": email},
+        metadata={"email": email, "expires_at": expires_at.isoformat()},
     )
-    return {"ok": True, "message": "Invite created. Contractor can set password via the link.", "setup_url": setup_url}
+    return {
+        "ok": True,
+        "message": "Invite sent. Contractor can set password via the link.",
+        "setup_url": setup_url,
+        "expires_at": expires_at.isoformat(),
+        "portal_access_status": contractor_service.PORTAL_ACCESS_INVITE_PENDING,
+    }
+
+
+@router.post("/contractors/{contractor_id}/invite-portal", dependencies=[Depends(require_owner_or_admin)])
+async def invite_contractor_to_portal(request: Request, contractor_id: str):
+    """Send first contractor portal invite (24h expiry)."""
+    return await _issue_contractor_portal_invite(request, contractor_id, resend=False)
+
+
+@router.post("/contractors/{contractor_id}/invite-portal/resend", dependencies=[Depends(require_owner_or_admin)])
+async def resend_contractor_portal_invite(request: Request, contractor_id: str):
+    """Resend contractor portal invite (revokes previous active invite)."""
+    return await _issue_contractor_portal_invite(request, contractor_id, resend=True)
+
+
+@router.post("/contractors/{contractor_id}/portal-access/disable", dependencies=[Depends(require_owner_or_admin)])
+async def disable_contractor_portal_access(request: Request, contractor_id: str, body: DisablePortalAccessBody):
+    """Disable contractor portal access, revoke invite/job tokens, and return jobs requiring reassignment."""
+    user = await admin_route_guard(request)
+    result = await contractor_service.disable_portal_access(contractor_id)
+    if not result.get("ok"):
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_PORTAL_ACCESS_DISABLED,
+        actor_id=user.get("portal_user_id"),
+        actor_role=user.get("role"),
+        resource_type="contractor",
+        resource_id=contractor_id,
+        metadata={
+            "reason": (body.reason or "disabled_by_admin")[:500],
+            "revoked_invite_tokens": result.get("revoked_invite_tokens", 0),
+            "revoked_job_tokens": result.get("revoked_job_tokens", 0),
+            "reassignment_required_count": result.get("reassignment_required_count", 0),
+        },
+    )
+    return result
+
+
+@router.get("/contractors/{contractor_id}/assigned-jobs")
+async def list_contractor_assigned_jobs(request: Request, contractor_id: str, include_closed: bool = Query(False), limit: int = Query(200, ge=1, le=500)):
+    """List jobs currently assigned to a contractor for admin reassignment workflow."""
+    await admin_route_guard(request)
+    contractor = await contractor_service.get_contractor(contractor_id)
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    return await contractor_service.list_assigned_jobs(contractor_id=contractor_id, include_closed=include_closed, limit=limit)

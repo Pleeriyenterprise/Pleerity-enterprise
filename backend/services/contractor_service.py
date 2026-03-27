@@ -21,6 +21,10 @@ SOURCE_SELF_REGISTERED = "self_registered"
 STATUS_ACTIVE = "active"
 STATUS_PENDING_REVIEW = "pending_review"
 STATUS_SUSPENDED = "suspended"
+PORTAL_ACCESS_NOT_INVITED = "not_invited"
+PORTAL_ACCESS_INVITE_PENDING = "invite_pending"
+PORTAL_ACCESS_ENABLED = "enabled"
+PORTAL_ACCESS_DISABLED = "disabled"
 
 # Rework: follow-up work order at same property within this many days of a prior completion counts as rework.
 REWORK_DAYS = 30
@@ -42,6 +46,13 @@ def _sanitize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
     out = dict(doc)
     out.pop("_id", None)
     return _make_json_safe(out)
+
+
+def _default_vetting_status(vetted: bool, status: Optional[str]) -> str:
+    normalized = (status or "").strip().lower()
+    if normalized == STATUS_PENDING_REVIEW:
+        return STATUS_PENDING_REVIEW
+    return "approved" if vetted else "not_vetted"
 
 
 async def list_contractors(
@@ -148,6 +159,9 @@ async def create_contractor(
     insurance_details: Optional[str] = None,
     contact_name: Optional[str] = None,
     region: Optional[str] = None,
+    portal_access_status: Optional[str] = None,
+    vetting_status: Optional[str] = None,
+    coverage_area: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Create a new contractor. Sets source_type/status when provided; defaults for backward compat."""
     from datetime import datetime, timezone
@@ -163,7 +177,8 @@ async def create_contractor(
         "email": email,
         "phone": phone,
         "company_name": company_name,
-        "areas_served": areas_served,
+        "areas_served": areas_served or coverage_area or [],
+        "coverage_area": coverage_area or areas_served or [],
         "notes": notes,
         "created_at": now,
         "updated_at": now,
@@ -177,6 +192,14 @@ async def create_contractor(
         "job_count": 0,
         "sla_compliance_rate": None,
         "rework_rate": None,
+        "linked_client_id": client_id,
+        "linked_network": bool(not client_id and ((source_type or "").strip().lower() == SOURCE_PLATFORM_NETWORK)),
+        "portal_access_status": (portal_access_status or PORTAL_ACCESS_NOT_INVITED).strip().lower(),
+        "portal_invite_sent_at": None,
+        "portal_invite_expires_at": None,
+        "portal_invite_last_token_id": None,
+        "portal_invite_accepted_at": None,
+        "vetting_status": (vetting_status or _default_vetting_status(vetted, status)).strip().lower(),
     }
     if client_id and (source_type or "").strip().lower() == SOURCE_LANDLORD_ADDED:
         doc["visibility_scope"] = "private"
@@ -209,6 +232,13 @@ async def update_contractor(
     approved_for_network_at: Optional[str] = None,
     approved_by_admin_id: Optional[str] = None,
     network_submission_rejection_reason: Optional[str] = None,
+    portal_access_status: Optional[str] = None,
+    portal_invite_sent_at: Optional[str] = None,
+    portal_invite_expires_at: Optional[str] = None,
+    portal_invite_last_token_id: Optional[str] = None,
+    portal_invite_accepted_at: Optional[str] = None,
+    vetting_status: Optional[str] = None,
+    coverage_area: Optional[List[str]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Update a contractor. Only provided fields are updated."""
     from datetime import datetime, timezone
@@ -251,6 +281,21 @@ async def update_contractor(
         update["approved_by_admin_id"] = approved_by_admin_id
     if network_submission_rejection_reason is not None:
         update["network_submission_rejection_reason"] = network_submission_rejection_reason
+    if portal_access_status is not None:
+        update["portal_access_status"] = portal_access_status
+    if portal_invite_sent_at is not None:
+        update["portal_invite_sent_at"] = portal_invite_sent_at
+    if portal_invite_expires_at is not None:
+        update["portal_invite_expires_at"] = portal_invite_expires_at
+    if portal_invite_last_token_id is not None:
+        update["portal_invite_last_token_id"] = portal_invite_last_token_id
+    if portal_invite_accepted_at is not None:
+        update["portal_invite_accepted_at"] = portal_invite_accepted_at
+    if vetting_status is not None:
+        update["vetting_status"] = vetting_status
+    if coverage_area is not None:
+        update["coverage_area"] = coverage_area
+        update["areas_served"] = coverage_area
 
     result = await db.contractors.find_one_and_update(
         {"contractor_id": contractor_id},
@@ -300,6 +345,9 @@ async def create_contractor_landlord(
         insurance_details=insurance_details,
         contact_name=contact_name,
         region=region,
+        portal_access_status=PORTAL_ACCESS_NOT_INVITED,
+        vetting_status="not_vetted",
+        coverage_area=areas_served,
     )
 
 
@@ -333,6 +381,9 @@ async def create_contractor_network(
         insurance_details=insurance_details,
         contact_name=contact_name,
         region=region,
+        portal_access_status=PORTAL_ACCESS_NOT_INVITED,
+        vetting_status="approved",
+        coverage_area=areas_served,
     )
 
 
@@ -363,12 +414,77 @@ async def create_contractor_self_registered(
         insurance_details=insurance_details,
         contact_name=contact_name,
         region=coverage_regions[0] if coverage_regions else None,
+        portal_access_status=PORTAL_ACCESS_NOT_INVITED,
+        vetting_status=STATUS_PENDING_REVIEW,
+        coverage_area=coverage_regions,
     )
 
 
 async def approve_contractor(contractor_id: str) -> Optional[Dict[str, Any]]:
     """Set contractor status=active and vetted=True (e.g. after admin review of self-registered)."""
-    return await update_contractor(contractor_id, status=STATUS_ACTIVE, vetted=True)
+    return await update_contractor(contractor_id, status=STATUS_ACTIVE, vetted=True, vetting_status="approved")
+
+
+async def list_assigned_jobs(contractor_id: str, include_closed: bool = False, limit: int = 200) -> Dict[str, Any]:
+    """List jobs currently assigned to the contractor, with optional closed/completed rows."""
+    db = database.get_db()
+    q: Dict[str, Any] = {"contractor_id": contractor_id}
+    if not include_closed:
+        q["status"] = {"$nin": ["COMPLETED", "CANCELLED", "CLOSED", "VERIFIED"]}
+    rows = await db.work_orders.find(
+        q,
+        {"_id": 0, "work_order_id": 1, "client_id": 1, "property_id": 1, "status": 1, "priority": 1, "title": 1, "description": 1, "created_at": 1, "updated_at": 1},
+    ).sort("created_at", -1).to_list(limit)
+    return {"jobs": rows, "total": len(rows)}
+
+
+async def disable_portal_access(contractor_id: str) -> Dict[str, Any]:
+    """
+    Disable contractor portal access and revoke active invite/job tokens.
+    Returns revocation counts and currently assigned open jobs requiring reassignment.
+    """
+    db = database.get_db()
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    contractor = await db.contractors.find_one({"contractor_id": contractor_id}, {"_id": 0})
+    if not contractor:
+        return {"ok": False, "reason": "not_found"}
+
+    await db.contractors.update_one(
+        {"contractor_id": contractor_id},
+        {"$set": {"portal_access_status": PORTAL_ACCESS_DISABLED, "updated_at": now_iso}},
+    )
+    account_result = await db.contractor_portal_accounts.update_one(
+        {"contractor_id": contractor_id},
+        {"$set": {"status": "inactive", "updated_at": now_iso, "disabled_at": now_iso}},
+    )
+    invite_revoke_result = await db.password_tokens.update_many(
+        {
+            "purpose": "contractor_invite",
+            "metadata.contractor_id": contractor_id,
+            "used": {"$ne": True},
+            "revoked_at": {"$exists": False},
+        },
+        {"$set": {"revoked_at": now_iso, "revoked_reason": "portal_access_disabled"}},
+    )
+    job_revoke_result = await db.contractor_job_tokens.update_many(
+        {
+            "contractor_id": contractor_id,
+            "revoked_at": {"$exists": False},
+        },
+        {"$set": {"revoked_at": now_iso, "revoked_reason": "portal_access_disabled"}},
+    )
+    jobs_result = await list_assigned_jobs(contractor_id=contractor_id, include_closed=False, limit=500)
+    return {
+        "ok": True,
+        "contractor_id": contractor_id,
+        "portal_access_status": PORTAL_ACCESS_DISABLED,
+        "portal_account_disabled": account_result.modified_count > 0 or account_result.matched_count > 0,
+        "revoked_invite_tokens": int(invite_revoke_result.modified_count or 0),
+        "revoked_job_tokens": int(job_revoke_result.modified_count or 0),
+        "reassignment_required_jobs": jobs_result.get("jobs", []),
+        "reassignment_required_count": jobs_result.get("total", 0),
+    }
 
 
 async def submit_contractor_to_network(contractor_id: str, client_id: str) -> Optional[Dict[str, Any]]:

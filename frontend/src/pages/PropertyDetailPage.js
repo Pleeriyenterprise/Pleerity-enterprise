@@ -39,6 +39,7 @@ import UpgradePrompt, { getFeatureDisplayInfo } from '../components/UpgradePromp
 import { SUPPORT_EMAIL } from '../config';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import { formatRiskLabel } from '../utils/riskLabel';
+import { humanRiskType, humanSeverity, humanAction } from '../utils/riskPresentation';
 import { toast } from 'sonner';
 
 const NOT_REQUIRED_REASONS = [
@@ -967,10 +968,10 @@ export default function PropertyDetailPage() {
                       <li key={s.signal_id} className="p-3 rounded-lg border border-gray-100 bg-gray-50/80">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
-                            <p className="font-medium text-gray-900">{s.risk_type}</p>
-                            <p className="text-sm text-gray-600 mt-0.5">{s.recommended_action}</p>
+                            <p className="font-medium text-gray-900">{humanRiskType(s.risk_type)}</p>
+                            <p className="text-sm text-gray-600 mt-0.5">{humanAction(s.recommended_action, s.risk_type)}</p>
                             <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${['high', 'critical'].includes((s.risk_level || '').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
-                              {s.risk_level || 'medium'}
+                              {humanSeverity(s.risk_level)}
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-1.5 shrink-0">
@@ -2242,10 +2243,10 @@ export default function PropertyDetailPage() {
                 {riskSignalsData.signals.map((s) => (
                   <li key={s.signal_id} className="flex flex-wrap items-start justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">{s.risk_type}</p>
-                      <p className="text-sm text-gray-700 mt-0.5">{s.recommended_action}</p>
+                      <p className="font-medium text-gray-900">{humanRiskType(s.risk_type)}</p>
+                      <p className="text-sm text-gray-700 mt-0.5">{humanAction(s.recommended_action, s.risk_type)}</p>
                       {Array.isArray(s.reasons) && s.reasons.length > 0 && <ul className="mt-1 text-xs text-gray-600 list-disc list-inside">{s.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
-                      <span className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${['high','critical'].includes((s.risk_level||'').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{s.risk_level || 'medium'}</span>
+                      <span className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${['high','critical'].includes((s.risk_level||'').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{humanSeverity(s.risk_level)}</span>
                       {s.status && s.status !== 'active' && <span className="ml-2 text-xs text-gray-500">{s.status}</span>}
                     </div>
                     <div className="flex flex-wrap gap-2 shrink-0">

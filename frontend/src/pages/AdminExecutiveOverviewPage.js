@@ -97,8 +97,10 @@ export default function AdminExecutiveOverviewPage() {
   const riskIndicators = data?.risk_indicators || {};
   const valuationSnapshot = data?.valuation_snapshot || {};
   const growthEfficiency = data?.growth_efficiency || {};
+  const paymentDataQuality = data?.payment_data_quality || {};
   const totalComp = composition.reduce((s, c) => s + (c.value_pence || 0), 0);
   const maxTrend = Math.max(...trend.map((t) => t.total_pence || 0), 1);
+  const trendTotalPence = trend.reduce((s, t) => s + (t.total_pence || 0), 0);
 
   return (
     <UnifiedAdminLayout>
@@ -108,6 +110,19 @@ export default function AdminExecutiveOverviewPage() {
           <p className="mt-1 text-sm text-gray-500">
             Core financial and subscription health. Investor-ready snapshot.
           </p>
+          {(paymentDataQuality?.is_sparse_12m || monthlyTrendIsMrrFallback || trendTotalPence === 0) && (
+            <div className="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+              <p className="font-medium">Revenue chart coverage is limited.</p>
+              <p>
+                {paymentDataQuality?.note || 'Charts use normalized payment events. If historical payments were not backfilled, previous months may appear empty.'}
+              </p>
+              {Array.isArray(paymentDataQuality?.months_missing_payments_12m) && paymentDataQuality.months_missing_payments_12m.length > 0 && (
+                <p className="mt-1 text-xs">
+                  Missing months: {paymentDataQuality.months_missing_payments_12m.join(', ')}
+                </p>
+              )}
+            </div>
+          )}
         </header>
 
         {/* Row 1 — Core Financial KPIs */}
@@ -297,6 +312,11 @@ export default function AdminExecutiveOverviewPage() {
               {monthlyTrendIsMrrFallback && (
                 <p className="mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">
                   No payment history by month yet. Chart shows revenue from actual payments per month; MRR above is from current subscriptions.
+                </p>
+              )}
+              {paymentDataQuality?.is_sparse_12m && !monthlyTrendIsMrrFallback && (
+                <p className="mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                  Payment data is sparse across the last 12 months. Interpret trend carefully until backfill is complete.
                 </p>
               )}
               {trend.length > 0 ? (

@@ -905,7 +905,7 @@ async def contractor_login(request: Request, credentials: LoginRequest):
         acc = await verify_contractor_password(credentials.email, credentials.password)
         if not acc:
             await create_audit_log(
-                action=AuditAction.USER_LOGIN_FAILED,
+                action=AuditAction.CONTRACTOR_LOGIN_FAILED,
                 metadata={"email": credentials.email, "reason": "contractor_invalid_credentials"}
             )
             try:
@@ -931,7 +931,7 @@ async def contractor_login(request: Request, credentials: LoginRequest):
         contractor = await contractor_service.get_contractor(contractor_id)
         if not contractor or (contractor.get("status") or "").lower() != contractor_service.STATUS_ACTIVE:
             await create_audit_log(
-                action=AuditAction.USER_LOGIN_FAILED,
+                action=AuditAction.CONTRACTOR_LOGIN_FAILED,
                 metadata={"email": credentials.email, "contractor_id": contractor_id, "reason": "contractor_inactive"}
             )
             try:
@@ -945,6 +945,17 @@ async def contractor_login(request: Request, credentials: LoginRequest):
             except Exception:
                 pass
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is not active")
+        portal_access_status = (contractor.get("portal_access_status") or "").strip().lower()
+        if portal_access_status not in (
+            contractor_service.PORTAL_ACCESS_ENABLED,
+            contractor_service.PORTAL_ACCESS_INVITE_PENDING,
+        ):
+            await create_audit_log(
+                action=AuditAction.CONTRACTOR_LOGIN_FAILED,
+                actor_id=contractor_id,
+                metadata={"email": credentials.email, "contractor_id": contractor_id, "reason": "portal_access_disabled"},
+            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor portal access is disabled")
         token_data = {
             "portal_user_id": f"contractor_{contractor_id}",
             "contractor_id": contractor_id,
@@ -953,7 +964,7 @@ async def contractor_login(request: Request, credentials: LoginRequest):
         }
         access_token = create_access_token(token_data)
         await create_audit_log(
-            action=AuditAction.USER_LOGIN_SUCCESS,
+            action=AuditAction.CONTRACTOR_LOGIN_SUCCESS,
             actor_id=contractor_id,
             metadata={"email": acc["email"], "contractor_id": contractor_id}
         )
@@ -1001,6 +1012,8 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
     if password_token.get("used"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link has already been used")
+    if password_token.get("revoked_at"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link is no longer valid")
     expires_at = password_token.get("expires_at")
     if expires_at:
         from datetime import datetime, timezone
@@ -1015,6 +1028,12 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
     email = (metadata.get("email") or "").strip().lower()
     if not contractor_id or not email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite data")
+    from services import contractor_service
+    contractor = await contractor_service.get_contractor(contractor_id)
+    if not contractor:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite data")
+    if (contractor.get("portal_access_status") or "").strip().lower() == contractor_service.PORTAL_ACCESS_DISABLED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor portal access is disabled")
     is_valid, message = validate_password_strength(data.password)
     if not is_valid:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
@@ -1031,6 +1050,18 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
     await db.password_tokens.update_one(
         {"token_hash": token_hash_value},
         {"$set": {"used": True, "used_at": now}}
+    )
+    await contractor_service.update_contractor(
+        contractor_id,
+        portal_access_status=contractor_service.PORTAL_ACCESS_ENABLED,
+        portal_invite_accepted_at=now,
+    )
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_INVITE_ACCEPTED,
+        actor_id=contractor_id,
+        resource_type="contractor",
+        resource_id=contractor_id,
+        metadata={"email": email},
     )
     token_data = {
         "portal_user_id": f"contractor_{contractor_id}",

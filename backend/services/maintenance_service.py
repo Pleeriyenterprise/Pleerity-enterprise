@@ -328,6 +328,7 @@ async def update_work_order(
                     "contractor_id": contractor_id,
                     "created_at": now,
                     "expires_at": expires_at,
+                    "revoked_at": None,
                 })
                 base_url = get_frontend_base_url().rstrip("/")
                 job_link = f"{base_url}/job?token={raw_token}"

@@ -32,6 +32,8 @@ async def get_job_context(
     doc = await db.contractor_job_tokens.find_one({"token_hash": token_hash})
     if not doc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired job link")
+    if doc.get("revoked_at"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Job link is no longer valid")
     expires_at = doc.get("expires_at")
     if expires_at:
         try:
@@ -45,6 +47,16 @@ async def get_job_context(
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Job link has expired")
         except (ValueError, TypeError):
             pass
+    contractor = await db.contractors.find_one(
+        {"contractor_id": doc["contractor_id"]},
+        {"_id": 0, "status": 1, "portal_access_status": 1},
+    )
+    if not contractor:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired job link")
+    if (contractor.get("status") or "").lower() != contractor_service.STATUS_ACTIVE:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Contractor access is no longer active")
+    if (contractor.get("portal_access_status") or "").lower() == contractor_service.PORTAL_ACCESS_DISABLED:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Contractor access is no longer active")
     return {"work_order_id": doc["work_order_id"], "contractor_id": doc["contractor_id"]}
 
 

@@ -104,6 +104,30 @@ function FunnelStep({ stage, count, rate, isLast }) {
   );
 }
 
+function DataQualityStrip({ dataQuality }) {
+  if (!dataQuality) return null;
+  const asOf = dataQuality.as_of ? new Date(dataQuality.as_of).toLocaleString() : 'Unknown';
+  const source = dataQuality.source || 'unknown';
+  const coverageStart = dataQuality.coverage_start || 'n/a';
+  const coverageEnd = dataQuality.coverage_end || 'n/a';
+  return (
+    <div className="mb-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+        <Badge variant="secondary" className="text-[11px]">{source}</Badge>
+        <span>As of {asOf}</span>
+        <span>Coverage {coverageStart} to {coverageEnd}</span>
+        <span>Records {dataQuality.record_count ?? 0}</span>
+        {dataQuality.is_sparse && (
+          <Badge className="bg-amber-100 text-amber-700 text-[11px]">Sparse</Badge>
+        )}
+      </div>
+      {dataQuality.note && (
+        <p className="mt-1 text-xs text-gray-500">{dataQuality.note}</p>
+      )}
+    </div>
+  );
+}
+
 export default function AdminAnalyticsDashboard() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState('30d');
@@ -178,13 +202,14 @@ export default function AdminAnalyticsDashboard() {
     try {
       setLoading(true);
       
-      const [summaryRes, servicesRes, slaRes, customersRes, funnelRes, addonsRes] = await Promise.all([
+      const [summaryRes, servicesRes, slaRes, customersRes, funnelRes, addonsRes, dailyRevenueRes] = await Promise.all([
         client.get(`/admin/analytics/summary?period=${period}`),
         client.get(`/admin/analytics/services?period=${period}`),
         client.get(`/admin/analytics/sla-performance?period=${period}`),
         client.get(`/admin/analytics/customers?period=${period}`),
         client.get(`/admin/analytics/conversion-funnel?period=${period}`),
         client.get(`/admin/analytics/addons?period=${period}`),
+        client.get(`/admin/analytics/revenue/daily?period=${period}`),
       ]);
       
       setData({
@@ -194,6 +219,7 @@ export default function AdminAnalyticsDashboard() {
         customers: customersRes.data,
         funnel: funnelRes.data,
         addons: addonsRes.data,
+        dailyRevenue: dailyRevenueRes.data,
       });
       const convParams = showCustomRange && customDateRange.start && customDateRange.end
         ? `from=${customDateRange.start}&to=${customDateRange.end}`
@@ -257,7 +283,23 @@ export default function AdminAnalyticsDashboard() {
     }
   }, [compareEnabled, breakdownDimension, customDateRange, loading, fetchAdvancedData]);
   
-  const { summary, services, sla, customers, funnel, addons } = data;
+  const { summary, services, sla, customers, funnel, addons, dailyRevenue } = data;
+  const summaryDq = summary?.data_quality;
+  const servicesDq = services?.data_quality;
+  const funnelDq = funnel?.data_quality;
+  const revenueDq = revenueAnalytics?.data_quality;
+  const dailyRevenueDq = dailyRevenue?.data_quality;
+  const slaDq = sla?.data_quality;
+  const addonsDq = addons?.data_quality;
+  const customersDq = customers?.data_quality;
+  const periodRevenueOrders = summary?.revenue?.total_pence || 0;
+  const periodRevenuePayments = revenueAnalytics?.kpis?.revenue_period_pence || 0;
+  const revenueGapAbs = Math.abs(periodRevenueOrders - periodRevenuePayments);
+  const revenueGapPct = periodRevenuePayments > 0 ? (revenueGapAbs / periodRevenuePayments) * 100 : 0;
+  const hasRevenueConsistencyWarning =
+    (periodRevenuePayments > 0 && periodRevenueOrders === 0) ||
+    (periodRevenueOrders > 0 && periodRevenuePayments === 0) ||
+    (periodRevenuePayments > 0 && revenueGapPct >= 10);
   
   // Handle custom date range apply
   const applyCustomRange = () => {
@@ -376,6 +418,16 @@ export default function AdminAnalyticsDashboard() {
                   </span>
                 )}
               </div>
+            )}
+
+            {hasRevenueConsistencyWarning && (
+              <Card className="mb-4 border-amber-200 bg-amber-50">
+                <CardContent className="py-3">
+                  <p className="text-sm text-amber-800">
+                    Data consistency warning: orders-based revenue is £{(periodRevenueOrders / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })} while payments-based revenue is £{(periodRevenuePayments / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })} for this period. Some cards may differ until ingestion/backfill is aligned.
+                  </p>
+                </CardContent>
+              </Card>
             )}
 
             {marketingAutomationEmailPerformance && (
@@ -596,9 +648,10 @@ export default function AdminAnalyticsDashboard() {
                     <Activity className="h-5 w-5 text-teal-600" />
                     Service Performance
                   </CardTitle>
-                  <CardDescription>Revenue by service type</CardDescription>
+                  <CardDescription>Source: paid `orders`, grouped by service type</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <DataQualityStrip dataQuality={servicesDq} />
                   {services?.services?.length > 0 ? (
                     <div className="space-y-4">
                       {services.services.slice(0, 6).map((service, index) => (
@@ -637,9 +690,10 @@ export default function AdminAnalyticsDashboard() {
                     <Target className="h-5 w-5 text-purple-600" />
                     Conversion Funnel
                   </CardTitle>
-                  <CardDescription>From draft to completion</CardDescription>
+                  <CardDescription>Source: `orders` and `intake_drafts` over selected period</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <DataQualityStrip dataQuality={funnelDq} />
                   {funnel?.funnel?.length > 0 ? (
                     <div className="space-y-4">
                       {funnel.funnel.map((step, index) => (
@@ -1043,7 +1097,7 @@ export default function AdminAnalyticsDashboard() {
                       <DollarSign className="h-5 w-5 text-green-600" />
                       Revenue
                     </CardTitle>
-                    <CardDescription>Revenue KPIs, MRR, subscribers, and payment health from normalized payments</CardDescription>
+                    <CardDescription>Source: normalized `payments` + billing lifecycle state</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <Select value={revenuePeriod} onValueChange={setRevenuePeriod}>
@@ -1071,6 +1125,7 @@ export default function AdminAnalyticsDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
+                <DataQualityStrip dataQuality={revenueDq} />
                 {revenueAnalytics ? (
                   <div className="space-y-6">
                     {/* KPI row */}
@@ -1167,6 +1222,28 @@ export default function AdminAnalyticsDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="text-base">Daily Revenue</CardTitle>
+                <CardDescription>Source: paid `orders`, grouped by day</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DataQualityStrip dataQuality={dailyRevenueDq} />
+                {dailyRevenue?.data?.length > 0 ? (
+                  <div className="space-y-1 max-h-56 overflow-y-auto">
+                    {dailyRevenue.data.map((row) => (
+                      <div key={row.date} className="flex items-center justify-between text-sm border-b border-gray-100 py-1">
+                        <span className="text-gray-600">{row.date}</span>
+                        <span className="font-medium text-gray-900">{row.revenue_formatted || '£0.00'}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm py-2">No daily revenue data for this period.</p>
+                )}
+              </CardContent>
+            </Card>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* SLA Performance */}
@@ -1176,14 +1253,23 @@ export default function AdminAnalyticsDashboard() {
                     <Clock className="h-5 w-5 text-blue-600" />
                     SLA Performance
                   </CardTitle>
+                  <CardDescription>Source: work orders with SLA target timestamps</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center mb-4">
-                    <p className="text-4xl font-bold text-gray-900">
-                      {sla?.health_score || 0}%
-                    </p>
-                    <p className="text-sm text-gray-500">Health Score</p>
-                  </div>
+                  <DataQualityStrip dataQuality={slaDq} />
+                  {sla?.has_sla_data === false ? (
+                    <div className="text-center mb-4">
+                      <p className="text-4xl font-bold text-gray-500">N/A</p>
+                      <p className="text-sm text-gray-500">No SLA-tagged work orders in this period</p>
+                    </div>
+                  ) : (
+                    <div className="text-center mb-4">
+                      <p className="text-4xl font-bold text-gray-900">
+                        {sla?.health_score || 0}%
+                      </p>
+                      <p className="text-sm text-gray-500">Health Score</p>
+                    </div>
+                  )}
                   
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -1226,6 +1312,7 @@ export default function AdminAnalyticsDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <DataQualityStrip dataQuality={addonsDq} />
                   <div className="space-y-4">
                     <div className="p-3 bg-purple-50 rounded-lg">
                       <div className="flex items-center justify-between">
@@ -1280,6 +1367,7 @@ export default function AdminAnalyticsDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <DataQualityStrip dataQuality={customersDq} />
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="text-center p-3 bg-gray-50 rounded-lg">
                       <p className="text-2xl font-bold text-gray-900">
@@ -1328,6 +1416,7 @@ export default function AdminAnalyticsDashboard() {
                 <CardDescription>Current distribution of order statuses</CardDescription>
               </CardHeader>
               <CardContent>
+                <DataQualityStrip dataQuality={summaryDq} />
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {summary?.status_breakdown && Object.entries(summary.status_breakdown).map(([status, count]) => (
                     <div key={status} className="text-center p-3 bg-gray-50 rounded-lg">

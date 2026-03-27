@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 from database import database
 from middleware import admin_route_guard, require_owner, require_owner_or_admin, require_support_or_above
 from middleware.step_up_auth import require_recent_step_up
-from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus
+from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus, OnboardingStatus
 from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -2081,6 +2081,7 @@ async def get_kpi_properties(
     request: Request,
     status_filter: str = None,  # GREEN, AMBER, RED
     expiring_within_days: int = None,
+    min_due_days: int = None,
     skip: int = 0,
     limit: int = 50
 ):
@@ -2097,19 +2098,18 @@ async def get_kpi_properties(
         if status_filter:
             query["compliance_status"] = status_filter.upper()
         
-        # For "expiring soon" filter
+        # For "expiring soon" filter (aligned with /admin/statistics due_date logic)
         if expiring_within_days:
             from datetime import timedelta
+            now_iso = datetime.now(timezone.utc).isoformat()
             cutoff_date = (datetime.now(timezone.utc) + timedelta(days=expiring_within_days)).isoformat()
-            # This would need to check requirements with expiry dates
-            # For now, we'll filter properties with expiring requirements
-            expiring_reqs = await db.requirements.find(
-                {
-                    "status": "EXPIRING_SOON",
-                    "expiry_date": {"$lte": cutoff_date}
-                },
-                {"_id": 0, "property_id": 1}
-            ).to_list(1000)
+            req_query = {
+                "due_date": {"$lte": cutoff_date, "$gte": now_iso},
+                "status": {"$ne": "COMPLIANT"},
+            }
+            if min_due_days and min_due_days > 0:
+                req_query["due_date"]["$gte"] = (datetime.now(timezone.utc) + timedelta(days=min_due_days)).isoformat()
+            expiring_reqs = await db.requirements.find(req_query, {"_id": 0, "property_id": 1}).to_list(5000)
             property_ids = list(set(r["property_id"] for r in expiring_reqs))
             query["property_id"] = {"$in": property_ids}
         
@@ -2135,7 +2135,8 @@ async def get_kpi_properties(
             "limit": limit,
             "filter": {
                 "status": status_filter,
-                "expiring_within_days": expiring_within_days
+                "expiring_within_days": expiring_within_days,
+                "min_due_days": min_due_days,
             }
         }
         
@@ -2152,6 +2153,9 @@ async def get_kpi_requirements(
     request: Request,
     status_filter: str = None,  # COMPLIANT, OVERDUE, EXPIRING_SOON, PENDING
     category: str = None,
+    due_within_days: int = None,
+    min_due_days: int = None,
+    exclude_overdue: bool = False,
     skip: int = 0,
     limit: int = 50
 ):
@@ -2164,15 +2168,36 @@ async def get_kpi_requirements(
     try:
         query = {}
         
+        now_iso = datetime.now(timezone.utc).isoformat()
+
         if status_filter:
-            query["status"] = status_filter.upper()
+            normalized_status = status_filter.upper()
+            if normalized_status == "OVERDUE":
+                query["due_date"] = {"$lt": now_iso}
+                query["status"] = {"$in": ["PENDING", "EXPIRING_SOON"]}
+            elif normalized_status == "EXPIRING_SOON":
+                query["due_date"] = {"$gte": now_iso, "$lte": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}
+                query["status"] = {"$ne": "COMPLIANT"}
+            else:
+                query["status"] = normalized_status
         if category:
             query["category"] = category.upper()
+
+        if due_within_days and due_within_days > 0:
+            due_query = query.get("due_date", {})
+            if not isinstance(due_query, dict):
+                due_query = {}
+            due_query["$lte"] = (datetime.now(timezone.utc) + timedelta(days=due_within_days)).isoformat()
+            if exclude_overdue:
+                due_query["$gte"] = now_iso
+            if min_due_days and min_due_days > 0:
+                due_query["$gte"] = (datetime.now(timezone.utc) + timedelta(days=min_due_days)).isoformat()
+            query["due_date"] = due_query
         
         requirements = await db.requirements.find(
             query,
             {"_id": 0}
-        ).sort("expiry_date", 1).skip(skip).limit(limit).to_list(limit)
+        ).sort("due_date", 1).skip(skip).limit(limit).to_list(limit)
         
         total = await db.requirements.count_documents(query)
         
@@ -2197,7 +2222,10 @@ async def get_kpi_requirements(
             "limit": limit,
             "filter": {
                 "status": status_filter,
-                "category": category
+                "category": category,
+                "due_within_days": due_within_days,
+                "min_due_days": min_due_days,
+                "exclude_overdue": exclude_overdue,
             }
         }
         
@@ -2206,6 +2234,90 @@ async def get_kpi_requirements(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load requirements"
+        )
+
+
+@router.get("/kpi/documents")
+async def get_kpi_documents(
+    request: Request,
+    status_filter: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+):
+    """
+    KPI drill-down: list documents with optional status filter.
+    Used by statistics document tiles for actionable drill-down.
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+
+    try:
+        query: Dict[str, Any] = {}
+        if status_filter:
+            query["status"] = status_filter.upper()
+
+        cursor = (
+            db.documents.find(
+                query,
+                {
+                    "_id": 0,
+                    "document_id": 1,
+                    "client_id": 1,
+                    "property_id": 1,
+                    "file_name": 1,
+                    "status": 1,
+                    "uploaded_at": 1,
+                    "created_at": 1,
+                },
+            )
+            .sort("uploaded_at", -1)
+            .skip(skip)
+            .limit(limit)
+        )
+        documents = await cursor.to_list(limit)
+        total = await db.documents.count_documents(query)
+
+        client_ids = list({d.get("client_id") for d in documents if d.get("client_id")})
+        property_ids = list({d.get("property_id") for d in documents if d.get("property_id")})
+
+        client_map: Dict[str, Dict[str, Any]] = {}
+        if client_ids:
+            async for c in db.clients.find(
+                {"client_id": {"$in": client_ids}},
+                {"_id": 0, "client_id": 1, "full_name": 1, "customer_reference": 1},
+            ):
+                cid = c.get("client_id")
+                if cid:
+                    client_map[cid] = c
+
+        property_map: Dict[str, Dict[str, Any]] = {}
+        if property_ids:
+            async for p in db.properties.find(
+                {"property_id": {"$in": property_ids}},
+                {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "postcode": 1},
+            ):
+                pid = p.get("property_id")
+                if pid:
+                    property_map[pid] = p
+
+        for doc in documents:
+            cid = doc.get("client_id")
+            pid = doc.get("property_id")
+            doc["client"] = client_map.get(cid) if cid else None
+            doc["property"] = property_map.get(pid) if pid else None
+
+        return {
+            "documents": documents,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+            "filter": {"status": status_filter},
+        }
+    except Exception as e:
+        logger.error(f"KPI documents drill-down error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load documents",
         )
 
 

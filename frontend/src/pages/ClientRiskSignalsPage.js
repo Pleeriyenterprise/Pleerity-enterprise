@@ -50,6 +50,14 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import {
+  humanRiskType,
+  humanSeverity,
+  severityBadgeClass,
+  humanAction,
+  humanStatus,
+  groupSignalsByProperty,
+} from '../utils/riskPresentation';
 
 const RISK_LEVELS = [
   { value: '', label: 'All levels' },
@@ -72,10 +80,8 @@ const STATUSES = [
 ];
 
 function riskLevelBadgeClass(level) {
-  const l = (level || '').toLowerCase();
-  if (l === 'critical' || l === 'high') return 'bg-amber-100 text-amber-800 border-amber-200';
-  if (l === 'medium') return 'bg-gray-100 text-gray-800 border-gray-200';
-  return 'bg-gray-50 text-gray-600 border-gray-100';
+  const cls = severityBadgeClass(level);
+  return `${cls} border-transparent`;
 }
 
 function ClientRiskSignalsPageInner() {
@@ -292,19 +298,38 @@ function ClientRiskSignalsPageInner() {
     <div className="p-6 max-w-[1400px]">
       <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
         <TrendingUp className="w-7 h-7" />
-        Risk Signals
+        Property health insights
       </h1>
       <p className="text-gray-600 mb-6">
-        Portfolio-wide risk intelligence and recommended actions. Filter, review, and create work orders to address issues.
+        Clear, practical issue summaries with recommended next steps and deadlines.
       </p>
+
+      {(() => {
+        const grouped = groupSignalsByProperty(signals);
+        const urgent = signals.filter((s) => ['critical', 'high'].includes((s.risk_level || '').toLowerCase())).length;
+        const medium = signals.filter((s) => (s.risk_level || '').toLowerCase() === 'medium').length;
+        const top = grouped.slice(0, 3).map((g) => g.propertyName).join(', ');
+        return (
+          <Card className="mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">At-a-glance summary</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-gray-700 space-y-1">
+              <p>{signals.length} active issues across {grouped.length} properties.</p>
+              <p>{urgent} urgent, {medium} needs attention, and {Math.max(signals.length - urgent - medium, 0)} monitor.</p>
+              <p>Most affected properties: {top || 'None currently flagged'}.</p>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {[
           { key: 'total', label: 'Total', value: summary.total ?? 0, filter: null },
-          { key: 'high', label: 'High', value: summary.high ?? 0, filter: { risk_level: 'high' } },
-          { key: 'medium', label: 'Medium', value: summary.medium ?? 0, filter: { risk_level: 'medium' } },
-          { key: 'low', label: 'Low', value: summary.low ?? 0, filter: { risk_level: 'low' } },
+          { key: 'high', label: 'Urgent', value: summary.high ?? 0, filter: { risk_level: 'high' } },
+          { key: 'medium', label: 'Needs attention', value: summary.medium ?? 0, filter: { risk_level: 'medium' } },
+          { key: 'low', label: 'Monitor', value: summary.low ?? 0, filter: { risk_level: 'low' } },
           { key: 'properties', label: 'Properties affected', value: summary.propertiesAffected ?? 0, filter: null },
           { key: 'preventive', label: 'Preventive actions', value: summary.preventiveActions ?? 0, filter: null },
         ].map(({ key, label, value, filter }) => (
@@ -328,7 +353,7 @@ function ClientRiskSignalsPageInner() {
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-3">
           <div className="w-full sm:w-48">
-            <label className="text-xs text-muted-foreground block mb-1">Risk level</label>
+            <label className="text-xs text-muted-foreground block mb-1">Priority</label>
             <Select value={filters.risk_level || ' '} onValueChange={(v) => applyFilter('risk_level', v === ' ' ? '' : v)}>
               <SelectTrigger><SelectValue placeholder="All levels" /></SelectTrigger>
               <SelectContent>
@@ -344,8 +369,8 @@ function ClientRiskSignalsPageInner() {
               <SelectTrigger><SelectValue placeholder="All types" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value=" ">All types</SelectItem>
-                {riskTypesFromSignals(signals).map((rt) => (
-                  <SelectItem key={rt} value={rt}>{rt}</SelectItem>
+                    {riskTypesFromSignals(signals).map((rt) => (
+                  <SelectItem key={rt} value={rt}>{humanRiskType(rt)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -448,7 +473,7 @@ function ClientRiskSignalsPageInner() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600" />
-              High Priority Risks
+              Urgent issues
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -459,9 +484,9 @@ function ClientRiskSignalsPageInner() {
                   className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-white border border-amber-100"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">{s.risk_type}</p>
+                    <p className="font-medium text-gray-900">{humanRiskType(s.risk_type)}</p>
                     <p className="text-sm text-gray-700">{propertyLabel(s.property_id)}</p>
-                    <p className="text-sm text-gray-600 mt-0.5">{s.recommended_action}</p>
+                    <p className="text-sm text-gray-600 mt-0.5">{humanAction(s.recommended_action, s.risk_type)}</p>
                     {Array.isArray(s.reasons) && s.reasons[0] && (
                       <p className="text-xs text-gray-500 mt-1">{s.reasons[0]}</p>
                     )}
@@ -488,7 +513,7 @@ function ClientRiskSignalsPageInner() {
       {/* Table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle>Active risk signals</CardTitle>
+          <CardTitle>Active issues</CardTitle>
           {summary.lastRecalculatedAt && (
             <span className="text-xs text-muted-foreground">
               Last recalculated: {new Date(summary.lastRecalculatedAt).toLocaleString()}
@@ -530,10 +555,10 @@ function ClientRiskSignalsPageInner() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Risk type</TableHead>
+                  <TableHead>Issue</TableHead>
                   <TableHead>Property</TableHead>
                   <TableHead>Asset</TableHead>
-                  <TableHead>Risk level</TableHead>
+                  <TableHead>Priority</TableHead>
                   <TableHead>Trend</TableHead>
                   <TableHead>Why flagged</TableHead>
                   <TableHead>Recommended action</TableHead>
@@ -544,12 +569,12 @@ function ClientRiskSignalsPageInner() {
               <TableBody>
                 {signals.map((s) => (
                   <TableRow key={s.signal_id}>
-                    <TableCell className="font-medium">{s.risk_type}</TableCell>
+                    <TableCell className="font-medium">{humanRiskType(s.risk_type)}</TableCell>
                     <TableCell>{propertyLabel(s.property_id)}</TableCell>
                     <TableCell className="text-muted-foreground">{s.asset_id || '—'}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={riskLevelBadgeClass(s.risk_level)}>
-                        {s.risk_level || 'medium'}
+                        {humanSeverity(s.risk_level)}
                       </Badge>
                     </TableCell>
                     <TableCell>{s.trend || 'stable'}</TableCell>
@@ -557,7 +582,7 @@ function ClientRiskSignalsPageInner() {
                       {Array.isArray(s.reasons) && s.reasons[0] ? s.reasons[0] : '—'}
                     </TableCell>
                     <TableCell className="max-w-[180px] truncate" title={s.recommended_action}>
-                      {s.recommended_action || '—'}
+                      {humanAction(s.recommended_action, s.risk_type)}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
@@ -609,7 +634,7 @@ function ClientRiskSignalsPageInner() {
             <div className="space-y-4 py-4">
               <div>
                 <p className="text-xs text-muted-foreground uppercase">Risk type</p>
-                <p className="font-medium">{drawerSignal.risk_type}</p>
+                <p className="font-medium">{humanRiskType(drawerSignal.risk_type)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase">Property</p>
@@ -625,7 +650,7 @@ function ClientRiskSignalsPageInner() {
                 <div>
                   <p className="text-xs text-muted-foreground uppercase">Level</p>
                   <Badge variant="outline" className={riskLevelBadgeClass(drawerSignal.risk_level)}>
-                    {drawerSignal.risk_level || 'medium'}
+                    {humanSeverity(drawerSignal.risk_level)}
                   </Badge>
                 </div>
                 <div>
@@ -648,7 +673,7 @@ function ClientRiskSignalsPageInner() {
               {drawerSignal.status && (
                 <div>
                   <p className="text-xs text-muted-foreground uppercase">Status</p>
-                  <p className="font-medium">{drawerSignal.status}</p>
+                  <p className="font-medium">{humanStatus(drawerSignal.status)}</p>
                 </div>
               )}
               {Array.isArray(drawerSignal.reasons) && drawerSignal.reasons.length > 0 && (
@@ -676,7 +701,7 @@ function ClientRiskSignalsPageInner() {
               {!drawerSuggestedView?.recommended_action && drawerSignal.recommended_action && (
                 <div>
                   <p className="text-xs text-muted-foreground uppercase">Recommended action</p>
-                  <p className="text-sm">{drawerSignal.recommended_action}</p>
+                  <p className="text-sm">{humanAction(drawerSignal.recommended_action, drawerSignal.risk_type)}</p>
                 </div>
               )}
               {Array.isArray(drawerSuggestedView?.alternatives) && drawerSuggestedView.alternatives.length > 0 && (

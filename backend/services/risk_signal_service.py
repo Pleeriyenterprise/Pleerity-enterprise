@@ -721,6 +721,36 @@ async def get_risk_signals_admin_summary(
     for s in signals:
         s.pop("_id", None)
 
+    # Enrich with friendly labels so admin UI can avoid exposing raw IDs.
+    client_ids = sorted({str(s.get("client_id")) for s in signals if s.get("client_id")})
+    property_ids = sorted({str(s.get("property_id")) for s in signals if s.get("property_id")})
+    client_name_by_id: Dict[str, str] = {}
+    property_name_by_id: Dict[str, str] = {}
+    if client_ids:
+        async for c in db.clients.find(
+            {"client_id": {"$in": client_ids}},
+            {"_id": 0, "client_id": 1, "company_name": 1, "full_name": 1},
+        ):
+            cid = c.get("client_id")
+            if not cid:
+                continue
+            client_name_by_id[cid] = c.get("company_name") or c.get("full_name") or cid
+    if property_ids:
+        async for p in db.properties.find(
+            {"property_id": {"$in": property_ids}},
+            {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "address_line_2": 1, "city": 1},
+        ):
+            pid = p.get("property_id")
+            if not pid:
+                continue
+            property_name_by_id[pid] = (
+                p.get("nickname")
+                or p.get("address_line_1")
+                or p.get("address_line_2")
+                or p.get("city")
+                or pid
+            )
+
     active = [s for s in signals if (s.get("status") or "").lower() == STATUS_ACTIVE]
     by_level: Dict[str, int] = {}
     for s in signals:
@@ -747,16 +777,43 @@ async def get_risk_signals_admin_summary(
             client_counts[cid] = client_counts.get(cid, 0) + 1
     top_clients = sorted(client_counts.items(), key=lambda x: -x[1])[:20]
 
-    recent = signals[:50]
+    recent = []
+    for s in signals[:50]:
+        enriched = dict(s)
+        pid = enriched.get("property_id")
+        cid = enriched.get("client_id")
+        if pid:
+            enriched["property_name"] = property_name_by_id.get(pid) or pid
+        if cid:
+            enriched["client_name"] = client_name_by_id.get(cid) or cid
+        recent.append(enriched)
 
     # Top compliance risks (signal_category compliance)
-    top_compliance = [s for s in signals if (s.get("signal_category") or "").lower() == SIGNAL_CATEGORY_COMPLIANCE][:15]
+    top_compliance = []
+    for s in [x for x in signals if (x.get("signal_category") or "").lower() == SIGNAL_CATEGORY_COMPLIANCE][:15]:
+        enriched = dict(s)
+        pid = enriched.get("property_id")
+        cid = enriched.get("client_id")
+        if pid:
+            enriched["property_name"] = property_name_by_id.get(pid) or pid
+        if cid:
+            enriched["client_name"] = client_name_by_id.get(cid) or cid
+        top_compliance.append(enriched)
 
     # Top maintenance risks (asset + operational)
-    top_maintenance = [
-        s for s in signals
-        if (s.get("signal_category") or "").lower() in (SIGNAL_CATEGORY_ASSET, SIGNAL_CATEGORY_OPERATIONAL)
-    ][:15]
+    top_maintenance = []
+    for s in [
+        x for x in signals
+        if (x.get("signal_category") or "").lower() in (SIGNAL_CATEGORY_ASSET, SIGNAL_CATEGORY_OPERATIONAL)
+    ][:15]:
+        enriched = dict(s)
+        pid = enriched.get("property_id")
+        cid = enriched.get("client_id")
+        if pid:
+            enriched["property_name"] = property_name_by_id.get(pid) or pid
+        if cid:
+            enriched["client_name"] = client_name_by_id.get(cid) or cid
+        top_maintenance.append(enriched)
 
     # Properties with repeated issues (risk_type Recurring Repairs)
     repeated_prop_counts: Dict[str, int] = {}
@@ -795,23 +852,38 @@ async def get_risk_signals_admin_summary(
         cid = s.get("client_id")
         if pid and cid and pid not in pid_to_client:
             pid_to_client[pid] = cid
-    portfolio_heatmap = [
-        {"property_id": pid, "client_id": pid_to_client.get(pid), **counts}
-        for pid, counts in heatmap_properties
-    ]
+    portfolio_heatmap = []
+    for pid, counts in heatmap_properties:
+        cid = pid_to_client.get(pid)
+        portfolio_heatmap.append(
+            {
+                "property_id": pid,
+                "property_name": property_name_by_id.get(pid) or pid,
+                "client_id": cid,
+                "client_name": client_name_by_id.get(cid) or cid if cid else None,
+                **counts,
+            }
+        )
 
     return {
         "totalActive": len(active),
         "totalSignals": len(signals),
         "byLevel": by_level,
         "byType": by_type,
-        "topProperties": [{"property_id": p, "count": c} for p, c in top_properties],
-        "topClients": [{"client_id": c, "count": n} for c, n in top_clients],
+        "topProperties": [{"property_id": p, "property_name": property_name_by_id.get(p) or p, "count": c} for p, c in top_properties],
+        "topClients": [{"client_id": c, "client_name": client_name_by_id.get(c) or c, "count": n} for c, n in top_clients],
         "recentSignals": recent,
         "topComplianceRisks": top_compliance,
         "topMaintenanceRisks": top_maintenance,
-        "repeatedIssuesProperties": [{"property_id": p, "count": c} for p, c in repeated_issues_properties],
-        "slaBreachRisks": sla_breach_signals,
+        "repeatedIssuesProperties": [{"property_id": p, "property_name": property_name_by_id.get(p) or p, "count": c} for p, c in repeated_issues_properties],
+        "slaBreachRisks": [
+            {
+                **s,
+                "property_name": property_name_by_id.get(s.get("property_id")) or s.get("property_id"),
+                "client_name": client_name_by_id.get(s.get("client_id")) or s.get("client_id"),
+            }
+            for s in sla_breach_signals
+        ],
         "portfolioHeatmap": portfolio_heatmap,
     }
 
