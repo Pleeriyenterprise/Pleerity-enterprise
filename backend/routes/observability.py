@@ -775,42 +775,26 @@ async def get_automation_framework_audit(request: Request):
     runner_ids = set(JOB_RUNNERS.keys())
     startup_recovery_ids = set(STARTUP_RECOVERY_JOB_IDS)
 
-    # Run history (single aggregation pass)
-    pipeline = [
-        {
-            "$sort": {
-                "started_at": -1,
-            }
-        },
-        {
-            "$group": {
-                "_id": "$job_name",
-                "total_runs": {"$sum": 1},
-                "last_run_id": {"$first": "$_id"},
-                "last_started_at": {"$first": "$started_at"},
-                "last_finished_at": {"$first": "$finished_at"},
-                "last_status": {"$first": "$status"},
-                "last_outcome_status": {"$first": "$outcome_status"},
-                "last_outcome_metrics": {"$first": "$outcome_metrics"},
-            }
-        },
-    ]
-    run_rows = await db.job_runs.aggregate(pipeline).to_list(1000)
+    # Run history (production-safe: avoid global sort+group that can exceed Mongo memory).
+    # Use distinct job names + per-job indexed lookups (job_name, created_at desc).
     runs_map: Dict[str, Dict[str, Any]] = {}
-    run_history_ids = set()
-    for row in run_rows:
-        jid = row.get("_id")
-        if not jid:
-            continue
-        run_history_ids.add(jid)
+    raw_job_names = await db.job_runs.distinct("job_name")
+    run_history_ids = {j for j in raw_job_names if isinstance(j, str) and j.strip()}
+    for jid in run_history_ids:
+        latest = await db.job_runs.find_one(
+            {"job_name": jid},
+            {"_id": 1, "started_at": 1, "finished_at": 1, "status": 1, "outcome_status": 1, "outcome_metrics": 1},
+            sort=[("created_at", -1)],
+        )
+        total_runs = await db.job_runs.count_documents({"job_name": jid})
         runs_map[jid] = {
-            "total_runs": row.get("total_runs", 0),
-            "last_run_id": str(row.get("last_run_id")) if row.get("last_run_id") is not None else None,
-            "last_started_at": row.get("last_started_at"),
-            "last_finished_at": row.get("last_finished_at"),
-            "last_status": row.get("last_status"),
-            "last_outcome_status": row.get("last_outcome_status"),
-            "last_outcome_metrics": row.get("last_outcome_metrics") or {},
+            "total_runs": total_runs,
+            "last_run_id": str((latest or {}).get("_id")) if (latest or {}).get("_id") is not None else None,
+            "last_started_at": (latest or {}).get("started_at"),
+            "last_finished_at": (latest or {}).get("finished_at"),
+            "last_status": (latest or {}).get("status"),
+            "last_outcome_status": (latest or {}).get("outcome_status"),
+            "last_outcome_metrics": (latest or {}).get("outcome_metrics") or {},
         }
 
     # Incident state by related_job_name

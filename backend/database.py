@@ -194,6 +194,7 @@ class Database:
             await self.db.score_ledger_events.create_index([("client_id", 1), ("trigger_type", 1), ("created_at", -1)])
             # Job runs - observability: every automation execution (for SLA watchdog and admin dashboard)
             await self.db.job_runs.create_index([("job_name", 1), ("created_at", -1)])
+            await self.db.job_runs.create_index([("job_name", 1), ("started_at", -1)])
             await self.db.job_runs.create_index([("status", 1), ("created_at", -1)])
             await self.db.job_runs.create_index("created_at")
             # Incidents - system-wide P0/P1/P2 with ack/resolve workflow
