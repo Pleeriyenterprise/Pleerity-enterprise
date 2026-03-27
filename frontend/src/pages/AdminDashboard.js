@@ -2534,10 +2534,15 @@ const AdminsManagement = () => {
   const handleResendInvite = async (portalUserId, email) => {
     setActionLoading(portalUserId);
     try {
-      await stepUp.request((headers) =>
+      const res = await stepUp.request((headers) =>
         api.post(`/admin/admins/${portalUserId}/resend-invite`, null, { headers }),
       );
-      toast.success(`Invitation resent to ${email}`);
+      const data = res?.data;
+      if (data?.duplicate) {
+        toast.info(data.message || 'A recent invitation was already recorded. Check spam or wait before retrying.');
+      } else {
+        toast.success(data?.message || `Invitation resent to ${email}`);
+      }
     } catch (error) {
       if (error?.message !== 'step_up_cancelled') {
         toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to resend invitation'));

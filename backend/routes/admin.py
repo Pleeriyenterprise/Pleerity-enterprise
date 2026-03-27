@@ -4353,7 +4353,9 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
             raise HTTPException(status_code=503, detail=f"App URL not configured: {e}")
         setup_link = f"{base_url}/set-password?token={raw_token}"
         admin_name = target_admin.get("full_name", target_admin.get("auth_email", "Admin"))
-        idempotency_key = f"{portal_user_id}_ADMIN_INVITE"
+        # Must differ from initial invite key ({portal_user_id}_ADMIN_INVITE) or orchestrator returns
+        # duplicate_ignored and never sends — resend would silently do nothing while still returning 200.
+        idempotency_key = f"{portal_user_id}_ADMIN_INVITE_RESEND_{token_hash}"
         result = await notification_orchestrator.send(
             template_key="ADMIN_INVITE",
             client_id=None,
@@ -4383,6 +4385,11 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
                     detail=f"Invitation email failed to deliver: {msg}",
                 )
             if result.outcome == "duplicate_ignored":
+                logger.warning(
+                    "resend_admin_invite duplicate_ignored portal_user_id=%s idempotency_key=%s",
+                    portal_user_id,
+                    idempotency_key,
+                )
                 return {
                     "message": "An invitation was already sent recently. If the recipient did not receive it, check spam or try again in a few minutes.",
                     "portal_user_id": portal_user_id,
@@ -4402,7 +4409,12 @@ async def resend_admin_invite(request: Request, portal_user_id: str):
                 "by_admin": user.get("email")
             }
         )
-        
+        logger.info(
+            "Admin invite email resent: portal_user_id=%s to=%s",
+            portal_user_id,
+            target_admin.get("auth_email"),
+        )
+
         return {
             "message": "Invitation resent successfully",
             "portal_user_id": portal_user_id,
