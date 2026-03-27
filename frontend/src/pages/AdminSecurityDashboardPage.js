@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Shield, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -20,7 +20,7 @@ export default function AdminSecurityDashboardPage() {
   const [events, setEvents] = useState([]);
   const [incidents, setIncidents] = useState([]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [s, e, i] = await Promise.all([
@@ -36,11 +36,11 @@ export default function AdminSecurityDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [days]);
 
   useEffect(() => {
     load();
-  }, [days]);
+  }, [load]);
 
   const resolveIncident = async (incidentKey) => {
     try {
