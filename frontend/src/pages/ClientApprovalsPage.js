@@ -81,7 +81,14 @@ function StatusBadge({ status }) {
     needs_info: 'bg-blue-100 text-blue-800',
     paid: 'bg-emerald-100 text-emerald-800',
   };
-  const label = status ? status.replace(/_/g, ' ') : '—';
+  const labelByStatus = {
+    pending: 'Pending',
+    approved: 'Approved',
+    rejected: 'Rejected',
+    needs_info: 'Needs more information',
+    paid: 'Paid',
+  };
+  const label = status ? labelByStatus[status] || status.replace(/_/g, ' ') : '—';
   return (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${map[status] || 'bg-gray-100 text-gray-700'}`}>
       {label}

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { AlertCircle, Plus, Loader2, FileText, X, Wrench, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { issueStatusLabel, issueSeverityLabel } from '../domain/presentDomain';
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
@@ -218,22 +219,22 @@ function ClientIssuesPageInner() {
   }
 
   return (
-    <div className="p-6 max-w-6xl">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <AlertCircle className="w-7 h-7" />
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto w-full min-w-0 client-portal-prose">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 min-w-0">
+          <AlertCircle className="w-7 h-7 shrink-0" />
           Issues
         </h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/operations/work-orders')}>
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:shrink-0">
+          <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => navigate('/operations/work-orders')}>
             View work orders
           </Button>
-          <Button variant="outline" onClick={() => setCreateIssueOpen(true)}>
-            <FileText className="w-4 h-4 mr-2" />
+          <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => setCreateIssueOpen(true)}>
+            <FileText className="w-4 h-4 mr-2 shrink-0" />
             Add issue
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="bg-electric-teal hover:bg-electric-teal/90">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90">
+            <Plus className="w-4 h-4 mr-2 shrink-0" />
             Report issue (create work order)
           </Button>
         </div>
@@ -257,7 +258,7 @@ function ClientIssuesPageInner() {
           <p className="text-lg font-semibold text-amber-600">{summary.highSeverity}</p>
         </button>
         <button type="button" onClick={() => applyFilter('status', 'ready_for_work_order')} className="p-3 rounded-lg border border-gray-200 bg-white text-left hover:bg-gray-50 transition-colors">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Ready for WO</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Ready for contractor</p>
           <p className="text-lg font-semibold text-midnight-blue">{summary.readyForWorkOrder}</p>
         </button>
         <button type="button" onClick={() => applyFilter('status', 'monitoring')} className="p-3 rounded-lg border border-gray-200 bg-white text-left hover:bg-gray-50 transition-colors">
@@ -293,7 +294,7 @@ function ClientIssuesPageInner() {
                 <option value="new">New</option>
                 <option value="triaged">Triaged</option>
                 <option value="monitoring">Monitoring</option>
-                <option value="ready_for_work_order">Ready for work order</option>
+                <option value="ready_for_work_order">{issueStatusLabel('ready_for_work_order')}</option>
                 <option value="closed">Closed</option>
               </select>
             </div>
@@ -394,13 +395,13 @@ function ClientIssuesPageInner() {
                       <td className="p-2 text-gray-600">{(iss.category || '—').replace(/_/g, ' ')}</td>
                       <td className="p-2">
                         <span className={`px-1.5 py-0.5 rounded text-xs ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>
-                          {(iss.severity || '—').toLowerCase()}
+                          {issueSeverityLabel(iss.severity)}
                         </span>
                       </td>
                       <td className="p-2">{iss.priority_score != null ? iss.priority_score : '—'}</td>
                       <td className="p-2 text-gray-600">{iss.asset_id ? (iss.asset_id.slice(0, 8) + '…') : 'Unlinked'}</td>
                       <td className="p-2 text-gray-600">{(iss.source || '—').toLowerCase()}</td>
-                      <td className="p-2">{(iss.status || '—').replace(/_/g, ' ')}</td>
+                      <td className="p-2">{issueStatusLabel(iss.status)}</td>
                       <td className="p-2 text-gray-600">{formatDate(iss.created_at)}</td>
                       <td className="p-2 text-gray-600">{iss.triage?.sla_hours != null ? `${iss.triage.sla_hours}h` : '—'}</td>
                       <td className="p-2 text-right">
@@ -463,13 +464,13 @@ function ClientIssuesPageInner() {
                     <dt className="text-gray-500">Category</dt>
                     <dd>{(issueDetailData.category || '—').replace(/_/g, ' ')}</dd>
                     <dt className="text-gray-500">Severity</dt>
-                    <dd>{issueDetailData.severity || '—'}</dd>
+                    <dd>{issueSeverityLabel(issueDetailData.severity)}</dd>
                     <dt className="text-gray-500">Priority score</dt>
                     <dd>{issueDetailData.priority_score != null ? issueDetailData.priority_score : '—'}</dd>
                     <dt className="text-gray-500">Source</dt>
                     <dd>{(issueDetailData.source || '—').toLowerCase()}</dd>
                     <dt className="text-gray-500">Status</dt>
-                    <dd>{(issueDetailData.status || '—').replace(/_/g, ' ')}</dd>
+                    <dd>{issueDetailData.status ? issueStatusLabel(issueDetailData.status) : '—'}</dd>
                     <dt className="text-gray-500">Asset</dt>
                     <dd>{issueDetailData.asset_id ? issueDetailData.asset_id.slice(0, 12) + '…' : 'Unlinked'}</dd>
                     <dt className="text-gray-500">Created</dt>

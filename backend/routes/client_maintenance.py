@@ -13,9 +13,12 @@ from middleware import client_route_guard
 from services import maintenance_service
 from services import maintenance_issues_service
 from services import contractor_service
+from services import work_order_contractor_routing_service as wo_contractor_routing
 from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE, CONTRACTOR_NETWORK
+from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
 from services import property_assets_service
 from services import risk_signal_service
+from services import operational_issue_suggestions_service
 from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
@@ -73,8 +76,24 @@ class CreateWorkOrderBody(BaseModel):
     severity: Optional[str] = None
     asset_id: Optional[str] = None
     issue_id: Optional[str] = None
+    risk_signal_id: Optional[str] = None
     cost_estimate_min: Optional[float] = None
     cost_estimate_max: Optional[float] = None
+
+
+async def _require_maintenance_work_order_not_compliance(work_order_id: str, client_id: str) -> None:
+    """Maintenance repair routing must not be used for compliance execution work orders."""
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo or wo.get("client_id") != client_id:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    if (wo.get("work_order_kind") or "").strip().upper() == WORK_ORDER_KIND_COMPLIANCE:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This work order is a compliance execution job (inspection/renewal/certification). "
+                "Use /api/client/compliance-execution/work-orders/{id}/contractor-routing instead of maintenance routing."
+            ),
+        )
 
 
 async def _require_maintenance_enabled(request: Request):
@@ -92,6 +111,18 @@ async def _require_maintenance_enabled(request: Request):
     return user
 
 
+async def _require_maintenance_and_predictive(request: Request):
+    """Maintenance + predictive (operational suggestions and risk-backed flows)."""
+    user = await _require_maintenance_enabled(request)
+    flags = await get_effective_flags(user["client_id"])
+    if not flags.get(PREDICTIVE_MAINTENANCE):
+        raise HTTPException(
+            status_code=403,
+            detail="Predictive maintenance is not enabled for your account",
+        )
+    return user
+
+
 @router.get("/maintenance/work-orders")
 async def list_my_work_orders(
     request: Request,
@@ -99,6 +130,9 @@ async def list_my_work_orders(
     status: Optional[str] = Query(None),
     contractor_id: Optional[str] = Query(None),
     asset_id: Optional[str] = Query(None),
+    work_order_kind: Optional[str] = Query(
+        None, description="MAINTENANCE | COMPLIANCE (filters list when set)"
+    ),
     from_date: Optional[str] = Query(None, description="Filter by created_at >= date (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, description="Filter by created_at <= date (YYYY-MM-DD)"),
     sla_state: Optional[str] = Query(None, description="breached | near_breach | on_track"),
@@ -119,6 +153,7 @@ async def list_my_work_orders(
         status=status,
         contractor_id=contractor_id,
         asset_id=asset_id,
+        work_order_kind=work_order_kind,
         from_date=from_date,
         to_date=to_date,
         sla_state=sla_state,
@@ -130,7 +165,9 @@ async def list_my_work_orders(
 
 @router.post("/maintenance/work-orders")
 async def create_work_order(request: Request, body: CreateWorkOrderBody):
-    """Create a work order for a property. Requires MAINTENANCE_WORKFLOWS."""
+    """Create a work order for a property. Requires MAINTENANCE_WORKFLOWS.
+    Optional risk_signal_id must belong to this client and property; provenance is stored server-side.
+    """
     user = await _require_maintenance_enabled(request)
     client_id = user["client_id"]
     await _enforce_maintenance_work_order_create_rate_limit(client_id)
@@ -141,6 +178,26 @@ async def create_work_order(request: Request, body: CreateWorkOrderBody):
     )
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
+
+    wo_created_from = "manual"
+    wo_triggering = "client_api_work_order"
+    wo_root: Optional[str] = None
+    wo_risk_id: Optional[str] = None
+
+    effective_asset_id = body.asset_id
+    if body.risk_signal_id:
+        sig = await risk_signal_service.get_risk_signal_by_id(body.risk_signal_id.strip(), client_id)
+        if not sig or sig.get("property_id") != body.property_id:
+            raise HTTPException(status_code=404, detail="Risk signal not found for this property")
+        wo_risk_id = body.risk_signal_id.strip()
+        wo_created_from = "risk_signal"
+        wo_triggering = "client_api_work_order_risk_signal"
+        rt = sig.get("risk_type") or ""
+        aid = sig.get("asset_id")
+        wo_root = f"risk:{rt}:{(aid or '').strip() or 'none'}"
+        if effective_asset_id is None and aid:
+            effective_asset_id = aid
+
     doc = await maintenance_service.create_work_order(
         client_id=client_id,
         property_id=body.property_id,
@@ -149,10 +206,14 @@ async def create_work_order(request: Request, body: CreateWorkOrderBody):
         reporter_id=user.get("portal_user_id"),
         category=body.category,
         severity=body.severity,
-        asset_id=body.asset_id,
+        asset_id=effective_asset_id,
         issue_id=body.issue_id,
+        risk_signal_id=wo_risk_id,
         cost_estimate_min=body.cost_estimate_min,
         cost_estimate_max=body.cost_estimate_max,
+        created_from=wo_created_from,
+        triggering_rule=wo_triggering,
+        operational_root_key=wo_root,
     )
     return doc
 
@@ -252,6 +313,94 @@ async def get_open_issues_count(request: Request):
     return {"open_issues_count": n}
 
 
+@router.get("/maintenance/operational-issue-suggestions")
+async def list_operational_issue_suggestions(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Scope to one property (must belong to client)"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """
+    Read-only list of backend **suggested** follow-ups (tier B automation — not auto-created issues).
+    Requires MAINTENANCE_WORKFLOWS and PREDICTIVE_MAINTENANCE.
+    """
+    user = await _require_maintenance_and_predictive(request)
+    client_id = user["client_id"]
+    if property_id:
+        db = database.get_db()
+        prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 1})
+        if not prop:
+            raise HTTPException(status_code=404, detail="Property not found")
+    return await operational_issue_suggestions_service.list_pending_issue_suggestions(
+        client_id=client_id,
+        property_id=property_id,
+        skip=skip,
+        limit=limit,
+    )
+
+
+class DismissOperationalSuggestionBody(BaseModel):
+    note: Optional[str] = None
+
+
+class ConvertOperationalSuggestionBody(BaseModel):
+    issue_id: str
+
+
+@router.post("/maintenance/operational-issue-suggestions/{suggestion_id}/dismiss")
+async def dismiss_operational_issue_suggestion(
+    request: Request,
+    suggestion_id: str,
+    body: DismissOperationalSuggestionBody,
+):
+    """
+    Dismiss a pending suggestion (tier B — user declines the suggested follow-up).
+    Requires MAINTENANCE_WORKFLOWS and PREDICTIVE_MAINTENANCE.
+    """
+    user = await _require_maintenance_and_predictive(request)
+    client_id = user["client_id"]
+    try:
+        doc = await operational_issue_suggestions_service.dismiss_issue_suggestion(
+            client_id=client_id,
+            suggestion_id=suggestion_id.strip(),
+            actor_id=user.get("portal_user_id"),
+            note=body.note,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    if not doc:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+    return doc
+
+
+@router.post("/maintenance/operational-issue-suggestions/{suggestion_id}/convert")
+async def convert_operational_issue_suggestion(
+    request: Request,
+    suggestion_id: str,
+    body: ConvertOperationalSuggestionBody,
+):
+    """
+    Mark a suggestion as acted on by linking an issue you created for the same property.
+    Requires MAINTENANCE_WORKFLOWS and PREDICTIVE_MAINTENANCE.
+    """
+    user = await _require_maintenance_and_predictive(request)
+    client_id = user["client_id"]
+    if not (body.issue_id or "").strip():
+        raise HTTPException(status_code=400, detail="issue_id is required")
+    try:
+        doc = await operational_issue_suggestions_service.convert_issue_suggestion(
+            client_id=client_id,
+            suggestion_id=suggestion_id.strip(),
+            issue_id=body.issue_id.strip(),
+            actor_id=user.get("portal_user_id"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    if not doc:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+    return doc
+
+
 @router.get("/maintenance/issues/{issue_id}/timeline")
 async def get_issue_timeline(
     request: Request,
@@ -341,23 +490,19 @@ async def update_my_work_order(request: Request, work_order_id: str, body: Updat
     existing = await maintenance_service.get_work_order(work_order_id)
     if not existing or existing.get("client_id") != user["client_id"]:
         raise HTTPException(status_code=404, detail="Work order not found")
-    if body.contractor_id:
-        visible = await contractor_service.contractor_visible_to_client(body.contractor_id, existing["client_id"])
-        if not visible:
-            raise HTTPException(
-                status_code=403,
-                detail="You cannot assign this contractor to the work order. The contractor is not available to your organisation.",
-            )
     assigned_by = (user.get("email") or user.get("portal_user_id") or user.get("user_id")) if body.contractor_id else None
-    doc = await maintenance_service.update_work_order(
-        work_order_id,
-        status=body.status,
-        contractor_id=body.contractor_id,
-        resolution_outcome=body.resolution_outcome,
-        cost_estimate_min=body.cost_estimate_min,
-        cost_estimate_max=body.cost_estimate_max,
-        assigned_by=assigned_by,
-    )
+    try:
+        doc = await maintenance_service.update_work_order(
+            work_order_id,
+            status=body.status,
+            contractor_id=body.contractor_id,
+            resolution_outcome=body.resolution_outcome,
+            cost_estimate_min=body.cost_estimate_min,
+            cost_estimate_max=body.cost_estimate_max,
+            assigned_by=assigned_by,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
     return doc
@@ -369,21 +514,168 @@ async def recommend_contractors_for_work_order(
     work_order_id: str,
     limit: int = Query(10, ge=1, le=50),
 ):
-    """Get suggested contractors for this work order. Requires MAINTENANCE_WORKFLOWS and CONTRACTOR_NETWORK."""
+    """
+    Ranked recommendations (same engine as admin): eligible contractors only, workload/SLA-aware routing metadata,
+    explainable scores. Requires MAINTENANCE_WORKFLOWS and CONTRACTOR_NETWORK.
+    """
     user = await _require_maintenance_enabled(request)
     client_id = user["client_id"]
     flags = await get_effective_flags(client_id)
     if not flags.get(CONTRACTOR_NETWORK):
         raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
-    wo = await maintenance_service.get_work_order(work_order_id)
-    if not wo or wo.get("client_id") != client_id:
-        raise HTTPException(status_code=404, detail="Work order not found")
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
     result = await contractor_service.recommend_contractors_for_work_order(
         work_order_id=work_order_id,
         client_id=client_id,
         limit=limit,
     )
     return result
+
+
+@router.get("/maintenance/work-orders/{work_order_id}/assignable-contractors")
+async def list_assignable_contractors_for_work_order(
+    request: Request,
+    work_order_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+):
+    """List contractors ready for assignment (vetted, portal activated, trade/location/property filters). Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
+    return await contractor_service.list_assignable_contractors_for_work_order(
+        client_id=client_id,
+        work_order_id=work_order_id,
+        skip=skip,
+        limit=limit,
+    )
+
+
+class DeclineRecommendationBody(BaseModel):
+    note: Optional[str] = None
+
+
+class ConfirmAlternateBody(BaseModel):
+    contractor_id: str
+
+
+class PersonalContractorBody(BaseModel):
+    name: str
+    email: str
+    phone: Optional[str] = None
+    trade_types: List[str]
+
+
+class RequestAdminRoutingBody(BaseModel):
+    note: Optional[str] = None
+
+
+@router.get("/maintenance/work-orders/{work_order_id}/contractor-routing")
+async def get_work_order_contractor_routing(request: Request, work_order_id: str):
+    """Current recommendation state, SLA context preview, and allowed actions. Requires MAINTENANCE_WORKFLOWS."""
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
+    data = await wo_contractor_routing.get_contractor_routing_state(work_order_id, client_id)
+    if not data.get("ok"):
+        raise HTTPException(status_code=404, detail="Work order not found")
+    return data
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/generate")
+async def generate_work_order_contractor_recommendation(request: Request, work_order_id: str):
+    """Run routing engine, set pending recommendation, notify client (not contractor). Requires CONTRACTOR_NETWORK."""
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    flags = await get_effective_flags(client_id)
+    if not flags.get(CONTRACTOR_NETWORK):
+        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
+    actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
+    try:
+        return await wo_contractor_routing.generate_and_notify_recommendation(
+            work_order_id, client_id, actor_portal_user_id=actor
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/confirm")
+async def confirm_work_order_recommended_contractor(request: Request, work_order_id: str):
+    """Confirm the pending recommendation; assigns contractor and sends contractor notification."""
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
+    actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
+    try:
+        return await wo_contractor_routing.confirm_recommended_contractor(
+            work_order_id, client_id, actor_portal_user_id=actor
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/decline")
+async def decline_work_order_recommendation(request: Request, work_order_id: str, body: DeclineRecommendationBody):
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
+    actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
+    try:
+        return await wo_contractor_routing.decline_recommendation(
+            work_order_id, client_id, note=body.note, actor_portal_user_id=actor
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/confirm-alternate")
+async def confirm_alternate_work_order_contractor(request: Request, work_order_id: str, body: ConfirmAlternateBody):
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
+    actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
+    try:
+        return await wo_contractor_routing.confirm_alternate_contractor(
+            work_order_id, client_id, body.contractor_id.strip(), actor_portal_user_id=actor
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/request-admin")
+async def request_admin_contractor_routing(request: Request, work_order_id: str, body: RequestAdminRoutingBody):
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
+    actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
+    try:
+        return await wo_contractor_routing.request_admin_for_routing(
+            work_order_id, client_id, note=body.note, actor_portal_user_id=actor
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/personal-contractor")
+async def add_personal_contractor_and_assign_work_order(request: Request, work_order_id: str, body: PersonalContractorBody):
+    """Create client-supplied contractor record and assign (portal optional)."""
+    user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
+    actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
+    try:
+        return await wo_contractor_routing.add_personal_contractor_and_assign(
+            work_order_id,
+            client_id,
+            name=body.name,
+            email=body.email,
+            phone=body.phone,
+            trade_types=body.trade_types or ["general"],
+            actor_portal_user_id=actor,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/maintenance/predictive-insights")

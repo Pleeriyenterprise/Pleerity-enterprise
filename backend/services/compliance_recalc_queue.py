@@ -77,3 +77,18 @@ async def enqueue_compliance_recalc(
         if "duplicate key" in str(e).lower() or "E11000" in str(e):
             return False
         raise
+    finally:
+        try:
+            from services.risk_signal_regen_queue import enqueue_risk_signal_regen
+
+            await enqueue_risk_signal_regen(
+                property_id,
+                client_id,
+                f"COMPLIANCE_ENQUEUE:{trigger_reason}",
+            )
+        except Exception as regen_err:
+            logger.warning(
+                "enqueue_compliance_recalc: risk regen schedule failed property_id=%s: %s",
+                property_id,
+                regen_err,
+            )

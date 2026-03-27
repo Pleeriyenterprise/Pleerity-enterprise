@@ -19,7 +19,7 @@ class TestContractorRecommendationRanking:
         result = recommend_contractors(wo, property_doc, contractors, performance_map={})
         assert result["total"] == 1
         assert result["contractors"][0]["contractor_id"] == "c2"
-        assert any(r.startswith("Matches trade") for r in (result["contractors"][0]["reasons"] or []))
+        assert any("trade match" in r.lower() for r in (result["contractors"][0]["reasons"] or []))
 
     def test_credential_match_adds_score(self):
         wo = {"work_order_id": "wo-1", "category": "heating", "recommended_contractor_type": "gas_safe"}
@@ -103,6 +103,9 @@ class TestContractorRecommendationOutput:
             assert "recommendation_label" in c
             assert "reasons" in c
             assert "benchmark_fit" in c
+            assert "score_breakdown" in c
+        assert "routing" in result
+        assert "assignment_urgency" in result["routing"]
 
     def test_no_strong_match_when_empty(self):
         wo = {"work_order_id": "wo-1", "category": "plumbing", "recommended_contractor_type": "plumber"}

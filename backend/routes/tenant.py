@@ -634,6 +634,8 @@ async def report_maintenance(request: Request):
         reporter_id=user.get("portal_user_id"),
         category=data.category or maintenance_service.CATEGORY_GENERAL,
         severity=severity,
+        created_from="tenant_request",
+        triggering_rule="tenant_report_maintenance",
     )
     await create_audit_log(
         action=AuditAction.TENANT_REPORT_MAINTENANCE,

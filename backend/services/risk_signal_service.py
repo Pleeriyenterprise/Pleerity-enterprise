@@ -11,6 +11,7 @@ import logging
 
 from database import database
 from models import AuditAction
+from presentation.label_service import enrich_risk_signals
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,9 @@ ROLLING_12_MONTHS_DAYS = 365
 ROLLING_6_MONTHS_DAYS = 183
 ROLLING_60_DAYS = 60
 ROLLING_30_DAYS = 30
+COMPLIANCE_CHURN_LOOKBACK_DAYS = 90
+CHURN_SCORE_DIP_THRESHOLD = 65
+CHURN_SCORE_RECOVERY_THRESHOLD = 72
 
 # Thresholds
 BOILER_AGE_YEARS_THRESHOLD = 10
@@ -58,14 +62,14 @@ RECURRING_ISSUES_THRESHOLD = 3
 
 # Recommended actions (task §8)
 RECOMMENDED_ACTIONS = {
-    RISK_TYPE_BOILER_FAILURE: "Schedule boiler inspection or replacement review",
-    RISK_TYPE_DAMP_MOISTURE: "Investigate recurring area / specialist damp inspection",
-    RISK_TYPE_ELECTRICAL: "Review EICR and schedule electrical inspection",
-    RISK_TYPE_RECURRING_REPAIRS: "Investigate root cause instead of repeat patch repairs",
-    RISK_TYPE_SLA_BREACH: "Review contractor performance and prioritise unresolved jobs",
-    RISK_TYPE_COMPLIANCE_CHURN: "Review compliance workflow, upload evidence, or adjust reminders",
-    RISK_TYPE_MAINTENANCE_FREQUENCY: "Review property health and inspect assets",
-    RISK_TYPE_CERTIFICATE_EXPIRY_SOON: "Renew or schedule renewal before expiry; upload evidence when complete",
+    RISK_TYPE_BOILER_FAILURE: "Book a qualified gas engineer to inspect the boiler and review servicing or replacement.",
+    RISK_TYPE_DAMP_MOISTURE: "Arrange a damp inspection and plan work to fix the underlying cause.",
+    RISK_TYPE_ELECTRICAL: "Review your electrical certificate and arrange an inspection if it is due or out of date.",
+    RISK_TYPE_RECURRING_REPAIRS: "Investigate the root cause instead of repeat patch repairs.",
+    RISK_TYPE_SLA_BREACH: "Review open jobs with your contractor and re-prioritise anything that is overdue.",
+    RISK_TYPE_COMPLIANCE_CHURN: "Upload missing evidence and schedule renewals so obligations stay up to date.",
+    RISK_TYPE_MAINTENANCE_FREQUENCY: "Review property condition and inspect assets that are generating repeat reports.",
+    RISK_TYPE_CERTIFICATE_EXPIRY_SOON: "Renew the certificate before expiry and upload the new document with correct dates.",
 }
 
 # Suggested actions (task §2): actionable codes for UI buttons
@@ -370,33 +374,141 @@ async def _rule_sla_breach(
     }]
 
 
+# ---------- Temporal compliance churn (evidence-based) ----------
+_CHURN_BAD_NEW_STATUSES = frozenset(
+    {"OVERDUE", "EXPIRED", "MISSING", "PENDING", "NON_COMPLIANT", "AT_RISK", "REJECTED"}
+)
+
+
+async def _temporal_churn_metrics(db, property_id: str, client_id: str) -> Dict[str, Any]:
+    """
+    Uses score_change_log (per-requirement transitions) and property_compliance_score_history
+    (score lapse/recovery cycles). Explainable, defensible churn evidence — not a snapshot-only count.
+    """
+    since = _now() - timedelta(days=COMPLIANCE_CHURN_LOOKBACK_DAYS)
+    since_iso = since.isoformat()
+    cursor = db.score_change_log.find(
+        {"property_id": property_id, "client_id": client_id, "created_at": {"$gte": since_iso}},
+        {"_id": 0, "changed_requirements": 1},
+    )
+    logs = await cursor.to_list(800)
+    bad_transitions_per_key: Dict[str, int] = {}
+    for row in logs:
+        for ch in row.get("changed_requirements") or []:
+            new_s = (ch.get("new_status") or "").upper()
+            if new_s in _CHURN_BAD_NEW_STATUSES:
+                k = (ch.get("requirement_key") or "unknown").strip().lower()
+                bad_transitions_per_key[k] = bad_transitions_per_key.get(k, 0) + 1
+    max_bad_single_key = max(bad_transitions_per_key.values()) if bad_transitions_per_key else 0
+    keys_with_repeat = sum(1 for c in bad_transitions_per_key.values() if c >= 2)
+
+    hcursor = db.property_compliance_score_history.find(
+        {"property_id": property_id, "client_id": client_id, "created_at": {"$gte": since_iso}},
+        {"_id": 0, "score": 1},
+    ).sort("created_at", 1)
+    hist = await hcursor.to_list(500)
+    recovery_cycles = 0
+    below = False
+    for h in hist:
+        sc = h.get("score")
+        if sc is None:
+            continue
+        try:
+            val = float(sc)
+        except (TypeError, ValueError):
+            continue
+        if val < CHURN_SCORE_DIP_THRESHOLD:
+            below = True
+        elif below and val >= CHURN_SCORE_RECOVERY_THRESHOLD:
+            recovery_cycles += 1
+            below = False
+
+    activity_deteriorations = 0
+    try:
+        ac = db.compliance_activity_log.count_documents(
+            {
+                "property_id": property_id,
+                "client_id": client_id,
+                "created_at": {"$gte": since_iso},
+                "score_change": {"$lt": 0},
+            }
+        )
+        activity_deteriorations = int(ac)
+    except Exception:
+        pass
+
+    return {
+        "max_bad_transitions_single_key": max_bad_single_key,
+        "obligation_keys_with_repeat_bad": keys_with_repeat,
+        "recovery_cycles": recovery_cycles,
+        "negative_activity_events": activity_deteriorations,
+    }
+
+
 # ---------- Rule: Compliance Churn Risk ----------
 async def _rule_compliance_churn(
     db, property_id: str, client_id: str,
     requirements: List[Dict],
 ) -> List[Dict[str, Any]]:
-    if not requirements:
+    metrics = await _temporal_churn_metrics(db, property_id, client_id)
+    max_bad = metrics["max_bad_transitions_single_key"]
+    cycles = metrics["recovery_cycles"]
+    repeat_keys = metrics["obligation_keys_with_repeat_bad"]
+
+    overdue_missing = [
+        r
+        for r in requirements
+        if (r.get("status") or "").upper() in ("OVERDUE", "EXPIRED", "MISSING", "PENDING")
+    ]
+    current_bad_count = len(overdue_missing)
+
+    temporal_hit = (
+        max_bad >= 3
+        or cycles >= 2
+        or (repeat_keys >= 2 and max_bad >= 2)
+        or (metrics["negative_activity_events"] >= 4 and max_bad >= 2)
+    )
+    if not temporal_hit:
         return []
-    by_code: Dict[str, int] = {}
-    for r in requirements:
-        code = (r.get("requirement_code") or r.get("requirement_type") or "unknown").strip().lower()
-        by_code[code] = by_code.get(code, 0) + 1
-    repeated = [code for code, count in by_code.items() if count >= 2 or len(requirements) >= 3]
-    overdue_missing = [r for r in requirements if (r.get("status") or "").upper() in ("OVERDUE", "EXPIRED", "MISSING", "PENDING")]
-    if not repeated and len(overdue_missing) < 2:
+
+    if current_bad_count < 1 and cycles < 2 and max_bad < 4:
         return []
-    reasons = []
-    if repeated:
-        reasons.append(f"Same obligation type repeatedly overdue or missing: {', '.join(repeated[:3])}")
-    if len(overdue_missing) >= 2:
-        reasons.append(f"{len(overdue_missing)} obligations overdue or missing evidence")
+
+    reasons: List[str] = []
+    if max_bad >= 3:
+        reasons.append(
+            f"In the last {COMPLIANCE_CHURN_LOOKBACK_DAYS}d, at least one obligation moved into a bad status "
+            f"{max_bad} times (from compliance score change history)."
+        )
+    elif max_bad >= 2:
+        reasons.append(
+            f"Repeated deterioration on tracked obligations in the last {COMPLIANCE_CHURN_LOOKBACK_DAYS}d "
+            f"(score_change_log)."
+        )
+    if cycles >= 2:
+        reasons.append(
+            f"Compliance score dipped below {CHURN_SCORE_DIP_THRESHOLD} and recovered above "
+            f"{CHURN_SCORE_RECOVERY_THRESHOLD} {cycles} times in the last {COMPLIANCE_CHURN_LOOKBACK_DAYS}d."
+        )
+    if current_bad_count >= 2:
+        reasons.append(f"{current_bad_count} obligations are currently overdue or missing evidence.")
+    elif current_bad_count == 1:
+        reasons.append("At least one obligation is currently overdue or missing evidence.")
+    if metrics["negative_activity_events"] >= 4 and max_bad >= 2:
+        reasons.append(
+            f"{metrics['negative_activity_events']} compliance activity events with negative score impact "
+            f"in the lookback window."
+        )
+
+    level = RISK_LEVEL_HIGH if current_bad_count >= 4 or max_bad >= 5 or cycles >= 3 else RISK_LEVEL_MEDIUM
     return [{
         "signal_category": SIGNAL_CATEGORY_COMPLIANCE,
         "risk_type": RISK_TYPE_COMPLIANCE_CHURN,
-        "risk_level": RISK_LEVEL_HIGH if len(overdue_missing) >= 4 else RISK_LEVEL_MEDIUM,
+        "risk_level": level,
         "reasons": reasons,
         "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_COMPLIANCE_CHURN],
         "asset_id": None,
+        "metadata": {"churn_metrics": metrics},
     }]
 
 
@@ -536,7 +648,7 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
             "source": SOURCE_HEURISTIC,
             "generated_at": now_iso,
             "updated_at": now_iso,
-            "metadata": {},
+            "metadata": s.get("metadata") or {},
         }
         await db.risk_signals.insert_one(doc)
         doc.pop("_id", None)
@@ -559,25 +671,35 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     except Exception as e:
         logger.debug("automation_status risk refresh stamp skipped: %s", e)
 
-    return {"generated": len(inserted), "signals": inserted}
+    return {
+        "generated": len(inserted),
+        "signals": inserted,
+        "previous_active_removed": previous_active_removed,
+    }
 
 
 async def generate_risk_signals_for_org(client_id: str) -> Dict[str, Any]:
-    """Generate risk signals for all properties of a client. Returns { "properties_processed": N, "total_signals": M }."""
+    """Generate risk signals for all properties of a client. Returns counts aligned with job metrics."""
     db = database.get_db()
     cursor = db.properties.find({"client_id": client_id, "is_active": {"$ne": False}}, {"_id": 0, "property_id": 1})
     properties = await cursor.to_list(500)
     total_signals = 0
+    total_cleared = 0
     for p in properties:
         pid = p.get("property_id")
         if not pid:
             continue
         try:
             out = await generate_risk_signals_for_property(pid, client_id)
-            total_signals += out["generated"]
+            total_signals += int(out.get("generated") or 0)
+            total_cleared += int(out.get("previous_active_removed") or 0)
         except Exception as e:
             logger.warning("Risk signal generation failed for property %s: %s", pid, e)
-    return {"properties_processed": len(properties), "total_signals": total_signals}
+    return {
+        "properties_processed": len(properties),
+        "total_signals": total_signals,
+        "previous_active_signals_cleared": total_cleared,
+    }
 
 
 async def get_risk_signals_for_property(
@@ -592,6 +714,7 @@ async def get_risk_signals_for_property(
     signals = await cursor.to_list(100)
     for s in signals:
         s.pop("_id", None)
+    enrich_risk_signals(signals)
 
     # Last recalculated: max generated_at for this property
     last_rec = None
@@ -667,6 +790,7 @@ async def get_risk_signals_for_client(
     signals = await cursor.to_list(limit)
     for s in signals:
         s.pop("_id", None)
+    enrich_risk_signals(signals)
 
     last_rec = None
     if signals:
@@ -720,6 +844,7 @@ async def get_risk_signals_admin_summary(
     signals = await cursor.to_list(limit_signals * 2)
     for s in signals:
         s.pop("_id", None)
+    enrich_risk_signals(signals)
 
     # Enrich with friendly labels so admin UI can avoid exposing raw IDs.
     client_ids = sorted({str(s.get("client_id")) for s in signals if s.get("client_id")})
@@ -1079,6 +1204,9 @@ async def create_work_order_from_risk_signal(
         f"{doc.get('risk_type', 'Risk')}: {doc.get('recommended_action', 'Follow up')}"
     )
     from services import maintenance_service
+    rt = doc.get("risk_type") or ""
+    aid = doc.get("asset_id")
+    root = f"risk:{rt}:{(aid or '').strip() or 'none'}"
     wo = await maintenance_service.create_work_order(
         client_id=client_id,
         property_id=property_id,
@@ -1087,6 +1215,9 @@ async def create_work_order_from_risk_signal(
         reporter_id=reporter_id,
         asset_id=doc.get("asset_id"),
         risk_signal_id=signal_id,
+        created_from="risk_signal",
+        triggering_rule="user_confirmed_risk_signal_work_order",
+        operational_root_key=root,
     )
     await create_audit_log(
         action=AuditAction.WORK_ORDER_CREATED_FROM_RISK_SIGNAL,

@@ -168,6 +168,40 @@ class Database:
                 pass
             await self.db.compliance_recalc_queue.create_index([("status", 1), ("next_run_at", 1)])
             await self.db.compliance_recalc_queue.create_index([("property_id", 1), ("status", 1)])
+            # Risk signal regeneration queue (debounced; one PENDING row per property)
+            try:
+                await self.db.risk_signal_regen_queue.create_index([("status", 1), ("next_run_at", 1)])
+            except Exception:
+                pass
+            try:
+                await self.db.risk_signal_regen_queue.create_index(
+                    [("property_id", 1)],
+                    unique=True,
+                    partialFilterExpression={"status": "PENDING"},
+                    name="risk_regen_one_pending_per_property",
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.operational_issue_suggestions.create_index(
+                    [("client_id", 1), ("property_id", 1), ("status", 1)]
+                )
+                await self.db.operational_issue_suggestions.create_index(
+                    [("property_id", 1), ("operational_root_key", 1), ("status", 1)]
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.operational_automation_suppress_audit.create_index("created_at")
+            except Exception:
+                pass
+            try:
+                await self.db.maintenance_issues.create_index(
+                    [("property_id", 1), ("operational_root_key", 1), ("status", 1)],
+                    sparse=True,
+                )
+            except Exception:
+                pass
             # Compliance recalc SLA alerts (dedupe by property + alert type)
             try:
                 await self.db.compliance_sla_alerts.create_index(
@@ -238,6 +272,10 @@ class Database:
             await self.db.contractors.create_index("status")
             await self.db.contractors.create_index("portal_access_status")
             await self.db.contractors.create_index([("portal_access_status", 1), ("updated_at", -1)])
+            try:
+                await self.db.contractors.create_index("email_normalized", sparse=True)
+            except Exception:
+                pass
             # Contractor ratings (landlord/client rates contractor after job)
             await self.db.contractor_ratings.create_index("rating_id", unique=True)
             await self.db.contractor_ratings.create_index("contractor_id")
@@ -252,8 +290,36 @@ class Database:
             await self.db.work_orders.create_index([("client_id", 1), ("status", 1)])
             await self.db.work_orders.create_index([("property_id", 1), ("created_at", -1)])
             await self.db.work_orders.create_index("contractor_id", sparse=True)
+            try:
+                await self.db.work_orders.create_index("work_order_kind", sparse=True)
+            except Exception:
+                pass
+            try:
+                await self.db.work_orders.create_index(
+                    [("client_id", 1), ("work_order_kind", 1), ("requirement_code", 1)],
+                    sparse=True,
+                )
+            except Exception:
+                pass
             await self.db.work_orders.create_index("issue_id", sparse=True)
             await self.db.work_orders.create_index("asset_id", sparse=True)
+            try:
+                await self.db.work_orders.create_index(
+                    [("property_id", 1), ("operational_root_key", 1), ("status", 1)],
+                    sparse=True,
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.work_orders.create_index(
+                    [
+                        ("assignment_routing_state", 1),
+                        ("client_confirmation_deadline_at", 1),
+                    ],
+                    sparse=True,
+                )
+            except Exception:
+                pass
             # Contractor assignments (history when work order is assigned; current assignment remains on work_order)
             await self.db.contractor_assignments.create_index([("work_order_id", 1), ("assigned_at", -1)])
             await self.db.contractor_assignments.create_index("work_order_id")
@@ -501,6 +567,7 @@ class Database:
             {"code": "legionella", "title": "Legionella Risk Assessment", "description": "Legionella risk assessment", "category": "HEALTH", "criticality": "LOW", "weight": 4, "expiry_type": "EXPIRING", "validity_days": 730, "expiring_windows_days": 60, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Water system risk.", "updated_at": now},
             {"code": "portable_appliance_test", "title": "Portable Appliance Testing (PAT)", "description": "Portable Appliance Testing (PAT)", "category": "ELECTRICAL", "criticality": "MED", "weight": 5, "expiry_type": "EXPIRING", "validity_days": 365, "expiring_windows_days": 30, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "PAT certificate where applicable.", "updated_at": now},
             {"code": "fire_alarm", "title": "Fire Alarm Inspection", "description": "Fire Alarm Inspection", "category": "FIRE", "criticality": "HIGH", "weight": 8, "expiry_type": "EXPIRING", "validity_days": 365, "expiring_windows_days": 30, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Annual fire alarm inspection.", "updated_at": now},
+            {"code": "fire_detection", "title": "Fire Detection Systems", "description": "Fire detection / alarm system inspection (canonical)", "category": "FIRE", "criticality": "HIGH", "weight": 8, "expiry_type": "EXPIRING", "validity_days": 365, "expiring_windows_days": 30, "evidence_required": True, "evidence_types": [], "evidence_tags": [], "applies_to": None, "default_actions": [], "help_text": "Aligned with contractor capability routing (fire_detection).", "updated_at": now},
         ]
         for item in items:
             await self.db.requirements_catalog.update_one(

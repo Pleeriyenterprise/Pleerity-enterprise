@@ -14,6 +14,8 @@ import uuid
 import logging
 from pathlib import Path
 
+from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -36,6 +38,63 @@ async def _enforce_document_upload_rate_limit(client_id: str) -> None:
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=msg or "Upload limit reached for this hour. Try again later.",
         )
+
+
+async def _validate_optional_work_order_document_link(
+    db,
+    *,
+    work_order_id: Optional[str],
+    client_id: str,
+    property_id: str,
+    requirement_id: Optional[str],
+) -> Optional[str]:
+    """If work_order_id is set, ensure it is a compliance WO for this client/property (and requirement when linked)."""
+    if not (work_order_id or "").strip():
+        return None
+    wid = work_order_id.strip()
+    wo = await db.work_orders.find_one(
+        {"work_order_id": wid, "client_id": client_id},
+        {"_id": 0, "property_id": 1, "work_order_kind": 1, "linked_property_requirement_id": 1},
+    )
+    if not wo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Work order not found",
+        )
+    if wo.get("property_id") != property_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Work order property does not match the selected property",
+        )
+    if (wo.get("work_order_kind") or "").strip().upper() != WORK_ORDER_KIND_COMPLIANCE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only compliance execution work orders can be linked to document uploads",
+        )
+    link_req = (wo.get("linked_property_requirement_id") or "").strip()
+    if link_req and requirement_id and link_req != str(requirement_id).strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This work order is tied to a different requirement than the one selected",
+        )
+    return wid
+
+
+async def _append_document_evidence_to_work_order(document_id: str, work_order_id: Optional[str]) -> None:
+    """Attach a stable document pointer to a compliance work order evidence list (idempotent via $addToSet)."""
+    if not (work_order_id or "").strip():
+        return
+    wid = work_order_id.strip()
+    db = database.get_db()
+    wo = await db.work_orders.find_one({"work_order_id": wid}, {"_id": 0, "work_order_kind": 1})
+    if not wo or (wo.get("work_order_kind") or "").strip().upper() != WORK_ORDER_KIND_COMPLIANCE:
+        return
+    from services import maintenance_service
+
+    await maintenance_service.update_work_order(
+        wid,
+        evidence_keys_append=[f"document:{document_id}"],
+    )
 
 
 def _normalize_and_parse_date(date_value) -> datetime:
@@ -814,6 +873,7 @@ async def upload_document(
     file: UploadFile = File(...),
     property_id: str = Form(...),
     requirement_id: Optional[str] = Form(None),
+    work_order_id: Optional[str] = Form(None),
     document_type: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     source: Optional[str] = Form(None),
@@ -859,6 +919,14 @@ async def upload_document(
             requirement_id = requirement_id.strip()
         else:
             requirement_id = None
+
+        validated_wo = await _validate_optional_work_order_document_link(
+            db,
+            work_order_id=work_order_id,
+            client_id=user["client_id"],
+            property_id=property_id,
+            requirement_id=requirement_id,
+        )
         
         # Create unique filename
         file_extension = Path(file.filename).suffix
@@ -879,6 +947,7 @@ async def upload_document(
             client_id=user["client_id"],
             property_id=property_id,
             requirement_id=requirement_id,
+            work_order_id=validated_wo,
             file_name=file.filename,
             file_path=stored_path,
             file_size=len(contents),
@@ -998,6 +1067,7 @@ async def admin_upload_document(
     client_id: str = Form(...),
     property_id: str = Form(...),
     requirement_id: str = Form(...),
+    work_order_id: Optional[str] = Form(None),
     document_type: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     source: Optional[str] = Form(None),
@@ -1030,6 +1100,14 @@ async def admin_upload_document(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Requirement not found"
             )
+
+        validated_wo = await _validate_optional_work_order_document_link(
+            db,
+            work_order_id=work_order_id,
+            client_id=client_id,
+            property_id=property_id,
+            requirement_id=requirement_id,
+        )
         
         # Create unique filename
         file_extension = Path(file.filename).suffix
@@ -1048,6 +1126,7 @@ async def admin_upload_document(
             client_id=client_id,
             property_id=property_id,
             requirement_id=requirement_id,
+            work_order_id=validated_wo,
             file_name=file.filename,
             file_path=stored_path,
             file_size=len(contents),
@@ -1289,11 +1368,12 @@ async def verify_document(request: Request, document_id: str):
             {"$set": {"status": DocumentStatus.VERIFIED.value}}
         )
         
-        # Update requirement status to COMPLIANT
-        await db.requirements.update_one(
-            {"requirement_id": document["requirement_id"]},
-            {"$set": {"status": RequirementStatus.COMPLIANT.value}}
-        )
+        # Update requirement status to COMPLIANT when linked
+        if document.get("requirement_id"):
+            await db.requirements.update_one(
+                {"requirement_id": document["requirement_id"]},
+                {"$set": {"status": RequirementStatus.COMPLIANT.value}},
+            )
         
         # Recompute property compliance (skip for client-level docs with no property_id)
         if document.get("property_id"):
@@ -1310,6 +1390,9 @@ async def verify_document(request: Request, document_id: str):
             )
 
         # Audit log
+        verify_audit_meta = {}
+        if document.get("work_order_id"):
+            verify_audit_meta["work_order_id"] = document["work_order_id"]
         await create_audit_log(
             action=AuditAction.DOCUMENT_VERIFIED,
             actor_id=user["portal_user_id"],
@@ -1317,7 +1400,8 @@ async def verify_document(request: Request, document_id: str):
             resource_type="document",
             resource_id=document_id,
             before_state={"status": old_status},
-            after_state={"status": DocumentStatus.VERIFIED.value}
+            after_state={"status": DocumentStatus.VERIFIED.value},
+            metadata=verify_audit_meta or None,
         )
         
         # Enablement event
@@ -1346,26 +1430,52 @@ async def verify_document(request: Request, document_id: str):
             )
         except Exception as enable_err:
             logger.warning(f"Failed to emit enablement event: {enable_err}")
+
+        req_type_for_outcome = None
+        if document.get("requirement_id"):
+            rrow = await db.requirements.find_one(
+                {"requirement_id": document["requirement_id"]},
+                {"_id": 0, "requirement_type": 1, "requirement_code": 1},
+            )
+            if rrow:
+                req_type_for_outcome = (
+                    (rrow.get("requirement_code") or rrow.get("requirement_type") or "").strip() or None
+                )
+
         outcome = None
         try:
-            from services.compliance_outcome_engine import apply_action_outcome, EVENT_REQUIREMENT_COMPLETED
-            outcome = await apply_action_outcome(
-                {
-                    "event_type": EVENT_REQUIREMENT_COMPLETED,
-                    "client_id": document["client_id"],
-                    "property_id": document.get("property_id"),
-                    "asset_id": None,
-                    "requirement_type": document.get("requirement_type"),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "source_id": document_id,
-                    "dedupe_key": f"{EVENT_REQUIREMENT_COMPLETED}:{document_id}",
-                    "actor_id": user.get("portal_user_id"),
-                    "actor_role": "ADMIN",
-                    "metadata": {"document_id": document_id, "requirement_id": document.get("requirement_id")},
+            if document.get("property_id"):
+                from services.compliance_outcome_engine import apply_action_outcome, EVENT_CERTIFICATE_VERIFIED
+
+                meta = {
+                    "document_id": document_id,
+                    "requirement_id": document.get("requirement_id"),
                 }
-            )
+                woid = (document.get("work_order_id") or "").strip()
+                if woid:
+                    meta["work_order_id"] = woid
+                outcome = await apply_action_outcome(
+                    {
+                        "event_type": EVENT_CERTIFICATE_VERIFIED,
+                        "client_id": document["client_id"],
+                        "property_id": document.get("property_id"),
+                        "asset_id": None,
+                        "requirement_type": req_type_for_outcome,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "source_id": document_id,
+                        "dedupe_key": f"{EVENT_CERTIFICATE_VERIFIED}:{document_id}",
+                        "actor_id": user.get("portal_user_id"),
+                        "actor_role": "ADMIN",
+                        "metadata": meta,
+                    }
+                )
         except Exception as outcome_err:
-            logger.debug("Action outcome requirement_completed skip: %s", outcome_err)
+            logger.debug("Action outcome certificate_verified skip: %s", outcome_err)
+
+        try:
+            await _append_document_evidence_to_work_order(document_id, document.get("work_order_id"))
+        except Exception as ev_err:
+            logger.debug("Evidence append to work order skip: %s", ev_err)
 
         return {"message": "Document verified", "outcome": outcome}
     
@@ -2253,27 +2363,39 @@ async def apply_ai_extraction(
             logger.debug("Score event DOCUMENT_CONFIRMED skip: %s", ev_err)
         outcome = None
         try:
-            from services.compliance_outcome_engine import (
-                apply_action_outcome,
-                EVENT_CERTIFICATE_VERIFIED,
-            )
-            outcome = await apply_action_outcome(
-                {
-                    "event_type": EVENT_CERTIFICATE_VERIFIED,
-                    "client_id": document["client_id"],
-                    "property_id": document.get("property_id"),
-                    "asset_id": None,
-                    "requirement_type": (requirement or {}).get("requirement_type") or (requirement or {}).get("requirement_code"),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "source_id": document_id,
-                    "dedupe_key": f"{EVENT_CERTIFICATE_VERIFIED}:{document_id}",
-                    "actor_id": user.get("portal_user_id"),
-                    "actor_role": "CLIENT",
-                    "metadata": {"requirement_id": requirement_id},
-                }
-            )
+            if document.get("property_id"):
+                from services.compliance_outcome_engine import (
+                    apply_action_outcome,
+                    EVENT_CERTIFICATE_VERIFIED,
+                )
+
+                meta = {"document_id": document_id, "requirement_id": requirement_id}
+                woid = (document.get("work_order_id") or "").strip()
+                if woid:
+                    meta["work_order_id"] = woid
+                outcome = await apply_action_outcome(
+                    {
+                        "event_type": EVENT_CERTIFICATE_VERIFIED,
+                        "client_id": document["client_id"],
+                        "property_id": document.get("property_id"),
+                        "asset_id": None,
+                        "requirement_type": (requirement or {}).get("requirement_type")
+                        or (requirement or {}).get("requirement_code"),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "source_id": document_id,
+                        "dedupe_key": f"{EVENT_CERTIFICATE_VERIFIED}:{document_id}",
+                        "actor_id": user.get("portal_user_id"),
+                        "actor_role": "CLIENT",
+                        "metadata": meta,
+                    }
+                )
         except Exception as outcome_err:
             logger.debug("Action outcome skip for extraction apply: %s", outcome_err)
+
+        try:
+            await _append_document_evidence_to_work_order(document_id, document.get("work_order_id"))
+        except Exception as ev_err:
+            logger.debug("Evidence append to work order skip: %s", ev_err)
         
         # Send email notification
         try:

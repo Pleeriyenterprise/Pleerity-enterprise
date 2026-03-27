@@ -1,0 +1,41 @@
+"""Work order execution kind and compliance execution metadata (separate from maintenance repair semantics)."""
+
+WORK_ORDER_KIND_MAINTENANCE = "MAINTENANCE"
+WORK_ORDER_KIND_COMPLIANCE = "COMPLIANCE"
+
+# Contractor execution surface (stored on contractor.execution_capabilities)
+EXECUTION_CAPABILITY_MAINTENANCE = "maintenance"
+EXECUTION_CAPABILITY_COMPLIANCE = "compliance"
+EXECUTION_CAPABILITY_BOTH = "both"
+ALLOWED_EXECUTION_CAPABILITIES = frozenset(
+    {EXECUTION_CAPABILITY_MAINTENANCE, EXECUTION_CAPABILITY_COMPLIANCE, EXECUTION_CAPABILITY_BOTH}
+)
+
+# Purpose of a compliance execution work order (inspection / renewal / certification / remedial)
+COMPLIANCE_PURPOSE_INSPECTION = "inspection"
+COMPLIANCE_PURPOSE_RENEWAL = "renewal"
+COMPLIANCE_PURPOSE_CERTIFICATION = "certification"
+COMPLIANCE_PURPOSE_REMEDIAL = "remedial"
+ALLOWED_COMPLIANCE_PURPOSES = frozenset(
+    {
+        COMPLIANCE_PURPOSE_INSPECTION,
+        COMPLIANCE_PURPOSE_RENEWAL,
+        COMPLIANCE_PURPOSE_CERTIFICATION,
+        COMPLIANCE_PURPOSE_REMEDIAL,
+    }
+)
+
+# How the compliance work order was initiated
+COMPLIANCE_GENERATED_FROM_REQUIREMENT = "requirement"
+COMPLIANCE_GENERATED_FROM_RISK_SIGNAL = "risk_signal"
+COMPLIANCE_GENERATED_FROM_MANUAL = "manual"
+ALLOWED_COMPLIANCE_GENERATED_FROM = frozenset(
+    {
+        COMPLIANCE_GENERATED_FROM_REQUIREMENT,
+        COMPLIANCE_GENERATED_FROM_RISK_SIGNAL,
+        COMPLIANCE_GENERATED_FROM_MANUAL,
+    }
+)
+
+# Maintenance work order category when kind is MAINTENANCE (existing); compliance jobs use category COMPLIANCE_BUCKET
+WORK_ORDER_CATEGORY_COMPLIANCE = "compliance"

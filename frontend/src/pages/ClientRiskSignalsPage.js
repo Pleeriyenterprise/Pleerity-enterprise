@@ -56,8 +56,10 @@ import {
   severityBadgeClass,
   humanAction,
   humanStatus,
+  humanTrend,
   groupSignalsByProperty,
 } from '../utils/riskPresentation';
+import { assetIdParts } from '../utils/assetDisplay';
 
 const RISK_LEVELS = [
   { value: '', label: 'All levels' },
@@ -260,9 +262,9 @@ function ClientRiskSignalsPageInner() {
 
   if (error && !loading) {
     return (
-      <div className="p-6 max-w-2xl">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-4">
-          <TrendingUp className="w-7 h-7" />
+      <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full min-w-0 client-portal-prose">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-4">
+          <TrendingUp className="w-7 h-7 shrink-0" />
           Risk Signals
         </h1>
         <Card className="border-amber-200 bg-amber-50">
@@ -295,12 +297,12 @@ function ClientRiskSignalsPageInner() {
     filters.to;
 
   return (
-    <div className="p-6 max-w-[1400px]">
-      <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
-        <TrendingUp className="w-7 h-7" />
+    <div className="p-4 sm:p-6 max-w-[1400px] mx-auto w-full min-w-0 client-portal-prose">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
+        <TrendingUp className="w-7 h-7 shrink-0" />
         Property health insights
       </h1>
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
         Clear, practical issue summaries with recommended next steps and deadlines.
       </p>
 
@@ -324,7 +326,7 @@ function ClientRiskSignalsPageInner() {
       })()}
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-6">
         {[
           { key: 'total', label: 'Total', value: summary.total ?? 0, filter: null },
           { key: 'high', label: 'Urgent', value: summary.high ?? 0, filter: { risk_level: 'high' } },
@@ -338,9 +340,9 @@ function ClientRiskSignalsPageInner() {
             className={`cursor-pointer transition-colors hover:shadow-md ${filter && value > 0 ? 'hover:border-electric-teal' : ''}`}
             onClick={() => filter && value > 0 && setFilters((f) => ({ ...f, ...filter }))}
           >
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-              <p className="text-xl font-semibold text-midnight-blue mt-1">{value}</p>
+            <CardContent className="p-3 sm:p-4 min-w-0">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide truncate">{label}</p>
+              <p className="text-lg sm:text-xl font-semibold text-midnight-blue mt-1">{value}</p>
             </CardContent>
           </Card>
         ))}
@@ -351,7 +353,7 @@ function ClientRiskSignalsPageInner() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-3">
+        <CardContent className="flex flex-wrap items-end gap-3 [&_button]:min-h-11">
           <div className="w-full sm:w-48">
             <label className="text-xs text-muted-foreground block mb-1">Priority</label>
             <Select value={filters.risk_level || ' '} onValueChange={(v) => applyFilter('risk_level', v === ' ' ? '' : v)}>
@@ -419,31 +421,31 @@ function ClientRiskSignalsPageInner() {
                 placeholder="Risk type, action, reasons…"
                 value={filters.q}
                 onChange={(e) => applyFilter('q', e.target.value)}
-                className="pl-8"
+                className="pl-8 min-h-11 w-full"
               />
             </div>
           </div>
-          <div className="flex gap-2">
-            <div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="flex-1 min-w-0">
               <label className="text-xs text-muted-foreground block mb-1">From</label>
               <Input
                 type="date"
                 value={filters.from}
                 onChange={(e) => applyFilter('from', e.target.value)}
-                className="w-36"
+                className="w-full sm:w-36 min-h-11"
               />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <label className="text-xs text-muted-foreground block mb-1">To</label>
               <Input
                 type="date"
                 value={filters.to}
                 onChange={(e) => applyFilter('to', e.target.value)}
-                className="w-36"
+                className="w-full sm:w-36 min-h-11"
               />
             </div>
           </div>
-          <Button onClick={load} variant="secondary" size="sm">Apply</Button>
+          <Button onClick={load} variant="secondary" className="w-full sm:w-auto min-h-11">Apply</Button>
           {hasFilters && (
             <Button
               variant="ghost"
@@ -481,26 +483,26 @@ function ClientRiskSignalsPageInner() {
               {highPriority.slice(0, 15).map((s) => (
                 <li
                   key={s.signal_id}
-                  className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-white border border-amber-100"
+                  className="flex flex-col gap-3 p-3 rounded-lg bg-white border border-amber-100 sm:flex-row sm:items-start sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">{humanRiskType(s.risk_type)}</p>
-                    <p className="text-sm text-gray-700">{propertyLabel(s.property_id)}</p>
-                    <p className="text-sm text-gray-600 mt-0.5">{humanAction(s.recommended_action, s.risk_type)}</p>
+                    <p className="font-medium text-gray-900 break-words">{humanRiskType(s)}</p>
+                    <p className="text-sm text-gray-700 break-words">{propertyLabel(s.property_id)}</p>
+                    <p className="text-sm text-gray-600 mt-0.5 break-words line-clamp-3">{humanAction(s.recommended_action, s)}</p>
                     {Array.isArray(s.reasons) && s.reasons[0] && (
-                      <p className="text-xs text-gray-500 mt-1">{s.reasons[0]}</p>
+                      <p className="text-xs text-gray-500 mt-1 break-words">{s.reasons[0]}</p>
                     )}
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => setDrawerSignalId(s.signal_id)}>
-                      <Eye className="w-4 h-4 mr-1" /> View
+                  <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto min-h-11 justify-center" variant="outline" onClick={() => setDrawerSignalId(s.signal_id)}>
+                      <Eye className="w-4 h-4 mr-1 shrink-0" /> View
                     </Button>
                     <Button
-                      size="sm"
+                      className="w-full sm:w-auto min-h-11 justify-center"
                       variant="outline"
                       onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
                     >
-                      <Wrench className="w-4 h-4 mr-1" /> Work order
+                      <Wrench className="w-4 h-4 mr-1 shrink-0" /> Work order
                     </Button>
                   </div>
                 </li>
@@ -512,10 +514,10 @@ function ClientRiskSignalsPageInner() {
 
       {/* Table */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:space-y-0 pb-2">
           <CardTitle>Active issues</CardTitle>
           {summary.lastRecalculatedAt && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground break-words">
               Last recalculated: {new Date(summary.lastRecalculatedAt).toLocaleString()}
             </span>
           )}
@@ -552,69 +554,165 @@ function ClientRiskSignalsPageInner() {
               )}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Issue</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Asset</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Trend</TableHead>
-                  <TableHead>Why flagged</TableHead>
-                  <TableHead>Recommended action</TableHead>
-                  <TableHead>Last updated</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="md:hidden space-y-3">
                 {signals.map((s) => (
-                  <TableRow key={s.signal_id}>
-                    <TableCell className="font-medium">{humanRiskType(s.risk_type)}</TableCell>
-                    <TableCell>{propertyLabel(s.property_id)}</TableCell>
-                    <TableCell className="text-muted-foreground">{s.asset_id || '—'}</TableCell>
-                    <TableCell>
+                  <div
+                    key={s.signal_id}
+                    className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className={riskLevelBadgeClass(s.risk_level)}>
                         {humanSeverity(s.risk_level)}
                       </Badge>
-                    </TableCell>
-                    <TableCell>{s.trend || 'stable'}</TableCell>
-                    <TableCell className="max-w-[180px] truncate" title={Array.isArray(s.reasons) ? s.reasons.join('; ') : ''}>
-                      {Array.isArray(s.reasons) && s.reasons[0] ? s.reasons[0] : '—'}
-                    </TableCell>
-                    <TableCell className="max-w-[180px] truncate" title={s.recommended_action}>
-                      {humanAction(s.recommended_action, s.risk_type)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-wrap gap-1 justify-end">
-                        <Button size="sm" variant="ghost" onClick={() => setDrawerSignalId(s.signal_id)}>
-                          <Eye className="w-4 h-4 mr-1" /> View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
-                        >
-                          <Wrench className="w-4 h-4 mr-1" /> Work order
-                        </Button>
-                        {s.status === 'active' && (
-                          <>
-                            <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleAcknowledge(s.signal_id)}>
-                              <CheckCircle className="w-4 h-4 mr-1" /> Acknowledge
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleResolve(s.signal_id)}>
-                              <XCircle className="w-4 h-4 mr-1" /> Resolve
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      <Badge variant="secondary" className="text-xs font-normal">
+                        {humanStatus(s.status)}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground ml-auto">{humanTrend(s.trend)}</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-midnight-blue break-words">{humanRiskType(s)}</p>
+                      <p className="text-sm text-gray-600 mt-1 break-words">{propertyLabel(s.property_id)}</p>
+                      {s.asset_id &&
+                        (() => {
+                          const asset = assetIdParts(s.asset_id);
+                          if (!asset.isTruncated) {
+                            return (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Linked asset · <span className="font-mono text-gray-800">{asset.full}</span>
+                              </p>
+                            );
+                          }
+                          return (
+                            <details className="rounded-lg border border-gray-100 bg-gray-50/90 mt-2">
+                              <summary className="cursor-pointer px-3 py-2.5 text-sm text-electric-teal font-medium min-h-[44px] flex items-center gap-2">
+                                <span>
+                                  Linked asset · <span className="font-mono text-gray-800">{asset.short}</span>
+                                </span>
+                              </summary>
+                              <div className="px-3 pb-3 pt-0 border-t border-gray-100">
+                                <p className="text-xs text-gray-500 mt-2 mb-1">Full reference (support or property records)</p>
+                                <code className="text-xs font-mono text-gray-900 break-all block bg-white border border-gray-200 rounded-md px-2 py-2">
+                                  {asset.full}
+                                </code>
+                              </div>
+                            </details>
+                          );
+                        })()}
+                    </div>
+                    {Array.isArray(s.reasons) && s.reasons[0] && (
+                      <p className="text-sm text-gray-700 break-words">
+                        <span className="font-medium text-gray-800">Why flagged:</span> {s.reasons[0]}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-700 break-words line-clamp-4">
+                      <span className="font-medium text-gray-800">Next step:</span> {humanAction(s.recommended_action, s)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Updated {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
+                    </p>
+                    <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
+                      <Button className="w-full min-h-11 justify-center" variant="default" onClick={() => setDrawerSignalId(s.signal_id)}>
+                        <Eye className="w-4 h-4 mr-2 shrink-0" /> View details
+                      </Button>
+                      <Button
+                        className="w-full min-h-11 justify-center"
+                        variant="outline"
+                        onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
+                      >
+                        <Wrench className="w-4 h-4 mr-2 shrink-0" /> Create work order
+                      </Button>
+                      {s.status === 'active' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button variant="outline" className="min-h-11 text-xs" onClick={() => handleAcknowledge(s.signal_id)}>
+                            <CheckCircle className="w-4 h-4 mr-1 shrink-0" /> Acknowledge
+                          </Button>
+                          <Button variant="outline" className="min-h-11 text-xs" onClick={() => handleResolve(s.signal_id)}>
+                            <XCircle className="w-4 h-4 mr-1 shrink-0" /> Resolve
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Issue</TableHead>
+                      <TableHead>Property</TableHead>
+                      <TableHead>Asset</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Trend</TableHead>
+                      <TableHead>Why flagged</TableHead>
+                      <TableHead>Recommended action</TableHead>
+                      <TableHead>Last updated</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {signals.map((s) => {
+                      const rowAsset = s.asset_id ? assetIdParts(s.asset_id) : null;
+                      return (
+                      <TableRow key={s.signal_id}>
+                        <TableCell className="font-medium max-w-[14rem] break-words">{humanRiskType(s)}</TableCell>
+                        <TableCell className="max-w-[10rem] break-words">{propertyLabel(s.property_id)}</TableCell>
+                        <TableCell className="text-muted-foreground max-w-[6rem]">
+                          {rowAsset ? (
+                            <span className="font-mono text-xs" title={rowAsset.full}>
+                              {rowAsset.short}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={riskLevelBadgeClass(s.risk_level)}>
+                            {humanSeverity(s.risk_level)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{humanTrend(s.trend)}</TableCell>
+                        <TableCell className="max-w-[180px] truncate" title={Array.isArray(s.reasons) ? s.reasons.join('; ') : ''}>
+                          {Array.isArray(s.reasons) && s.reasons[0] ? s.reasons[0] : '—'}
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate" title={s.recommended_action}>
+                          {humanAction(s.recommended_action, s)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                          {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-wrap gap-1 justify-end">
+                            <Button size="sm" variant="ghost" onClick={() => setDrawerSignalId(s.signal_id)}>
+                              <Eye className="w-4 h-4 mr-1" /> View
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
+                            >
+                              <Wrench className="w-4 h-4 mr-1" /> Work order
+                            </Button>
+                            {s.status === 'active' && (
+                              <>
+                                <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleAcknowledge(s.signal_id)}>
+                                  <CheckCircle className="w-4 h-4 mr-1" /> Acknowledge
+                                </Button>
+                                <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleResolve(s.signal_id)}>
+                                  <XCircle className="w-4 h-4 mr-1" /> Resolve
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -634,18 +732,31 @@ function ClientRiskSignalsPageInner() {
             <div className="space-y-4 py-4">
               <div>
                 <p className="text-xs text-muted-foreground uppercase">Risk type</p>
-                <p className="font-medium">{humanRiskType(drawerSignal.risk_type)}</p>
+                <p className="font-medium">{humanRiskType(drawerSignal)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase">Property</p>
                 <p className="font-medium">{propertyLabel(drawerSignal.property_id)}</p>
               </div>
-              {drawerSignal.asset_id && (
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Asset</p>
-                  <p className="font-medium">{drawerSignal.asset_id}</p>
-                </div>
-              )}
+              {drawerSignal.asset_id && (() => {
+                const asset = assetIdParts(drawerSignal.asset_id);
+                return (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase">Linked asset</p>
+                    <p className="font-medium font-mono text-sm">{asset.short}</p>
+                    {asset.isTruncated && (
+                      <details className="mt-2 rounded-md border border-gray-100 bg-gray-50/80">
+                        <summary className="cursor-pointer px-3 py-2 text-sm text-electric-teal font-medium min-h-[44px] flex items-center">
+                          Show full reference
+                        </summary>
+                        <div className="px-3 pb-3">
+                          <code className="text-xs font-mono text-gray-900 break-all block bg-white border rounded px-2 py-2">{asset.full}</code>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex gap-2">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase">Level</p>
@@ -655,7 +766,7 @@ function ClientRiskSignalsPageInner() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase">Trend</p>
-                  <p className="font-medium">{drawerSignal.trend || 'stable'}</p>
+                  <p className="font-medium">{humanTrend(drawerSignal.trend)}</p>
                 </div>
               </div>
               {drawerSignal.generated_at && (
@@ -701,7 +812,7 @@ function ClientRiskSignalsPageInner() {
               {!drawerSuggestedView?.recommended_action && drawerSignal.recommended_action && (
                 <div>
                   <p className="text-xs text-muted-foreground uppercase">Recommended action</p>
-                  <p className="text-sm">{humanAction(drawerSignal.recommended_action, drawerSignal.risk_type)}</p>
+                  <p className="text-sm">{humanAction(drawerSignal.recommended_action, drawerSignal)}</p>
                 </div>
               )}
               {Array.isArray(drawerSuggestedView?.alternatives) && drawerSuggestedView.alternatives.length > 0 && (

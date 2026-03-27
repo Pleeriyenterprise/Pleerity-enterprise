@@ -10,6 +10,11 @@ from typing import Optional, Dict, Any, List
 
 from email_templates.email_layout import build_customer_email_layout
 from utils.branding import CUSTOMER_SUPPORT_FOOTER_PLAIN, SUPPORT_EMAIL
+from presentation.label_service import (
+    compliance_requirement_status_label,
+    document_type_label,
+    requirement_label,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -315,15 +320,23 @@ class EmailService:
             for key, _label in columns:
                 val = row.get(key, "")
                 if isinstance(val, (int, float)):
-                    val = str(val)
+                    raw_s = str(val)
                 else:
-                    val = str(val) if val is not None else ""
-                escaped = html_module.escape(val)
+                    raw_s = str(val) if val is not None else ""
+                if key == "requirement_type":
+                    display = requirement_label(raw_s) if raw_s.strip() else ""
+                elif key in ("status", "latest_doc_status"):
+                    display = compliance_requirement_status_label(raw_s) if raw_s.strip() else ""
+                else:
+                    display = raw_s
+                escaped = html_module.escape(display)
                 if key == "status":
-                    style = status_styles.get(str(val).upper(), "")
+                    style = status_styles.get(raw_s.upper(), "")
                     cells.append(
                         f'<td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; {style}">{escaped}</span></td>'
                     )
+                elif key == "latest_doc_status":
+                    cells.append(f'<td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{escaped}</td>')
                 else:
                     cells.append(f'<td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{escaped}</td>')
             rows_html.append("<tr>" + "".join(cells) + "</tr>")
@@ -511,7 +524,8 @@ class EmailService:
                 customer_reference=customer_ref or None,
             )
         elif template_alias == EmailTemplateAlias.REMINDER:
-            req_name = model.get("requirement_name", "Certificate")
+            rc = (model.get("requirement_code") or "").strip()
+            req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
             prop_addr = model.get("property_address", "Your property")
             due_date = model.get("due_date", "")
             days_overdue = model.get("days_overdue")
@@ -597,16 +611,18 @@ class EmailService:
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
             status_color = model.get('status_color', '#22c55e')
             status_icon = "✅" if model.get('requirement_status') == 'COMPLIANT' else "⚠️" if model.get('requirement_status') == 'EXPIRING_SOON' else "❌"
+            doc_type_disp = html_module.escape(document_type_label(model.get('document_type')))
+            status_disp = html_module.escape(compliance_requirement_status_label(model.get('requirement_status')))
             body = f"""
                     <p>Good news! Our AI has successfully extracted and saved certificate details from your uploaded document.</p>
                     <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
                         <h3 style="margin: 0 0 15px 0; color: #166534;">📋 Certificate Details Saved</h3>
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr><td style="padding: 8px 0; color: #64748b; width: 140px;">Property:</td><td style="padding: 8px 0; font-weight: bold;">{model.get('property_address', 'N/A')}</td></tr>
-                            <tr><td style="padding: 8px 0; color: #64748b;">Document Type:</td><td style="padding: 8px 0; font-weight: bold;">{model.get('document_type', 'Certificate')}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Document Type:</td><td style="padding: 8px 0; font-weight: bold;">{doc_type_disp}</td></tr>
                             <tr><td style="padding: 8px 0; color: #64748b;">Certificate No:</td><td style="padding: 8px 0; font-weight: bold; font-family: monospace;">{model.get('certificate_number', 'N/A')}</td></tr>
                             <tr><td style="padding: 8px 0; color: #64748b;">Expiry Date:</td><td style="padding: 8px 0; font-weight: bold;">{model.get('expiry_date', 'N/A')}</td></tr>
-                            <tr><td style="padding: 8px 0; color: #64748b;">Compliance Status:</td><td style="padding: 8px 0;"><span style="background-color: {status_color}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;">{status_icon} {model.get('requirement_status', 'UPDATED')}</span></td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Compliance Status:</td><td style="padding: 8px 0;"><span style="background-color: {status_color}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;">{status_icon} {status_disp}</span></td></tr>
                         </table>
                     </div>
                     <p style="color: #64748b; font-size: 14px;"><strong>What happens next?</strong><br>• Your compliance dashboard has been updated automatically<br>• You'll receive reminders before this certificate expires<br>• You can review or edit these details in your portal</p>"""
@@ -945,7 +961,8 @@ WHAT THIS MEANS:
 {footer}
             """
         elif template_alias == EmailTemplateAlias.REMINDER:
-            req_name = model.get("requirement_name", "Certificate")
+            rc = (model.get("requirement_code") or "").strip()
+            req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
             prop_addr = model.get("property_address", "Your property")
             due_date = model.get("due_date", "")
             days_overdue = model.get("days_overdue")
@@ -1010,6 +1027,8 @@ For the full report with all details, please log in to your dashboard and downlo
             """
         elif template_alias == EmailTemplateAlias.AI_EXTRACTION_APPLIED:
             status_icon = "✅" if model.get('requirement_status') == 'COMPLIANT' else "⚠️" if model.get('requirement_status') == 'EXPIRING_SOON' else "❌"
+            doc_plain = document_type_label(model.get('document_type'))
+            status_plain = compliance_requirement_status_label(model.get('requirement_status'))
             return f"""
 🤖 AI DOCUMENT ANALYSIS COMPLETE
 {ref_line}
@@ -1021,10 +1040,10 @@ Good news! Our AI has successfully extracted and saved certificate details from 
 📋 CERTIFICATE DETAILS SAVED
 ----------------------------
 Property:         {model.get('property_address', 'N/A')}
-Document Type:    {model.get('document_type', 'Certificate')}
+Document Type:    {doc_plain}
 Certificate No:   {model.get('certificate_number', 'N/A')}
 Expiry Date:      {model.get('expiry_date', 'N/A')}
-Status:           {status_icon} {model.get('requirement_status', 'UPDATED')}
+Status:           {status_icon} {status_plain}
 
 WHAT HAPPENS NEXT:
 • Your compliance dashboard has been updated automatically

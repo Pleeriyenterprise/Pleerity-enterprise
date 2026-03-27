@@ -5,6 +5,11 @@
 export function formatRiskLabel(riskLevel) {
   if (!riskLevel || typeof riskLevel !== 'string') return riskLevel || '—';
   const s = riskLevel.trim();
+  const lower = s.toLowerCase().replace(/\s+/g, ' ');
+  if (lower === 'critical' || lower === 'critical risk') return 'Critical risk';
+  if (lower === 'high' || lower === 'high risk') return 'High risk';
+  if (lower === 'medium' || lower === 'moderate' || lower === 'moderate risk') return 'Medium risk';
+  if (lower === 'low' || lower === 'low risk') return 'Low risk';
   if (s === 'Moderate Risk') return 'Medium risk';
   if (s === 'Low Risk') return 'Low risk';
   if (s === 'High Risk') return 'High risk';
@@ -16,10 +21,11 @@ export function formatRiskLabel(riskLevel) {
 export function riskLevelToGradeColorMessage(riskLevel) {
   if (!riskLevel || typeof riskLevel !== 'string') return { grade: '—', color: 'gray', message: '' };
   const s = riskLevel.trim();
-  if (s === 'Low Risk') return { grade: 'B', color: 'green', message: 'Low risk - good standing' };
-  if (s === 'Moderate Risk') return { grade: 'C', color: 'amber', message: 'Moderate risk - action required' };
-  if (s === 'High Risk') return { grade: 'D', color: 'amber', message: 'High risk - action required' };
-  if (s === 'Critical Risk') return { grade: 'F', color: 'red', message: 'High urgency: overdue items detected' };
+  const lower = s.toLowerCase().replace(/\s+/g, ' ');
+  if (s === 'Low Risk' || lower === 'low' || lower === 'low risk') return { grade: 'B', color: 'green', message: 'Low risk - good standing' };
+  if (s === 'Moderate Risk' || lower === 'medium' || lower === 'moderate' || lower === 'moderate risk') return { grade: 'C', color: 'amber', message: 'Moderate risk - action required' };
+  if (s === 'High Risk' || lower === 'high' || lower === 'high risk') return { grade: 'D', color: 'amber', message: 'High risk - action required' };
+  if (s === 'Critical Risk' || lower === 'critical' || lower === 'critical risk') return { grade: 'F', color: 'red', message: 'High urgency: overdue items detected' };
   return { grade: '—', color: 'gray', message: formatRiskLabel(riskLevel) };
 }
 

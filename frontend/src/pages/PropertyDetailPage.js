@@ -40,6 +40,12 @@ import { SUPPORT_EMAIL } from '../config';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import { formatRiskLabel } from '../utils/riskLabel';
 import { humanRiskType, humanSeverity, humanAction } from '../utils/riskPresentation';
+import {
+  requirementLabel,
+  complianceRequirementStatusLabel,
+  documentTypeLabel,
+  issueStatusLabel,
+} from '../domain/presentDomain';
 import { toast } from 'sonner';
 
 const NOT_REQUIRED_REASONS = [
@@ -542,7 +548,14 @@ export default function PropertyDetailPage() {
     return diff;
   };
   const isMatrixRow = (r) => r.title != null || r.requirement_code != null;
-  const rowTitle = (r) => r.title || r.requirement_type || r.description || r.name || '—';
+  const rowTitle = (r) =>
+    r?.title ||
+    (r?.requirement_code || r?.requirement_type
+      ? requirementLabel(r.requirement_code || r.requirement_type)
+      : null) ||
+    r?.description ||
+    r?.name ||
+    '—';
   const rowExpiry = (r) => r.expiry_date || r.due_date;
   const rowDays = (r) => (r.days_to_expiry != null ? r.days_to_expiry : daysLeft(rowExpiry(r)));
   const rowReqId = (r) => r.requirement_id || r.id;
@@ -968,8 +981,8 @@ export default function PropertyDetailPage() {
                       <li key={s.signal_id} className="p-3 rounded-lg border border-gray-100 bg-gray-50/80">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
-                            <p className="font-medium text-gray-900">{humanRiskType(s.risk_type)}</p>
-                            <p className="text-sm text-gray-600 mt-0.5">{humanAction(s.recommended_action, s.risk_type)}</p>
+                            <p className="font-medium text-gray-900">{humanRiskType(s)}</p>
+                            <p className="text-sm text-gray-600 mt-0.5">{humanAction(s.recommended_action, s)}</p>
                             <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${['high', 'critical'].includes((s.risk_level || '').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
                               {humanSeverity(s.risk_level)}
                             </span>
@@ -1025,8 +1038,8 @@ export default function PropertyDetailPage() {
                 <ul className="space-y-1 text-sm">
                   {requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).slice(0, 5).map((r, i) => (
                     <li key={i} className="flex items-center justify-between">
-                      <span>{r.title || r.requirement_type || r.requirement_code}</span>
-                      <span className="text-amber-700 font-medium">{r.status}</span>
+                      <span>{rowTitle(r)}</span>
+                      <span className="text-amber-700 font-medium">{complianceRequirementStatusLabel(r.status)}</span>
                     </li>
                   ))}
                 </ul>
@@ -1183,8 +1196,10 @@ export default function PropertyDetailPage() {
                                 const requirementCode = String(r?.requirement_code || '').toLowerCase();
                                 return (
                                   <tr key={`${r?.requirement_code || 'req'}-${idx}`} className="border-t border-gray-100">
-                                    <td className="px-3 py-2 font-medium text-midnight-blue">{r?.requirement_code || '—'}</td>
-                                    <td className="px-3 py-2 text-gray-700">{String(r?.status || '—').replace(/_/g, ' ')}</td>
+                                    <td className="px-3 py-2 font-medium text-midnight-blue">
+                                      {r?.requirement_code ? requirementLabel(r.requirement_code) : '—'}
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-700">{complianceRequirementStatusLabel(r?.status)}</td>
                                     <td className="px-3 py-2 text-gray-700">{String(r?.risk_level_if_failed || '—')}</td>
                                     <td className="px-3 py-2 text-gray-600">{r?.expiry_date ? formatDate(r.expiry_date) : '—'}</td>
                                     <td className="px-3 py-2 text-right text-gray-700">{missing.toFixed(1)}</td>
@@ -1332,7 +1347,11 @@ export default function PropertyDetailPage() {
                               data-req-code={r.requirement_code || r.requirement_type || ''}
                             >
                               <td className="p-3 font-medium text-midnight-blue">{rowTitle(r)}</td>
-                              <td className="p-3 text-gray-600">{r.requirement_code || r.requirement_type || '—'}</td>
+                              <td className="p-3 text-gray-600">
+                                {r.requirement_code || r.requirement_type
+                                  ? requirementLabel(r.requirement_code || r.requirement_type)
+                                  : '—'}
+                              </td>
                               <td className="p-3">
                                 <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs ${status.className}`}>
                                   <Icon className="w-3.5 h-3.5" />
@@ -1564,7 +1583,7 @@ export default function PropertyDetailPage() {
               <CardTitle className="text-base">Issues</CardTitle>
               <div className="flex flex-wrap gap-2 mt-2">
                 <select value={maintenanceIssueFilter.status} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
-                  <option value="">All statuses</option><option value="new">New</option><option value="triaged">Triaged</option><option value="ready_for_work_order">Ready for WO</option><option value="closed">Closed</option>
+                  <option value="">All statuses</option><option value="new">New</option><option value="triaged">Triaged</option><option value="ready_for_work_order">{issueStatusLabel('ready_for_work_order')}</option><option value="closed">Closed</option>
                 </select>
                 <select value={maintenanceIssueFilter.severity} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, severity: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
                   <option value="">All severities</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
@@ -1599,7 +1618,7 @@ export default function PropertyDetailPage() {
                           <td className="p-2">{iss.priority_score != null ? iss.priority_score : '—'}</td>
                           <td className="p-2 text-gray-600">{assetLabel(iss.asset_id)}</td>
                           <td className="p-2 text-gray-600">{iss.source || '—'}</td>
-                          <td className="p-2">{(iss.status || '—').replace(/_/g, ' ')}</td>
+                          <td className="p-2">{issueStatusLabel(iss.status)}</td>
                           <td className="p-2 text-gray-600">{iss.created_at ? formatDate(iss.created_at) : '—'}</td>
                           <td className="p-2 text-right">
                             <Button size="sm" variant="ghost" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
@@ -1755,7 +1774,7 @@ export default function PropertyDetailPage() {
                     <dt className="text-gray-500">Priority score</dt><dd>{issueDetailData.priority_score != null ? issueDetailData.priority_score : '—'}</dd>
                     <dt className="text-gray-500">Asset</dt><dd>{assetLabel(issueDetailData.asset_id)}</dd>
                     <dt className="text-gray-500">Source</dt><dd>{issueDetailData.source || '—'}</dd>
-                    <dt className="text-gray-500">Status</dt><dd>{(issueDetailData.status || '—').replace(/_/g, ' ')}</dd>
+                    <dt className="text-gray-500">Status</dt><dd>{issueDetailData.status ? issueStatusLabel(issueDetailData.status) : '—'}</dd>
                     <dt className="text-gray-500">Created</dt><dd>{issueDetailData.created_at ? formatDate(issueDetailData.created_at) : '—'}</dd>
                   </dl>
                   {issueDetailData.triage?.reasoning?.length > 0 && (
@@ -1946,7 +1965,7 @@ export default function PropertyDetailPage() {
                             {evidenceData.documents.map((doc) => (
                               <tr key={doc.document_id} className="border-b border-gray-100 hover:bg-gray-50">
                                 <td className="p-3 font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</td>
-                                <td className="p-3 text-gray-600">{doc.document_type || '—'}</td>
+                                <td className="p-3 text-gray-600">{doc.document_type ? documentTypeLabel(doc.document_type) : '—'}</td>
                                 <td className="p-3 text-gray-600">{doc.requirement_id || '—'}</td>
                                 <td className="p-3">
                                   <span className="inline-flex px-2 py-1 rounded border text-xs bg-gray-100 text-gray-700 border-gray-200">{evidenceDocStatusLabel(doc)}</span>
@@ -1974,7 +1993,7 @@ export default function PropertyDetailPage() {
                       {evidenceData.documents.map((doc) => (
                         <Card key={doc.document_id} className="border border-gray-200 p-3">
                           <div className="font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</div>
-                          <div className="text-xs text-gray-600 mt-1">Type: {doc.document_type || '—'} · {evidenceDocStatusLabel(doc)} · {doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</div>
+                          <div className="text-xs text-gray-600 mt-1">Type: {doc.document_type ? documentTypeLabel(doc.document_type) : '—'} · {evidenceDocStatusLabel(doc)} · {doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</div>
                           <div className="flex flex-wrap gap-1 mt-2">
                             <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>View</Button>
                             <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}>Download</Button>
@@ -2243,8 +2262,8 @@ export default function PropertyDetailPage() {
                 {riskSignalsData.signals.map((s) => (
                   <li key={s.signal_id} className="flex flex-wrap items-start justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">{humanRiskType(s.risk_type)}</p>
-                      <p className="text-sm text-gray-700 mt-0.5">{humanAction(s.recommended_action, s.risk_type)}</p>
+                      <p className="font-medium text-gray-900">{humanRiskType(s)}</p>
+                      <p className="text-sm text-gray-700 mt-0.5">{humanAction(s.recommended_action, s)}</p>
                       {Array.isArray(s.reasons) && s.reasons.length > 0 && <ul className="mt-1 text-xs text-gray-600 list-disc list-inside">{s.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
                       <span className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${['high','critical'].includes((s.risk_level||'').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{humanSeverity(s.risk_level)}</span>
                       {s.status && s.status !== 'active' && <span className="ml-2 text-xs text-gray-500">{s.status}</span>}

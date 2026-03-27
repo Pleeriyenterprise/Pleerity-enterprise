@@ -25,6 +25,8 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { issueSeverityLabel, workOrderStatusLabel } from '../domain/presentDomain';
+import { assetIdParts } from '../utils/assetDisplay';
 
 const WO_STATUS_OPTIONS = [
   { value: 'DRAFT', label: 'Draft' },
@@ -384,9 +386,9 @@ function ClientMaintenancePageInner() {
 
   if (maintenanceError && !loading) {
     return (
-      <div className="p-6 max-w-2xl">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-4">
-          <Wrench className="w-7 h-7" />
+      <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full min-w-0 client-portal-prose">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-4">
+          <Wrench className="w-7 h-7 shrink-0" />
           Work Orders
         </h1>
         <Card className="border-amber-200 bg-amber-50">
@@ -404,34 +406,34 @@ function ClientMaintenancePageInner() {
   }
 
   return (
-    <div className="p-6 max-w-6xl">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Wrench className="w-7 h-7" />
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto w-full min-w-0 client-portal-prose">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 min-w-0">
+          <Wrench className="w-7 h-7 shrink-0" />
           Work Orders
         </h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/operations/issues')}>
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:shrink-0">
+          <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => navigate('/operations/issues')}>
             View Issues
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="bg-electric-teal hover:bg-electric-teal/90">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90">
+            <Plus className="w-4 h-4 mr-2 shrink-0" />
             Report issue
           </Button>
         </div>
       </div>
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
         Portfolio-wide work order execution. Track status, assign contractors, and monitor SLA deadlines.
       </p>
 
       {/* Summary KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3 mb-6">
         <button
           type="button"
           onClick={() => applySummaryFilter('status', '')}
-          className="p-3 rounded-lg border border-gray-200 bg-white text-left hover:bg-gray-50 transition-colors"
+          className="p-3 rounded-lg border border-gray-200 bg-white text-left hover:bg-gray-50 transition-colors min-w-0"
         >
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Active</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide truncate">Active</p>
           <p className="text-lg font-semibold text-midnight-blue">{summary.totalActive}</p>
         </button>
         <button type="button" onClick={() => applySummaryFilter('status', 'DRAFT')} className="p-3 rounded-lg border border-gray-200 bg-white text-left hover:bg-gray-50 transition-colors">
@@ -480,7 +482,7 @@ function ClientMaintenancePageInner() {
                     <div key={idx} className="mt-2 pl-2 border-l-2 border-teal-200">
                       <p className="text-gray-700">{i.recommendation}</p>
                       {i.detail && <p className="text-xs text-gray-500 mt-0.5">{i.detail}</p>}
-                      <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${i.risk === 'high' || i.risk === 'urgent' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{i.risk}</span>
+                      <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${i.risk === 'high' || i.risk === 'urgent' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{issueSeverityLabel(i.risk)}</span>
                     </div>
                   ))}
                 </div>
@@ -500,58 +502,58 @@ function ClientMaintenancePageInner() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
-            <div>
+            <div className="w-full sm:w-auto min-w-0 flex-1 sm:flex-initial">
               <label className="block text-xs text-gray-500 mb-1">Status</label>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm">
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full sm:w-auto min-h-11 max-w-full">
                 <option value="">All</option>
                 {WO_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto min-w-0 flex-1 sm:flex-initial">
               <label className="block text-xs text-gray-500 mb-1">Property</label>
-              <select value={filterProperty} onChange={(e) => setFilterProperty(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm min-w-[160px]">
+              <select value={filterProperty} onChange={(e) => setFilterProperty(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full min-h-11 max-w-full sm:min-w-[160px]">
                 <option value="">All</option>
                 {properties.map((p) => <option key={p.property_id} value={p.property_id}>{propertyLabel(p.property_id)}</option>)}
               </select>
             </div>
             {hasFeature('contractor_network') && (
-              <div>
+              <div className="w-full sm:w-auto min-w-0 flex-1 sm:flex-initial">
                 <label className="block text-xs text-gray-500 mb-1">Contractor</label>
-                <select value={filterContractor} onChange={(e) => setFilterContractor(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm min-w-[160px]">
+                <select value={filterContractor} onChange={(e) => setFilterContractor(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full min-h-11 max-w-full sm:min-w-[160px]">
                   <option value="">All</option>
                   {contractors.map((c) => <option key={c.contractor_id || c.id} value={c.contractor_id || c.id}>{c.name || c.contractor_name || c.contractor_id}</option>)}
                 </select>
               </div>
             )}
-            <div>
+            <div className="w-full sm:w-auto min-w-0 flex-1 sm:flex-initial">
               <label className="block text-xs text-gray-500 mb-1">SLA state</label>
-              <select value={filterSlaState} onChange={(e) => setFilterSlaState(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm">
+              <select value={filterSlaState} onChange={(e) => setFilterSlaState(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full sm:w-auto min-h-11">
                 <option value="">All</option>
                 <option value="on_track">On track</option>
                 <option value="near_breach">Near breach</option>
                 <option value="breached">Breached</option>
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-xs text-gray-500 mb-1">From date</label>
-              <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm" />
+              <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full sm:w-auto min-h-11" />
             </div>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-xs text-gray-500 mb-1">To date</label>
-              <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm" />
+              <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full sm:w-auto min-h-11" />
             </div>
-            <div>
+            <div className="w-full min-w-0 sm:flex-1 sm:min-w-[12rem]">
               <label className="block text-xs text-gray-500 mb-1">Search</label>
               <input
                 type="text"
                 placeholder="Ref, title, property, contractor…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border border-gray-200 rounded-md px-3 py-2 text-sm w-48"
+                className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full min-h-11 max-w-full"
               />
             </div>
-            <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>
-            <Button variant="ghost" size="sm" onClick={loadWorkOrders}>Refresh</Button>
+            <Button variant="outline" className="w-full sm:w-auto min-h-11" onClick={clearFilters}>Clear filters</Button>
+            <Button variant="ghost" className="w-full sm:w-auto min-h-11" onClick={loadWorkOrders}>Refresh</Button>
           </div>
         </CardContent>
       </Card>
@@ -566,7 +568,25 @@ function ClientMaintenancePageInner() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="md:hidden space-y-3">
+              {slaRiskList.slice(0, 10).map((wo) => {
+                const hr = hoursRemainingOrOverdue(wo.sla_complete_by);
+                return (
+                  <div key={wo.work_order_id} className="rounded-lg border border-amber-200 bg-white p-4 space-y-2">
+                    <p className="text-xs font-mono text-gray-500">{wo.work_order_id}</p>
+                    <p className="font-medium text-gray-900 break-words">{wo.description || '—'}</p>
+                    <p className="text-sm text-gray-600 break-words">{propertyLabel(wo.property_id)}</p>
+                    <p className="text-sm">
+                      SLA due {formatDate(wo.sla_complete_by)}
+                      {hr && <span className={`ml-1 ${hr.overdue ? 'text-red-600 font-medium' : 'text-amber-600'}`}>{hr.text}</span>}
+                    </p>
+                    <span className={`inline-flex px-2 py-1 rounded text-xs ${statusBadgeClass(wo.status)}`}>{workOrderStatusLabel(wo.status)}</span>
+                    <Button className="w-full min-h-11 mt-2" variant="outline" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View work order</Button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-gray-600">
@@ -586,9 +606,9 @@ function ClientMaintenancePageInner() {
                           <span className="font-mono text-xs text-gray-500 block">{wo.work_order_id?.slice(0, 8)}…</span>
                           <span className="truncate max-w-[180px] block" title={wo.description}>{wo.description || '—'}</span>
                         </td>
-                        <td className="p-2">{propertyLabel(wo.property_id)}</td>
+                        <td className="p-2 max-w-[10rem] break-words">{propertyLabel(wo.property_id)}</td>
                         <td className="p-2">{formatDate(wo.sla_complete_by)} {hr && <span className={hr.overdue ? 'text-red-600' : 'text-amber-600'}>{hr.text}</span>}</td>
-                        <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${statusBadgeClass(wo.status)}`}>{wo.status}</span></td>
+                        <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${statusBadgeClass(wo.status)}`}>{workOrderStatusLabel(wo.status)}</span></td>
                         <td className="p-2 text-right">
                           <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button>
                         </td>
@@ -627,61 +647,135 @@ function ClientMaintenancePageInner() {
               <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-gray-600">
-                    <th className="p-2">Ref / Title</th>
-                    <th className="p-2">Property</th>
-                    <th className="p-2">Issue</th>
-                    <th className="p-2">Asset</th>
-                    <th className="p-2">Severity</th>
-                    <th className="p-2">Status</th>
-                    <th className="p-2">Contractor</th>
-                    <th className="p-2">SLA due</th>
-                    <th className="p-2">SLA state</th>
-                    <th className="p-2">Updated</th>
-                    <th className="p-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBySearch.map((wo) => {
-                    const sla = slaStateLabel(wo);
-                    return (
-                      <tr key={wo.work_order_id} className="border-b hover:bg-gray-50">
-                        <td className="p-2 max-w-[200px]">
-                          <span className="font-mono text-xs text-gray-500 block truncate">{wo.work_order_id?.slice(0, 8)}…</span>
-                          <span className="font-medium truncate block" title={wo.description}>{wo.description || '—'}</span>
-                        </td>
-                        <td className="p-2">
-                          <button type="button" onClick={() => wo.property_id && navigate(`/properties/${wo.property_id}`)} className="text-electric-teal hover:underline truncate max-w-[120px] block text-left">
-                            {propertyLabel(wo.property_id)}
-                          </button>
-                        </td>
-                        <td className="p-2">
-                          {wo.issue_id ? (
-                            <button type="button" onClick={() => navigate('/operations/issues')} className="text-electric-teal hover:underline text-xs truncate max-w-[80px] block">View</button>
-                          ) : '—'}
-                        </td>
-                        <td className="p-2 text-gray-600">{wo.asset_id ? wo.asset_id.slice(0, 8) + '…' : '—'}</td>
-                        <td className="p-2 capitalize">{(wo.severity || '—').toLowerCase()}</td>
-                        <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${statusBadgeClass(wo.status)}`}>{wo.status}</span></td>
-                        <td className="p-2">{wo.contractor_id ? contractorLabel(wo.contractor_id) : <span className="text-gray-400">Unassigned</span>}</td>
-                        <td className="p-2">{formatDate(wo.sla_complete_by)}</td>
-                        <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${sla.class}`}>{sla.label}</span></td>
-                        <td className="p-2 text-gray-500">{formatRelativeTime(wo.updated_at)}</td>
-                        <td className="p-2 text-right">
-                          <Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button>
-                          {hasFeature('contractor_network') && !wo.contractor_id && (
-                            <Button size="sm" variant="outline" className="ml-1" onClick={() => { setWoDetailDrawer(wo.work_order_id); }}>Assign</Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="md:hidden space-y-3">
+                {filteredBySearch.map((wo) => {
+                  const sla = slaStateLabel(wo);
+                  return (
+                    <div key={wo.work_order_id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${statusBadgeClass(wo.status)}`}>{workOrderStatusLabel(wo.status)}</span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${sla.class}`}>{sla.label}</span>
+                        <span className="text-xs text-gray-500 ml-auto">{issueSeverityLabel(wo.severity)}</span>
+                      </div>
+                      <div>
+                        <p className="text-xs font-mono text-gray-500 break-all">{wo.work_order_id}</p>
+                        <p className="font-semibold text-midnight-blue mt-1 break-words">{wo.description || 'Work order'}</p>
+                        <button
+                          type="button"
+                          onClick={() => wo.property_id && navigate(`/properties/${wo.property_id}`)}
+                          className="text-sm text-electric-teal hover:underline mt-2 text-left break-words w-full"
+                        >
+                          {propertyLabel(wo.property_id)}
+                        </button>
+                      </div>
+                      <dl className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-gray-600">
+                        <dt>SLA due</dt>
+                        <dd>{formatDate(wo.sla_complete_by)}</dd>
+                        <dt>Contractor</dt>
+                        <dd className="break-words">{wo.contractor_id ? contractorLabel(wo.contractor_id) : 'Unassigned'}</dd>
+                        <dt>Updated</dt>
+                        <dd>{formatRelativeTime(wo.updated_at)}</dd>
+                      </dl>
+                      {wo.asset_id && (() => {
+                        const asset = assetIdParts(wo.asset_id);
+                        if (!asset.isTruncated) {
+                          return (
+                            <p className="text-xs text-gray-600 pt-1">
+                              Linked asset · <span className="font-mono text-gray-900">{asset.full}</span>
+                            </p>
+                          );
+                        }
+                        return (
+                          <details className="rounded-md border border-gray-100 bg-gray-50/80">
+                            <summary className="cursor-pointer px-3 py-2.5 text-xs text-electric-teal font-medium min-h-[44px] flex items-center gap-1">
+                              Linked asset · <span className="font-mono text-gray-800">{asset.short}</span>
+                            </summary>
+                            <div className="px-3 pb-3 border-t border-gray-100">
+                              <p className="text-xs text-gray-500 mt-2 mb-1">Full reference</p>
+                              <code className="text-xs font-mono text-gray-900 break-all block bg-white border rounded px-2 py-2">{asset.full}</code>
+                            </div>
+                          </details>
+                        );
+                      })()}
+                      <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
+                        <Button className="w-full min-h-11" variant="default" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View details</Button>
+                        {hasFeature('contractor_network') && !wo.contractor_id && (
+                          <Button className="w-full min-h-11" variant="outline" onClick={() => { setWoDetailDrawer(wo.work_order_id); }}>Assign contractor</Button>
+                        )}
+                        {wo.issue_id && (
+                          <Button className="w-full min-h-11" variant="outline" onClick={() => navigate('/operations/issues')}>View linked issue</Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-gray-600">
+                      <th className="p-2">Ref / Title</th>
+                      <th className="p-2">Property</th>
+                      <th className="p-2">Issue</th>
+                      <th className="p-2">Asset</th>
+                      <th className="p-2">Severity</th>
+                      <th className="p-2">Status</th>
+                      <th className="p-2">Contractor</th>
+                      <th className="p-2">SLA due</th>
+                      <th className="p-2">SLA state</th>
+                      <th className="p-2">Updated</th>
+                      <th className="p-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBySearch.map((wo) => {
+                      const sla = slaStateLabel(wo);
+                      const rowAsset = wo.asset_id ? assetIdParts(wo.asset_id) : null;
+                      return (
+                        <tr key={wo.work_order_id} className="border-b hover:bg-gray-50">
+                          <td className="p-2 max-w-[200px]">
+                            <span className="font-mono text-xs text-gray-500 block truncate">{wo.work_order_id?.slice(0, 8)}…</span>
+                            <span className="font-medium truncate block" title={wo.description}>{wo.description || '—'}</span>
+                          </td>
+                          <td className="p-2">
+                            <button type="button" onClick={() => wo.property_id && navigate(`/properties/${wo.property_id}`)} className="text-electric-teal hover:underline truncate max-w-[120px] block text-left">
+                              {propertyLabel(wo.property_id)}
+                            </button>
+                          </td>
+                          <td className="p-2">
+                            {wo.issue_id ? (
+                              <button type="button" onClick={() => navigate('/operations/issues')} className="text-electric-teal hover:underline text-xs truncate max-w-[80px] block">View</button>
+                            ) : '—'}
+                          </td>
+                          <td className="p-2 text-gray-600 max-w-[6rem]">
+                            {rowAsset ? (
+                              <span className="font-mono text-xs" title={rowAsset.full}>
+                                {rowAsset.short}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td className="p-2">{issueSeverityLabel(wo.severity)}</td>
+                          <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${statusBadgeClass(wo.status)}`}>{workOrderStatusLabel(wo.status)}</span></td>
+                          <td className="p-2 max-w-[8rem] break-words">{wo.contractor_id ? contractorLabel(wo.contractor_id) : <span className="text-gray-400">Unassigned</span>}</td>
+                          <td className="p-2 whitespace-nowrap">{formatDate(wo.sla_complete_by)}</td>
+                          <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${sla.class}`}>{sla.label}</span></td>
+                          <td className="p-2 text-gray-500 whitespace-nowrap">{formatRelativeTime(wo.updated_at)}</td>
+                          <td className="p-2 text-right whitespace-nowrap">
+                            <Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button>
+                            {hasFeature('contractor_network') && !wo.contractor_id && (
+                              <Button size="sm" variant="outline" className="ml-1" onClick={() => { setWoDetailDrawer(wo.work_order_id); }}>Assign</Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
           {total > 0 && <p className="text-sm text-gray-500 mt-2">Total: {total}</p>}
         </CardContent>
@@ -703,11 +797,27 @@ function ClientMaintenancePageInner() {
                   <p className="font-medium text-gray-900 mb-2">{woDetailData.description || '—'}</p>
                   <dl className="grid grid-cols-2 gap-2 text-sm mb-4">
                     <dt className="text-gray-500">Status</dt>
-                    <dd><span className={`px-1.5 py-0.5 rounded text-xs ${statusBadgeClass(woDetailData.status)}`}>{woDetailData.status || '—'}</span></dd>
-                    <dt className="text-gray-500">Severity</dt><dd className="capitalize">{(woDetailData.severity || '—').toLowerCase()}</dd>
+                    <dd><span className={`px-1.5 py-0.5 rounded text-xs ${statusBadgeClass(woDetailData.status)}`}>{workOrderStatusLabel(woDetailData.status)}</span></dd>
+                    <dt className="text-gray-500">Severity</dt><dd>{issueSeverityLabel(woDetailData.severity)}</dd>
                     <dt className="text-gray-500">SLA complete by</dt><dd>{formatDate(woDetailData.sla_complete_by)}</dd>
                     <dt className="text-gray-500">Contractor</dt><dd>{woDetailData.contractor_id ? contractorLabel(woDetailData.contractor_id) : <span className="text-gray-400">Unassigned</span>}</dd>
-                    <dt className="text-gray-500">Asset</dt><dd>{woDetailData.asset_id ? woDetailData.asset_id.slice(0, 8) + '…' : '—'}</dd>
+                    <dt className="text-gray-500">Asset</dt>
+                    <dd className="min-w-0">
+                      {woDetailData.asset_id ? (() => {
+                        const asset = assetIdParts(woDetailData.asset_id);
+                        return (
+                          <div>
+                            <span className="font-mono text-sm" title={asset.full}>{asset.short}</span>
+                            {asset.isTruncated && (
+                              <details className="mt-1">
+                                <summary className="cursor-pointer text-xs text-electric-teal">Show full reference</summary>
+                                <code className="mt-1 block text-xs font-mono break-all bg-gray-50 border rounded p-2">{asset.full}</code>
+                              </details>
+                            )}
+                          </div>
+                        );
+                      })() : '—'}
+                    </dd>
                     <dt className="text-gray-500">Linked issue</dt>
                     <dd>
                       {woDetailData.issue_id ? (

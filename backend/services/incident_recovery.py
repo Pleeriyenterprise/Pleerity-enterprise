@@ -12,6 +12,7 @@ from services.incident_service import (
     SOURCE_JOB_MONITOR,
     SOURCE_HEARTBEAT,
     SOURCE_DELIVERY_UNKNOWN,
+    SOURCE_RISK_REGEN_QUEUE,
     STATUS_OPEN,
     STATUS_ACKNOWLEDGED,
 )
@@ -65,6 +66,18 @@ async def compute_recovery_state_for_incident(incident: dict) -> dict:
         if count == 0:
             out["recovery_detected"] = True
             out["recovery_hint"] = "Recovery detected. This incident can be resolved automatically."
+        return out
+
+    if source == SOURCE_RISK_REGEN_QUEUE:
+        try:
+            from services.risk_signal_regen_queue import get_regen_queue_summary
+
+            s = await get_regen_queue_summary(5)
+            if not s.get("attention_required"):
+                out["recovery_detected"] = True
+                out["recovery_hint"] = "Risk regen queue health is OK (no DEAD backlog; FAILED count within threshold)."
+        except Exception:
+            pass
         return out
 
     if source == SOURCE_JOB_MONITOR:
@@ -176,6 +189,37 @@ async def check_and_resolve_heartbeat_incidents() -> int:
     async for doc in cursor:
         incident_id = str(doc["_id"])
         note = f"Automatically resolved: scheduler heartbeat is fresh (last_heartbeat_at={last_hb})."
+        ok = await resolve_incident_auto_recovery(incident_id, note)
+        if ok:
+            resolved_count += 1
+    return resolved_count
+
+
+async def check_and_resolve_risk_regen_queue_incidents() -> int:
+    """
+    If risk regen queue no longer requires attention, resolve open/ack incidents for SOURCE_RISK_REGEN_QUEUE.
+    """
+    try:
+        from services.risk_signal_regen_queue import get_regen_queue_summary
+
+        summary = await get_regen_queue_summary(5)
+        if summary.get("attention_required"):
+            return 0
+    except Exception:
+        return 0
+
+    db = database.get_db()
+    cursor = db.incidents.find(
+        {"status": {"$in": [STATUS_OPEN, STATUS_ACKNOWLEDGED]}, "source": SOURCE_RISK_REGEN_QUEUE},
+        {"_id": 1},
+    )
+    resolved_count = 0
+    async for doc in cursor:
+        incident_id = str(doc["_id"])
+        note = (
+            "Automatically resolved: risk_signal_regen_queue counts are healthy "
+            "(no DEAD jobs; FAILED count at or below threshold)."
+        )
         ok = await resolve_incident_auto_recovery(incident_id, note)
         if ok:
             resolved_count += 1

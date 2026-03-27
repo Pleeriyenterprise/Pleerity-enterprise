@@ -36,6 +36,8 @@ def _slim_risk(s: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "signal_id": sid,
         "risk_type": s.get("risk_type"),
+        "risk_type_label_client": s.get("risk_type_label_client"),
+        "recommended_action_client": s.get("recommended_action_client"),
         "risk_level": s.get("risk_level"),
         "property_id": s.get("property_id"),
         "description": (s.get("description") or "")[:240] or None,

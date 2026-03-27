@@ -9,6 +9,15 @@ import uuid
 from database import database
 import logging
 from auth import generate_secure_token, hash_token
+from services.work_order_assignment_constants import (
+    ASSIGNMENT_ROUTING_ASSIGNED,
+    ASSIGNMENT_ROUTING_UNASSIGNED,
+)
+from services.work_order_execution_constants import (
+    WORK_ORDER_CATEGORY_COMPLIANCE,
+    WORK_ORDER_KIND_COMPLIANCE,
+    WORK_ORDER_KIND_MAINTENANCE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,14 +75,26 @@ async def create_work_order(
     risk_signal_id: Optional[str] = None,
     cost_estimate_min: Optional[float] = None,
     cost_estimate_max: Optional[float] = None,
+    created_from: Optional[str] = None,
+    triggering_rule: Optional[str] = None,
+    operational_root_key: Optional[str] = None,
     initial_status: Optional[str] = None,
     sla_respond_by: Optional[str] = None,
     sla_complete_by: Optional[str] = None,
     use_triage: bool = True,
+    *,
+    work_order_kind: str = WORK_ORDER_KIND_MAINTENANCE,
+    requirement_code: Optional[str] = None,
+    compliance_purpose: Optional[str] = None,
+    compliance_due_at: Optional[str] = None,
+    compliance_generated_from: Optional[str] = None,
+    expected_output_document_type: Optional[str] = None,
+    linked_property_requirement_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a work order. source: tenant_request | client | admin.
     Optional: asset_id, issue_id, cost estimates, initial_status (default OPEN), SLA overrides.
     If use_triage is True and severity/sla are not provided, runs triage and applies result (stores reasoning).
+    Compliance execution work orders (work_order_kind=COMPLIANCE) skip maintenance triage and use explicit metadata.
     """
     db = database.get_db()
     now = datetime.now(timezone.utc).isoformat()
@@ -86,18 +107,27 @@ async def create_work_order(
     if status not in ALL_STATUSES:
         status = STATUS_OPEN
 
+    kind = (work_order_kind or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+    if kind not in (WORK_ORDER_KIND_MAINTENANCE, WORK_ORDER_KIND_COMPLIANCE):
+        kind = WORK_ORDER_KIND_MAINTENANCE
+    use_triage_effective = use_triage and kind != WORK_ORDER_KIND_COMPLIANCE
+    if kind == WORK_ORDER_KIND_COMPLIANCE:
+        eff_category = WORK_ORDER_CATEGORY_COMPLIANCE
+    else:
+        eff_category = (category or "").strip() or CATEGORY_GENERAL
+
     triage_reasoning: Optional[List[str]] = None
     recommended_contractor_type: Optional[str] = None
     effective_severity = severity
     effective_respond = sla_respond_by
     effective_complete = sla_complete_by
 
-    if use_triage and (effective_severity is None or effective_respond is None or effective_complete is None):
+    if use_triage_effective and (effective_severity is None or effective_respond is None or effective_complete is None):
         try:
             from services.maintenance_triage import triage_maintenance_issue_async
             triage = await triage_maintenance_issue_async(
                 description=description,
-                category=category or CATEGORY_GENERAL,
+                category=eff_category,
                 source=source,
                 property_id=property_id,
                 client_id=client_id,
@@ -124,7 +154,14 @@ async def create_work_order(
         "description": (description or "").strip(),
         "source": source,
         "reporter_id": reporter_id,
-        "category": category or CATEGORY_GENERAL,
+        "category": eff_category,
+        "work_order_kind": kind,
+        "requirement_code": (requirement_code or "").strip().lower() or None,
+        "compliance_purpose": (compliance_purpose or "").strip().lower() or None,
+        "compliance_due_at": (compliance_due_at or "").strip() or None,
+        "compliance_generated_from": (compliance_generated_from or "").strip().lower() or None,
+        "expected_output_document_type": (expected_output_document_type or "").strip() or None,
+        "linked_property_requirement_id": (linked_property_requirement_id or "").strip() or None,
         "severity": effective_severity or SEVERITY_MEDIUM,
         "status": status,
         "contractor_id": None,
@@ -146,7 +183,25 @@ async def create_work_order(
         "contractor_notes": None,
         "completion_notes": None,
         "evidence_keys": [],
+        "requires_client_assignment_confirmation": source != SOURCE_ADMIN,
+        "assignment_routing_state": ASSIGNMENT_ROUTING_UNASSIGNED,
+        "recommended_contractor_id": None,
+        "recommendation_reason_summary": None,
+        "recommended_at": None,
+        "recommendation_id": None,
+        "client_confirmation_deadline_at": None,
+        "confirmation_reminder_sent_at": None,
+        "confirmation_escalated_at": None,
+        "routing_decline_note": None,
+        "routing_pending_admin": False,
+        "routing_invalidation_reason": None,
     }
+    if created_from:
+        doc["created_from"] = (created_from or "").strip()
+    if triggering_rule:
+        doc["triggering_rule"] = (triggering_rule or "").strip()
+    if operational_root_key:
+        doc["operational_root_key"] = (operational_root_key or "").strip()
     await db.work_orders.insert_one(doc)
     doc.pop("_id", None)
     return doc
@@ -181,6 +236,7 @@ async def list_work_orders(
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     sla_state: Optional[str] = None,
+    work_order_kind: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
 ) -> Dict[str, Any]:
@@ -208,6 +264,10 @@ async def list_work_orders(
                 to_date + "T23:59:59.999Z" if "T" not in to_date else to_date
             )
     _apply_sla_state_query(q, sla_state)
+    if work_order_kind is not None and str(work_order_kind).strip():
+        wk = str(work_order_kind).strip().upper()
+        if wk in (WORK_ORDER_KIND_MAINTENANCE, WORK_ORDER_KIND_COMPLIANCE):
+            q["work_order_kind"] = wk
     cursor = db.work_orders.find(q).sort("created_at", -1).skip(skip).limit(limit)
     items = await cursor.to_list(limit)
     for d in items:
@@ -237,14 +297,35 @@ async def update_work_order(
     completion_notes: Optional[str] = None,
     evidence_keys_append: Optional[List[str]] = None,
     accepted_at: Optional[str] = None,
+    *,
+    allow_direct_contractor_assignment: bool = False,
+    assignment_profile: str = "standard",
 ) -> Optional[Dict[str, Any]]:
     """Update work order status, contractor, resolution outcome, notes, evidence. When contractor_id is set, records assignment and sets assigned_at. accepted_at set when contractor accepts (for response/completion metrics)."""
     db = database.get_db()
     prev_snapshot = await db.work_orders.find_one(
         {"work_order_id": work_order_id},
-        {"_id": 0, "status": 1, "client_id": 1, "property_id": 1},
+        {"_id": 0, "status": 1, "client_id": 1, "property_id": 1, "requires_client_assignment_confirmation": 1},
     )
     prev_status = (prev_snapshot or {}).get("status")
+    if contractor_id is not None and prev_snapshot:
+        wo_client = prev_snapshot.get("client_id")
+        if not wo_client:
+            raise ValueError("Work order has no client context; cannot assign a contractor")
+        req_confirm = prev_snapshot.get("requires_client_assignment_confirmation", True)
+        if req_confirm and not allow_direct_contractor_assignment:
+            raise ValueError(
+                "This work order requires client confirmation before a contractor can be assigned. "
+                "Use the client portal contractor-routing actions, or assign from admin with elevated access."
+            )
+        from services import contractor_service
+
+        await contractor_service.validate_contractor_for_work_order_assignment(
+            contractor_id,
+            str(wo_client).strip(),
+            work_order_id,
+            assignment_profile=assignment_profile,
+        )
     now = datetime.now(timezone.utc).isoformat()
     set_fields = {"updated_at": now}
     if contractor_notes is not None:
@@ -262,6 +343,16 @@ async def update_work_order(
     if contractor_id is not None:
         set_fields["contractor_id"] = contractor_id
         set_fields["assigned_at"] = now
+        set_fields["assignment_routing_state"] = ASSIGNMENT_ROUTING_ASSIGNED
+        set_fields["recommended_contractor_id"] = None
+        set_fields["recommendation_reason_summary"] = None
+        set_fields["recommended_at"] = None
+        set_fields["recommendation_id"] = None
+        set_fields["client_confirmation_deadline_at"] = None
+        set_fields["confirmation_reminder_sent_at"] = None
+        set_fields["confirmation_escalated_at"] = None
+        set_fields["routing_decline_note"] = None
+        set_fields["routing_pending_admin"] = False
         if status is None:
             existing = await db.work_orders.find_one({"work_order_id": work_order_id}, {"status": 1})
             if existing and existing.get("status") == STATUS_OPEN:
@@ -274,7 +365,7 @@ async def update_work_order(
         set_fields["cost_estimate_max"] = cost_estimate_max
     update_doc = {"$set": set_fields}
     if evidence_keys_append:
-        update_doc["$push"] = {"evidence_keys": {"$each": evidence_keys_append}}
+        update_doc["$addToSet"] = {"evidence_keys": {"$each": evidence_keys_append}}
     result = await db.work_orders.find_one_and_update(
         {"work_order_id": work_order_id},
         update_doc,
@@ -283,6 +374,13 @@ async def update_work_order(
     if result:
         result.pop("_id", None)
         new_status = result.get("status")
+        if status is not None and str(status).strip().upper() in (STATUS_CANCELLED, STATUS_COMPLETED):
+            try:
+                from services.work_order_contractor_routing_service import invalidate_pending_routing_for_work_order
+
+                await invalidate_pending_routing_for_work_order(work_order_id, reason=str(status).strip().upper())
+            except Exception as inv_e:
+                logger.warning("Contractor routing invalidate on work order close failed: %s", inv_e)
         if (
             status is not None
             and prev_status
@@ -310,6 +408,7 @@ async def update_work_order(
                     "contractor_id": contractor_id,
                     "assigned_at": now,
                     "assigned_by": assigned_by,
+                    "assignment_profile": assignment_profile,
                 })
             except Exception as e:
                 logger.warning("Failed to record contractor assignment: %s", e)
@@ -368,31 +467,68 @@ async def update_work_order(
                     desc = (result.get("description") or "Work order")[:200]
                     due_date_str = due_date if due_date else "See job link"
                     job_link_final = job_link if job_link else "See portal"
+                    wo_kind_mail = (result.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+                    if wo_kind_mail == WORK_ORDER_KIND_COMPLIANCE:
+                        subj = "Compliance work order assignment"
+                        body = (
+                            f"You have been assigned to a compliance execution work order (inspection/renewal/certification): "
+                            f"{work_order_id}. Description: {desc}. Property: {property_address or 'See portal'}. "
+                            f"Due: {due_date_str}. View and respond (no login required): {job_link_final}. "
+                            f"This assignment is for compliance evidence work, not ad-hoc maintenance repair unless stated. "
+                            f"Payment responsibility: Pleerity coordinates work orders and invoice approval but does not process "
+                            f"contractor payments; follow up with the client for payment."
+                        )
+                    else:
+                        subj = "Maintenance work order assignment"
+                        body = (
+                            f"You have been assigned to a maintenance repair work order: {work_order_id}. Description: {desc}. "
+                            f"Property: {property_address or 'See portal'}. Due: {due_date_str}. "
+                            f"View and respond (no login required): {job_link_final}. "
+                            f"Payment responsibility: Pleerity coordinates work orders and invoice approval but does not process "
+                            f"contractor payments. Payment responsibility lies with the client; please follow up with the client for payment."
+                        )
                     from services.notification_orchestrator import notification_orchestrator
                     await notification_orchestrator.send(
                         template_key="CONTRACTOR_ASSIGNED",
                         client_id=result.get("client_id"),
                         context={
                             "recipient": str(to_email).strip(),
-                            "subject": "Work order assignment",
-                            "body": f"You have been assigned to work order: {work_order_id}. Description: {desc}. Property: {property_address or 'See portal'}. Due: {due_date_str}. View and respond (no login required): {job_link_final}. Payment responsibility: Pleerity coordinates work orders and invoice approval but does not process contractor payments. Payment responsibility lies with the client; please follow up with the client for payment.",
+                            "subject": subj,
+                            "body": body,
                             "job_link": job_link_final,
                             "due_date": due_date_str,
                         },
                         idempotency_key=f"contractor_assign_{work_order_id}_{contractor_id}",
                         event_type="CONTRACTOR_ASSIGNED",
                     )
+                    try:
+                        from models import AuditAction
+                        from utils.audit import create_audit_log
+
+                        await create_audit_log(
+                            action=AuditAction.WORK_ORDER_CONTRACTOR_ASSIGNMENT_EMAIL_SENT,
+                            actor_id=assigned_by,
+                            client_id=result.get("client_id"),
+                            resource_type="work_order",
+                            resource_id=work_order_id,
+                            metadata={"contractor_id": contractor_id, "recipient": str(to_email).strip()},
+                        )
+                    except Exception as aud_e:
+                        logger.warning("Audit assignment email sent failed: %s", aud_e)
             except Exception as e:
                 logger.warning("Failed to send contractor assignment notification: %s", e)
         if status == STATUS_COMPLETED and result.get("client_id") and result.get("property_id"):
             try:
                 from services.predictive_maintenance_service import record_maintenance_event
+
+                wo_kind_done = (result.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+                evt = "inspection" if wo_kind_done == WORK_ORDER_KIND_COMPLIANCE else "repair"
                 await record_maintenance_event(
                     client_id=result["client_id"],
                     property_id=result["property_id"],
-                    event_type="repair",
+                    event_type=evt,
                     asset_id=result.get("asset_id"),
-                    notes=f"Work order {work_order_id} completed: {result.get('description', '')[:200]}",
+                    notes=f"Work order {work_order_id} completed ({wo_kind_done}): {result.get('description', '')[:200]}",
                 )
             except Exception as e:
                 logger.warning("Failed to record maintenance event for completed work order: %s", e)
@@ -427,19 +563,33 @@ async def update_work_order(
         if status == STATUS_COMPLETED:
             try:
                 from services.compliance_outcome_engine import apply_action_outcome, EVENT_WORK_ORDER_COMPLETED
+
+                wo_kind_out = (result.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+                req_for_outcome = None
+                if wo_kind_out == WORK_ORDER_KIND_COMPLIANCE:
+                    req_for_outcome = (result.get("requirement_code") or "").strip() or None
                 result["outcome"] = await apply_action_outcome(
                     {
                         "event_type": EVENT_WORK_ORDER_COMPLETED,
                         "client_id": result.get("client_id"),
                         "property_id": result.get("property_id"),
                         "asset_id": result.get("asset_id"),
-                        "requirement_type": None,
+                        "requirement_type": req_for_outcome,
                         "timestamp": result.get("completed_at") or now,
                         "source_id": work_order_id,
                         "dedupe_key": f"{EVENT_WORK_ORDER_COMPLETED}:{work_order_id}",
                         "actor_id": assigned_by,
                         "actor_role": "SYSTEM",
-                        "metadata": {"work_order_id": work_order_id},
+                        "metadata": {
+                            "work_order_id": work_order_id,
+                            "work_order_kind": wo_kind_out,
+                            "requirement_code": req_for_outcome,
+                            "execution_context": (
+                                "compliance_inspection_or_renewal"
+                                if wo_kind_out == WORK_ORDER_KIND_COMPLIANCE
+                                else "maintenance_repair"
+                            ),
+                        },
                     }
                 )
             except Exception as outcome_err:

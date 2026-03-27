@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import logging
 
 from database import database
+from presentation.label_service import compliance_requirement_status_label, requirement_label
 
 from services.priority_actions import (
     _fetch_client_actions,
@@ -103,7 +104,7 @@ def _impact_label(action_type: str, severity: str) -> str:
     if action_type == ACTION_PENDING_APPROVAL:
         return "Blocks payment and spend visibility"
     if action_type in (ACTION_WORK_ORDER_NEAR_BREACH, ACTION_OPEN_WORK_ORDER):
-        return "SLA / contractor timeliness"
+        return "Contractor response times"
     if action_type == ACTION_OPEN_ISSUE:
         return "Active maintenance issue"
     return "Compliance or operational attention"
@@ -414,14 +415,15 @@ async def _recently_completed_tasks(client_id: str, limit: int = 15) -> List[Dic
     for r in reqs:
         rid = r.get("requirement_id")
         pid = r.get("property_id")
-        code = r.get("code") or r.get("requirement_type") or "Requirement"
+        code = r.get("code") or r.get("requirement_type")
+        disp = requirement_label(code) if code else "Requirement"
         upd = _parse_dt(r.get("updated_at"))
         out.append({
             "id": f"requirement_completed:{rid}",
             "source_type": "requirement",
             "source_id": str(rid),
-            "title": f"Requirement satisfied: {code}",
-            "description": f"Status is now {r.get('status') or 'compliant'}.",
+            "title": f"Requirement satisfied: {disp}",
+            "description": f"Status is now {compliance_requirement_status_label(r.get('status') or 'COMPLIANT')}.",
             "property_id": pid,
             "property_label": labels.get(pid or "") if pid else None,
             "urgency_level": "low",

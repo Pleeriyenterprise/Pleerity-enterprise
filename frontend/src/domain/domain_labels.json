@@ -1,0 +1,230 @@
+{
+  "meta": {
+    "version": 1,
+    "description": "Canonical user-facing labels. Mirror copy: frontend/src/domain/domain_labels.json"
+  },
+  "requirement_codes": {
+    "gas_safety": {
+      "display_label": "Gas Safety Certificate (CP12)",
+      "short_label": "Gas safety",
+      "action_label": "Renew or upload your gas safety certificate",
+      "category": "Safety"
+    },
+    "eicr": {
+      "display_label": "Electrical Installation Condition Report (EICR)",
+      "short_label": "EICR",
+      "action_label": "Review your electrical certificate and arrange inspection if needed",
+      "category": "Electrical"
+    },
+    "epc": {
+      "display_label": "Energy Performance Certificate (EPC)",
+      "short_label": "EPC",
+      "action_label": "Review or renew your EPC",
+      "category": "Energy"
+    },
+    "smoke_alarms": {
+      "display_label": "Smoke alarms",
+      "short_label": "Smoke alarms",
+      "action_label": "Confirm smoke alarm compliance and upload evidence if required",
+      "category": "Fire safety"
+    },
+    "co_alarms": {
+      "display_label": "Carbon monoxide alarms",
+      "short_label": "CO alarms",
+      "action_label": "Confirm CO alarm compliance and upload evidence if required",
+      "category": "Fire safety"
+    },
+    "deposit_pi": {
+      "display_label": "Deposit protection",
+      "short_label": "Deposit",
+      "action_label": "Complete deposit protection and prescribed information",
+      "category": "Tenancy"
+    },
+    "right_to_rent": {
+      "display_label": "Right to Rent checks",
+      "short_label": "Right to Rent",
+      "action_label": "Complete and retain Right to Rent records",
+      "category": "Tenancy"
+    },
+    "how_to_rent": {
+      "display_label": "How to Rent guide",
+      "short_label": "How to Rent",
+      "action_label": "Provide the current How to Rent guide to tenants",
+      "category": "Tenancy"
+    },
+    "tenancy_agreement": {
+      "display_label": "Tenancy agreement",
+      "short_label": "Tenancy",
+      "action_label": "Retain a signed tenancy agreement",
+      "category": "Tenancy"
+    },
+    "hmo_license": {
+      "display_label": "HMO licence",
+      "short_label": "HMO licence",
+      "action_label": "Renew or obtain an HMO licence where required",
+      "category": "Regulatory"
+    },
+    "fire_risk_assessment": {
+      "display_label": "Fire risk assessment",
+      "short_label": "Fire risk",
+      "action_label": "Complete or renew the fire risk assessment",
+      "category": "Fire safety"
+    },
+    "legionella": {
+      "display_label": "Legionella risk assessment",
+      "short_label": "Legionella",
+      "action_label": "Review your legionella assessment and water system records",
+      "category": "Health"
+    },
+    "portable_appliance_test": {
+      "display_label": "Portable Appliance Testing (PAT)",
+      "short_label": "PAT",
+      "action_label": "Arrange PAT testing and upload certificates",
+      "category": "Electrical"
+    },
+    "fire_alarm": {
+      "display_label": "Fire alarm inspection",
+      "short_label": "Fire alarm",
+      "action_label": "Upload your fire alarm inspection certificate",
+      "category": "Fire safety"
+    },
+    "fire_detection": {
+      "display_label": "Fire alarm inspection",
+      "short_label": "Fire detection",
+      "action_label": "Upload your fire alarm inspection certificate",
+      "category": "Fire safety"
+    },
+    "gas_safety_certificate": {
+      "display_label": "Gas Safety Certificate (CP12)",
+      "short_label": "Gas safety",
+      "action_label": "Renew or upload your gas safety certificate",
+      "category": "Safety"
+    }
+  },
+  "risk_types": {
+    "Boiler Failure Risk": {
+      "client_label": "Boiler reliability concern",
+      "admin_label": "Boiler failure risk",
+      "recommended_action_client": "Book a qualified gas engineer to inspect the boiler and review servicing or replacement."
+    },
+    "Damp / Moisture Risk": {
+      "client_label": "Damp or moisture concern",
+      "admin_label": "Damp / moisture risk",
+      "recommended_action_client": "Arrange a damp inspection and plan work to fix the underlying cause."
+    },
+    "Electrical Risk": {
+      "client_label": "Electrical safety concern",
+      "admin_label": "Electrical risk",
+      "recommended_action_client": "Review your electrical certificate and arrange an inspection if it is due or out of date."
+    },
+    "Recurring Repairs Risk": {
+      "client_label": "Repeated repairs detected",
+      "admin_label": "Recurring repairs risk",
+      "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+    },
+    "SLA Breach Risk": {
+      "client_label": "Response time exceeded",
+      "admin_label": "SLA breach (contractor response)",
+      "recommended_action_client": "Review open jobs with your contractor and re-prioritise anything that is overdue."
+    },
+    "Compliance Churn Risk": {
+      "client_label": "Compliance gaps detected",
+      "admin_label": "Compliance churn risk",
+      "recommended_action_client": "Upload missing evidence and schedule renewals so obligations stay up to date."
+    },
+    "Maintenance Frequency Risk": {
+      "client_label": "Frequent maintenance issues detected",
+      "admin_label": "High maintenance frequency",
+      "recommended_action_client": "Review property condition and inspect assets that are generating repeat reports."
+    },
+    "Certificate Expiry Soon": {
+      "client_label": "Certificate renewal due soon",
+      "admin_label": "Certificate expiring soon",
+      "recommended_action_client": "Renew the certificate before expiry and upload the new document with correct dates."
+    }
+  },
+  "issue_statuses": {
+    "new": { "client_label": "New", "admin_label": "New" },
+    "open": { "client_label": "Open", "admin_label": "Open" },
+    "triaged": { "client_label": "Under review", "admin_label": "Triaged" },
+    "monitoring": { "client_label": "Monitoring", "admin_label": "Monitoring" },
+    "investigating": { "client_label": "Investigating", "admin_label": "Investigating" },
+    "ready_for_work_order": {
+      "client_label": "Ready for contractor assignment",
+      "admin_label": "Ready for work order"
+    },
+    "in_progress": { "client_label": "In progress", "admin_label": "In progress" },
+    "resolved": { "client_label": "Resolved", "admin_label": "Resolved" },
+    "closed": { "client_label": "Closed", "admin_label": "Closed" },
+    "cancelled": { "client_label": "Cancelled", "admin_label": "Cancelled" }
+  },
+  "work_order_statuses": {
+    "OPEN": { "client_label": "Open", "admin_label": "Open" },
+    "ASSIGNED": { "client_label": "Assigned", "admin_label": "Assigned" },
+    "IN_PROGRESS": { "client_label": "In progress", "admin_label": "In progress" },
+    "COMPLETED": { "client_label": "Completed", "admin_label": "Completed" },
+    "CANCELLED": { "client_label": "Cancelled", "admin_label": "Cancelled" },
+    "DRAFT": { "client_label": "Draft", "admin_label": "Draft" },
+    "SCHEDULED": { "client_label": "Scheduled", "admin_label": "Scheduled" },
+    "AWAITING_PARTS": { "client_label": "Awaiting parts", "admin_label": "Awaiting parts" },
+    "VERIFIED": { "client_label": "Verified", "admin_label": "Verified" },
+    "CLOSED": { "client_label": "Closed", "admin_label": "Closed" }
+  },
+  "sla_presentations": {
+    "breached": {
+      "client_label": "Response time exceeded",
+      "admin_label": "SLA breached"
+    },
+    "near_breach": {
+      "client_label": "Approaching response deadline",
+      "admin_label": "Near SLA breach"
+    }
+  },
+  "property_compliance_rag": {
+    "GREEN": {
+      "client_label": "Compliant",
+      "admin_label": "Green (compliant)"
+    },
+    "AMBER": {
+      "client_label": "Needs attention",
+      "admin_label": "Amber (attention)"
+    },
+    "RED": {
+      "client_label": "Action required",
+      "admin_label": "Red (action required)"
+    },
+    "UNKNOWN": {
+      "client_label": "Not assessed",
+      "admin_label": "Unknown"
+    }
+  },
+  "property_types": {
+    "residential": { "client_label": "Residential", "admin_label": "Residential" },
+    "commercial": { "client_label": "Commercial", "admin_label": "Commercial" },
+    "hmo": { "client_label": "HMO", "admin_label": "HMO" },
+    "flat": { "client_label": "Flat", "admin_label": "Flat" },
+    "house": { "client_label": "House", "admin_label": "House" },
+    "bungalow": { "client_label": "Bungalow", "admin_label": "Bungalow" },
+    "studio": { "client_label": "Studio", "admin_label": "Studio" },
+    "mixed_use": { "client_label": "Mixed use", "admin_label": "Mixed use" }
+  },
+  "compliance_requirement_statuses": {
+    "OVERDUE": { "client_label": "Overdue", "admin_label": "Overdue" },
+    "EXPIRED": { "client_label": "Expired", "admin_label": "Expired" },
+    "EXPIRING_SOON": { "client_label": "Due soon", "admin_label": "Expiring soon" },
+    "PENDING": { "client_label": "Awaiting evidence", "admin_label": "Pending" },
+    "MISSING": { "client_label": "Evidence needed", "admin_label": "Missing" },
+    "MISSING_EVIDENCE": { "client_label": "Evidence needed", "admin_label": "Missing evidence" },
+    "COMPLIANT": { "client_label": "Compliant", "admin_label": "Compliant" },
+    "VALID": { "client_label": "Valid", "admin_label": "Valid" },
+    "NOT_APPLICABLE": { "client_label": "Not applicable", "admin_label": "Not applicable" },
+    "WAIVED": { "client_label": "Waived", "admin_label": "Waived" }
+  },
+  "suggested_action_codes": {
+    "create_issue": { "client_label": "Log an issue", "admin_label": "Create issue" },
+    "create_work_order": { "client_label": "Book a work order", "admin_label": "Create work order" },
+    "schedule_inspection": { "client_label": "Schedule an inspection", "admin_label": "Schedule inspection" },
+    "send_contractor_reminder": { "client_label": "Nudge contractor", "admin_label": "Send contractor reminder" },
+    "reassign_contractor": { "client_label": "Change contractor", "admin_label": "Reassign contractor" }
+  }
+}

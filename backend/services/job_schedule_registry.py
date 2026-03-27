@@ -40,6 +40,7 @@ class JobScheduleEntry:
 # Critical jobs for health + SLA. Must match job_runner registered ids.
 # max_delay_minutes: after this, job is "missed" if no successful/degraded run
 CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
+    JobScheduleEntry("subscription_lifecycle", True, 26 * 60, "Daily", True),
     JobScheduleEntry("daily_reminders", True, 26 * 60, "Daily", True),
     JobScheduleEntry("pending_verification_digest", True, 26 * 60, "Daily", True),
     JobScheduleEntry("monthly_digest", True, 36 * 60, "Monthly", True),
@@ -50,10 +51,12 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("expiry_rollover_recalc", True, 26 * 60, "Daily", False),
     JobScheduleEntry("contractor_performance_recalc", False, 26 * 60, "Daily", True),
     JobScheduleEntry("compliance_recalc_worker", True, 2, "Every 15 sec", False),
+    JobScheduleEntry("risk_signal_regen_worker", False, 3, "Every 30 sec", False),
     JobScheduleEntry("compliance_recalc_sla_monitor", True, 12, "Every 5 min", True),
     JobScheduleEntry("notification_retry_worker", True, 5, "Every minute", True),
     JobScheduleEntry("notification_failure_spike_monitor", True, 10, "Every 5 min", False),
     JobScheduleEntry("sla_watchdog", True, 15, "Every 10 min", False),
+    JobScheduleEntry("risk_signal_regen_alert_monitor", False, 20, "Every 10 min (staggered)", False),
     JobScheduleEntry("scheduler_heartbeat", True, 5, "Every 2 min", False),
     JobScheduleEntry("delivery_reconciliation", True, 25, "Every 15 min", True),
     JobScheduleEntry("order_delivery_processing", True, 12, "Every 5 min", True),
@@ -75,6 +78,7 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     # Risk signals batch job (non-critical; zero signals after scanning data is valid)
     JobScheduleEntry("risk_signals_job", False, 26 * 60, "Daily", True),
     JobScheduleEntry("work_order_sla_breach_job", False, 90, "Hourly", True),
+    JobScheduleEntry("work_order_contractor_confirmation_timeout_job", False, 90, "Hourly", True),
 ]
 
 # All jobs that may appear in health summary / automation centre (including non-critical)

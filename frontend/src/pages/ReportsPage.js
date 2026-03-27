@@ -35,6 +35,12 @@ import {
   BarChart2,
 } from 'lucide-react';
 import UpgradePrompt from '../components/UpgradePrompt';
+import {
+  complianceRequirementStatusLabel,
+  propertyComplianceRagLabel,
+  propertyTypeLabel,
+  requirementLabel,
+} from '../domain/presentDomain';
 
 const ReportsPage = () => {
   const navigate = useNavigate();
@@ -296,8 +302,8 @@ const ReportsPage = () => {
           head: [['Address', 'Type', 'Status', 'Requirements', 'Compliant', 'Overdue']],
           body: reportData.properties.map(p => [
             p.address,
-            p.property_type,
-            p.compliance_status,
+            propertyTypeLabel(p.property_type),
+            propertyComplianceRagLabel(p.compliance_status),
             p.total_requirements,
             p.compliant,
             p.overdue
@@ -317,9 +323,9 @@ const ReportsPage = () => {
         head: [['Property', 'Type', 'Description', 'Status', 'Due Date']],
         body: reportData.requirements.map(r => [
           r.property_address?.substring(0, 30) || 'N/A',
-          r.requirement_type || 'N/A',
+          requirementLabel(r.requirement_type),
           r.description?.substring(0, 25) || 'N/A',
-          r.status || 'N/A',
+          complianceRequirementStatusLabel(r.status),
           r.due_date || 'N/A'
         ]),
         styles: { fontSize: 7 },

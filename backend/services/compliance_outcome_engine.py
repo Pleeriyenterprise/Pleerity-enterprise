@@ -134,6 +134,23 @@ async def _mark_related_risk_acknowledged(event: Dict[str, Any]) -> None:
     )
 
 
+async def _sync_regenerate_risks_and_operational(client_id: str, property_id: str) -> None:
+    """After compliance recalc from an outcome event: refresh heuristic signals + automation (same worker, no extra queue)."""
+    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+
+    db = database.get_db()
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "billing_plan": 1})
+    billing = (client_doc or {}).get("billing_plan")
+    flags = await get_effective_flags(client_id, billing)
+    if not flags.get(PREDICTIVE_MAINTENANCE):
+        return
+    from services import risk_signal_service
+    from services.operational_automation_service import evaluate_operational_automation_after_risk_refresh
+
+    await risk_signal_service.generate_risk_signals_for_property(property_id, client_id)
+    await evaluate_operational_automation_after_risk_refresh(property_id, client_id)
+
+
 async def _set_requirement_compliant(event: Dict[str, Any]) -> None:
     req_type = (event.get("requirement_type") or "").strip()
     if not req_type:
@@ -197,12 +214,20 @@ async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:
     elif event_type == EVENT_RISK_SIGNAL_RESOLVED:
         await _mark_related_risk_resolved(event)
 
+    rctx: Dict[str, Any] = {
+        "outcome_event_type": event_type,
+        "source_id": event.get("source_id"),
+        "skip_risk_regen_enqueue": True,
+    }
+    if event.get("metadata"):
+        rctx["outcome_metadata"] = event.get("metadata")
     await recalculate_and_persist(
         property_id=event["property_id"],
         reason=f"ACTION_OUTCOME:{event_type.upper()}",
         actor={"id": event.get("actor_id"), "role": event.get("actor_role") or "SYSTEM"},
-        context={"outcome_event_type": event_type, "source_id": event.get("source_id")},
+        context=rctx,
     )
+    await _sync_regenerate_risks_and_operational(event["client_id"], event["property_id"])
     property_after = await db.properties.find_one(
         {"property_id": event["property_id"], "client_id": event["client_id"]},
         {"_id": 0, "compliance_score": 1, "compliance_status": 1},

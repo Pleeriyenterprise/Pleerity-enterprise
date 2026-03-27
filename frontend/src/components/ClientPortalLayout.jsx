@@ -219,27 +219,29 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header: navy, CRN right, Ask Assistant + Logout right */}
       <header className="bg-midnight-blue text-white shadow-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex justify-between items-center gap-4">
-            <div className="flex items-center gap-4">
-              <NavLink to="/dashboard" className="flex items-center gap-2 shrink-0">
-                <img src={BRAND_LOGO_URL} alt="" className="h-8 w-auto" />
-                <h1 className="text-xl font-bold">{branding.productName}</h1>
-                <span className="text-sm text-gray-300 hidden sm:inline">{branding.tagline}</span>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4 min-w-0">
+            <div className="flex flex-col gap-2 min-w-0 sm:flex-row sm:items-center sm:flex-wrap sm:gap-x-4 sm:gap-y-2">
+              <NavLink to="/dashboard" className="flex items-center gap-2 min-w-0 max-w-full shrink-0">
+                <img src={BRAND_LOGO_URL} alt="" className="h-8 w-auto shrink-0" />
+                <div className="min-w-0 flex flex-col">
+                  <span className="text-lg sm:text-xl font-bold truncate leading-tight">{branding.productName}</span>
+                  <span className="text-xs text-gray-300 truncate hidden md:block">{branding.tagline}</span>
+                </div>
               </NavLink>
               {crn && !isTenant && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap shrink-0">
                   <span
-                    className="px-2.5 py-1 bg-electric-teal/20 text-electric-teal rounded-lg font-mono text-sm"
+                    className="px-2 py-1 sm:px-2.5 sm:py-1 bg-electric-teal/20 text-electric-teal rounded-lg font-mono text-xs sm:text-sm max-w-full truncate inline-block align-middle"
                     data-testid="client-crn-badge"
-                    title="Customer Reference Number"
+                    title={`Customer reference: ${crn}`}
                   >
                     {crn}
                   </span>
                   <button
                     type="button"
                     onClick={handleCopyCRN}
-                    className="p-1 rounded hover:bg-white/10 text-electric-teal"
+                    className="tap-target min-w-0 min-h-0 h-9 w-9 sm:h-8 sm:w-8 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-white/10 text-electric-teal"
                     title="Copy CRN"
                   >
                     <Copy className="w-4 h-4" />
@@ -247,24 +249,27 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 justify-between sm:justify-end lg:shrink-0 min-w-0">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/assistant')}
-                className="text-white hover:bg-white/10 hover:text-white"
+                className="text-white hover:bg-white/10 hover:text-white h-10 px-3 shrink-0"
                 data-testid="ask-assistant-btn"
               >
-                <MessageSquare className="w-4 h-4 mr-1.5" />
+                <MessageSquare className="w-4 h-4 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">Ask Assistant</span>
               </Button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial justify-end">
                 {headerAvatarUrl && (
-                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white/30 flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full overflow-hidden border border-white/30 shrink-0">
                     <img src={headerAvatarUrl} alt="" className="w-full h-full object-cover" />
                   </div>
                 )}
-                <span className="text-sm text-gray-300 truncate max-w-[120px] sm:max-w-[200px]" title={user?.email}>
+                <span
+                  className="text-sm text-gray-200 truncate min-w-0 max-w-[min(56vw,14rem)] sm:max-w-[200px] lg:max-w-[240px]"
+                  title={profile?.full_name || user?.email || ''}
+                >
                   {profile?.full_name || user?.email}
                 </span>
               </div>
@@ -272,14 +277,14 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                 variant="ghost"
                 size="sm"
                 onClick={logout}
-                className="text-white hover:bg-white/10 hover:text-white"
+                className="text-white hover:bg-white/10 hover:text-white h-10 px-3 shrink-0"
               >
-                <LogOut className="w-4 h-4 sm:mr-1.5" />
+                <LogOut className="w-4 h-4 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">Logout</span>
               </Button>
               <button
                 type="button"
-                className="lg:hidden p-2 rounded hover:bg-white/10"
+                className="lg:hidden tap-target h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-white/10"
                 onClick={() => setMobileNavOpen((o) => !o)}
                 aria-label="Toggle menu"
               >
@@ -307,7 +312,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                       <button
                         type="button"
                         onClick={() => setOperationsDropdownOpen((o) => !o)}
-                        className={`flex items-center px-3 py-3 lg:py-4 text-sm font-medium border-b-2 transition-colors w-full lg:w-auto ${
+                        className={`flex items-center min-h-[44px] px-3 py-3 lg:py-4 text-sm font-medium border-b-2 transition-colors w-full lg:w-auto ${
                           isActive
                             ? 'border-electric-teal text-electric-teal'
                             : 'border-transparent text-gray-300 hover:text-white hover:border-gray-400'
@@ -357,7 +362,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                     end={end}
                     onClick={() => setMobileNavOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center px-3 py-3 lg:py-4 text-sm font-medium border-b-2 lg:border-b-2 transition-colors ${
+                      `flex items-center min-h-[44px] px-3 py-3 lg:py-4 text-sm font-medium border-b-2 lg:border-b-2 transition-colors ${
                         isActive || ((path === '/settings' || path === '/tenant/settings') && isSettingsActive(location.pathname))
                           ? 'border-electric-teal text-electric-teal'
                           : 'border-transparent text-gray-300 hover:text-white hover:border-gray-400'
@@ -375,15 +380,15 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       </header>
 
       {impersonation?.active && (
-        <div className="bg-amber-100 border-y border-amber-300 px-4 py-2">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-            <p className="text-sm text-amber-900">
+        <div className="bg-amber-100 border-y border-amber-300 px-3 sm:px-4 py-2">
+          <div className="max-w-7xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-amber-900 min-w-0 break-words">
               You are viewing this account as user{impersonation.client_name ? `: ${impersonation.client_name}` : ''}. Actions are audited.
             </p>
             <button
               type="button"
               onClick={handleStopImpersonation}
-              className="px-3 py-1.5 rounded-md text-sm font-medium bg-amber-900 text-white hover:bg-amber-950"
+              className="shrink-0 px-3 py-2.5 sm:py-1.5 rounded-md text-sm font-medium bg-amber-900 text-white hover:bg-amber-950 min-h-[44px] sm:min-h-0"
             >
               Stop impersonation
             </button>
@@ -391,7 +396,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         </div>
       )}
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="client-portal-main client-portal-prose flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-8">
         {children}
       </main>
 

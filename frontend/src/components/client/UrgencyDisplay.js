@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge } from '../ui/badge';
+import { urgencyLevelLabel } from '../../domain/presentDomain';
 
 /** Shared urgency badge + due/overdue chip for dashboard priority actions, tasks, command centre. */
 export function urgencyBadgeClassName(level) {
@@ -11,10 +12,9 @@ export function urgencyBadgeClassName(level) {
 }
 
 export function UrgencyBadge({ level, className = '' }) {
-  const l = (level || 'medium').toString().toUpperCase();
   return (
     <Badge className={`text-xs font-medium border ${urgencyBadgeClassName(level)} ${className}`} variant="outline">
-      {l}
+      {urgencyLevelLabel(level)}
     </Badge>
   );
 }

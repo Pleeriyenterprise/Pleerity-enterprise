@@ -784,6 +784,44 @@ async def run_predictive_insights_job():
     return {"message": f"Predictive insights precomputed for {count} client(s)", "count": count}
 
 
+async def run_risk_signal_regen_worker():
+    """Process debounced risk_signal_regen_queue: regenerate heuristic signals + operational automation."""
+    try:
+        from services.risk_signal_regen_queue import run_risk_signal_regen_worker as _run
+
+        return await _run(batch_limit=20)
+    except Exception as e:
+        logger.error("Risk signal regen worker failed: %s", e)
+        raise
+
+
+async def run_risk_signal_regen_alert_monitor():
+    """Queue health: resolve incidents when healthy; create P2 + OPS email when attention_required."""
+    try:
+        from services.risk_signal_regen_alert_monitor import run_risk_signal_regen_alert_monitor as _run
+
+        result = await _run()
+        if result.get("incidents_created"):
+            logger.info(
+                "risk_signal_regen_alert_monitor: created incident incident_id=%s alert_sent=%s",
+                result.get("incident_id"),
+                result.get("alert_sent"),
+            )
+        if result.get("incidents_resolved"):
+            logger.info(
+                "risk_signal_regen_alert_monitor: resolved %s incident(s)",
+                result["incidents_resolved"],
+            )
+        return {
+            "message": "Risk regen queue alert monitor completed",
+            "count": int(result.get("incidents_created") or 0) + int(result.get("incidents_resolved") or 0),
+            "outcome_metrics": {k: v for k, v in result.items() if k not in ("message",)},
+        }
+    except Exception as e:
+        logger.error("Risk signal regen alert monitor failed: %s", e)
+        raise
+
+
 async def run_risk_signals_job():
     """Generate stored risk signals for all clients with PREDICTIVE_MAINTENANCE. Writes to risk_signals collection."""
     from database import database
@@ -988,6 +1026,13 @@ async def run_work_order_sla_breach_job():
     return {"message": msg, "count": at_risk_updated + breached_updated}
 
 
+async def run_work_order_contractor_confirmation_timeout_job():
+    """Reminder + admin escalation for pending client contractor confirmations (no default auto-assign)."""
+    from services.work_order_contractor_routing_service import run_contractor_confirmation_timeout_sweep
+
+    return await run_contractor_confirmation_timeout_sweep()
+
+
 HEARTBEAT_COLLECTION = "scheduler_heartbeat"
 HEARTBEAT_DOC_ID = "default"
 
@@ -1081,7 +1126,10 @@ JOB_RUNNERS = {
     "pending_payment_lifecycle": run_pending_payment_lifecycle,
     "predictive_insights_job": run_predictive_insights_job,
     "risk_signals_job": run_risk_signals_job,
+    "risk_signal_regen_worker": run_risk_signal_regen_worker,
+    "risk_signal_regen_alert_monitor": run_risk_signal_regen_alert_monitor,
     "work_order_sla_breach_job": run_work_order_sla_breach_job,
+    "work_order_contractor_confirmation_timeout_job": run_work_order_contractor_confirmation_timeout_job,
     "scheduler_heartbeat": run_scheduler_heartbeat,
     "delivery_reconciliation": run_delivery_reconciliation,
     "contractor_performance_recalc": run_contractor_performance_recalc,

@@ -9,6 +9,13 @@ from urllib.parse import quote as _url_quote
 from database import database
 import logging
 
+from presentation.label_service import (
+    issue_status_label,
+    requirement_label,
+    sla_state_label,
+    work_order_status_label,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -140,16 +147,17 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
     reqs = await cursor.to_list(limit)
     for r in reqs:
         prop_id = r.get("property_id")
-        code = r.get("code") or r.get("requirement_type") or "Requirement"
-        req_code = _requirement_code_for_hash(r) or code
+        code_raw = r.get("code") or r.get("requirement_type") or ""
+        disp = requirement_label(code_raw) if code_raw else "Compliance item"
+        req_code = _requirement_code_for_hash(r) or code_raw or None
         rid = r.get("requirement_id")
         due_iso = _requirement_effective_due_iso(r)
         src_upd = _iso_or_none(r.get("updated_at"))
         hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
         actions.append(_action(
             ACTION_OVERDUE_COMPLIANCE,
-            f"Overdue: {code}",
-            f"Compliance item is overdue at this property.",
+            f"Overdue: {disp}",
+            f"{disp} is overdue at this property.",
             SCORE_OVERDUE_COMPLIANCE,
             SEVERITY_HIGH,
             related_property_id=prop_id,
@@ -171,16 +179,17 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
     exp_reqs = await cursor.to_list(limit)
     for r in exp_reqs:
         prop_id = r.get("property_id")
-        code = r.get("code") or r.get("requirement_type") or "Certificate"
-        req_code = _requirement_code_for_hash(r) or code
+        code_raw = r.get("code") or r.get("requirement_type") or ""
+        disp = requirement_label(code_raw) if code_raw else "Certificate"
+        req_code = _requirement_code_for_hash(r) or code_raw or None
         rid = r.get("requirement_id")
         due_iso = _requirement_effective_due_iso(r)
         src_upd = _iso_or_none(r.get("updated_at"))
         hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
         actions.append(_action(
             ACTION_CERT_EXPIRING_SOON,
-            f"Expiring soon: {code}",
-            "Certificate or requirement is expiring soon; renew or upload evidence.",
+            f"Due soon: {disp}",
+            f"{disp} is due to expire soon; renew or upload evidence.",
             SCORE_CERT_EXPIRING_7D,
             SEVERITY_MEDIUM,
             related_property_id=prop_id,
@@ -204,16 +213,17 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
         if r.get("evidence_doc_id"):
             continue
         prop_id = r.get("property_id")
-        code = r.get("code") or r.get("requirement_type") or "Document"
-        req_code = _requirement_code_for_hash(r) or code
+        code_raw = r.get("code") or r.get("requirement_type") or ""
+        disp = requirement_label(code_raw) if code_raw else "Document"
+        req_code = _requirement_code_for_hash(r) or code_raw or None
         rid = r.get("requirement_id")
         due_iso = _requirement_effective_due_iso(r)
         src_upd = _iso_or_none(r.get("updated_at"))
         hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
         actions.append(_action(
             ACTION_MISSING_DOCUMENT,
-            f"Missing document: {code}",
-            "Required evidence or document is missing.",
+            f"Evidence needed: {disp}",
+            f"Required evidence for {disp} is missing.",
             SCORE_MISSING_DOCUMENT,
             SEVERITY_MEDIUM,
             related_property_id=prop_id,
@@ -248,15 +258,20 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
             rec_url = f"/operations/risk-signals?signal_id={sig_id}" if sig_id else "/operations/risk-signals"
             actions.append(_action(
                 ACTION_RISK_SIGNAL,
-                s.get("risk_type") or "Risk signal",
-                (s.get("recommended_action") or ((s.get("reasons") or [])[0] if isinstance(s.get("reasons"), list) and s.get("reasons") else None)) or "Review risk signal",
+                s.get("risk_type_label_client") or s.get("risk_type") or "Risk signal",
+                (
+                    s.get("recommended_action_client")
+                    or s.get("recommended_action")
+                    or ((s.get("reasons") or [])[0] if isinstance(s.get("reasons"), list) and s.get("reasons") else None)
+                )
+                or "Review this insight and choose the next step.",
                 score,
                 SEVERITY_HIGH if level in ("high", "critical") else SEVERITY_MEDIUM,
                 related_risk_signal_id=sig_id,
                 related_property_id=prop_id,
                 source_updated_at=sig_upd,
                 why_matters="Early action on risk signals reduces costly failures and compliance drift.",
-                recommended_action_detail=s.get("recommended_action"),
+                recommended_action_detail=s.get("recommended_action_client") or s.get("recommended_action"),
                 recommended_url=rec_url,
                 recommended_action_label="Review risk signal",
             ))
@@ -266,9 +281,9 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
     # 5) Work orders near SLA breach or breached
     try:
         from services import maintenance_service
-        for sla_state, score, label in [
-            ("breached", SCORE_WORK_ORDER_BREACHED, "SLA breached"),
-            ("near_breach", SCORE_WORK_ORDER_NEAR_BREACH, "Near SLA breach"),
+        for sla_state, score, state_key in [
+            ("breached", SCORE_WORK_ORDER_BREACHED, "breached"),
+            ("near_breach", SCORE_WORK_ORDER_NEAR_BREACH, "near_breach"),
         ]:
             wo_result = await maintenance_service.list_work_orders(
                 client_id=client_id,
@@ -281,17 +296,18 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                 prop_id = wo.get("property_id")
                 wo_upd = _iso_or_none(wo.get("updated_at"))
                 wo_url = f"/operations/work-orders?work_order_id={wo_id}" if wo_id else "/operations/work-orders"
+                sla_human = sla_state_label(state_key, "client")
                 actions.append(_action(
                     ACTION_WORK_ORDER_BREACHED if sla_state == "breached" else ACTION_WORK_ORDER_NEAR_BREACH,
-                    f"Work order {label.lower()}",
+                    f"Work order — {sla_human}",
                     wo.get("description") or f"Work order {wo_id[:8]}…",
                     score,
                     SEVERITY_HIGH if sla_state == "breached" else SEVERITY_MEDIUM,
                     related_work_order_id=wo_id,
                     related_property_id=prop_id,
                     source_updated_at=wo_upd,
-                    why_matters="SLA breaches indicate delayed response or completion and may affect tenant safety and contracts.",
-                    recommended_action_detail=f"Status: {wo.get('status') or 'open'}. Update the work order or reassign the contractor.",
+                    why_matters="Missed response targets can affect tenant safety, contracts, and satisfaction.",
+                    recommended_action_detail=f"Status: {work_order_status_label(wo.get('status'), 'client')}. Update the work order or reassign the contractor.",
                     recommended_url=wo_url,
                     recommended_action_label="View work order",
                 ))
@@ -324,7 +340,7 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                 wo_upd = _iso_or_none(wo.get("updated_at"))
                 due_iso = _iso_or_none(wo.get("sla_complete_by") or wo.get("sla_respond_by"))
                 wo_url = f"/operations/work-orders?work_order_id={wo_id}" if wo_id else "/operations/work-orders"
-                status_label = (wo.get("status") or st or "OPEN").replace("_", " ").title()
+                status_label = work_order_status_label(wo.get("status") or st, "client")
                 actions.append(_action(
                     ACTION_OPEN_WORK_ORDER,
                     f"Open work order ({status_label})",
@@ -336,7 +352,7 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                     due_at=due_iso,
                     source_updated_at=wo_upd,
                     why_matters="Open work orders should be progressed or closed to avoid SLA drift and tenant issues.",
-                    recommended_action_detail=f"Status: {wo.get('status') or st}. Assign, update, or complete the work order.",
+                    recommended_action_detail=f"Status: {work_order_status_label(wo.get('status') or st, 'client')}. Assign, update, or complete the work order.",
                     recommended_url=wo_url,
                     recommended_action_label="View work order",
                 ))
@@ -398,7 +414,10 @@ async def _fetch_client_actions(client_id: str, property_id_filter: Optional[str
                     related_property_id=iss.get("property_id"),
                     source_updated_at=_iso_or_none(iss.get("updated_at")),
                     why_matters="Unresolved issues can escalate into property damage, complaints, or statutory risk.",
-                    recommended_action_detail=f"Status: {iss.get('status') or 'open'}. Triage, assign, or create a work order.",
+                    recommended_action_detail=(
+                        f"Status: {issue_status_label(iss.get('status'), 'client')}. "
+                        "Triage, assign, or create a work order."
+                    ),
                     recommended_url=issue_url,
                     recommended_action_label="View issue",
                 ))
@@ -450,9 +469,10 @@ async def _fetch_admin_actions(client_id_filter: Optional[str], limit: int) -> L
                 limit=limit,
             )
             for wo in (wo_result.get("work_orders") or [])[:limit]:
+                sla_key = "breached" if sla_state == "breached" else "near_breach"
                 actions.append(_action(
                     ACTION_WORK_ORDER_BREACHED if sla_state == "breached" else ACTION_WORK_ORDER_NEAR_BREACH,
-                    "Work order " + ("SLA breached" if sla_state == "breached" else "near SLA breach"),
+                    f"Work order — {sla_state_label(sla_key, 'admin')}",
                     wo.get("description") or wo.get("work_order_id", "")[:8],
                     score,
                     SEVERITY_HIGH if sla_state == "breached" else SEVERITY_MEDIUM,

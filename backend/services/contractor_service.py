@@ -7,6 +7,19 @@ from typing import Any, Dict, List, Optional, Tuple
 from database import database
 import logging
 
+from services.compliance_contractor_capability import (
+    contractor_qualifies_for_requirement,
+    parse_execution_capabilities,
+)
+from services.requirement_code_registry import CANONICAL_REQUIREMENT_CODES, normalize_requirement_code
+from services.work_order_execution_constants import (
+    ALLOWED_EXECUTION_CAPABILITIES,
+    EXECUTION_CAPABILITY_COMPLIANCE,
+    EXECUTION_CAPABILITY_MAINTENANCE,
+    WORK_ORDER_KIND_COMPLIANCE,
+    WORK_ORDER_KIND_MAINTENANCE,
+)
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -18,16 +31,203 @@ except ImportError:
 SOURCE_LANDLORD_ADDED = "landlord_added"
 SOURCE_PLATFORM_NETWORK = "platform_network"
 SOURCE_SELF_REGISTERED = "self_registered"
+SOURCE_CLIENT_SUPPLIED_PERSONAL = "client_supplied_personal"
 STATUS_ACTIVE = "active"
 STATUS_PENDING_REVIEW = "pending_review"
 STATUS_SUSPENDED = "suspended"
 PORTAL_ACCESS_NOT_INVITED = "not_invited"
+PORTAL_ACCESS_NOT_ACTIVATED = "not_activated"  # synonym stored as not_invited in practice
 PORTAL_ACCESS_INVITE_PENDING = "invite_pending"
 PORTAL_ACCESS_ENABLED = "enabled"
 PORTAL_ACCESS_DISABLED = "disabled"
 
+# Canonical lifecycle status (contractor.status)
+LC_INVITED = "invited"
+LC_PENDING_APPROVAL = "pending_approval"
+LC_APPROVED = "approved"
+LC_ACTIVE = "active"
+LC_SUSPENDED = "suspended"
+
 # Rework: follow-up work order at same property within this many days of a prior completion counts as rework.
 REWORK_DAYS = 30
+
+RECOMMENDED_TYPE_TO_TRADES = {
+    "gas_safe": ["heating", "gas", "gas_safe", "boiler"],
+    "plumber": ["plumbing", "plumber"],
+    "electrician": ["electrical", "electrician"],
+    "damp_inspection": ["damp", "inspection", "damp_inspection"],
+    "general": ["general", "handyman"],
+}
+
+
+def normalize_email_for_lookup(email: Optional[str]) -> str:
+    return (email or "").strip().lower()
+
+
+def _coerce_execution_capabilities(raw: Optional[str]) -> str:
+    v = (raw or EXECUTION_CAPABILITY_MAINTENANCE).strip().lower()
+    if v not in ALLOWED_EXECUTION_CAPABILITIES:
+        raise ValueError(
+            f"execution_capabilities must be one of: {', '.join(sorted(ALLOWED_EXECUTION_CAPABILITIES))}"
+        )
+    return v
+
+
+def _coerce_supported_requirement_codes(raw: Optional[List[str]]) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for x in raw or []:
+        c = normalize_requirement_code(str(x))
+        if not c or c not in CANONICAL_REQUIREMENT_CODES:
+            raise ValueError(f"Invalid supported_requirement_codes entry: {x!r}")
+        if c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
+def contractor_passes_work_order_execution_gate(contractor: Dict[str, Any], wo: Dict[str, Any]) -> bool:
+    """Backend gate: maintenance vs compliance capability must match work order kind."""
+    kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+    caps = parse_execution_capabilities(contractor)
+    if kind == WORK_ORDER_KIND_COMPLIANCE:
+        if EXECUTION_CAPABILITY_COMPLIANCE not in caps:
+            return False
+        code = (wo.get("requirement_code") or "").strip().lower()
+        if code and not contractor_qualifies_for_requirement(contractor, code):
+            return False
+        return True
+    if caps == {EXECUTION_CAPABILITY_COMPLIANCE}:
+        return False
+    return EXECUTION_CAPABILITY_MAINTENANCE in caps
+
+
+def normalize_lifecycle_status(status: Optional[str]) -> str:
+    s = (status or "").strip().lower()
+    if s == STATUS_PENDING_REVIEW:
+        return LC_PENDING_APPROVAL
+    return s
+
+
+def portal_access_is_activated(contractor: Dict[str, Any]) -> bool:
+    return (contractor.get("portal_access_status") or "").strip().lower() == PORTAL_ACCESS_ENABLED
+
+
+def contractor_trade_matches_category(contractor: Dict[str, Any], category: Optional[str]) -> bool:
+    cat = (category or "").strip().lower()
+    if not cat:
+        return True
+    trades = [str(t).strip().lower() for t in (contractor.get("trade_types") or []) if str(t).strip()]
+    if not trades:
+        return False
+    for t in trades:
+        if t in cat or cat in t:
+            return True
+    for key, synonyms in RECOMMENDED_TYPE_TO_TRADES.items():
+        key_l = key.lower()
+        if key_l in cat or cat in key_l:
+            if any(s in trades for s in synonyms):
+                return True
+    return False
+
+
+def _uk_postcode_outward(pc: str) -> str:
+    s = (pc or "").strip().upper().replace("  ", " ")
+    if not s:
+        return ""
+    parts = s.split()
+    return parts[0] if parts else s
+
+
+def _contractor_location_strings(contractor: Dict[str, Any]) -> List[str]:
+    pools: List[str] = []
+    for field in ("areas_served", "coverage_area"):
+        v = contractor.get(field)
+        if isinstance(v, list):
+            pools.extend(str(x).strip() for x in v if str(x).strip())
+        elif v:
+            pools.append(str(v).strip())
+    reg = contractor.get("registration_postcode")
+    if reg:
+        pools.append(str(reg).strip())
+    r = contractor.get("region")
+    if r:
+        pools.append(str(r).strip())
+    return pools
+
+
+def contractor_location_matches_property(contractor: Dict[str, Any], property_postcode: Optional[str]) -> bool:
+    prop_pc = (property_postcode or "").strip().upper()
+    if not prop_pc:
+        return True
+    outward_prop = _uk_postcode_outward(prop_pc)
+    pools = _contractor_location_strings(contractor)
+    if not pools:
+        return True
+    prop_norm = prop_pc.replace(" ", "")
+    for p in pools:
+        pn = p.upper().replace(" ", "")
+        if not pn:
+            continue
+        if pn == prop_norm:
+            return True
+        out_c = _uk_postcode_outward(p)
+        if outward_prop and out_c and (out_c == outward_prop or outward_prop.startswith(out_c) or out_c.startswith(outward_prop)):
+            return True
+    return False
+
+
+def contractor_property_scope_allows(contractor: Dict[str, Any], property_id: Optional[str]) -> bool:
+    scope = contractor.get("property_scope")
+    if not scope:
+        return True
+    if not isinstance(scope, list) or not property_id:
+        return True
+    allowed = {str(x).strip() for x in scope if str(x).strip()}
+    if not allowed:
+        return True
+    return property_id.strip() in allowed
+
+
+def contractor_client_link_allows(contractor: Dict[str, Any], client_id: str) -> bool:
+    cid = contractor.get("client_id")
+    if cid is None or cid == "":
+        return True
+    return str(cid).strip() == str(client_id).strip()
+
+
+def contractor_is_assignable(contractor: Dict[str, Any]) -> Tuple[bool, str]:
+    st = normalize_lifecycle_status(contractor.get("status"))
+    if st in (LC_SUSPENDED, "suspended"):
+        return False, "Contractor is suspended"
+    email = (contractor.get("email") or "").strip()
+    if not email:
+        return False, "Contractor has no email address"
+    if not contractor.get("vetted"):
+        return False, "Contractor is not vetted for assignment"
+    if not portal_access_is_activated(contractor):
+        return False, "Contractor has not activated the contractor portal"
+    if contractor.get("available_for_assignment") is False:
+        return False, "Contractor is marked unavailable for assignments"
+    if st == LC_ACTIVE:
+        return True, ""
+    if st == STATUS_ACTIVE and portal_access_is_activated(contractor) and contractor.get("vetted"):
+        return True, ""
+    return False, "Contractor must be active with an activated portal before assignment"
+
+
+async def get_contractor_by_email_normalized(email: str) -> Optional[Dict[str, Any]]:
+    norm = normalize_email_for_lookup(email)
+    if not norm:
+        return None
+    db = database.get_db()
+    doc = await db.contractors.find_one({"email_normalized": norm})
+    if doc:
+        return _sanitize_doc(doc)
+    doc = await db.contractors.find_one({"email": norm})
+    if doc:
+        return _sanitize_doc(doc)
+    return None
 
 
 def _make_json_safe(obj: Any) -> Any:
@@ -50,8 +250,8 @@ def _sanitize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 def _default_vetting_status(vetted: bool, status: Optional[str]) -> str:
     normalized = (status or "").strip().lower()
-    if normalized == STATUS_PENDING_REVIEW:
-        return STATUS_PENDING_REVIEW
+    if normalized in (STATUS_PENDING_REVIEW, LC_PENDING_APPROVAL):
+        return LC_PENDING_APPROVAL
     return "approved" if vetted else "not_vetted"
 
 
@@ -85,15 +285,28 @@ async def list_contractors(
     }
 
 
+def _client_visible_statuses() -> List[str]:
+    """Statuses a client may see for directory / assignment UI (excludes suspended)."""
+    return [
+        STATUS_ACTIVE,
+        LC_ACTIVE,
+        LC_APPROVED,
+        LC_INVITED,
+        LC_PENDING_APPROVAL,
+        STATUS_PENDING_REVIEW,
+    ]
+
+
 def _visibility_query(client_id: str) -> Dict[str, Any]:
-    """Contractors visible to a client: org match, platform network, or approved self-registered. Only active (or legacy no status)."""
+    """Contractors visible to a client: org match, platform network, or vetted self-registered. Excludes suspended."""
+    vis = _client_visible_statuses()
     return {
         "$or": [
-            {"status": STATUS_ACTIVE, "client_id": client_id},
-            {"status": STATUS_ACTIVE, "client_id": None, "source_type": SOURCE_PLATFORM_NETWORK},
-            {"status": STATUS_ACTIVE, "client_id": None, "source_type": SOURCE_SELF_REGISTERED, "vetted": True},
-            {"status": {"$exists": False}, "client_id": client_id},
-            {"status": {"$exists": False}, "client_id": None},
+            {"client_id": client_id, "status": {"$in": vis}},
+            {"client_id": client_id, "status": {"$exists": False}},
+            {"client_id": None, "source_type": SOURCE_PLATFORM_NETWORK, "status": {"$in": vis}},
+            {"client_id": None, "source_type": SOURCE_SELF_REGISTERED, "vetted": True, "status": {"$in": vis}},
+            {"client_id": client_id, "source_type": SOURCE_CLIENT_SUPPLIED_PERSONAL},
         ],
     }
 
@@ -105,8 +318,11 @@ async def contractor_visible_to_client(contractor_id: str, client_id: str) -> bo
     db = database.get_db()
     q = {"contractor_id": contractor_id}
     q.update(_visibility_query(client_id))
-    doc = await db.contractors.find_one(q, {"_id": 1})
-    return doc is not None
+    doc = await db.contractors.find_one(q, {"_id": 1, "status": 1})
+    if not doc:
+        return False
+    st = normalize_lifecycle_status(doc.get("status"))
+    return st not in (LC_SUSPENDED, "suspended")
 
 
 async def list_contractors_for_client(
@@ -162,12 +378,26 @@ async def create_contractor(
     portal_access_status: Optional[str] = None,
     vetting_status: Optional[str] = None,
     coverage_area: Optional[List[str]] = None,
+    property_scope: Optional[List[str]] = None,
+    registration_postcode: Optional[str] = None,
+    skip_email_duplicate_check: bool = False,
+    execution_capabilities: Optional[str] = None,
+    supported_requirement_codes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Create a new contractor. Sets source_type/status when provided; defaults for backward compat."""
     from datetime import datetime, timezone
     import uuid
 
+    email_norm = normalize_email_for_lookup(email) if email else ""
+    if email_norm and not skip_email_duplicate_check:
+        clash = await get_contractor_by_email_normalized(email_norm)
+        if clash:
+            raise ValueError("A contractor with this email already exists")
+
     now = datetime.now(timezone.utc).isoformat()
+    eff_status = status or LC_APPROVED
+    eff_exec = _coerce_execution_capabilities(execution_capabilities)
+    eff_req_codes = _coerce_supported_requirement_codes(supported_requirement_codes)
     doc = {
         "contractor_id": str(uuid.uuid4()),
         "client_id": client_id,
@@ -175,6 +405,7 @@ async def create_contractor(
         "trade_types": trade_types or [],
         "vetted": vetted,
         "email": email,
+        "email_normalized": email_norm or None,
         "phone": phone,
         "company_name": company_name,
         "areas_served": areas_served or coverage_area or [],
@@ -183,7 +414,7 @@ async def create_contractor(
         "created_at": now,
         "updated_at": now,
         "source_type": source_type or (SOURCE_LANDLORD_ADDED if client_id else SOURCE_PLATFORM_NETWORK),
-        "status": status or STATUS_ACTIVE,
+        "status": eff_status,
         "credentials": credentials or [],
         "insurance_details": insurance_details,
         "contact_name": contact_name,
@@ -199,7 +430,13 @@ async def create_contractor(
         "portal_invite_expires_at": None,
         "portal_invite_last_token_id": None,
         "portal_invite_accepted_at": None,
-        "vetting_status": (vetting_status or _default_vetting_status(vetted, status)).strip().lower(),
+        "activated_at": None,
+        "available_for_assignment": True,
+        "property_scope": property_scope or [],
+        "registration_postcode": (registration_postcode or "").strip().upper() or None,
+        "vetting_status": (vetting_status or _default_vetting_status(vetted, eff_status)).strip().lower(),
+        "execution_capabilities": eff_exec,
+        "supported_requirement_codes": eff_req_codes,
     }
     if client_id and (source_type or "").strip().lower() == SOURCE_LANDLORD_ADDED:
         doc["visibility_scope"] = "private"
@@ -207,6 +444,8 @@ async def create_contractor(
         doc["visibility_scope"] = "network"
     elif not client_id and (source_type or "").strip().lower() == SOURCE_SELF_REGISTERED and vetted:
         doc["visibility_scope"] = "marketplace"
+    elif client_id and (source_type or "").strip().lower() == SOURCE_CLIENT_SUPPLIED_PERSONAL:
+        doc["visibility_scope"] = "client_personal"
     db = database.get_db()
     await db.contractors.insert_one(doc)
     return _sanitize_doc(doc)
@@ -239,6 +478,12 @@ async def update_contractor(
     portal_invite_accepted_at: Optional[str] = None,
     vetting_status: Optional[str] = None,
     coverage_area: Optional[List[str]] = None,
+    activated_at: Optional[str] = None,
+    available_for_assignment: Optional[bool] = None,
+    property_scope: Optional[List[str]] = None,
+    registration_postcode: Optional[str] = None,
+    execution_capabilities: Optional[str] = None,
+    supported_requirement_codes: Optional[List[str]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Update a contractor. Only provided fields are updated."""
     from datetime import datetime, timezone
@@ -253,6 +498,15 @@ async def update_contractor(
         update["vetted"] = vetted
     if email is not None:
         update["email"] = email
+        en = normalize_email_for_lookup(email)
+        update["email_normalized"] = en or None
+        if en:
+            clash = await db.contractors.find_one(
+                {"email_normalized": en, "contractor_id": {"$ne": contractor_id}},
+                {"contractor_id": 1},
+            )
+            if clash:
+                raise ValueError("A contractor with this email already exists")
     if phone is not None:
         update["phone"] = phone
     if company_name is not None:
@@ -296,6 +550,18 @@ async def update_contractor(
     if coverage_area is not None:
         update["coverage_area"] = coverage_area
         update["areas_served"] = coverage_area
+    if activated_at is not None:
+        update["activated_at"] = activated_at
+    if available_for_assignment is not None:
+        update["available_for_assignment"] = available_for_assignment
+    if property_scope is not None:
+        update["property_scope"] = property_scope
+    if registration_postcode is not None:
+        update["registration_postcode"] = (registration_postcode or "").strip().upper() or None
+    if execution_capabilities is not None:
+        update["execution_capabilities"] = _coerce_execution_capabilities(execution_capabilities)
+    if supported_requirement_codes is not None:
+        update["supported_requirement_codes"] = _coerce_supported_requirement_codes(supported_requirement_codes)
 
     result = await db.contractors.find_one_and_update(
         {"contractor_id": contractor_id},
@@ -340,7 +606,7 @@ async def create_contractor_landlord(
         areas_served=areas_served,
         notes=notes,
         source_type=SOURCE_LANDLORD_ADDED,
-        status=STATUS_ACTIVE,
+        status=LC_APPROVED,
         credentials=credentials,
         insurance_details=insurance_details,
         contact_name=contact_name,
@@ -348,6 +614,49 @@ async def create_contractor_landlord(
         portal_access_status=PORTAL_ACCESS_NOT_INVITED,
         vetting_status="not_vetted",
         coverage_area=areas_served,
+    )
+
+
+async def create_contractor_client_supplied_personal(
+    client_id: str,
+    name: str,
+    email: str,
+    trade_types: List[str],
+    phone: Optional[str] = None,
+    company_name: Optional[str] = None,
+    execution_capabilities: Optional[str] = None,
+    supported_requirement_codes: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    Client-added contractor for assignment without prior portal onboarding.
+    Distinct from vetted network contractors; visible only to owning client.
+    """
+    norm = normalize_email_for_lookup(email)
+    if not norm:
+        raise ValueError("email is required")
+    existing = await get_contractor_by_email_normalized(norm)
+    if existing:
+        if str(existing.get("client_id") or "").strip() != str(client_id).strip():
+            raise ValueError("This email is already used by another contractor record")
+        if (existing.get("source_type") or "").strip().lower() != SOURCE_CLIENT_SUPPLIED_PERSONAL:
+            raise ValueError("This email is already linked to a non-personal contractor")
+        return existing
+    display = (name or "").strip() or norm.split("@")[0]
+    return await create_contractor(
+        name=display,
+        company_name=(company_name or "").strip() or None,
+        trade_types=trade_types or ["general"],
+        vetted=False,
+        email=norm,
+        phone=phone,
+        client_id=client_id,
+        source_type=SOURCE_CLIENT_SUPPLIED_PERSONAL,
+        status=LC_APPROVED,
+        portal_access_status=PORTAL_ACCESS_NOT_INVITED,
+        vetting_status="client_supplied_unvetted",
+        notes="Created from client portal as personal/external contractor for assignment.",
+        execution_capabilities=execution_capabilities,
+        supported_requirement_codes=supported_requirement_codes,
     )
 
 
@@ -362,8 +671,9 @@ async def create_contractor_network(
     areas_served: Optional[List[str]] = None,
     contact_name: Optional[str] = None,
     notes: Optional[str] = None,
+    skip_email_duplicate_check: bool = False,
 ) -> Dict[str, Any]:
-    """Admin adds to platform network: client_id=null, vetted=True, status=active, source_type=platform_network."""
+    """Admin adds to platform network: client_id=null, vetted=True, status=approved, source_type=platform_network."""
     name = contact_name or company_name
     return await create_contractor(
         name=name,
@@ -376,7 +686,7 @@ async def create_contractor_network(
         areas_served=areas_served,
         notes=notes,
         source_type=SOURCE_PLATFORM_NETWORK,
-        status=STATUS_ACTIVE,
+        status=LC_APPROVED,
         credentials=credentials,
         insurance_details=insurance_details,
         contact_name=contact_name,
@@ -384,6 +694,7 @@ async def create_contractor_network(
         portal_access_status=PORTAL_ACCESS_NOT_INVITED,
         vetting_status="approved",
         coverage_area=areas_served,
+        skip_email_duplicate_check=skip_email_duplicate_check,
     )
 
 
@@ -409,20 +720,434 @@ async def create_contractor_self_registered(
         areas_served=coverage_regions,
         notes=None,
         source_type=SOURCE_SELF_REGISTERED,
-        status=STATUS_PENDING_REVIEW,
+        status=LC_PENDING_APPROVAL,
         credentials=credentials,
         insurance_details=insurance_details,
         contact_name=contact_name,
         region=coverage_regions[0] if coverage_regions else None,
         portal_access_status=PORTAL_ACCESS_NOT_INVITED,
-        vetting_status=STATUS_PENDING_REVIEW,
+        vetting_status=LC_PENDING_APPROVAL,
         coverage_area=coverage_regions,
     )
 
 
-async def approve_contractor(contractor_id: str) -> Optional[Dict[str, Any]]:
-    """Set contractor status=active and vetted=True (e.g. after admin review of self-registered)."""
-    return await update_contractor(contractor_id, status=STATUS_ACTIVE, vetted=True, vetting_status="approved")
+def _contractor_invite_email_html(setup_url: str, portal_login_url: str, include_next_steps: bool) -> str:
+    parts = [
+        "<p>You have been invited to the Pleerity contractor portal.</p>",
+        f'<p><a href="{setup_url}">Set your password</a> (required before first login).</p>',
+        f'<p>After setting your password you can sign in here: <a href="{portal_login_url}">Contractor portal login</a>.</p>',
+    ]
+    if include_next_steps:
+        parts.append(
+            "<p><strong>What happens next:</strong> once your account is active, you will receive work order "
+            "assignments by email and can view and update jobs in the portal.</p>"
+        )
+    parts.append("<p>This link expires in 24 hours. If it expires, ask your administrator to resend the invite.</p>")
+    return "".join(parts)
+
+
+async def issue_contractor_portal_invite(
+    contractor_id: str,
+    *,
+    actor_id: Optional[str] = None,
+    actor_role: Optional[str] = None,
+    resend: bool = False,
+    include_next_steps: bool = False,
+) -> Dict[str, Any]:
+    """
+    Create a single active contractor_invite token (revokes unused siblings), update contractor invite fields, send email.
+    Raises ValueError for missing email, disabled portal, or existing active portal account.
+    """
+    from auth import generate_secure_token, hash_token
+    from utils.public_app_url import get_frontend_base_url
+    from utils.audit import create_audit_log
+    from models import AuditAction
+    from services.contractor_portal_auth_service import get_account_by_contractor_id
+
+    doc = await get_contractor(contractor_id)
+    if not doc:
+        raise ValueError("Contractor not found")
+    if (doc.get("portal_access_status") or "").strip().lower() == PORTAL_ACCESS_DISABLED:
+        raise ValueError("Contractor portal access is disabled")
+    email = (doc.get("email") or "").strip()
+    if not email:
+        raise ValueError("Contractor has no email; add one before sending a portal invite")
+    existing = await get_account_by_contractor_id(contractor_id)
+    if existing and (existing.get("status") or "").lower() == "active":
+        raise ValueError("Contractor already has an active portal account")
+
+    db = database.get_db()
+    raw_token = generate_secure_token()
+    token_hash = hash_token(raw_token)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(hours=24)
+    now_iso = now.isoformat()
+    await db.password_tokens.update_many(
+        {
+            "purpose": "contractor_invite",
+            "metadata.contractor_id": contractor_id,
+            "used": {"$ne": True},
+            "revoked_at": None,
+        },
+        {"$set": {"revoked_at": now_iso, "revoked_reason": "invite_replaced"}},
+    )
+    await db.password_tokens.insert_one({
+        "token_hash": token_hash,
+        "purpose": "contractor_invite",
+        "metadata": {"contractor_id": contractor_id, "email": email},
+        "expires_at": expires_at,
+        "used": False,
+        "revoked_at": None,
+        "created_at": now_iso,
+    })
+    await update_contractor(
+        contractor_id,
+        portal_access_status=PORTAL_ACCESS_INVITE_PENDING,
+        portal_invite_sent_at=now_iso,
+        portal_invite_expires_at=expires_at.isoformat(),
+        portal_invite_last_token_id=token_hash,
+    )
+    base_url = get_frontend_base_url().rstrip("/")
+    setup_url = f"{base_url}/contractor-set-password?token={raw_token}"
+    portal_login_url = f"{base_url}/contractor-login"
+    body_html = _contractor_invite_email_html(setup_url, portal_login_url, include_next_steps=include_next_steps)
+    try:
+        from services.notification_orchestrator import notification_orchestrator
+
+        await notification_orchestrator.send(
+            template_key="ADMIN_MANUAL",
+            client_id=None,
+            context={
+                "recipient": email,
+                "subject": "Pleerity contractor portal — set your password",
+                "message": body_html,
+                "company_name": "Pleerity Enterprise Ltd",
+            },
+            idempotency_key=f"contractor_invite_{contractor_id}_{now.timestamp()}",
+            event_type="contractor_portal_invite",
+        )
+    except Exception as e:
+        logger.warning("Contractor invite email send failed: %s", e)
+    try:
+        await create_audit_log(
+            action=AuditAction.CONTRACTOR_INVITE_RESENT if resend else AuditAction.CONTRACTOR_INVITE_SENT,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            resource_type="contractor",
+            resource_id=contractor_id,
+            metadata={"email": email, "expires_at": expires_at.isoformat(), "triggered_by": "admin" if actor_id else "system"},
+        )
+    except Exception as e:
+        logger.warning("Audit log for contractor invite failed: %s", e)
+    return {
+        "ok": True,
+        "setup_url": setup_url,
+        "expires_at": expires_at.isoformat(),
+        "portal_access_status": PORTAL_ACCESS_INVITE_PENDING,
+    }
+
+
+async def invite_contractor_by_admin(
+    *,
+    email: str,
+    name: Optional[str] = None,
+    trade_types: Optional[List[str]] = None,
+    phone: Optional[str] = None,
+    client_id: Optional[str] = None,
+    property_scope: Optional[List[str]] = None,
+    vetted: Optional[bool] = None,
+    actor_id: Optional[str] = None,
+    actor_role: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Admin invite flow: create or update contractor, issue portal invite token and email."""
+    norm = normalize_email_for_lookup(email)
+    if not norm:
+        raise ValueError("email is required")
+    existing = await get_contractor_by_email_normalized(norm)
+    if existing:
+        st = normalize_lifecycle_status(existing.get("status"))
+        if st == LC_ACTIVE and portal_access_is_activated(existing) and existing.get("vetted"):
+            raise ValueError("Contractor is already active on the portal; use resend only if they lost the link")
+        contractor_id = existing["contractor_id"]
+        patch: Dict[str, Any] = {}
+        if name is not None and name.strip():
+            patch["name"] = name.strip()
+        if trade_types is not None:
+            patch["trade_types"] = trade_types
+        if phone is not None:
+            patch["phone"] = phone
+        if client_id is not None:
+            patch["client_id"] = client_id
+        if property_scope is not None:
+            patch["property_scope"] = property_scope
+        if vetted is not None:
+            patch["vetted"] = vetted
+        if patch:
+            await update_contractor(contractor_id, **patch)
+        invite = await issue_contractor_portal_invite(
+            contractor_id,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            resend=True,
+            include_next_steps=False,
+        )
+        out = await get_contractor(contractor_id)
+        return {"contractor": out, "invite": invite, "created": False}
+    display_name = (name or "").strip() or norm.split("@")[0]
+    eff_vetted = False if vetted is None else bool(vetted)
+    created = await create_contractor(
+        name=display_name,
+        trade_types=trade_types or [],
+        vetted=eff_vetted,
+        email=norm,
+        phone=phone,
+        client_id=client_id,
+        source_type=SOURCE_PLATFORM_NETWORK if not client_id else SOURCE_LANDLORD_ADDED,
+        status=LC_INVITED,
+        portal_access_status=PORTAL_ACCESS_NOT_INVITED,
+        property_scope=property_scope,
+    )
+    contractor_id = created["contractor_id"]
+    invite = await issue_contractor_portal_invite(
+        contractor_id,
+        actor_id=actor_id,
+        actor_role=actor_role,
+        resend=False,
+        include_next_steps=False,
+    )
+    return {"contractor": await get_contractor(contractor_id), "invite": invite, "created": True}
+
+
+async def register_contractor_public(
+    *,
+    name: str,
+    email: str,
+    phone: Optional[str],
+    trade_types: List[str],
+    registration_postcode: str,
+    certifications: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Public self-registration: pending approval, notify internal admin inbox when configured."""
+    norm = normalize_email_for_lookup(email)
+    pc = (registration_postcode or "").strip()
+    if not norm:
+        raise ValueError("email is required")
+    if not pc:
+        raise ValueError("location (postcode) is required")
+    existing = await get_contractor_by_email_normalized(norm)
+    if existing:
+        raise ValueError("An application or account already exists for this email")
+    creds = list(certifications) if certifications else []
+    doc = await create_contractor_self_registered(
+        company_name=name.strip(),
+        contact_name=name.strip(),
+        trade_types=trade_types,
+        phone=phone,
+        email=norm,
+        coverage_regions=[pc.upper()],
+        credentials=creds,
+    )
+    doc = await update_contractor(
+        doc["contractor_id"],
+        registration_postcode=pc.upper(),
+        status=LC_PENDING_APPROVAL,
+        vetting_status=LC_PENDING_APPROVAL,
+    )
+    assert doc is not None
+    try:
+        from utils.submission_utils import notify_admin_new_submission
+
+        await notify_admin_new_submission(
+            "contractor_registration",
+            doc["contractor_id"],
+            f"{name.strip()} &lt;{norm}&gt; — pending contractor approval",
+            detail_url_path=f"/admin/ops/contractors/{doc['contractor_id']}",
+        )
+    except Exception as e:
+        logger.warning("Admin notify for contractor registration failed: %s", e)
+    try:
+        from utils.audit import create_audit_log
+        from models import AuditAction
+
+        await create_audit_log(
+            action=AuditAction.CONTRACTOR_REGISTERED_PUBLIC,
+            actor_id="system",
+            resource_type="contractor",
+            resource_id=doc["contractor_id"],
+            metadata={"email": norm, "triggered_by": "public_self_register"},
+        )
+    except Exception as e:
+        logger.warning("Audit log for contractor self-register failed: %s", e)
+    return {"ok": True, "contractor_id": doc["contractor_id"], "status": LC_PENDING_APPROVAL}
+
+
+async def validate_contractor_for_work_order_assignment(
+    contractor_id: str,
+    client_id: str,
+    work_order_id: str,
+    *,
+    assignment_profile: str = "standard",
+) -> None:
+    """Raise ValueError if contractor cannot be assigned to this work order."""
+    db = database.get_db()
+    contractor = await db.contractors.find_one({"contractor_id": contractor_id})
+    if not contractor:
+        raise ValueError("Contractor not found")
+    contractor_s = _sanitize_doc(contractor)
+    if assignment_profile == "client_supplied_personal":
+        st = normalize_lifecycle_status(contractor_s.get("status"))
+        if st in (LC_SUSPENDED, "suspended"):
+            raise ValueError("Contractor is suspended")
+        if (contractor_s.get("source_type") or "").strip().lower() != SOURCE_CLIENT_SUPPLIED_PERSONAL:
+            raise ValueError("Not a client-supplied personal contractor record")
+        if str(contractor_s.get("client_id") or "").strip() != str(client_id).strip():
+            raise ValueError("Personal contractor is not linked to your organisation")
+        email = (contractor_s.get("email") or "").strip()
+        if not email:
+            raise ValueError("Personal contractor must have an email before assignment")
+        wo = await db.work_orders.find_one(
+            {"work_order_id": work_order_id},
+            {"_id": 0, "client_id": 1},
+        )
+        if not wo or (wo.get("client_id") or "").strip() != (client_id or "").strip():
+            raise ValueError("Work order not found for this client")
+        return
+    ok, reason = contractor_is_assignable(contractor_s)
+    if not ok:
+        raise ValueError(reason)
+    vis = await contractor_visible_to_client(contractor_id, client_id)
+    if not vis:
+        raise ValueError("Contractor is not available to your organisation")
+    wo = await db.work_orders.find_one(
+        {"work_order_id": work_order_id},
+        {
+            "_id": 0,
+            "client_id": 1,
+            "property_id": 1,
+            "category": 1,
+            "work_order_kind": 1,
+            "requirement_code": 1,
+        },
+    )
+    if not wo or (wo.get("client_id") or "").strip() != (client_id or "").strip():
+        raise ValueError("Work order not found for this client")
+    if not contractor_client_link_allows(contractor_s, client_id):
+        raise ValueError("Contractor is scoped to a different client")
+    if not contractor_property_scope_allows(contractor_s, wo.get("property_id")):
+        raise ValueError("Contractor is not scoped to this property")
+    if not contractor_passes_work_order_execution_gate(contractor_s, wo):
+        raise ValueError(
+            "Contractor execution capabilities do not match this work order "
+            "(maintenance repair vs compliance inspection/renewal)"
+        )
+    prop_pc = None
+    if wo.get("property_id"):
+        prop = await db.properties.find_one(
+            {"property_id": wo["property_id"], "client_id": client_id},
+            {"_id": 0, "postcode": 1},
+        )
+        prop_pc = (prop or {}).get("postcode")
+    if not contractor_location_matches_property(contractor_s, prop_pc):
+        raise ValueError("Contractor location does not match the property postcode")
+    kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+    if kind == WORK_ORDER_KIND_MAINTENANCE:
+        if not contractor_trade_matches_category(contractor_s, wo.get("category")):
+            raise ValueError("Contractor trade types do not match this maintenance work order category")
+
+
+async def list_assignable_contractors_for_work_order(
+    client_id: str,
+    work_order_id: str,
+    skip: int = 0,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    """Contractors visible to the client who pass assignment readiness and work-order filters."""
+    db = database.get_db()
+    wo = await db.work_orders.find_one(
+        {"work_order_id": work_order_id},
+        {"_id": 0, "client_id": 1, "property_id": 1, "category": 1, "work_order_kind": 1, "requirement_code": 1},
+    )
+    if not wo or wo.get("client_id") != client_id:
+        return {"contractors": [], "total": 0, "skip": skip, "limit": limit}
+    prop_pc = None
+    if wo.get("property_id"):
+        prop = await db.properties.find_one(
+            {"property_id": wo["property_id"], "client_id": client_id},
+            {"_id": 0, "postcode": 1},
+        )
+        prop_pc = (prop or {}).get("postcode")
+    q = _visibility_query(client_id)
+    cursor = db.contractors.find(q).sort("name", 1)
+    all_rows = await cursor.to_list(500)
+    matched: List[Dict[str, Any]] = []
+    for raw in all_rows:
+        c = _sanitize_doc(raw)
+        ok, _ = contractor_is_assignable(c)
+        if not ok:
+            continue
+        if not contractor_client_link_allows(c, client_id):
+            continue
+        if not contractor_property_scope_allows(c, wo.get("property_id")):
+            continue
+        if not contractor_location_matches_property(c, prop_pc):
+            continue
+        if not contractor_passes_work_order_execution_gate(c, wo):
+            continue
+        kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+        if kind == WORK_ORDER_KIND_MAINTENANCE:
+            if not contractor_trade_matches_category(c, wo.get("category")):
+                continue
+        matched.append(c)
+    total = len(matched)
+    page = matched[skip : skip + limit]
+    return {"contractors": page, "total": total, "skip": skip, "limit": limit}
+
+
+async def approve_contractor(contractor_id: str, *, approved_by: Optional[str] = None, approved_by_role: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """
+    Approve a contractor for operations: vetted=True, status active if portal already activated else approved, and send portal invite when needed.
+    """
+    from utils.audit import create_audit_log
+    from models import AuditAction
+
+    db = database.get_db()
+    raw = await db.contractors.find_one({"contractor_id": contractor_id})
+    if not raw:
+        return None
+    cur = _sanitize_doc(raw)
+    portal_on = portal_access_is_activated(cur)
+    new_status = LC_ACTIVE if portal_on else LC_APPROVED
+    updated = await update_contractor(
+        contractor_id,
+        status=new_status,
+        vetted=True,
+        vetting_status="approved",
+    )
+    if not updated:
+        return None
+    try:
+        await create_audit_log(
+            action=AuditAction.CONTRACTOR_LIFECYCLE_APPROVED,
+            actor_id=approved_by,
+            actor_role=approved_by_role,
+            resource_type="contractor",
+            resource_id=contractor_id,
+            metadata={"triggered_by": "admin", "portal_already_activated": portal_on},
+        )
+    except Exception as e:
+        logger.warning("Audit log for contractor approve failed: %s", e)
+    if not portal_on:
+        try:
+            await issue_contractor_portal_invite(
+                contractor_id,
+                actor_id=approved_by,
+                actor_role=approved_by_role,
+                resend=False,
+                include_next_steps=True,
+            )
+        except ValueError as e:
+            logger.warning("Could not send onboarding invite after approval: %s", e)
+    return await get_contractor(contractor_id)
 
 
 async def list_assigned_jobs(contractor_id: str, include_closed: bool = False, limit: int = 200) -> Dict[str, Any]:
@@ -528,6 +1253,7 @@ async def approve_contractor_to_network(
         areas_served=private.get("areas_served"),
         contact_name=private.get("contact_name"),
         notes=private.get("notes"),
+        skip_email_duplicate_check=True,
     )
     await db.contractors.update_one(
         {"contractor_id": contractor_id},
@@ -564,15 +1290,6 @@ async def reject_contractor_network_submission(
     return await get_contractor(contractor_id)
 
 
-RECOMMENDED_TYPE_TO_TRADES = {
-    "gas_safe": ["heating", "gas", "gas_safe", "boiler"],
-    "plumber": ["plumbing", "plumber"],
-    "electrician": ["electrical", "electrician"],
-    "damp_inspection": ["damp", "inspection", "damp_inspection"],
-    "general": ["general", "handyman"],
-}
-
-
 async def load_price_books(client_id: Optional[str]) -> List[Dict[str, Any]]:
     """Load price_books for a client (client-specific + global). Returns list; empty if collection missing or no docs."""
     db = database.get_db()
@@ -584,6 +1301,55 @@ async def load_price_books(client_id: Optional[str]) -> List[Dict[str, Any]]:
         return []
 
 
+_TERMINAL_WORK_ORDER_STATUSES = ("COMPLETED", "CANCELLED", "CLOSED", "VERIFIED")
+
+
+async def aggregate_contractor_open_workloads(client_id: str) -> Dict[str, int]:
+    """Count open (non-terminal) work orders per contractor_id for this client."""
+    db = database.get_db()
+    pipeline = [
+        {
+            "$match": {
+                "client_id": client_id,
+                "contractor_id": {"$nin": [None, ""]},
+                "status": {"$nin": list(_TERMINAL_WORK_ORDER_STATUSES)},
+            },
+        },
+        {"$group": {"_id": "$contractor_id", "n": {"$sum": 1}}},
+    ]
+    out: Dict[str, int] = {}
+    try:
+        async for row in db.work_orders.aggregate(pipeline):
+            if row.get("_id"):
+                out[str(row["_id"])] = int(row.get("n") or 0)
+    except Exception as e:
+        logger.warning("aggregate_contractor_open_workloads failed: %s", e)
+    return out
+
+
+async def aggregate_contractor_historical_sla_breaches(client_id: str) -> Dict[str, int]:
+    """Count work orders with sla_breached_at set per contractor (this client), all statuses."""
+    db = database.get_db()
+    pipeline = [
+        {
+            "$match": {
+                "client_id": client_id,
+                "contractor_id": {"$nin": [None, ""]},
+                "sla_breached_at": {"$exists": True, "$ne": None},
+            },
+        },
+        {"$group": {"_id": "$contractor_id", "n": {"$sum": 1}}},
+    ]
+    out: Dict[str, int] = {}
+    try:
+        async for row in db.work_orders.aggregate(pipeline):
+            if row.get("_id"):
+                out[str(row["_id"])] = int(row.get("n") or 0)
+    except Exception as e:
+        logger.warning("aggregate_contractor_historical_sla_breaches failed: %s", e)
+    return out
+
+
 async def recommend_contractors_for_work_order(
     work_order_id: str,
     client_id: Optional[str] = None,
@@ -593,20 +1359,82 @@ async def recommend_contractors_for_work_order(
     db = database.get_db()
     wo = await db.work_orders.find_one(
         {"work_order_id": work_order_id},
-        {"_id": 0, "client_id": 1, "property_id": 1, "category": 1, "recommended_contractor_type": 1, "severity": 1, "work_order_id": 1},
+        {
+            "_id": 0,
+            "client_id": 1,
+            "property_id": 1,
+            "category": 1,
+            "recommended_contractor_type": 1,
+            "severity": 1,
+            "work_order_id": 1,
+            "sla_complete_by": 1,
+            "sla_respond_by": 1,
+            "sla_breach_risk_at": 1,
+            "sla_breached_at": 1,
+            "status": 1,
+            "work_order_kind": 1,
+            "requirement_code": 1,
+            "compliance_purpose": 1,
+        },
     )
     if not wo:
-        return {"contractors": [], "total": 0, "work_order_id": work_order_id, "no_strong_match": True}
+        from services.contractor_recommendation import compute_assignment_routing_meta
+        from services.contractor_assignment_policy import get_contractor_assignment_policy
+
+        empty_meta = compute_assignment_routing_meta({"work_order_id": work_order_id})
+        pol = get_contractor_assignment_policy(client_id)
+        return {
+            "contractors": [],
+            "total": 0,
+            "work_order_id": work_order_id,
+            "no_strong_match": True,
+            "routing": {
+                **empty_meta,
+                "no_eligible_contractors": True,
+                "no_strong_match": True,
+                "policy": {
+                    "admin_confirms_assignment": pol.get("admin_confirms_assignment_default", True),
+                    "auto_assign_enabled": pol.get("auto_assign_enabled", False),
+                    "auto_assign_categories": pol.get("auto_assign_categories", []),
+                },
+                "routing_messages": (empty_meta.get("routing_messages") or []) + ["Work order not found."],
+            },
+        }
     cid = client_id or wo.get("client_id")
     q = _visibility_query(cid) if cid else {"$or": [{"client_id": None}, {"status": {"$exists": False}}]}
     cursor = db.contractors.find(q)
     all_contractors = await cursor.to_list(500)
     property_doc = None
-    if wo.get("property_id"):
+    if wo.get("property_id") and cid:
+        property_doc = await db.properties.find_one(
+            {"property_id": wo["property_id"], "client_id": cid},
+            {"_id": 0, "postcode": 1, "region": 1},
+        )
+    elif wo.get("property_id"):
         property_doc = await db.properties.find_one(
             {"property_id": wo["property_id"]},
             {"_id": 0, "postcode": 1, "region": 1},
         )
+    prop_pc = (property_doc or {}).get("postcode")
+    filtered_raw: List[Dict[str, Any]] = []
+    for raw in all_contractors:
+        c = _sanitize_doc(raw)
+        ok_assign, _ = contractor_is_assignable(c)
+        if not ok_assign:
+            continue
+        if cid and not contractor_client_link_allows(c, cid):
+            continue
+        if cid and not contractor_property_scope_allows(c, wo.get("property_id")):
+            continue
+        if not contractor_location_matches_property(c, prop_pc):
+            continue
+        if not contractor_passes_work_order_execution_gate(c, wo):
+            continue
+        wk = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+        if wk == WORK_ORDER_KIND_MAINTENANCE:
+            if not contractor_trade_matches_category(c, wo.get("category")):
+                continue
+        filtered_raw.append(raw)
     perf_map: Dict[str, Tuple[int, int]] = {}
     if cid:
         perf_cursor = db.contractor_performance.find(
@@ -618,13 +1446,46 @@ async def recommend_contractors_for_work_order(
             o = p.get("jobs_on_time") or 0
             perf_map[p["contractor_id"]] = (j, o)
     price_books = await load_price_books(cid)
-    from services.contractor_recommendation import recommend_contractors as rule_recommend
+    from services.contractor_recommendation import compute_assignment_routing_meta, recommend_contractors as rule_recommend
+    from services.contractor_assignment_policy import get_contractor_assignment_policy
+
+    pool = filtered_raw if filtered_raw else []
+    if not pool:
+        pol = get_contractor_assignment_policy(cid)
+        routing_meta = compute_assignment_routing_meta(wo, now_utc=datetime.now(timezone.utc))
+        empty = rule_recommend(
+            work_order=wo,
+            property_doc=property_doc,
+            contractors=[],
+            performance_map={},
+            price_books=price_books if price_books else None,
+            workload_map={},
+            breach_count_map={},
+            client_id_for_preference=cid,
+            routing_meta=routing_meta,
+            assignment_policy=pol,
+            eligible_only=True,
+        )
+        return empty
+    workload_map: Dict[str, int] = {}
+    breach_map: Dict[str, int] = {}
+    if cid:
+        workload_map = await aggregate_contractor_open_workloads(str(cid))
+        breach_map = await aggregate_contractor_historical_sla_breaches(str(cid))
+    routing_meta = compute_assignment_routing_meta(wo, now_utc=datetime.now(timezone.utc))
+    policy = get_contractor_assignment_policy(str(cid) if cid else None)
     result = rule_recommend(
         work_order=wo,
         property_doc=property_doc,
-        contractors=all_contractors,
+        contractors=pool,
         performance_map=perf_map,
         price_books=price_books if price_books else None,
+        workload_map=workload_map,
+        breach_count_map=breach_map,
+        client_id_for_preference=cid,
+        routing_meta=routing_meta,
+        assignment_policy=policy,
+        eligible_only=True,
     )
     result["contractors"] = result["contractors"][:limit]
     result["total"] = len(result["contractors"])

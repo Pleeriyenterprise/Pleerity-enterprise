@@ -174,9 +174,14 @@ async def run_sla_watchdog() -> Dict[str, Any]:
 
     # Recovery pass: resolve incidents whose condition is now cleared (heartbeat fresh, no delivery_unknown stale)
     try:
-        from services.incident_recovery import check_and_resolve_heartbeat_incidents, check_and_resolve_delivery_unknown_incidents
+        from services.incident_recovery import (
+            check_and_resolve_heartbeat_incidents,
+            check_and_resolve_delivery_unknown_incidents,
+            check_and_resolve_risk_regen_queue_incidents,
+        )
         recovered += await check_and_resolve_heartbeat_incidents()
         recovered += await check_and_resolve_delivery_unknown_incidents()
+        recovered += await check_and_resolve_risk_regen_queue_incidents()
         if recovered:
             logger.info("SLA watchdog recovery pass: resolved %s incident(s)", recovered)
     except Exception as e:

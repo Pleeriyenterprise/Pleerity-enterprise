@@ -303,4 +303,21 @@ async def recalculate_and_persist(
         },
     )
     logger.info(f"Compliance score updated property_id={property_id} reason={reason} previous={previous_score} new={new_score}")
+
+    if not (context or {}).get("skip_risk_regen_enqueue"):
+        try:
+            from services.risk_signal_regen_queue import enqueue_risk_signal_regen
+
+            await enqueue_risk_signal_regen(
+                property_id,
+                client_id,
+                f"RECALC:{reason}",
+            )
+        except Exception as regen_err:
+            logger.warning(
+                "recalculate_and_persist: risk regen enqueue failed property_id=%s: %s",
+                property_id,
+                regen_err,
+            )
+
     return result

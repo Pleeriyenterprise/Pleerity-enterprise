@@ -5,6 +5,8 @@ and related insights. Each explanation includes explanation_text, why_it_matters
 """
 from typing import Any, Dict, Optional
 
+from presentation.label_service import recommended_action_client_text, risk_type_client_label
+
 # --- Output shape ---
 def _out(explanation_text: str, why_it_matters: str, recommended_action_text: str) -> Dict[str, Any]:
     return {
@@ -23,6 +25,13 @@ def explain_risk_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
     risk_type = (signal.get("risk_type") or "").strip()
     reasons = signal.get("reasons") or []
     recommended = (signal.get("recommended_action") or "").strip()
+    rec_client = (signal.get("recommended_action_client") or "").strip()
+    if rec_client:
+        recommended_action_text = rec_client
+    elif recommended:
+        recommended_action_text = recommended if recommended.endswith(".") else f"{recommended}."
+    else:
+        recommended_action_text = recommended_action_client_text(risk_type, "")
     level = (signal.get("risk_level") or "medium").lower()
 
     # Build why_it_matters from type-specific context + reasons
@@ -46,19 +55,19 @@ def explain_risk_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
         )
         if reasons:
             why_parts.append(" " + " ".join(reasons[:2]))
-    elif risk_type == "Recurring Repairs":
+    elif risk_type in ("Recurring Repairs Risk", "Recurring Repairs"):
         why_parts.append(
             "Repeated issues on the same asset or category suggest root causes that patch repairs may not fix."
         )
         if reasons:
             why_parts.append(" " + " ".join(reasons[:1]))
-    elif risk_type == "SLA Breach":
+    elif risk_type in ("SLA Breach Risk", "SLA Breach"):
         why_parts.append(
             "Missed response or completion deadlines can affect tenant satisfaction and regulatory expectations."
         )
         if reasons:
             why_parts.append(" " + " ".join(reasons[:2]))
-    elif risk_type == "Compliance Churn":
+    elif risk_type in ("Compliance Churn Risk", "Compliance Churn"):
         why_parts.append(
             "Frequent compliance status changes can indicate missing evidence or expiring certificates that need attention."
         )
@@ -70,7 +79,7 @@ def explain_risk_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
         )
         if reasons:
             why_parts.append(" " + " ".join(reasons[:1]))
-    elif risk_type == "Maintenance Frequency":
+    elif risk_type in ("Maintenance Frequency Risk", "Maintenance Frequency"):
         why_parts.append(
             "High maintenance frequency can indicate ageing assets or underlying defects that warrant inspection."
         )
@@ -83,8 +92,10 @@ def explain_risk_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
             why_parts.append("This signal was raised based on property data and may require follow-up to reduce risk.")
 
     why_it_matters = "".join(why_parts).strip() or "This signal highlights an area that may need attention to reduce risk."
-    explanation_text = (signal.get("description") or risk_type or "Risk signal") + ". " + why_it_matters
-    recommended_action_text = recommended or "Review the signal and take the suggested action (e.g. create work order or schedule inspection)."
+    client_rt = (signal.get("risk_type_label_client") or "").strip() or risk_type_client_label(risk_type)
+    desc = (signal.get("description") or "").strip()
+    lead = desc if desc else client_rt
+    explanation_text = f"{lead}. {why_it_matters}".strip() if lead else why_it_matters
 
     return _out(explanation_text, why_it_matters, recommended_action_text)
 

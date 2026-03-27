@@ -771,6 +771,34 @@ async def set_password(request: Request, data: SetPasswordRequest):
             {"token_hash": token_hash_value},
             {"$set": {"used": True, "used_at": now.isoformat()}}
         )
+
+        # Recover from auth lockout: same email principal as failed client/admin login attempts
+        try:
+            from services.security_monitoring_service import clear_auth_lock
+
+            auth_email_clear = (portal_user.get("auth_email") or "").strip().lower()
+            if auth_email_clear:
+                lock_portal = (
+                    "admin"
+                    if (
+                        portal_user.get("role") in STAFF_PORTAL_ROLES
+                        or password_token.get("client_id") == "ADMIN_INVITE"
+                    )
+                    else "client"
+                )
+                had_lock = await clear_auth_lock(
+                    email=auth_email_clear,
+                    portal=lock_portal,
+                    reason="password_reset_success",
+                )
+                if had_lock:
+                    logger.info(
+                        "set_password cleared auth lock portal=%s portal_user_id=%s",
+                        lock_portal,
+                        portal_user.get("portal_user_id"),
+                    )
+        except Exception as lock_exc:
+            logger.warning("set_password clear_auth_lock skipped: %s", lock_exc)
         
         # Audit logs - differentiate between admin invite acceptance and regular password setup
         is_admin_invite = password_token.get("client_id") == "ADMIN_INVITE"
@@ -1037,8 +1065,9 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
     is_valid, message = validate_password_strength(data.password)
     if not is_valid:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    from datetime import datetime as dt_module, timezone as tz_module
     from services.contractor_portal_auth_service import create_account, set_password, get_account_by_contractor_id
-    now = datetime.now(timezone.utc).isoformat()
+    now = dt_module.now(tz_module.utc).isoformat()
     try:
         existing = await get_account_by_contractor_id(contractor_id)
         if existing:
@@ -1051,10 +1080,17 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
         {"token_hash": token_hash_value},
         {"$set": {"used": True, "used_at": now}}
     )
+    cur = await contractor_service.get_contractor(contractor_id)
+    st = contractor_service.normalize_lifecycle_status((cur or {}).get("status")) if cur else ""
+    new_status = None
+    if st == contractor_service.LC_APPROVED:
+        new_status = contractor_service.LC_ACTIVE
     await contractor_service.update_contractor(
         contractor_id,
         portal_access_status=contractor_service.PORTAL_ACCESS_ENABLED,
         portal_invite_accepted_at=now,
+        activated_at=now,
+        status=new_status,
     )
     await create_audit_log(
         action=AuditAction.CONTRACTOR_INVITE_ACCEPTED,
@@ -1062,6 +1098,13 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
         resource_type="contractor",
         resource_id=contractor_id,
         metadata={"email": email},
+    )
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_PORTAL_ACTIVATED,
+        actor_id=contractor_id,
+        resource_type="contractor",
+        resource_id=contractor_id,
+        metadata={"email": email, "triggered_by": "contractor_self_service"},
     )
     token_data = {
         "portal_user_id": f"contractor_{contractor_id}",
@@ -1198,7 +1241,13 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
             return {"message": generic_message}
 
         setup_link = f"{base_url}/set-password?token={raw_token}"
-        recipient = (client.get("contact_email") or client.get("email") or portal_user.get("auth_email") or "").strip()
+        # Always prefer the portal login email: user typed this address on forgot-password and checks that inbox.
+        # Client billing/contact emails may differ and caused production "no email received" reports.
+        recipient = (
+            (portal_user.get("auth_email") or "").strip()
+            or (client.get("contact_email") or "").strip()
+            or (client.get("email") or "").strip()
+        )
         if not recipient:
             await create_audit_log(
                 action=AuditAction.FORGOT_PASSWORD_REQUESTED,
@@ -1226,6 +1275,7 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
         )
 
         sent = result.outcome == "sent"
+        fail_reason = None if sent else (result.block_reason or result.error_message or "send_failed")
         await create_audit_log(
             action=AuditAction.FORGOT_PASSWORD_REQUESTED,
             actor_id=portal_user["portal_user_id"],
@@ -1233,9 +1283,27 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
             metadata={
                 "email_masked": email_raw[:3] + "***",
                 "sent": sent,
-                "reason": "email_sent" if sent else (result.block_reason or result.error_message or "send_failed"),
+                "reason": "email_sent" if sent else fail_reason,
+                "notification_outcome": result.outcome,
+                "message_id": result.message_id,
             },
         )
+        if sent:
+            logger.info(
+                "forgot_password email dispatched client_id=%s portal_user_id=%s outcome=sent message_id=%s",
+                client_id,
+                portal_user.get("portal_user_id"),
+                result.message_id,
+            )
+        else:
+            logger.warning(
+                "forgot_password email not sent client_id=%s portal_user_id=%s outcome=%s reason=%s message_id=%s",
+                client_id,
+                portal_user.get("portal_user_id"),
+                result.outcome,
+                fail_reason,
+                result.message_id,
+            )
         return {"message": generic_message}
     except HTTPException:
         raise

@@ -25,6 +25,7 @@ import {
 } from '../components/ui/accordion';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import EmptyState from '../components/EmptyState';
+import { requirementLabel } from '../domain/presentDomain';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -153,8 +154,10 @@ const RequirementsPage = () => {
   const filteredRequirements = requirements.filter(req => {
     // Search filter
     const property = getPropertyById(req.property_id);
+    const reqLabel = requirementLabel(req.requirement_type || req.requirement_code || '');
     const matchesSearch = searchTerm === '' ||
       req.requirement_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reqLabel.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.address_line_1?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -204,7 +207,7 @@ const RequirementsPage = () => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-midnight-blue">{req.requirement_type?.replace(/_/g, ' ') || 'Unknown Requirement'}</h3>
+                <h3 className="font-semibold text-midnight-blue">{requirementLabel(req.requirement_type || req.requirement_code) || 'Requirement'}</h3>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
                 {docCount > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200" data-testid={`doc-count-${req.requirement_id}`}>
@@ -449,7 +452,7 @@ const RequirementsPage = () => {
                 return Object.entries(byReqType).map(([reqType, reqs]) => (
                   <AccordionItem key={reqType} value={reqType} data-testid={`accordion-requirement-${reqType}`}>
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <span className="font-medium text-midnight-blue">{reqType.replace(/_/g, ' ')}</span>
+                      <span className="font-medium text-midnight-blue">{reqType === 'Other' ? 'Other' : requirementLabel(reqType)}</span>
                       <span className="text-sm text-gray-500 font-normal ml-2">({reqs.length})</span>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">

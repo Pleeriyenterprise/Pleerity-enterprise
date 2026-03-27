@@ -15,6 +15,7 @@ import Sparkline from '../components/Sparkline';
 import ScoreTrendChart from '../components/ScoreTrendChart';
 import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
 import { UrgencyRow, timingLabelFromDueAtIso } from '../components/client/UrgencyDisplay';
+import { requirementLabel, slaStateLabel, riskTypeLabelClient } from '../domain/presentDomain';
 
 const KPI_NO_DATA = 'No data yet';
 const FRESH_SCORE_STALE_HOURS = 48;
@@ -1081,9 +1082,9 @@ const ClientDashboard = () => {
 
         {/* Executive KPI row (compliance + operations) */}
         {!setupView && (
-          <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" data-testid="executive-kpi-row">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/today')}>
-              <CardContent className="p-4">
+          <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3" data-testid="executive-kpi-row">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/today')}>
+              <CardContent className="p-3 sm:p-4 min-w-0">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Today</p>
                 <p className="text-xl font-bold text-midnight-blue">
                   {tasksDigest && typeof tasksDigest === 'object'
@@ -1095,8 +1096,8 @@ const ClientDashboard = () => {
                 <p className="text-xs text-electric-teal mt-1">Open Today →</p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/compliance-score')}>
-              <CardContent className="p-4">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/compliance-score')}>
+              <CardContent className="p-3 sm:p-4 min-w-0">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Portfolio compliance</p>
                 <p className="text-xl font-bold text-midnight-blue">
                   {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score)}
@@ -1104,8 +1105,8 @@ const ClientDashboard = () => {
               </CardContent>
             </Card>
             {hasFeature('maintenance_workflows') && (
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/issues')}>
-                <CardContent className="p-4">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/issues')}>
+                <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
                   <p className="text-xl font-bold text-midnight-blue">
                     {openIssuesKpiLoading ? '…' : openIssuesCount == null ? KPI_NO_DATA : openIssuesCount}
@@ -1115,20 +1116,20 @@ const ClientDashboard = () => {
             )}
             {hasFeature('maintenance_workflows') && (
               <Card
-                className="cursor-pointer hover:shadow-md transition-shadow"
-                title="Work orders with SLA breached timestamp set (current list, up to 500 loaded)."
+                className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
+                title="Work orders where the agreed response time has passed (current list, up to 500 loaded)."
                 onClick={() => navigate('/operations/work-orders?sla_state=breached')}
               >
-                <CardContent className="p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Work orders · SLA breached</p>
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Work orders · {slaStateLabel('breached')}</p>
                   <p className="text-xl font-bold text-midnight-blue">{slaBreachedCount}</p>
-                  <p className="text-xs text-gray-500 mt-1">Near breach: {slaNearBreachCount}</p>
+                  <p className="text-xs text-gray-500 mt-1">{slaStateLabel('near_breach')}: {slaNearBreachCount}</p>
                 </CardContent>
               </Card>
             )}
             {hasFeature('predictive_maintenance') && (
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/operations/risk-signals')}>
-                <CardContent className="p-4">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/risk-signals')}>
+                <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Predicted risks</p>
                   <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
                 </CardContent>
@@ -1136,11 +1137,11 @@ const ClientDashboard = () => {
             )}
             {hasFeature('invoicing') && maintenanceSpendMonth && maintenanceSpendMonth.has_any_invoices && (
               <Card
-                className="cursor-pointer hover:shadow-md transition-shadow"
+                className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
                 title={maintenanceSpendMonth.calculation_summary || 'Paid contractor invoices this UTC month.'}
                 onClick={() => navigate('/operations/approvals')}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Maintenance spend (month)</p>
                   <p className="text-xl font-bold text-midnight-blue">
                     {new Intl.NumberFormat('en-GB', { style: 'currency', currency: maintenanceSpendMonth.currency || 'GBP' }).format(Number(maintenanceSpendMonth.total_amount ?? 0))}
@@ -1157,27 +1158,27 @@ const ClientDashboard = () => {
             className="mb-6 border border-gray-200 shadow-sm"
             data-testid="tasks-digest-card"
           >
-            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4">
-          <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ListTodo className="w-4 h-4 text-teal-600" />
+            <CardHeader className="pb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
+                <CardTitle className="text-base flex items-center gap-2 break-words">
+                  <ListTodo className="w-4 h-4 text-teal-600 shrink-0" />
                   Today — this week
                 </CardTitle>
                 {tasksDigest.freshness?.tasks_refreshed_at && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 break-words">
                     Snapshot refreshed {new Date(tasksDigest.freshness.tasks_refreshed_at).toLocaleString()}
                   </p>
                 )}
                 {commandCenterScopeLabel && (
-                  <p className="text-xs text-electric-teal mt-1">Scoped to: {commandCenterScopeLabel}</p>
+                  <p className="text-xs text-electric-teal mt-1 break-words">Scoped to: {commandCenterScopeLabel}</p>
                 )}
               </div>
-              <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/today')}>
+              <Button variant="outline" size="sm" className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0" onClick={() => navigate('/today')}>
                 Open Today
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-sm">
                 <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Urgent</p>
                   <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.urgent_count ?? 0}</p>
@@ -1229,14 +1230,14 @@ const ClientDashboard = () => {
 
         {!setupView && isClientUser && (activitySinceLoading || activitySince) && (
           <Card className="mb-6 border border-gray-200 shadow-sm" data-testid="activity-since-card">
-            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <History className="w-4 h-4 text-teal-600" />
+            <CardHeader className="pb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <CardTitle className="text-base flex items-center gap-2 break-words">
+                  <History className="w-4 h-4 text-teal-600 shrink-0" />
                   Since your last visit
                 </CardTitle>
                 {activitySince?.window?.since && activitySince?.window?.until && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 break-words">
                     Compared {new Date(activitySince.window.since).toLocaleString()} →{' '}
                     {new Date(activitySince.window.until).toLocaleString()}
                   </p>
@@ -1245,7 +1246,7 @@ const ClientDashboard = () => {
           <Button 
                 variant="outline"
                 size="sm"
-                className="shrink-0"
+                className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0"
                 disabled={activitySinceAckBusy || activitySinceLoading}
                 onClick={handleAckActivitySince}
                 data-testid="activity-since-ack-btn"
@@ -1276,22 +1277,22 @@ const ClientDashboard = () => {
             className="mb-6 border border-gray-200 shadow-sm"
             data-testid="command-center-snapshot-card"
           >
-            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <LayoutDashboard className="w-4 h-4 text-teal-600" />
+            <CardHeader className="pb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <CardTitle className="text-base flex items-center gap-2 break-words">
+                  <LayoutDashboard className="w-4 h-4 text-teal-600 shrink-0" />
                   Command center snapshot
                 </CardTitle>
                 {commandCenter.freshness?.tasks_refreshed_at && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 break-words">
                     Tasks snapshot {new Date(commandCenter.freshness.tasks_refreshed_at).toLocaleString()}
                   </p>
                 )}
                 {commandCenterScopeLabel && (
-                  <p className="text-xs text-electric-teal mt-1">Scoped to: {commandCenterScopeLabel}</p>
+                  <p className="text-xs text-electric-teal mt-1 break-words">Scoped to: {commandCenterScopeLabel}</p>
                 )}
         </div>
-              <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/today')}>
+              <Button variant="outline" size="sm" className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0" onClick={() => navigate('/today')}>
                 Open Today
               </Button>
             </CardHeader>
@@ -1301,10 +1302,10 @@ const ClientDashboard = () => {
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Urgent &amp; in progress</p>
                   <ul className="space-y-2 text-sm">
                     {commandCenter.urgent_actions.slice(0, 6).map((t) => (
-                      <li key={t.id || t.title} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                      <li key={t.id || t.title} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
                         <button
                           type="button"
-                          className="text-left text-midnight-blue hover:underline font-medium min-w-0"
+                          className="text-left text-midnight-blue hover:underline font-medium min-w-0 break-words"
                           onClick={() => {
                             const url = t.primary_action_url || t.cta_url;
                             if (url && url.startsWith('/')) navigate(url);
@@ -1314,7 +1315,7 @@ const ClientDashboard = () => {
                         >
                           {t.title || 'Task'}
                         </button>
-                        <span className="text-xs text-gray-500 shrink-0">
+                        <span className="text-xs text-gray-500 shrink-0 break-words sm:text-right sm:max-w-[40%]">
                           {[t.property_label, t.timing_label || t.urgency_level].filter(Boolean).join(' · ')}
                         </span>
                       </li>
@@ -1327,15 +1328,15 @@ const ClientDashboard = () => {
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Active predicted risks</p>
                   <ul className="space-y-2 text-sm">
                     {commandCenter.upcoming_risks.slice(0, 4).map((r) => (
-                      <li key={r.signal_id || r.description} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                      <li key={r.signal_id || r.description} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
                         <button
                           type="button"
-                          className="text-left text-midnight-blue hover:underline min-w-0"
+                          className="text-left text-midnight-blue hover:underline min-w-0 break-words"
                           onClick={() => navigate(r.cta_url || '/operations/risk-signals')}
                         >
-                          {r.description || (r.risk_type ? String(r.risk_type).replace(/_/g, ' ') : '') || 'Risk signal'}
+                          {r.description || r.risk_type_label_client || riskTypeLabelClient(r.risk_type) || 'Risk signal'}
                         </button>
-                        <span className="text-xs text-gray-500 shrink-0 capitalize">{r.risk_level || ''}</span>
+                        <span className="text-xs text-gray-500 shrink-0">{formatRiskLabel(r.risk_level)}</span>
                       </li>
                     ))}
                   </ul>
@@ -1909,21 +1910,21 @@ const ClientDashboard = () => {
             <CardContent>
               <ul className="space-y-3">
                 {priorityActions.actions.map((action, idx) => (
-                  <li key={idx} className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
+                  <li key={idx} className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 py-3 border-b border-gray-100 last:border-0">
                     <div className="min-w-0 flex-1">
                       <UrgencyRow
                         urgencyLevel={action.severity || 'medium'}
                         timingLabel={timingLabelFromDueAtIso(action.due_at)}
                         className="mb-1"
                       />
-                      <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
+                      <p className="text-sm font-medium text-midnight-blue break-words">{action.title}</p>
                       {action.description && (
-                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{action.description}</p>
+                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-3 break-words">{action.description}</p>
                       )}
                     </div>
                     <Button
                       size="sm"
-                      className="shrink-0 bg-electric-teal hover:bg-electric-teal/90"
+                      className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90"
                       onClick={() => navigate(action.recommended_url || '#')}
                     >
                       {action.recommended_action_label || 'View'}
@@ -1948,17 +1949,17 @@ const ClientDashboard = () => {
             <CardContent>
               <ul className="space-y-2">
                 {(openIssuesCount ?? 0) > 0 && hasFeature('maintenance_workflows') && (
-                  <li className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
-                    <span className="text-sm text-gray-800">{openIssuesCount} open issue{openIssuesCount !== 1 ? 's' : ''}</span>
-                    <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => navigate('/operations/issues')}>
+                  <li className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 border-b border-amber-200 last:border-0">
+                    <span className="text-sm text-gray-800 min-w-0 break-words">{openIssuesCount} open issue{openIssuesCount !== 1 ? 's' : ''}</span>
+                    <Button size="sm" className="w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90 shrink-0" onClick={() => navigate('/operations/issues')}>
                       View issues
                     </Button>
                   </li>
                 )}
                 {riskSignalsCount > 0 && hasFeature('predictive_maintenance') && (
-                  <li className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
-                    <span className="text-sm text-gray-800">{riskSignalsCount} risk signal{riskSignalsCount !== 1 ? 's' : ''} flagged</span>
-                    <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => navigate('/operations/risk-signals')}>
+                  <li className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 border-b border-amber-200 last:border-0">
+                    <span className="text-sm text-gray-800 min-w-0 break-words">{riskSignalsCount} risk signal{riskSignalsCount !== 1 ? 's' : ''} flagged</span>
+                    <Button size="sm" className="w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90 shrink-0" onClick={() => navigate('/operations/risk-signals')}>
                       View risk signals
                     </Button>
                   </li>
@@ -2004,7 +2005,26 @@ const ClientDashboard = () => {
             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 font-medium text-midnight-blue">
               Portfolio summary
             </div>
-            <div className="overflow-x-auto">
+            <div className="md:hidden p-3 space-y-3 client-portal-prose">
+              {portfolioSummary.properties.map((p) => (
+                <button
+                  key={p.property_id}
+                  type="button"
+                  className="w-full text-left rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:border-electric-teal/40 transition-colors min-h-[44px]"
+                  onClick={() => navigate(`/properties/${p.property_id}`)}
+                >
+                  <p className="font-semibold text-midnight-blue break-words">{getPropertyDisplayLabel(p) || p.name || p.property_id}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+                    <span>Score: {p.property_score ?? p.score ?? 0}/100</span>
+                    <span>{formatRiskLabel(p.risk_level)}</span>
+                    <span>Overdue: {p.overdue_count ?? 0}</span>
+                    <span>Expiring: {p.expiring_30_count ?? p.expiring_soon_count ?? 0}</span>
+                  </div>
+                  <span className="mt-2 inline-block text-sm text-electric-teal font-medium">View property →</span>
+                </button>
+              ))}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-gray-600">
@@ -2025,9 +2045,9 @@ const ClientDashboard = () => {
                       className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                       onClick={() => navigate(`/properties/${p.property_id}`)}
                     >
-                      <td className="p-3 font-medium text-midnight-blue">{p.name || p.property_id}</td>
+                      <td className="p-3 font-medium text-midnight-blue max-w-[14rem] break-words">{getPropertyDisplayLabel(p) || p.name || p.property_id}</td>
                       <td className="p-3">{p.property_score ?? p.score ?? 0}/100</td>
-                      <td className="p-3">{formatRiskLabel(p.risk_level)}</td>
+                      <td className="p-3 whitespace-nowrap">{formatRiskLabel(p.risk_level)}</td>
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
                       <td className="p-3">{p.missing_count ?? 0}</td>
@@ -2175,7 +2195,7 @@ const ClientDashboard = () => {
                   {deduped.map((a, i) => (
                     <li key={`${a.property_id}-${a.requirement_code}-${i}`} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                       <span className="text-sm text-gray-700 truncate mr-2">
-                        {a.description || a.requirement_code} · {getPropertyDisplayName(a.property_id)}
+                        {a.description || requirementLabel(a.requirement_code)} · {getPropertyDisplayName(a.property_id)}
                       </span>
                       <Button
                         size="sm"

@@ -3,6 +3,7 @@
  * urgency, deep links, and selective inline actions (risk → issue / work order).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { inboxTitleForDisplay } from '../domain/presentDomain';
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -64,106 +65,125 @@ function TaskCard({
   onTaskOverride,
   overrideBusy,
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const meta = task.metadata || {};
   const sid = meta.related_risk_signal_id;
   const busy = overrideBusy === task.id;
+  const displayTitle = inboxTitleForDisplay(task);
+  const hasLongContext = Boolean(task.why_matters || task.recommended_action);
 
   return (
-    <Card className="border border-gray-200 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <Badge variant="outline" className="text-xs font-normal">
+    <Card className="border border-gray-200 shadow-sm overflow-hidden">
+      <CardContent className="p-4 client-portal-prose">
+        <div className="flex flex-col gap-4 min-w-0">
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-xs font-normal shrink-0">
                 {sourceTypeLabel(task.source_type)}
               </Badge>
               <UrgencyRow urgencyLevel={task.urgency_level} timingLabel={meta.timing_label} />
             </div>
-            <h3 className="font-semibold text-midnight-blue text-base leading-snug">{task.title}</h3>
+            <h3 className="font-semibold text-midnight-blue text-base leading-snug break-words">{displayTitle}</h3>
             {task.property_label && (
-              <p className="text-sm text-gray-600 mt-0.5">{task.property_label}</p>
+              <p className="text-sm text-gray-600 break-words">{task.property_label}</p>
             )}
-            {task.description && <p className="text-sm text-gray-600 mt-2 line-clamp-3">{task.description}</p>}
-            {task.why_matters && (
-              <p className="text-xs text-gray-500 mt-2">
-                <span className="font-medium text-gray-700">Why it matters:</span> {task.why_matters}
-              </p>
+            {task.description && (
+              <p className="text-sm text-gray-700 line-clamp-3 break-words">{task.description}</p>
             )}
-            {task.recommended_action && (
-              <p className="text-xs text-gray-500 mt-1">
-                <span className="font-medium text-gray-700">Recommended:</span> {task.recommended_action}
-              </p>
+            {hasLongContext && (
+              <button
+                type="button"
+                className="text-left text-xs font-medium text-electric-teal hover:underline py-1 min-h-[44px] sm:min-h-0 flex items-center"
+                onClick={() => setDetailsOpen((o) => !o)}
+                aria-expanded={detailsOpen}
+              >
+                {detailsOpen ? 'Hide details' : 'Why this matters & next steps'}
+              </button>
+            )}
+            {detailsOpen && hasLongContext && (
+              <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-xs text-gray-600 space-y-2 break-words">
+                {task.why_matters && (
+                  <p>
+                    <span className="font-medium text-gray-800">Why it matters:</span> {task.why_matters}
+                  </p>
+                )}
+                {task.recommended_action && (
+                  <p>
+                    <span className="font-medium text-gray-800">Recommended:</span> {task.recommended_action}
+                  </p>
+                )}
+              </div>
             )}
             {task.freshness_timestamp && (
-              <p className="text-xs text-gray-400 mt-2">Updated {formatWhen(task.freshness_timestamp)}</p>
+              <p className="text-xs text-gray-400">Updated {formatWhen(task.freshness_timestamp)}</p>
             )}
           </div>
-          <div className="flex flex-col gap-2 items-stretch sm:items-end shrink-0">
-            <div className="flex flex-wrap gap-1 justify-end">
+
+          <div className="flex flex-col gap-3 pt-2 border-t border-gray-100 min-w-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <Button
                 type="button"
-                size="sm"
                 variant="outline"
-                className="text-xs h-8"
+                className="h-11 text-xs justify-center"
                 disabled={busy}
                 title="Hide for 1 day"
                 onClick={() => onTaskOverride('snooze', task, 1)}
               >
-                <Bell className="w-3 h-3 mr-1" />
-                1d
+                <Bell className="w-3.5 h-3.5 mr-1 shrink-0" />
+                1 day
               </Button>
               <Button
                 type="button"
-                size="sm"
                 variant="outline"
-                className="text-xs h-8"
+                className="h-11 text-xs justify-center"
                 disabled={busy}
                 title="Hide for 7 days"
                 onClick={() => onTaskOverride('snooze', task, 7)}
               >
-                7d
+                7 days
               </Button>
               <Button
                 type="button"
-                size="sm"
                 variant="outline"
-                className="text-xs h-8"
+                className="h-11 text-xs justify-center"
                 disabled={busy}
                 title="Hide until you restore (does not fix underlying compliance or work)"
                 onClick={() => onTaskOverride('dismiss', task)}
               >
-                <EyeOff className="w-3 h-3 mr-1" />
+                <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
                 Dismiss
               </Button>
               <Button
                 type="button"
-                size="sm"
                 variant="outline"
-                className="text-xs h-8"
+                className="h-11 text-xs justify-center"
                 disabled={busy}
                 title="Mark handled in your inbox (does not close work orders or approvals)"
                 onClick={() => onTaskOverride('done', task)}
               >
-                <CheckCircle className="w-3 h-3 mr-1" />
+                <CheckCircle className="w-3.5 h-3.5 mr-1 shrink-0" />
                 Done
               </Button>
             </div>
-            <Button size="sm" className="whitespace-nowrap" onClick={() => navigate(task.primary_action_url || '/dashboard')}>
+            <Button
+              className="w-full min-h-11 h-11 text-sm justify-center bg-midnight-blue hover:bg-midnight-blue/90"
+              onClick={() => navigate(task.primary_action_url || '/dashboard')}
+            >
               {task.primary_action_label || 'Open'}
             </Button>
             {showRiskInline && task.primary_action_type === 'risk_follow_up' && sid && (
-              <div className="flex flex-wrap gap-1 justify-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button
-                  size="sm"
                   variant="outline"
+                  className="min-h-11 h-11 w-full justify-center"
                   disabled={riskLoading === `issue:${sid}`}
                   onClick={() => onRiskAction('issue', sid)}
                 >
                   {riskLoading === `issue:${sid}` ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create issue'}
                 </Button>
                 <Button
-                  size="sm"
                   variant="outline"
+                  className="min-h-11 h-11 w-full justify-center"
                   disabled={riskLoading === `wo:${sid}`}
                   onClick={() => onRiskAction('work_order', sid)}
                 >
@@ -171,11 +191,19 @@ function TaskCard({
                 </Button>
               </div>
             )}
-            {busy && <Loader2 className="w-4 h-4 animate-spin text-gray-400 self-end" />}
+            {busy && (
+              <div className="flex justify-center py-1">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              </div>
+            )}
             {task.secondary_action_url && task.secondary_action_label && (
-              <Button size="sm" variant="ghost" className="text-electric-teal" onClick={() => navigate(task.secondary_action_url)}>
+              <Button
+                variant="ghost"
+                className="w-full min-h-11 h-11 text-electric-teal justify-center"
+                onClick={() => navigate(task.secondary_action_url)}
+              >
                 {task.secondary_action_label}
-                <ExternalLink className="w-3 h-3 ml-1 inline" />
+                <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0" />
               </Button>
             )}
           </div>
@@ -520,7 +548,7 @@ export default function ClientTasksPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-6">
         <div className="flex flex-wrap gap-2">
           {FILTER_CHIPS.map((c) => (
             <Button
@@ -528,7 +556,7 @@ export default function ClientTasksPage() {
               type="button"
               size="sm"
               variant={filter === c.id ? 'default' : 'outline'}
-              className={filter === c.id ? 'bg-midnight-blue' : ''}
+              className={`min-h-11 px-3 ${filter === c.id ? 'bg-midnight-blue' : ''}`}
               onClick={() => setFilter(c.id)}
             >
               {c.label}
@@ -536,15 +564,15 @@ export default function ClientTasksPage() {
           ))}
         </div>
         {propertyOptions.length > 0 && (
-          <div className="flex items-center gap-2 text-sm">
-            <label htmlFor="tasks-property-filter" className="text-gray-600 whitespace-nowrap">
+          <div className="flex flex-col gap-1 text-sm w-full sm:w-auto sm:min-w-[14rem]">
+            <label htmlFor="tasks-property-filter" className="text-gray-600">
               Property
             </label>
             <select
               id="tasks-property-filter"
               value={propertyFilter}
               onChange={(e) => setPropertyFilter(e.target.value)}
-              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white min-w-[12rem] max-w-[20rem]"
+              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white w-full max-w-full min-h-11"
             >
               <option value="">All properties</option>
               {propertyOptions.map((p) => (

@@ -7,15 +7,24 @@ from typing import Dict
 # Scoring weights (must sum to 100). Used by contractor_recommendation.recommend_contractors().
 # performance_score uses contractor intelligence (reliability, SLA, response time, invoice approval).
 DEFAULT_WEIGHTS: Dict[str, int] = {
-    "trade_match": 25,
-    "region_match": 15,
-    "credential_match": 15,
-    "performance_score": 25,
-    "sla_performance": 5,
-    "rating": 5,
-    "rework_rate": 5,
-    "price_fit": 5,
+    "trade_match": 26,
+    "region_match": 12,
+    "credential_match": 10,
+    "performance_score": 16,
+    "sla_performance": 6,
+    "rating": 4,
+    "rework_rate": 4,
+    "price_fit": 4,
+    "workload_capacity": 10,
+    "client_preference": 8,
 }
+
+# Penalty subtracted from total score (not additive to 100-scale weights above).
+HISTORICAL_BREACH_PENALTY_PER_EVENT = 3
+HISTORICAL_BREACH_PENALTY_CAP = 12
+
+# Open jobs at or above this count => workload_capacity score reaches 0 (linear decay below).
+WORKLOAD_OPEN_JOBS_REFERENCE = 12
 
 # Minimum total score (0-100) to consider a contractor a "strong match". Below this, API returns no_strong_match=True.
 MIN_SCORE_STRONG_MATCH = 25

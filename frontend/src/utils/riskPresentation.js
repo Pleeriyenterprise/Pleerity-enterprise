@@ -1,26 +1,25 @@
-const RISK_TYPE_LABELS = {
-  'Boiler Failure Risk': 'Boiler reliability concerns',
-  'Damp / Moisture Risk': 'Damp or moisture concerns',
-  'Electrical Risk': 'Electrical safety concerns',
-  'Recurring Repairs Risk': 'Repeated repair pattern detected',
-  'SLA Breach Risk': 'Contractor delays affecting service',
-  'Compliance Churn Risk': 'Compliance gaps detected',
-  'Maintenance Frequency Risk': 'Maintenance activity is unusually high',
-  'Certificate Expiry Soon': 'Certificate renewal needed soon',
-};
+import {
+  recommendedActionClient,
+  riskTypeLabelAdmin,
+  riskTypeLabelClient,
+} from '../domain/presentDomain';
 
-const ACTION_KEYWORDS = [
-  { test: /boiler|heating/i, text: 'Book a boiler inspection and review replacement options.' },
-  { test: /damp|moisture|mould/i, text: 'Arrange a damp inspection and resolve the root cause.' },
-  { test: /electrical|eicr/i, text: 'Arrange an electrical safety check and update records.' },
-  { test: /sla|contractor/i, text: 'Review contractor performance and re-prioritise delayed jobs.' },
-  { test: /compliance|certificate|evidence/i, text: 'Upload missing documents and schedule required renewals.' },
-  { test: /recurring|repeat/i, text: 'Investigate the recurring issue and plan a permanent fix.' },
-];
-
-export function humanRiskType(riskType) {
+/**
+ * @param {string|object|null|undefined} riskTypeOrSignal — raw risk_type string, or signal object with API labels
+ * @param {string} [audience] — 'client' | 'admin' for fallback mapping
+ */
+export function humanRiskType(riskTypeOrSignal, audience = 'client') {
+  const signal =
+    typeof riskTypeOrSignal === 'object' && riskTypeOrSignal !== null ? riskTypeOrSignal : null;
+  const riskType = signal ? signal.risk_type : riskTypeOrSignal;
+  if (signal && audience === 'admin' && signal.risk_type_label_admin) {
+    return signal.risk_type_label_admin;
+  }
+  if (signal && signal.risk_type_label_client && audience !== 'admin') {
+    return signal.risk_type_label_client;
+  }
   if (!riskType) return 'Risk requires review';
-  return RISK_TYPE_LABELS[riskType] || riskType;
+  return audience === 'admin' ? riskTypeLabelAdmin(riskType) : riskTypeLabelClient(riskType);
 }
 
 export function humanSeverity(level) {
@@ -46,13 +45,44 @@ export function humanStatus(status) {
   return status || 'Open';
 }
 
-export function humanAction(actionText, riskType) {
+export function humanTrend(trend) {
+  const v = String(trend || '').trim().toLowerCase();
+  if (v === 'rising') return 'Rising';
+  if (v === 'stable') return 'Stable';
+  if (v === 'improving') return 'Improving';
+  if (!v) return 'Stable';
+  return v.charAt(0).toUpperCase() + v.slice(1);
+}
+
+const ACTION_KEYWORDS = [
+  { test: /boiler|heating/i, text: 'Book a boiler inspection and review replacement options.' },
+  { test: /damp|moisture|mould/i, text: 'Arrange a damp inspection and resolve the root cause.' },
+  { test: /electrical|eicr/i, text: 'Arrange an electrical safety check and update records.' },
+  { test: /sla|contractor/i, text: 'Review contractor performance and re-prioritise delayed jobs.' },
+  { test: /compliance|certificate|evidence/i, text: 'Upload missing documents and schedule required renewals.' },
+  { test: /recurring|repeat/i, text: 'Investigate the recurring issue and plan a permanent fix.' },
+];
+
+/**
+ * @param {string|null|undefined} actionText
+ * @param {string|object|null|undefined} riskTypeOrSignal
+ */
+export function humanAction(actionText, riskTypeOrSignal) {
+  const signal =
+    typeof riskTypeOrSignal === 'object' && riskTypeOrSignal !== null ? riskTypeOrSignal : null;
+  const riskType = signal ? signal.risk_type : riskTypeOrSignal;
+  if (signal && signal.recommended_action_client) {
+    const c = String(signal.recommended_action_client).trim();
+    return c.endsWith('.') ? c : `${c}.`;
+  }
   const raw = String(actionText || '').trim();
   for (const rule of ACTION_KEYWORDS) {
     if (rule.test.test(raw) || rule.test.test(String(riskType || ''))) {
       return rule.text;
     }
   }
+  const mapped = recommendedActionClient(riskType, raw);
+  if (mapped && mapped !== 'Review this signal and choose the next best step.') return mapped;
   if (!raw) return 'Review this issue and choose the next best action.';
   return raw.endsWith('.') ? raw : `${raw}.`;
 }
@@ -81,4 +111,3 @@ export function groupSignalsByProperty(signals = []) {
   }
   return Array.from(map.values()).sort((a, b) => b.issues.length - a.issues.length);
 }
-

@@ -229,7 +229,7 @@ export default function AdminRiskDashboardPage() {
                         .sort((a, b) => b[1] - a[1])
                         .map(([type, count]) => (
                           <li key={type} className="flex justify-between text-sm">
-                            <span className="text-gray-700">{humanRiskType(type)}</span>
+                            <span className="text-gray-700">{humanRiskType(type, 'admin')}</span>
                             <span className="font-medium">{count}</span>
                           </li>
                         ))}
@@ -273,7 +273,7 @@ export default function AdminRiskDashboardPage() {
                     <ul className="space-y-1.5 text-sm">
                       {topComplianceRisks.slice(0, 5).map((s) => (
                         <li key={s.signal_id} className="flex justify-between gap-2">
-                          <span className="truncate text-gray-700" title={presentPropertyName(s)}>{humanRiskType(s.risk_type)}</span>
+                          <span className="truncate text-gray-700" title={presentPropertyName(s)}>{humanRiskType(s, 'admin')}</span>
                           <LevelBadge level={s.risk_level} />
                         </li>
                       ))}
@@ -291,7 +291,7 @@ export default function AdminRiskDashboardPage() {
                     <ul className="space-y-1.5 text-sm">
                       {topMaintenanceRisks.slice(0, 5).map((s) => (
                         <li key={s.signal_id} className="flex justify-between gap-2">
-                          <span className="truncate text-gray-700">{humanRiskType(s.risk_type)}</span>
+                          <span className="truncate text-gray-700">{humanRiskType(s, 'admin')}</span>
                           <LevelBadge level={s.risk_level} />
                         </li>
                       ))}
@@ -319,8 +319,8 @@ export default function AdminRiskDashboardPage() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-700">SLA breach risks</CardTitle>
-                  <CardDescription>Work order SLA signals</CardDescription>
+                  <CardTitle className="text-sm font-medium text-gray-700">Response time risks</CardTitle>
+                  <CardDescription>Work orders past agreed response targets</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {slaBreachRisks.length ? (
@@ -398,11 +398,11 @@ export default function AdminRiskDashboardPage() {
                         {recent.slice(0, 25).map((s) => (
                           <tr key={s.signal_id} className="border-b border-gray-100">
                             <td className="py-2 pr-4 text-xs truncate max-w-[160px]" title={presentPropertyName(s)}>{presentPropertyName(s)}</td>
-                            <td className="py-2 pr-4">{humanRiskType(s.risk_type) || '—'}</td>
+                            <td className="py-2 pr-4">{humanRiskType(s, 'admin') || '—'}</td>
                             <td className="py-2 pr-4"><LevelBadge level={s.risk_level} /></td>
                             <td className="py-2 pr-4">{humanStatus(s.status)}</td>
                             <td className="py-2 pr-4">{formatDate(s.generated_at || s.updated_at)}</td>
-                            <td className="py-2 text-gray-600 truncate max-w-[260px]" title={humanAction(s.recommended_action, s.risk_type)}>{humanAction(s.recommended_action, s.risk_type)}</td>
+                            <td className="py-2 text-gray-600 truncate max-w-[260px]" title={humanAction(s.recommended_action, s)}>{humanAction(s.recommended_action, s)}</td>
                           </tr>
                         ))}
                       </tbody>

@@ -6,7 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre
 from utils.request_ip import get_client_ip as _client_ip
 
 # ClearForm - Separate Product Routes
@@ -96,6 +96,7 @@ from job_runner import (
     run_scheduled_reports,
     run_compliance_score_snapshots,
     run_compliance_recalc_worker,
+    run_risk_signal_regen_worker,
     run_compliance_recalc_sla_monitor,
     run_expiry_rollover_recalc,
     run_order_delivery_processing,
@@ -536,6 +537,17 @@ async def lifespan(app: FastAPI):
             args=["compliance_recalc_worker"],
             kwargs={"run_type": "schedule"},
         )
+
+        # Risk signal regeneration worker (debounced queue; near–real-time heuristic refresh)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            IntervalTrigger(seconds=30, timezone=SCHEDULER_TIMEZONE),
+            id="risk_signal_regen_worker",
+            name="Risk Signal Regen Worker",
+            replace_existing=True,
+            args=["risk_signal_regen_worker"],
+            kwargs={"run_type": "schedule"},
+        )
         
         # Compliance recalc SLA monitor - every 5 minutes
         scheduler.add_job(
@@ -587,6 +599,19 @@ async def lifespan(app: FastAPI):
             name="SLA Watchdog (job run monitoring)",
             replace_existing=True,
             args=["sla_watchdog"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        # Risk regen queue: incident + OPS email when unhealthy; auto-resolve when healthy (stagger vs sla_watchdog)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="5,15,25,35,45,55", timezone=SCHEDULER_TIMEZONE),
+            id="risk_signal_regen_alert_monitor",
+            name="Risk Signal Regen Queue Alert Monitor",
+            replace_existing=True,
+            args=["risk_signal_regen_alert_monitor"],
             kwargs={"run_type": "schedule"},
             misfire_grace_time=300,
             coalesce=True,
@@ -791,6 +816,16 @@ async def lifespan(app: FastAPI):
             name="Work Order SLA Breach & At-Risk",
             replace_existing=True,
             args=["work_order_sla_breach_job"],
+            kwargs={"run_type": "schedule"},
+        )
+        # Client contractor confirmation reminders / escalation (no silent auto-assign by default)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=15, timezone=SCHEDULER_TIMEZONE),
+            id="work_order_contractor_confirmation_timeout_job",
+            name="Work Order Contractor Confirmation Timeout",
+            replace_existing=True,
+            args=["work_order_contractor_confirmation_timeout_job"],
             kwargs={"run_type": "schedule"},
         )
         
@@ -1058,6 +1093,7 @@ app.include_router(ops_compliance.router)  # Admin: Operations & Compliance (fea
 app.include_router(contractors.router)  # Admin: Contractors (Ops Contractor Network)
 app.include_router(maintenance.router)  # Admin: Work orders (Ops Maintenance)
 app.include_router(client_maintenance.router)  # Client: Maintenance work orders (gated by MAINTENANCE_WORKFLOWS)
+app.include_router(client_compliance_execution.router)  # Client: Compliance execution booking (COMPLIANCE_ENGINE + MAINTENANCE_WORKFLOWS)
 app.include_router(client_approvals.router)  # Client: Invoice approvals (gated by INVOICING)
 app.include_router(admin_invoices.router)  # Admin: Create invoice (ops)
 app.include_router(contractor_portal.router)  # Contractor portal: my work orders, status, invoice submit

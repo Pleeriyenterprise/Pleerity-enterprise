@@ -68,6 +68,25 @@ code {
 }
 
 /* Professional animations - subtle only */
+/* Client portal: readable wrapping on narrow viewports (avoid break-all / vertical glyph stacks) */
+@layer components {
+    .client-portal-main {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: clip;
+    }
+    .client-portal-prose {
+        overflow-wrap: break-word;
+        word-break: normal;
+        hyphens: manual;
+    }
+    .tap-target {
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+    }
+}
+
 @layer utilities {
     .transition-smooth {
         transition: all 0.2s ease-in-out;

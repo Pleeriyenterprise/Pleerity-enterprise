@@ -17,11 +17,20 @@ from services.reminder_truth_service import (
     get_pending_verification_snapshot,
     get_reminder_cooldown_hours,
 )
+from presentation.label_service import requirement_label
 
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
+
+
+def _reminder_item_label_from_req(current_req: dict) -> str:
+    desc = (current_req.get("description") or "").strip()
+    if desc:
+        return desc
+    code = current_req.get("code") or current_req.get("requirement_type") or current_req.get("requirement_code")
+    return requirement_label(code) if code else "Certificate"
 
 
 def _format_digest_inbox_activity_lines(activity_feed, limit: int = 5):
@@ -179,7 +188,8 @@ class JobScheduler:
                     if days_until_due < 0:
                         prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
                         overdue_requirements.append({
-                            "type": current_req.get("description", current_req.get("requirement_type", "Certificate")),
+                            "type": _reminder_item_label_from_req(current_req),
+                            "code": current_req.get("code") or current_req.get("requirement_type") or "",
                             "due_date": due_date.strftime("%d %B %Y"),
                             "days_overdue": -days_until_due,
                             "property_address": prop_addr,
@@ -199,7 +209,8 @@ class JobScheduler:
                     elif 0 <= days_until_due <= reminder_days:
                         prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
                         expiring_requirements.append({
-                            "type": current_req.get("description", current_req.get("requirement_type", "Certificate")),
+                            "type": _reminder_item_label_from_req(current_req),
+                            "code": current_req.get("code") or current_req.get("requirement_type") or "",
                             "due_date": due_date.strftime("%d %B %Y"),
                             "days_remaining": days_until_due,
                             "status": "URGENT" if days_until_due <= 7 else "WARNING",
@@ -604,6 +615,9 @@ class JobScheduler:
             first_item = (overdue[0] if overdue else expiring[0]) if (overdue or expiring) else None
             if first_item:
                 context["requirement_name"] = first_item.get("type", "Certificate")
+                rc_item = (first_item.get("code") or "").strip()
+                if rc_item:
+                    context["requirement_code"] = rc_item
                 context["property_address"] = first_item.get("property_address", "Your property")
                 context["due_date"] = first_item.get("due_date", "")
                 is_overdue = first_item.get("days_overdue") is not None
@@ -1096,7 +1110,7 @@ class JobScheduler:
             overdue_types = []
             for req in requirements:
                 if req.get("status") in ["OVERDUE", "EXPIRED"]:
-                    overdue_types.append(req.get("description", req.get("requirement_type", "Certificate")))
+                    overdue_types.append(_reminder_item_label_from_req(req))
             
             if overdue_types:
                 return f"Overdue: {', '.join(overdue_types[:2])}" + ("..." if len(overdue_types) > 2 else "")
@@ -1106,7 +1120,7 @@ class JobScheduler:
             expiring_types = []
             for req in requirements:
                 if req.get("status") == "EXPIRING_SOON":
-                    expiring_types.append(req.get("description", req.get("requirement_type", "Certificate")))
+                    expiring_types.append(_reminder_item_label_from_req(req))
             
             if expiring_types:
                 return f"Expiring soon: {', '.join(expiring_types[:2])}" + ("..." if len(expiring_types) > 2 else "")

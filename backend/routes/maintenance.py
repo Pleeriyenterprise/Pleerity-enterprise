@@ -10,6 +10,7 @@ from database import database
 from middleware import admin_route_guard, require_owner_or_admin
 from services import maintenance_service
 from services import contractor_service
+from services.risk_signal_regen_queue import get_regen_queue_summary
 
 router = APIRouter(prefix="/api/admin/ops", tags=["ops-maintenance"], dependencies=[Depends(admin_route_guard)])
 
@@ -22,8 +23,19 @@ class WorkOrderCreateBody(BaseModel):
     severity: Optional[str] = None
     asset_id: Optional[str] = None
     issue_id: Optional[str] = None
+    risk_signal_id: Optional[str] = None
     cost_estimate_min: Optional[float] = None
     cost_estimate_max: Optional[float] = None
+    created_from: Optional[str] = None
+    triggering_rule: Optional[str] = None
+    operational_root_key: Optional[str] = None
+    work_order_kind: Optional[str] = None
+    requirement_code: Optional[str] = None
+    compliance_purpose: Optional[str] = None
+    compliance_due_at: Optional[str] = None
+    compliance_generated_from: Optional[str] = None
+    expected_output_document_type: Optional[str] = None
+    linked_property_requirement_id: Optional[str] = None
 
 
 class WorkOrderUpdateBody(BaseModel):
@@ -45,6 +57,7 @@ async def create_work_order(request: Request, body: WorkOrderCreateBody):
     )
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found for this client")
+    wk = (body.work_order_kind or "MAINTENANCE").strip().upper()
     doc = await maintenance_service.create_work_order(
         client_id=body.client_id,
         property_id=body.property_id,
@@ -55,10 +68,35 @@ async def create_work_order(request: Request, body: WorkOrderCreateBody):
         severity=body.severity,
         asset_id=body.asset_id,
         issue_id=body.issue_id,
+        risk_signal_id=body.risk_signal_id,
         cost_estimate_min=body.cost_estimate_min,
         cost_estimate_max=body.cost_estimate_max,
+        created_from=body.created_from or "admin",
+        triggering_rule=body.triggering_rule,
+        operational_root_key=body.operational_root_key,
+        use_triage=wk != "COMPLIANCE",
+        work_order_kind=wk,
+        requirement_code=body.requirement_code,
+        compliance_purpose=body.compliance_purpose,
+        compliance_due_at=body.compliance_due_at,
+        compliance_generated_from=body.compliance_generated_from,
+        expected_output_document_type=body.expected_output_document_type,
+        linked_property_requirement_id=body.linked_property_requirement_id,
     )
     return doc
+
+
+@router.get("/risk-signal-regen-queue-summary")
+async def risk_signal_regen_queue_summary(
+    request: Request,
+    sample_limit: int = Query(25, ge=1, le=100, description="Max recent DEAD/FAILED rows to return"),
+):
+    """
+    Ops visibility: risk regen queue counts, oldest pending job, recent failures.
+    Use for dashboards/alerts; pair with audit_logs (RISK_SIGNAL_REGEN_FAILED) for investigation.
+    """
+    await admin_route_guard(request)
+    return await get_regen_queue_summary(sample_limit=sample_limit)
 
 
 @router.get("/work-orders")
@@ -68,6 +106,9 @@ async def list_work_orders(
     property_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     contractor_id: Optional[str] = Query(None),
+    work_order_kind: Optional[str] = Query(
+        None, description="MAINTENANCE | COMPLIANCE (filters list when set)"
+    ),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ):
@@ -78,6 +119,7 @@ async def list_work_orders(
         property_id=property_id,
         status=status,
         contractor_id=contractor_id,
+        work_order_kind=work_order_kind,
         skip=skip,
         limit=limit,
     )
@@ -96,7 +138,11 @@ async def get_work_order(request: Request, work_order_id: str):
 
 @router.get("/work-orders/{work_order_id}/recommend-contractors")
 async def recommend_contractors(request: Request, work_order_id: str, limit: int = Query(10, ge=1, le=50)):
-    """Get suggested contractors for this work order (by trade match and performance). No auto-assign."""
+    """
+    Ranked contractor recommendations: eligibility-gated (active, vetted, portal activated), trade/location,
+    workload, performance, SLA history, client preference. Returns score_breakdown, reasons, and routing
+    (assignment_urgency, SLA flags). Advisory only — admin confirms assignment unless auto-assign env policy is on.
+    """
     await admin_route_guard(request)
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
@@ -115,15 +161,19 @@ async def update_work_order(request: Request, work_order_id: str, body: WorkOrde
     await admin_route_guard(request)
     user = getattr(request.state, "user", None) or {}
     assigned_by = (body.contractor_id and (user.get("email") or user.get("portal_user_id") or user.get("user_id"))) or None
-    doc = await maintenance_service.update_work_order(
-        work_order_id,
-        status=body.status,
-        contractor_id=body.contractor_id,
-        resolution_outcome=body.resolution_outcome,
-        cost_estimate_min=body.cost_estimate_min,
-        cost_estimate_max=body.cost_estimate_max,
-        assigned_by=assigned_by,
-    )
+    try:
+        doc = await maintenance_service.update_work_order(
+            work_order_id,
+            status=body.status,
+            contractor_id=body.contractor_id,
+            resolution_outcome=body.resolution_outcome,
+            cost_estimate_min=body.cost_estimate_min,
+            cost_estimate_max=body.cost_estimate_max,
+            assigned_by=assigned_by,
+            allow_direct_contractor_assignment=True,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
     return doc

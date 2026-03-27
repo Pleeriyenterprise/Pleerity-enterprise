@@ -79,6 +79,18 @@ def generate_submission_id(prefix: str) -> str:
 # ENDPOINTS
 # ============================================
 
+
+@router.get("/presentation/domain-labels")
+async def get_presentation_domain_labels():
+    """
+    Public, read-only user-facing label dictionary (requirements, statuses, risk types, etc.).
+    Safe to cache in the SPA; contains no secrets.
+    """
+    from presentation.label_service import get_domain_labels_public_payload
+
+    return get_domain_labels_public_payload()
+
+
 @router.post("/contact")
 async def submit_contact_form(submission: ContactSubmission, request: Request):
     """
@@ -477,39 +489,51 @@ contractor_public_router = APIRouter(prefix="/contractors", tags=["public-contra
 
 
 class ContractorRegisterBody(BaseModel):
-    company_name: str = Field(..., min_length=1, max_length=200)
-    contact_name: str = Field(..., min_length=1, max_length=200)
+    """Public contractor onboarding. Prefer name + email + postcode; legacy company/contact/coverage_regions still accepted."""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    company_name: Optional[str] = Field(None, max_length=200)
+    contact_name: Optional[str] = Field(None, max_length=200)
     trade_types: List[str] = Field(..., min_length=1)
     phone: Optional[str] = Field(None, max_length=50)
-    email: Optional[str] = None
+    email: EmailStr
+    postcode: Optional[str] = Field(None, min_length=2, max_length=20)
     coverage_regions: Optional[List[str]] = None
+    certifications: Optional[List[str]] = None
     credentials: Optional[List[str]] = None
     insurance_details: Optional[str] = Field(None, max_length=1000)
 
 
 @contractor_public_router.post("/register")
 async def register_contractor_public(body: ContractorRegisterBody, request: Request):
-    """Public self-registration for contractors. Creates contractor with status=pending_review. Requires CONTRACTOR_SELF_REGISTRATION_ENABLED=true."""
+    """Public self-registration: pending approval, admin notify when configured. Requires CONTRACTOR_SELF_REGISTRATION_ENABLED=true."""
     from services.ops_compliance_feature_flags import is_contractor_self_registration_enabled
     from services import contractor_service
 
     if not is_contractor_self_registration_enabled():
         raise HTTPException(status_code=403, detail="Contractor self-registration is not available.")
-    if not body.phone and not body.email:
-        raise HTTPException(status_code=400, detail="phone or email is required")
     await enforce_public_form_rate(request, "contractor_register")
-    client_ip = client_ip_from_request(request)
-    doc = await contractor_service.create_contractor_self_registered(
-        company_name=body.company_name.strip(),
-        contact_name=body.contact_name.strip(),
-        trade_types=[t.strip() for t in body.trade_types if t and t.strip()] or ["general"],
-        phone=body.phone.strip() if body.phone else None,
-        email=body.email.strip() if body.email else None,
-        coverage_regions=body.coverage_regions,
-        credentials=body.credentials,
-        insurance_details=body.insurance_details.strip() if body.insurance_details else None,
-    )
-    return doc
+    _ = client_ip_from_request(request)
+    display_name = (body.name or body.contact_name or body.company_name or "").strip()
+    if not display_name:
+        raise HTTPException(status_code=400, detail="name is required (or provide contact_name / company_name)")
+    pc = (body.postcode or "").strip()
+    if not pc and body.coverage_regions:
+        pc = (body.coverage_regions[0] or "").strip()
+    if not pc:
+        raise HTTPException(status_code=400, detail="location (postcode) is required")
+    certs = body.certifications if body.certifications is not None else body.credentials
+    try:
+        return await contractor_service.register_contractor_public(
+            name=display_name,
+            email=str(body.email),
+            phone=body.phone.strip() if body.phone else None,
+            trade_types=[t.strip() for t in body.trade_types if t and t.strip()] or ["general"],
+            registration_postcode=pc,
+            certifications=certs,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 router.include_router(contractor_public_router)

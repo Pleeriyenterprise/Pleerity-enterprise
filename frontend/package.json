@@ -65,8 +65,10 @@
   },
   "scripts": {
     "start": "craco start",
+    "prebuild": "npm run sync-domain-labels",
     "build": "craco build",
     "test": "craco test",
+    "sync-domain-labels": "node scripts/sync-domain-labels.js",
     "generate-marketing-images": "node scripts/generateMarketingImages.js"
   },
   "jest": {

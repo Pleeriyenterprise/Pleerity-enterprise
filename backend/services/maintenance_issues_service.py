@@ -53,6 +53,12 @@ SOURCE_TENANT = "tenant"
 SOURCE_TENANT_REQUEST = "tenant_request"
 SOURCE_CLIENT = "client"
 SOURCE_ADMIN = "admin"
+SOURCE_SYSTEM = "system"
+
+CREATED_FROM_MANUAL = "manual"
+CREATED_FROM_COMPLIANCE = "compliance"
+CREATED_FROM_RISK_SIGNAL = "risk_signal"
+CREATED_FROM_SYSTEM = "system"
 
 
 async def create_issue(
@@ -67,6 +73,10 @@ async def create_issue(
     reported_urgency: Optional[str] = None,
     photos: Optional[List[str]] = None,
     risk_signal_id: Optional[str] = None,
+    created_from: str = CREATED_FROM_MANUAL,
+    source_requirement_code: Optional[str] = None,
+    operational_root_key: Optional[str] = None,
+    triggering_rule: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a maintenance issue and run triage. Returns issue doc with triage result embedded."""
     db = database.get_db()
@@ -116,6 +126,10 @@ async def create_issue(
         "status": STATUS_TRIAGED,
         "recurrence_flag": triage.get("recurrence_flag", False),
         "risk_signal_id": risk_signal_id,
+        "created_from": created_from,
+        "source_requirement_code": (source_requirement_code or "").strip() or None,
+        "operational_root_key": (operational_root_key or "").strip() or None,
+        "triggering_rule": (triggering_rule or "").strip() or None,
         "created_at": now,
         "updated_at": now,
         "resolved_at": None,
@@ -336,6 +350,10 @@ async def create_work_order_from_issue(
         severity=issue.get("severity"),
         asset_id=issue.get("asset_id"),
         issue_id=issue_id,
+        risk_signal_id=issue.get("risk_signal_id"),
+        created_from="issue",
+        triggering_rule="create_work_order_from_issue",
+        operational_root_key=issue.get("operational_root_key"),
         initial_status=initial_status or maintenance_service.STATUS_OPEN,
         sla_respond_by=respond_dt.isoformat(),
         sla_complete_by=complete_dt.isoformat(),

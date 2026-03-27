@@ -23,6 +23,8 @@ class ContractorCreate(BaseModel):
     client_id: Optional[str] = None
     areas_served: Optional[List[str]] = None
     notes: Optional[str] = None
+    execution_capabilities: Optional[str] = None
+    supported_requirement_codes: Optional[List[str]] = None
 
 
 class ContractorUpdate(BaseModel):
@@ -40,10 +42,22 @@ class ContractorUpdate(BaseModel):
     insurance_details: Optional[str] = None
     contact_name: Optional[str] = None
     region: Optional[str] = None
+    execution_capabilities: Optional[str] = None
+    supported_requirement_codes: Optional[List[str]] = None
 
 
 class DisablePortalAccessBody(BaseModel):
     reason: Optional[str] = None
+
+
+class ContractorInviteBody(BaseModel):
+    email: str
+    name: Optional[str] = None
+    trade_types: Optional[List[str]] = None
+    phone: Optional[str] = None
+    client_id: Optional[str] = None
+    property_scope: Optional[List[str]] = None
+    vetted: Optional[bool] = None
 
 
 class ContractorNetworkCreate(BaseModel):
@@ -122,17 +136,22 @@ async def create_contractor(request: Request, body: ContractorCreate):
     user = await admin_route_guard(request)
     if user.get("role") not in ("ROLE_OWNER", "ROLE_ADMIN"):
         raise HTTPException(status_code=403, detail="Only Owner or Admin can create contractors")
-    doc = await contractor_service.create_contractor(
-        name=body.name,
-        trade_types=body.trade_types,
-        vetted=body.vetted,
-        email=body.email,
-        phone=body.phone,
-        company_name=body.company_name,
-        client_id=body.client_id,
-        areas_served=body.areas_served,
-        notes=body.notes,
-    )
+    try:
+        doc = await contractor_service.create_contractor(
+            name=body.name,
+            trade_types=body.trade_types,
+            vetted=body.vetted,
+            email=body.email,
+            phone=body.phone,
+            company_name=body.company_name,
+            client_id=body.client_id,
+            areas_served=body.areas_served,
+            notes=body.notes,
+            execution_capabilities=body.execution_capabilities,
+            supported_requirement_codes=body.supported_requirement_codes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     from utils.audit import create_audit_log
     from models import AuditAction
     await create_audit_log(
@@ -166,11 +185,40 @@ async def create_network_contractor(request: Request, body: ContractorNetworkCre
     return doc
 
 
+@router.post("/contractors/invite", dependencies=[Depends(require_owner_or_admin)])
+async def invite_contractor(request: Request, body: ContractorInviteBody):
+    """Create or update contractor by email, issue portal invite (rotates unused tokens)."""
+    user = await admin_route_guard(request)
+    if user.get("role") not in ("ROLE_OWNER", "ROLE_ADMIN"):
+        raise HTTPException(status_code=403, detail="Only Owner or Admin can invite contractors")
+    actor_id = user.get("user_id") or user.get("email") or user.get("portal_user_id")
+    try:
+        result = await contractor_service.invite_contractor_by_admin(
+            email=body.email.strip(),
+            name=body.name,
+            trade_types=body.trade_types,
+            phone=body.phone,
+            client_id=body.client_id,
+            property_scope=body.property_scope,
+            vetted=body.vetted,
+            actor_id=actor_id,
+            actor_role=user.get("role"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
 @router.patch("/contractors/{contractor_id}/approve", dependencies=[Depends(require_owner_or_admin)])
 async def approve_contractor(request: Request, contractor_id: str):
-    """Set contractor status=active and vetted=True (e.g. after reviewing self-registered)."""
-    await admin_route_guard(request)
-    doc = await contractor_service.approve_contractor(contractor_id)
+    """Approve contractor (vetted, lifecycle status, portal invite when not yet activated)."""
+    user = await admin_route_guard(request)
+    admin_id = user.get("user_id") or user.get("email") or user.get("portal_user_id")
+    doc = await contractor_service.approve_contractor(
+        contractor_id,
+        approved_by=admin_id,
+        approved_by_role=user.get("role"),
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Contractor not found")
     return doc
@@ -238,23 +286,28 @@ async def update_contractor(request: Request, contractor_id: str, body: Contract
     user = await admin_route_guard(request)
     if user.get("role") not in ("ROLE_OWNER", "ROLE_ADMIN"):
         raise HTTPException(status_code=403, detail="Only Owner or Admin can update contractors")
-    doc = await contractor_service.update_contractor(
-        contractor_id,
-        name=body.name,
-        trade_types=body.trade_types,
-        vetted=body.vetted,
-        email=body.email,
-        phone=body.phone,
-        company_name=body.company_name,
-        client_id=body.client_id,
-        areas_served=body.areas_served,
-        notes=body.notes,
-        status=body.status,
-        credentials=body.credentials,
-        insurance_details=body.insurance_details,
-        contact_name=body.contact_name,
-        region=body.region,
-    )
+    try:
+        doc = await contractor_service.update_contractor(
+            contractor_id,
+            name=body.name,
+            trade_types=body.trade_types,
+            vetted=body.vetted,
+            email=body.email,
+            phone=body.phone,
+            company_name=body.company_name,
+            client_id=body.client_id,
+            areas_served=body.areas_served,
+            notes=body.notes,
+            status=body.status,
+            credentials=body.credentials,
+            insurance_details=body.insurance_details,
+            contact_name=body.contact_name,
+            region=body.region,
+            execution_capabilities=body.execution_capabilities,
+            supported_requirement_codes=body.supported_requirement_codes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not doc:
         raise HTTPException(status_code=404, detail="Contractor not found")
     if body.status and body.status.strip().lower() == "suspended":
@@ -284,86 +337,27 @@ async def delete_contractor(request: Request, contractor_id: str):
 
 async def _issue_contractor_portal_invite(request: Request, contractor_id: str, resend: bool = False):
     """Create contractor invite token (24h), send email, and persist invite lifecycle state."""
-    from datetime import datetime, timezone, timedelta
-    from auth import generate_secure_token, hash_token
-    from database import database
-    from utils.audit import create_audit_log
-    from models import AuditAction
-    from utils.public_app_url import get_frontend_base_url
     user = await admin_route_guard(request)
     doc = await contractor_service.get_contractor(contractor_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Contractor not found")
-    email = (doc.get("email") or "").strip()
-    if not email:
-        raise HTTPException(status_code=400, detail="Contractor has no email; add one before inviting to portal")
-    from services.contractor_portal_auth_service import get_account_by_contractor_id
-    existing = await get_account_by_contractor_id(contractor_id)
-    if existing and (existing.get("status") or "").lower() == "active":
-        raise HTTPException(status_code=400, detail="Contractor already has a portal account; they can use forgot-password if needed")
-    raw_token = generate_secure_token()
-    token_hash = hash_token(raw_token)
-    db = database.get_db()
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(hours=24)
-    await db.password_tokens.update_many(
-        {
-            "purpose": "contractor_invite",
-            "metadata.contractor_id": contractor_id,
-            "used": {"$ne": True},
-            "revoked_at": None,
-        },
-        {"$set": {"revoked_at": now.isoformat(), "revoked_reason": "invite_replaced"}},
-    )
-    await db.password_tokens.insert_one({
-        "token_hash": token_hash,
-        "purpose": "contractor_invite",
-        "metadata": {"contractor_id": contractor_id, "email": email},
-        "expires_at": expires_at,
-        "used": False,
-        "revoked_at": None,
-        "created_at": now.isoformat(),
-    })
-    await contractor_service.update_contractor(
-        contractor_id,
-        portal_access_status=contractor_service.PORTAL_ACCESS_INVITE_PENDING,
-        portal_invite_sent_at=now.isoformat(),
-        portal_invite_expires_at=expires_at.isoformat(),
-        portal_invite_last_token_id=token_hash,
-    )
-    base_url = get_frontend_base_url().rstrip("/")
-    setup_url = f"{base_url}/contractor-set-password?token={raw_token}"
+    actor_id = user.get("user_id") or user.get("email") or user.get("portal_user_id")
     try:
-        from services.notification_orchestrator import notification_orchestrator
-        await notification_orchestrator.send(
-            template_key="ADMIN_MANUAL",
-            client_id=None,
-            context={
-                "recipient": email,
-                "subject": "You're invited to the Pleerity Contractor Portal",
-                "message": f"Use the link below to set your password and access your assigned work orders.<br><br><a href=\"{setup_url}\">Set password</a><br><br>Link valid for 24 hours.",
-                "company_name": "Pleerity Enterprise Ltd",
-            },
-            idempotency_key=f"contractor_invite_{contractor_id}_{now.timestamp()}",
-            event_type="contractor_portal_invite",
+        payload = await contractor_service.issue_contractor_portal_invite(
+            contractor_id,
+            actor_id=actor_id,
+            actor_role=user.get("role"),
+            resend=resend,
+            include_next_steps=False,
         )
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("Contractor invite email send failed: %s", e)
-    await create_audit_log(
-        action=AuditAction.CONTRACTOR_INVITE_RESENT if resend else AuditAction.CONTRACTOR_INVITE_SENT,
-        actor_id=user.get("portal_user_id"),
-        actor_role=user.get("role"),
-        resource_type="contractor",
-        resource_id=contractor_id,
-        metadata={"email": email, "expires_at": expires_at.isoformat()},
-    )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {
         "ok": True,
         "message": "Invite sent. Contractor can set password via the link.",
-        "setup_url": setup_url,
-        "expires_at": expires_at.isoformat(),
-        "portal_access_status": contractor_service.PORTAL_ACCESS_INVITE_PENDING,
+        "setup_url": payload.get("setup_url"),
+        "expires_at": payload.get("expires_at"),
+        "portal_access_status": payload.get("portal_access_status"),
     }
 
 
