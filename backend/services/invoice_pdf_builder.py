@@ -139,9 +139,17 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
     payment_status = xml_escape(str(data.get("payment_status") or "PAID"))
     payment_method = xml_escape(str(data.get("payment_method") or "Card (Stripe)"))
 
-    website = get_branding_website_url()
+    website = (data.get("_inv_website") or get_branding_website_url())
     if "localhost" in (website or "").lower():
         website = CANONICAL_WEBSITE
+
+    inv_company = str(data.get("_inv_company_name") or COMPANY_NAME)
+    inv_support = str(data.get("_inv_support_email") or SUPPORT_EMAIL)
+    inv_tagline = str(data.get("_inv_tagline") or TAGLINE)
+    hdr_hex = (data.get("_inv_header_bg") or "").strip()
+    acc_hex = (data.get("_inv_accent_hex") or "").strip()
+    header_bg_color = colors.HexColor(hdr_hex) if hdr_hex.startswith("#") else NAVY
+    accent_color = colors.HexColor(acc_hex) if acc_hex.startswith("#") else TEAL
 
     def money(pence: int) -> str:
         cur = currency.upper()
@@ -172,7 +180,7 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
         parent=styles["Heading1"],
         fontSize=22,
         leading=26,
-        textColor=TEAL,
+        textColor=accent_color,
         fontName="Helvetica-Bold",
         spaceAfter=8,
     )
@@ -197,14 +205,14 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
     )
 
     header_html = (
-        f"<b><font size='12' color='white'>{xml_escape(COMPANY_NAME)}</font></b><br/>"
-        f"<font color='white'>Email: {xml_escape(SUPPORT_EMAIL)}</font><br/>"
+        f"<b><font size='12' color='white'>{xml_escape(inv_company)}</font></b><br/>"
+        f"<font color='white'>Email: {xml_escape(inv_support)}</font><br/>"
         f"<font color='white'>Website: {xml_escape(website)}</font><br/>"
-        f"<font color='white'>{xml_escape(TAGLINE)}</font>"
+        f"<font color='white'>{xml_escape(inv_tagline)}</font>"
     )
     header_para = Paragraph(header_html, white_header)
 
-    logo_path = get_branding_logo_path()
+    logo_path = data.get("_inv_logo_path") or get_branding_logo_path()
     logo_flowable: Optional[Image] = None
     if logo_path and os.path.isfile(logo_path):
         try:
@@ -249,8 +257,8 @@ def build_branded_invoice_pdf_bytes(data: Dict[str, Any]) -> bytes:
     header_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), NAVY),
-                ("BOX", (0, 0), (-1, -1), 0, NAVY),
+                ("BACKGROUND", (0, 0), (-1, -1), header_bg_color),
+                ("BOX", (0, 0), (-1, -1), 0, header_bg_color),
                 ("TOPPADDING", (0, 0), (-1, -1), 14),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
                 ("LEFTPADDING", (0, 0), (-1, -1), 16),

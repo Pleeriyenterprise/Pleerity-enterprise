@@ -195,7 +195,10 @@ class OrderDeliveryService:
         base = _app_base()
         download_link = f"{base}/view-order?token={view_token}"
         portal_link = f"{base}/dashboard"
-        
+
+        from services.branding_resolver_service import resolve_order_email_branding
+
+        order_branding = await resolve_order_email_branding(order.get("client_id"))
         email_content = build_order_delivered_email(
             client_name=customer_name,
             order_reference=order_id,
@@ -203,6 +206,7 @@ class OrderDeliveryService:
             documents=documents,
             download_link=download_link,
             portal_link=portal_link,
+            branding=order_branding,
         )
         
         from services.notification_orchestrator import notification_orchestrator
@@ -215,7 +219,7 @@ class OrderDeliveryService:
             # Ungated transactional template + payer email — works for intake guests and CVP
             result = await notification_orchestrator.send(
                 template_key="ORDER_DOCUMENTS_READY",
-                client_id=None,
+                client_id=order.get("client_id"),
                 context={
                     "recipient": customer_email,
                     "subject": email_content["subject"],

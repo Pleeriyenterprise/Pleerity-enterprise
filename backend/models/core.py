@@ -613,6 +613,9 @@ class BrandingSettings(BaseModel):
     accent_color: str = "#FFB800"  # Default warning/accent
     text_color: str = "#1F2937"  # Default text
     
+    # White-label master switch (plan + resolver enforce; incomplete config → Pleerity fallback)
+    white_label_enabled: bool = False
+
     # Report customization
     report_header_text: Optional[str] = None  # Custom text in report headers
     report_footer_text: Optional[str] = None  # Custom footer (e.g., disclaimer)

@@ -866,6 +866,7 @@ async def _send_order_confirmation_email(
     from urllib.parse import quote
 
     from models import AuditAction
+    from services.branding_resolver_service import resolve_order_email_branding
     from services.order_email_templates import build_order_confirmation_email
     from services.notification_orchestrator import notification_orchestrator
     from services.order_receipt_service import ensure_order_receipt_stored
@@ -948,6 +949,8 @@ async def _send_order_confirmation_email(
     frontend_url = get_app_base_url(for_email_links=True)
     view_order_link = f"{frontend_url}/app/orders"
 
+    client_id = order.get("client_id")
+    order_branding = await resolve_order_email_branding(client_id)
     email_content = build_order_confirmation_email(
         client_name=customer_name,
         order_reference=order.get("order_ref", ""),
@@ -957,9 +960,8 @@ async def _send_order_confirmation_email(
         estimated_delivery=estimated_delivery,
         view_order_link=view_order_link,
         receipt_download_url=receipt_download_url or "",
+        branding=order_branding,
     )
-
-    client_id = order.get("client_id")
     order_ref = order.get("order_ref", order.get("order_id", ""))
     idempotency_key = idempotency_key_override or f"{order_ref}_ORDER_CONFIRMATION"
     ctx = {

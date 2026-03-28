@@ -56,6 +56,36 @@ from utils.branding import COMPANY_NAME, get_branding_website_url, SUPPORT_EMAIL
 logger = logging.getLogger(__name__)
 
 
+def _hex_to_rgb_tuple(hex_color: Optional[str], default: Tuple[int, int, int]) -> Tuple[int, int, int]:
+    """Parse #RGB / #RRGGBB for python-docx RGBColor."""
+    if not hex_color or not isinstance(hex_color, str):
+        return default
+    h = hex_color.strip().lstrip("#")
+    if len(h) == 6:
+        try:
+            return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+        except ValueError:
+            return default
+    if len(h) == 3:
+        try:
+            return tuple(int(c * 2, 16) for c in h)
+        except ValueError:
+            return default
+    return default
+
+
+def _reportlab_hex(hex_color: Optional[str], fallback: str) -> colors.HexColor:
+    s = (hex_color or "").strip()
+    if not s:
+        return colors.HexColor(fallback)
+    if not s.startswith("#"):
+        s = "#" + s
+    try:
+        return colors.HexColor(s)
+    except Exception:
+        return colors.HexColor(fallback)
+
+
 # Required legal disclaimer for document pack outputs (authoritative; no variations).
 PACK_LEGAL_DISCLAIMER_FOOTER = (
     "This document is provided as a general template for administrative and informational "
@@ -189,6 +219,20 @@ class TemplateRenderer:
     """
     
     VERSIONS_COLLECTION = "document_versions_v2"
+
+    async def _load_renderer_branding(self, order: Dict[str, Any]) -> Dict[str, Any]:
+        """Letterhead/footer strip for DOCX/PDF (Pleerity if no client)."""
+        from services.branding_resolver_service import (
+            BrandingContext,
+            pleerity_profile,
+            resolve_branding,
+        )
+
+        cid = order.get("client_id")
+        if not cid:
+            return pleerity_profile().to_template_renderer_dict()
+        prof = await resolve_branding(str(cid), BrandingContext.CLIENT_DOCUMENT_PDF)
+        return prof.to_template_renderer_dict()
     
     async def render_from_orchestration(
         self,
@@ -261,6 +305,8 @@ class TemplateRenderer:
             template_bytes = await get_template_bytes(service_code, service_code)
         except Exception as e:
             logger.debug("No document template for %s: %s", service_code, e)
+
+        renderer_branding = await self._load_renderer_branding(order)
         
         try:
             # Generate DOCX (from template + placeholders if template_bytes else code-built)
@@ -272,6 +318,7 @@ class TemplateRenderer:
                 status=status,
                 regeneration_notes=regeneration_notes,
                 template_bytes=template_bytes,
+                renderer_branding=renderer_branding,
             )
             
             docx_filename = generate_deterministic_filename(
@@ -299,6 +346,7 @@ class TemplateRenderer:
                 version=new_version,
                 status=status,
                 regeneration_notes=regeneration_notes,
+                renderer_branding=renderer_branding,
             )
             
             pdf_filename = generate_deterministic_filename(
@@ -468,6 +516,7 @@ class TemplateRenderer:
             template_bytes = await get_template_bytes(service_code, doc_type)
         except Exception:
             pass
+        renderer_branding = await self._load_renderer_branding(order)
         try:
             docx_content = self._render_docx(
                 order=order_for_render,
@@ -478,6 +527,7 @@ class TemplateRenderer:
                 use_generic_content=True,
                 template_bytes=template_bytes,
                 is_pack_document=True,
+                renderer_branding=renderer_branding,
             )
             pdf_content = self._render_pdf(
                 order=order_for_render,
@@ -486,6 +536,7 @@ class TemplateRenderer:
                 version=item_version,
                 status=status,
                 is_pack_document=True,
+                renderer_branding=renderer_branding,
             )
         except Exception as e:
             logger.exception("Pack item render failed for %s: %s", item_id, e)
@@ -683,8 +734,12 @@ class TemplateRenderer:
         use_generic_content: bool = False,
         template_bytes: Optional[bytes] = None,
         is_pack_document: bool = False,
+        renderer_branding: Optional[Dict[str, Any]] = None,
     ) -> bytes:
         """Render DOCX: from server-side template + placeholders if template_bytes else code-built."""
+        from services.branding_resolver_service import pleerity_profile
+
+        rb = renderer_branding or pleerity_profile().to_template_renderer_dict()
         if template_bytes:
             try:
                 from docxtpl import DocxTemplate
@@ -707,11 +762,11 @@ class TemplateRenderer:
             except Exception as e:
                 logger.warning("Template render failed, falling back to code-built DOCX: %s", e)
         doc = Document()
-        self._setup_docx_styles(doc)
-        self._add_docx_header(doc, order, version, status)
+        self._setup_docx_styles(doc, rb)
+        self._add_docx_header(doc, order, version, status, rb)
         service_code = "GENERAL" if use_generic_content else order.get("service_code", "GENERAL")
         self._add_docx_content(doc, structured_output, service_code)
-        self._add_docx_footer(doc, order, version, status, is_pack_document=is_pack_document)
+        self._add_docx_footer(doc, order, version, status, is_pack_document=is_pack_document, renderer_branding=rb)
         if status != RenderStatus.FINAL:
             self._add_docx_watermark(doc, status.value)
         buffer = io.BytesIO()
@@ -719,16 +774,18 @@ class TemplateRenderer:
         buffer.seek(0)
         return buffer.getvalue()
     
-    def _setup_docx_styles(self, doc: Document):
+    def _setup_docx_styles(self, doc: Document, renderer_branding: Dict[str, Any]):
         """Set up document styles."""
         styles = doc.styles
+        primary_rgb = _hex_to_rgb_tuple(renderer_branding.get("primary_hex"), BRAND_NAVY)
+        accent_rgb = _hex_to_rgb_tuple(renderer_branding.get("secondary_hex"), BRAND_TEAL)
         
         # Title style
         if 'CustomTitle' not in [s.name for s in styles]:
             title_style = styles.add_style('CustomTitle', WD_STYLE_TYPE.PARAGRAPH)
             title_style.font.size = Pt(24)
             title_style.font.bold = True
-            title_style.font.color.rgb = RGBColor(11, 29, 58)  # Brand navy
+            title_style.font.color.rgb = RGBColor(*primary_rgb)
             title_style.paragraph_format.space_after = Pt(12)
         
         # Heading style
@@ -736,18 +793,27 @@ class TemplateRenderer:
             heading_style = styles.add_style('CustomHeading', WD_STYLE_TYPE.PARAGRAPH)
             heading_style.font.size = Pt(14)
             heading_style.font.bold = True
-            heading_style.font.color.rgb = RGBColor(0, 184, 169)  # Brand teal
+            heading_style.font.color.rgb = RGBColor(*accent_rgb)
             heading_style.paragraph_format.space_before = Pt(12)
             heading_style.paragraph_format.space_after = Pt(6)
     
-    def _add_docx_header(self, doc: Document, order: Dict[str, Any], version: int, status: RenderStatus):
+    def _add_docx_header(
+        self,
+        doc: Document,
+        order: Dict[str, Any],
+        version: int,
+        status: RenderStatus,
+        renderer_branding: Dict[str, Any],
+    ):
         """Add branded header to document."""
+        accent_rgb = _hex_to_rgb_tuple(renderer_branding.get("secondary_hex"), BRAND_TEAL)
+        banner = (renderer_branding.get("header_banner_company") or COMPANY_NAME).strip() or COMPANY_NAME
         # Company name
         header_para = doc.add_paragraph()
-        header_run = header_para.add_run("PLEERITY ENTERPRISE LTD")
+        header_run = header_para.add_run(banner)
         header_run.bold = True
         header_run.font.size = Pt(10)
-        header_run.font.color.rgb = RGBColor(0, 184, 169)
+        header_run.font.color.rgb = RGBColor(*accent_rgb)
         header_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         
         # Document info line
@@ -1226,20 +1292,25 @@ class TemplateRenderer:
         version: int,
         status: RenderStatus,
         is_pack_document: bool = False,
+        renderer_branding: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Add footer with metadata. For pack documents, include required legal disclaimer."""
+        from services.branding_resolver_service import pleerity_profile
+
+        rb = renderer_branding or pleerity_profile().to_template_renderer_dict()
         doc.add_paragraph()
         doc.add_paragraph("_" * 80)
         
         footer_para = doc.add_paragraph()
-        footer_text = f"Generated by {COMPANY_NAME} | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} | Document v{version}"
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        footer_text = f"{rb.get('footer_generated_line', f'Generated by {COMPANY_NAME}')} | {ts} | Document v{version}"
         footer_run = footer_para.add_run(footer_text)
         footer_run.font.size = Pt(8)
         footer_run.font.color.rgb = RGBColor(128, 128, 128)
         footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         contact_para = doc.add_paragraph()
-        website = get_branding_website_url()
-        contact_run = contact_para.add_run(f"{website} | {SUPPORT_EMAIL}")
+        contact_line = rb.get("footer_contact_line") or f"{get_branding_website_url()} | {SUPPORT_EMAIL}"
+        contact_run = contact_para.add_run(contact_line)
         contact_run.font.size = Pt(8)
         contact_run.font.color.rgb = RGBColor(128, 128, 128)
         contact_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1292,8 +1363,14 @@ class TemplateRenderer:
         status: RenderStatus,
         regeneration_notes: Optional[str] = None,
         is_pack_document: bool = False,
+        renderer_branding: Optional[Dict[str, Any]] = None,
     ) -> bytes:
         """Render structured output to sealed PDF."""
+        from services.branding_resolver_service import pleerity_profile
+
+        rb = renderer_branding or pleerity_profile().to_template_renderer_dict()
+        primary_hex = rb.get("primary_hex") or f"#{BRAND_NAVY_HEX}"
+        secondary_hex = rb.get("secondary_hex") or f"#{BRAND_TEAL_HEX}"
         buffer = io.BytesIO()
         
         doc = SimpleDocTemplate(
@@ -1312,7 +1389,7 @@ class TemplateRenderer:
             name='BrandTitle',
             parent=styles['Title'],
             fontSize=20,
-            textColor=colors.HexColor('#0B1D3A'),
+            textColor=_reportlab_hex(primary_hex, f"#{BRAND_NAVY_HEX}"),
             spaceAfter=12,
         ))
         
@@ -1320,7 +1397,7 @@ class TemplateRenderer:
             name='BrandHeading',
             parent=styles['Heading2'],
             fontSize=14,
-            textColor=colors.HexColor('#00B8A9'),
+            textColor=_reportlab_hex(secondary_hex, f"#{BRAND_TEAL_HEX}"),
             spaceBefore=12,
             spaceAfter=6,
         ))
@@ -1338,10 +1415,11 @@ class TemplateRenderer:
         # Header
         order_ref = order.get("order_ref", order.get("order_id", ""))
         service_name = order.get("service_name", order.get("service_code", ""))
+        banner = (rb.get("header_banner_company") or COMPANY_NAME).strip() or COMPANY_NAME
         
-        header_text = f"{COMPANY_NAME.upper()} | Order: {order_ref} | v{version} | {status.value}"
+        header_text = f"{banner} | Order: {order_ref} | v{version} | {status.value}"
         story.append(Paragraph(header_text, styles['Normal']))
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#00B8A9')))
+        story.append(HRFlowable(width="100%", thickness=1, color=_reportlab_hex(secondary_hex, f"#{BRAND_TEAL_HEX}")))
         story.append(Spacer(1, 12))
         
         # Title
@@ -1362,7 +1440,7 @@ class TemplateRenderer:
         
         # Content
         service_code = order.get("service_code", "GENERAL")
-        self._add_pdf_content(story, styles, structured_output, service_code)
+        self._add_pdf_content(story, styles, structured_output, service_code, chart_fill_hex=secondary_hex)
         
         # Footer
         story.append(Spacer(1, 20))
@@ -1376,9 +1454,11 @@ class TemplateRenderer:
             alignment=TA_CENTER,
         )
         
-        footer_text = f"Generated by {COMPANY_NAME} | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} | Document v{version}"
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        footer_text = f"{rb.get('footer_generated_line', f'Generated by {COMPANY_NAME}')} | {ts} | Document v{version}"
         story.append(Paragraph(footer_text, footer_style))
-        story.append(Paragraph(f"{get_branding_website_url()} | {SUPPORT_EMAIL}", footer_style))
+        contact_line = rb.get("footer_contact_line") or f"{get_branding_website_url()} | {SUPPORT_EMAIL}"
+        story.append(Paragraph(contact_line, footer_style))
         if is_pack_document:
             story.append(Paragraph(PACK_LEGAL_DISCLAIMER_FOOTER, footer_style))
         else:
@@ -1390,7 +1470,9 @@ class TemplateRenderer:
         
         return buffer.getvalue()
     
-    def _make_tool_recommendations_chart(self, tools: List[Dict[str, Any]]):
+    def _make_tool_recommendations_chart(
+        self, tools: List[Dict[str, Any]], chart_fill_hex: Optional[str] = None
+    ):
         """Build a simple vertical bar chart flowable from tool_recommendations (for PDF)."""
         if not tools:
             return None
@@ -1427,20 +1509,31 @@ class TemplateRenderer:
             bc.categoryAxis.labels.dy = 2
             bc.categoryAxis.labels.angle = 30
             bc.categoryAxis.categoryNames = names
-            bc.bars[0].fillColor = colors.HexColor(BRAND_TEAL_HEX)
+            fill = (chart_fill_hex or "").strip()
+            if fill and not fill.startswith("#"):
+                fill = "#" + fill
+            bc.bars[0].fillColor = _reportlab_hex(fill, f"#{BRAND_TEAL_HEX}")
             drawing.add(bc)
             return drawing
         except Exception as e:
             logger.debug("Tool recommendations chart build failed: %s", e)
             return None
 
-    def _add_pdf_content(self, story: List, styles, output: Dict[str, Any], service_code: str):
+    def _add_pdf_content(
+        self,
+        story: List,
+        styles,
+        output: Dict[str, Any],
+        service_code: str,
+        *,
+        chart_fill_hex: Optional[str] = None,
+    ):
         """Add content to PDF based on service type. Includes charts for tool reports and comparisons where present."""
         # Chart: AI tool recommendations (bar chart when present)
         if service_code.startswith("AI_") and "tool_recommendations" in output:
             tools = output.get("tool_recommendations") or []
             if isinstance(tools, list) and len(tools) <= 15:
-                chart_flow = self._make_tool_recommendations_chart(tools)
+                chart_flow = self._make_tool_recommendations_chart(tools, chart_fill_hex=chart_fill_hex)
                 if chart_flow:
                     story.append(Paragraph("Tool recommendations overview", styles['BrandHeading']))
                     story.append(chart_flow)

@@ -906,12 +906,14 @@ async def send_report_email(
     start: datetime,
     end: datetime,
     schedule_name: str = None,
+    client_id: Optional[str] = None,
 ) -> dict:
     """Generate report and send via NotificationOrchestrator with attachment.
     Uses canonical customer email layout (build_customer_email_layout) so manual runs
     match the scheduled-report job layout."""
     from services.notification_orchestrator import notification_orchestrator
-    from email_templates.email_layout import build_customer_email_layout
+    from email_templates.email_layout import build_customer_email_layout, merge_branding_kwargs
+    from services.branding_resolver_service import merge_email_branding_context
     import base64
     # Generate file attachment
     if format == "xlsx":
@@ -967,15 +969,21 @@ async def send_report_email(
     from utils.app_urls import get_app_base_url
 
     portal_url = get_app_base_url(for_email_links=True).strip().rstrip("/") or "#"
+    brand_model: dict = {}
+    if client_id:
+        await merge_email_branding_context(brand_model, "scheduled-report", client_id)
     html_body = build_customer_email_layout(
-        greeting="Hello,",
-        body_html=inner_html,
-        header_title="Your Report is Ready",
-        cta_label="View your dashboard",
-        cta_url=portal_url,
-        why_received="you have scheduled reports enabled for your account.",
-        show_preferences_link=True,
-        preferences_url=None,
+        **merge_branding_kwargs(
+            brand_model,
+            greeting="Hello,",
+            body_html=inner_html,
+            header_title="Your Report is Ready",
+            cta_label="View your dashboard",
+            cta_url=portal_url,
+            why_received="you have scheduled reports enabled for your account.",
+            show_preferences_link=True,
+            preferences_url=None,
+        )
     )
     text_body = f"""Your Report is Ready
 
@@ -996,7 +1004,7 @@ This is an automated report from Pleerity Enterprise Ltd."""
             idempotency_key = f"SCHEDULED_REPORT_{report_type}_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}_{recipient}"
             result = await notification_orchestrator.send(
                 template_key="SCHEDULED_REPORT",
-                client_id=None,
+                client_id=client_id,
                 context={
                     "recipient": recipient,
                     "subject": subject,
@@ -1064,7 +1072,8 @@ async def run_scheduled_report_now(
         data=data,
         start=start,
         end=end,
-        schedule_name=schedule["name"]
+        schedule_name=schedule["name"],
+        client_id=schedule.get("client_id"),
     )
     
     # Update last run time

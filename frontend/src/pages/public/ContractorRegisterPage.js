@@ -117,7 +117,8 @@ const ContractorRegisterPage = () => {
               <CardTitle className="text-2xl text-midnight-blue">Join the contractor network</CardTitle>
             </div>
             <CardDescription>
-              Apply to work with our clients on compliance and maintenance jobs. This is separate from{' '}
+              Apply to work with our clients on compliance and maintenance jobs. This is{' '}
+              <strong>not</strong> instant access: we review every application. For employment, see{' '}
               <Link to="/careers/talent-pool" className="text-electric-teal hover:underline">
                 careers / talent pool
               </Link>
@@ -126,33 +127,42 @@ const ContractorRegisterPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {loadingStatus ? (
-              <p className="text-sm text-gray-600">Checking availability…</p>
+              <p className="text-sm text-gray-600">Checking whether applications are open…</p>
             ) : registrationOpen === false ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Online applications are not open at the moment. If you were invited by a client or our team, use the link in
-                  your email to set your password, then{' '}
-                  <Link to="/contractor/login" className="font-medium text-electric-teal hover:underline">
-                    sign in to the contractor portal
-                  </Link>
-                  . Otherwise{' '}
-                  <Link to="/contact" className="font-medium text-electric-teal hover:underline">
-                    contact us
-                  </Link>{' '}
-                  to discuss joining the network.
+                  <span className="font-medium text-gray-900">Applications are not open</span>
+                  <span className="block mt-2 text-gray-700">
+                    Public contractor applications are disabled in this environment. If our team or a client invited you, use the link in your email to set your password, then sign in via{' '}
+                    <Link to="/login" className="font-medium text-electric-teal hover:underline">
+                      Portal login
+                    </Link>{' '}
+                    → Contractor portal. Otherwise{' '}
+                    <Link to="/contact" className="font-medium text-electric-teal hover:underline">
+                      contact us
+                    </Link>{' '}
+                    to discuss joining the network.
+                  </span>
                 </AlertDescription>
               </Alert>
             ) : success ? (
               <div className="text-center py-4 space-y-3">
                 <CheckCircle className="h-12 w-12 text-green-600 mx-auto" />
-                <p className="font-medium text-midnight-blue">Application received</p>
-                <p className="text-sm text-gray-600">
-                  Our team will review your details. When approved, you will receive an email with a link to activate your
-                  contractor portal account.
+                <p className="font-medium text-midnight-blue">Application submitted</p>
+                <p className="text-sm text-gray-600 text-left">
+                  We have emailed you at the address you provided to confirm receipt. Our team will review your application.
+                  If you are approved, you will receive a separate email with a secure link to set your password and activate your contractor portal.
+                </p>
+                <p className="text-sm text-gray-600 text-left">
+                  After activation, sign in anytime via{' '}
+                  <Link to="/login" className="text-electric-teal font-medium hover:underline">
+                    Portal login
+                  </Link>{' '}
+                  → Contractor portal.
                 </p>
                 <Button asChild variant="outline" className="mt-2">
-                  <Link to="/contractor/login">Back to contractor login</Link>
+                  <Link to="/login">Back to Portal login</Link>
                 </Button>
               </div>
             ) : (
@@ -163,6 +173,9 @@ const ContractorRegisterPage = () => {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 ) : null}
+                <p className="text-sm text-gray-600">
+                  Applications are <strong>open</strong>. Submitting this form adds you to our <strong>pending approval</strong> queue; you cannot sign in until an administrator approves you and you complete the email setup link.
+                </p>
                 <div className="space-y-2">
                   <Label htmlFor="name">Name / business *</Label>
                   <Input
@@ -234,10 +247,11 @@ const ContractorRegisterPage = () => {
                   {submitting ? 'Submitting…' : 'Submit application'}
                 </Button>
                 <p className="text-center text-sm text-gray-500">
-                  Already have an account?{' '}
-                  <Link to="/contractor/login" className="text-electric-teal hover:underline">
-                    Contractor login
-                  </Link>
+                  Already invited and activated?{' '}
+                  <Link to="/login" className="text-electric-teal hover:underline">
+                    Portal login
+                  </Link>{' '}
+                  → Contractor portal.
                 </p>
               </form>
             )}

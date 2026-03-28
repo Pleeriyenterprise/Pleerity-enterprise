@@ -30,6 +30,7 @@ import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
 import client from '../api/client';
 import { validateCheckout, createCheckoutSession, isDocumentPack, getPackTierName } from '../api/checkoutApi';
+import { BRAND_LOGO_URL } from '../config/branding';
 
 // ============================================================================
 // STEP COMPONENTS
@@ -1442,6 +1443,14 @@ export default function UnifiedIntakeWizard() {
       <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
+          <img
+            src={BRAND_LOGO_URL}
+            alt=""
+            className="h-12 w-auto max-w-[200px] mx-auto mb-4 object-contain"
+            width={200}
+            height={48}
+            decoding="async"
+          />
           <h1 className="text-2xl font-bold text-gray-900">Order Service</h1>
           <p className="text-gray-600 mt-1">Complete the form to place your order</p>
         </div>

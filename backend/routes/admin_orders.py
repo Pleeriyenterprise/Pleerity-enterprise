@@ -25,6 +25,7 @@ router = APIRouter(prefix="/api/admin/orders", tags=["admin-orders"])
 
 async def _send_client_info_request_email(order: Dict, order_id: str, request_payload: Dict) -> bool:
     """Send (or resend) the client info request email using current request payload."""
+    from services.branding_resolver_service import resolve_order_email_branding
     from services.order_email_templates import build_client_input_required_email
     from services.order_view_token import generate_order_provide_info_token
     from services.notification_orchestrator import notification_orchestrator
@@ -53,6 +54,7 @@ async def _send_client_info_request_email(order: Dict, order_id: str, request_pa
         except Exception:
             deadline_str = str(deadline_val)
 
+    order_branding = await resolve_order_email_branding(order.get("client_id"))
     email_data = build_client_input_required_email(
         client_name=(order.get("customer") or {}).get("full_name", "Customer"),
         order_reference=order_id,
@@ -61,11 +63,12 @@ async def _send_client_info_request_email(order: Dict, order_id: str, request_pa
         requested_fields=request_payload.get("requested_fields") or [],
         deadline=deadline_str,
         provide_info_link=provide_info_link,
+        branding=order_branding,
     )
 
     await notification_orchestrator.send(
         template_key="ORDER_INFO_REQUEST",
-        client_id=None,
+        client_id=order.get("client_id"),
         context={
             "recipient": client_email.strip(),
             "subject": email_data["subject"],

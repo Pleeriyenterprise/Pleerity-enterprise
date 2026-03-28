@@ -8,7 +8,7 @@ import os
 import logging
 from typing import Optional, Dict, Any, List
 
-from email_templates.email_layout import build_customer_email_layout
+from email_templates.email_layout import build_customer_email_layout, merge_branding_kwargs
 from utils.branding import CUSTOMER_SUPPORT_FOOTER_PLAIN, SUPPORT_EMAIL
 from presentation.label_service import (
     compliance_requirement_status_label,
@@ -17,6 +17,12 @@ from presentation.label_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _customer_email_html(model: Dict[str, Any], **kwargs: Any) -> str:
+    """Apply ``_email_branding`` from notification context, then explicit kwargs."""
+    return _customer_email_html(
+                model,**merge_branding_kwargs(model, **kwargs))
 
 
 def _format_greeting(client_name: Optional[str]) -> str:
@@ -354,8 +360,14 @@ class EmailService:
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
             greeting = _format_greeting(model.get("client_name"))
-            body = "<p>Your Compliance Vault Pro account is ready for activation. Set your password to secure your portal — you’ll need this before you can sign in.</p><p style=\"color: #666; font-size: 14px;\">This link will expire in 24 hours. If you didn’t expect this email, you can ignore it.</p>"
-            return build_customer_email_layout(
+            link_h = int(model.get("link_expiry_hours") or 24)
+            expiry_phrase = f"{link_h} hour{'s' if link_h != 1 else ''}"
+            body = (
+                "<p>Your Compliance Vault Pro account is ready for activation. Set your password to secure your portal — you’ll need this before you can sign in.</p>"
+                f'<p style="color: #666; font-size: 14px;">This link will expire in {expiry_phrase}. If you didn’t expect this email, you can ignore it.</p>'
+            )
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Welcome — set your password",
@@ -370,12 +382,15 @@ class EmailService:
             customer_ref = model.get("customer_reference", "") or ""
             ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{customer_ref}</span></p>' if customer_ref else ""
             greeting = _format_greeting(model.get("client_name"))
+            link_h = int(model.get("link_expiry_hours") or 24)
+            expiry_phrase = f"{link_h} hour{'s' if link_h != 1 else ''}"
             body = (
                 "<p>We noticed you haven’t finished activating your Compliance Vault Pro account yet.</p>"
                 "<p>Setting your password takes a minute and unlocks your compliance dashboard, property tracking, and document vault.</p>"
-                "<p style=\"color: #666; font-size: 14px;\">This link will expire in 24 hours.</p>"
+                f'<p style="color: #666; font-size: 14px;">This link will expire in {expiry_phrase}.</p>'
             )
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Complete your setup",
@@ -388,8 +403,13 @@ class EmailService:
             )
         elif template_alias == EmailTemplateAlias.PASSWORD_RESET:
             greeting = _format_greeting(model.get("client_name"))
-            body = "<p>You requested a password reset for your Compliance Vault Pro account. Use the link below to set a new password.</p><p style=\"color: #666; font-size: 14px;\">This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.</p>"
-            return build_customer_email_layout(
+            expiry_txt = (model.get("link_expiry_text") or "1 hour").strip()
+            body = (
+                "<p>You requested a password reset for your Compliance Vault Pro account. Use the link below to set a new password.</p>"
+                f'<p style="color: #666; font-size: 14px;">This link will expire in {html_module.escape(expiry_txt)}. If you didn\'t request this, please ignore this email or contact support.</p>'
+            )
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Reset your password",
@@ -423,7 +443,8 @@ class EmailService:
             <p style="color: #0B1D3A; font-weight: 600;">What happens next</p>
             {next_steps}
             """
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Payment received",
@@ -436,7 +457,8 @@ class EmailService:
         elif template_alias == EmailTemplateAlias.PASSWORD_CHANGED_CONFIRMATION:
             greeting = _format_greeting(model.get("client_name"))
             body = "<p>Your password was changed successfully. If you did not make this change, please contact support immediately.</p>"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Password changed",
@@ -460,7 +482,8 @@ class EmailService:
                 "<li><strong>Upload certificates</strong> so expiry tracking and reminders work for you.</li>"
                 "</ul>"
             )
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Your dashboard is ready",
@@ -511,7 +534,8 @@ class EmailService:
                         • <span style="color: #dc2626;">RED</span> = Immediate action required
                     </p>"""
             greeting = f"Hello {model.get('client_name', 'there')},"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="⚠️ Compliance Alert",
@@ -536,7 +560,8 @@ class EmailService:
                 urgency_line = f"<p><strong>{days_remaining}</strong> days remaining to complete this requirement.</p>"
             body = f"<p>This is a reminder that <strong>{req_name}</strong> for your property at <strong>{prop_addr}</strong> is due on <strong>{due_date}</strong>.</p>{urgency_line}"
             greeting = f"Hello {model.get('client_name', 'Valued Customer')},"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Compliance Action Required",
@@ -552,7 +577,8 @@ class EmailService:
             if model.get('login_url'):
                 body += f'<p style="color: #666; font-size: 14px; margin-top: 16px;">After you\'ve set your password, you can log in anytime at: <a href="{model.get("login_url", "#")}" style="color: #00B8A9;">{model.get("login_url", "")}</a></p>'
             greeting = f"Hello {model.get('tenant_name', 'there')},"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Tenant Portal Invitation",
@@ -581,7 +607,8 @@ class EmailService:
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; overflow-x: auto;">{html_module.escape(raw_content)}</div>"""
             body = f"<p>Please find your scheduled <strong>{model.get('report_type', 'compliance')}</strong> report below.</p>{report_body}<p style=\"color: #666; font-size: 14px; margin-top: 20px;\">For the full report with all details, please log in to your dashboard and download the complete report from the Reports section.</p>"
             greeting = f"Hello {model.get('client_name', 'there')},"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title=f"Your {model.get('frequency', 'Weekly').title()} Compliance Report",
@@ -596,7 +623,8 @@ class EmailService:
         elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
             body = "<p>You have been invited by <strong>" + (model.get('inviter_name') or 'an administrator') + "</strong> to join Compliance Vault Pro as an <strong>Administrator</strong>.</p><p>As an admin, you will have access to:</p><ul style=\"color: #64748b;\"><li>Full system management dashboard</li><li>All client accounts and properties</li><li>Audit logs and compliance reports</li><li>System configuration and settings</li></ul><p style=\"color: #dc2626; font-size: 14px; font-weight: bold;\">⏰ This invitation expires in 24 hours.</p><p style=\"color: #666; font-size: 14px;\">If you did not expect this invitation or have questions, please contact the system administrator.</p>"
             greeting = f"Hello {model.get('admin_name', 'there')},"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Admin Invitation",
@@ -627,7 +655,8 @@ class EmailService:
                     </div>
                     <p style="color: #64748b; font-size: 14px;"><strong>What happens next?</strong><br>• Your compliance dashboard has been updated automatically<br>• You'll receive reminders before this certificate expires<br>• You can review or edit these details in your portal</p>"""
             greeting = f"Hello {model.get('client_name', 'there')},"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="AI Document Analysis Complete",
@@ -650,7 +679,8 @@ class EmailService:
                 docs_html += "</ul>"
             body = f"<p>Your <strong>{model.get('service_name', 'order')}</strong> is complete and your documents are ready for download!</p><div style=\"background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 20px; margin: 20px 0;\"><p style=\"margin: 0 0 10px 0; font-weight: bold; color: #166534;\">Included Documents:</p>{docs_html}</div><p style=\"color: #64748b; font-size: 14px;\">Your documents are also available in your <a href=\"{model.get('portal_link', '#')}\" style=\"color: #00B8A9;\">portal dashboard</a>.</p>"
             greeting = f"Hello {model.get('client_name', 'there')},"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Your Documents Are Ready",
@@ -751,7 +781,8 @@ class EmailService:
             data_as_of = (model.get("data_as_of") or model.get("period_end") or "").replace("T", " ")[:19]
             body = f"<p>Summary for the period (counts only):</p><ul>{list_html}</ul>{cc_html}{period_html}<p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p><p style=\"color: #64748b; font-size: 12px; margin-top: 16px;\">Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.</p>"
             greeting = f"Hello {model.get('client_name', 'there')},"
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Monthly compliance digest",
@@ -797,7 +828,8 @@ class EmailService:
             ref_badge = ""
             if model.get("customer_reference"):
                 ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{model["customer_reference"]}</span></p>'
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=c.get("body", ""),
                 header_title=c.get("header_title", "Compliance Vault Pro"),
@@ -816,7 +848,8 @@ class EmailService:
             body = f"{ref_line}<p>{model.get('message', 'You have a new notification from Pleerity.')}</p>"
             greeting = f"Hello {model.get('client_name', 'there')},"
             show_prefs = template_alias not in SYSTEM_CRITICAL_ALIASES
-            return build_customer_email_layout(
+            return _customer_email_html(
+                model,
                 greeting=greeting,
                 body_html=body,
                 header_title=model.get('subject', 'Pleerity'),
@@ -832,13 +865,22 @@ class EmailService:
         """Build consistent plain text footer with CRN."""
         customer_ref = model.get('customer_reference', '')
         ref_line = f"\nYour Reference: {customer_ref}" if customer_ref else ""
-        
+        eb = model.get("_email_branding") if isinstance(model.get("_email_branding"), dict) else {}
+        co = eb.get("company_name") or model.get("company_name", "Pleerity Enterprise Ltd")
+        tag = eb.get("tagline") or model.get("tagline", "AI-Driven Solutions & Compliance")
+        se = eb.get("support_email") or SUPPORT_EMAIL
+        support_plain = (
+            CUSTOMER_SUPPORT_FOOTER_PLAIN
+            if se == SUPPORT_EMAIL
+            else f"If you have any questions, contact us at {se}"
+        )
+
         return f"""
 --
-{model.get('company_name', 'Pleerity Enterprise Ltd')}
-{model.get('tagline', 'AI-Driven Solutions & Compliance')}{ref_line}
+{co}
+{tag}{ref_line}
 
-{CUSTOMER_SUPPORT_FOOTER_PLAIN}
+{support_plain}
         """
 
     def _build_text_body(self, template_alias: EmailTemplateAlias, model: Dict[str, Any]) -> str:
@@ -848,6 +890,8 @@ class EmailService:
         ref_line = f"\nYour Reference: {customer_ref}" if customer_ref else ""
         
         if template_alias == EmailTemplateAlias.PASSWORD_SETUP:
+            link_h = int(model.get("link_expiry_hours") or 24)
+            expiry_phrase = f"{link_h} hour{'s' if link_h != 1 else ''}"
             return f"""
 Welcome — set your password
 {ref_line}
@@ -858,10 +902,12 @@ Your Compliance Vault Pro account is ready for activation. Set your password to 
 
 Set your password: {model.get('setup_link', '#')}
 
-This link will expire in 24 hours.
+This link will expire in {expiry_phrase}.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.ACTIVATION_REMINDER:
+            link_h = int(model.get("link_expiry_hours") or 24)
+            expiry_phrase = f"{link_h} hour{'s' if link_h != 1 else ''}"
             return f"""
 Complete your setup
 {ref_line}
@@ -872,7 +918,7 @@ We noticed you haven't finished activating your Compliance Vault Pro account. Se
 
 Set your password: {model.get('setup_link', '#')}
 
-This link will expire in 24 hours.
+This link will expire in {expiry_phrase}.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PAYMENT_RECEIPT:
@@ -896,6 +942,7 @@ What happens next:
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PASSWORD_RESET:
+            expiry_txt = (model.get("link_expiry_text") or "1 hour").strip()
             return f"""
 Reset your password
 
@@ -905,7 +952,7 @@ You requested a password reset for your Compliance Vault Pro account. Use the li
 
 Set new password: {model.get('setup_link', '#')}
 
-This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.
+This link will expire in {expiry_txt}. If you didn't request this, please ignore this email or contact support.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PASSWORD_CHANGED_CONFIRMATION:

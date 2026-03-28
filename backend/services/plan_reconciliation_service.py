@@ -180,6 +180,12 @@ async def reconcile_plan_change(
                 client_id,
             )
 
+    if allowed_features.get("white_label_reports", True):
+        await db.branding_settings.update_one(
+            {"client_id": client_id},
+            {"$unset": {"white_label_disabled_by_plan": "", "disabled_reason": ""}},
+        )
+
     # --- audit_log_export: no state change; runtime gating only ---
     if not allowed_features.get("audit_log_export", True):
         summary["actions"].append(

@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { PropertyLimitPrompt } from '../components/UpgradePrompt';
 import { useEntitlements } from '../contexts/EntitlementsContext';
+import { BRAND_LOGO_URL, branding } from '../config/branding';
 
 // Plan limits - NEW PLAN STRUCTURE (must match backend plan_registry.py)
 const PLAN_LIMITS = {
@@ -575,12 +576,17 @@ const IntakePage = () => {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-electric-teal to-teal-600 rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-midnight-blue">Compliance Vault Pro</h1>
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src={BRAND_LOGO_URL}
+                alt=""
+                className="h-10 w-auto max-h-10 max-w-[160px] object-contain object-left shrink-0"
+                width={160}
+                height={40}
+                decoding="async"
+              />
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold text-midnight-blue truncate">{branding.productName}</h1>
                 <p className="text-xs text-gray-500">Premium UK Landlord Compliance</p>
               </div>
             </div>

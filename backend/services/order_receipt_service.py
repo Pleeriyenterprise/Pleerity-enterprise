@@ -191,11 +191,16 @@ def order_to_invoice_data(order: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_order_receipt_pdf_bytes(order: Dict[str, Any]) -> bytes:
-    """Sync PDF build; `order` must include `invoice_number` when required."""
+async def build_order_receipt_pdf_bytes(order: Dict[str, Any]) -> bytes:
+    """Build receipt PDF; applies resolver when ``order`` has ``client_id``."""
+    from services.branding_resolver_service import prepare_invoice_pdf_data_with_branding
+
     data = order_to_invoice_data(order)
     if not data.get("invoice_number"):
         raise ValueError("order.invoice_number is required to build invoice PDF")
+    cid = (order.get("client_id") or "").strip() or None
+    if cid:
+        data = await prepare_invoice_pdf_data_with_branding(cid, data)
     return build_branded_invoice_pdf_bytes(data)
 
 
@@ -260,7 +265,7 @@ async def ensure_order_receipt_stored(
 
     try:
         order_with_inv = await _ensure_order_invoice_number(order_id, order)
-        pdf_bytes = build_order_receipt_pdf_bytes(order_with_inv)
+        pdf_bytes = await build_order_receipt_pdf_bytes(order_with_inv)
     except Exception as e:
         logger.exception("Order receipt PDF build failed for %s: %s", order_id, e)
         return False, None, str(e)

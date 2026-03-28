@@ -294,8 +294,9 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               {/* Secure job link: single work order via token (no login) */}
               <Route path="/job" element={<JobPage />} />
-              {/* Contractor portal (separate auth via contractor_token) */}
+              {/* Contractor portal (contractor_token after invite / activation) */}
               <Route path="/contractor/login" element={<ContractorLoginPage />} />
+              <Route path="/contractor-login" element={<Navigate to="/contractor/login" replace />} />
               <Route path="/contractors/register" element={<ContractorRegisterPage />} />
               <Route path="/contractor" element={<ContractorDashboardPage />} />
               <Route path="/intake/start" element={<IntakePage />} />

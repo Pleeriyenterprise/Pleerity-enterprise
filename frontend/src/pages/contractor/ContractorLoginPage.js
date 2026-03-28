@@ -55,7 +55,9 @@ export default function ContractorLoginPage() {
             <Wrench className="h-6 w-6 text-electric-teal" />
             <CardTitle className="text-2xl font-bold text-midnight-blue">Contractor Portal</CardTitle>
           </div>
-          <CardDescription>Sign in to view your work orders and submit invoices</CardDescription>
+          <CardDescription>
+            Contractor access is part of Compliance Vault Pro secure access. Use the email and password you set after accepting your invite.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -101,15 +103,16 @@ export default function ContractorLoginPage() {
           </form>
           <p className="text-center text-sm text-gray-500 mt-4">
             <Link to="/contractors/register" className="text-electric-teal hover:underline font-medium">
-              New to the network? Apply to join
+              Apply to join the contractor network
             </Link>
+            <span className="block mt-1 text-xs text-gray-400">Separate from careers; applications are reviewed before access is granted.</span>
           </p>
-          <p className="text-center text-sm text-gray-500 mt-2">
-            <button type="button" className="text-electric-teal hover:underline" onClick={() => navigate('/login')}>
-              Client or staff?
+          <p className="text-center text-sm text-gray-500 mt-3">
+            <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => navigate('/login')}>
+              Client or staff sign-in
             </button>
             <span className="text-gray-400"> · </span>
-            <span className="text-gray-500">Use the secure link in your assignment email for a single job (no password).</span>
+            <span className="text-gray-500">Job link from email? Open it directly for that assignment (no password).</span>
           </p>
         </CardContent>
       </Card>

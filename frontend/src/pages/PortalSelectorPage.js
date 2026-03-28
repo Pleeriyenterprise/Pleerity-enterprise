@@ -38,7 +38,7 @@ const PortalSelectorPage = () => {
             Compliance Vault Pro Secure Access
           </h1>
           <p className="text-gray-600">
-            Choose your portal: clients, internal staff, or assigned maintenance contractors.
+            One secure entry for clients, internal staff, and contractors. Pick the option that matches your role.
           </p>
         </div>
 
@@ -76,7 +76,7 @@ const PortalSelectorPage = () => {
           </div>
         </Card>
 
-        {/* Contractor: separate auth (contractor_token); does not use client or admin login */}
+        {/* Contractor portal: same gateway; dedicated sign-in after invite / activation */}
         <Card
           className="cursor-pointer hover:shadow transition-shadow border border-gray-200 mb-6 overflow-hidden"
           onClick={() => navigate('/contractor/login')}
@@ -86,8 +86,10 @@ const PortalSelectorPage = () => {
               <Wrench className="w-5 h-5 text-teal-700" />
             </div>
             <div className="flex-1">
-              <h2 className="text-base font-semibold text-midnight-blue">Contractor</h2>
-              <p className="text-gray-500 text-sm">Assigned maintenance jobs, updates, and invoices.</p>
+              <h2 className="text-base font-semibold text-midnight-blue">Contractor portal</h2>
+              <p className="text-gray-500 text-sm">
+                For vetted contractors with an activated account. Use the link in your invite email to set your password first, then sign in here.
+              </p>
             </div>
           </div>
         </Card>

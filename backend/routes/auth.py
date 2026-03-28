@@ -25,6 +25,7 @@ from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 import logging
 import re
 import os
@@ -33,6 +34,31 @@ from middleware import require_auth
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+def _parse_password_token_expiry(expires_at_raw) -> Optional[datetime]:
+    """
+    Parse password_tokens.expires_at to an offset-aware UTC datetime.
+    Returns None if missing, empty, or not parseable (token must be treated as invalid).
+    """
+    if expires_at_raw is None:
+        return None
+    if isinstance(expires_at_raw, str) and not expires_at_raw.strip():
+        return None
+    try:
+        if isinstance(expires_at_raw, str):
+            exp = datetime.fromisoformat(expires_at_raw.replace("Z", "+00:00"))
+        elif isinstance(expires_at_raw, datetime):
+            exp = expires_at_raw
+        else:
+            exp = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        else:
+            exp = exp.astimezone(timezone.utc)
+        return exp
+    except (ValueError, TypeError, OSError):
+        return None
 
 def _client_ip(request: Request) -> str:
     """Prefer X-Forwarded-For when behind a proxy."""
@@ -668,21 +694,19 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 detail="Invalid or expired password setup link"
             )
 
-        # Validate token
+        # Validate token (always require a valid expiry; missing expiry is not accepted)
         now = datetime.now(timezone.utc)
-
-        # Handle both string and datetime objects, ensure timezone-aware
-        expires_at_raw = password_token["expires_at"]
-        if isinstance(expires_at_raw, str):
-            expires_at = datetime.fromisoformat(expires_at_raw.replace("Z", "+00:00"))
-        elif isinstance(expires_at_raw, datetime):
-            # Ensure timezone-aware
-            if expires_at_raw.tzinfo is None:
-                expires_at = expires_at_raw.replace(tzinfo=timezone.utc)
-            else:
-                expires_at = expires_at_raw
-        else:
-            expires_at = expires_at_raw
+        expires_at = _parse_password_token_expiry(password_token.get("expires_at"))
+        if expires_at is None:
+            logger.warning(
+                "set_password invalid token request_id=%s token_prefix=%s reason=bad_or_missing_expiry",
+                request_id,
+                token_prefix,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired password setup link",
+            )
 
         if password_token.get("used_at"):
             logger.warning(
@@ -957,6 +981,19 @@ async def contractor_login(request: Request, credentials: LoginRequest):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         contractor_id = acc["contractor_id"]
         contractor = await contractor_service.get_contractor(contractor_id)
+        # Self-heal legacy docs that completed set-password (activated_at) but never got status=active.
+        if (
+            contractor
+            and (contractor.get("status") or "").strip().lower() != contractor_service.STATUS_ACTIVE
+            and contractor_service.portal_access_is_activated(contractor)
+            and contractor.get("activated_at")
+            and contractor_service.normalize_lifecycle_status(contractor.get("status"))
+            != contractor_service.LC_SUSPENDED
+        ):
+            await contractor_service.update_contractor(
+                contractor_id, status=contractor_service.LC_ACTIVE
+            )
+            contractor = await contractor_service.get_contractor(contractor_id)
         if not contractor or (contractor.get("status") or "").lower() != contractor_service.STATUS_ACTIVE:
             await create_audit_log(
                 action=AuditAction.CONTRACTOR_LOGIN_FAILED,
@@ -1042,30 +1079,13 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link has already been used")
     if password_token.get("revoked_at"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link is no longer valid")
-    expires_at_raw = password_token.get("expires_at")
-    if expires_at_raw:
-        from datetime import datetime, timezone
+    from datetime import datetime as dt_cons, timezone as tz_cons
 
-        now = datetime.now(timezone.utc)
-        if isinstance(expires_at_raw, str):
-            exp = datetime.fromisoformat(expires_at_raw.replace("Z", "+00:00"))
-            if exp.tzinfo is None:
-                exp = exp.replace(tzinfo=timezone.utc)
-            else:
-                exp = exp.astimezone(timezone.utc)
-        elif isinstance(expires_at_raw, datetime):
-            if expires_at_raw.tzinfo is None:
-                exp = expires_at_raw.replace(tzinfo=timezone.utc)
-            else:
-                exp = expires_at_raw.astimezone(timezone.utc)
-        else:
-            exp = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
-            if exp.tzinfo is None:
-                exp = exp.replace(tzinfo=timezone.utc)
-            else:
-                exp = exp.astimezone(timezone.utc)
-        if now > exp:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link has expired")
+    exp = _parse_password_token_expiry(password_token.get("expires_at"))
+    if exp is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+    if dt_cons.now(tz_cons.utc) > exp:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link has expired")
     if password_token.get("purpose") != "contractor_invite":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid link type")
     metadata = password_token.get("metadata") or {}
@@ -1077,6 +1097,8 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
     contractor = await contractor_service.get_contractor(contractor_id)
     if not contractor:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite data")
+    if contractor_service.normalize_lifecycle_status(contractor.get("status")) == contractor_service.LC_SUSPENDED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is suspended")
     if (contractor.get("portal_access_status") or "").strip().lower() == contractor_service.PORTAL_ACCESS_DISABLED:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor portal access is disabled")
     is_valid, message = validate_password_strength(data.password)
@@ -1097,17 +1119,15 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
         {"token_hash": token_hash_value},
         {"$set": {"used": True, "used_at": now}}
     )
-    cur = await contractor_service.get_contractor(contractor_id)
-    st = contractor_service.normalize_lifecycle_status((cur or {}).get("status")) if cur else ""
-    new_status = None
-    if st == contractor_service.LC_APPROVED:
-        new_status = contractor_service.LC_ACTIVE
+    # Always set lifecycle to active when the invite is completed. Previously we only promoted
+    # from "approved", so contractors with missing/legacy status stayed non-active while portal
+    # showed "enabled" — login and route guards require status == active.
     await contractor_service.update_contractor(
         contractor_id,
         portal_access_status=contractor_service.PORTAL_ACCESS_ENABLED,
         portal_invite_accepted_at=now,
         activated_at=now,
-        status=new_status,
+        status=contractor_service.LC_ACTIVE,
     )
     await create_audit_log(
         action=AuditAction.CONTRACTOR_INVITE_ACCEPTED,
@@ -1286,6 +1306,8 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
                 "client_name": client.get("full_name") or "Customer",
                 "company_name": "Pleerity Enterprise Ltd",
                 "tagline": "AI-Driven Solutions & Compliance",
+                "link_expiry_hours": 1,
+                "link_expiry_text": "1 hour",
             },
             idempotency_key=None,
             event_type="forgot_password",

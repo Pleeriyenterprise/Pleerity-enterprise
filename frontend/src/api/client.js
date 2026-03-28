@@ -486,6 +486,7 @@ export const adminAPI = {
   createInvoice: (body) => apiClient.post('/admin/ops/invoices', body),
   // Contractor portal invite (admin)
   inviteContractorToPortal: (contractorId) => apiClient.post(`/admin/ops/contractors/${contractorId}/invite-portal`),
+  inviteContractor: (body) => apiClient.post('/admin/ops/contractors/invite', body),
 };
 
 // Contractor portal API (use with contractor token from contractor login/set-password)

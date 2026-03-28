@@ -18,6 +18,23 @@ if str(backend_root) not in sys.path:
     sys.path.insert(0, str(backend_root))
 
 
+def _attach_branding_db_mocks(db: MagicMock) -> None:
+    """resolve_branding / merge_email_branding_context read branding_settings via database.get_db()."""
+    db.branding_settings = MagicMock()
+    db.branding_settings.find_one = AsyncMock(return_value=None)
+
+
+@pytest.fixture(autouse=True)
+def _patch_branding_plan_gate():
+    """Allow merge_email_branding_context → resolve_branding without real plan checks."""
+    with patch(
+        "services.branding_resolver_service.plan_registry.enforce_feature",
+        new_callable=AsyncMock,
+        return_value=(True, None, None),
+    ):
+        yield
+
+
 @pytest.mark.asyncio
 async def test_welcome_blocked_before_provisioned_returns_403_and_audit():
     """WELCOME_EMAIL when onboarding_status != PROVISIONED → blocked, 403 ACCOUNT_NOT_READY, audit."""
@@ -90,6 +107,7 @@ async def test_billing_email_allowed_pre_provisioning():
     })
     db.notification_preferences.find_one = AsyncMock(return_value=None)
     db.message_logs.find_one = AsyncMock(return_value=None)
+    db.message_logs.count_documents = AsyncMock(return_value=0)
     db.message_logs.insert_one = AsyncMock()
     db.message_logs.update_one = AsyncMock()
     db.email_templates.find_one = AsyncMock(return_value={
@@ -97,6 +115,7 @@ async def test_billing_email_allowed_pre_provisioning():
         "html_body": "Hi {{client_name}}",
         "text_body": "Hi {{client_name}}",
     })
+    _attach_branding_db_mocks(db)
 
     with patch("services.notification_orchestrator.database.get_db", return_value=db):
         with patch("services.notification_orchestrator.create_audit_log", new_callable=AsyncMock):
@@ -131,6 +150,7 @@ def _send_email_db_mock():
     })
     db.notification_preferences.find_one = AsyncMock(return_value=None)
     db.message_logs.find_one = AsyncMock(return_value=None)
+    db.message_logs.count_documents = AsyncMock(return_value=0)
     db.message_logs.insert_one = AsyncMock()
     db.message_logs.update_one = AsyncMock()
     db.email_templates.find_one = AsyncMock(return_value={
@@ -138,6 +158,7 @@ def _send_email_db_mock():
         "html_body": "Hi {{client_name}}",
         "text_body": "Hi {{client_name}}",
     })
+    _attach_branding_db_mocks(db)
     return db
 
 
@@ -234,7 +255,13 @@ async def test_professional_sms_allowed():
         "subscription_status": "ACTIVE",
         "entitlement_status": "ENABLED",
     })
-    db.notification_preferences.find_one = AsyncMock(return_value={"sms_enabled": True, "sms_phone_number": "+441234567890"})
+    db.notification_preferences.find_one = AsyncMock(
+        return_value={
+            "sms_enabled": True,
+            "sms_phone_verified": True,
+            "sms_phone_number": "+441234567890",
+        }
+    )
     db.message_logs.find_one = AsyncMock(return_value=None)
     db.message_logs.count_documents = AsyncMock(return_value=0)
     db.message_logs.insert_one = AsyncMock()
@@ -279,7 +306,15 @@ async def test_solo_sms_returns_403_plan_gate_denied():
         "subscription_status": "ACTIVE",
         "entitlement_status": "ENABLED",
     })
-    db.notification_preferences.find_one = AsyncMock(return_value={"sms_enabled": True, "sms_phone_number": "+441234567890"})
+    db.notification_preferences.find_one = AsyncMock(
+        return_value={
+            "sms_enabled": True,
+            "sms_phone_verified": True,
+            "sms_phone_number": "+441234567890",
+        }
+    )
+    db.message_logs.find_one = AsyncMock(return_value=None)
+    db.message_logs.count_documents = AsyncMock(return_value=0)
 
     mock_registry = MagicMock()
     mock_registry.enforce_feature = AsyncMock(return_value=(False, "SMS requires Pro plan", {"error_code": "PLAN_GATE_DENIED"}))
@@ -321,9 +356,11 @@ async def test_duplicate_idempotency_key_returns_duplicate_ignored():
     })
     db.notification_preferences.find_one = AsyncMock(return_value=None)
     db.message_logs.find_one = AsyncMock(side_effect=[None, {"message_id": "m1", "status": "SENT"}])
+    db.message_logs.count_documents = AsyncMock(return_value=0)
     db.message_logs.insert_one = AsyncMock()
     db.message_logs.update_one = AsyncMock()
     db.email_templates.find_one = AsyncMock(return_value={"subject": "Payment failed", "html_body": "Hi", "text_body": "Hi"})
+    _attach_branding_db_mocks(db)
 
     with patch("services.notification_orchestrator.database.get_db", return_value=db):
         with patch("services.notification_orchestrator.create_audit_log", new_callable=AsyncMock):
@@ -363,7 +400,7 @@ async def test_delivery_webhook_updates_message_log():
     db.message_logs.update_many = AsyncMock(return_value=MagicMock(modified_count=1))
 
     with patch("routes.webhooks.database.get_db", return_value=db):
-        with patch("routes.webhooks.create_audit_log", new_callable=AsyncMock):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
             resp = client.post(
                 "/api/webhooks/postmark",
                 json={"MessageID": "pm-xyz", "RecordType": "Delivery", "DeliveredAt": "2026-02-12T12:00:00Z"},
@@ -435,7 +472,7 @@ async def test_postmark_webhook_accepts_correct_token_and_updates_message_log():
     payload = {"MessageID": "pm-abc", "RecordType": "Delivery", "DeliveredAt": "2026-02-12T12:00:00Z"}
     with patch.dict("os.environ", {"POSTMARK_WEBHOOK_TOKEN": "secret123"}, clear=False):
         with patch("routes.webhooks.database.get_db", return_value=db):
-            with patch("routes.webhooks.create_audit_log", new_callable=AsyncMock):
+            with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
                 resp = client.post(
                     "/api/webhooks/postmark",
                     json=payload,
@@ -469,6 +506,7 @@ async def test_missing_provider_env_does_not_crash():
     })
     db.notification_preferences.find_one = AsyncMock(return_value=None)
     db.message_logs.find_one = AsyncMock(return_value=None)
+    db.message_logs.count_documents = AsyncMock(return_value=0)
     db.message_logs.insert_one = AsyncMock()
     db.message_logs.update_one = AsyncMock()
 
@@ -485,4 +523,8 @@ async def test_missing_provider_env_does_not_crash():
     assert result.block_reason == "BLOCKED_PROVIDER_NOT_CONFIGURED"
     db.message_logs.update_one.assert_called()
     sets = [c[0][1].get("$set", c[0][1]) for c in db.message_logs.update_one.call_args_list]
-    assert any(s.get("status") == "BLOCKED_PROVIDER_NOT_CONFIGURED" for s in sets)
+    # Orchestrator persists provider-missing as FAILED + error_message before returning blocked outcome.
+    assert any(
+        s.get("status") == "FAILED" and "POSTMARK" in (s.get("error_message") or "")
+        for s in sets
+    )

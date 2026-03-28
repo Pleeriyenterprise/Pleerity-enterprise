@@ -660,7 +660,9 @@ class NotificationOrchestrator:
         subject = (context.get("subject") or "Compliance Vault Pro").strip()
         render_ctx = {k: v for k, v in (context or {}).items() if k != "attachments"}
         try:
-            html_body, text_body, email_subject = await self._render_email(db, alias_str, render_ctx, subject)
+            html_body, text_body, email_subject = await self._render_email(
+                db, alias_str, render_ctx, subject, client.get("client_id")
+            )
         except Exception as e:
             logger.exception(f"Render email failed: {e}")
             await db.message_logs.update_one(
@@ -670,8 +672,17 @@ class NotificationOrchestrator:
             return NotificationResult(outcome="failed", error_message=str(e), message_id=message_id)
 
         try:
+            extras = (render_ctx or {}).get("_email_send_extras") or {}
+            if not isinstance(extras, dict):
+                extras = {}
+            reply_override = (extras.get("reply_to") or "").strip() or None
+            from_name = (extras.get("from_display_name") or "").strip() or None
+            from_addr = DEFAULT_SENDER
+            if from_name:
+                safe_name = from_name.replace("\\", "\\\\").replace('"', '\\"')
+                from_addr = f'"{safe_name}" <{DEFAULT_SENDER}>'
             send_kw = dict(
-                From=DEFAULT_SENDER,
+                From=from_addr,
                 To=recipient,
                 Subject=email_subject,
                 HtmlBody=html_body,
@@ -681,7 +692,9 @@ class NotificationOrchestrator:
                 Tag=template_key,
                 MessageStream=POSTMARK_MESSAGE_STREAM,
             )
-            if EMAIL_REPLY_TO:
+            if reply_override:
+                send_kw["ReplyTo"] = reply_override
+            elif EMAIL_REPLY_TO:
                 send_kw["ReplyTo"] = EMAIL_REPLY_TO
             attachments = (context or {}).get("attachments")
             if attachments and isinstance(attachments, list):
@@ -724,8 +737,20 @@ class NotificationOrchestrator:
                 details={"transient": transient, "attempt_count": 1},
             )
 
-    async def _render_email(self, db, alias_str: str, context: Dict, default_subject: str) -> Tuple[str, str, str]:
+    async def _render_email(
+        self,
+        db,
+        alias_str: str,
+        context: Dict,
+        default_subject: str,
+        client_id: Optional[str] = None,
+    ) -> Tuple[str, str, str]:
         from models import EmailTemplateAlias
+        from services.branding_resolver_service import merge_email_branding_context
+
+        if context is None:
+            context = {}
+        await merge_email_branding_context(context, alias_str, client_id)
         alias_map = {a.value: a for a in EmailTemplateAlias}
         alias = alias_map.get(alias_str)
         # scheduled-report: always use code-built layout (job path has report_rows; manual path passes pre-built message).
@@ -784,14 +809,20 @@ class NotificationOrchestrator:
             return html, text, subj
         db_template = await db.email_templates.find_one({"alias": alias_str, "is_active": True}, {"_id": 0})
         if db_template:
+            from services.branding_resolver_service import finalize_db_email_html
+
             html = db_template.get("html_body", "")
             text = db_template.get("text_body", "")
             subj = db_template.get("subject", default_subject)
             for k, v in (context or {}).items():
+                if str(k).startswith("_") or isinstance(v, (dict, list, set)):
+                    continue
                 placeholder = "{{" + str(k) + "}}"
-                html = html.replace(placeholder, str(v))
-                text = text.replace(placeholder, str(v))
-                subj = subj.replace(placeholder, str(v))
+                vs = str(v)
+                html = html.replace(placeholder, vs)
+                text = text.replace(placeholder, vs)
+                subj = subj.replace(placeholder, vs)
+            html, text = finalize_db_email_html(html, text, context, alias_str, client_id)
             return html, text, subj
         # Fallback built-in
         from services.email_service import EmailService

@@ -297,7 +297,12 @@ async def list_contractors(
     elif source_type is not None:
         q["source_type"] = source_type
     if status is not None:
-        q["status"] = status
+        st = (status or "").strip().lower()
+        # Pending Approvals tab: include legacy pending_review and canonical pending_approval (public applications).
+        if st == STATUS_PENDING_REVIEW:
+            q["status"] = {"$in": [STATUS_PENDING_REVIEW, LC_PENDING_APPROVAL]}
+        else:
+            q["status"] = status
     cursor = db.contractors.find(q).sort("name", 1).skip(skip).limit(limit)
     items = await cursor.to_list(limit)
     total = await db.contractors.count_documents(q)
@@ -732,7 +737,7 @@ async def create_contractor_self_registered(
     credentials: Optional[List[str]] = None,
     insurance_details: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Self-registration: client_id=null, vetted=False, status=pending_review, source_type=self_registered."""
+    """Self-registration: client_id=null, vetted=False, status=pending_approval, source_type=self_registered."""
     return await create_contractor(
         name=contact_name,
         company_name=company_name,
@@ -759,7 +764,7 @@ def _contractor_invite_email_html(setup_url: str, portal_login_url: str, include
     parts = [
         "<p>You have been invited to the Pleerity contractor portal.</p>",
         f'<p><a href="{setup_url}">Set your password</a> (required before first login).</p>',
-        f'<p>After setting your password you can sign in here: <a href="{portal_login_url}">Contractor portal login</a>.</p>',
+        f'<p>After setting your password, sign in here: <a href="{portal_login_url}">Contractor portal sign-in</a> (also reachable from Portal login on the website).</p>',
     ]
     if include_next_steps:
         parts.append(
@@ -833,7 +838,7 @@ async def issue_contractor_portal_invite(
     )
     base_url = get_frontend_base_url().rstrip("/")
     setup_url = f"{base_url}/contractor-set-password?token={raw_token}"
-    portal_login_url = f"{base_url}/contractor-login"
+    portal_login_url = f"{base_url}/contractor/login"
     body_html = _contractor_invite_email_html(setup_url, portal_login_url, include_next_steps=include_next_steps)
     try:
         from services.notification_orchestrator import notification_orchestrator
@@ -950,8 +955,9 @@ async def register_contractor_public(
     trade_types: List[str],
     registration_postcode: str,
     certifications: Optional[List[str]] = None,
+    insurance_details: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Public self-registration: pending approval, notify internal admin inbox when configured."""
+    """Public self-registration: pending approval, notify admin, acknowledgment email to applicant."""
     norm = normalize_email_for_lookup(email)
     pc = (registration_postcode or "").strip()
     if not norm:
@@ -970,6 +976,7 @@ async def register_contractor_public(
         email=norm,
         coverage_regions=[pc.upper()],
         credentials=creds,
+        insurance_details=(insurance_details or "").strip() or None,
     )
     doc = await update_contractor(
         doc["contractor_id"],
@@ -1002,6 +1009,36 @@ async def register_contractor_public(
         )
     except Exception as e:
         logger.warning("Audit log for contractor self-register failed: %s", e)
+    try:
+        import html as html_module
+
+        from services.notification_orchestrator import notification_orchestrator
+        from utils.public_app_url import get_frontend_base_url
+
+        portal_login = f"{get_frontend_base_url().rstrip('/')}/login"
+        safe_name = html_module.escape(name.strip())
+        ack_html = (
+            f"<p>Hi {safe_name},</p>"
+            "<p>Thank you for applying to join the Pleerity contractor network. We have received your application.</p>"
+            "<p><strong>What happens next:</strong> our team will review your details. If you are approved, you will receive "
+            "a separate email with a secure link to set your password and activate your contractor portal account.</p>"
+            f'<p>For all secure sign-in options (including contractor access after activation), use '
+            f'<a href="{portal_login}">Portal login</a> on our website.</p>'
+        )
+        await notification_orchestrator.send(
+            template_key="ADMIN_MANUAL",
+            client_id=None,
+            context={
+                "recipient": norm,
+                "subject": "We received your contractor network application",
+                "message": ack_html,
+                "company_name": "Pleerity Enterprise Ltd",
+            },
+            idempotency_key=f"contractor_register_ack_{doc['contractor_id']}",
+            event_type="contractor_registration_ack",
+        )
+    except Exception as e:
+        logger.warning("Contractor application acknowledgment email failed: %s", e)
     return {"ok": True, "contractor_id": doc["contractor_id"], "status": LC_PENDING_APPROVAL}
 
 
@@ -1174,6 +1211,18 @@ async def approve_contractor(contractor_id: str, *, approved_by: Optional[str] =
     return await get_contractor(contractor_id)
 
 
+def _property_label_for_assigned_job(prop: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Human-readable property line for admin/ops lists (matches contractor portal pattern)."""
+    if not prop:
+        return None
+    nick = (prop.get("nickname") or "").strip()
+    if nick:
+        return nick
+    parts = [prop.get("address_line_1"), prop.get("city"), prop.get("postcode")]
+    joined = ", ".join(p for p in parts if p)
+    return joined or None
+
+
 async def list_assigned_jobs(contractor_id: str, include_closed: bool = False, limit: int = 200) -> Dict[str, Any]:
     """List jobs currently assigned to the contractor, with optional closed/completed rows."""
     db = database.get_db()
@@ -1184,6 +1233,17 @@ async def list_assigned_jobs(contractor_id: str, include_closed: bool = False, l
         q,
         {"_id": 0, "work_order_id": 1, "client_id": 1, "property_id": 1, "status": 1, "priority": 1, "title": 1, "description": 1, "created_at": 1, "updated_at": 1},
     ).sort("created_at", -1).to_list(limit)
+    prop_ids = list({r.get("property_id") for r in rows if r.get("property_id")})
+    props_by_id: Dict[str, Any] = {}
+    if prop_ids:
+        async for p in db.properties.find(
+            {"property_id": {"$in": prop_ids}},
+            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1, "nickname": 1},
+        ):
+            props_by_id[p["property_id"]] = p
+    for r in rows:
+        pid = r.get("property_id")
+        r["property_label"] = _property_label_for_assigned_job(props_by_id.get(pid)) if pid else None
     return {"jobs": rows, "total": len(rows)}
 
 

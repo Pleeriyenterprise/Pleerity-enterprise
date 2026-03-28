@@ -7,58 +7,98 @@ import html as html_module
 
 from utils.branding import COMPANY_NAME, CUSTOMER_SUPPORT_FOOTER_PLAIN, SUPPORT_EMAIL, format_customer_support_footer_html
 
-# Branding (order emails)
+# Branding (order emails) — Pleerity defaults; override via ``branding`` from ``resolve_order_email_branding``
 BRAND_COLOR_PRIMARY = "#0B1D3A"  # Midnight blue
 BRAND_COLOR_ACCENT = "#00B8A9"  # Electric teal
+DEFAULT_ORDER_TAGLINE = "AI-Driven Solutions & Compliance"
 
-def _build_email_header(title: str, subtitle: Optional[str] = None, badge_text: Optional[str] = None) -> str:
+
+def _default_order_branding() -> Dict[str, Any]:
+    return {
+        "header_bg": BRAND_COLOR_PRIMARY,
+        "accent": BRAND_COLOR_ACCENT,
+        "company_name": COMPANY_NAME,
+        "tagline": DEFAULT_ORDER_TAGLINE,
+        "support_email": SUPPORT_EMAIL,
+    }
+
+
+def _effective_order_branding(branding: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    out = _default_order_branding()
+    if branding:
+        for k, v in branding.items():
+            if v is not None and str(v).strip() != "":
+                out[k] = v
+    return out
+
+
+def _build_email_header(
+    title: str,
+    subtitle: Optional[str] = None,
+    badge_text: Optional[str] = None,
+    branding: Optional[Dict[str, Any]] = None,
+) -> str:
     """Build consistent branded header."""
+    b = _effective_order_branding(branding)
+    accent = html_module.escape(b["accent"])
+    header_bg = html_module.escape(b["header_bg"])
     badge_html = ""
     if badge_text:
-        badge_html = f'<span style="background-color: {BRAND_COLOR_ACCENT}; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{badge_text}</span>'
-    
+        badge_html = f'<span style="background-color: {accent}; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{badge_text}</span>'
+
     subtitle_html = ""
     if subtitle:
         subtitle_html = f'<p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">{subtitle}</p>'
-    
+
     return f"""
-        <div style="background-color: {BRAND_COLOR_PRIMARY}; padding: 25px; border-radius: 8px 8px 0 0;">
-            <h1 style="color: {BRAND_COLOR_ACCENT}; margin: 0; font-size: 22px; display: inline-block;">{title}</h1>
+        <div style="background-color: {header_bg}; padding: 25px; border-radius: 8px 8px 0 0;">
+            <h1 style="color: {accent}; margin: 0; font-size: 22px; display: inline-block;">{title}</h1>
             {badge_html}
             {subtitle_html}
         </div>
     """
 
 
-def _build_email_footer(order_reference: Optional[str] = None) -> str:
+def _build_email_footer(order_reference: Optional[str] = None, branding: Optional[Dict[str, Any]] = None) -> str:
     """Build consistent branded footer."""
+    b = _effective_order_branding(branding)
     ref_line = ""
     if order_reference:
         ref_line = f"<br><strong>Order Reference:</strong> {order_reference}"
-    
+    co = html_module.escape(b["company_name"])
+    tag = html_module.escape(b["tagline"])
+    se = html_module.escape(b["support_email"])
+    ac = html_module.escape(b["accent"])
+
     return f"""
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
         <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
             <p style="color: #64748b; font-size: 13px; margin: 0;">
-                {COMPANY_NAME}<br>
-                AI-Driven Solutions & Compliance{ref_line}
+                {co}<br>
+                {tag}{ref_line}
             </p>
         </div>
         <p style="color: #94a3b8; font-size: 11px; margin: 0;">
-            If you have questions, please contact us at <a href="mailto:{SUPPORT_EMAIL}" style="color: {BRAND_COLOR_ACCENT};">{SUPPORT_EMAIL}</a>
+            If you have questions, please contact us at <a href="mailto:{se}" style="color: {ac};">{se}</a>
         </p>
     """
 
 
-def _build_text_footer(order_reference: Optional[str] = None) -> str:
+def _build_text_footer(order_reference: Optional[str] = None, branding: Optional[Dict[str, Any]] = None) -> str:
     """Build consistent plaintext footer."""
+    b = _effective_order_branding(branding)
     ref_line = f"\nOrder Reference: {order_reference}" if order_reference else ""
+    support_plain = (
+        CUSTOMER_SUPPORT_FOOTER_PLAIN
+        if (b.get("support_email") or "") == SUPPORT_EMAIL
+        else f"If you have any questions, contact us at {b['support_email']}"
+    )
     return f"""
 --
-{COMPANY_NAME}
-AI-Driven Solutions & Compliance{ref_line}
+{b["company_name"]}
+{b["tagline"]}{ref_line}
 
-{CUSTOMER_SUPPORT_FOOTER_PLAIN}
+{support_plain}
 """
 
 
@@ -75,12 +115,14 @@ def build_order_confirmation_email(
     estimated_delivery: str = "48 hours",
     view_order_link: str = "",
     receipt_download_url: str = "",
+    branding: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
     """
     Build 'Order Confirmation' email - sent to customer after successful payment.
     
     Returns dict with 'subject', 'html', 'text' keys.
     """
+    b = _effective_order_branding(branding)
     subject = f"Order Confirmed - {order_reference}"
     
     cta_html = ""
@@ -88,7 +130,7 @@ def build_order_confirmation_email(
     if view_order_link:
         cta_html = f"""
             <div style="text-align: center; margin: 25px 0;">
-                <a href="{view_order_link}" style="background-color: {BRAND_COLOR_ACCENT}; color: white; 
+                <a href="{view_order_link}" style="background-color: {b["accent"]}; color: white; 
                           padding: 12px 30px; text-decoration: none; border-radius: 6px; 
                           display: inline-block; font-weight: 600;">
                     View Your Order
@@ -103,12 +145,12 @@ def build_order_confirmation_email(
         safe_receipt_url = html_module.escape(receipt_download_url, quote=True)
         receipt_html = f"""
             <div style="margin: 28px 0; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
-                <h3 style="color: {BRAND_COLOR_PRIMARY}; margin: 0 0 12px 0; font-size: 16px;">Receipt / Invoice</h3>
+                <h3 style="color: {b["header_bg"]}; margin: 0 0 12px 0; font-size: 16px;">Receipt / Invoice</h3>
                 <p style="color: #64748b; margin: 0 0 16px 0; font-size: 14px;">
                     Your payment receipt is attached to this email when available. You can also download a copy using the button below.
                 </p>
                 <div style="text-align: center;">
-                    <a href="{safe_receipt_url}" style="background-color: {BRAND_COLOR_PRIMARY}; color: white;
+                    <a href="{safe_receipt_url}" style="background-color: {b["header_bg"]}; color: white;
                               padding: 12px 28px; text-decoration: none; border-radius: 6px;
                               display: inline-block; font-weight: 600;">
                         Download Receipt
@@ -125,7 +167,7 @@ Download your receipt: {receipt_download_url}
     html = f"""
     <html>
     <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto;">
-        {_build_email_header("Order Confirmed!", "Thank you for your order", order_reference)}
+        {_build_email_header("Order Confirmed!", "Thank you for your order", order_reference, branding=branding)}
         
         <div style="padding: 25px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background: white;">
             <p style="margin-bottom: 20px;">Hi {client_name},</p>
@@ -135,7 +177,7 @@ Download your receipt: {receipt_download_url}
             </p>
             
             <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: {BRAND_COLOR_PRIMARY}; margin: 0 0 15px 0; font-size: 16px;">Order Summary</h3>
+                <h3 style="color: {b["header_bg"]}; margin: 0 0 15px 0; font-size: 16px;">Order Summary</h3>
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
                         <td style="padding: 8px 0; color: #64748b;">Order Reference:</td>
@@ -151,7 +193,7 @@ Download your receipt: {receipt_download_url}
                     </tr>
                     <tr style="border-top: 1px solid #e2e8f0;">
                         <td style="padding: 12px 0 8px 0; color: #64748b; font-weight: 600;">Total Paid:</td>
-                        <td style="padding: 12px 0 8px 0; text-align: right; font-weight: 700; font-size: 18px; color: {BRAND_COLOR_PRIMARY};">{total_amount}</td>
+                        <td style="padding: 12px 0 8px 0; text-align: right; font-weight: 700; font-size: 18px; color: {b["header_bg"]};">{total_amount}</td>
                     </tr>
                 </table>
             </div>
@@ -162,7 +204,7 @@ Download your receipt: {receipt_download_url}
                 </p>
             </div>
             
-            <h3 style="color: {BRAND_COLOR_PRIMARY}; margin: 25px 0 15px 0; font-size: 16px;">What Happens Next?</h3>
+            <h3 style="color: {b["header_bg"]}; margin: 25px 0 15px 0; font-size: 16px;">What Happens Next?</h3>
             <ol style="margin: 0; padding-left: 20px; color: #475569;">
                 <li style="margin: 10px 0;">Our team will review your order and begin processing</li>
                 <li style="margin: 10px 0;">Your documents will be generated based on the information you provided</li>
@@ -173,7 +215,7 @@ Download your receipt: {receipt_download_url}
             
             {cta_html}
             
-            {_build_email_footer(order_reference)}
+            {_build_email_footer(order_reference, branding=branding)}
         </div>
     </body>
     </html>
@@ -201,7 +243,7 @@ WHAT HAPPENS NEXT?
 2. Your documents will be generated based on the information you provided
 3. You'll receive an email when your order is ready for download
 {receipt_text}{cta_text}
-{_build_text_footer(order_reference)}
+{_build_text_footer(order_reference, branding=branding)}
 """
     
     return {
@@ -223,12 +265,14 @@ def build_client_input_required_email(
     requested_fields: list,
     deadline: Optional[str] = None,
     provide_info_link: str = "",
+    branding: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
     """
     Build 'Client Input Required' email - sent when admin requests more info.
     
     Returns dict with 'subject', 'html', 'text' keys.
     """
+    b = _effective_order_branding(branding)
     subject = f"Action Required: We need more information for your order {order_reference}"
     
     # Build requested fields list
@@ -256,15 +300,15 @@ def build_client_input_required_email(
     html = f"""
     <html>
     <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1e293b;">
-        {_build_email_header("📋 Information Required", f"Order Reference: {order_reference}", order_reference)}
+        {_build_email_header("📋 Information Required", f"Order Reference: {order_reference}", order_reference, branding=branding)}
         
         <div style="padding: 25px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background: white;">
             <p style="margin-top: 0;">Hello {client_name},</p>
             
             <p>We're processing your <strong>{service_name}</strong> order and need some additional information to continue.</p>
             
-            <div style="background-color: #f1f5f9; border-left: 4px solid {BRAND_COLOR_ACCENT}; padding: 15px; margin: 20px 0; border-radius: 0 6px 6px 0;">
-                <p style="margin: 0 0 5px 0; font-weight: bold; color: {BRAND_COLOR_PRIMARY};">What we need from you:</p>
+            <div style="background-color: #f1f5f9; border-left: 4px solid {b["accent"]}; padding: 15px; margin: 20px 0; border-radius: 0 6px 6px 0;">
+                <p style="margin: 0 0 5px 0; font-weight: bold; color: {b["header_bg"]};">What we need from you:</p>
                 <p style="margin: 0; color: #475569; white-space: pre-wrap;">{admin_notes}</p>
             </div>
             
@@ -274,7 +318,7 @@ def build_client_input_required_email(
             
             <p style="margin: 25px 0;">
                 <a href="{provide_info_link}" 
-                   style="background-color: {BRAND_COLOR_ACCENT}; color: white; padding: 14px 28px; 
+                   style="background-color: {b["accent"]}; color: white; padding: 14px 28px; 
                           text-decoration: none; border-radius: 6px; display: inline-block;
                           font-weight: bold; font-size: 16px;">
                     Provide Information
@@ -286,13 +330,13 @@ def build_client_input_required_email(
             </p>
         </div>
         
-        {_build_email_footer(order_reference)}
+        {_build_email_footer(order_reference, branding=branding)}
     </body>
     </html>
     """
     
     text = f"""
-{COMPANY_NAME}
+{b["company_name"]}
 =====================
 
 📋 INFORMATION REQUIRED
@@ -313,7 +357,7 @@ To provide this information, please visit:
 
 Once you submit the requested information, we'll automatically resume processing your order.
 
-{_build_text_footer(order_reference)}
+{_build_text_footer(order_reference, branding=branding)}
 """
     
     return {"subject": subject, "html": html, "text": text}
@@ -448,12 +492,14 @@ def build_order_approved_email(
     service_name: str,
     estimated_delivery: Optional[str] = None,
     portal_link: str = "",
+    branding: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
     """
     Build 'Order Approved & Processing' email - sent to client after admin approval.
     
     Returns dict with 'subject', 'html', 'text' keys.
     """
+    b = _effective_order_branding(branding)
     subject = f"Your order {order_reference} has been approved and is being finalized"
     
     delivery_html = ""
@@ -471,7 +517,7 @@ def build_order_approved_email(
     html = f"""
     <html>
     <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1e293b;">
-        {_build_email_header("✅ Order Approved", "Your documents are being finalized", order_reference)}
+        {_build_email_header("✅ Order Approved", "Your documents are being finalized", order_reference, branding=branding)}
         
         <div style="padding: 25px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background: white;">
             <p style="margin-top: 0;">Hello {client_name},</p>
@@ -498,7 +544,7 @@ def build_order_approved_email(
             
             <p style="margin: 25px 0;">
                 <a href="{portal_link}" 
-                   style="background-color: {BRAND_COLOR_ACCENT}; color: white; padding: 12px 24px; 
+                   style="background-color: {b["accent"]}; color: white; padding: 12px 24px; 
                           text-decoration: none; border-radius: 6px; display: inline-block;
                           font-weight: bold;">
                     View Your Dashboard
@@ -506,17 +552,17 @@ def build_order_approved_email(
             </p>
             
             <p style="color: #64748b; font-size: 14px;">
-                Thank you for choosing {COMPANY_NAME}. We appreciate your business!
+                Thank you for choosing {b["company_name"]}. We appreciate your business!
             </p>
         </div>
         
-        {_build_email_footer(order_reference)}
+        {_build_email_footer(order_reference, branding=branding)}
     </body>
     </html>
     """
     
     text = f"""
-{COMPANY_NAME}
+{b["company_name"]}
 =====================
 
 ✅ ORDER APPROVED
@@ -539,9 +585,9 @@ WHAT HAPPENS NEXT:
 To view your dashboard, visit:
 {portal_link}
 
-Thank you for choosing {COMPANY_NAME}. We appreciate your business!
+Thank you for choosing {b["company_name"]}. We appreciate your business!
 
-{_build_text_footer(order_reference)}
+{_build_text_footer(order_reference, branding=branding)}
 """
     
     return {"subject": subject, "html": html, "text": text}
@@ -558,12 +604,14 @@ def build_order_delivered_email(
     documents: list,
     download_link: str = "",
     portal_link: str = "",
+    branding: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
     """
     Build 'Order Delivered' email - sent when documents are ready.
     
     Returns dict with 'subject', 'html', 'text' keys.
     """
+    b = _effective_order_branding(branding)
     subject = f"Your documents are ready — Order {order_reference}"
     
     # Build documents list
@@ -574,10 +622,18 @@ def build_order_delivered_email(
         docs_text += f"  • {doc.get('name', 'Document')}\n"
     docs_html += "</ul>"
     
+    help_line = format_customer_support_footer_html(b["accent"])
+    if b.get("support_email") and b["support_email"] != SUPPORT_EMAIL:
+        esc = html_module.escape(b["support_email"])
+        help_line = (
+            f'If you have questions, contact us at <a href="mailto:{esc}" '
+            f'style="color: {html_module.escape(b["accent"])};">{esc}</a>'
+        )
+
     html = f"""
     <html>
     <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1e293b;">
-        {_build_email_header("📦 Documents Ready", "Your order has been completed", order_reference)}
+        {_build_email_header("📦 Documents Ready", "Your order has been completed", order_reference, branding=branding)}
         
         <div style="padding: 25px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background: white;">
             <p style="margin-top: 0;">Hello {client_name},</p>
@@ -591,7 +647,7 @@ def build_order_delivered_email(
             
             <p style="margin: 25px 0; text-align: center;">
                 <a href="{download_link}" 
-                   style="background-color: {BRAND_COLOR_ACCENT}; color: white; padding: 14px 28px; 
+                   style="background-color: {b["accent"]}; color: white; padding: 14px 28px; 
                           text-decoration: none; border-radius: 6px; display: inline-block;
                           font-weight: bold; font-size: 16px;">
                     Download Documents
@@ -599,23 +655,23 @@ def build_order_delivered_email(
             </p>
             
             <p style="color: #64748b; font-size: 14px; text-align: center;">
-                Your documents are also available in your <a href="{portal_link}" style="color: {BRAND_COLOR_ACCENT};">portal dashboard</a>.
+                Your documents are also available in your <a href="{portal_link}" style="color: {b["accent"]};">portal dashboard</a>.
             </p>
             
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;">
             
             <p style="color: #64748b; font-size: 14px;">
-                <strong>Need help?</strong> {format_customer_support_footer_html(BRAND_COLOR_ACCENT)}
+                <strong>Need help?</strong> {help_line}
             </p>
         </div>
         
-        {_build_email_footer(order_reference)}
+        {_build_email_footer(order_reference, branding=branding)}
     </body>
     </html>
     """
     
     text = f"""
-{COMPANY_NAME}
+{b["company_name"]}
 =====================
 
 📦 DOCUMENTS READY
@@ -638,9 +694,9 @@ Your documents are also available in your portal dashboard:
 
 NEED HELP?
 ----------
-{CUSTOMER_SUPPORT_FOOTER_PLAIN}
+{CUSTOMER_SUPPORT_FOOTER_PLAIN if b.get("support_email") == SUPPORT_EMAIL else f"Contact: {b['support_email']}"}
 
-{_build_text_footer(order_reference)}
+{_build_text_footer(order_reference, branding=branding)}
 """
     
     return {"subject": subject, "html": html, "text": text}

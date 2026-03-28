@@ -539,6 +539,7 @@ async def register_contractor_public(body: ContractorRegisterBody, request: Requ
             trade_types=[t.strip() for t in body.trade_types if t and t.strip()] or ["general"],
             registration_postcode=pc,
             certifications=certs,
+            insurance_details=body.insurance_details.strip() if body.insurance_details else None,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

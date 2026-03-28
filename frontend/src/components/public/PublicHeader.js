@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { BRAND_LOGO_URL, branding } from '../../config/branding';
@@ -15,7 +15,25 @@ import { cn } from '../../lib/utils';
 
 const PublicHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [contractorApplicationsOpen, setContractorApplicationsOpen] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const rawBase = typeof process.env.REACT_APP_BACKEND_URL === 'string' ? process.env.REACT_APP_BACKEND_URL.trim() : '';
+    const apiRoot = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
+    let cancelled = false;
+    fetch(`${apiRoot}/public/contractors/registration-open`)
+      .then((r) => r.json().catch(() => ({})))
+      .then((data) => {
+        if (!cancelled) setContractorApplicationsOpen(!!data.enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setContractorApplicationsOpen(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
@@ -210,25 +228,22 @@ const PublicHeader = () => {
                 to="/login"
                 className="text-gray-700 hover:text-electric-teal font-medium transition-colors"
                 data-testid="header-portal-login"
+                title="Secure access for clients, staff, and contractors"
               >
                 Portal login
               </Link>
-              <span className="text-gray-300" aria-hidden>|</span>
-              <Link
-                to="/contractor/login"
-                className="text-gray-600 hover:text-electric-teal font-medium transition-colors"
-                data-testid="header-contractor-login"
-              >
-                Contractor login
-              </Link>
-              <span className="text-gray-300" aria-hidden>|</span>
-              <Link
-                to="/contractors/register"
-                className="text-gray-600 hover:text-electric-teal font-medium transition-colors"
-                data-testid="header-contractor-register"
-              >
-                Join network
-              </Link>
+              {contractorApplicationsOpen ? (
+                <>
+                  <span className="text-gray-300" aria-hidden>|</span>
+                  <Link
+                    to="/contractors/register"
+                    className="text-gray-600 hover:text-electric-teal font-medium transition-colors"
+                    data-testid="header-contractor-register"
+                  >
+                    Join contractor network
+                  </Link>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -321,12 +336,11 @@ const PublicHeader = () => {
               <Button variant="outline" className="w-full min-h-[48px]" asChild>
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Portal login</Link>
               </Button>
-              <Button variant="outline" className="w-full min-h-[48px]" asChild>
-                <Link to="/contractor/login" onClick={() => setMobileMenuOpen(false)}>Contractor login</Link>
-              </Button>
-              <Button variant="outline" className="w-full min-h-[48px]" asChild>
-                <Link to="/contractors/register" onClick={() => setMobileMenuOpen(false)}>Join contractor network</Link>
-              </Button>
+              {contractorApplicationsOpen ? (
+                <Button variant="outline" className="w-full min-h-[48px]" asChild>
+                  <Link to="/contractors/register" onClick={() => setMobileMenuOpen(false)}>Join contractor network</Link>
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>

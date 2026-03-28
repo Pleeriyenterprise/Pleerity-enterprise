@@ -2543,6 +2543,7 @@ async def get_branding_settings(request: Request):
                 "report_header_text": None,
                 "report_footer_text": None,
                 "include_pleerity_branding": True,
+                "white_label_enabled": False,
                 "email_from_name": None,
                 "email_reply_to": client.get("email"),
                 "contact_email": client.get("email"),
@@ -2550,6 +2551,13 @@ async def get_branding_settings(request: Request):
                 "website_url": None,
                 "is_default": True
             }
+        else:
+            branding.setdefault("white_label_enabled", False)
+
+        from services.branding_resolver_service import resolve_branding, BrandingContext
+
+        rb = await resolve_branding(client_id, BrandingContext.CLIENT_PORTAL_UI)
+        branding["resolved_branding"] = rb.to_portal_dict()
         
         # Add feature availability info
         branding["feature_enabled"] = allowed
@@ -2606,6 +2614,7 @@ async def update_branding_settings(request: Request):
             "company_name", "logo_url", "favicon_url",
             "primary_color", "secondary_color", "accent_color", "text_color",
             "report_header_text", "report_footer_text", "include_pleerity_branding",
+            "white_label_enabled",
             "email_from_name", "email_reply_to",
             "contact_email", "contact_phone", "website_url"
         ]
@@ -2627,6 +2636,36 @@ async def update_branding_settings(request: Request):
                             detail=f"Invalid color format for {field}. Use hex format (e.g., #0B1D3A)"
                         )
                 update_doc[field] = body[field]
+
+        if body.get("white_label_enabled") is True:
+            existing = await db.branding_settings.find_one({"client_id": client_id}, {"_id": 0}) or {}
+            merged = {**existing, **update_doc}
+            client_row = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "company_name": 1, "full_name": 1, "email": 1},
+            )
+            co = (merged.get("company_name") or (client_row or {}).get("company_name") or (client_row or {}).get("full_name") or "").strip()
+            em = (merged.get("contact_email") or (client_row or {}).get("email") or "").strip()
+            ext = merged.get("logo_upload_ext")
+            logo_ok = False
+            if ext and str(ext).startswith("."):
+                p = _branding_logo_path(client_id, ext)
+                logo_ok = p.is_file()
+            if not co:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error_code": "INCOMPLETE_BRANDING", "message": "Company name is required to enable white-label."},
+                )
+            if not em:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error_code": "INCOMPLETE_BRANDING", "message": "Support contact email is required to enable white-label."},
+                )
+            if not logo_ok:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error_code": "INCOMPLETE_BRANDING", "message": "Upload a logo before enabling white-label."},
+                )
         
         # Upsert branding settings
         await db.branding_settings.update_one(
@@ -2651,6 +2690,10 @@ async def update_branding_settings(request: Request):
             {"_id": 0}
         )
         updated["feature_enabled"] = True
+        from services.branding_resolver_service import resolve_branding, BrandingContext
+
+        rb = await resolve_branding(client_id, BrandingContext.CLIENT_PORTAL_UI)
+        updated["resolved_branding"] = rb.to_portal_dict()
         
         return updated
     

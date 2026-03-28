@@ -38,6 +38,16 @@ export default function AdminOpsContractorsPage() {
   const [networkReviewRejectingId, setNetworkReviewRejectingId] = useState(null);
   const [networkRejectModal, setNetworkRejectModal] = useState(null);
   const [networkRejectReason, setNetworkRejectReason] = useState('');
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteSaving, setInviteSaving] = useState(false);
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    name: '',
+    trade_types_text: '',
+    phone: '',
+    client_id: '',
+    vetted: false,
+  });
   const [form, setForm] = useState({
     name: '',
     trade_types: [],
@@ -260,6 +270,54 @@ export default function AdminOpsContractorsPage() {
       .finally(() => setSaving(false));
   };
 
+  const isPendingIntake = (c) => {
+    const s = (c.status || '').toLowerCase();
+    return s === 'pending_review' || s === 'pending_approval';
+  };
+
+  const openInviteModal = () => {
+    setInviteForm({
+      email: '',
+      name: '',
+      trade_types_text: '',
+      phone: '',
+      client_id: '',
+      vetted: false,
+    });
+    setInviteModalOpen(true);
+  };
+
+  const submitInviteContractor = (e) => {
+    e.preventDefault();
+    const email = inviteForm.email.trim();
+    if (!email) {
+      toast.error('Email is required');
+      return;
+    }
+    const trades = inviteForm.trade_types_text
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    setInviteSaving(true);
+    adminAPI
+      .inviteContractor({
+        email,
+        name: inviteForm.name.trim() || undefined,
+        trade_types: trades.length ? trades : undefined,
+        phone: inviteForm.phone.trim() || undefined,
+        client_id: inviteForm.client_id.trim() || undefined,
+        vetted: inviteForm.vetted ? true : undefined,
+      })
+      .then((res) => {
+        const created = res.data?.created;
+        toast.success(created ? 'Contractor created and invite sent.' : 'Invite sent to existing contractor.');
+        setInviteModalOpen(false);
+        loadContractors();
+      })
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Invite failed'))
+      .finally(() => setInviteSaving(false));
+  };
+
   const handleDelete = (contractorId, name) => {
     if (!window.confirm(`Delete contractor "${name}"?`)) return;
     adminAPI.deleteContractor(contractorId)
@@ -268,6 +326,28 @@ export default function AdminOpsContractorsPage() {
         loadContractors();
       })
       .catch((err) => toast.error(err?.response?.data?.detail || 'Delete failed'));
+  };
+
+  const assignedJobWorkOrderLabel = (job) => {
+    const t = (job.title || '').trim();
+    if (t) return t;
+    const d = (job.description || '').trim();
+    if (d) return d.length > 90 ? `${d.slice(0, 90)}…` : d;
+    return 'Work order';
+  };
+
+  const assignedJobPropertyLabel = (job) => {
+    const pl = (job.property_label || '').trim();
+    if (pl) return pl;
+    return '—';
+  };
+
+  const formatAssignedJobStatus = (s) => {
+    if (!s || typeof s !== 'string') return '—';
+    return s
+      .split('_')
+      .map((w) => (w ? w.charAt(0) + w.slice(1).toLowerCase() : ''))
+      .join(' ');
   };
 
   const clientLabel = (id) => {
@@ -292,8 +372,12 @@ export default function AdminOpsContractorsPage() {
             <Users className="w-7 h-7" />
             Contractors
           </h1>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setNetworkFormOpen(true)}>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button variant="outline" onClick={openInviteModal} title="Create or match by email and send portal setup link">
+              <Mail className="w-4 h-4 mr-2" />
+              Invite contractor
+            </Button>
+            <Button variant="outline" onClick={() => setNetworkFormOpen(true)} title="Add a vetted directory entry without sending an invite">
               Add network contractor
             </Button>
             <Button onClick={openCreate} className="bg-electric-teal hover:bg-electric-teal/90">
@@ -305,15 +389,24 @@ export default function AdminOpsContractorsPage() {
         <p className="text-gray-600 mb-4">
           Manage vetted trades and preferred contractors. Link to a client for client-specific contractors, or leave unset for system-wide use.
         </p>
-        <div className="mb-6 rounded-lg border border-teal-200 bg-teal-50/80 px-4 py-3 text-sm text-midnight-blue">
-          <strong className="font-semibold">Contractor portal invites:</strong>{' '}
-          Each row must have an <strong>email</strong> before you can send access. Use{' '}
-          <strong>Invite to portal</strong> to email a setup link, or <strong>Resend invite</strong> to rotate the link.
-          Self-registrations from the website appear as <em>Pending</em> until you <strong>Approve</strong>, then invite.
-          {' '}
-          <strong className="font-semibold">Landlord → network:</strong> clients can submit a private contractor for review; use the{' '}
-          <strong>Network review</strong> tab to approve (creates a platform network copy) or reject. New submissions trigger an internal email when{' '}
-          <code className="text-xs bg-white/80 px-1 rounded border border-teal-100">ADMIN_NOTIFY_EMAIL</code> is configured.
+        <div className="mb-6 rounded-lg border border-teal-200 bg-teal-50/80 px-4 py-3 text-sm text-midnight-blue space-y-2">
+          <p>
+            <strong className="font-semibold">Invite contractor</strong> — for a known contractor: enter email (and optional details); we create the record if needed and send the portal setup link immediately.
+          </p>
+          <p>
+            <strong className="font-semibold">Add contractor</strong> — create a record without emailing (add email later, then invite from the row or use Invite contractor).
+          </p>
+          <p>
+            <strong className="font-semibold">Add network contractor</strong> — add a vetted platform-directory entry (typically no client); does not send an invite by itself.
+          </p>
+          <p>
+            <strong className="font-semibold">Row actions:</strong> <strong>Invite to portal</strong> / <strong>Resend invite</strong> when the contractor already exists.
+            Public <strong>Join contractor network</strong> applications appear under <strong>Pending Approvals</strong> until you <strong>Approve</strong> (then we email the setup link if they are not yet activated).
+          </p>
+          <p>
+            <strong className="font-semibold">Network review</strong> — landlord-submitted contractors for the shared network; approve creates a platform copy or reject with a reason. Internal notify when{' '}
+            <code className="text-xs bg-white/80 px-1 rounded border border-teal-100">ADMIN_NOTIFY_EMAIL</code> is set.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-4 mb-6">
@@ -387,7 +480,7 @@ export default function AdminOpsContractorsPage() {
                 >
                   <option value="">All statuses</option>
                   <option value="active">Active</option>
-                  <option value="pending_review">Pending review</option>
+                  <option value="pending_review">Pending approval (applications)</option>
                   <option value="suspended">Suspended</option>
                 </select>
               </div>
@@ -596,7 +689,7 @@ export default function AdminOpsContractorsPage() {
                     <td className="px-4 py-2 text-sm text-gray-600">{c.source_type || '—'}</td>
                     <td className="px-4 py-2 text-sm">{landlordNetworkLabel}</td>
                     <td className="px-4 py-2 text-sm">
-                      {c.status === 'pending_review' && <span className="text-amber-600">Pending</span>}
+                      {isPendingIntake(c) && <span className="text-amber-600">Pending approval</span>}
                       {c.status === 'suspended' && <span className="text-red-600">Suspended</span>}
                       {c.status === 'active' && <span className="text-green-600">Active</span>}
                       {!c.status && '—'}
@@ -652,7 +745,7 @@ export default function AdminOpsContractorsPage() {
                           </Button>
                         </>
                       )}
-                      {c.status === 'pending_review' && (
+                      {isPendingIntake(c) && (
                         <Button variant="outline" size="sm" className="text-green-700 border-green-300" onClick={() => handleApprove(c.contractor_id)}>
                           Approve
                         </Button>
@@ -771,6 +864,99 @@ export default function AdminOpsContractorsPage() {
         {total > 0 && <p className="text-sm text-gray-500 mt-2">Total: {total}</p>}
       </div>
 
+      {inviteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Invite contractor</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Creates a contractor record if one does not already exist for this email, then sends the portal password-setup link. Duplicate emails reuse the same contractor and rotate the invite.
+            </p>
+            <form onSubmit={submitInviteContractor} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <input
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Display name</label>
+                <input
+                  type="text"
+                  value={inviteForm.name}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, name: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  placeholder="Defaults from email if empty"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Trade types (comma-separated)</label>
+                <input
+                  type="text"
+                  value={inviteForm.trade_types_text}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, trade_types_text: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                  placeholder="e.g. plumbing, electrical"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="text"
+                  value={inviteForm.phone}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client (optional)</label>
+                <select
+                  value={inviteForm.client_id}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, client_id: e.target.value }))}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                >
+                  <option value="">— System-wide / platform —</option>
+                  {clients.map((c) => (
+                    <option key={c.client_id} value={c.client_id}>{clientLabel(c.client_id)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="invite-vetted"
+                  checked={inviteForm.vetted}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, vetted: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="invite-vetted" className="text-sm text-gray-700">Mark as vetted</label>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setInviteModalOpen(false)} disabled={inviteSaving}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-electric-teal hover:bg-electric-teal/90" disabled={inviteSaving}>
+                  {inviteSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 mr-2 inline" />
+                      Send invite
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {formOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
@@ -876,7 +1062,7 @@ export default function AdminOpsContractorsPage() {
                     >
                       <option value="">—</option>
                       <option value="active">Active</option>
-                      <option value="pending_review">Pending review</option>
+                      <option value="pending_review">Pending approval (applications)</option>
                       <option value="suspended">Suspended</option>
                     </select>
                   </div>
@@ -1066,9 +1252,14 @@ export default function AdminOpsContractorsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {assignedJobs.map((job) => (
                       <tr key={job.work_order_id}>
-                        <td className="px-3 py-2 text-sm text-gray-900">{job.work_order_id}</td>
-                        <td className="px-3 py-2 text-sm text-gray-700">{job.status || '—'}</td>
-                        <td className="px-3 py-2 text-sm text-gray-700">{job.property_id || '—'}</td>
+                        <td
+                          className="px-3 py-2 text-sm text-gray-900 max-w-xs"
+                          title={job.work_order_id ? `ID: ${job.work_order_id}` : undefined}
+                        >
+                          {assignedJobWorkOrderLabel(job)}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-700">{formatAssignedJobStatus(job.status)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-700 max-w-xs">{assignedJobPropertyLabel(job)}</td>
                         <td className="px-3 py-2 text-sm text-gray-700">{clientLabel(job.client_id)}</td>
                       </tr>
                     ))}

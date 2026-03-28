@@ -11,7 +11,20 @@ import {
   RefreshCcw, Save, Lock, AlertTriangle, CheckCircle,
   ArrowLeft, Eye
 } from 'lucide-react';
-import api from '../api/client';
+import api, { openBlobApiResponse } from '../api/client';
+
+/** Uploaded logos use this path; <img src> cannot send Bearer auth, so we fetch via axios + blob URL. */
+function logoUrlRequiresAuthenticatedFetch(url) {
+  if (!url || typeof url !== 'string') return false;
+  const s = url.trim();
+  if (!s) return false;
+  try {
+    const u = new URL(s, typeof window !== 'undefined' ? window.location.origin : 'https://localhost');
+    return u.pathname.replace(/\/$/, '').endsWith('/client/branding/logo');
+  } catch {
+    return s.includes('/client/branding/logo');
+  }
+}
 import UpgradePrompt from '../components/UpgradePrompt';
 
 const BrandingSettingsPage = () => {
@@ -23,11 +36,49 @@ const BrandingSettingsPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const [logoPreviewSrc, setLogoPreviewSrc] = useState(null);
+  const [previewReportLoading, setPreviewReportLoading] = useState(false);
   const logoInputRef = React.useRef(null);
 
   useEffect(() => {
     fetchBranding();
   }, []);
+
+  useEffect(() => {
+    let objectUrlToRevoke = null;
+    let cancelled = false;
+    const logoUrl = branding?.logo_url;
+
+    if (!logoUrl) {
+      setLogoPreviewSrc(null);
+      return undefined;
+    }
+
+    if (logoUrlRequiresAuthenticatedFetch(logoUrl)) {
+      setLogoPreviewSrc(null);
+      api
+        .get('/client/branding/logo', { responseType: 'blob' })
+        .then((res) => {
+          const u = URL.createObjectURL(res.data);
+          if (cancelled) {
+            URL.revokeObjectURL(u);
+            return;
+          }
+          objectUrlToRevoke = u;
+          setLogoPreviewSrc(u);
+        })
+        .catch(() => {
+          if (!cancelled) setLogoPreviewSrc(null);
+        });
+      return () => {
+        cancelled = true;
+        if (objectUrlToRevoke) URL.revokeObjectURL(objectUrlToRevoke);
+      };
+    }
+
+    setLogoPreviewSrc(logoUrl);
+    return undefined;
+  }, [branding?.logo_url]);
 
   const fetchBranding = async () => {
     try {
@@ -62,6 +113,11 @@ const BrandingSettingsPage = () => {
     } catch (err) {
       if (err.response?.status === 403) {
         setError(err.response.data.detail?.message || 'Upgrade required to use this feature');
+      } else if (err.response?.status === 400) {
+        const d = err.response.data?.detail;
+        setError(
+          typeof d === 'object' && d?.message ? d.message : (typeof d === 'string' ? d : 'Invalid branding settings'),
+        );
       } else {
         setError('Failed to save branding settings');
       }
@@ -126,11 +182,33 @@ const BrandingSettingsPage = () => {
     }
   };
 
-  const handlePreviewReport = () => {
+  const handlePreviewReport = async () => {
     if (!branding?.feature_enabled) return;
-    const base = api.defaults.baseURL || '/api';
-    const url = `${base}/client/branding/preview`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    setPreviewReportLoading(true);
+    setError('');
+    try {
+      const res = await api.get('/client/branding/preview', { responseType: 'blob' });
+      openBlobApiResponse(res, { download: false, fallbackFilename: 'branding_preview.pdf' });
+    } catch (err) {
+      const d = err.response?.data;
+      let msg = 'Failed to load report preview';
+      if (d instanceof Blob) {
+        try {
+          const text = await d.text();
+          const j = JSON.parse(text);
+          msg = j.detail || msg;
+        } catch {
+          msg = err.response?.status === 401 ? 'Session expired. Please sign in again.' : msg;
+        }
+      } else if (typeof d?.detail === 'string') {
+        msg = d.detail;
+      } else if (d?.detail?.message) {
+        msg = d.detail.message;
+      }
+      setError(msg);
+    } finally {
+      setPreviewReportLoading(false);
+    }
   };
 
   if (loading) {
@@ -221,6 +299,50 @@ const BrandingSettingsPage = () => {
             <CheckCircle className="w-4 h-4 text-green-600" />
             <AlertDescription className="text-green-800">{success}</AlertDescription>
           </Alert>
+        )}
+
+        {!isLocked && (
+          <Card data-testid="white-label-card">
+            <CardHeader>
+              <CardTitle>White-label</CardTitle>
+              <CardDescription>
+                Turn on to use your logo, colours, and contact details on client-facing PDFs and emails.
+                The server requires a logo upload, company name, and support email before activation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="white_label_enabled">Use my brand on client-facing materials</Label>
+                <p className="text-xs text-muted-foreground">
+                  If anything is incomplete, outputs fall back to Pleerity branding (no mixed branding).
+                </p>
+              </div>
+              <Switch
+                id="white_label_enabled"
+                checked={!!branding?.white_label_enabled}
+                onCheckedChange={(v) => handleChange('white_label_enabled', v)}
+                data-testid="white-label-switch"
+              />
+            </CardContent>
+            {branding?.resolved_branding && (
+              <CardContent className="pt-0 text-xs text-muted-foreground border-t">
+                <p>
+                  Effective branding:{' '}
+                  <strong>
+                    {branding.resolved_branding.source === 'client_white_label'
+                      ? 'Your brand'
+                      : 'Pleerity default'}
+                  </strong>
+                </p>
+                {Array.isArray(branding.resolved_branding.fallback_reasons) &&
+                  branding.resolved_branding.fallback_reasons.length > 0 && (
+                    <p className="mt-1 font-mono text-[11px]">
+                      {branding.resolved_branding.fallback_reasons.join(', ')}
+                    </p>
+                  )}
+              </CardContent>
+            )}
+          </Card>
         )}
 
         {/* Company Information */}
@@ -464,12 +586,20 @@ const BrandingSettingsPage = () => {
                 <Label>Logo Preview</Label>
                 <div className="h-24 border rounded-lg flex items-center justify-center bg-gray-50">
                   {branding?.logo_url ? (
-                    <img 
-                      src={branding.logo_url} 
-                      alt="Logo preview" 
-                      className="max-h-20 max-w-full object-contain"
-                      onError={(e) => e.target.style.display = 'none'}
-                    />
+                    logoPreviewSrc ? (
+                      <img
+                        src={logoPreviewSrc}
+                        alt="Logo preview"
+                        className="max-h-20 max-w-full object-contain"
+                        onError={() => setLogoPreviewSrc(null)}
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-xs text-center px-2">
+                        {logoUrlRequiresAuthenticatedFetch(branding.logo_url)
+                          ? 'Loading preview…'
+                          : 'Could not load image'}
+                      </span>
+                    )
                   ) : (
                     <span className="text-gray-400 text-sm">No logo set</span>
                   )}
@@ -498,12 +628,12 @@ const BrandingSettingsPage = () => {
               <Button
                 type="button"
                 variant="outline"
-                disabled={isLocked}
+                disabled={isLocked || previewReportLoading}
                 onClick={handlePreviewReport}
                 data-testid="preview-report-btn"
               >
                 <Eye className="w-4 h-4 mr-2" />
-                Preview report
+                {previewReportLoading ? 'Opening…' : 'Preview report'}
               </Button>
             </div>
             <div className="space-y-2">

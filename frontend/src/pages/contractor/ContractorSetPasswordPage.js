@@ -55,8 +55,8 @@ export default function ContractorSetPasswordPage() {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>Invalid or missing link. Use the link from your invite email.</AlertDescription>
             </Alert>
-            <Button variant="outline" className="w-full mt-4" onClick={() => navigate('/contractor/login')}>
-              Go to contractor login
+            <Button variant="outline" className="w-full mt-4" onClick={() => navigate('/login')}>
+              Portal login
             </Button>
           </CardContent>
         </Card>
