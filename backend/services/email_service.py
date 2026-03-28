@@ -21,8 +21,10 @@ logger = logging.getLogger(__name__)
 
 def _customer_email_html(model: Dict[str, Any], **kwargs: Any) -> str:
     """Apply ``_email_branding`` from notification context, then explicit kwargs."""
-    return _customer_email_html(
-                model,**merge_branding_kwargs(model, **kwargs))
+    merged = merge_branding_kwargs(model, **kwargs)
+    greeting = merged.pop("greeting")
+    body_html = merged.pop("body_html")
+    return build_customer_email_layout(greeting, body_html, **merged)
 
 
 def _format_greeting(client_name: Optional[str]) -> str:
