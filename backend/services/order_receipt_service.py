@@ -7,9 +7,9 @@ Order PDF line items:
   lines does not match ``total_price_pence``, a single collapsed line is used (logged).
 
 CVP subscription checkout PDF:
-  Primary description from ``plan_registry.format_cvp_invoice_product_line(plan_code)``.
-  Optional ``Billing period: …`` line when Stripe subscription period start/end are known
-  (passed from ``checkout.session.completed`` after ``Subscription.retrieve``).
+  Line items from expanded Checkout Session ``line_items`` (subscription vs setup fee), or
+  reconstructed from ``Subscription.retrieve`` + recorded setup fee when expand is missing.
+  Optional ``Billing period: …`` note is appended to the subscription line only.
 """
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 
 from database import database
+from services.billing_period_utils import period_end_from_stripe_unix, period_start_from_stripe_unix
 from services.invoice_pdf_builder import build_branded_invoice_pdf_bytes
 
 logger = logging.getLogger(__name__)
@@ -396,49 +397,109 @@ async def ensure_subscription_checkout_invoice_pdf(
     plan_code: "PlanCode",
     billing_period_start: Optional[datetime] = None,
     billing_period_end: Optional[datetime] = None,
+    setup_fee_amount_cents: Optional[int] = None,
+    force_regenerate: bool = False,
 ) -> Tuple[bool, Optional[bytes], Optional[str], Optional[str]]:
     """
     Idempotent PDF for Stripe subscription checkout (CVP). Keyed by checkout_session_id.
     Returns (ok, pdf_bytes, invoice_number, error_message).
+
+    ``force_regenerate`` (admin): rebuild PDF from Stripe; keeps existing ``invoice_number`` and
+    ``created_at`` when the ledger row already exists; updates GridFS id and line breakdown.
     """
     if not checkout_session_id:
         return False, None, None, "missing checkout_session_id"
 
     db = database.get_db()
     existing = await db[STRIPE_CHECKOUT_INVOICES].find_one({"_id": checkout_session_id})
-    if existing and existing.get("gridfs_id"):
+    if force_regenerate:
+        if existing and existing.get("client_id") and existing.get("client_id") != client_id:
+            return False, None, None, "checkout session ledger belongs to a different client"
+    elif existing and existing.get("gridfs_id"):
         b = await read_receipt_pdf_bytes(str(existing["gridfs_id"]))
         if b:
             return True, b, existing.get("invoice_number"), None
 
-    amount_total = session.get("amount_total")
+    import os
+
+    import stripe
+    from services.billing_line_normalization import build_checkout_pdf_lines_and_breakdown
+    from services.plan_registry import plan_registry
+
+    session_dict: Dict[str, Any] = dict(session) if isinstance(session, dict) else {}
+    stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+    if stripe.api_key:
+        try:
+            full = stripe.checkout.Session.retrieve(
+                checkout_session_id,
+                expand=["line_items.data.price"],
+            )
+            session_dict = full.to_dict() if hasattr(full, "to_dict") else dict(full)
+        except Exception as e:
+            logger.warning("Could not expand checkout session for itemised PDF: %s", e)
+
+    amount_total = session_dict.get("amount_total")
     if amount_total is None:
         amount_total = 0
     amount_total_pence = int(amount_total)
-    currency = (session.get("currency") or "gbp").lower()
-    td = session.get("total_details") or {}
+    currency = (session_dict.get("currency") or "gbp").lower()
+    td = session_dict.get("total_details") or {}
     vat_pence = int(td.get("amount_tax") or 0)
     if not vat_pence and td.get("breakdown"):
         tax_vals = [t.get("amount", 0) for t in (td.get("breakdown") or {}).get("taxes", []) or []]
         vat_pence = int(sum(tax_vals)) if tax_vals else 0
 
-    from services.plan_registry import plan_registry
-
-    inv = await allocate_invoice_number()
-    ref_display = checkout_session_id
-    primary_line = plan_registry.format_cvp_invoice_product_line(plan_code)
-    data = subscription_session_to_invoice_data(
-        invoice_number=inv,
-        order_reference=ref_display,
-        customer_name=customer_name or "Customer",
-        customer_email=customer_email or "",
-        primary_line_description=primary_line,
-        amount_total_pence=amount_total_pence,
-        currency=currency,
-        vat_pence=vat_pence,
-        billing_period_start=billing_period_start,
-        billing_period_end=billing_period_end,
+    note = _format_billing_period_note(billing_period_start, billing_period_end)
+    pdf_rows, breakdown = build_checkout_pdf_lines_and_breakdown(
+        session_dict, plan_code, billing_period_note=note
     )
+    net_subtotal = max(0, amount_total_pence - vat_pence)
+    stripe_sub_raw = session_dict.get("subscription")
+    stripe_sub_id = (
+        stripe_sub_raw.get("id")
+        if isinstance(stripe_sub_raw, dict)
+        else (stripe_sub_raw or "")
+    )
+    if not pdf_rows:
+        pdf_rows, breakdown = _fallback_checkout_lines_from_subscription(
+            str(stripe_sub_id),
+            plan_code,
+            setup_fee_amount_cents=setup_fee_amount_cents,
+            billing_period_note=note,
+            net_expected_pence=net_subtotal,
+        )
+
+    if force_regenerate and existing and existing.get("invoice_number"):
+        inv = str(existing["invoice_number"])
+    else:
+        inv = await allocate_invoice_number()
+    ref_display = checkout_session_id
+    if not pdf_rows:
+        primary_line = plan_registry.format_cvp_invoice_product_line(plan_code)
+        data = subscription_session_to_invoice_data(
+            invoice_number=inv,
+            order_reference=ref_display,
+            customer_name=customer_name or "Customer",
+            customer_email=customer_email or "",
+            primary_line_description=primary_line,
+            amount_total_pence=amount_total_pence,
+            currency=currency,
+            vat_pence=vat_pence,
+            billing_period_start=billing_period_start,
+            billing_period_end=billing_period_end,
+        )
+    else:
+        data = _subscription_checkout_multiline_invoice_data(
+            invoice_number=inv,
+            order_reference=ref_display,
+            customer_name=customer_name or "Customer",
+            customer_email=customer_email or "",
+            line_items=pdf_rows,
+            amount_total_pence=amount_total_pence,
+            currency=currency,
+            vat_pence=vat_pence,
+        )
+
     try:
         pdf_bytes = build_branded_invoice_pdf_bytes(data)
     except Exception as e:
@@ -457,35 +518,238 @@ async def ensure_subscription_checkout_invoice_pdf(
     try:
         grid_id = await _upload_pdf_to_gridfs(filename, pdf_bytes, meta)
         now = datetime.now(timezone.utc)
+        sub_part = sum(x["amount"] for x in breakdown if x.get("type") == "subscription")
+        setup_part = sum(x["amount"] for x in breakdown if x.get("type") == "setup_fee")
+        created_at = (existing or {}).get("created_at") if force_regenerate else None
+        if created_at is None:
+            created_at = now
+        ledger: Dict[str, Any] = {
+            "client_id": client_id,
+            "invoice_number": inv,
+            "gridfs_id": grid_id,
+            "filename": filename,
+            "created_at": created_at,
+            "amount_total_pence": amount_total_pence,
+            "currency": currency,
+            "payment_status": "PAID",
+            "billing_breakdown": breakdown,
+        }
+        if force_regenerate:
+            ledger["pdf_regenerated_at"] = now
+        if sub_part:
+            ledger["subscription_amount_pence"] = sub_part
+        if setup_part:
+            ledger["setup_fee_amount_pence"] = setup_part
         await db[STRIPE_CHECKOUT_INVOICES].update_one(
             {"_id": checkout_session_id},
-            {
-                "$set": {
-                    "client_id": client_id,
-                    "invoice_number": inv,
-                    "gridfs_id": grid_id,
-                    "filename": filename,
-                    "created_at": now,
-                    "amount_total_pence": amount_total_pence,
-                    "currency": currency,
-                    "payment_status": "PAID",
-                }
-            },
+            {"$set": ledger},
             upsert=True,
         )
-        await db.clients.update_one(
+        pin = await db.clients.find_one(
             {"client_id": client_id},
-            {
-                "$set": {
-                    "last_subscription_invoice_number": inv,
-                    "last_subscription_receipt_gridfs_id": grid_id,
-                    "last_subscription_receipt_session_id": checkout_session_id,
-                    "updated_at": now,
-                }
-            },
+            {"_id": 0, "last_subscription_receipt_session_id": 1},
         )
+        pinned_sid = (pin or {}).get("last_subscription_receipt_session_id")
+        update_client_pointer = (not force_regenerate) or (
+            pinned_sid == checkout_session_id or pinned_sid is None
+        )
+        if update_client_pointer:
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {
+                    "$set": {
+                        "last_subscription_invoice_number": inv,
+                        "last_subscription_receipt_gridfs_id": grid_id,
+                        "last_subscription_receipt_session_id": checkout_session_id,
+                        "updated_at": now,
+                    }
+                },
+            )
     except Exception as e:
         logger.exception("Subscription invoice storage failed: %s", e)
         return False, None, None, str(e)
 
     return True, pdf_bytes, inv, None
+
+
+def _subscription_checkout_multiline_invoice_data(
+    *,
+    invoice_number: str,
+    order_reference: str,
+    customer_name: str,
+    customer_email: str,
+    line_items: List[Dict[str, Any]],
+    amount_total_pence: int,
+    currency: str,
+    vat_pence: int = 0,
+    payment_method: str = "Card (Stripe)",
+) -> Dict[str, Any]:
+    subtotal_pence = max(0, amount_total_pence - vat_pence)
+    now = datetime.now(timezone.utc)
+    date_str = now.strftime("%d %B %Y %H:%M UTC")
+    sum_lines = sum(int(x.get("line_total_pence") or 0) for x in line_items)
+    if line_items and sum_lines != subtotal_pence:
+        logger.warning(
+            "subscription checkout PDF: line sum %s != subtotal %s (vat=%s total=%s)",
+            sum_lines,
+            subtotal_pence,
+            vat_pence,
+            amount_total_pence,
+        )
+    first = line_items[0] if line_items else {}
+    return {
+        "document_title": "INVOICE" if vat_pence > 0 else "RECEIPT",
+        "invoice_number": invoice_number,
+        "order_reference": order_reference,
+        "date_issued": date_str,
+        "customer_name": customer_name,
+        "customer_email": customer_email,
+        "line_items": line_items,
+        "line_description": str(first.get("description") or "Service"),
+        "line_quantity": int(first.get("quantity") or 1),
+        "line_unit_pence": int(first.get("unit_pence") or 0),
+        "line_total_pence": int(first.get("line_total_pence") or 0),
+        "subtotal_pence": subtotal_pence,
+        "vat_pence": vat_pence,
+        "total_pence": amount_total_pence,
+        "currency": currency,
+        "payment_status": "PAID",
+        "payment_method": payment_method,
+    }
+
+
+def _fallback_checkout_lines_from_subscription(
+    subscription_id: str,
+    plan_code: "PlanCode",
+    *,
+    setup_fee_amount_cents: Optional[int],
+    billing_period_note: Optional[str],
+    net_expected_pence: int,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    import os
+
+    import stripe
+    from services.billing_line_normalization import (
+        setup_line_description,
+        subscription_line_description,
+    )
+
+    stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+    if not stripe.api_key or not subscription_id:
+        return [], []
+    try:
+        sub = stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"])
+        sub_d = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
+    except Exception as e:
+        logger.warning("fallback checkout lines: Subscription.retrieve failed: %s", e)
+        return [], []
+    pdf_rows: List[Dict[str, Any]] = []
+    breakdown: List[Dict[str, Any]] = []
+    for item in (sub_d.get("items") or {}).get("data") or []:
+        price = item.get("price") or {}
+        if isinstance(price, dict) and price.get("recurring") is not None:
+            ua = int(price.get("unit_amount") or 0)
+            desc = subscription_line_description(plan_code)
+            if billing_period_note:
+                desc = f"{desc}\n{billing_period_note}"
+            pdf_rows.append(
+                {"description": desc, "quantity": 1, "unit_pence": ua, "line_total_pence": ua}
+            )
+            breakdown.append(
+                {
+                    "type": "subscription",
+                    "description": subscription_line_description(plan_code),
+                    "amount": ua,
+                }
+            )
+            break
+    sf = int(setup_fee_amount_cents or 0)
+    if sf > 0:
+        sdesc = setup_line_description(plan_code)
+        pdf_rows.append(
+            {"description": sdesc, "quantity": 1, "unit_pence": sf, "line_total_pence": sf}
+        )
+        breakdown.append({"type": "setup_fee", "description": sdesc, "amount": sf})
+    sum_lines = sum(r["line_total_pence"] for r in pdf_rows)
+    if pdf_rows and net_expected_pence != sum_lines:
+        adj = net_expected_pence - sum_lines
+        if adj != 0:
+            pdf_rows.append(
+                {
+                    "description": "Billing adjustment",
+                    "quantity": 1,
+                    "unit_pence": adj,
+                    "line_total_pence": adj,
+                }
+            )
+            breakdown.append({"type": "adjustment", "description": "Billing adjustment", "amount": adj})
+    return pdf_rows, breakdown
+
+
+async def regenerate_subscription_checkout_invoice_pdf_for_client(
+    client_id: str,
+    checkout_session_id: str,
+) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Admin/maintenance: re-fetch Stripe Checkout Session and rebuild itemised PDF for an existing
+    ``stripe_checkout_invoices`` row. Preserves invoice number and original ``created_at``.
+
+    Returns (success, invoice_number_if_ok, error_message).
+    """
+    import os
+
+    import stripe
+
+    if not checkout_session_id.startswith("cs_"):
+        return False, None, "checkout_session_id must be a Stripe id (cs_...)"
+
+    db = database.get_db()
+    row = await db[STRIPE_CHECKOUT_INVOICES].find_one({"_id": checkout_session_id, "client_id": client_id})
+    if not row:
+        return False, None, "No subscription checkout ledger row for this client and session id"
+
+    billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+    client_row = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "contact_name": 1, "full_name": 1, "email": 1, "contact_email": 1, "billing_plan": 1},
+    )
+    if not client_row:
+        return False, None, "Client not found"
+
+    from services.plan_registry import plan_registry
+
+    plan_str = (billing or {}).get("current_plan_code") or client_row.get("billing_plan") or "PLAN_1_SOLO"
+    plan_code = plan_registry.resolve_plan_code(str(plan_str))
+
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+    sub_id = (billing or {}).get("stripe_subscription_id")
+    if sub_id and stripe.api_key:
+        try:
+            sub = stripe.Subscription.retrieve(sub_id, expand=["items.data.price"])
+            sub_d = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
+            period_start = period_start_from_stripe_unix(sub_d.get("current_period_start"))
+            period_end = period_end_from_stripe_unix(sub_d.get("current_period_end"))
+        except Exception as e:
+            logger.warning("regenerate receipt: Subscription.retrieve failed: %s", e)
+
+    setup_fee = (billing or {}).get("setup_fee_amount_cents")
+    name = (client_row.get("contact_name") or client_row.get("full_name") or "Customer").strip()
+    email = (client_row.get("email") or client_row.get("contact_email") or "").strip()
+
+    ok, _pdf, inv_no, err = await ensure_subscription_checkout_invoice_pdf(
+        client_id=client_id,
+        checkout_session_id=checkout_session_id,
+        session={},
+        customer_name=name,
+        customer_email=email,
+        plan_code=plan_code,
+        billing_period_start=period_start,
+        billing_period_end=period_end,
+        setup_fee_amount_cents=int(setup_fee) if setup_fee is not None else None,
+        force_regenerate=True,
+    )
+    if not ok:
+        return False, None, err or "PDF regeneration failed"
+    return True, inv_no, None

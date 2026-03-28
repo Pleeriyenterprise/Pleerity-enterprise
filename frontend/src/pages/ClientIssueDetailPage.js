@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { AlertCircle, Loader2, Wrench, ArrowLeft, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 
 function ClientIssueDetailPageInner() {
   const { issueId } = useParams();
@@ -152,7 +153,7 @@ function ClientIssueDetailPageInner() {
                     <button
                       type="button"
                       className="text-xs text-electric-teal hover:underline mt-1"
-                      onClick={() => navigate(`/operations/work-orders?work_order_id=${encodeURIComponent(row.metadata.work_order_id)}`)}
+                      onClick={() => navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: row.metadata.work_order_id }))}
                     >
                       View work order
                     </button>

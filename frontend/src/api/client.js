@@ -50,14 +50,46 @@ function logIntakeDebug(method, fullUrl, status, data) {
   console.debug('[CVP] Intake', payload);
 }
 
+/** Relative path under /api (e.g. contractor/work-orders). */
+function normalizedApiUrlPath(config) {
+  return String(config.url || '').replace(/^\//, '');
+}
+
+/**
+ * Contractor portal uses `contractor_token`; client portal uses `auth_token`.
+ * If we always attached auth_token, contractor API calls would send the wrong JWT (403/401)
+ * whenever a user still had a client session in the same browser.
+ * Job-link routes use ?token= only — do not attach client Bearer.
+ */
+function applyPortalAuthHeader(config) {
+  if (typeof window === 'undefined') return;
+  const path = normalizedApiUrlPath(config);
+  if (path.startsWith('contractor/')) {
+    const ct = localStorage.getItem('contractor_token');
+    if (ct) {
+      config.headers.Authorization = `Bearer ${ct}`;
+    } else {
+      delete config.headers.Authorization;
+    }
+    return;
+  }
+  if (path.startsWith('job/')) {
+    delete config.headers.Authorization;
+    return;
+  }
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    delete config.headers.Authorization;
+  }
+}
+
 // Request interceptor: add auth token + dev log first request (endpoint + Authorization)
 let firstRequestLogged = false;
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    applyPortalAuthHeader(config);
     // FormData must use multipart/form-data with boundary; do not send application/json
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
@@ -65,7 +97,13 @@ apiClient.interceptors.request.use(
     if (!firstRequestLogged && typeof window !== 'undefined' && (process.env.NODE_ENV !== 'production' || window.__CVP_DEBUG)) {
       firstRequestLogged = true;
       const url = config.url ?? config.baseURL ?? '?';
-      console.log('[CVP] First API request:', url, 'Authorization:', token ? 'Bearer present' : 'MISSING');
+      const path = normalizedApiUrlPath(config);
+      const mode = path.startsWith('contractor/')
+        ? 'contractor_token'
+        : path.startsWith('job/')
+          ? 'job_token_query'
+          : 'auth_token';
+      console.log('[CVP] First API request:', url, 'authMode:', mode);
     }
     return config;
   },
@@ -95,6 +133,30 @@ apiClient.interceptors.response.use(
       logIntakeDebug(error.config?.method?.toUpperCase() || 'GET', fullUrl, status, data);
     }
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
+    const errPath = normalizedApiUrlPath(error.config || {});
+    if (errPath.startsWith('contractor/') && typeof window !== 'undefined') {
+      if (process.env.NODE_ENV !== 'production' || window.__CVP_CONTRACTOR_DEBUG) {
+        console.warn('[CVP][Contractor] API error', {
+          path: errPath,
+          method: error.config?.method,
+          status,
+          detail: typeof detail === 'string' ? detail : detail?.message || message,
+        });
+      }
+      try {
+        sessionStorage.setItem(
+          'cvp_contractor_last_api_error',
+          JSON.stringify({
+            path: errPath,
+            status,
+            at: new Date().toISOString(),
+            detail: typeof detail === 'string' ? detail : detail?.message || String(message),
+          })
+        );
+      } catch {
+        /* ignore */
+      }
+    }
     // Plan-gate 403: attach so UI can show upgrade state instead of crashing
     if (status === 403 && data && (data.upgrade_required === true || data.feature || data.feature_key)) {
       error.isPlanGateDenied = true;
@@ -358,6 +420,13 @@ export const clientAPI = {
     apiClient.patch(`/client/approvals/${encodeURIComponent(invoiceId)}`, body, config),
   createInvoice: (body) => apiClient.post('/client/invoices', body),
   exportApprovals: (params = {}) => apiClient.get('/client/approvals/export', { params, responseType: 'blob' }),
+  /** In-app notifications (portal user). */
+  getInAppNotifications: (params = {}) => apiClient.get('/profile/in-app-notifications', { params }),
+  markInAppNotificationRead: (notificationId) =>
+    apiClient.patch(`/profile/in-app-notifications/${encodeURIComponent(notificationId)}/read`),
+  /** Active system banners (auth only; visible before full provisioning). */
+  getActiveSystemBanners: () => apiClient.get('/profile/system-banners/active'),
+  dismissSystemBanner: (bannerId) => apiClient.post(`/profile/system-banners/${encodeURIComponent(bannerId)}/dismiss`),
 };
 
 export const adminAPI = {
@@ -487,6 +556,24 @@ export const adminAPI = {
   // Contractor portal invite (admin)
   inviteContractorToPortal: (contractorId) => apiClient.post(`/admin/ops/contractors/${contractorId}/invite-portal`),
   inviteContractor: (body) => apiClient.post('/admin/ops/contractors/invite', body),
+  // Admin communications (Owner/Admin for send/templates/banners; all admin roles can read history)
+  communicationsPreview: (body) => apiClient.post('/admin/communications/preview', body),
+  communicationsSend: (body) => apiClient.post('/admin/communications/send', body),
+  communicationsDraftUpsert: (body) => apiClient.post('/admin/communications/drafts', body),
+  communicationsDrafts: () => apiClient.get('/admin/communications/drafts'),
+  communicationsDraftDelete: (communicationId) =>
+    apiClient.delete(`/admin/communications/drafts/${encodeURIComponent(communicationId)}`),
+  communicationsSchedule: (body) => apiClient.post('/admin/communications/schedule', body),
+  communicationsMessages: (params = {}) => apiClient.get('/admin/communications/messages', { params }),
+  communicationsMessage: (communicationId) => apiClient.get(`/admin/communications/messages/${encodeURIComponent(communicationId)}`),
+  communicationsTemplates: () => apiClient.get('/admin/communications/templates'),
+  communicationsTemplateCreate: (body) => apiClient.post('/admin/communications/templates', body),
+  communicationsTemplateUpdate: (templateId, body) =>
+    apiClient.put(`/admin/communications/templates/${encodeURIComponent(templateId)}`, body),
+  communicationsBanners: (params = {}) => apiClient.get('/admin/communications/banners', { params }),
+  communicationsBannerCreate: (body) => apiClient.post('/admin/communications/banners', body),
+  communicationsBannerPatch: (bannerId, body) =>
+    apiClient.patch(`/admin/communications/banners/${encodeURIComponent(bannerId)}`, body),
 };
 
 // Contractor portal API (use with contractor token from contractor login/set-password)

@@ -32,6 +32,7 @@ import {
 import { toast } from 'sonner';
 import { issueSeverityLabel, workOrderStatusLabel } from '../domain/presentDomain';
 import { assetIdParts } from '../utils/assetDisplay';
+import { buildSafeQueryPath, normalizeRouteId, resolvePropertyPath } from '../utils/clientPortalNavigation';
 
 const WO_STATUS_OPTIONS = [
   { value: 'DRAFT', label: 'Draft' },
@@ -690,7 +691,10 @@ function ClientMaintenancePageInner() {
                         <p className="font-semibold text-midnight-blue mt-1 break-words">{wo.description || 'Work order'}</p>
                         <button
                           type="button"
-                          onClick={() => wo.property_id && navigate(`/properties/${wo.property_id}`)}
+                          onClick={() => {
+                            const pid = normalizeRouteId(wo.property_id);
+                            if (pid) navigate(resolvePropertyPath(pid));
+                          }}
                           className="text-sm text-electric-teal hover:underline mt-2 text-left break-words w-full"
                         >
                           {propertyLabel(wo.property_id)}
@@ -766,7 +770,10 @@ function ClientMaintenancePageInner() {
                             <span className="font-medium truncate block" title={wo.description}>{wo.description || '—'}</span>
                           </td>
                           <td className="p-2">
-                            <button type="button" onClick={() => wo.property_id && navigate(`/properties/${wo.property_id}`)} className="text-electric-teal hover:underline truncate max-w-[120px] block text-left">
+                            <button type="button" onClick={() => {
+                            const pid = normalizeRouteId(wo.property_id);
+                            if (pid) navigate(resolvePropertyPath(pid));
+                          }} className="text-electric-teal hover:underline truncate max-w-[120px] block text-left">
                               {propertyLabel(wo.property_id)}
                             </button>
                           </td>
@@ -854,7 +861,7 @@ function ClientMaintenancePageInner() {
                     <dt className="text-gray-500">Property</dt>
                     <dd>
                       {woDetailData.property_id ? (
-                        <button type="button" className="text-electric-teal hover:underline" onClick={() => { navigate(`/properties/${woDetailData.property_id}`); setWoDetailDrawer(null); }}>{propertyLabel(woDetailData.property_id)}</button>
+                        <button type="button" className="text-electric-teal hover:underline" onClick={() => { navigate(resolvePropertyPath(woDetailData.property_id)); setWoDetailDrawer(null); }}>{propertyLabel(woDetailData.property_id)}</button>
                       ) : '—'}
                     </dd>
                     <dt className="text-gray-500">Updated</dt><dd>{formatRelativeTime(woDetailData.updated_at)}</dd>
@@ -921,7 +928,7 @@ function ClientMaintenancePageInner() {
                                 type="button"
                                 className="text-electric-teal hover:underline text-xs"
                                 onClick={() => {
-                                  navigate(`/operations/approvals?invoice_id=${encodeURIComponent(inv.invoice_id)}`);
+                                  navigate(buildSafeQueryPath('/operations/approvals', { invoice_id: inv.invoice_id }));
                                   setWoDetailDrawer(null);
                                 }}
                               >
@@ -934,7 +941,7 @@ function ClientMaintenancePageInner() {
                       <button
                         type="button"
                         className="text-xs text-electric-teal hover:underline mt-2"
-                        onClick={() => navigate(`/operations/approvals?work_order_id=${encodeURIComponent(woDetailData.work_order_id)}`)}
+                        onClick={() => navigate(buildSafeQueryPath('/operations/approvals', { work_order_id: woDetailData.work_order_id }))}
                       >
                         View all invoices for this work order
                       </button>
@@ -1022,7 +1029,7 @@ function ClientMaintenancePageInner() {
                   )}
                   <div className="flex flex-wrap gap-2 mt-4">
                     {woDetailData.property_id && (
-                      <Button size="sm" variant="outline" onClick={() => { navigate(`/properties/${woDetailData.property_id}`); setWoDetailDrawer(null); }}>
+                      <Button size="sm" variant="outline" onClick={() => { navigate(resolvePropertyPath(woDetailData.property_id)); setWoDetailDrawer(null); }}>
                         <Building2 className="w-3 h-3 mr-1" /> View property
                       </Button>
                     )}

@@ -1372,7 +1372,14 @@ async def verify_document(request: Request, document_id: str):
         if document.get("requirement_id"):
             await db.requirements.update_one(
                 {"requirement_id": document["requirement_id"]},
-                {"$set": {"status": RequirementStatus.COMPLIANT.value}},
+                {
+                    "$set": {
+                        "status": RequirementStatus.COMPLIANT.value,
+                        "date_source": "VERIFIED_DOCUMENT",
+                        "evidence_state": "VERIFIED",
+                        "confidence_state": "VERIFIED",
+                    }
+                },
             )
         
         # Recompute property compliance (skip for client-level docs with no property_id)
@@ -1655,8 +1662,8 @@ async def admin_delete_document(request: Request, document_id: str):
 
 
 async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, property_id: Optional[str]) -> None:
-    """If no VERIFIED document remains for this requirement, set requirement to PENDING, clear due_date, and sync property compliance.
-    Ensures Requirements page, Property detail, and Calendar all show 'Missing evidence' and no stale expiry after document delete."""
+    """If no VERIFIED document remains for this requirement, set requirement to PENDING, restore a baseline estimated due date, and sync property compliance.
+    Avoids presenting a stale certificate date as fact while keeping reminders useful."""
     remaining = await db.documents.count_documents(
         {"requirement_id": requirement_id, "status": DocumentStatus.VERIFIED.value}
     )
@@ -1665,9 +1672,23 @@ async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, prope
     filter_query = {"requirement_id": requirement_id}
     if property_id:
         filter_query["property_id"] = property_id
+    req_row = await db.requirements.find_one(filter_query, {"_id": 0, "frequency_days": 1})
+    freq = int((req_row or {}).get("frequency_days") or 365)
+    baseline_days = 30 if freq <= 0 else min(30, max(1, freq))
+    new_due = datetime.now(timezone.utc) + timedelta(days=baseline_days)
     await db.requirements.update_one(
         filter_query,
-        {"$set": {"status": RequirementStatus.PENDING.value}, "$unset": {"due_date": ""}}
+        {
+            "$set": {
+                "status": RequirementStatus.PENDING.value,
+                "due_date": new_due.isoformat(),
+                "date_source": "SYSTEM_ESTIMATED",
+                "evidence_state": "MISSING",
+                "confidence_state": "ESTIMATED",
+                "expiry_source": "NONE",
+            },
+            "$unset": {"extracted_expiry_date": "", "confirmed_expiry_date": ""},
+        },
     )
     if property_id:
         from services.provisioning import provisioning_service
@@ -2270,16 +2291,21 @@ async def apply_ai_extraction(
             {"$set": document_update}
         )
         
-        # Update requirement if we have changes
+        # Update requirement: merge expiry/status changes with truth fields (document is VERIFIED in this flow).
         after_state = before_state.copy()
-        if update_fields:
-            update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
-            await db.requirements.update_one(
-                {"requirement_id": requirement_id},
-                {"$set": update_fields}
-            )
-            after_state["due_date"] = update_fields.get("due_date", after_state["due_date"])
-            after_state["status"] = update_fields.get("status", after_state["status"])
+        truth_set = {
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "date_source": "VERIFIED_DOCUMENT",
+            "evidence_state": "VERIFIED",
+            "confidence_state": "VERIFIED",
+        }
+        merged_req_update = {**update_fields, **truth_set}
+        await db.requirements.update_one(
+            {"requirement_id": requirement_id},
+            {"$set": merged_req_update},
+        )
+        after_state["due_date"] = merged_req_update.get("due_date", after_state["due_date"])
+        after_state["status"] = merged_req_update.get("status", after_state["status"])
         
         # Create specific audit action for extraction applied
         await create_audit_log(
@@ -2295,7 +2321,7 @@ async def apply_ai_extraction(
                 "requirement_id": requirement_id,
                 "changes_made": changes_made,
                 "expiry_date_set": expiry_date,
-                "expiry_date_parsed": update_fields.get("due_date"),
+                "expiry_date_parsed": merged_req_update.get("due_date"),
                 "certificate_number": cert_number,
                 "engineer_name": data.get("engineer_details", {}).get("name") if isinstance(data.get("engineer_details"), dict) else data.get("engineer_name"),
                 "user_confirmed": confirmed_data is not None,

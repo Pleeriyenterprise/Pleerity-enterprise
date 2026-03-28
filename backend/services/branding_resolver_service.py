@@ -450,6 +450,16 @@ async def merge_email_branding_context(
         context["_email_send_extras"] = {}
         return
 
+    if context.get("_force_pleerity_email_branding"):
+        p = pleerity_profile(context="platform_broadcast_email")
+        context["_email_branding"] = p.to_email_layout_kwargs()
+        context["_branding_resolution"] = {
+            "source": p.source,
+            "fallback_reasons": [BrandingFallbackReason.INTERNAL_CONTEXT.value],
+        }
+        context["_email_send_extras"] = {}
+        return
+
     profile = await resolve_branding(client_id, BrandingContext.CLIENT_FACING_EMAIL)
     context["_email_branding"] = profile.to_email_layout_kwargs()
     context["_branding_resolution"] = {

@@ -334,11 +334,19 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         aggregated_actions.sort(key=lambda a: float(a.get("impact_points") or 0), reverse=True)
         recommendations = []
         for action in aggregated_actions[:5]:
+            code = action.get("requirement_code") or ""
+            display = action.get("display_label")
+            if not display and code:
+                from presentation.label_service import requirement_label
+
+                display = requirement_label(code, audience="client")
             recommendations.append(
                 {
                     "priority": action.get("priority") or "medium",
-                    "action": action.get("action") or f"Improve {action.get('requirement_code')}",
+                    "action": action.get("action") or f"Improve {display or code or 'compliance evidence'}",
                     "impact": f"+{int(round(float(action.get('impact_points') or 0)))} points",
+                    "requirement_code": code or None,
+                    "display_label": display,
                 }
             )
         if not recommendations:

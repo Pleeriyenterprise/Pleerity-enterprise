@@ -17,6 +17,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
 import api from '../api/client';
+import { resolveDocumentsPath } from '../utils/clientPortalNavigation';
 
 const CalendarPage = () => {
   const navigate = useNavigate();
@@ -314,7 +315,7 @@ const CalendarPage = () => {
                                   <button
                                     key={idx}
                                     type="button"
-                                    onClick={() => navigate(`/documents?property_id=${event.property_id || ''}&requirement_id=${event.requirement_id || ''}`)}
+                                    onClick={() => navigate(resolveDocumentsPath(event.property_id, { requirement_id: event.requirement_id }))}
                                     className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:ring-1 hover:ring-offset-0 ${
                                       event.status_color === 'red' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
                                       event.status_color === 'amber' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' :
@@ -404,7 +405,7 @@ const CalendarPage = () => {
                   <button
                     type="button"
                     key={item.requirement_id}
-                    onClick={() => navigate(`/documents?property_id=${item.property_id || ''}&requirement_id=${item.requirement_id || ''}`)}
+                    onClick={() => navigate(resolveDocumentsPath(item.property_id, { requirement_id: item.requirement_id }))}
                     className={`w-full text-left bg-white rounded-xl p-4 border-2 transition-colors hover:ring-2 hover:ring-electric-teal hover:ring-offset-2 ${getUrgencyColor(item.urgency)}`}
                     data-testid={`upcoming-item-${item.requirement_id}`}
                   >

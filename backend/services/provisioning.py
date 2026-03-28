@@ -498,7 +498,10 @@ class ProvisioningService:
         for key in ["due_date", "created_at", "updated_at"]:
             if doc.get(key):
                 doc[key] = doc[key].isoformat()
-        
+        doc["date_source"] = "SYSTEM_ESTIMATED"
+        doc["evidence_state"] = "MISSING"
+        doc["confidence_state"] = "ESTIMATED"
+
         await db.requirements.insert_one(doc)
     
     async def _update_property_compliance(self, property_id: str):

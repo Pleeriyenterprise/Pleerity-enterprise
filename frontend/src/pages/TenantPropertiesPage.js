@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { resolveTenantPropertyPath } from '../utils/clientPortalNavigation';
 import { CheckCircle, XCircle, Clock, AlertTriangle, Building2, ChevronRight } from 'lucide-react';
 
 function getComplianceStyles(status) {
@@ -74,7 +75,7 @@ const TenantPropertiesPage = () => {
                 return (
                   <button
                     key={property.property_id}
-                    onClick={() => navigate(`/tenant/properties/${property.property_id}`)}
+                    onClick={() => navigate(resolveTenantPropertyPath(property.property_id))}
                     className={`w-full rounded-lg border-2 ${styles.border} ${styles.bg} p-4 flex items-center justify-between text-left hover:opacity-90 transition-opacity`}
                     data-testid={`property-row-${property.property_id}`}
                   >

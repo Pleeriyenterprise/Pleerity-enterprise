@@ -135,10 +135,10 @@ const ContractorRegisterPage = () => {
                   <span className="font-medium text-gray-900">Applications are not open</span>
                   <span className="block mt-2 text-gray-700">
                     Public contractor applications are disabled in this environment. If our team or a client invited you, use the link in your email to set your password, then sign in via{' '}
-                    <Link to="/login" className="font-medium text-electric-teal hover:underline">
-                      Portal login
-                    </Link>{' '}
-                    → Contractor portal. Otherwise{' '}
+                    <Link to="/contractor/login" className="font-medium text-electric-teal hover:underline">
+                      Contractor sign in
+                    </Link>
+                    . Otherwise{' '}
                     <Link to="/contact" className="font-medium text-electric-teal hover:underline">
                       contact us
                     </Link>{' '}
@@ -156,13 +156,13 @@ const ContractorRegisterPage = () => {
                 </p>
                 <p className="text-sm text-gray-600 text-left">
                   After activation, sign in anytime via{' '}
-                  <Link to="/login" className="text-electric-teal font-medium hover:underline">
-                    Portal login
-                  </Link>{' '}
-                  → Contractor portal.
+                  <Link to="/contractor/login" className="text-electric-teal font-medium hover:underline">
+                    Contractor sign in
+                  </Link>
+                  .
                 </p>
                 <Button asChild variant="outline" className="mt-2">
-                  <Link to="/login">Back to Portal login</Link>
+                  <Link to="/contractor/login">Back to contractor sign in</Link>
                 </Button>
               </div>
             ) : (
@@ -248,10 +248,10 @@ const ContractorRegisterPage = () => {
                 </Button>
                 <p className="text-center text-sm text-gray-500">
                   Already invited and activated?{' '}
-                  <Link to="/login" className="text-electric-teal hover:underline">
-                    Portal login
-                  </Link>{' '}
-                  → Contractor portal.
+                  <Link to="/contractor/login" className="text-electric-teal hover:underline">
+                    Contractor sign in
+                  </Link>
+                  .
                 </p>
               </form>
             )}

@@ -37,8 +37,11 @@ export default function ContractorSetPasswordPage() {
     try {
       const { data } = await authAPI.contractorSetPassword({ token, password });
       setContractorAuth(data.access_token, data.user);
+      if (typeof window !== 'undefined' && (process.env.NODE_ENV !== 'production' || window.__CVP_CONTRACTOR_DEBUG || window.__CVP_DEBUG)) {
+        console.info('[CVP][ContractorPortal] password_set_ok redirect=/contractor');
+      }
       setSuccess(true);
-      setTimeout(() => navigate('/contractor', { replace: true }), 1500);
+      navigate('/contractor', { replace: true });
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to set password');
     } finally {
@@ -76,7 +79,7 @@ export default function ContractorSetPasswordPage() {
         </CardHeader>
         <CardContent>
           {success ? (
-            <p className="text-green-600">Password set. Redirecting…</p>
+            <p className="text-green-600">Password set. Opening your portal…</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (

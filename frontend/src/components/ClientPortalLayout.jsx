@@ -76,12 +76,39 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { user, logout, isClient } = useAuth();
   const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
+  const isTenant = user?.role === 'ROLE_TENANT';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [operationsDropdownOpen, setOperationsDropdownOpen] = useState(false);
   const [crnState, setCrnState] = useState(crnProp);
   const [profile, setProfile] = useState(null);
   const [headerAvatarUrl, setHeaderAvatarUrl] = useState(null);
   const [impersonation, setImpersonation] = useState(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifItems, setNotifItems] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  const loadInAppNotifications = () => {
+    if (isTenant || !isClient) return;
+    setNotifLoading(true);
+    clientAPI
+      .getInAppNotifications({ limit: 50 })
+      .then((r) => setNotifItems(r.data.items || []))
+      .catch(() => {})
+      .finally(() => setNotifLoading(false));
+  };
+
+  useEffect(() => {
+    if (!isClient || isTenant) return;
+    loadInAppNotifications();
+    const t = setInterval(loadInAppNotifications, 120000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient, isTenant, user?.portal_user_id]);
+
+  useEffect(() => {
+    if (notifOpen) loadInAppNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifOpen]);
 
   useEffect(() => {
     const raw = localStorage.getItem('impersonation_context');
@@ -158,7 +185,6 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
 
   const location = useLocation();
   const showReports = hasFeature('reports_pdf') || hasFeature('reports_csv');
-  const isTenant = user?.role === 'ROLE_TENANT';
 
   // Build tabs: filter by feature; for Operations group, show only if at least one child is enabled and filter children
   const tabs = isTenant
@@ -250,6 +276,77 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2 justify-between sm:justify-end lg:shrink-0 min-w-0">
+              {!isTenant && isClient && (
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setNotifOpen((o) => !o)}
+                    className="tap-target h-10 w-10 inline-flex items-center justify-center rounded-md hover:bg-white/10 text-white relative"
+                    aria-label="Notifications"
+                    aria-expanded={notifOpen}
+                  >
+                    <Bell className="w-5 h-5" />
+                    {notifItems.some((n) => !n.is_read) && (
+                      <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-400" aria-hidden />
+                    )}
+                  </button>
+                  {notifOpen && (
+                    <>
+                      <button
+                        type="button"
+                        className="fixed inset-0 z-40 bg-black/20 lg:bg-transparent"
+                        aria-label="Close notifications"
+                        onClick={() => setNotifOpen(false)}
+                      />
+                      <div className="fixed z-50 right-2 top-[3.5rem] w-[min(100vw-1rem,24rem)] max-h-[min(70vh,28rem)] overflow-hidden rounded-lg border border-gray-200 bg-white text-gray-900 shadow-xl flex flex-col">
+                        <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
+                          <span className="text-sm font-semibold">Notifications</span>
+                          <button type="button" className="text-xs text-electric-teal hover:underline" onClick={() => setNotifOpen(false)}>
+                            Close
+                          </button>
+                        </div>
+                        <div className="overflow-y-auto flex-1">
+                          {notifLoading && <p className="p-3 text-sm text-gray-500">Loading…</p>}
+                          {!notifLoading && notifItems.length === 0 && (
+                            <p className="p-3 text-sm text-gray-500">No notifications yet.</p>
+                          )}
+                          {!notifLoading &&
+                            notifItems.map((n) => (
+                              <button
+                                key={n.notification_id}
+                                type="button"
+                                className={`w-full text-left px-3 py-2 border-b border-gray-50 hover:bg-gray-50 text-sm ${n.is_read ? 'opacity-80' : 'bg-slate-50/80'}`}
+                                onClick={async () => {
+                                  try {
+                                    await clientAPI.markInAppNotificationRead(n.notification_id);
+                                    setNotifItems((prev) =>
+                                      prev.map((x) =>
+                                        x.notification_id === n.notification_id ? { ...x, is_read: true } : x
+                                      )
+                                    );
+                                  } catch (_) {
+                                    /* ignore */
+                                  }
+                                  if (n.link) {
+                                    if (/^https?:\/\//i.test(n.link)) window.open(n.link, '_blank', 'noopener,noreferrer');
+                                    else navigate(n.link.startsWith('/') ? n.link : `/${n.link}`);
+                                  }
+                                  setNotifOpen(false);
+                                }}
+                              >
+                                <div className="font-medium text-gray-900 line-clamp-2">{n.title}</div>
+                                {n.message && <div className="text-gray-600 text-xs mt-0.5 line-clamp-3">{n.message}</div>}
+                                {n.created_at && (
+                                  <div className="text-[10px] text-gray-400 mt-1">{String(n.created_at).slice(0, 16)}</div>
+                                )}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

@@ -14,6 +14,7 @@ export const EVIDENCE_STATUS_CONFIG = {
   PENDING: { icon: FileText, text: 'Missing evidence', className: 'bg-gray-100 text-gray-700 border-gray-200' },
   FAILED: { icon: XCircle, text: 'Overdue', className: 'bg-red-100 text-red-700 border-red-200' },
   PENDING_VERIFICATION: { icon: HelpCircle, text: 'Needs review', className: 'bg-blue-100 text-blue-700 border-blue-200' },
+  NOT_REQUIRED: { icon: HelpCircle, text: 'Not applicable', className: 'bg-gray-100 text-gray-600 border-gray-200' },
 };
 
 export function getEvidenceStatus(status) {

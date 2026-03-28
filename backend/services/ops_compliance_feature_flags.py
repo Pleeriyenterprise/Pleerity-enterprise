@@ -174,5 +174,14 @@ async def set_flag(
 
 
 def is_contractor_self_registration_enabled() -> bool:
-    """System-wide: is public contractor self-registration allowed? No client context. Uses env CONTRACTOR_SELF_REGISTRATION_ENABLED."""
-    return os.environ.get("CONTRACTOR_SELF_REGISTRATION_ENABLED", "").strip().lower() in ("1", "true", "yes")
+    """
+    System-wide: is public contractor self-registration allowed? No client context.
+    Env CONTRACTOR_SELF_REGISTRATION_ENABLED: explicit "0"/"false"/"no"/"off" disables; explicit "1"/"true"/"yes"/"on" enables.
+    When unset, defaults to True so production does not silently disable the join-network flow (opt out with CONTRACTOR_SELF_REGISTRATION_ENABLED=false).
+    """
+    raw = os.environ.get("CONTRACTOR_SELF_REGISTRATION_ENABLED", "").strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    return True

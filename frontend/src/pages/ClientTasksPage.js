@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Loader2, LayoutList, Info, ExternalLink, Bell, EyeOff, CheckCircle, RotateCcw, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { UrgencyRow } from '../components/client/UrgencyDisplay';
+import { resolveClientPortalPath } from '../utils/clientPortalNavigation';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -167,7 +168,7 @@ function TaskCard({
             </div>
             <Button
               className="w-full min-h-11 h-11 text-sm justify-center bg-midnight-blue hover:bg-midnight-blue/90"
-              onClick={() => navigate(task.primary_action_url || '/dashboard')}
+              onClick={() => navigate(resolveClientPortalPath(task.primary_action_url || '/dashboard', '/dashboard'))}
             >
               {task.primary_action_label || 'Open'}
             </Button>
@@ -200,7 +201,7 @@ function TaskCard({
               <Button
                 variant="ghost"
                 className="w-full min-h-11 h-11 text-electric-teal justify-center"
-                onClick={() => navigate(task.secondary_action_url)}
+                onClick={() => navigate(resolveClientPortalPath(task.secondary_action_url, '/today'))}
               >
                 {task.secondary_action_label}
                 <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0" />

@@ -204,6 +204,13 @@ class AuditAction(str, Enum):
     NOTIFICATION_THROTTLED = "NOTIFICATION_THROTTLED"
     NOTIFICATION_FAILURE_SPIKE_DETECTED = "NOTIFICATION_FAILURE_SPIKE_DETECTED"
     PLAN_GATE_DENIED = "PLAN_GATE_DENIED"
+    # Admin communications (broadcast / targeted client messaging)
+    ADMIN_COMMUNICATION_PREVIEWED = "ADMIN_COMMUNICATION_PREVIEWED"
+    ADMIN_COMMUNICATION_SENT = "ADMIN_COMMUNICATION_SENT"
+    ADMIN_COMMUNICATION_TEMPLATE_SAVED = "ADMIN_COMMUNICATION_TEMPLATE_SAVED"
+    ADMIN_COMMUNICATION_DRAFT_SAVED = "ADMIN_COMMUNICATION_DRAFT_SAVED"
+    ADMIN_COMMUNICATION_SCHEDULED = "ADMIN_COMMUNICATION_SCHEDULED"
+    ADMIN_SYSTEM_BANNER_UPDATED = "ADMIN_SYSTEM_BANNER_UPDATED"
     # Risk signals (predictive / risk intelligence engine)
     RISK_SIGNAL_CREATED = "RISK_SIGNAL_CREATED"
     RISK_SIGNAL_UPDATED = "RISK_SIGNAL_UPDATED"
@@ -407,6 +414,8 @@ class EmailTemplateAlias(str, Enum):
     ONBOARDING_DAY7_ACTIVATION_PUSH = "onboarding-day7-activation-push"
     # ClearForm emails
     CLEARFORM_WELCOME = "clearform-welcome"  # ClearForm account creation
+    # Branded operational message from admin communications (uses customer email layout + branding resolver)
+    CLIENT_OPERATIONAL_NOTICE = "client-operational-notice"
 
 
 class ReportScheduleFrequency(str, Enum):
@@ -742,6 +751,10 @@ class Requirement(BaseModel):
     not_required_reason: Optional[str] = None  # When applicability=NOT_REQUIRED, controlled list
     issue_date: Optional[datetime] = None  # From document extraction or user confirmation
     certificate_number: Optional[str] = None  # From document extraction or user confirmation
+    # Truth / presentation (see services/requirement_truth.py); optional for legacy rows
+    date_source: Optional[str] = None  # SYSTEM_ESTIMATED | USER_PROVIDED | VERIFIED_DOCUMENT
+    evidence_state: Optional[str] = None  # MISSING | UPLOADED_UNVERIFIED | VERIFIED
+    confidence_state: Optional[str] = None  # ESTIMATED | PARTIALLY_CONFIRMED | VERIFIED
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 

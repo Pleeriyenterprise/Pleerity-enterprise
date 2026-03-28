@@ -35,6 +35,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
 import { Skeleton } from '../components/ui/skeleton';
+import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 
 const ComplianceScorePage = () => {
   const { user, logout } = useAuth();
@@ -705,7 +706,13 @@ const ComplianceScorePage = () => {
                                   variant="outline"
                                   size="sm"
                                   className="mr-1 border-electric-teal text-electric-teal hover:bg-electric-teal/10"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/documents?property_id=${d.property_id}&requirement_id=${d.requirement_id}`); }}
+                                  disabled={!d.property_id || !d.requirement_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!d.property_id || !d.requirement_id) return;
+                                    const q = `/documents?property_id=${encodeURIComponent(d.property_id)}&requirement_id=${encodeURIComponent(d.requirement_id)}`;
+                                    navigate(resolveClientPortalPath(q, '/documents'));
+                                  }}
                                 >
                                   <Upload className="w-3.5 h-3.5 mr-1" />
                                   Upload document
@@ -716,7 +723,13 @@ const ComplianceScorePage = () => {
                                   variant="outline"
                                   size="sm"
                                   className="mr-1"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/documents?property_id=${d.property_id}&requirement_id=${d.requirement_id}`); }}
+                                  disabled={!d.property_id || !d.requirement_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!d.property_id || !d.requirement_id) return;
+                                    const q = `/documents?property_id=${encodeURIComponent(d.property_id)}&requirement_id=${encodeURIComponent(d.requirement_id)}`;
+                                    navigate(resolveClientPortalPath(q, '/documents'));
+                                  }}
                                 >
                                   Confirm details
                                 </Button>
@@ -726,7 +739,12 @@ const ComplianceScorePage = () => {
                                   variant="outline"
                                   size="sm"
                                   className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/properties/${d.property_id}`); }}
+                                  disabled={!d.property_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!d.property_id) return;
+                                    navigate(resolveClientPortalPath(`/properties/${String(d.property_id).trim()}`, '/properties'));
+                                  }}
                                 >
                                   <ExternalLink className="w-3.5 h-3.5 mr-1" />
                                   View requirement
@@ -760,15 +778,45 @@ const ComplianceScorePage = () => {
                       </p>
                       <div className="flex flex-wrap gap-2 pt-1">
                         {d.actions?.includes('UPLOAD') && (
-                          <Button variant="outline" size="sm" className="border-electric-teal text-electric-teal hover:bg-electric-teal/10" onClick={() => navigate(`/documents?property_id=${d.property_id}&requirement_id=${d.requirement_id}`)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
+                            disabled={!d.property_id || !d.requirement_id}
+                            onClick={() => {
+                              if (!d.property_id || !d.requirement_id) return;
+                              const q = `/documents?property_id=${encodeURIComponent(d.property_id)}&requirement_id=${encodeURIComponent(d.requirement_id)}`;
+                              navigate(resolveClientPortalPath(q, '/documents'));
+                            }}
+                          >
                             <Upload className="w-3.5 h-3.5 mr-1" /> Upload document
                           </Button>
                         )}
                         {d.actions?.includes('CONFIRM') && (
-                          <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${d.property_id}&requirement_id=${d.requirement_id}`)}>Confirm details</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!d.property_id || !d.requirement_id}
+                            onClick={() => {
+                              if (!d.property_id || !d.requirement_id) return;
+                              const q = `/documents?property_id=${encodeURIComponent(d.property_id)}&requirement_id=${encodeURIComponent(d.requirement_id)}`;
+                              navigate(resolveClientPortalPath(q, '/documents'));
+                            }}
+                          >
+                            Confirm details
+                          </Button>
                         )}
                         {d.actions?.includes('VIEW') && (
-                          <Button variant="outline" size="sm" className="border-electric-teal text-electric-teal hover:bg-electric-teal/10" onClick={() => navigate(`/properties/${d.property_id}`)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
+                            disabled={!d.property_id}
+                            onClick={() => {
+                              if (!d.property_id) return;
+                              navigate(resolveClientPortalPath(`/properties/${String(d.property_id).trim()}`, '/properties'));
+                            }}
+                          >
                             <ExternalLink className="w-3.5 h-3.5 mr-1" /> View requirement
                           </Button>
                         )}
@@ -799,33 +847,36 @@ const ComplianceScorePage = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {scoreData.recommendations.map((rec, idx) => (
+                {scoreData.recommendations.map((rec, idx) => {
+                  const pri = (rec.priority != null && rec.priority !== '') ? String(rec.priority).toLowerCase() : 'low';
+                  return (
                   <div 
                     key={idx}
                     className={`flex items-start gap-3 p-4 rounded-lg border ${
-                      rec.priority === 'high' ? 'bg-red-50 border-red-200' :
-                      rec.priority === 'medium' ? 'bg-amber-50 border-amber-200' :
+                      pri === 'high' || pri === 'critical' ? 'bg-red-50 border-red-200' :
+                      pri === 'medium' ? 'bg-amber-50 border-amber-200' :
                       'bg-gray-50 border-gray-200'
                     }`}
                   >
                     <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      rec.priority === 'high' ? 'bg-red-500' :
-                      rec.priority === 'medium' ? 'bg-amber-500' :
+                      pri === 'high' || pri === 'critical' ? 'bg-red-500' :
+                      pri === 'medium' ? 'bg-amber-500' :
                       'bg-gray-400'
                     }`} />
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800">{rec.action}</p>
-                      <p className="text-sm text-gray-500 mt-1">Potential impact: {rec.impact}</p>
+                      <p className="font-medium text-gray-800">{rec.action || '—'}</p>
+                      <p className="text-sm text-gray-500 mt-1">Potential impact: {rec.impact != null && rec.impact !== '' ? rec.impact : '—'}</p>
                     </div>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      rec.priority === 'high' ? 'bg-red-100 text-red-700' :
-                      rec.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
+                      pri === 'high' || pri === 'critical' ? 'bg-red-100 text-red-700' :
+                      pri === 'medium' ? 'bg-amber-100 text-amber-700' :
                       'bg-gray-100 text-gray-700'
                     }`}>
-                      {rec.priority.toUpperCase()}
+                      {pri.toUpperCase()}
                     </span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -852,17 +903,20 @@ const ComplianceScorePage = () => {
                   valid: getPropertyScoreContribution(p.property_id).breakdown.compliant,
                   expiring: getPropertyScoreContribution(p.property_id).breakdown.expiring,
                   overdue: getPropertyScoreContribution(p.property_id).breakdown.overdue,
-                }))).map((row) => {
+                }))).map((row, rowIdx) => {
                   const score = row.score ?? getPropertyScoreContribution(row.property_id).score;
                   const valid = row.valid ?? getPropertyScoreContribution(row.property_id).breakdown.compliant;
                   const expiring = row.expiring ?? getPropertyScoreContribution(row.property_id).breakdown.expiring;
                   const overdue = row.overdue ?? getPropertyScoreContribution(row.property_id).breakdown.overdue;
                   const propertyColor = score >= 80 ? 'green' : score >= 40 ? 'amber' : 'red';
+                  const rowPropertyId = row.property_id != null && String(row.property_id).trim() !== '' && String(row.property_id) !== 'undefined'
+                    ? String(row.property_id).trim()
+                    : null;
                   return (
                     <div
-                      key={row.property_id}
+                      key={rowPropertyId || `row-${rowIdx}`}
                       className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                      data-testid={`property-score-${row.property_id}`}
+                      data-testid={rowPropertyId ? `property-score-${rowPropertyId}` : `property-score-missing-${rowIdx}`}
                     >
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
@@ -906,15 +960,26 @@ const ComplianceScorePage = () => {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => { setDriversFilterPropertyId(row.property_id); document.getElementById('score-drivers')?.scrollIntoView({ behavior: 'smooth' }); }}
-                            className="text-sm text-electric-teal hover:underline"
+                            disabled={!rowPropertyId}
+                            onClick={() => {
+                              if (!rowPropertyId) return;
+                              setDriversFilterPropertyId(rowPropertyId);
+                              document.getElementById('score-drivers')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className={`text-sm ${rowPropertyId ? 'text-electric-teal hover:underline' : 'text-gray-400 cursor-not-allowed'}`}
                           >
                             View drivers
                           </button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate(`/properties/${row.property_id}`)}
+                            disabled={!rowPropertyId}
+                            onClick={() => {
+                              if (!rowPropertyId) return;
+                              const target = resolveClientPortalPath(`/properties/${rowPropertyId}`, '/properties');
+                              recordClientPortalInteraction('compliance_score_view_property', { property_id: rowPropertyId, target });
+                              navigate(target);
+                            }}
                           >
                             View property dashboard
                           </Button>

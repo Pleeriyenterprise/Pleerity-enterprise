@@ -5,6 +5,7 @@ from utils.audit import create_audit_log
 from datetime import datetime, timezone
 import html as html_module
 import os
+import re
 import logging
 from typing import Optional, Dict, Any, List
 
@@ -17,6 +18,14 @@ from presentation.label_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_html_to_text(html: str) -> str:
+    if not html:
+        return ""
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:5000] if len(text) > 5000 else text
 
 
 def _customer_email_html(model: Dict[str, Any], **kwargs: Any) -> str:
@@ -332,7 +341,8 @@ class EmailService:
                 else:
                     raw_s = str(val) if val is not None else ""
                 if key == "requirement_type":
-                    display = requirement_label(raw_s) if raw_s.strip() else ""
+                    code = (row.get("requirement_code") or row.get("requirement_type") or raw_s or "").strip()
+                    display = requirement_label(code) if code else ""
                 elif key in ("status", "latest_doc_status"):
                     display = compliance_requirement_status_label(raw_s) if raw_s.strip() else ""
                 else:
@@ -550,7 +560,7 @@ class EmailService:
                 customer_reference=customer_ref or None,
             )
         elif template_alias == EmailTemplateAlias.REMINDER:
-            rc = (model.get("requirement_code") or "").strip()
+            rc = (model.get("requirement_code") or model.get("requirement_type") or "").strip()
             req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
             prop_addr = model.get("property_address", "Your property")
             due_date = model.get("due_date", "")
@@ -798,6 +808,31 @@ class EmailService:
         elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
             # Use the dedicated ClearForm method (customer-facing but custom layout)
             return self._build_clearform_welcome_html(model)
+        elif template_alias == EmailTemplateAlias.CLIENT_OPERATIONAL_NOTICE:
+            body_html = model.get("message") or model.get("body") or "<p></p>"
+            header_title = (model.get("email_header_title") or model.get("subject") or "Service notice").strip()[:200]
+            show_prefs = model.get("show_notification_preferences_link")
+            if show_prefs is None:
+                show_prefs = True
+            ref_badge = ""
+            if model.get("customer_reference"):
+                ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{html_module.escape(str(model["customer_reference"]))}</span></p>'
+            return _customer_email_html(
+                model,
+                greeting=_format_greeting(model.get("client_name")),
+                body_html=body_html,
+                header_title=header_title,
+                ref_badge=ref_badge,
+                cta_label="Open your dashboard",
+                cta_url=model.get("portal_link") or "#",
+                why_received=model.get(
+                    "why_received",
+                    "we need to share an operational or account-related update with you.",
+                ),
+                show_preferences_link=show_prefs,
+                preferences_url=_notification_preferences_url(model) if show_prefs else None,
+                customer_reference=model.get("customer_reference"),
+            )
         elif template_alias == EmailTemplateAlias.ADMIN_MANUAL:
             # Internal/staff template – do not use customer layout. Accept "message" or "body" for content.
             body_content = model.get("message") or model.get("body") or "You have a new notification from Compliance Vault Pro."
@@ -1010,7 +1045,7 @@ WHAT THIS MEANS:
 {footer}
             """
         elif template_alias == EmailTemplateAlias.REMINDER:
-            rc = (model.get("requirement_code") or "").strip()
+            rc = (model.get("requirement_code") or model.get("requirement_type") or "").strip()
             req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
             prop_addr = model.get("property_address", "Your property")
             due_date = model.get("due_date", "")
@@ -1261,6 +1296,21 @@ Always review the output and seek professional advice for legal matters.
                 lines.extend(["", "View: " + link])
             if ts:
                 lines.extend(["", str(ts)])
+            return "\n".join(lines) + "\n" + footer
+        elif template_alias == EmailTemplateAlias.CLIENT_OPERATIONAL_NOTICE:
+            subj = (model.get("subject") or "Service notice").strip()
+            plain = (model.get("text_message") or "").strip() or _strip_html_to_text(str(model.get("message") or ""))
+            lines = [
+                subj,
+                "",
+                _format_greeting(model.get("client_name")),
+                "",
+                plain,
+                "",
+                f"Dashboard: {model.get('portal_link', '#')}",
+            ]
+            if model.get("customer_reference"):
+                lines.insert(2, f"Reference: {model['customer_reference']}")
             return "\n".join(lines) + "\n" + footer
         elif template_alias in ONBOARDING_ALIASES:
             c = _get_onboarding_content(template_alias)

@@ -145,16 +145,23 @@ async def get_billing_status(request: Request):
     
     try:
         billing_status = await stripe_service.get_subscription_status(client_id)
-        
-        # Add plan details if has subscription
+        db = database.get_db()
+        prop_count = await db.properties.count_documents({"client_id": client_id})
+        billing_status["properties_used"] = prop_count
+        if billing_status.get("has_subscription") and billing_status.get("properties_limit", 0) == 0:
+            pc = billing_status.get("current_plan_code")
+            if pc:
+                billing_status["properties_limit"] = plan_registry.get_property_limit_by_string(pc)
         if billing_status.get("current_plan_code"):
             plan_code = billing_status["current_plan_code"]
             plan_def = plan_registry.get_plan_by_code_string(plan_code)
             if plan_def:
-                billing_status["plan_name"] = plan_def.get("name")
-                billing_status["plan_display_name"] = plan_def.get("display_name")
+                billing_status["plan_name"] = plan_def.get("name") or billing_status.get("plan_name")
+                billing_status["plan_display_name"] = plan_def.get("display_name") or billing_status.get(
+                    "plan_display_name"
+                )
                 billing_status["max_properties"] = plan_def.get("max_properties")
-        
+
         return billing_status
         
     except Exception as e:

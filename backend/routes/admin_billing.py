@@ -13,6 +13,7 @@ Endpoints:
 - POST /api/admin/billing/clients/{client_id}/message - Send message to client
 - POST /api/admin/billing/jobs/subscription-lifecycle - Run subscription lifecycle batch (same runner as scheduled job)
 - POST /api/admin/billing/jobs/renewal-reminders - Alias of subscription lifecycle batch (backward compatible)
+- POST /api/admin/billing/clients/{client_id}/receipts/subscription/{ref}/regenerate - Rebuild itemised CVP checkout PDF from Stripe (keeps invoice number)
 
 NON-NEGOTIABLE RULES:
 1. Stripe is the billing authority. App is the entitlement authority.
@@ -334,7 +335,7 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
 
         # Same subscription/lifecycle projection as tenant Billing API (Stripe + client_billing; may refresh period from Stripe)
         stripe_svc = StripeService()
-        sub_status = await stripe_svc.get_subscription_status(client_id)
+        sub_status = await stripe_svc.get_subscription_status(client_id, client_facing=False)
         snapshot["subscription_lifecycle"] = sub_status
 
         if sub_status.get("has_subscription"):
@@ -552,6 +553,54 @@ async def download_admin_subscription_receipt(request: Request, client_id: str, 
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/clients/{client_id}/receipts/subscription/{ref:path}/regenerate")
+async def regenerate_admin_subscription_checkout_pdf(request: Request, client_id: str, ref: str):
+    """
+    Rebuild the subscription checkout PDF from Stripe (expanded session + plan-aware lines).
+    Requires a real ``stripe_checkout_invoices`` document (_id = cs_...). Keeps the same invoice number
+    and original ``created_at``; sets ``pdf_regenerated_at`` and replaces GridFS bytes.
+    """
+    admin = await admin_route_guard(request)
+    from services.admin_billing_receipts import get_subscription_receipt_doc_for_client
+    from services.order_receipt_service import regenerate_subscription_checkout_invoice_pdf_for_client
+
+    doc = await get_subscription_receipt_doc_for_client(client_id, ref)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Receipt not found for this client")
+    checkout_session_id = str(doc.get("_id") or "")
+    if not checkout_session_id.startswith("cs_"):
+        raise HTTPException(
+            status_code=400,
+            detail="Regeneration needs a Stripe checkout session id (cs_...). Open the receipt row from "
+            "subscription checkout history, or pass the session id as ref.",
+        )
+    ok, inv_no, err = await regenerate_subscription_checkout_invoice_pdf_for_client(
+        client_id, checkout_session_id
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail=err or "Regeneration failed")
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=admin.get("portal_user_id"),
+        client_id=client_id,
+        resource_type="subscription_receipt",
+        resource_id=str(inv_no or ref),
+        metadata={
+            "action_type": "ADMIN_SUBSCRIPTION_CHECKOUT_RECEIPT_REGENERATED",
+            "channel": "admin_billing",
+            "stripe_checkout_session_id": checkout_session_id,
+            "invoice_number": inv_no,
+            "path": str(request.url.path),
+        },
+    )
+    return {
+        "ok": True,
+        "invoice_number": inv_no,
+        "stripe_checkout_session_id": checkout_session_id,
+    }
 
 
 @router.get("/clients/{client_id}/receipts/order/{order_id}/download")

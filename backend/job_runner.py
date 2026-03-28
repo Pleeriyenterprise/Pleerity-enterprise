@@ -1093,6 +1093,13 @@ async def run_subscription_lifecycle():
     return await run_renewal_reminders()
 
 
+async def run_scheduled_admin_communications():
+    """Deliver admin communications scheduled for now or earlier."""
+    from services import admin_communications_service as acs
+
+    return await acs.process_due_scheduled_communications()
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -1133,4 +1140,5 @@ JOB_RUNNERS = {
     "scheduler_heartbeat": run_scheduler_heartbeat,
     "delivery_reconciliation": run_delivery_reconciliation,
     "contractor_performance_recalc": run_contractor_performance_recalc,
+    "scheduled_admin_communications": run_scheduled_admin_communications,
 }

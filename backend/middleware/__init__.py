@@ -7,6 +7,7 @@ import hashlib
 from auth import decode_access_token
 from models import UserRole, OnboardingStatus, PasswordStatus
 from database import database
+from services import contractor_service as _contractor_service_guard
 from utils.request_ip import get_client_ip as _request_client_ip
 
 logger = logging.getLogger(__name__)
@@ -276,7 +277,11 @@ async def contractor_route_guard(request: Request) -> dict:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account not found")
     if (contractor_doc.get("status") or "").lower() != "active":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is not active")
-    if (contractor_doc.get("portal_access_status") or "").lower() != "enabled":
+    portal_st = (contractor_doc.get("portal_access_status") or "").strip().lower()
+    if portal_st not in (
+        _contractor_service_guard.PORTAL_ACCESS_ENABLED,
+        _contractor_service_guard.PORTAL_ACCESS_INVITE_PENDING,
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor portal access is disabled")
     account_doc = await db.contractor_portal_accounts.find_one(
         {"contractor_id": contractor_id},

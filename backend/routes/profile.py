@@ -4,11 +4,12 @@ Allows clients to view and update their profile and notification preferences.
 from fastapi import APIRouter, HTTPException, Request, status, File, UploadFile
 from fastapi.responses import FileResponse
 from database import database
-from middleware import client_route_guard
+from middleware import client_route_guard, require_auth
+from services import admin_communications_service as acs
 from models import AuditAction, UserRole
 from utils.audit import create_audit_log
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timezone
 from pathlib import Path
 import os
@@ -437,3 +438,90 @@ async def upload_my_avatar(request: Request, file: UploadFile = File(...)):
     )
     logger.info(f"Profile avatar uploaded for client {user['client_id']}")
     return {"message": "Profile picture updated", "has_avatar": True}
+
+
+# --- In-app notifications & system banners (client communications) ---
+
+
+@router.get("/in-app-notifications")
+async def list_my_in_app_notifications(request: Request, limit: int = 50):
+    """List in-app notifications for the authenticated portal user."""
+    user = await client_route_guard(request)
+    from services.order_service import get_all_notifications
+
+    items = await get_all_notifications(user["portal_user_id"], limit=min(limit, 100))
+    return {"items": items}
+
+
+@router.patch("/in-app-notifications/{notification_id}/read")
+async def mark_in_app_notification_read(request: Request, notification_id: str):
+    user = await client_route_guard(request)
+    from services.order_service import mark_notification_read
+
+    ok = await mark_notification_read(notification_id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    return {"ok": True}
+
+
+@router.get("/system-banners/active")
+async def list_active_system_banners(request: Request):
+    """
+    Active operational banners for the current user's client.
+    Uses authentication only (not full client_route_guard) so invited users can see incident banners.
+    """
+    user = await require_auth(request)
+    db = database.get_db()
+    pu = await db.portal_users.find_one(
+        {"portal_user_id": user["portal_user_id"]},
+        {"_id": 0, "client_id": 1},
+    )
+    if not pu or not pu.get("client_id"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No client context")
+    client_id = pu["client_id"]
+    now = datetime.now(timezone.utc)
+    q = {
+        "active": True,
+        "$and": [
+            {"$or": [{"start_at": {"$lte": now}}, {"start_at": None}]},
+            {"$or": [{"end_at": None}, {"end_at": {"$gte": now}}]},
+        ],
+    }
+    banners = await db.system_banners.find(q, {"_id": 0}).sort("start_at", -1).to_list(length=100)
+    dismissed = await db.system_banner_dismissals.find(
+        {"portal_user_id": user["portal_user_id"]},
+        {"_id": 0, "banner_id": 1},
+    ).to_list(length=200)
+    dismissed_set = {d["banner_id"] for d in dismissed if d.get("banner_id")}
+    out: List[dict] = []
+    for b in banners:
+        if not await acs.banner_is_active_now(b, now):
+            continue
+        if not await acs.client_matches_banner_target(client_id, b):
+            continue
+        bid = b.get("banner_id")
+        if b.get("persistent_display"):
+            out.append(b)
+            continue
+        if bid and bid in dismissed_set:
+            continue
+        out.append(b)
+    return {"items": out}
+
+
+@router.post("/system-banners/{banner_id}/dismiss")
+async def dismiss_system_banner(request: Request, banner_id: str):
+    user = await require_auth(request)
+    db = database.get_db()
+    b = await db.system_banners.find_one({"banner_id": banner_id}, {"_id": 0, "persistent_display": 1})
+    if not b:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Banner not found")
+    if b.get("persistent_display"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This banner cannot be dismissed")
+    now = datetime.now(timezone.utc)
+    await db.system_banner_dismissals.update_one(
+        {"portal_user_id": user["portal_user_id"], "banner_id": banner_id},
+        {"$set": {"dismissed_at": now}},
+        upsert=True,
+    )
+    return {"ok": True}

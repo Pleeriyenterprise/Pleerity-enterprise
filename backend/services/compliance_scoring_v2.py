@@ -9,6 +9,13 @@ from services.document_status_service import (
     compute_requirement_status,
     pick_evidence_document,
 )
+from services.requirement_truth import (
+    CONFIDENCE_ESTIMATED,
+    evidence_state_for_documents_list,
+    infer_confidence_state,
+    infer_date_source_for_scoring,
+)
+from presentation.label_service import requirement_label
 
 
 BUCKET_WEIGHTS = {
@@ -17,6 +24,9 @@ BUCKET_WEIGHTS = {
     "operational_responsiveness": 10.0,
     "recency_maintenance_confidence": 10.0,
 }
+
+# Slight discount when legal-core status is driven only by system-estimated dates (no verified evidence).
+ESTIMATED_DATE_LEGAL_CORE_MULTIPLIER = 0.93
 
 
 JURISDICTION_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -180,6 +190,7 @@ def compute_property_score_v2(
         if not applies:
             breakdown.append({
                 "requirement_code": code,
+                "display_label": requirement_label(code, audience="client"),
                 "jurisdiction": jurisdiction,
                 "applies_if": False,
                 "weight": cfg["weight"],
@@ -190,6 +201,9 @@ def compute_property_score_v2(
                 "earned_points": 0.0,
                 "applicable_points": 0.0,
                 "reasons": [],
+                "date_source": None,
+                "evidence_state": None,
+                "confidence_state": None,
             })
             continue
 
@@ -201,10 +215,20 @@ def compute_property_score_v2(
             today,
             expiring_soon_days,
         )
+        docs_for_code = docs_by_code.get(code, [])
+        evidence_state = evidence_state_for_documents_list(docs_for_code)
+        req_row = req_by_code.get(code)
+        date_source = infer_date_source_for_scoring(req_row, evidence_state)
+        confidence_state = infer_confidence_state(date_source, evidence_state)
+        reasons = list(reasons)
         req_points = round(float(cfg["weight"]) * fraction, 2)
+        if confidence_state == CONFIDENCE_ESTIMATED:
+            req_points = round(req_points * ESTIMATED_DATE_LEGAL_CORE_MULTIPLIER, 2)
+            reasons.append("SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE")
         earned_points += req_points
         breakdown.append({
             "requirement_code": code,
+            "display_label": requirement_label(code, audience="client"),
             "jurisdiction": jurisdiction,
             "applies_if": True,
             "weight": float(cfg["weight"]),
@@ -215,15 +239,20 @@ def compute_property_score_v2(
             "earned_points": req_points,
             "applicable_points": float(cfg["weight"]),
             "reasons": reasons,
+            "date_source": date_source,
+            "evidence_state": evidence_state,
+            "confidence_state": confidence_state,
         })
 
     legal_core_applicable = sum(item["applicable_points"] for item in breakdown)
     legal_core_earned = sum(item["earned_points"] for item in breakdown)
     legal_core_pct = (legal_core_earned / legal_core_applicable * 100.0) if legal_core_applicable > 0 else 100.0
 
-    # Documentation completeness: proportion of applicable obligations with verified evidence.
+    # Documentation completeness: proportion of applicable obligations with admin-verified evidence only.
     applicable_count = sum(1 for item in breakdown if item["applies_if"])
-    verified_count = sum(1 for item in breakdown if item["applies_if"] and item["status"] in ("VALID", "EXPIRING_SOON"))
+    verified_count = sum(
+        1 for item in breakdown if item["applies_if"] and item.get("evidence_state") == "VERIFIED"
+    )
     docs_pct = (verified_count / applicable_count * 100.0) if applicable_count else 100.0
     docs_points = round(BUCKET_WEIGHTS["documentation_completeness"] * (docs_pct / 100.0), 2)
 
@@ -264,15 +293,17 @@ def compute_property_score_v2(
     ]
     top_next_actions = []
     for item in top_deficits[:5]:
+        lbl = requirement_label(item["requirement_code"], audience="client")
         if item["status"] in ("MISSING", "MISSING_EVIDENCE", "EXPIRED"):
-            action = f"Upload and verify {item['requirement_code']} evidence"
+            action = f"Upload and verify evidence for {lbl}"
         elif item["status"] == "EXPIRING_SOON":
-            action = f"Renew {item['requirement_code']} before expiry"
+            action = f"Renew {lbl} before expiry"
         else:
-            action = f"Review {item['requirement_code']} compliance evidence"
+            action = f"Review compliance evidence for {lbl}"
         top_next_actions.append(
             {
                 "requirement_code": item["requirement_code"],
+                "display_label": lbl,
                 "action": action,
                 "impact_points": item["missing_points"],
                 "priority": "high" if item["risk_level_if_failed"] == "HIGH" else "medium",
@@ -296,4 +327,8 @@ def compute_property_score_v2(
         "top_deficits": top_deficits,
         "top_next_actions": top_next_actions,
         "weights_version": "v2_jurisdictional",
+        "scoring_policy": {
+            "estimated_date_legal_core_multiplier": ESTIMATED_DATE_LEGAL_CORE_MULTIPLIER,
+            "documentation_bucket_counts_verified_evidence_only": True,
+        },
     }

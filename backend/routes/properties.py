@@ -436,6 +436,8 @@ async def patch_requirement(
             update["confirmed_expiry_date"] = parsed.isoformat()
             update["expiry_source"] = "CONFIRMED"
             update["due_date"] = parsed.isoformat()
+            update["date_source"] = "USER_PROVIDED"
+            update["confidence_state"] = "PARTIALLY_CONFIRMED"
         except (ValueError, TypeError):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

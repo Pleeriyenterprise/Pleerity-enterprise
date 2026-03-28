@@ -6,7 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, documents, assistant, profile, properties, rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications
 from utils.request_ip import get_client_ip as _client_ip
 
 # ClearForm - Separate Product Routes
@@ -487,6 +487,20 @@ async def lifespan(app: FastAPI):
             args=["scheduled_reports"],
             kwargs={"run_type": "schedule"},
             misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+
+        # Admin scheduled communications (UTC), every 2 minutes
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/2", timezone=SCHEDULER_TIMEZONE),
+            id="scheduled_admin_communications",
+            name="Scheduled admin communications",
+            replace_existing=True,
+            args=["scheduled_admin_communications"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=120,
             coalesce=True,
             max_instances=1,
         )
@@ -1089,6 +1103,7 @@ app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, r
 app.include_router(observability.router)  # Admin: job-runs, incidents, score-events (observability)
 app.include_router(security_monitoring.router)  # Admin: security monitoring and incident detection
 app.include_router(control_centre.router)  # Admin: unified Control Centre snapshot
+app.include_router(admin_communications.router)  # Admin: communications, templates, banners
 app.include_router(ops_compliance.router)  # Admin: Operations & Compliance (feature flags, plan usage)
 app.include_router(contractors.router)  # Admin: Contractors (Ops Contractor Network)
 app.include_router(maintenance.router)  # Admin: Work orders (Ops Maintenance)

@@ -8,7 +8,7 @@ const TAB_SCORE_HISTORY = 'score-history';
 const TAB_ACTIVITY_LOG = 'activity-log';
 
 export default function ClientAuditLogPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(() =>
     tabParam === 'score-history' ? TAB_SCORE_HISTORY : TAB_ACTIVITY_LOG
@@ -23,6 +23,11 @@ export default function ClientAuditLogPage() {
   const [ledgerFilters, setLedgerFilters] = useState({ property_id: '', trigger_type: '', from_date: '', to_date: '' });
   const [expandedRow, setExpandedRow] = useState(null);
   const [exportingCsv, setExportingCsv] = useState(false);
+
+  useEffect(() => {
+    if (tabParam === 'score-history') setActiveTab(TAB_SCORE_HISTORY);
+    else setActiveTab(TAB_ACTIVITY_LOG);
+  }, [tabParam]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +141,14 @@ export default function ClientAuditLogPage() {
         <nav className="flex gap-4">
           <button
             type="button"
-            onClick={() => setActiveTab(TAB_SCORE_HISTORY)}
+            onClick={() => {
+              setActiveTab(TAB_SCORE_HISTORY);
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set('tab', 'score-history');
+                return next;
+              }, { replace: true });
+            }}
             className={`py-3 px-1 border-b-2 font-medium text-sm ${
               activeTab === TAB_SCORE_HISTORY
                 ? 'border-electric-teal text-electric-teal'
@@ -147,7 +159,14 @@ export default function ClientAuditLogPage() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab(TAB_ACTIVITY_LOG)}
+            onClick={() => {
+              setActiveTab(TAB_ACTIVITY_LOG);
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.delete('tab');
+                return next;
+              }, { replace: true });
+            }}
             className={`py-3 px-1 border-b-2 font-medium text-sm ${
               activeTab === TAB_ACTIVITY_LOG
                 ? 'border-electric-teal text-electric-teal'

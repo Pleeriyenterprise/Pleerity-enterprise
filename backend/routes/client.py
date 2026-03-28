@@ -1282,8 +1282,11 @@ async def get_property_requirements(request: Request, property_id: str):
             {"property_id": property_id, "client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(100)
-        
-        return {"requirements": requirements}
+
+        from services.requirement_truth import enrich_requirements_for_client
+
+        enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)
+        return {"requirements": enriched, "presentation": presentation}
     
     except HTTPException:
         raise
@@ -1435,8 +1438,11 @@ async def get_all_requirements(request: Request):
             {"client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(1000)
-        
-        return {"requirements": requirements}
+
+        from services.requirement_truth import enrich_requirements_for_client
+
+        enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)
+        return {"requirements": enriched, "presentation": presentation}
     
     except Exception as e:
         logger.error(f"Requirements error: {e}")

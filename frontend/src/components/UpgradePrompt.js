@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Lock, ArrowUpRight, Sparkles, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
+import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 
 /**
  * Upgrade Prompt Component - Displayed when user attempts to access a gated feature.
@@ -43,7 +44,7 @@ const UpgradePrompt = ({
     if (onUpgrade) {
       onUpgrade();
     }
-    navigate(`/app/billing?upgrade_to=${requiredPlan}`);
+    navigate(buildSafeQueryPath('/app/billing', { upgrade_to: requiredPlan }));
   };
 
   // Inline variant - minimal, fits within existing UI
@@ -266,7 +267,7 @@ export const PropertyLimitPrompt = ({
     if (switchPlanOnly) {
       return; // Intake flow: only change plan selection; no navigation, no entitlement
     }
-    navigate(`/app/billing?upgrade_to=${upgradePlan}`);
+    navigate(buildSafeQueryPath('/app/billing', { upgrade_to: upgradePlan }));
   };
 
   return (

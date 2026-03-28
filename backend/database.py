@@ -142,6 +142,7 @@ class Database:
             await self.db.onboarding_email_queue.create_index([("status", 1), ("send_at", 1)])
             await self.db.onboarding_email_queue.create_index([("client_id", 1), ("event_id", 1)], unique=True)
             await self._seed_notification_templates()
+            await self._seed_communication_collections()
             # Compliance score history indexes - for trend queries
             await self.db.compliance_score_history.create_index([("client_id", 1), ("date_key", -1)])
             try:
@@ -778,6 +779,146 @@ class Database:
                 upsert=True,
             )
         logger.info("Notification templates seeded/updated")
+
+    async def _seed_communication_collections(self):
+        """Indexes + notification rows + default admin communication templates (idempotent)."""
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        try:
+            await self.db.communication_messages.create_index("communication_id", unique=True)
+            await self.db.communication_messages.create_index([("created_at", -1)])
+            await self.db.communication_messages.create_index([("message_type", 1), ("created_at", -1)])
+            await self.db.communication_messages.create_index([("sent_by_portal_user_id", 1), ("created_at", -1)])
+            await self.db.communication_messages.create_index([("status", 1), ("created_at", -1)])
+            await self.db.communication_messages.create_index([("status", 1), ("scheduled_at", 1)])
+            await self.db.communication_deliveries.create_index("delivery_id", unique=True)
+            await self.db.communication_deliveries.create_index([("communication_id", 1), ("client_id", 1)])
+            await self.db.communication_templates.create_index("template_id", unique=True)
+            await self.db.system_banners.create_index("banner_id", unique=True)
+            await self.db.system_banners.create_index([("active", 1), ("start_at", -1)])
+            await self.db.system_banner_dismissals.create_index(
+                [("portal_user_id", 1), ("banner_id", 1)], unique=True
+            )
+        except Exception as e:
+            logger.warning("communication collections index create: %s", e)
+
+        admin_comm_templates = [
+            {
+                "template_key": "ADMIN_CLIENT_COMMUNICATION_CRITICAL",
+                "channel": "EMAIL",
+                "email_template_alias": "client-operational-notice",
+                "sms_body": None,
+                "requires_provisioned": False,
+                "requires_active_subscription": False,
+                "requires_entitlement_enabled": False,
+                "plan_required_feature_key": None,
+                "email_category": "system_critical",
+                "is_active": True,
+                "updated_at": now,
+            },
+            {
+                "template_key": "ADMIN_CLIENT_COMMUNICATION_ANNOUNCEMENT",
+                "channel": "EMAIL",
+                "email_template_alias": "client-operational-notice",
+                "sms_body": None,
+                "requires_provisioned": False,
+                "requires_active_subscription": False,
+                "requires_entitlement_enabled": False,
+                "plan_required_feature_key": None,
+                "email_category": "system_announcements",
+                "is_active": True,
+                "updated_at": now,
+            },
+        ]
+        for t in admin_comm_templates:
+            await self.db.notification_templates.update_one(
+                {"template_key": t["template_key"]},
+                {"$set": t},
+                upsert=True,
+            )
+
+        support = os.getenv("EMAIL_REPLY_TO") or os.getenv("SUPPORT_EMAIL") or "support@pleerityenterprise.co.uk"
+        defaults = [
+            {
+                "template_id": "TPL-SERVICE-DISRUPTION",
+                "name": "Service disruption notice",
+                "description": "Client-facing notice when impact is confirmed.",
+                "default_message_type": "INCIDENT",
+                "subject_template": "Service disruption — {{incident_title}}",
+                "body_template": "<p>Hello,</p><p>We are experiencing a service disruption affecting Compliance Vault Pro. {{incident_title}}</p><p>Our team is working to restore normal service. We will update you as we learn more.</p><p>If you need urgent help, contact us at {{support_email}}.</p>",
+                "in_app_title_template": "Service disruption",
+                "in_app_body_template": "We are investigating a service issue. Details have been emailed to you.",
+                "banner_text_template": "Service disruption — we are working on a fix.",
+                "is_system_seed": True,
+                "updated_at": now,
+            },
+            {
+                "template_id": "TPL-INVESTIGATING",
+                "name": "We are investigating an issue",
+                "description": "Early incident comms before root cause is known.",
+                "default_message_type": "INCIDENT",
+                "subject_template": "We are investigating an issue",
+                "body_template": "<p>Hello,</p><p>We have detected an issue that may affect your access to Compliance Vault Pro. Our engineering team is investigating.</p><p>You do not need to take any action right now. We will email you again when we have more information.</p><p>Questions: {{support_email}}</p>",
+                "in_app_title_template": "Issue under investigation",
+                "in_app_body_template": "We are investigating a potential service issue. Check your email for details.",
+                "banner_text_template": "We are investigating a service issue — updates to follow.",
+                "is_system_seed": True,
+                "updated_at": now,
+            },
+            {
+                "template_id": "TPL-ISSUE-RESOLVED",
+                "name": "Issue resolved",
+                "description": "Resolution notice after an incident.",
+                "default_message_type": "SERVICE_UPDATE",
+                "subject_template": "Resolved: {{incident_title}}",
+                "body_template": "<p>Hello,</p><p>The issue we reported earlier (<strong>{{incident_title}}</strong>) is now resolved. Service should be operating normally.</p><p>If you still see problems, please reply to this email or contact {{support_email}}.</p>",
+                "in_app_title_template": "Issue resolved",
+                "in_app_body_template": "The reported service issue is resolved.",
+                "banner_text_template": "",
+                "is_system_seed": True,
+                "updated_at": now,
+            },
+            {
+                "template_id": "TPL-PLANNED-MAINTENANCE",
+                "name": "Planned maintenance",
+                "description": "Scheduled maintenance window.",
+                "default_message_type": "MAINTENANCE_NOTICE",
+                "subject_template": "Planned maintenance — {{incident_title}}",
+                "body_template": "<p>Hello,</p><p>We will perform planned maintenance: <strong>{{incident_title}}</strong>.</p><p>During the window you may experience brief interruptions. We aim to complete work as quickly as possible.</p><p>Contact: {{support_email}}</p>",
+                "in_app_title_template": "Planned maintenance",
+                "in_app_body_template": "Scheduled maintenance may briefly affect the portal. See email for times and scope.",
+                "banner_text_template": "Planned maintenance in progress — short interruptions possible.",
+                "is_system_seed": True,
+                "updated_at": now,
+            },
+            {
+                "template_id": "TPL-ACCOUNT-SUPPORT",
+                "name": "Account-specific support message",
+                "description": "Direct message regarding a single client account.",
+                "default_message_type": "DIRECT_SUPPORT_MESSAGE",
+                "subject_template": "Regarding your account ({{customer_reference}})",
+                "body_template": "<p>Hello {{client_name}},</p><p>We are writing regarding your Compliance Vault Pro account.</p><p>[Describe the situation and any actions required.]</p><p>If anything is unclear, reply to this email or contact {{support_email}}.</p>",
+                "in_app_title_template": "Account update",
+                "in_app_body_template": "We sent you an important account message by email.",
+                "banner_text_template": "",
+                "is_system_seed": True,
+                "updated_at": now,
+            },
+        ]
+        for doc in defaults:
+            doc.setdefault(
+                "variables_hint",
+                ["client_name", "plan_name", "incident_title", "support_email", "portal_link", "customer_reference"],
+            )
+            doc["support_email_placeholder"] = support
+            insert_doc = {**doc, "created_at": now, "updated_at": now}
+            await self.db.communication_templates.update_one(
+                {"template_id": doc["template_id"]},
+                {"$setOnInsert": insert_doc},
+                upsert=True,
+            )
+        logger.info("Communication collections / templates seeded")
 
 # Global database instance
 database = Database()

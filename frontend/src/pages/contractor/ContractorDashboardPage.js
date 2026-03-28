@@ -10,8 +10,15 @@ import { getContractorToken } from './ContractorLoginPage';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Wrench, LogOut, Loader2, X, FileText, CheckCircle, XCircle, Upload } from 'lucide-react';
+import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Wrench, LogOut, Loader2, X, FileText, CheckCircle, XCircle, Upload, AlertCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
+
+function contractorDebugLog(event, payload) {
+  if (typeof window === 'undefined') return;
+  if (process.env.NODE_ENV === 'production' && !window.__CVP_CONTRACTOR_DEBUG && !window.__CVP_DEBUG) return;
+  console.info('[CVP][ContractorPortal]', event, payload);
+}
 
 function formatDate(s) {
   if (!s) return '—';
@@ -33,9 +40,13 @@ export default function ContractorDashboardPage() {
   const navigate = useNavigate();
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [workOrders, setWorkOrders] = useState([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [bootstrapLoading, setBootstrapLoading] = useState(true);
+  const [workOrdersError, setWorkOrdersError] = useState(null);
+  const [invoicesError, setInvoicesError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -44,7 +55,7 @@ export default function ContractorDashboardPage() {
   const [invoiceForm, setInvoiceForm] = useState({ reference: '', description: '', submitted_amount: '' });
   const [invoiceSaving, setInvoiceSaving] = useState(false);
   const [invoices, setInvoices] = useState([]);
-  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesRefreshing, setInvoicesRefreshing] = useState(false);
   const [notesForm, setNotesForm] = useState({ contractor_notes: '', completion_notes: '' });
   const [evidenceUploading, setEvidenceUploading] = useState(false);
   const [evidenceFileLoadingKey, setEvidenceFileLoadingKey] = useState(null);
@@ -52,10 +63,12 @@ export default function ContractorDashboardPage() {
   useEffect(() => {
     const t = getContractorToken();
     if (!t) {
+      contractorDebugLog('bootstrap_no_token', { route: window.location?.pathname });
       navigate('/contractor/login', { replace: true });
       return;
     }
     setToken(t);
+    contractorDebugLog('bootstrap_token_present', { route: window.location?.pathname });
     try {
       const u = localStorage.getItem('contractor_user');
       if (u) setUser(JSON.parse(u));
@@ -65,36 +78,84 @@ export default function ContractorDashboardPage() {
   const api = token ? createContractorAPI(token) : null;
 
   const loadWorkOrders = useCallback(() => {
-    if (!api) return;
-    setLoading(true);
-    api.getWorkOrders({ limit: 100 })
+    if (!api) return Promise.resolve();
+    setWorkOrdersError(null);
+    return api
+      .getWorkOrders({ limit: 100 })
       .then((res) => {
         setWorkOrders(res.data?.work_orders || []);
         setTotal(res.data?.total ?? 0);
       })
-      .catch(() => {
-        toast.error('Failed to load work orders');
+      .catch((err) => {
+        const msg =
+          err?.response?.data?.detail ||
+          (typeof err?.response?.data?.detail === 'object' ? err.response.data.detail?.message : null) ||
+          err?.message ||
+          'Could not load work orders.';
         setWorkOrders([]);
-      })
-      .finally(() => setLoading(false));
+        setTotal(0);
+        setWorkOrdersError(typeof msg === 'string' ? msg : 'Could not load work orders.');
+        contractorDebugLog('work_orders_failed', { status: err?.response?.status, msg });
+      });
   }, [api]);
-
-  useEffect(() => {
-    if (api) loadWorkOrders();
-  }, [api, loadWorkOrders]);
 
   const loadInvoices = useCallback(() => {
-    if (!api) return;
-    setInvoicesLoading(true);
-    api.getInvoices({ limit: 50 })
+    if (!api) return Promise.resolve();
+    setInvoicesError(null);
+    return api
+      .getInvoices({ limit: 50 })
       .then((res) => setInvoices(res.data?.invoices || []))
-      .catch(() => setInvoices([]))
-      .finally(() => setInvoicesLoading(false));
+      .catch((err) => {
+        setInvoices([]);
+        const msg =
+          err?.response?.data?.detail ||
+          (typeof err?.response?.data?.detail === 'object' ? err.response.data.detail?.message : null) ||
+          err?.message ||
+          'Could not load invoices.';
+        setInvoicesError(typeof msg === 'string' ? msg : 'Could not load invoices.');
+        contractorDebugLog('invoices_failed', { status: err?.response?.status, msg });
+      });
+  }, [api]);
+
+  const loadProfile = useCallback(() => {
+    if (!api) return Promise.resolve();
+    setProfileError(null);
+    return api
+      .getProfile()
+      .then((res) => setProfile(res.data))
+      .catch((err) => {
+        setProfile(null);
+        const msg =
+          err?.response?.data?.detail ||
+          (typeof err?.response?.data?.detail === 'object' ? err.response.data.detail?.message : null) ||
+          err?.message ||
+          'Could not load profile.';
+        setProfileError(typeof msg === 'string' ? msg : 'Could not load profile.');
+        contractorDebugLog('profile_failed', { status: err?.response?.status, msg });
+      });
   }, [api]);
 
   useEffect(() => {
-    if (api) loadInvoices();
-  }, [api, loadInvoices]);
+    if (!api) {
+      setBootstrapLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setBootstrapLoading(true);
+    setWorkOrdersError(null);
+    setInvoicesError(null);
+    setProfileError(null);
+    contractorDebugLog('bootstrap_api_calls_start', {});
+    Promise.all([loadWorkOrders(), loadInvoices(), loadProfile()]).finally(() => {
+      if (!cancelled) {
+        setBootstrapLoading(false);
+        contractorDebugLog('bootstrap_api_calls_done', {});
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, loadWorkOrders, loadInvoices, loadProfile]);
 
   useEffect(() => {
     if (!api || !detailId) return;
@@ -224,7 +285,8 @@ export default function ContractorDashboardPage() {
         toast.success('Invoice submitted. It will appear in the client’s Approvals.');
         setInvoiceModal(null);
         setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
-        loadInvoices();
+        setInvoicesRefreshing(true);
+        loadInvoices().finally(() => setInvoicesRefreshing(false));
       })
       .catch((err) => toast.error(err.response?.data?.detail || 'Failed'))
       .finally(() => setInvoiceSaving(false));
@@ -238,6 +300,9 @@ export default function ContractorDashboardPage() {
         <div className="flex items-center gap-2">
           <Wrench className="w-6 h-6 text-electric-teal" />
           <span className="font-semibold text-midnight-blue">Contractor Portal</span>
+          {(profile?.name || profile?.company_name) && (
+            <span className="text-sm text-gray-600">{profile.name || profile.company_name}</span>
+          )}
           {user?.email && <span className="text-sm text-gray-500">({user.email})</span>}
         </div>
         <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -246,64 +311,118 @@ export default function ContractorDashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto p-4">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">My work orders</h1>
-        {loading ? (
-          <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-electric-teal" /></div>
-        ) : workOrders.length === 0 ? (
-          <Card><CardContent className="py-8 text-center text-gray-500">No work orders assigned to you.</CardContent></Card>
-        ) : (
-          <div className="space-y-2">
-            {workOrders.map((wo) => (
-              <Card key={wo.work_order_id} className="cursor-pointer hover:shadow-md" onClick={() => setDetailId(wo.work_order_id)}>
-                <CardContent className="py-3 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-gray-900 truncate max-w-md">{wo.description || wo.work_order_id}</p>
-                    <p className="text-sm text-gray-500">{wo.property_address || wo.property_id} · {wo.status}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">{formatDate(wo.sla_complete_by)}</span>
-                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setDetailId(wo.work_order_id); }}>View</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        {profileError && (
+          <Alert variant="destructive" className="mb-4" data-testid="contractor-profile-error">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>Profile: {profileError}</AlertDescription>
+          </Alert>
         )}
 
-        {/* My invoices */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">My invoices</h2>
-          {invoicesLoading ? (
-            <div className="flex gap-2 text-gray-500 py-4"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
-          ) : invoices.length === 0 ? (
-            <Card><CardContent className="py-6 text-center text-gray-500">No invoices submitted yet.</CardContent></Card>
-          ) : (
-            <Card>
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left p-3 font-medium">Reference</th>
-                      <th className="text-right p-3 font-medium">Amount</th>
-                      <th className="p-3 font-medium">Status</th>
-                      <th className="p-3 font-medium">Submitted</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoices.map((inv) => (
-                      <tr key={inv.invoice_id} className="border-b last:border-0">
-                        <td className="p-3">{inv.reference || inv.invoice_id}</td>
-                        <td className="p-3 text-right">{inv.submitted_amount != null ? `£${Number(inv.submitted_amount).toFixed(2)}` : '—'}</td>
-                        <td className="p-3"><span className={`px-1.5 py-0.5 rounded ${inv.status === 'approved' || inv.status === 'paid' ? 'bg-green-100 text-green-800' : inv.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{inv.status || '—'}</span></td>
-                        <td className="p-3">{formatDate(inv.submitted_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        {bootstrapLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-600">
+            <Loader2 className="w-10 h-10 animate-spin text-electric-teal" />
+            <p className="text-sm">Loading your portal…</p>
+          </div>
+        ) : (
+          <>
+            {!workOrdersError && !invoicesError && !profileError && workOrders.length === 0 && invoices.length === 0 && (
+              <Alert className="mb-6 border-electric-teal/30 bg-teal-50/80">
+                <Info className="h-4 w-4 text-electric-teal" />
+                <AlertDescription>
+                  <span className="font-medium text-midnight-blue">Your account is active.</span>
+                  <span className="block mt-1 text-gray-700">
+                    When a client assigns work to you, it will appear below. You can also open secure job links from assignment emails without signing in.
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <h1 className="text-xl font-bold text-gray-900 mb-4">My work orders</h1>
+            {workOrdersError ? (
+              <Alert variant="destructive" className="mb-4" data-testid="contractor-work-orders-error">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <span className="font-medium">Work orders</span>
+                  <span className="block mt-1">{workOrdersError}</span>
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {workOrders.length === 0 && !workOrdersError ? (
+              <Card>
+                <CardContent className="py-8 text-center text-gray-600">
+                  <p className="font-medium text-midnight-blue">No work orders assigned yet</p>
+                  <p className="text-sm mt-2 text-gray-500">Check your email for job links, or wait for your client to assign you.</p>
+                </CardContent>
+              </Card>
+            ) : workOrders.length > 0 ? (
+              <div className="space-y-2">
+                {workOrders.map((wo) => (
+                  <Card key={wo.work_order_id} className="cursor-pointer hover:shadow-md" onClick={() => setDetailId(wo.work_order_id)}>
+                    <CardContent className="py-3 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-gray-900 truncate max-w-md">{wo.description || wo.work_order_id}</p>
+                        <p className="text-sm text-gray-500">{wo.property_address || wo.property_id} · {wo.status}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">{formatDate(wo.sla_complete_by)}</span>
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setDetailId(wo.work_order_id); }}>View</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : null}
+
+            {/* My invoices */}
+            <div className="mt-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">My invoices</h2>
+              {invoicesError ? (
+                <Alert variant="destructive" className="mb-4" data-testid="contractor-invoices-error">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <span className="font-medium">Invoices</span>
+                    <span className="block mt-1">{invoicesError}</span>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {invoicesRefreshing ? (
+                <div className="flex gap-2 text-gray-500 py-4"><Loader2 className="w-5 h-5 animate-spin" /> Refreshing invoices…</div>
+              ) : invoices.length === 0 && !invoicesError ? (
+                <Card>
+                  <CardContent className="py-6 text-center text-gray-600">
+                    <p className="font-medium text-midnight-blue">No invoices submitted yet</p>
+                    <p className="text-sm mt-2 text-gray-500">After you complete a job, you can submit an invoice from the work order details.</p>
+                  </CardContent>
+                </Card>
+              ) : invoices.length > 0 ? (
+                <Card>
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-3 font-medium">Reference</th>
+                          <th className="text-right p-3 font-medium">Amount</th>
+                          <th className="p-3 font-medium">Status</th>
+                          <th className="p-3 font-medium">Submitted</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoices.map((inv) => (
+                          <tr key={inv.invoice_id} className="border-b last:border-0">
+                            <td className="p-3">{inv.reference || inv.invoice_id}</td>
+                            <td className="p-3 text-right">{inv.submitted_amount != null ? `£${Number(inv.submitted_amount).toFixed(2)}` : '—'}</td>
+                            <td className="p-3"><span className={`px-1.5 py-0.5 rounded ${inv.status === 'approved' || inv.status === 'paid' ? 'bg-green-100 text-green-800' : inv.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{inv.status || '—'}</span></td>
+                            <td className="p-3">{formatDate(inv.submitted_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
+          </>
+        )}
 
         {/* Detail drawer */}
         {detailId && (

@@ -218,6 +218,7 @@
     "COMPLIANT": { "client_label": "Compliant", "admin_label": "Compliant" },
     "VALID": { "client_label": "Valid", "admin_label": "Valid" },
     "NOT_APPLICABLE": { "client_label": "Not applicable", "admin_label": "Not applicable" },
+    "NOT_REQUIRED": { "client_label": "Not applicable", "admin_label": "Not required" },
     "WAIVED": { "client_label": "Waived", "admin_label": "Waived" }
   },
   "suggested_action_codes": {

@@ -16,6 +16,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { resolveDocumentsPath } from '../utils/clientPortalNavigation';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import {
   Accordion,
@@ -47,6 +48,7 @@ const RequirementsPage = () => {
   const [editSaving, setEditSaving] = useState(false);
   const [editForm, setEditForm] = useState({ confirmed_expiry_date: '', applicability: '', not_required_reason: '' });
   const [documentCountByRequirementId, setDocumentCountByRequirementId] = useState({});
+  const [requirementsPresentation, setRequirementsPresentation] = useState(null);
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -67,6 +69,7 @@ const RequirementsPage = () => {
       setClientData(dashboardRes);
       setProperties(dashboardRes?.properties || []);
       setRequirements(requirementsRes?.requirements || []);
+      setRequirementsPresentation(requirementsRes?.presentation || null);
       const docs = documentsRes?.documents || [];
       const countBy = {};
       docs.forEach((d) => {
@@ -207,8 +210,13 @@ const RequirementsPage = () => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-midnight-blue">{requirementLabel(req.requirement_type || req.requirement_code) || 'Requirement'}</h3>
+                <h3 className="font-semibold text-midnight-blue">{req.display_label || requirementLabel(req.requirement_type || req.requirement_code) || 'Requirement'}</h3>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
+                {req.evidence_badge_label && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200" data-testid={`evidence-badge-${req.requirement_id}`}>
+                    Evidence: {req.evidence_badge_label}
+                  </span>
+                )}
                 {docCount > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200" data-testid={`doc-count-${req.requirement_id}`}>
                     <FileText className="w-3.5 h-3.5" />
@@ -217,9 +225,14 @@ const RequirementsPage = () => {
                 )}
               </div>
               <p className="text-sm text-gray-600 mt-1 line-clamp-2">{req.description || 'No description available'}</p>
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{property.nickname || property.address_line_1 || 'Unknown Property'}</span>
-                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />Due: {formatDate(req.due_date)}</span>
+              <div className="flex flex-col gap-1 mt-2 text-sm text-gray-500">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{property.nickname || property.address_line_1 || 'Unknown Property'}</span>
+                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{req.date_label || `Due: ${formatDate(req.due_date)}`}</span>
+                </div>
+                {req.date_explanation_helper && (
+                  <p className="text-xs text-gray-500 max-w-2xl">{req.date_explanation_helper}</p>
+                )}
               </div>
             </div>
           </div>
@@ -233,7 +246,7 @@ const RequirementsPage = () => {
             <Button variant="ghost" size="sm" onClick={() => openEditModal(req)} className="text-gray-600 hover:text-midnight-blue" data-testid={`edit-requirement-${req.requirement_id}`}>
               <Pencil className="w-4 h-4 mr-1" /> Edit
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate(`/documents?property_id=${req.property_id}&requirement_id=${req.requirement_id}`)} className="text-electric-teal hover:text-teal-700" data-testid={`view-documents-${req.requirement_id}`}>
+            <Button variant="ghost" size="sm" onClick={() => navigate(resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id }))} className="text-electric-teal hover:text-teal-700" data-testid={`view-documents-${req.requirement_id}`}>
               View Documents <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
@@ -302,6 +315,15 @@ const RequirementsPage = () => {
         </div>
 
         {/* UNKNOWN applicability banner */}
+        {requirementsPresentation?.show_compliance_estimates_notice && (
+          <Alert className="mb-6 border-sky-200 bg-sky-50" data-testid="compliance-estimates-notice">
+            <AlertCircle className="h-4 w-4 text-sky-700" />
+            <AlertDescription className="text-sky-900">
+              {requirementsPresentation.compliance_estimates_notice_text}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {hasUnknownApplicability && (
           <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="unknown-applicability-banner">
             <AlertCircle className="h-4 w-4 text-amber-600" />

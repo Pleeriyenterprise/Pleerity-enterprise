@@ -11,6 +11,7 @@ import { HelpCircle, Mail, Search, ArrowLeft, ExternalLink, MessageCircle, Thumb
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
+import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 
 export default function HelpPage() {
   const navigate = useNavigate();
@@ -84,7 +85,7 @@ export default function HelpPage() {
   }, [slugFromUrl, fetchArticle, fetchArticles]);
 
   const openArticle = (a) => {
-    navigate(`/help?article=${encodeURIComponent(a.slug)}`);
+    navigate(buildSafeQueryPath('/help', { article: a?.slug }));
   };
 
   const backToList = () => {
@@ -216,7 +217,7 @@ export default function HelpPage() {
                           <li key={s.articleId}>
                             <button
                               type="button"
-                              onClick={() => navigate(`/help?article=${encodeURIComponent(s.slug)}`)}
+                              onClick={() => navigate(buildSafeQueryPath('/help', { article: s.slug }))}
                               className="text-sm text-electric-teal hover:underline"
                             >
                               {s.title}

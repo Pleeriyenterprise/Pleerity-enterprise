@@ -40,6 +40,7 @@ import {
   Clock,
   AlertTriangle,
   Gauge,
+  Megaphone,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { BRAND_LOGO_URL } from '../../config/branding';
@@ -99,6 +100,7 @@ const navSections = [
       { href: '/admin/ops/contractors', label: 'Contractors', icon: Users },
       { href: '/admin/ops/risk', label: 'Risk & Insights', icon: BarChart3 },
       { href: '/admin/ops/feature-controls', label: 'Feature Controls', icon: Zap },
+      { href: '/admin/communications', label: 'Communications', icon: Megaphone },
     ],
   },
   {

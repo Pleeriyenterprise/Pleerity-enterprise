@@ -225,17 +225,13 @@ function formatRenewalDisplay(isoOrDate) {
   });
 }
 
-function humanBillingStatusLabel(bs) {
-  if (!bs?.has_subscription) return 'No active subscription';
-  if (bs.cancel_at_period_end) return 'Cancelling at period end';
-  const lc = (bs.billing_lifecycle_state || 'active').toLowerCase();
-  if (lc === 'grace_period') return 'Payment retry (grace period)';
-  if (lc === 'limited') return 'Restricted — payment overdue';
-  if (lc === 'past_due') return 'Payment past due';
-  if (lc === 'expired') return 'Subscription expired';
-  if (lc === 'cancelled') return 'Subscription cancelled';
-  if (lc === 'renewing') return 'Active — renewal soon';
-  return 'Active';
+/** Portal API returns billing_status_display / plan_status_display (no internal lifecycle strings). */
+function billingStatusLabel(bs) {
+  return bs?.billing_status_display || (bs?.has_subscription ? '—' : 'No active subscription');
+}
+
+function planStatusLabel(bs) {
+  return bs?.plan_status_display || (bs?.has_subscription ? '—' : 'No active subscription');
 }
 
 const BillingPage = () => {
@@ -284,10 +280,25 @@ const BillingPage = () => {
     });
   }, [planCatalog]);
 
+  const fetchBillingStatus = async () => {
+    try {
+      const response = await api.get('/billing/status');
+      setBillingStatus(response.data);
+    } catch (error) {
+      console.error('Failed to fetch billing status:', error);
+    }
+  };
+
   const handleRefreshUsage = useCallback(async () => {
     setUsageRefreshing(true);
     try {
       const ok = await refetchEntitlements();
+      try {
+        const response = await api.get('/billing/status');
+        setBillingStatus(response.data);
+      } catch (e) {
+        console.error('Failed to refresh billing status:', e);
+      }
       if (ok) {
         toast.success('Usage data updated');
       } else {
@@ -419,15 +430,6 @@ const BillingPage = () => {
       toast.error('Failed to load plan information');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchBillingStatus = async () => {
-    try {
-      const response = await api.get('/billing/status');
-      setBillingStatus(response.data);
-    } catch (error) {
-      console.error('Failed to fetch billing status:', error);
     }
   };
 
@@ -634,53 +636,56 @@ const BillingPage = () => {
 
         {billingMainTab === 'account' ? (
           <div className="space-y-6" data-testid="billing-account-tab">
-            {billingStatus?.has_subscription && billingStatus?.billing_lifecycle_state && (
+            {billingStatus?.has_subscription && billingStatus?.billing_status_display === 'Payment issue' && (
               <>
-                {billingStatus.billing_lifecycle_state === 'grace_period' && (
+                {billingStatus.grace_period_ends_at ? (
                   <Alert className="border-amber-300 bg-amber-50" data-testid="billing-grace-alert">
                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                     <AlertDescription className="text-amber-900 text-sm">
                       <strong>Payment issue</strong> — we could not charge your card. Update your payment method in
                       Stripe below. Resolve payment by{' '}
-                      {billingStatus.grace_period_ends_at
-                        ? new Date(billingStatus.grace_period_ends_at).toLocaleDateString('en-GB')
-                        : 'the end of your grace period'}
-                      . Some automations (SMS, webhooks, scheduled reports) stay paused until payment succeeds; core
-                      compliance remains available.
+                      {new Date(billingStatus.grace_period_ends_at).toLocaleDateString('en-GB')}. Some automations (SMS,
+                      webhooks, scheduled reports) stay paused until payment succeeds; core compliance remains available.
                     </AlertDescription>
                   </Alert>
-                )}
-                {billingStatus.billing_lifecycle_state === 'limited' && (
+                ) : (
                   <Alert className="border-red-200 bg-red-50" data-testid="billing-limited-alert">
                     <AlertTriangle className="w-4 h-4 text-red-600" />
                     <AlertDescription className="text-red-900 text-sm">
-                      <strong>Account restricted</strong> — the grace period for this invoice has ended. Update billing
-                      to restore full access. Core compliance features stay available until you pay.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {billingStatus.billing_lifecycle_state === 'renewing' && !billingStatus.cancel_at_period_end && (
-                  <Alert className="border-teal-200 bg-teal-50/50" data-testid="billing-renewing-alert">
-                    <Calendar className="w-4 h-4 text-teal-700" />
-                    <AlertDescription className="text-teal-900 text-sm">
-                      {billingStatus.charge_automatically === false ? (
-                        <>
-                          Your billing period renews soon (
-                          {formatRenewalDisplay(billingStatus?.current_period_end) || 'see date below'}). Complete
-                          payment when invoiced to avoid interruption.
-                        </>
-                      ) : (
-                        <>
-                          Your subscription renews soon (
-                          {formatRenewalDisplay(billingStatus?.current_period_end) || 'see date below'}). Payment is
-                          automatic — confirm your card on file is valid.
-                        </>
-                      )}
+                      <strong>Payment issue</strong> — update billing to restore full access. Core compliance features
+                      stay available where your plan allows.
                     </AlertDescription>
                   </Alert>
                 )}
               </>
             )}
+            {billingStatus?.has_subscription &&
+              billingStatus?.renewal_soon &&
+              !billingStatus?.cancel_at_period_end &&
+              billingStatus?.billing_status_display === 'Active' && (
+                <Alert className="border-teal-200 bg-teal-50/50" data-testid="billing-renewing-alert">
+                  <Calendar className="w-4 h-4 text-teal-700" />
+                  <AlertDescription className="text-teal-900 text-sm">
+                    {billingStatus.charge_automatically === false ? (
+                      <>
+                        Your billing period renews soon (
+                        {billingStatus.next_renewal_date_display ||
+                          formatRenewalDisplay(billingStatus?.next_renewal_date) ||
+                          'see date below'}
+                        ). Complete payment when invoiced to avoid interruption.
+                      </>
+                    ) : (
+                      <>
+                        Your subscription renews soon (
+                        {billingStatus.next_renewal_date_display ||
+                          formatRenewalDisplay(billingStatus?.next_renewal_date) ||
+                          'see date below'}
+                        ). Payment is automatic — confirm your card on file is valid.
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
             {/* A. Subscription summary */}
             <Card data-testid="subscription-summary-card">
               <CardHeader className="pb-2">
@@ -695,45 +700,59 @@ const BillingPage = () => {
                   </p>
                 </div>
                 <div>
+                  <p className="text-gray-500">Plan status</p>
+                  <p className="font-medium">{planStatusLabel(billingStatus)}</p>
+                </div>
+                <div>
                   <p className="text-gray-500">Billing status</p>
-                  <p className="font-medium">{humanBillingStatusLabel(billingStatus)}</p>
+                  <p className="font-medium">{billingStatusLabel(billingStatus)}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Next renewal / period end</p>
+                  <p className="text-gray-500">Next renewal date</p>
                   <p className="font-medium">
-                    {formatRenewalDisplay(billingStatus?.current_period_end) || 'Not available'}
+                    {billingStatus?.has_subscription
+                      ? billingStatus.next_renewal_date_display ||
+                        formatRenewalDisplay(billingStatus?.next_renewal_date) ||
+                        (billingStatus.plan_status_display === 'Active' ? 'Updating…' : '—')
+                      : 'No active subscription'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Price (plan rate)</p>
+                  <p className="text-gray-500">Monthly price</p>
                   <p className="font-medium">
-                    {currentPlan && displayPlans.find((p) => p.code === currentPlan) ? (
-                      <>
-                        £{displayPlans.find((p) => p.code === currentPlan).monthlyPrice}/mo
-                        <span className="text-gray-500 font-normal">
-                          {' '}
-                          + £{displayPlans.find((p) => p.code === currentPlan).onboardingFee} setup
-                        </span>
-                      </>
-                    ) : (
-                      '—'
-                    )}
+                    {billingStatus?.monthly_price_display ||
+                      (currentPlan && displayPlans.find((p) => p.code === currentPlan) ? (
+                        <>£{displayPlans.find((p) => p.code === currentPlan).monthlyPrice}/month</>
+                      ) : (
+                        '—'
+                      ))}
                   </p>
                 </div>
-                <div className="sm:col-span-2">
-                  <p className="text-gray-500">Subscription state</p>
-                  <p className="font-medium font-mono text-xs mt-1">
-                    {billingStatus?.subscription_status || (billingStatus?.has_subscription ? '—' : 'NONE')}
-                    {billingStatus?.billing_lifecycle_state ? (
-                      <span className="block text-gray-600 normal-case mt-1">
-                        Lifecycle: {billingStatus.billing_lifecycle_state}
-                        {billingStatus?.entitlement_status
-                          ? ` · Entitlement: ${billingStatus.entitlement_status}`
-                          : ''}
-                      </span>
-                    ) : null}
+                {billingStatus?.has_subscription &&
+                  (billingStatus.setup_fee_state === 'applies_first_cycle' || billingStatus.setup_fee_state === 'paid') && (
+                    <div>
+                      <p className="text-gray-500">Setup fee</p>
+                      <p className="font-medium">
+                        {billingStatus.setup_fee_state === 'paid'
+                          ? `Paid${billingStatus.setup_fee_display ? ` (${billingStatus.setup_fee_display})` : ''}`
+                          : billingStatus.setup_fee_display || '—'}
+                      </p>
+                    </div>
+                  )}
+                <div>
+                  <p className="text-gray-500">Properties</p>
+                  <p className="font-medium">
+                    {billingStatus?.has_subscription
+                      ? `${billingStatus.properties_used ?? usageContext?.property_count ?? '—'} / ${billingStatus.properties_limit ?? usageContext?.max_properties ?? '—'}`
+                      : '—'}
                   </p>
                 </div>
+                {billingStatus?.has_subscription && billingStatus?.renewal_customer_copy && (
+                  <div className="sm:col-span-2">
+                    <p className="text-gray-500">Renewal</p>
+                    <p className="font-medium text-gray-800">{billingStatus.renewal_customer_copy}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -811,13 +830,14 @@ const BillingPage = () => {
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div className="space-y-1">
                                     {(inv.lines || []).map((line, idx) => (
-                                      <div key={idx} className="text-sm text-gray-600">
-                                        {line.description}
-                                        {line.type === 'setup_fee' && (
-                                          <span className="ml-2 text-gray-500">
-                                            £{((line.amount_cents || 0) / 100).toFixed(2)}
-                                          </span>
-                                        )}
+                                      <div
+                                        key={idx}
+                                        className="text-sm text-gray-600 flex flex-wrap justify-between gap-2"
+                                      >
+                                        <span>{line.description}</span>
+                                        <span className="text-gray-800 font-medium shrink-0">
+                                          £{((line.amount_cents || 0) / 100).toFixed(2)}
+                                        </span>
                                       </div>
                                     ))}
                                   </div>
@@ -861,7 +881,9 @@ const BillingPage = () => {
                                   <td className="py-3 pr-4">
                                     {r.date_issued ? new Date(r.date_issued).toLocaleDateString('en-GB') : '—'}
                                   </td>
-                                  <td className="py-3 pr-4 text-gray-700">CVP subscription payment</td>
+                                  <td className="py-3 pr-4 text-gray-700">
+                                    {r.line_summary || 'Subscription receipt'}
+                                  </td>
                                   <td className="py-3 pr-4">{r.amount_display || '—'}</td>
                                   <td className="py-3 pr-4">{r.payment_status}</td>
                                   <td className="py-3 text-right">
@@ -938,7 +960,10 @@ const BillingPage = () => {
               <strong>Cancellation Scheduled</strong>
               <p className="mt-1">
                 Your subscription will end on{' '}
-                {formatRenewalDisplay(billingStatus.current_period_end) || 'the end of your billing period'}. 
+                {billingStatus.next_renewal_date_display ||
+                  formatRenewalDisplay(billingStatus.next_renewal_date) ||
+                  'the end of your billing period'}
+                . 
                 You'll continue to have full access until then.
               </p>
             </AlertDescription>
@@ -1291,8 +1316,10 @@ const BillingPage = () => {
                 <h4 className="font-medium text-gray-900 mb-1">Cancel at Period End</h4>
                 <p className="text-sm text-gray-500">
                   Keep full access until{' '}
-                  {formatRenewalDisplay(billingStatus?.current_period_end) || 'the end of your billing period'}, then
-                  your subscription ends.
+                  {billingStatus?.next_renewal_date_display ||
+                    formatRenewalDisplay(billingStatus?.next_renewal_date) ||
+                    'the end of your billing period'}
+                  , then your subscription ends.
                 </p>
               </div>
               <div className="p-4 border border-red-200 rounded-lg bg-red-50">

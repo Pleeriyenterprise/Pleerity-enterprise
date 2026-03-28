@@ -177,6 +177,7 @@ import AdminOpsOverviewPage from './pages/admin/AdminOpsOverviewPage';
 import AdminOpsCompliancePage from './pages/admin/AdminOpsCompliancePage';
 import AdminOpsAuditPage from './pages/admin/AdminOpsAuditPage';
 import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
+import AdminCommunicationsPage from './pages/admin/AdminCommunicationsPage';
 import AdminOpsContractorsPage from './pages/admin/AdminOpsContractorsPage';
 import AdminOpsMaintenancePage from './pages/admin/AdminOpsMaintenancePage';
 import AdminRiskDashboardPage from './pages/admin/AdminRiskDashboardPage';
@@ -212,6 +213,27 @@ function ScrollToTop() {
   return null;
 }
 
+/** Records last client route for ErrorBoundary diagnostics (no PII beyond path). */
+function ClientRouteTelemetry() {
+  const location = useLocation();
+  React.useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        'cvp_nav_context',
+        JSON.stringify({
+          pathname: location.pathname,
+          search: location.search,
+          hash: location.hash,
+          ts: new Date().toISOString(),
+        })
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [location.pathname, location.search, location.hash]);
+  return null;
+}
+
 function App() {
   return (
     <HelmetProvider>
@@ -219,6 +241,7 @@ function App() {
         <EntitlementsProvider>
         <BrowserRouter>
           <ScrollToTop />
+          <ClientRouteTelemetry />
           <ErrorBoundary>
           <div className="App">
             <Routes>
@@ -628,6 +651,7 @@ function App() {
             <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminRiskDashboardPage /></ProtectedRoute>} />
             <Route path="/admin/ops/audit" element={<ProtectedRoute requireAdmin><AdminOpsAuditPage /></ProtectedRoute>} />
             <Route path="/admin/ops/feature-controls" element={<ProtectedRoute requireAdmin><AdminOpsFeatureControlsPage /></ProtectedRoute>} />
+            <Route path="/admin/communications" element={<ProtectedRoute requireAdmin><AdminCommunicationsPage /></ProtectedRoute>} />
 
             {/* ClearForm Admin Routes */}
             <Route 

@@ -20,7 +20,10 @@ from database import database
 from services.billing_period_utils import (
     normalize_stored_period_end_for_api,
     period_end_from_stripe_unix,
+    period_start_from_stripe_unix,
 )
+from services.billing_presentation import build_client_billing_payload
+from services.billing_line_normalization import normalize_stripe_invoice_lines
 from services.plan_registry import (
     plan_registry, PlanCode, EntitlementStatus,
     get_stripe_price_mappings, _get_stripe_mode, StripeModeMismatchError,
@@ -298,16 +301,39 @@ class StripeService:
                 )
             raise ValueError(f"Failed to create upgrade session: {err_msg}")
     
-    async def get_subscription_status(self, client_id: str) -> Dict[str, Any]:
-        """Get current subscription status for a client."""
+    async def get_subscription_status(
+        self, client_id: str, *, client_facing: bool = True
+    ) -> Dict[str, Any]:
+        """Subscription and billing projection. Portal uses ``client_facing=True`` (no internal enums). Admin uses ``False``."""
         db = database.get_db()
-        
+
         billing = await db.client_billing.find_one(
             {"client_id": client_id},
-            {"_id": 0}
+            {"_id": 0},
         )
-        
+
         if not billing:
+            if client_facing:
+                return build_client_billing_payload(
+                    has_subscription=False,
+                    current_plan_code=None,
+                    plan_name=None,
+                    plan_display_name=None,
+                    subscription_status=None,
+                    billing_lifecycle_state=None,
+                    cancel_at_period_end=False,
+                    next_renewal_date_iso=None,
+                    current_period_start_iso=None,
+                    monthly_price_pence=None,
+                    setup_fee_pence=None,
+                    setup_fee_paid=False,
+                    first_billing_cycle=False,
+                    properties_used=0,
+                    properties_limit=0,
+                    grace_period_ends_at_iso=None,
+                    payment_failed_at_iso=None,
+                    charge_automatically=None,
+                )
             return {
                 "has_subscription": False,
                 "status": "NONE",
@@ -329,25 +355,49 @@ class StripeService:
                 )
 
         cpe = normalize_stored_period_end_for_api(billing.get("current_period_end"))
+        cps = normalize_stored_period_end_for_api(billing.get("current_period_start"))
         stripe_sub_id = billing.get("stripe_subscription_id")
         charge_automatically: Optional[bool] = None
+        monthly_price_pence: Optional[int] = None
         if stripe_sub_id and (stripe.api_key or "").strip():
             try:
-                sub = stripe.Subscription.retrieve(stripe_sub_id)
-                charge_automatically = sub.get("collection_method") == "charge_automatically"
-                if cpe is None:
-                    fresh = period_end_from_stripe_unix(sub.get("current_period_end"))
-                    if fresh:
-                        await db.client_billing.update_one(
-                            {"client_id": client_id},
-                            {
-                                "$set": {
-                                    "current_period_end": fresh,
-                                    "updated_at": datetime.now(timezone.utc),
-                                }
-                            },
-                        )
-                        cpe = fresh
+                sub = stripe.Subscription.retrieve(
+                    stripe_sub_id,
+                    expand=["items.data.price"],
+                )
+                if hasattr(sub, "to_dict"):
+                    sub_d = sub.to_dict()
+                else:
+                    sub_d = dict(sub) if not isinstance(sub, dict) else sub
+                charge_automatically = sub_d.get("collection_method") == "charge_automatically"
+                fresh_end = period_end_from_stripe_unix(sub_d.get("current_period_end"))
+                fresh_start = period_start_from_stripe_unix(sub_d.get("current_period_start"))
+                anchor_dt = period_start_from_stripe_unix(sub_d.get("billing_cycle_anchor"))
+                for item in (sub_d.get("items") or {}).get("data") or []:
+                    price = item.get("price") or {}
+                    if isinstance(price, dict) and price.get("recurring") is not None:
+                        ua = price.get("unit_amount")
+                        if ua is not None:
+                            monthly_price_pence = int(ua)
+                            break
+                set_fields: Dict[str, Any] = {
+                    "updated_at": datetime.now(timezone.utc),
+                }
+                if fresh_end:
+                    set_fields["current_period_end"] = fresh_end
+                    cpe = fresh_end
+                if fresh_start:
+                    set_fields["current_period_start"] = fresh_start
+                    cps = fresh_start
+                if anchor_dt:
+                    set_fields["billing_cycle_anchor"] = anchor_dt
+                if monthly_price_pence is not None:
+                    set_fields["subscription_recurring_amount_pence"] = monthly_price_pence
+                if len(set_fields) > 1:
+                    await db.client_billing.update_one(
+                        {"client_id": client_id},
+                        {"$set": set_fields},
+                    )
             except stripe.error.StripeError as e:
                 logger.warning(
                     "get_subscription_status: could not refresh subscription from Stripe client_id=%s: %s",
@@ -356,6 +406,7 @@ class StripeService:
                 )
 
         cpe_out = cpe.isoformat() if cpe else None
+        cps_out = cps.isoformat() if cps else None
         g_end = billing.get("grace_period_ends_at")
         pfail = billing.get("payment_failed_at")
 
@@ -371,16 +422,56 @@ class StripeService:
             if timedelta(0) < delta <= timedelta(days=7):
                 lifecycle_out = "renewing"
 
+        plan_code_str = billing.get("current_plan_code")
+        plan_def = plan_registry.get_plan_by_code_string(plan_code_str) if plan_code_str else None
+        if monthly_price_pence is None and plan_def:
+            mp = plan_def.get("monthly_price")
+            if mp is not None:
+                monthly_price_pence = int(round(float(mp) * 100))
+        setup_cents = billing.get("setup_fee_amount_cents")
+        setup_pence: Optional[int] = int(setup_cents) if setup_cents is not None else None
+        if setup_pence is None and plan_def and plan_def.get("onboarding_fee"):
+            setup_pence = int(round(float(plan_def.get("onboarding_fee")) * 100))
+        onboarding_paid = bool(billing.get("onboarding_fee_paid"))
+        first_cycle = bool(not onboarding_paid and setup_pence and setup_pence > 0)
+        prop_limit = (
+            plan_registry.get_property_limit_by_string(plan_code_str) if plan_code_str else 0
+        )
+
+        if client_facing:
+            return build_client_billing_payload(
+                has_subscription=True,
+                current_plan_code=plan_code_str,
+                plan_name=plan_def.get("name") if plan_def else None,
+                plan_display_name=plan_def.get("display_name") if plan_def else None,
+                subscription_status=billing.get("subscription_status"),
+                billing_lifecycle_state=lifecycle_out,
+                cancel_at_period_end=bool(billing.get("cancel_at_period_end", False)),
+                next_renewal_date_iso=cpe_out,
+                current_period_start_iso=cps_out,
+                monthly_price_pence=monthly_price_pence,
+                setup_fee_pence=setup_pence,
+                setup_fee_paid=onboarding_paid,
+                first_billing_cycle=first_cycle,
+                properties_used=0,
+                properties_limit=prop_limit,
+                grace_period_ends_at_iso=g_end.isoformat() if g_end else None,
+                payment_failed_at_iso=pfail.isoformat() if pfail else None,
+                charge_automatically=charge_automatically,
+                currency=str((plan_def or {}).get("currency") or "gbp"),
+            )
+
         return {
             "has_subscription": True,
             "stripe_subscription_id": billing.get("stripe_subscription_id"),
-            "current_plan_code": billing.get("current_plan_code"),
+            "current_plan_code": plan_code_str,
             "subscription_status": billing.get("subscription_status"),
             "entitlement_status": billing.get("entitlement_status"),
             "billing_lifecycle_state": lifecycle_out,
             "current_period_end": cpe_out,
+            "current_period_start": cps_out,
             "cancel_at_period_end": billing.get("cancel_at_period_end", False),
-            "onboarding_fee_paid": billing.get("onboarding_fee_paid", False),
+            "onboarding_fee_paid": onboarding_paid,
             "grace_period_ends_at": g_end.isoformat() if g_end else None,
             "payment_failed_at": pfail.isoformat() if pfail else None,
             "charge_automatically": charge_automatically,
@@ -470,17 +561,12 @@ class StripeService:
         db = database.get_db()
         billing = await db.client_billing.find_one(
             {"client_id": client_id},
-            {"_id": 0, "stripe_customer_id": 1}
+            {"_id": 0, "stripe_customer_id": 1, "current_plan_code": 1},
         )
         if not billing or not billing.get("stripe_customer_id"):
             return {"invoices": [], "has_more": False}
 
         stripe_customer_id = billing["stripe_customer_id"]
-        onboarding_price_ids = set()
-        for plan in (PlanCode.PLAN_1_SOLO, PlanCode.PLAN_2_PORTFOLIO, PlanCode.PLAN_3_PRO):
-            pid = plan_registry.get_stripe_price_ids(plan).get("onboarding_price_id")
-            if pid:
-                onboarding_price_ids.add(pid)
 
         try:
             invoices = stripe.Invoice.list(
@@ -493,35 +579,20 @@ class StripeService:
             logger.error(f"Stripe invoice list error for client {client_id}: {e}")
             return {"invoices": [], "has_more": False}
 
+        pc = (billing or {}).get("current_plan_code")
+        plan_enum: Optional[PlanCode] = plan_registry.resolve_plan_code(pc) if pc else None
+
         result = []
         for inv in invoices.get("data", []):
-            lines = []
-            for line in inv.get("lines", {}).get("data", []):
-                price = line.get("price")
-                if isinstance(price, str):
-                    price_id = price
-                elif isinstance(price, dict):
-                    price_id = price.get("id")
-                else:
-                    price_id = getattr(price, "id", None) if price else None
-                is_setup_fee = price_id in onboarding_price_ids if price_id else False
-                amount = line.get("amount", 0)
-                desc = line.get("description")
-                if not desc and isinstance(price, dict):
-                    desc = price.get("nickname") or price.get("product")
-                if is_setup_fee:
-                    desc = "Setup fee"
-                lines.append({
-                    "description": desc or "Subscription",
-                    "amount_cents": amount,
-                    "type": "setup_fee" if is_setup_fee else "subscription",
-                })
+            inv_d = inv.to_dict() if hasattr(inv, "to_dict") else dict(inv)
+            lines = normalize_stripe_invoice_lines(inv_d, plan_enum)
             result.append({
-                "id": inv.get("id"),
-                "number": inv.get("number"),
-                "created": inv.get("created"),
-                "amount_paid": inv.get("amount_paid", 0),
-                "currency": (inv.get("currency") or "gbp").upper(),
+                "id": inv_d.get("id"),
+                "number": inv_d.get("number"),
+                "created": inv_d.get("created"),
+                "amount_paid": inv_d.get("amount_paid", 0),
+                "currency": (inv_d.get("currency") or "gbp").upper(),
+                "billing_reason": inv_d.get("billing_reason"),
                 "lines": lines,
             })
         return {

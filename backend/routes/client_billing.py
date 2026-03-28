@@ -49,6 +49,11 @@ def _doc_to_summary(doc: Dict[str, Any]) -> Dict[str, Any]:
         date_issued = str(created) if created else None
     cur = (doc.get("currency") or "gbp").upper()
     pence = doc.get("amount_total_pence")
+    breakdown = doc.get("billing_breakdown")
+    if not isinstance(breakdown, list):
+        breakdown = []
+    line_descriptions = [str(x.get("description") or "").strip() for x in breakdown if isinstance(x, dict)]
+    line_summary = "; ".join(line_descriptions[:4]) if line_descriptions else None
     return {
         "receipt_id": inv,
         "stripe_checkout_session_id": sid,
@@ -59,6 +64,8 @@ def _doc_to_summary(doc: Dict[str, Any]) -> Dict[str, Any]:
         "currency": cur,
         "payment_status": doc.get("payment_status") or "PAID",
         "pdf_download_url": _pdf_download_url(inv) if inv else None,
+        "billing_breakdown": breakdown,
+        "line_summary": line_summary,
     }
 
 
@@ -106,7 +113,18 @@ async def list_subscription_receipts(current_user: dict = Depends(client_route_g
     db = database.get_db()
     cursor = (
         db[STRIPE_CHECKOUT_INVOICES]
-        .find({"client_id": client_id}, {"_id": 1, "invoice_number": 1, "created_at": 1, "amount_total_pence": 1, "currency": 1, "payment_status": 1})
+        .find(
+            {"client_id": client_id},
+            {
+                "_id": 1,
+                "invoice_number": 1,
+                "created_at": 1,
+                "amount_total_pence": 1,
+                "currency": 1,
+                "payment_status": 1,
+                "billing_breakdown": 1,
+            },
+        )
         .sort("created_at", -1)
         .limit(100)
     )

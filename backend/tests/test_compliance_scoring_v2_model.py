@@ -64,3 +64,5 @@ def test_v2_generates_top_actions_for_missing_critical():
     assert result["score_0_100"] < 60
     assert len(result["top_next_actions"]) > 0
     assert any("Upload and verify" in a["action"] for a in result["top_next_actions"])
+    assert all("GAS_SAFETY" not in (a.get("action") or "") for a in result["top_next_actions"])
+    assert result.get("scoring_policy", {}).get("documentation_bucket_counts_verified_evidence_only") is True

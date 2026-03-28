@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import { resolvePropertyPath } from '../utils/clientPortalNavigation';
 import api from '../api/client';
 import { toast } from 'sonner';
 import { 
@@ -245,7 +246,7 @@ const PropertiesPage = () => {
                 return (
                   <Link
                     key={property.property_id}
-                    to={`/properties/${property.property_id}`}
+                    to={resolvePropertyPath(property.property_id)}
                     className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                     data-testid={`property-row-${property.property_id}`}
                   >

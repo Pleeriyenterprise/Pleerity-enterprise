@@ -11,6 +11,7 @@ import { AlertCircle, Plus, Loader2, FileText, X, Wrench, Building2 } from 'luci
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { issueStatusLabel, issueSeverityLabel } from '../domain/presentDomain';
+import { resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
@@ -494,11 +495,11 @@ function ClientIssuesPageInner() {
                         Create work order
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => { navigate(`/properties/${issueDetailData.property_id}`); setIssueDetailDrawer(null); }}>
+                    <Button size="sm" variant="outline" onClick={() => { navigate(resolvePropertyPath(issueDetailData.property_id)); setIssueDetailDrawer(null); }}>
                       <Building2 className="w-4 h-4 mr-1" />
                       View property
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => { setIssueDetailDrawer(null); navigate(`/operations/issues/${issueDetailData.issue_id}`); }}>Open full page</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setIssueDetailDrawer(null); navigate(resolveIssueDetailPath(issueDetailData.issue_id)); }}>Open full page</Button>
                     <Button size="sm" variant="outline" onClick={() => setIssueDetailDrawer(null)}>Close</Button>
                   </div>
                 </>

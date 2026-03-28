@@ -21,6 +21,11 @@ def period_end_from_stripe_unix(ts: Any) -> Optional[datetime]:
     return datetime.fromtimestamp(t, tz=timezone.utc)
 
 
+def period_start_from_stripe_unix(ts: Any) -> Optional[datetime]:
+    """Same validation as period end — subscription current_period_start must not be epoch garbage."""
+    return period_end_from_stripe_unix(ts)
+
+
 def period_end_stored_value_is_valid(cpe: Any) -> bool:
     """True if Mongo/datetime value is a real renewal date (not epoch)."""
     if cpe is None:

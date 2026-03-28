@@ -16,8 +16,15 @@ import ScoreTrendChart from '../components/ScoreTrendChart';
 import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
 import { UrgencyRow, timingLabelFromDueAtIso } from '../components/client/UrgencyDisplay';
 import { requirementLabel, slaStateLabel, riskTypeLabelClient } from '../domain/presentDomain';
+import { normalizeRouteId, recordClientPortalInteraction, resolveClientPortalPath, resolvePriorityActionNavigateTarget, resolvePropertyPath } from '../utils/clientPortalNavigation';
 
 const KPI_NO_DATA = 'No data yet';
+
+function navigateToPropertyDashboard(navigate, propertyId, hash = '') {
+  if (!normalizeRouteId(propertyId)) return;
+  const h = hash ? (hash.startsWith('#') ? hash : `#${hash}`) : '';
+  navigate(`${resolvePropertyPath(propertyId)}${h}`);
+}
 const FRESH_SCORE_STALE_HOURS = 48;
 const FRESH_RISK_STALE_HOURS = 72;
 
@@ -133,6 +140,8 @@ const ClientDashboard = () => {
   const [activitySince, setActivitySince] = useState(null);
   const [activitySinceLoading, setActivitySinceLoading] = useState(false);
   const [activitySinceAckBusy, setActivitySinceAckBusy] = useState(false);
+  /** Admin-managed operational banners (incidents / maintenance). */
+  const [systemBanners, setSystemBanners] = useState([]);
   /** Landlord contractors: submitted for network review vs rejected (CONTRACTOR_NETWORK). */
   const [contractorNetworkActivity, setContractorNetworkActivity] = useState(null);
 
@@ -238,6 +247,17 @@ const ClientDashboard = () => {
     clientAPI.getPriorityActions({ limit: 10 })
       .then((res) => setPriorityActions({ actions: res.data?.actions || [], total: res.data?.total ?? 0 }))
       .catch(() => setPriorityActions({ actions: [], total: 0 }));
+  }, [isClientUser]);
+
+  useEffect(() => {
+    if (!isClientUser) {
+      setSystemBanners([]);
+      return;
+    }
+    clientAPI
+      .getActiveSystemBanners()
+      .then((res) => setSystemBanners(Array.isArray(res.data?.items) ? res.data.items : []))
+      .catch(() => setSystemBanners([]));
   }, [isClientUser]);
 
   // When score trend is in "Property" mode, scope command center + tasks digest to that property (API filter).
@@ -740,6 +760,46 @@ const ClientDashboard = () => {
   return (
     <div data-testid="client-dashboard">
         <ErrorBanner message={error} onRetry={fetchDashboard} retryLabel="Retry" />
+
+        {systemBanners.length > 0 && (
+          <div className="mb-6 space-y-2">
+            {systemBanners.map((b) => {
+              const sev = (b.severity || 'info').toLowerCase();
+              const bar =
+                sev === 'critical'
+                  ? 'border-red-300 bg-red-50 text-red-900'
+                  : sev === 'warning'
+                    ? 'border-amber-200 bg-amber-50 text-amber-900'
+                    : 'border-slate-200 bg-slate-50 text-slate-900';
+              return (
+                <Alert key={b.banner_id} className={`${bar}`} data-testid={`system-banner-${b.banner_id}`}>
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <span>
+                      <span className="font-semibold block">{b.title}</span>
+                      <span className="block text-sm mt-1 opacity-90">{b.message}</span>
+                    </span>
+                    {!b.persistent_display && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() =>
+                          clientAPI.dismissSystemBanner(b.banner_id).then(() => {
+                            setSystemBanners((prev) => prev.filter((x) => x.banner_id !== b.banner_id));
+                          })
+                        }
+                      >
+                        Dismiss
+                      </Button>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              );
+            })}
+          </div>
+        )}
 
         {/* Explicit "Access restricted by plan" UI (no blank screen) */}
         {restrictReason === 'plan' && (
@@ -1341,8 +1401,11 @@ const ClientDashboard = () => {
                           className="text-left text-midnight-blue hover:underline font-medium min-w-0 break-words"
                           onClick={() => {
                             const url = t.primary_action_url || t.cta_url;
-                            if (url && url.startsWith('/')) navigate(url);
-                            else if (url) window.location.assign(url);
+                            if (url && url.startsWith('/')) {
+                              const target = resolveClientPortalPath(url, '/today');
+                              recordClientPortalInteraction('command_center_urgent_task', { task_id: t.id, target });
+                              navigate(target);
+                            } else if (url) window.location.assign(url);
                             else navigate('/today');
                           }}
                         >
@@ -1365,7 +1428,11 @@ const ClientDashboard = () => {
                         <button
                           type="button"
                           className="text-left text-midnight-blue hover:underline min-w-0 break-words"
-                          onClick={() => navigate(r.cta_url || '/operations/risk-signals')}
+                          onClick={() => {
+                            const target = resolveClientPortalPath(r.cta_url, '/operations/risk-signals');
+                            recordClientPortalInteraction('command_center_risk_cta', { target });
+                            navigate(target);
+                          }}
                         >
                           {r.description || r.risk_type_label_client || riskTypeLabelClient(r.risk_type) || 'Risk signal'}
                         </button>
@@ -1516,9 +1583,15 @@ const ClientDashboard = () => {
                           type="button"
                           onClick={() => {
                             if (!hasLink) return;
-                            if (item.document_id && item.property_id) navigate(`/documents?property_id=${item.property_id}`);
-                            else if (item.requirement_id && item.property_id) navigate(`/requirements?property_id=${item.property_id}`);
-                            else if (item.property_id) navigate(`/properties/${item.property_id}`);
+                            const rawPid = item.property_id;
+                            const pid =
+                              rawPid != null && String(rawPid).trim() !== '' && String(rawPid) !== 'undefined' && String(rawPid) !== 'null'
+                                ? String(rawPid).trim()
+                                : null;
+                            if (item.document_id && pid) navigate(resolveClientPortalPath(`/documents?property_id=${encodeURIComponent(pid)}`, '/documents'));
+                            else if (item.requirement_id && pid) {
+                              navigate(resolveClientPortalPath(`/requirements?property_id=${encodeURIComponent(pid)}`, '/requirements'));
+                            } else if (pid) navigate(resolveClientPortalPath(`/properties/${encodeURIComponent(pid)}`, '/properties'));
                           }}
                           className={`w-full text-left flex items-start gap-3 p-2 rounded-lg transition-colors ${
                             hasLink ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-default'
@@ -1762,7 +1835,13 @@ const ClientDashboard = () => {
               {complianceScore?.recommendations?.length > 0 ? (
                 <div className="space-y-3">
                   {(complianceScore?.recommendations ?? []).slice(0, 3).map((rec, idx) => {
-                    const actionLower = (rec.action || '').toLowerCase();
+                    let actionDisplay = rec.action || '';
+                    const code = rec.requirement_code;
+                    if (code && actionDisplay.includes(code)) {
+                      const lbl = rec.display_label || requirementLabel(code);
+                      actionDisplay = actionDisplay.split(code).join(lbl);
+                    }
+                    const actionLower = actionDisplay.toLowerCase();
                     const fixNowPath =
                       actionLower.includes('overdue') ? '/requirements?status=OVERDUE_OR_MISSING' :
                       actionLower.includes('expir') ? '/requirements?window=30&status=DUE_SOON' :
@@ -1784,7 +1863,7 @@ const ClientDashboard = () => {
                         'bg-gray-400'
                       }`} />
                         <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800">{rec.action}</p>
+                        <p className="text-sm font-medium text-gray-800">{actionDisplay}</p>
                         <p className="text-xs text-gray-500 mt-0.5">Potential impact: {rec.impact}</p>
                       </div>
                         <Button
@@ -1982,7 +2061,15 @@ const ClientDashboard = () => {
                     <Button
                       size="sm"
                       className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90"
-                      onClick={() => navigate(action.recommended_url || '#')}
+                      onClick={() => {
+                        const target = resolvePriorityActionNavigateTarget(action, '/today');
+                        recordClientPortalInteraction('dashboard_priority_action', {
+                          target,
+                          related_property_id: action.related_property_id ?? null,
+                          action_type: action.action_type ?? null,
+                        });
+                        navigate(target);
+                      }}
                     >
                       {action.recommended_action_label || 'View'}
                     </Button>
@@ -2068,7 +2155,7 @@ const ClientDashboard = () => {
                   key={p.property_id}
                   type="button"
                   className="w-full text-left rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:border-electric-teal/40 transition-colors min-h-[44px]"
-                  onClick={() => navigate(`/properties/${p.property_id}`)}
+                  onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
                 >
                   <p className="font-semibold text-midnight-blue break-words">{getPropertyDisplayLabel(p) || p.name || p.property_id}</p>
                   <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
@@ -2100,7 +2187,7 @@ const ClientDashboard = () => {
                     <tr
                       key={p.property_id}
                       className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/properties/${p.property_id}`)}
+                      onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
                     >
                       <td className="p-3 font-medium text-midnight-blue max-w-[14rem] break-words">{getPropertyDisplayLabel(p) || p.name || p.property_id}</td>
                       <td className="p-3">{p.property_score ?? p.score ?? 0}/100</td>
@@ -2114,7 +2201,7 @@ const ClientDashboard = () => {
                         </td>
                       )}
                       <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="text-electric-teal hover:bg-teal-50" onClick={() => navigate(`/properties/${p.property_id}`)}>
+                        <Button variant="ghost" size="sm" className="text-electric-teal hover:bg-teal-50" onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}>
                           View
                         </Button>
                       </td>
@@ -2257,7 +2344,7 @@ const ClientDashboard = () => {
                       <Button
                         size="sm"
                         className="bg-electric-teal hover:bg-electric-teal/90 text-white"
-                        onClick={() => navigate(`/properties/${a.property_id}#req=${encodeURIComponent(a.requirement_code)}`)}
+                        onClick={() => navigateToPropertyDashboard(navigate, a.property_id, `req=${encodeURIComponent(a.requirement_code)}`)}
                         data-testid={`fix-now-${a.property_id}-${a.requirement_code}`}
                       >
                         Fix now
@@ -2358,7 +2445,7 @@ const ClientDashboard = () => {
                             <tr
                               key={p.property_id}
                               className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                              onClick={() => navigate(`/properties/${p.property_id}`)}
+                              onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
                               data-testid="property-row"
                             >
                               <td className="p-3 font-medium text-midnight-blue">{p.name || p.address_line_1}</td>

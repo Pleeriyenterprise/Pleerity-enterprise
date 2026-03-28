@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
+import { buildSafeQueryPath, normalizeRouteId, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -219,10 +220,13 @@ function ClientRiskSignalsPageInner() {
   };
 
   const openCreateWorkOrder = (propertyId, description) => {
-    const params = new URLSearchParams();
-    if (propertyId) params.set('property_id', propertyId);
-    if (description) params.set('description', description);
-    navigate(`/operations/work-orders?${params.toString()}`);
+    const pid = normalizeRouteId(propertyId);
+    navigate(
+      buildSafeQueryPath('/operations/work-orders', {
+        ...(pid ? { property_id: pid } : {}),
+        ...(description ? { description: String(description) } : {}),
+      })
+    );
   };
 
   const applyFilter = (key, value) => {
@@ -899,7 +903,7 @@ function ClientRiskSignalsPageInner() {
                               try {
                                 const res = await clientAPI.createIssueFromRiskSignal(drawerSignalId, {});
                                 toast.success('Issue created. You can view it in Operations → Issues.');
-                                if (res?.data?.issue_id) navigate(`/operations/issues?highlight=${res.data.issue_id}`);
+                                if (res?.data?.issue_id) navigate(buildSafeQueryPath('/operations/issues', { highlight: res.data.issue_id }));
                                 setDrawerSignalId(null);
                                 load();
                               } catch (e) {
@@ -923,7 +927,7 @@ function ClientRiskSignalsPageInner() {
                               try {
                                 const res = await clientAPI.createWorkOrderFromRiskSignal(drawerSignalId, {});
                                 toast.success('Work order created. You can view it in Operations → Work orders.');
-                                if (res?.data?.work_order_id) navigate(`/operations/work-orders?highlight=${res.data.work_order_id}`);
+                                if (res?.data?.work_order_id) navigate(buildSafeQueryPath('/operations/work-orders', { highlight: res.data.work_order_id }));
                                 setDrawerSignalId(null);
                                 load();
                               } catch (e) {
@@ -947,7 +951,7 @@ function ClientRiskSignalsPageInner() {
                               try {
                                 const res = await clientAPI.scheduleInspectionFromRiskSignal(drawerSignalId, {});
                                 toast.success('Inspection issue created.');
-                                if (res?.data?.issue_id) navigate(`/operations/issues?highlight=${res.data.issue_id}`);
+                                if (res?.data?.issue_id) navigate(buildSafeQueryPath('/operations/issues', { highlight: res.data.issue_id }));
                                 setDrawerSignalId(null);
                                 load();
                               } catch (e) {
@@ -967,14 +971,14 @@ function ClientRiskSignalsPageInner() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Related</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => navigate(`/properties/${drawerSignal.property_id}`)}>
+                  <Button size="sm" variant="outline" onClick={() => navigate(resolvePropertyPath(drawerSignal.property_id))}>
                     <Building2 className="w-4 h-4 mr-1" /> View property
                   </Button>
                   {drawerSignal.asset_id && drawerSignal.property_id && (
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => navigate(`/properties/${drawerSignal.property_id}?tab=assets`)}
+                      onClick={() => navigate(resolvePropertyPath(drawerSignal.property_id, '?tab=assets'))}
                     >
                       <Package className="w-4 h-4 mr-1" /> View assets
                     </Button>

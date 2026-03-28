@@ -47,6 +47,7 @@ import {
   issueStatusLabel,
 } from '../domain/presentDomain';
 import { toast } from 'sonner';
+import { resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -150,6 +151,13 @@ export default function PropertyDetailPage() {
   const fetchData = React.useCallback(async () => {
     try {
       setError(null);
+      if (!propertyId || propertyId === 'undefined' || propertyId === 'null') {
+        setProperty(null);
+        setComplianceDetail(null);
+        setRequirements([]);
+        setError('Invalid property link. Open a property from your portfolio.');
+        return;
+      }
       const propsRes = await clientAPI.getProperties();
       const prop = (propsRes.data.properties || []).find((p) => p.property_id === propertyId);
       setProperty(prop || null);
@@ -647,6 +655,18 @@ export default function PropertyDetailPage() {
     );
   }
 
+  if (!propertyId || propertyId === 'undefined' || propertyId === 'null') {
+    return (
+      <div>
+        <ErrorBanner
+          message="Invalid property link. Open a property from your portfolio."
+          onRetry={() => navigate('/properties')}
+          retryLabel="Back to properties"
+        />
+      </div>
+    );
+  }
+
   if (error && !property) {
     return (
       <div>
@@ -718,7 +738,7 @@ export default function PropertyDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+            <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
               <Upload className="w-4 h-4 mr-1.5" />
               Upload Evidence
             </Button>
@@ -919,7 +939,7 @@ export default function PropertyDetailPage() {
                       </div>
                       {action.recommended_url ? (
                         <Link
-                          to={action.recommended_url}
+                          to={resolveClientPortalPath(action.recommended_url, propertyId ? `/properties/${propertyId}` : '/properties')}
                           className="shrink-0 inline-flex items-center justify-center px-3 py-1.5 bg-electric-teal hover:bg-electric-teal/90 text-white rounded-md text-sm font-medium no-underline cursor-pointer"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -1201,14 +1221,20 @@ export default function PropertyDetailPage() {
                                     </td>
                                     <td className="px-3 py-2 text-gray-700">{complianceRequirementStatusLabel(r?.status)}</td>
                                     <td className="px-3 py-2 text-gray-700">{String(r?.risk_level_if_failed || '—')}</td>
-                                    <td className="px-3 py-2 text-gray-600">{r?.expiry_date ? formatDate(r.expiry_date) : '—'}</td>
+                                    <td className="px-3 py-2 text-gray-600">
+                                      {r?.expiry_date
+                                        ? r?.date_source === 'SYSTEM_ESTIMATED'
+                                          ? `Est. ${formatDate(r.expiry_date)}`
+                                          : formatDate(r.expiry_date)
+                                        : '—'}
+                                    </td>
                                     <td className="px-3 py-2 text-right text-gray-700">{missing.toFixed(1)}</td>
                                     <td className="px-3 py-2 text-right">
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         className="text-electric-teal border-electric-teal"
-                                        onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_code=${encodeURIComponent(requirementCode)}`)}
+                                        onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_code: requirementCode }))}
                                       >
                                         {actionLabel}
                                       </Button>
@@ -1303,7 +1329,7 @@ export default function PropertyDetailPage() {
                   <CardContent className="py-6 text-center">
                     <p className="text-gray-700 mb-2">No evidence has been uploaded for this property yet.</p>
                     <div className="flex flex-wrap justify-center gap-2">
-                      <Button className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>Upload Evidence</Button>
+                      <Button className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId))}>Upload Evidence</Button>
                       <Button variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>View Evidence tab</Button>
                     </div>
                   </CardContent>
@@ -1366,22 +1392,22 @@ export default function PropertyDetailPage() {
                               <td className="p-3" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex flex-wrap gap-1">
                                   {isMissing && (
-                                    <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>
+                                    <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>
                                       <Upload className="w-3.5 h-3.5 mr-1" /> Upload
                                     </Button>
                                   )}
                                   {hasEvidence && !isMissing && (
                                     <>
-                                      <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>
+                                      <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>
                                         <Eye className="w-3.5 h-3.5 mr-1" /> View
                                       </Button>
                                       {(isOverdue || isExpiringSoon) && (
-                                        <Button size="sm" variant="outline" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>Replace</Button>
+                                        <Button size="sm" variant="outline" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>Replace</Button>
                                       )}
                                     </>
                                   )}
                                   {isValid && hasEvidence && (
-                                    <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>View details</Button>
+                                    <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>View details</Button>
                                   )}
                                   {isMissing && (r.requirement_code || r.requirement_type) && (
                                     <Button size="sm" variant="ghost" className="text-gray-600" onClick={(e) => { e.stopPropagation(); setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) }); setNotApplicableReason('not_applicable'); }} data-testid="mark-not-applicable">
@@ -1437,9 +1463,9 @@ export default function PropertyDetailPage() {
                       <div className="text-xs text-gray-500 mt-1">{formatDate(rowExpiry(r))} · {hasEvidence ? 'Linked' : 'No evidence'}</div>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {isMissing ? (
-                          <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>Upload</Button>
+                          <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>Upload</Button>
                         ) : (
-                          <Button size="sm" variant="outline" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>View</Button>
+                          <Button size="sm" variant="outline" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>View</Button>
                         )}
                         <Button size="sm" variant="ghost" onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}>Details</Button>
                       </div>
@@ -1508,7 +1534,7 @@ export default function PropertyDetailPage() {
                           >
                             <Info className="w-3.5 h-3.5" /> Why this matters {isExplainOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           </button>
-                          <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${rowReqId(r)}`)}>
+                          <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>
                             {isMissing ? 'Upload evidence' : 'View / replace'}
                           </Button>
                         </div>
@@ -1878,12 +1904,12 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-2">
               <Button
                 className="bg-electric-teal text-white hover:bg-electric-teal/90"
-                onClick={() => navigate(`/documents?property_id=${propertyId}`)}
+                onClick={() => navigate(resolveDocumentsPath(propertyId))}
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Evidence
               </Button>
-              <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+              <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
                 Open full list
               </Button>
             </div>
@@ -1921,7 +1947,7 @@ export default function PropertyDetailPage() {
                 <Card className="border-amber-200 bg-amber-50/50">
                   <CardContent className="py-3 flex items-center justify-between gap-4">
                     <span className="text-sm text-amber-800">Some requirements are missing evidence. Upload documents to update score and risk.</span>
-                    <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+                    <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
                       Upload required evidence
                     </Button>
                   </CardContent>
@@ -1936,7 +1962,7 @@ export default function PropertyDetailPage() {
                     <CardContent className="py-12 text-center">
                       <p className="text-gray-600 mb-2">No evidence has been uploaded for this property yet.</p>
                       <div className="flex flex-wrap justify-center gap-2">
-                        <Button className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+                        <Button className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
                           Upload Evidence
                         </Button>
                         <Button variant="outline" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
@@ -1974,12 +2000,12 @@ export default function PropertyDetailPage() {
                                 <td className="p-3 text-gray-600">{doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</td>
                                 <td className="p-3">
                                   <div className="flex flex-wrap gap-1">
-                                    <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}><Eye className="w-3 h-3 mr-1" /> View</Button>
+                                    <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}><Eye className="w-3 h-3 mr-1" /> View</Button>
                                     <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}><Download className="w-3 h-3 mr-1" /> Download</Button>
                                     {isPendingConfirmation(doc) && (
-                                      <Button variant="outline" size="sm" className="border-amber-300 text-amber-700" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>Confirm details</Button>
+                                      <Button variant="outline" size="sm" className="border-amber-300 text-amber-700" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>Confirm details</Button>
                                     )}
-                                    <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}><Link2 className="w-3 h-3 mr-1" /> Link</Button>
+                                    <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}><Link2 className="w-3 h-3 mr-1" /> Link</Button>
                                     <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}><History className="w-3 h-3 mr-1" /> History</Button>
                                   </div>
                                 </td>
@@ -1995,9 +2021,9 @@ export default function PropertyDetailPage() {
                           <div className="font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</div>
                           <div className="text-xs text-gray-600 mt-1">Type: {doc.document_type ? documentTypeLabel(doc.document_type) : '—'} · {evidenceDocStatusLabel(doc)} · {doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</div>
                           <div className="flex flex-wrap gap-1 mt-2">
-                            <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>View</Button>
+                            <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>View</Button>
                             <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}>Download</Button>
-                            {isPendingConfirmation(doc) && <Button variant="outline" size="sm" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>Confirm</Button>}
+                            {isPendingConfirmation(doc) && <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>Confirm</Button>}
                             <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}>History</Button>
                           </div>
                         </Card>
@@ -2030,7 +2056,7 @@ export default function PropertyDetailPage() {
                               )}
                               {conf != null && <span className="text-xs text-gray-500 ml-2">Confidence: {Math.round(Number(conf) * 100)}%</span>}
                             </div>
-                            <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(`/documents?property_id=${propertyId}&requirement_id=${doc.requirement_id || ''}`)}>
+                            <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>
                               Confirm details
                             </Button>
                           </div>
@@ -2156,7 +2182,7 @@ export default function PropertyDetailPage() {
                 <p className="text-gray-700 font-medium">No activity has been recorded for this property yet.</p>
                 <p className="text-sm text-gray-500 mt-1 mb-4">Upload evidence, report an issue, or complete property setup to see events here.</p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => navigate(`/documents?property_id=${propertyId}`)}>
+                  <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
                     <Upload className="w-4 h-4 mr-2" />
                     Upload Evidence
                   </Button>

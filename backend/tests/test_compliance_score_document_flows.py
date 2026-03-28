@@ -36,7 +36,7 @@ class TestUploadVerifyUpdatesRequirementAndScore:
                 db.documents.insert_one = AsyncMock()
                 db.requirements.update_one = AsyncMock()
                 with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock) as regen:
-                    with patch("routes.documents.provisioning_service") as prov:
+                    with patch("services.provisioning.provisioning_service") as prov:
                         prov._update_property_compliance = AsyncMock()
                         with patch("builtins.open", MagicMock()), \
                              patch("routes.documents.Path") as path_cls:
@@ -47,7 +47,7 @@ class TestUploadVerifyUpdatesRequirementAndScore:
                             file.read = AsyncMock(return_value=b"x")
                             file.content_type = "application/pdf"
                             with patch("routes.documents.create_audit_log", new_callable=AsyncMock), \
-                                 patch("routes.documents.enqueue_compliance_recalc", new_callable=AsyncMock):
+                                 patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
                                 try:
                                     await upload_document(req, file=file, property_id="p1", requirement_id="r1")
                                 except Exception as e:
@@ -77,21 +77,26 @@ class TestDeleteRevertsRequirementAndScore:
         })
         db.documents.delete_one = AsyncMock()
         db.documents.count_documents = AsyncMock(return_value=0)
+        db.requirements.find_one = AsyncMock(return_value={"frequency_days": 365})
         db.requirements.update_one = AsyncMock()
         req = MagicMock()
         with patch("routes.documents.client_route_guard", new_callable=AsyncMock) as guard:
             guard.return_value = {"portal_user_id": "u1", "client_id": "c1"}
             with patch("routes.documents.database.get_db", return_value=db):
                 with patch("routes.documents.create_audit_log", new_callable=AsyncMock):
-                    with patch("routes.documents.Path") as path_cls:
-                        path_cls.return_value.is_file.return_value = False
-                        with patch("routes.documents.provisioning_service") as prov:
-                            prov._update_property_compliance = AsyncMock()
-                            result = await delete_document(req, "d1")
+                    with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
+                        with patch("routes.documents.Path") as path_cls:
+                            path_cls.return_value.is_file.return_value = False
+                            with patch("services.provisioning.provisioning_service") as prov:
+                                prov._update_property_compliance = AsyncMock()
+                                result = await delete_document(req, "d1")
         assert result.get("message") == "Document deleted"
         db.requirements.update_one.assert_called_once()
         call_args = db.requirements.update_one.call_args
-        assert call_args[1]["$set"]["status"] == "PENDING"
+        update_doc = call_args[0][1]
+        assert update_doc["$set"]["status"] == "PENDING"
+        assert "due_date" in update_doc["$set"]
+        assert update_doc["$set"].get("date_source") == "SYSTEM_ESTIMATED"
 
 
 class TestAdminActionsBehaveIdentically:
@@ -112,7 +117,7 @@ class TestAdminActionsBehaveIdentically:
                 db.requirements.update_one = AsyncMock()
                 db.properties.update_one = AsyncMock()
                 with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock):
-                    with patch("routes.documents.provisioning_service") as prov:
+                    with patch("services.provisioning.provisioning_service") as prov:
                         prov._update_property_compliance = AsyncMock()
                         with patch("builtins.open", MagicMock()), \
                              patch("routes.documents.Path") as path_cls:

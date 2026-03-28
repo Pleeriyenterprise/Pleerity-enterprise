@@ -861,6 +861,9 @@ async def get_client_detail(request: Request, client_id: str):
         properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(100)
         portal_users = await db.portal_users.find({"client_id": client_id}, {"_id": 0}).to_list(10)
         requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
+        from services.requirement_truth import enrich_requirements_for_admin
+
+        requirements = await enrich_requirements_for_admin(db, requirements)
         documents = await db.documents.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
         
         # Calculate compliance summary
@@ -2214,6 +2217,10 @@ async def get_kpi_requirements(
                     {"_id": 0, "full_name": 1, "customer_reference": 1}
                 )
                 req["client"] = client
+
+        from services.requirement_truth import enrich_requirements_for_admin
+
+        requirements = await enrich_requirements_for_admin(db, requirements)
         
         return {
             "requirements": requirements,
@@ -4489,6 +4496,9 @@ async def lookup_client_by_crn(request: Request, crn: str = None):
             {"client_id": client_id},
             {"_id": 0}
         ).to_list(500)
+        from services.requirement_truth import enrich_requirements_for_admin
+
+        requirements = await enrich_requirements_for_admin(db, requirements)
         
         documents = await db.documents.find(
             {"client_id": client_id},
@@ -4677,6 +4687,9 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
             {"client_id": client_id},
             {"_id": 0}
         ).to_list(500)
+        from services.requirement_truth import enrich_requirements_for_admin
+
+        requirements_enriched = await enrich_requirements_for_admin(db, requirements)
         
         documents = await db.documents.find(
             {"client_id": client_id},
@@ -4685,10 +4698,10 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
         ).to_list(500)
         
         # Compliance summary
-        total_reqs = len(requirements)
-        compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
-        overdue = sum(1 for r in requirements if r.get("status") == "OVERDUE")
-        expiring = sum(1 for r in requirements if r.get("status") == "EXPIRING_SOON")
+        total_reqs = len(requirements_enriched)
+        compliant = sum(1 for r in requirements_enriched if r.get("status") == "COMPLIANT")
+        overdue = sum(1 for r in requirements_enriched if r.get("status") == "OVERDUE")
+        expiring = sum(1 for r in requirements_enriched if r.get("status") == "EXPIRING_SOON")
         
         snapshot_data = {
             "client": {
@@ -4721,9 +4734,22 @@ async def admin_assistant_ask(request: Request, data: AdminAssistantRequest):
                 for p in properties
             ],
             "requirements_by_status": {
-                "COMPLIANT": [r.get("category") for r in requirements if r.get("status") == "COMPLIANT"],
-                "OVERDUE": [{"category": r.get("category"), "property": r.get("property_id")} for r in requirements if r.get("status") == "OVERDUE"],
-                "EXPIRING_SOON": [{"category": r.get("category"), "expiry": r.get("expiry_date")} for r in requirements if r.get("status") == "EXPIRING_SOON"]
+                "COMPLIANT": [r.get("display_label") for r in requirements_enriched if r.get("status") == "COMPLIANT"],
+                "OVERDUE": [
+                    {"requirement": r.get("display_label"), "property_id": r.get("property_id"), "date_label": r.get("date_label")}
+                    for r in requirements_enriched
+                    if r.get("status") == "OVERDUE"
+                ],
+                "EXPIRING_SOON": [
+                    {
+                        "requirement": r.get("display_label"),
+                        "property_id": r.get("property_id"),
+                        "date_label": r.get("date_label"),
+                    }
+                    for r in requirements_enriched
+                    if r.get("status") == "EXPIRING_SOON"
+                ],
+                "PENDING": [r.get("display_label") for r in requirements_enriched if r.get("status") == "PENDING"],
             },
             "documents": [
                 {
